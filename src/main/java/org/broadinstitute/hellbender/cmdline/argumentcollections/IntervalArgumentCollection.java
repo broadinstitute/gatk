@@ -112,6 +112,15 @@ public abstract class IntervalArgumentCollection implements Serializable {
     }
 
     /**
+     * Get the largest interval per contig that contains the intervals specified on the command line.
+     * @param sequenceDict used to validate intervals
+     * @return a list of one interval per contig spanning the input intervals after processing and validation
+     */
+    public List<SimpleInterval> getSpanningIntervals( final SAMSequenceDictionary sequenceDict ){
+        return IntervalUtils.getSpanningIntervals(getIntervals(sequenceDict), sequenceDict);
+    }
+
+    /**
      * Get the interval set rule specified on the command line.
      */
     public IntervalSetRule getIntervalSetRule() {

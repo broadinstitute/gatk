@@ -157,7 +157,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to
      * their particular driving data source.
      */
-    List<SimpleInterval> userIntervals;
+    protected List<SimpleInterval> userIntervals;
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
@@ -432,7 +432,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Package-private so that engine classes can access it, but concrete tool child classes cannot.
      * May be overridden by traversals that require custom initialization of intervals.
      */
-    void initializeIntervals() {
+    protected void initializeIntervals() {
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
             if ( sequenceDictionary == null ) {

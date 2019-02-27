@@ -757,7 +757,7 @@ public final class GenomicsDBImport extends GATKTool {
      * dictionary (as returned by {@link #getBestAvailableSequenceDictionary})
      * to parse/verify them. Does nothing if no intervals were specified.
      */
-    private void initializeIntervals() {
+    protected void initializeIntervals() {
         if (intervalArgumentCollection.intervalsSpecified()) {
             final SAMSequenceDictionary intervalDictionary = getBestAvailableSequenceDictionary();
 

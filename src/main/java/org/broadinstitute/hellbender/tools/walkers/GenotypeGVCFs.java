@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -11,6 +12,8 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
@@ -18,6 +21,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloid
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -105,6 +109,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
     private boolean includeNonVariants = false;
 
+    @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
+            shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
+            doc = "Boolean flag to import all data in between intervals.  Improves performance using large lists of " +
+                    "intervals, as in exome sequencing, especially if GVCF data only exists for specified intervals.")
+    private boolean mergeInputIntervals = false;
+
     /**
      * "Genotype" somatic GVCFs, outputting genotypes according to confidently called alt alleles, which may lead to inconsistent ploidy
      * Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.
@@ -165,6 +175,24 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     private List<SimpleInterval> intervals;
 
     @Override
+    protected void initializeIntervals() {
+        if (intervalArgumentCollection.intervalsSpecified()) {
+            final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+            if (sequenceDictionary == null) {
+                throw new UserException("We require a sequence dictionary from a reference, a source of reads, or a source of variants to process intervals.  " +
+                        "Since reference and reads files generally contain sequence dictionaries, this error most commonly occurs " +
+                        "for VariantWalkers that do not require a reference or reads.  You can fix the problem by passing a reference file with a sequence dictionary " +
+                        "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
+            }
+            if (mergeInputIntervals) {
+                userIntervals = intervalArgumentCollection.getSpanningIntervals(sequenceDictionary);
+            } else {
+                userIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
+            }
+        }
+    }
+
+    @Override
     public boolean requiresReference() {
         return true;
     }
@@ -189,13 +217,22 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
+        if (hasUserSuppliedIntervals()) {
+            if (mergeInputIntervals) {
+                intervals = intervalArgumentCollection.getSpanningIntervals(getBestAvailableSequenceDictionary());
+            }
+            else {
+                intervals = intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary());
+            }
+        } else {
+            intervals = Collections.emptyList();
+        }
+
         if(onlyOutputCallsStartingInIntervals) {
             if( !hasUserSuppliedIntervals()) {
                 throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
             }
         }
-        intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
-                Collections.emptyList();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
 

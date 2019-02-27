@@ -161,6 +161,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             intervals.add(new SimpleInterval("chr20", base + 20 * i, base + 20 * i + 10)); //intervals of size 10 separated by 10
         writeToGenomicsDB(new ArrayList<String>(Arrays.asList(LOCAL_GVCFS.get(0))), intervals, workspace, 0,
                 false, 0, 1, true);
+
+
     }
 
     @Test
