@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM jamesemery/gatknightly:gatkbase-RPython-0.0.1
+FROM jamesemery/gatknightly:gatklibs-0.0.1
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH
@@ -41,7 +41,6 @@ WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
 ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
-RUN cp -r install_R_packages.R /gatk
 
 RUN mv /condaenv/gatkcondaenv.yml /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \

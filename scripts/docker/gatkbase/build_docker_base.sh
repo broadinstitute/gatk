@@ -14,7 +14,7 @@ INTERMEDIATE_PROJECT=gatknightly
 INTERMEDIATE_VERSION=0.0.1
 
 BASE_FULL_PATH=${BASE_REPO}/${BASE_PROJECT}:gatkbase-${BASE_VERSION}
-INTERMEDIATE_FULL_PATH=${INTERMEDIATE_REPO}/${INTERMEDIATE_PROJECT}:gatkbase-RPython-${INTERMEDIATE_VERSION}
+INTERMEDIATE_FULL_PATH=${INTERMEDIATE_REPO}/${INTERMEDIATE_PROJECT}:gatklibs-${INTERMEDIATE_VERSION}
 #################################################
 # Parsing arguments
 #################################################
