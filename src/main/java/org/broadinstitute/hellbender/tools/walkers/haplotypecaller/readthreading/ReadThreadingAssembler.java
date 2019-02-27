@@ -458,6 +458,11 @@ public final class ReadThreadingAssembler {
         // actually build the read threading graph
         rtgraph.buildGraphIfNecessary();
 
+        // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.
+        // It's also important to prune before checking for cycles so that sequencing errors don't create false cycles
+        // and unnecessarily abort assembly
+        chainPruner.pruneLowWeightChains(rtgraph);
+
         // sanity check: make sure there are no cycles in the graph
         if ( rtgraph.hasCycles() ) {
             if ( debug ) {
@@ -479,9 +484,6 @@ public final class ReadThreadingAssembler {
 
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
-
-        // Prune before recovering dangling ends because the latter is expensive
-        chainPruner.pruneLowWeightChains(rtgraph);
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
