@@ -32,7 +32,7 @@ public class SVDUSTFilteredKmerizer extends SVKmerizer {
         // kmers of length 3 always have a score of 0, and are uninformative.
         // kSize probably ought to be considerably larger than 4, but we know that numbers less than 4 are plain silly.
         if ( kSize < 4 ) {
-            throw new GATKException("kmer size must be at least 4 for this filterSuffix to work properly.");
+            throw new GATKException("kmer size must be at least 4 for this filter to work properly.");
         }
         this.maxDUSTScore = maxDUSTScore;
         trimerCounts = new int[64]; // there are 64 different trimers

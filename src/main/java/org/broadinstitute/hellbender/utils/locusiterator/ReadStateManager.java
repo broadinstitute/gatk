@@ -256,7 +256,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
         for (final GATKRead read : reads) {
             final AlignmentStateMachine state = new AlignmentStateMachine(read);
             if ( state.stepForwardOnGenome() != null ){ // todo -- should be an assertion not a skip
-                // explicitly filterSuffix out reads that are all insertions / soft clips
+                // explicitly filter out reads that are all insertions / soft clips
                 newReadStates.add(state);
             }
         }

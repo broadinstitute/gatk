@@ -17,8 +17,8 @@ public final class PSScoreFileLogger implements PSScoreLogger {
     private final String metricsOutputPath;
 
     public PSScoreFileLogger(final MetricsFile<PSScoreMetrics, Long> metricsFile, final String metricsOutputPath) {
-        Utils.nonNull(metricsFile, "Score filterSuffix parameter metricsFile cannot be null");
-        Utils.nonNull(metricsOutputPath, "Score filterSuffix parameter metricsOutputPath cannot be null");
+        Utils.nonNull(metricsFile, "Score filter parameter metricsFile cannot be null");
+        Utils.nonNull(metricsOutputPath, "Score filter parameter metricsOutputPath cannot be null");
         this.metrics = new PSScoreMetrics();
         this.metricsFile = metricsFile;
         this.metricsOutputPath = metricsOutputPath;

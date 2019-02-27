@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
- * A class that acts as a filterSuffix for breakpoint evidence.
+ * A class that acts as a filter for breakpoint evidence.
  * It passes only that evidence that is part of a putative cluster.
  */
 public final class BreakpointDensityFilter implements Iterator<BreakpointEvidence> {

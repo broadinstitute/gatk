@@ -29,7 +29,7 @@ import java.util.List;
  * mitochondria. This annotation notes when the number of alt reads falls within 80% of the autosomal coverage
  * distribution, assuming that autosomal coverage is a Poisson distribution given a central statistic of the depth
  * (median is recommended). This will also include true low allele fraction mitochondrial variants and should be used
- * as an annotation, rather than a filterSuffix.</p>
+ * as an annotation, rather than a filter.</p>
  *
  * <h3>Caveat</h3>
  * <p>This annotation can only be calculated in Mutect2 if median-autosomal-coverage argument is provided.</p>

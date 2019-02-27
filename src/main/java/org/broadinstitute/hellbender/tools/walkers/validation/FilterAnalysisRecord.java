@@ -92,7 +92,7 @@ public class FilterAnalysisRecord {
     }
 
     private enum FilterAnalysisTableColumn {
-        FILTER("filterSuffix"),
+        FILTER("filter"),
         TRUE_NEGATIVES("tn"),
         FALSE_NEGATIVES("fn"),
         UNIQUE_TRUE_NEGATIVES("uniq_tn"),

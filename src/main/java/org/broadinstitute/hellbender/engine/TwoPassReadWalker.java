@@ -51,8 +51,8 @@ public abstract class TwoPassReadWalker extends ReadWalker {
     }
 
     /**
-     * Process using the given filterSuffix and function.
-     * @param countedFilter a filterSuffix to apply to all reads.
+     * Process using the given filter and function.
+     * @param countedFilter a filter to apply to all reads.
      * @param f function applied to each read, should produce some useful side effect
      */
     private void traverseReads(final CountingReadFilter countedFilter, final GATKApply f) {

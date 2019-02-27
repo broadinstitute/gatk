@@ -113,7 +113,7 @@ import com.intel.gkl.IntelGKLUtils;
 
 public class CNNScoreVariants extends TwoPassVariantWalker {
     private final static String NL = String.format("%n");
-    static final String USAGE_ONE_LINE_SUMMARY = "Apply a Convolutional Neural Net to filterSuffix annotated variants";
+    static final String USAGE_ONE_LINE_SUMMARY = "Apply a Convolutional Neural Net to filter annotated variants";
     static final String USAGE_SUMMARY = "Annotate a VCF with scores from a Convolutional Neural Network (CNN)." +
             "The CNN determines a Log Odds Score for each variant." +
             "Pre-trained models (1D or 2D) are specified via the architecture argument." +
@@ -160,7 +160,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     @Argument(fullName = "read-limit", shortName = "read-limit", doc = "Maximum number of reads to encode in a tensor, for 2D models only.", minValue = 0, optional = true)
     private int readLimit = 128;
 
-    @Argument(fullName = "filterSuffix-symbolic-and-sv", shortName = "filterSuffix-symbolic-and-sv", doc = "If set will filterSuffix symbolic and and structural variants from the input VCF", optional = true)
+    @Argument(fullName = "filter-symbolic-and-sv", shortName = "filter-symbolic-and-sv", doc = "If set will filter symbolic and and structural variants from the input VCF", optional = true)
     private boolean filterSymbolicAndSV = false;
 
     @Advanced

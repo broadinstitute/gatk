@@ -60,7 +60,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testMaskReversed() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -mask-name outsideGoodSites -filterSuffix-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMask.bed"),
+                baseTestString("vcfexample2.vcf", " -mask-name outsideGoodSites -filter-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMask.bed"),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testMaskReversed.vcf")
         );
 
@@ -70,7 +70,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testIllegalFilterName() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -filterSuffix 'DoC < 20 || FisherStrand > 20.0' -filterSuffix-name 'foo < foo' "),
+                baseTestString("vcfexample2.vcf", " -filter 'DoC < 20 || FisherStrand > 20.0' -filter-name 'foo < foo' "),
                 1,
                 UserException.class
         );
@@ -81,7 +81,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testFilter1() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -filterSuffix 'DoC < 20 || FisherStrand > 20.0' -filterSuffix-name foo "),
+                baseTestString("vcfexample2.vcf", " -filter 'DoC < 20 || FisherStrand > 20.0' -filter-name foo "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilter1.vcf")
         );
 
@@ -91,7 +91,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testFilter2() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -filterSuffix 'AlleleBalance < 70.0 && FisherStrand == 1.4' -filterSuffix-name bar "),
+                baseTestString("vcfexample2.vcf", " -filter 'AlleleBalance < 70.0 && FisherStrand == 1.4' -filter-name bar "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilter2.vcf")
         );
 
@@ -101,7 +101,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testFilterWithSeparateNames() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -filterSuffix-name ABF -filterSuffix 'AlleleBalance < 0.7' -filterSuffix-name FSF -filterSuffix 'FisherStrand == 1.4' "),
+                baseTestString("vcfexample2.vcf", " -filter-name ABF -filter 'AlleleBalance < 0.7' -filter-name FSF -filter 'FisherStrand == 1.4' "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilterWithSeparateNames.vcf")
         );
 
@@ -111,7 +111,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testInvertFilter() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -filterSuffix-name ABF -filterSuffix 'AlleleBalance < 0.7' -filterSuffix-name FSF -filterSuffix 'FisherStrand == 1.4' --" + VariantFiltration.INVERT_LONG_NAME + " "),
+                baseTestString("vcfexample2.vcf", " -filter-name ABF -filter 'AlleleBalance < 0.7' -filter-name FSF -filter 'FisherStrand == 1.4' --" + VariantFiltration.INVERT_LONG_NAME + " "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testInvertFilter.vcf")
         );
 
@@ -123,7 +123,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
         //Note: the "invert" in the name refers to the logic being the opposite of testFilterWithSeparateNames (and same as testInvertFilter)
         //Note: Output differs from testInvertFilter because FILTER description uses the -genotypeFilterExpression argument
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -filterSuffix-name ABF -filterSuffix 'AlleleBalance >= 0.7' -filterSuffix-name FSF -filterSuffix 'FisherStrand != 1.4' "),
+                baseTestString("vcfexample2.vcf", " -filter-name ABF -filter 'AlleleBalance >= 0.7' -filter-name FSF -filter 'FisherStrand != 1.4' "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testInvertJexlFilter.vcf")
         );
 
@@ -133,7 +133,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testGenotypeFilters1() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -G-filterSuffix 'GQ == 0.60' -G-filterSuffix-name foo "),
+                baseTestString("vcfexample2.vcf", " -G-filter 'GQ == 0.60' -G-filter-name foo "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testGenotypeFilters1.vcf")
         );
 
@@ -143,7 +143,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testGenotypeFilters2() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -G-filterSuffix 'isHomVar == 1' -G-filterSuffix-name foo "),
+                baseTestString("vcfexample2.vcf", " -G-filter 'isHomVar == 1' -G-filter-name foo "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testGenotypeFilters2.vcf")
         );
 
@@ -153,7 +153,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testDeletions() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("twoDeletions.vcf", " -filterSuffix 'QUAL < 100' -filterSuffix-name foo "),
+                baseTestString("twoDeletions.vcf", " -filter 'QUAL < 100' -filter-name foo "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testDeletions.vcf")
         );
 
@@ -163,7 +163,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testUnfilteredBecomesFilteredAndPass() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("unfilteredForFiltering.vcf", " -filterSuffix 'FS > 60.0' -filterSuffix-name SNP_FS "),
+                baseTestString("unfilteredForFiltering.vcf", " -filter 'FS > 60.0' -filter-name SNP_FS "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testUnfilteredBecomesFilteredAndPass.vcf")
         );
 
@@ -173,7 +173,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testFilteringDPfromINFO() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("filteringDepthInFormat.vcf", " -filterSuffix 'DP < 8' -filterSuffix-name lowDP "),
+                baseTestString("filteringDepthInFormat.vcf", " -filter 'DP < 8' -filter-name lowDP "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilteringDPfromINFO.vcf")
         );
 
@@ -227,7 +227,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testSetFilteredGtoNocallUpdateInfo()  throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("variantFiltrationInfoField.vcf", " -G-filterSuffix 'GQ < 20' -G-filterSuffix-name lowDP -G-filterSuffix 'DP < 10' -G-filterSuffix-name lowGQ --" + VariantFiltration.NO_CALL_GTS_LONG_NAME + " "),
+                baseTestString("variantFiltrationInfoField.vcf", " -G-filter 'GQ < 20' -G-filter-name lowDP -G-filter 'DP < 10' -G-filter-name lowGQ --" + VariantFiltration.NO_CALL_GTS_LONG_NAME + " "),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testSetFilteredGtoNocallUpdateInfo.vcf")
         );
 
@@ -244,7 +244,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testSetVcfFilteredGtoNocall", this);
     }
 
-    // The current htsjdk implementation of JEXL matching on genotype fields is buggy. When the filterSuffix uses an
+    // The current htsjdk implementation of JEXL matching on genotype fields is buggy. When the filter uses an
     // annotation that is present in both FORMAT and INFO, and the FORMAT value is missing, the current code (Jan 2017)
     // will look up the INFO value. Here we use a made-up annotation Z instead of DP to avoid having to rig the test
     // so that the INFO value will give the same matching results as the FORMAT value.

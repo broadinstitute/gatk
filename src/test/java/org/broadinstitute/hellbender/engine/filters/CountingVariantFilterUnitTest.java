@@ -25,7 +25,7 @@ public final class CountingVariantFilterUnitTest {
         @Override public boolean test(final VariantContext variant){return variant.getEnd() <= 10;}
     };
 
-    // Helper to verify post-filtering filterSuffix state
+    // Helper to verify post-filtering filter state
     private void verifyFilterState(CountingVariantFilter vf, boolean expected) {
         long count = vf.getFilteredCount();
         String vfSummary = vf.getSummaryLine();
@@ -284,19 +284,19 @@ public final class CountingVariantFilterUnitTest {
         filters.add(symbolicFilter);
 
         // Since we want to ensure that order of the input is honored, we need to test the
-        // structure of the filterSuffix rather than the result
+        // structure of the filter rather than the result
         CountingVariantFilter vf = CountingVariantFilter.fromList(filters);
 
         Assert.assertTrue(vf.getClass() == CountingVariantFilter.CountingAndVariantFilter.class);
         CountingVariantFilter.CountingAndVariantFilter andFilter = (CountingVariantFilter.CountingAndVariantFilter) vf;
 
-        // lhs is a Counting and filterSuffix; rhs is a counting filterSuffix that delegates to symbolicFilter
+        // lhs is a Counting and filter; rhs is a counting filter that delegates to symbolicFilter
         Assert.assertTrue(andFilter.lhs.getClass() == CountingVariantFilter.CountingAndVariantFilter.class);
         Assert.assertTrue(andFilter.rhs.delegateFilter == symbolicFilter);
         andFilter = (CountingVariantFilter.CountingAndVariantFilter) andFilter.lhs;
 
-        // lhs is a Counting filterSuffix that delegates to snpFilter; rhs is a
-        // counting filterSuffix that delegates to biallelicFilter
+        // lhs is a Counting filter that delegates to snpFilter; rhs is a
+        // counting filter that delegates to biallelicFilter
         Assert.assertTrue(andFilter.lhs.getClass() == CountingVariantFilter.class);
         Assert.assertTrue(andFilter.lhs.delegateFilter == snpFilter);
         Assert.assertTrue(andFilter.rhs.getClass() == CountingVariantFilter.class);

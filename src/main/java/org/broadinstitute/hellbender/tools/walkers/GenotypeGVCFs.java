@@ -113,7 +113,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     protected boolean somaticInput = false;
 
     /**
-     * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filterSuffix status.
+     * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
      * Set to less than or equal to tumor_lod. Increase argument value to reduce false positives in the callset.
      */
     @Argument(fullName=M2ArgumentCollection.EMISSION_LOD_LONG_NAME, shortName = M2ArgumentCollection.EMISSION_LOG_SHORT_NAME,

@@ -23,7 +23,7 @@ import static org.testng.Assert.assertTrue;
 
 public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
 
-    // step 1: parse and primitive filterSuffix ==============================================================================
+    // step 1: parse and primitive filter ==============================================================================
 
     @DataProvider
     private Object[][] forTestingNotDiscardForBadMQ() {

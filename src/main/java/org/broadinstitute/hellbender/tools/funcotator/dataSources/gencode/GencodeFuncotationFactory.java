@@ -526,7 +526,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * Filter the given list of {@link GencodeFuncotation} to only contain those funcotations that have transcriptIDs that
      * appear in the given {@code selectedTranscripts}.
      * Ignores transcript version numbers.
-     * @param funcotations The {@link List} of {@link GencodeFuncotation} to filterSuffix.
+     * @param funcotations The {@link List} of {@link GencodeFuncotation} to filter.
      * @param selectedTranscripts The {@link Set} of transcript IDs to keep in the given {@code funcotations}.
      */
     static void filterAnnotationsByUserTranscripts( final List<GencodeFuncotation> funcotations,

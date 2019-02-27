@@ -177,7 +177,7 @@ public class XGBoostEvidenceFilterUnitTest extends GATKBaseTest {
                 evidenceList.iterator(), readMetadata, params, emptyCrossingChecker
         );
 
-        // construct list of BreakpointEvidence that is expected to pass the filterSuffix
+        // construct list of BreakpointEvidence that is expected to pass the filter
         final List<BreakpointEvidence> expectedPassed = new ArrayList<>();
         List<BreakpointEvidence> sameLocationEvidence = new ArrayList<>();
         boolean locationPassed = false;

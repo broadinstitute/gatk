@@ -49,13 +49,13 @@ public final class ReadsContext implements Iterable<GATKRead> {
 
     /**
      * Create a ReadsContext backed by the supplied source of reads. Calls to {@link #iterator}
-     * will return reads overlapping the provided interval, and passing the provided read filterSuffix (if non-null).
+     * will return reads overlapping the provided interval, and passing the provided read filter (if non-null).
      * The data source and/or interval may be null, in which case all calls to {@link #iterator} will return an
      * empty iterator.
      *
      * @param dataSource backing source of reads data (may be null)
      * @param interval interval over which to query (may be null)
-     * @param readFilter read filterSuffix to be used to filterSuffix reads during iteration (may be null)
+     * @param readFilter read filter to be used to filter reads during iteration (may be null)
      */
     public ReadsContext( final GATKDataSource<GATKRead> dataSource, final SimpleInterval interval, final ReadFilter readFilter ) {
         this.dataSource = dataSource;

@@ -59,7 +59,7 @@ import java.util.List;
  * <h3>Note</h3>
  * <ul>
  * <li>Like most GATK tools, this tools filters out duplicate reads by default. However, some ASE methods
- * recommend including duplicate reads in the analysis, so the DuplicateRead filterSuffix can be disabled using the
+ * recommend including duplicate reads in the analysis, so the DuplicateRead filter can be disabled using the
  * "-DF NotDuplicateReadFilter" flag in the command-line.</li>
  * </ul>
  * <h3>Caveat</h3>

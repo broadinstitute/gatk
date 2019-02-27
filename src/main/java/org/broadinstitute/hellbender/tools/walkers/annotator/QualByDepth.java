@@ -85,7 +85,7 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
     /**
      * The haplotype caller generates very high quality scores when multiple events are on the
      * same haplotype.  This causes some very good variants to have unusually high QD values,
-     * and VQSR will filterSuffix these out.  This code looks at the QD value, and if it is above
+     * and VQSR will filter these out.  This code looks at the QD value, and if it is above
      * threshold we map it down to the mean high QD value, with some jittering
      *
      * @param QD the raw QD score

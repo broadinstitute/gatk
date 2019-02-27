@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq.loggers;
 import htsjdk.samtools.metrics.MetricBase;
 
 /**
- * Metrics that are calculated during the PathSeq filterSuffix
+ * Metrics that are calculated during the PathSeq filter
  */
 public final class PSFilterMetrics extends MetricBase {
 

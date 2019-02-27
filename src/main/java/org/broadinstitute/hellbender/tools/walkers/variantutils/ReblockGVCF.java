@@ -306,7 +306,7 @@ public final class ReblockGVCF extends VariantWalker {
 
         VariantContextBuilder builder = new VariantContextBuilder(result);
         final Genotype newG = gb.make();
-        return builder.alleles(Arrays.asList(newG.getAlleles().get(0), Allele.NON_REF_ALLELE)).unfiltered().log10PError(VariantContext.NO_LOG10_PERROR).attributes(attrMap).genotypes(newG).make(); //genotyping engine will add lowQual filterSuffix, so strip it off
+        return builder.alleles(Arrays.asList(newG.getAlleles().get(0), Allele.NON_REF_ALLELE)).unfiltered().log10PError(VariantContext.NO_LOG10_PERROR).attributes(attrMap).genotypes(newG).make(); //genotyping engine will add lowQual filter, so strip it off
     }
 
     /**

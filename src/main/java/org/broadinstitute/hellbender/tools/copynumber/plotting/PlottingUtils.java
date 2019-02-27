@@ -25,7 +25,7 @@ final class PlottingUtils {
     static final String MINIMUM_CONTIG_LENGTH_LONG_NAME = "minimum-contig-length";
 
     static final String CONTIG_DELIMITER = "CONTIG_DELIMITER";  //used to delimit contig names and lengths passed to the R script
-    static final int DEFAULT_MINIMUM_CONTIG_LENGTH = 1000000;   //can be used to filterSuffix out mitochondrial contigs, unlocalized contigs, etc.
+    static final int DEFAULT_MINIMUM_CONTIG_LENGTH = 1000000;   //can be used to filter out mitochondrial contigs, unlocalized contigs, etc.
 
     static final String SEQUENCE_DICTIONARY_DOC_STRING = "File containing a sequence dictionary, which specifies the contigs to be plotted and their relative lengths. " +
             "The sequence dictionary must be a subset of those contained in other input files. " +
@@ -38,7 +38,7 @@ final class PlottingUtils {
 
     static final String MINIMUM_CONTIG_LENGTH_DOC_STRING = "Threshold length (in bp) for contigs to be plotted. " +
             "Contigs with lengths less than this threshold will not be plotted. " +
-            "This can be used to filterSuffix out mitochondrial contigs, unlocalized contigs, etc.";
+            "This can be used to filter out mitochondrial contigs, unlocalized contigs, etc.";
 
     private PlottingUtils() {}
 

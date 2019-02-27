@@ -32,7 +32,7 @@ public final class ReadGroupBlackListReadFilterUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions=UserException.class)
     public void testBadFilterTag() throws IOException {
-        List<String> badFilters = Collections.singletonList("bad:filterSuffix");
+        List<String> badFilters = Collections.singletonList("bad:filter");
         new ReadGroupBlackListReadFilter(badFilters, header);
     }
 

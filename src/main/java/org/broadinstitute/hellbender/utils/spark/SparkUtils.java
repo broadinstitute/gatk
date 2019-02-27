@@ -211,7 +211,7 @@ public final class SparkUtils {
         List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNameGroupInEachPartition.subList(1, numPartitions));
         firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
 
-        // Join the reads with the first read from the _next_ partition, then filterSuffix out the first reads in this partition
+        // Join the reads with the first read from the _next_ partition, then filter out the first reads in this partition
         return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
                 (FlatMapFunction2<Iterator<GATKRead>, Iterator<List<GATKRead>>, GATKRead>) (it1, it2) -> {
             PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);

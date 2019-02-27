@@ -233,13 +233,13 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * Returns the default list of CommandLineReadFilters that are used for this tool. The filters
      * returned by this method are subject to selective enabling/disabling and customization by the
      * user via the command line. The default implementation uses the {@link WellformedReadFilter}
-     * filterSuffix with all default options, as well as the {@link ReadFilterLibrary.MappedReadFilter}.
+     * filter with all default options, as well as the {@link ReadFilterLibrary.MappedReadFilter}.
      * Subclasses can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
      * available through {link #getHeaderForReads}.
      *
-     * @return List of default filterSuffix instances to be applied for this tool.
+     * @return List of default filter instances to be applied for this tool.
      */
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> defaultFilters = new ArrayList<>(2);
@@ -262,7 +262,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         progressMeter.setRecordsBetweenTimeChecks(10L);
 
         for ( final MultiIntervalLocalReadShard readShard : readShards ) {
-            // Since reads in each shard are lazily fetched, we need to pass the filterSuffix and transformers to the window
+            // Since reads in each shard are lazily fetched, we need to pass the filter and transformers to the window
             // instead of filtering the reads directly here
             readShard.setPreReadFilterTransformer(makePreReadFilterTransformer());
             readShard.setReadFilter(countedFilter);

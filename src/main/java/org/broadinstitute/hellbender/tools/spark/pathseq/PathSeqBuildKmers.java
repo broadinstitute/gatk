@@ -21,7 +21,7 @@ import java.util.Collection;
  * <a href="https://en.wikipedia.org/wiki/Hash_table">hash table</a>.</p>
  *
  * <p>Users also have the option to represent the k-mers set using a <a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom
- * filterSuffix</a> by specifying a non-zero value for the --bloom-false-positive-probability parameter. This uses less memory
+ * filter</a> by specifying a non-zero value for the --bloom-false-positive-probability parameter. This uses less memory
  * than the default hash set but also can produce false positives. In other words, when
  * asked whether a non-host k-mer exists in the set, it will incorrectly say yes with a probability, p. The user can
  * specify p so that the probability of incorrectly subtracting a non-host read is negligibly
@@ -52,7 +52,7 @@ import java.util.Collection;
  *   --kmer-size 31
  * </pre>
  *
- * <h4>Builds a Bloom filterSuffix with false positive probability p < 0.001.</h4>
+ * <h4>Builds a Bloom filter with false positive probability p < 0.001.</h4>
  * <pre>
  * gatk PathSeqBuildKmers  \
  *   --reference host_reference.fasta \
@@ -65,7 +65,7 @@ import java.util.Collection;
  * <h3>Notes</h3>
  *
  * <p>For most references, the Java VM will run out of memory with the default settings. The Java heap size limit should
- * be set at least 20x the size of the reference (less if building a Bloom filterSuffix). For example, for a 3 GB reference set
+ * be set at least 20x the size of the reference (less if building a Bloom filter). For example, for a 3 GB reference set
  * the limit to 60 GB by adding --java-options "-Xmx60g" to the command.</p>
  *
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
@@ -89,7 +89,7 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
 
     @Argument(doc = "File for k-mer set output. Extension will be automatically added if not present ("
             + PSKmerUtils.HOPSCOTCH_SET_EXTENSION + " for hash set or "
-            + PSKmerUtils.BLOOM_FILTER_EXTENSION + " for Bloom filterSuffix)",
+            + PSKmerUtils.BLOOM_FILTER_EXTENSION + " for Bloom filter)",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     public String outputFile;
@@ -103,7 +103,7 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
      * <p>Note that the provided argument is used as an upper limit on the probability, and the actual false positive
      * probability may be less.</p>
      */
-    @Argument(doc = "If non-zero, creates a Bloom filterSuffix with this false positive probability",
+    @Argument(doc = "If non-zero, creates a Bloom filter with this false positive probability",
             fullName = BLOOM_FILTER_FALSE_POSITIVE_P_LONG_NAME,
             shortName = BLOOM_FILTER_FALSE_POSITIVE_P_SHORT_NAME,
             minValue = 0.0,
@@ -147,7 +147,7 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
     public int kmerSpacing = 1;
 
     /**
-     * Get the list of distinct kmers in the reference, and write them to a file as a HopScotch set or Bloom filterSuffix.
+     * Get the list of distinct kmers in the reference, and write them to a file as a HopScotch set or Bloom filter.
      */
     @Override
     protected Object doWork() {
@@ -161,10 +161,10 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
         final Collection<long[]> maskedKmerCollection = PSKmerUtils.getMaskedKmersFromLocalReference(reference, kmerSize, kmerSpacing, kmerMask);
         final long numLongs = PSKmerUtils.longArrayCollectionSize(maskedKmerCollection);
         if (bloomFpp > 0) {
-            logger.info("Building Bloom filterSuffix with false positive probability " + bloomFpp + "...");
+            logger.info("Building Bloom filter with false positive probability " + bloomFpp + "...");
             final LongBloomFilter bloomFilter = PSKmerUtils.longArrayCollectionToBloomFilter(maskedKmerCollection, numLongs, bloomFpp);
             final PSKmerBloomFilter kmerBloomFilter = new PSKmerBloomFilter(bloomFilter, kmerSize, kmerMask, numLongs);
-            logger.info("Theoretical Bloom filterSuffix false positive probability: " + kmerBloomFilter.getFalsePositiveProbability());
+            logger.info("Theoretical Bloom filter false positive probability: " + kmerBloomFilter.getFalsePositiveProbability());
             PSKmerUtils.writeKmerBloomFilter(outputFile, kmerBloomFilter);
         } else {
             logger.info("Building kmer hash set...");

@@ -36,7 +36,7 @@ public class PSFilterFileLoggerTest  extends GATKBaseTest {
         filterLogger.logFinalPairedReads(ctx.parallelize(Collections.nCopies(numFinalPaired, read)));
         filterLogger.close();
 
-        final File expectedOutputFile = getTestFile("expected.filterSuffix.metrics");
+        final File expectedOutputFile = getTestFile("expected.filter.metrics");
 
         Assert.assertTrue(MetricsFile.areMetricsEqual(metricsOutputFile, expectedOutputFile));
     }

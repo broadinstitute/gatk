@@ -79,7 +79,7 @@ public final class GATKSVVCFConstants {
     public static final String COPY_NUMBER_FORMAT = "CN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
-    // filterSuffix block
+    // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";
 

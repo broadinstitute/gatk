@@ -13,7 +13,7 @@ import java.util.Set;
 /**
  * A band pass filtering version of the activity profile
  *
- * Applies a band pass filterSuffix with a Gaussian kernel to the input state probabilities to smooth
+ * Applies a band pass filter with a Gaussian kernel to the input state probabilities to smooth
  * them out of an interval
  */
 public class BandPassActivityProfile extends ActivityProfile {
@@ -26,7 +26,7 @@ public class BandPassActivityProfile extends ActivityProfile {
     private final double[] gaussianKernel;
 
     /**
-     * Create a new BandPassActivityProfile with default sigma and filterSuffix sizes
+     * Create a new BandPassActivityProfile with default sigma and filter sizes
      */
     public BandPassActivityProfile(final Set<SimpleInterval> restrictToIntervals,
                                    final int maxProbPropagationDistance, final double activeProbThreshold,
@@ -44,14 +44,14 @@ public class BandPassActivityProfile extends ActivityProfile {
     }
 
     /**
-     * Create an activity profile that implements a band pass filterSuffix on the states
+     * Create an activity profile that implements a band pass filter on the states
      *
      * @param restrictToIntervals only include states that are within these intervals, if not null
      * @param maxProbPropagationDistance region probability propagation distance beyond it's maximum size
      * @param activeProbThreshold  threshold for the probability of a profile state being active
-     * @param maxFilterSize the maximum size of the band pass filterSuffix we are allowed to create, regardless of sigma
-     * @param sigma the variance of the Gaussian kernel for this band pass filterSuffix
-     * @param adaptiveFilterSize if true, use the kernel itself to determine the best filterSuffix size
+     * @param maxFilterSize the maximum size of the band pass filter we are allowed to create, regardless of sigma
+     * @param sigma the variance of the Gaussian kernel for this band pass filter
+     * @param adaptiveFilterSize if true, use the kernel itself to determine the best filter size
      */
     public BandPassActivityProfile(final Set<SimpleInterval> restrictToIntervals, final int maxProbPropagationDistance,
                                    final double activeProbThreshold, final int maxFilterSize, final double sigma, final boolean adaptiveFilterSize,
@@ -60,7 +60,7 @@ public class BandPassActivityProfile extends ActivityProfile {
 
         Utils.validateArg(sigma >= 0, "Sigma must be greater than or equal to 0");
 
-        // setup the Gaussian kernel for the band pass filterSuffix
+        // setup the Gaussian kernel for the band pass filter
         this.sigma = sigma;
         final double[] fullKernel = makeKernel(maxFilterSize, sigma);
         this.filterSize = adaptiveFilterSize ? determineFilterSize(fullKernel, MIN_PROB_TO_KEEP_IN_FILTER) : maxFilterSize;
@@ -89,7 +89,7 @@ public class BandPassActivityProfile extends ActivityProfile {
     }
 
     /**
-     * Our maximize propagation distance is whatever our parent's is, plus our filterSuffix size
+     * Our maximize propagation distance is whatever our parent's is, plus our filter size
      *
      * Stops the profile from interpreting sites that aren't yet fully determined due to
      * propagation of the probabilities.
@@ -102,7 +102,7 @@ public class BandPassActivityProfile extends ActivityProfile {
     }
 
     /**
-     * Get the size (in bp) of the band pass filterSuffix
+     * Get the size (in bp) of the band pass filter
      * @return a positive integer
      */
     public int getBandSize() {
@@ -110,7 +110,7 @@ public class BandPassActivityProfile extends ActivityProfile {
     }
 
     /**
-     * Get the filterSuffix size (which is the size of each wing of the band, minus the center point)
+     * Get the filter size (which is the size of each wing of the band, minus the center point)
      * @return a positive integer
      */
     public int getFilteredSize() {
@@ -126,8 +126,8 @@ public class BandPassActivityProfile extends ActivityProfile {
     }
 
     /**
-     * Get the kernel of this band pass filterSuffix.  Do not modify returned result
-     * @return the kernel used in this band pass filterSuffix
+     * Get the kernel of this band pass filter.  Do not modify returned result
+     * @return the kernel used in this band pass filter
      */
     protected double[] getKernel() {
         return gaussianKernel;

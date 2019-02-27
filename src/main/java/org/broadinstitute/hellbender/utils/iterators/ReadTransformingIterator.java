@@ -17,8 +17,8 @@ public class ReadTransformingIterator implements Iterator<GATKRead>, Iterable<GA
     private final ReadTransformer readTransformer;
 
     /**
-     * Create a ReadFilteringIterator given a pre-existing iterator of reads and a read filterSuffix.
-     * Only reads that pass the filterSuffix will be returned from this iterator.
+     * Create a ReadFilteringIterator given a pre-existing iterator of reads and a read filter.
+     * Only reads that pass the filter will be returned from this iterator.
      *
      * @param nestedIterator underlying iterator from which to pull reads (may not be null)
      * @param readTransformer transformation to apply to the reads (may not be null)

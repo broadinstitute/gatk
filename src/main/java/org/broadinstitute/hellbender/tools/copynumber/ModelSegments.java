@@ -631,7 +631,7 @@ public final class ModelSegments extends CommandLineProgram {
 
         AllelicCountCollection filteredAllelicCounts = allelicCounts;
 
-        //filterSuffix on total count in case sample
+        //filter on total count in case sample
         logger.info(String.format("Filtering allelic counts with total count less than %d...", minTotalAlleleCountCase));
         filteredAllelicCounts = new AllelicCountCollection(
                 metadata,
@@ -641,7 +641,7 @@ public final class ModelSegments extends CommandLineProgram {
         logger.info(String.format("Retained %d / %d sites after filtering on total count...",
                 filteredAllelicCounts.size(), allelicCounts.size()));
 
-        //filterSuffix on overlap with copy-ratio intervals, if available
+        //filter on overlap with copy-ratio intervals, if available
         if (denoisedCopyRatios != null) {
             logger.info("Filtering allelic-count sites not overlapping with copy-ratio intervals...");
             filteredAllelicCounts = new AllelicCountCollection(
@@ -655,7 +655,7 @@ public final class ModelSegments extends CommandLineProgram {
 
         final AllelicCountCollection hetAllelicCounts;
         if (normalAllelicCounts == null) {
-            //filterSuffix on homozygosity in case sample
+            //filter on homozygosity in case sample
             logger.info("No matched normal was provided, not running in matched-normal mode...");
 
             logger.info("Performing binomial testing and filtering homozygous allelic counts...");
@@ -684,7 +684,7 @@ public final class ModelSegments extends CommandLineProgram {
                 logger.warn("Sequence dictionaries in allelic-count files do not match.");
             }
 
-            //filterSuffix on total count in matched normal
+            //filter on total count in matched normal
             logger.info(String.format("Filtering allelic counts in matched normal with total count less than %d...", minTotalAlleleCountNormal));
             AllelicCountCollection filteredNormalAllelicCounts = new AllelicCountCollection(
                     normalMetadata,
@@ -694,7 +694,7 @@ public final class ModelSegments extends CommandLineProgram {
             logger.info(String.format("Retained %d / %d sites in matched normal after filtering on total count...",
                     filteredNormalAllelicCounts.size(), normalAllelicCounts.size()));
 
-            //filterSuffix matched normal on overlap with copy-ratio intervals, if available
+            //filter matched normal on overlap with copy-ratio intervals, if available
             if (denoisedCopyRatios != null) {
                 logger.info("Filtering allelic-count sites in matched normal not overlapping with copy-ratio intervals...");
                 filteredNormalAllelicCounts = new AllelicCountCollection(
@@ -706,7 +706,7 @@ public final class ModelSegments extends CommandLineProgram {
                         filteredNormalAllelicCounts.size(), normalAllelicCounts.size()));
             }
 
-            //filterSuffix on homozygosity in matched normal
+            //filter on homozygosity in matched normal
             final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
                     normalMetadata,
                     filteredNormalAllelicCounts.getRecords().stream()

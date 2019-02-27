@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Tests whether a read is &quot;well-formed&quot; -- that is, is free of major internal inconsistencies and issues that could lead
- * to errors downstream. If a read passes this filterSuffix, the rest of the engine should be able to process it without
+ * to errors downstream. If a read passes this filter, the rest of the engine should be able to process it without
  * blowing up.
  *
  * <p><b>Well-formed reads definition</b></p>

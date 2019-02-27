@@ -96,7 +96,7 @@ import java.util.List;
  * gatk PathSeqPipelineSpark  \
  *   --input input_reads.bam \
  *   --kmer-file host_kmers.bfi \
- *   --filterSuffix-bwa-image host_reference.img \
+ *   --filter-bwa-image host_reference.img \
  *   --microbe-bwa-image microbe_reference.img \
  *   --microbe-fasta reference.fa \
  *   --taxonomy-file taxonomy.db \
@@ -105,7 +105,7 @@ import java.util.List;
  *   --identity-margin 0.02 \
  *   --scores-output scores.txt \
  *   --output output_reads.bam \
- *   --filterSuffix-metrics filter_metrics.txt \
+ *   --filter-metrics filter_metrics.txt \
  *   --score-metrics score_metrics.txt
  * </pre>
  *
@@ -115,7 +115,7 @@ import java.util.List;
  * gatk PathSeqPipelineSpark  \
  *   --input gs://my-gcs-bucket/input_reads.bam \
  *   --kmer-file hdfs://my-cluster-m:8020//host_kmers.bfi \
- *   --filterSuffix-bwa-image /references/host_reference.img \
+ *   --filter-bwa-image /references/host_reference.img \
  *   --microbe-bwa-image /references/microbe_reference.img \
  *   --microbe-fasta hdfs://my-cluster-m:8020//reference.fa \
  *   --taxonomy-file hdfs://my-cluster-m:8020//taxonomy.db \
@@ -124,7 +124,7 @@ import java.util.List;
  *   --identity-margin 0.02 \
  *   --scores-output gs://my-gcs-bucket/scores.txt \
  *   --output gs://my-gcs-bucket/output_reads.bam \
- *   --filterSuffix-metrics gs://my-gcs-bucket/filter_metrics.txt \
+ *   --filter-metrics gs://my-gcs-bucket/filter_metrics.txt \
  *   --score-metrics gs://my-gcs-bucket/score_metrics.txt \
  *   -- \
  *   --sparkRunner GCS \
@@ -241,12 +241,12 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         JavaRDD<GATKRead> pairedReads = filterResult._1;
         JavaRDD<GATKRead> unpairedReads = filterResult._2;
 
-        //Counting forces an action on the RDDs to guarantee we're done with the Bwa image and kmer filterSuffix
+        //Counting forces an action on the RDDs to guarantee we're done with the Bwa image and kmer filter
         final long numPairedReads = pairedReads.count();
         final long numUnpairedReads = unpairedReads.count();
         final long numTotalReads = numPairedReads + numUnpairedReads;
 
-        //Closes Bwa image, kmer filterSuffix, and metrics file if used
+        //Closes Bwa image, kmer filter, and metrics file if used
         //Note the host Bwa image before must be unloaded before trying to load the pathogen image
         filter.close();
 

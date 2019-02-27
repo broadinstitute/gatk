@@ -17,7 +17,7 @@ import java.util.function.Predicate;
  * based on the implementing class's implementation of test().
  *
  * To be accessible from the command line, subclasses must have a zero-arg constructor and contain
- * (optional) ArgumentCollection or Argument annotated fields for filterSuffix-specific arguments. Arguments
+ * (optional) ArgumentCollection or Argument annotated fields for filter-specific arguments. Arguments
  * that are optional=true should have an initial value since the command line parser will not require
  * the user to provide one; arguments that are optional=false should not have an initial value (and
  * used boxed types with null default/initial values) since otherwise they will be seen by the command
@@ -36,7 +36,7 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
         private final ReadFilter delegate;
 
         protected ReadFilterNegate(ReadFilter delegate) {
-            Utils.nonNull(delegate, "Delegate filterSuffix cannot be null");
+            Utils.nonNull(delegate, "Delegate filter cannot be null");
             this.delegate = delegate;
         }
 
@@ -53,8 +53,8 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
         final protected ReadFilter rhs;
 
         public ReadFilterBinOp(final ReadFilter lhs, final ReadFilter rhs) {
-            Utils.nonNull(lhs, "ReadFilterBinOp lhs filterSuffix cannot be null");
-            Utils.nonNull(rhs, "ReadFilterBinOp rhs filterSuffix cannot be null");
+            Utils.nonNull(lhs, "ReadFilterBinOp lhs filter cannot be null");
+            Utils.nonNull(rhs, "ReadFilterBinOp rhs filter cannot be null");
             this.lhs = lhs;
             this.rhs = rhs;
         }
@@ -87,11 +87,11 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
 
     /**
      * Return a composite (and) {@code ReadFilter} constructed from a list of {@code ReadFilter}. Each
-     * filterSuffix in the list is first initialized with the {@code SAMFileHeader} param. The resulting filterSuffix
-     * honors the order of the input list and tests the filterSuffix conditions in the same order as the iteration
+     * filter in the list is first initialized with the {@code SAMFileHeader} param. The resulting filter
+     * honors the order of the input list and tests the filter conditions in the same order as the iteration
      * order of the input list.
-     * @param readFilters If null or empty, the ALLOW_ALL_READS read filterSuffix will be returned
-     * @param samHeader {@code SAMFileHeader} used to initialize each filterSuffix. May not be null
+     * @param readFilters If null or empty, the ALLOW_ALL_READS read filter will be returned
+     * @param samHeader {@code SAMFileHeader} used to initialize each filter. May not be null
      * @return Composite ReadFilter
      */
     public static ReadFilter fromList(final List<ReadFilter> readFilters, final SAMFileHeader samHeader) {

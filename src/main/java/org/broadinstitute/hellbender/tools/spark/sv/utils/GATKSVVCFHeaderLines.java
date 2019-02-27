@@ -255,7 +255,7 @@ public final class GATKSVVCFHeaderLines {
                     "Copy number genotype quality for imprecise events"));
         }
 
-        // filterSuffix lines
+        // filter lines
         {
             addFilterLine(new VCFFilterHeaderLine(GATKSVVCFConstants.ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY,
                     "Assembly evidence based record that whose maximum value specified in " + GATKSVVCFConstants.MAPPING_QUALITIES + " is lower than user specified threshold"));

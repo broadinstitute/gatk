@@ -86,7 +86,7 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
     @Argument(
             shortName="F",
             fullName = "pf-reads-only",
-            doc="If set to true, calculates the base distribution over passing filterSuffix (PF) reads only."
+            doc="If set to true, calculates the base distribution over passing filter (PF) reads only."
     )
     public boolean pfReadsOnly = false;
 

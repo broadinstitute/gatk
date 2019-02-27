@@ -29,7 +29,7 @@ import java.util.List;
  * <p>
  * The tool requires a <i>common</i> germline variant sites VCF, e.g. derived from the gnomAD resource, with population allele frequencies (AF) in the INFO field.
  * This resource must contain only biallelic SNPs and can be an eight-column sites-only VCF.
- * The tool ignores the filterSuffix status of the variant calls in this germline resource.
+ * The tool ignores the filter status of the variant calls in this germline resource.
  * </p>
  * <p>
  *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.

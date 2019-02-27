@@ -94,7 +94,7 @@ public final class ExampleCollectSingleMetricsSpark
     }
 
     /**
-     * Return the read filterSuffix required for this collector
+     * Return the read filter required for this collector
      */
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -103,7 +103,7 @@ public final class ExampleCollectSingleMetricsSpark
 
     /**
      * Execute the actual metrics collection.
-     * @param filteredReads Input reads, already filtered using the filterSuffix returned by {@link #getDefaultReadFilters(SAMFileHeader)}
+     * @param filteredReads Input reads, already filtered using the filter returned by {@link #getDefaultReadFilters(SAMFileHeader)}
      * @param samHeader SAMFileHeader for the input
      */
     @Override

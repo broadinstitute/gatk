@@ -42,7 +42,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * Forward strand with artifact after denaturing: (C' replaces A)
  * Forward strand 3' C' B . . . B' C
  *
- * Since there is no good way early in GATK tools to collect reads and mates, here we filterSuffix only for the case where
+ * Since there is no good way early in GATK tools to collect reads and mates, here we filter only for the case where
  * sequence C matches the reference, so that the reference sequence is a proxy for the 5' end of the mate.  This catches
  * most errors and saves a lot of runtime by reducing false active regions and by simplifying the assembly.
  */

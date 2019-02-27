@@ -103,9 +103,9 @@ import java.util.List;
  * </p>
  *
  * <dl>
- *     <dd>- If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filterSuffix.
+ *     <dd>- If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter.
  *     For matched normal samples with tumor contamination, consider increasing the normal-artifact-lod threshold.</dd>
- *     <dd>- The tumor log odds, which is calculated independently of any matched normal, determines whether to filterSuffix a tumor
+ *     <dd>- The tumor log odds, which is calculated independently of any matched normal, determines whether to filter a tumor
  *     variant. Variants with tumor LODs exceeding the threshold pass filtering.</dd>
  * </dl>
  *

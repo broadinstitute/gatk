@@ -175,7 +175,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             if (bwaArgs.singleEndAlignment) {
                 alignedReads = bwaEngine.alignUnpaired(getReads());
             } else {
-                // filterSuffix reads after alignment in the case of paired reads since filtering does not know about pairs
+                // filter reads after alignment in the case of paired reads since filtering does not know about pairs
                 final ReadFilter filter = makeReadFilter(bwaEngine.getHeader());
                 alignedReads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
             }

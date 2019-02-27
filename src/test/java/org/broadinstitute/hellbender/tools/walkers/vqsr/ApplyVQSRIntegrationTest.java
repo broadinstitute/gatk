@@ -102,7 +102,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         args.add("-mode");
         args.add("BOTH");
         args.add("-exclude-filtered");
-        args.add("-truth-sensitivity-filterSuffix-level");
+        args.add("-truth-sensitivity-filter-level");
         args.add("90.0");
         args.add("--tranches-file ");
         args.add(getToolTestDataDir() + "VQSR.mixedTest.tranches");
@@ -125,7 +125,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final String base =
                 " -L 3:113005755-195507036" +
                 " -mode SNP -AS" +
-                " -ts-filterSuffix-level 99.7" +
+                " -ts-filter-level 99.7" +
                 " --variant " + getToolTestDataDir() + "VQSR.AStest.input.vcf" +
                 " --output %s" +
                 " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.snps.tranches" +
@@ -143,7 +143,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final String base =
                 " -L 3:113005755-195507036" +
                 " -mode INDEL -AS" +
-                " -ts-filterSuffix-level 99.3" +
+                " -ts-filter-level 99.3" +
                 " --variant " + getToolTestDataDir() + "VQSR.AStest.postSNPinput.vcf" +
                 " --output %s" +
                 " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
@@ -180,7 +180,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final String base =
                 " -L " +  queryInterval.toString() +
                         " -mode INDEL -AS" +
-                        " -ts-filterSuffix-level 99.3" +
+                        " -ts-filter-level 99.3" +
                         " --variant " + getToolTestDataDir() + "VQSR.AStest.postSNPinput.HACKEDhg38header.vcf.gz" +
                         " --output " + tempGZIPOut.getAbsolutePath() +
                         " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +

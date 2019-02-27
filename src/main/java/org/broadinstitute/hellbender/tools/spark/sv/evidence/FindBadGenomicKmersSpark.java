@@ -130,7 +130,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
 
     /**
      * Do a map/reduce on an RDD of genomic sequences:
-     * Kmerize, mapping to a pair <kmer,1>, reduce by summing values by key, filterSuffix out <kmer,N> where
+     * Kmerize, mapping to a pair <kmer,1>, reduce by summing values by key, filter out <kmer,N> where
      * N <= MAX_KMER_FREQ, and collect the high frequency kmers back in the driver.
      */
     @VisibleForTesting
@@ -140,7 +140,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                                                           final JavaRDD<byte[]> refRDD) {
         Utils.nonNull(refRDD, "reference bases RDD is null");
         Utils.validateArg(kSize > 0, "provided kmer size is non positive");
-        Utils.validateArg(maxDUSTScore > 0, "provided DUST filterSuffix score is non positive");
+        Utils.validateArg(maxDUSTScore > 0, "provided DUST filter score is non positive");
         Utils.validateArg(maxKmerFreq > 0, "provided kmer frequency is non positive");
 
         final int nPartitions = refRDD.getNumPartitions();

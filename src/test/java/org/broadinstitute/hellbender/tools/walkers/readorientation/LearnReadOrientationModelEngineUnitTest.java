@@ -130,7 +130,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
     /**
      * Now test the case where not all of the transitions have orientation bias. And for transitions that do sometimes exhibit
-     * orientation bias filterSuffix, sill assumes single context.
+     * orientation bias filter, sill assumes single context.
      */
     @Test
     public void testMoreComplicatedCase() {

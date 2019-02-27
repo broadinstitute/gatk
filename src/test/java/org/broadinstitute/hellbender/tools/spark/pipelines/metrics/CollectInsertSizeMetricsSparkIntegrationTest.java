@@ -76,7 +76,7 @@ public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandL
             args.add(REF.getAbsolutePath());
         }
 
-        // some filterSuffix options
+        // some filter options
         args.add("-DF");
         args.add(ReadFilterLibrary.FirstOfPairReadFilter.class.getSimpleName());
         args.add("-RF");

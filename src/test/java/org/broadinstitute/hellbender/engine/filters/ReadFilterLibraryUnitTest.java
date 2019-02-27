@@ -18,7 +18,7 @@ import java.util.*;
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
 /**
- * Tests for the read filterSuffix library.
+ * Tests for the read filter library.
  */
 public final class ReadFilterLibraryUnitTest {
     private static final int CHR_COUNT = 2;
@@ -333,7 +333,7 @@ public final class ReadFilterLibraryUnitTest {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
 
-        //The read passes the filterSuffix here
+        //The read passes the filter here
         Assert.assertTrue(new WellformedReadFilter(header).test(read), read.getCigar().toString());
 
         //now we mess up the read by adding some bases and quals
@@ -341,7 +341,7 @@ public final class ReadFilterLibraryUnitTest {
         read.setBases(Utils.dupBytes((byte)'A', len + 1));
         read.setBaseQualities(Utils.dupBytes((byte)60, len + 1));
 
-        //And now the read fails the filterSuffix
+        //And now the read fails the filter
         Assert.assertNotEquals(read.getCigar().getReadLength(), read.getLength());
         Assert.assertFalse(new WellformedReadFilter(header).test(read), read.getCigar().toString());
     }
@@ -384,10 +384,10 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(header);
 
         read.setPosition("BAD_CONTIG", 1);
-        Assert.assertFalse(filter.test(read), "AlignmentAgreesWithHeader read filterSuffix should have failed on read with bad contig");
+        Assert.assertFalse(filter.test(read), "AlignmentAgreesWithHeader read filter should have failed on read with bad contig");
 
         read.setPosition(Integer.toString(CHR_START), CHR_SIZE + 1);
-        Assert.assertFalse(filter.test(read), "AlignmentAgreesWithHeader read filterSuffix should have failed on read with start position past the end of its contig");
+        Assert.assertFalse(filter.test(read), "AlignmentAgreesWithHeader read filter should have failed on read with start position past the end of its contig");
     }
 
     @Test
@@ -787,17 +787,17 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
         Assert.assertTrue(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
-        // supplementary read (filterSuffix out)
+        // supplementary read (filter out)
         read.setIsSupplementaryAlignment(true);
         read.setIsSecondaryAlignment(false);
         Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
-        // only secondary (filterSuffix out)
+        // only secondary (filter out)
         read.setIsSupplementaryAlignment(false);
         read.setIsSecondaryAlignment(true);
         Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
-        // both supplementary and secondary (filterSuffix out)
+        // both supplementary and secondary (filter out)
         read.setIsSupplementaryAlignment(true);
         read.setIsSecondaryAlignment(true);
         Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));

@@ -21,7 +21,7 @@ public final class IntervalOverlapReadFilterTest {
     // header for all the tests
     private static final SAMFileHeader HEADER = ArtificialReadUtils.createArtificialSamHeader();
 
-    // creates the read filterSuffix with the test header without the interval
+    // creates the read filter with the test header without the interval
     private final IntervalOverlapReadFilter createReadFilter(final List<String> intervals) {
         final IntervalOverlapReadFilter filter = new IntervalOverlapReadFilter(intervals);
         filter.setHeader(HEADER);

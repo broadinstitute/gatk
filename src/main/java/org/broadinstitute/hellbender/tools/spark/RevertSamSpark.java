@@ -318,7 +318,7 @@ public class RevertSamSpark extends GATKSparkTool {
         final Map<String, FastqQualityFormat> output = new HashMap<>();
 
         inHeader.getValue().getReadGroups().stream().forEach(rg -> {
-            // For each readgroup filterSuffix down to just the reads in that group
+            // For each readgroup filter down to just the reads in that group
             final String key = rg.getId();
             JavaRDD<GATKRead> filtered = reads.filter(r -> r.getReadGroup().equals(key));
 

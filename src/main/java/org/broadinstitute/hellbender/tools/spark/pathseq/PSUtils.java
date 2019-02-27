@@ -72,7 +72,7 @@ public final class PSUtils {
     public static SAMFileHeader checkAndClearHeaderSequences(final SAMFileHeader inputHeader, final PSFilterArgumentCollection filterArgs, final Logger logger) {
 
         Utils.nonNull(inputHeader, "Cannot check and clear null input header");
-        Utils.nonNull(filterArgs, "Cannot check header against null filterSuffix arguments");
+        Utils.nonNull(filterArgs, "Cannot check header against null filter arguments");
         Utils.nonNull(logger, "Cannot check header using null logger");
 
         //Deep copy of header, otherwise aligned reads will be filtered out by WellformedReadFilter because the sequence dictionary is cleared

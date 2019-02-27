@@ -128,7 +128,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     /**
      * Reads with mapping quality lower than this number won't be considered for genotyping, even if they have
-     * passed earlier filters (e.g. the walkers' own min MQ filterSuffix).
+     * passed earlier filters (e.g. the walkers' own min MQ filter).
      */
     private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
 
@@ -560,11 +560,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
         regionForGenotyping.removeAll(readStubs);
 
-        // filterSuffix out reads from genotyping which fail mapping quality based criteria
+        // filter out reads from genotyping which fail mapping quality based criteria
         //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
         //TODO - on the originalActiveRegion?
         //TODO - if you move this up you might have to consider to change referenceModelForNoVariation
-        //TODO - that does also filterSuffix reads.
+        //TODO - that does also filter reads.
         final Collection<GATKRead> filteredReads = filterNonPassingReads(regionForGenotyping);
         final Map<String, List<GATKRead>> perSampleFilteredReadList = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, filteredReads);
 

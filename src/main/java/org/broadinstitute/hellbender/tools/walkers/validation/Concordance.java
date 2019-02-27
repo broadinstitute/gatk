@@ -76,7 +76,7 @@ public class Concordance extends AbstractConcordanceWalker {
     public static final String SUMMARY_LONG_NAME = "summary";
     public static final String SUMMARY_SHORT_NAME = "S";
 
-    public static final String FILTER_ANALYSIS_LONG_NAME = "filterSuffix-analysis";
+    public static final String FILTER_ANALYSIS_LONG_NAME = "filter-analysis";
 
     public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME = "true-positives-and-false-negatives";
     public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME = "tpfn";
@@ -94,7 +94,7 @@ public class Concordance extends AbstractConcordanceWalker {
             shortName = SUMMARY_SHORT_NAME)
     protected File summary;
 
-    @Argument(doc = "A table of the contribution of each filterSuffix to true and false negatives",
+    @Argument(doc = "A table of the contribution of each filter to true and false negatives",
             fullName = FILTER_ANALYSIS_LONG_NAME,
             optional = true)
     protected File filterAnalysis;

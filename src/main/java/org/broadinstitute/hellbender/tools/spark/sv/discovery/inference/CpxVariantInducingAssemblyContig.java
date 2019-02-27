@@ -143,7 +143,7 @@ final class CpxVariantInducingAssemblyContig {
 
     /**
      * Given {@code jumps} extracted from the chimeric alignments,
-     * filterSuffix out those starting or landing locations that are
+     * filter out those starting or landing locations that are
      * disjoint from region {@link BasicInfo#getRefRegionBoundedByAlphaAndOmega()}.
      * What's left, and returned, will be used as boundaries for constructing segments.
      */

@@ -67,7 +67,7 @@ public class ExampleMultiMetricsCollectorSpark
     /**
      * Do he actual Metrics collection.
      * @param filteredReads The reads to be analyzed for this collector. The reads will have already
-     *                      been filtered by this collector's read filterSuffix.
+     *                      been filtered by this collector's read filter.
      * @param samHeader The SAMFileHeader associated with the reads in the input RDD.
      */
     @Override

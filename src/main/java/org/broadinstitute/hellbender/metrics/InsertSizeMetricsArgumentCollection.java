@@ -6,9 +6,9 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulat
 
 import java.io.Serializable;
 
-// TODO: filterSuffix reads based on only isReverseStrand/mateIsReverseStrand (strand bias)
-// TODO: filterSuffix reads based on {MATE_ON_SAME_CONTIG, MATE_DIFFERENT_STRAND, GOOD_CIGAR, NON_ZERO_REFERENCE_LENGTH_ALIGNMENT}
-// TODO: filterSuffix reads based on length value (if too large), and/or minimum_pct like in Picard.
+// TODO: filter reads based on only isReverseStrand/mateIsReverseStrand (strand bias)
+// TODO: filter reads based on {MATE_ON_SAME_CONTIG, MATE_DIFFERENT_STRAND, GOOD_CIGAR, NON_ZERO_REFERENCE_LENGTH_ALIGNMENT}
+// TODO: filter reads based on length value (if too large), and/or minimum_pct like in Picard.
 // TODO: case EITHER for enum EndToUser. For truncated genomic regions of putative SV breakpoints, not all reads have
 //       both ends land in the region, so third case is possible: will use either end when only one end is available in
 //       the region specified, and only first end if both are available.

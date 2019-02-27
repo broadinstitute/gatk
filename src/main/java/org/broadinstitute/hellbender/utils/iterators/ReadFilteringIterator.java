@@ -17,11 +17,11 @@ public class ReadFilteringIterator implements Iterator<GATKRead>, Iterable<GATKR
     private GATKRead nextRead;
 
     /**
-     * Create a ReadFilteringIterator given a pre-existing iterator of reads and a read filterSuffix.
-     * Only reads that pass the filterSuffix will be returned from this iterator.
+     * Create a ReadFilteringIterator given a pre-existing iterator of reads and a read filter.
+     * Only reads that pass the filter will be returned from this iterator.
      *
      * @param nestedIterator underlying iterator from which to pull reads (may not be null)
-     * @param readFilter filterSuffix to apply to the reads (may not be null)
+     * @param readFilter filter to apply to the reads (may not be null)
      */
     public ReadFilteringIterator( final Iterator<GATKRead> nestedIterator, final ReadFilter readFilter ) {
         Utils.nonNull(nestedIterator);

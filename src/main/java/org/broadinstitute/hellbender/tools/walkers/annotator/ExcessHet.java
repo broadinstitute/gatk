@@ -91,7 +91,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
 
         final double pval = exactTest(hetCount, refCount, homCount);
 
-        //If the actual phredPval would be infinity we will probably still filterSuffix out just a very large number
+        //If the actual phredPval would be infinity we will probably still filter out just a very large number
         //Since the method does not guarantee precision for any p-value smaller than 1e-16, we can return the phred scaled version
         if (pval < 10e-60) {
             return Pair.of(sampleCount, PHRED_SCALED_MIN_P_VALUE);
@@ -103,9 +103,9 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
 
     /**
      * Note that this method is not accurate for very small p-values. Beyond 1.0E-16 there is no guarantee that the
-     * p-value is accurate, just that it is in fact smaller than 1.0E-16 (and therefore we should filterSuffix it). It would
+     * p-value is accurate, just that it is in fact smaller than 1.0E-16 (and therefore we should filter it). It would
      * be more computationally expensive to calculate accuracy beyond a given threshold. Here we have enough accuracy
-     * to filterSuffix anything below a p-value of 10E-6.
+     * to filter anything below a p-value of 10E-6.
      *
      * @param hetCount Number of observed hets (n_ab)
      * @param refCount Number of observed homRefs (n_aa)

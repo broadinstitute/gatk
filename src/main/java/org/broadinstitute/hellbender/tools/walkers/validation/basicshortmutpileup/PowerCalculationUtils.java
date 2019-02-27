@@ -62,7 +62,7 @@ public class PowerCalculationUtils {
      * @param referenceAllele reference allele.  Never {@code null}
      * @param minBaseQualityCutoff only count the bases that exceed the min base quality.  For xNP, it is the min quality
      *                             all overlapping loci.  For indels, this is the base preceding the indel itself.  Must be positive or zero.
-     *                             Zero indicates that all reads should pass this filterSuffix.
+     *                             Zero indicates that all reads should pass this filter.
      * @return ratio as a double
      */
     public static double calculateMaxAltRatio(final ReadPileup readPileup, final Allele referenceAllele, int minBaseQualityCutoff) {
@@ -99,7 +99,7 @@ public class PowerCalculationUtils {
      * @param altAllele Allele to query. Never {@code null}
      * @param minBaseQualityCutoff only count the bases that exceed the min base quality.  For xNP, it is the min quality
      *                             all overlapping loci.  For indels, this is the base preceding the indel itself.  Must be positive or zero.
-     *                             Zero indicates that all reads should pass this filterSuffix.
+     *                             Zero indicates that all reads should pass this filter.
      * @return count of reads supporting the given allele in the given pileup.
      */
     public static long calculateNumReadsSupportingAllele(final ReadPileup readPileup, final Allele referenceAllele, final Allele altAllele, int minBaseQualityCutoff) {

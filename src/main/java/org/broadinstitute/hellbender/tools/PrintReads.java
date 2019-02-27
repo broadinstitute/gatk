@@ -24,10 +24,10 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
  *
  * <p>
  * By default, PrintReads applies the WellformedReadFilter at the engine level.
- * What this means is that the tool does not print reads that fail the WellformedReadFilter filterSuffix.
- * You can similarly apply other engine-level filters to remove specific types of reads with the --read-filterSuffix argument.
+ * What this means is that the tool does not print reads that fail the WellformedReadFilter filter.
+ * You can similarly apply other engine-level filters to remove specific types of reads with the --read-filter argument.
  * See documentation category 'Read Filters' for a list of available filters.
- * To keep reads that do not pass the WellformedReadFilter, either disable the filterSuffix with --disable-read-filterSuffix or disable all default filters with --disable-tool-default-read-filters.
+ * To keep reads that do not pass the WellformedReadFilter, either disable the filter with --disable-read-filter or disable all default filters with --disable-tool-default-read-filters.
  * </p>
  *
  * <p>
@@ -56,7 +56,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
  * <pre>
  * gatk PrintReads \
  *   -I input.bam \
- *   --read-filterSuffix NotDuplicateReadFilter \
+ *   --read-filter NotDuplicateReadFilter \
  *   -O filtered.bam
  * </pre>
  *

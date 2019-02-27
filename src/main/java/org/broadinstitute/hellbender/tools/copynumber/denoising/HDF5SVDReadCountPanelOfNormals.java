@@ -292,7 +292,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
                             minimumIntervalMedianPercentile, maximumZerosInSamplePercentage, maximumZerosInIntervalPercentage,
                             extremeSampleMedianPercentile, doImputeZeros, extremeOutlierTruncationPercentile);
 
-            //filterSuffix samples and intervals
+            //filter samples and intervals
             final List<String> panelSampleFilenames = IntStream.range(0, originalSampleFilenames.size())
                     .filter(sampleIndex -> !preprocessedStandardizedResult.filterSamples[sampleIndex])
                     .mapToObj(originalSampleFilenames::get).collect(Collectors.toList());

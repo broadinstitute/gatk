@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
  * but introduces major changes.  The method is as follows:
  * 1) use the non-log2 mean copy ratio to determine copy-neutral segments,
  * 2) weight segments by length for determining the mean and standard deviation of the non-log2 copy ratio in copy-neutral segments,
- * 3) filterSuffix outlier copy-neutral segments by non-log2 copy ratio z-score,
+ * 3) filter outlier copy-neutral segments by non-log2 copy ratio z-score,
  * 4) use the filtered copy-neutral segments to determine a length-weighted mean and standard deviation,
  * 5) call segments using z-score based on this mean and standard deviation.
  *
@@ -103,7 +103,7 @@ public final class SimpleCopyRatioCaller {
         logger.info(String.format("Length-weighted standard deviation for segments in copy-neutral region : %s",
                 CopyNumberFormatsUtils.formatDouble(unfilteredStatistics.standardDeviation)));
 
-        //filterSuffix outlier segments by only including those within 2 standard deviations
+        //filter outlier segments by only including those within 2 standard deviations
         final List<CopyRatioSegment> filteredCopyNeutralSegments = copyNeutralSegments.stream()
                 .filter(s -> Math.abs(Math.pow(2., s.getMeanLog2CopyRatio()) - unfilteredStatistics.mean)
                         <= unfilteredStatistics.standardDeviation * outlierNeutralSegmentCopyRatioZScoreThreshold)

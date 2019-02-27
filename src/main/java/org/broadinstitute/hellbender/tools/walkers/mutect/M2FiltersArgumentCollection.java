@@ -43,7 +43,7 @@ public class M2FiltersArgumentCollection {
 
     /**
      * A table containing tumor segments and the minor allele fraction of germline hets within each segment.
-     * This allows us to refine the germline event filterSuffix by, for example, not filtering an allele
+     * This allows us to refine the germline event filter by, for example, not filtering an allele
      * with an allele fraction significantly different from 0.5 in a segment where the minor allele fraction is 0.5.
      */
     @Argument(fullName = TUMOR_SEGMENTATION_LONG_NAME,
@@ -52,7 +52,7 @@ public class M2FiltersArgumentCollection {
 
     /**
      * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
-     * The workflow uses this parameter only towards the germline event filterSuffix. It does NOT relate to the LOD threshold.
+     * The workflow uses this parameter only towards the germline event filter. It does NOT relate to the LOD threshold.
      * For example, -6 translates to one in a million or ~3000 somatic mutations per human genome.
      * Depending on tumor type, mutation rate ranges vary (Lawrence et al. Nature 2013), and so adjust parameter accordingly.
      * For higher expected rate of mutation, adjust number up, e.g. -5. For lower expected rate of mutation, adjust number down, e.g. -7.
@@ -74,13 +74,13 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = NORMAL_ARTIFACT_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal artifacts")
     public double NORMAL_ARTIFACT_LOD_THRESHOLD = 0.0;
 
-    @Argument(fullName = NORMAL_P_VALUE_THRESHOLD_LONG_NAME, optional = true, doc = "P value threshold for normal artifact filterSuffix")
+    @Argument(fullName = NORMAL_P_VALUE_THRESHOLD_LONG_NAME, optional = true, doc = "P value threshold for normal artifact filter")
     public static final double normalPileupPValueThreshold = 0.001;
 
     @Argument(fullName = MAX_GERMLINE_POSTERIOR_LONG_NAME, optional = true, doc = "Maximum posterior probability that an allele is a germline variant")
     public double maxGermlinePosterior = 0.1;
 
-    @Argument(fullName = MAX_ALT_ALLELE_COUNT_LONG_NAME, optional = true, doc = "filterSuffix variants with too many alt alleles")
+    @Argument(fullName = MAX_ALT_ALLELE_COUNT_LONG_NAME, optional = true, doc = "filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;
 
     @Argument(fullName = MIN_BASES_TO_SUSPECT_PCR_SLIPPAGE_LONG_NAME, optional = true, doc = "Minimum number of reference bases in an STR to suspect PCR slippage")
@@ -92,16 +92,16 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = PCR_SLIPPAGE_P_VALUE_LONG_NAME, optional = true, doc = "P-value threshold for PCR slippage")
     public double pcrSlippagePValueThreshold = 0.001;
 
-    @Argument(fullName = MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME, optional = true, doc="filterSuffix variants for which alt reads' median mapping quality is too low.")
+    @Argument(fullName = MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME, optional = true, doc="filter variants for which alt reads' median mapping quality is too low.")
     public int minMedianMappingQuality = 30;
 
-    @Argument(fullName = MIN_MEDIAN_BASE_QUALITY_LONG_NAME, optional = true, doc="filterSuffix variants for which alt reads' median base quality is too low.")
+    @Argument(fullName = MIN_MEDIAN_BASE_QUALITY_LONG_NAME, optional = true, doc="filter variants for which alt reads' median base quality is too low.")
     public int minMedianBaseQuality = 20;
 
-    @Argument(fullName = MAX_MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_LONG_NAME, optional = true, doc="filterSuffix variants for which alt reads' median fragment length is very different from the median for ref reads.")
+    @Argument(fullName = MAX_MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_LONG_NAME, optional = true, doc="filter variants for which alt reads' median fragment length is very different from the median for ref reads.")
     public int maxMedianFragmentLengthDifference = 10000;
 
-    @Argument(fullName = MIN_MEDIAN_READ_POSITION_LONG_NAME, optional = true, doc = "filterSuffix variants for which the median position of alt alleles within reads is too near the end of reads.")
+    @Argument(fullName = MIN_MEDIAN_READ_POSITION_LONG_NAME, optional = true, doc = "filter variants for which the median position of alt alleles within reads is too near the end of reads.")
     public int minMedianReadPosition = 1;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Variants coming from an assembly region with more than this many events are filtered")
@@ -110,7 +110,7 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = MAX_STRAND_ARTIFACT_PROBABILITY_LONG_NAME, shortName = "strand-prob", optional = true, doc = "Filter a variant if the probability of strand artifact exceeds this number")
     public double strandArtifactPosteriorProbThreshold = 0.99;
 
-    @Argument(fullName = MIN_STRAND_ARTIFACT_ALLELE_FRACTION_LONG_NAME, shortName = "strand-af", optional = true, doc = "Only filterSuffix a variant if the MAP estimate of allele fraction given artifact is below this number")
+    @Argument(fullName = MIN_STRAND_ARTIFACT_ALLELE_FRACTION_LONG_NAME, shortName = "strand-af", optional = true, doc = "Only filter a variant if the MAP estimate of allele fraction given artifact is below this number")
     public double strandArtifactAlleleFractionThreshold = 0.01;
 
     @Argument(fullName = CONTAMINATION_TABLE_LONG_NAME, optional = true, doc = "Table containing contamination information.")
@@ -128,15 +128,15 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns to alts in the pileup is greater or equal to this value.")
     public double nRatio = Double.POSITIVE_INFINITY;
 
-    @Argument(fullName = STRICT_STRAND_BIAS_LONG_NAME, optional = true, doc = "Always filterSuffix if reads are not found in both directions for supporting allele.")
+    @Argument(fullName = STRICT_STRAND_BIAS_LONG_NAME, optional = true, doc = "Always filter if reads are not found in both directions for supporting allele.")
     public boolean strictStrandBias = false;
 
     /**
-     * We set the filtering threshold for the read orientation filterSuffix such that the false discovery rate (FDR), which equals
+     * We set the filtering threshold for the read orientation filter such that the false discovery rate (FDR), which equals
      * the ratio of expected number of false positives due to read orientation artifact to the total number of variants
      * does not exceed this value.
      */
-    @Argument(fullName = ORIENTATION_BIAS_FDR_LONG_NAME, optional = true, doc = "Mutect will calculate the threshold for the read orientation filterSuffix such that the FDR doesn't exceed this value")
+    @Argument(fullName = ORIENTATION_BIAS_FDR_LONG_NAME, optional = true, doc = "Mutect will calculate the threshold for the read orientation filter such that the FDR doesn't exceed this value")
     public double maxFalsePositiveRate = 0.05;
 
     @Argument(fullName = FILTERING_STATS_LONG_NAME, optional = true, doc = "Write the filtering statistics to this file")
@@ -146,7 +146,7 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = MAX_DISTANCE_TO_FILTERED_CALL_ON_SAME_HAPLOTYPE_LONG_NAME, optional = true, doc = "On second filtering pass, variants with same PGT and PID tags as a filtered variant within this distance are filtered.")
     public int maxDistanceToFilteredCallOnSameHaplotype = 100;
 
-    @Argument(fullName = LONG_INDEL_LENGTH_LONG_NAME, optional = true, doc = "Indels of this length or greater are treated specially by the mapping quality filterSuffix.")
+    @Argument(fullName = LONG_INDEL_LENGTH_LONG_NAME, optional = true, doc = "Indels of this length or greater are treated specially by the mapping quality filter.")
     public int longIndelLength = 5;
 
     /**

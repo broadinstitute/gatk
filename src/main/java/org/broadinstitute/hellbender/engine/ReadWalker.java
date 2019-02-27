@@ -77,7 +77,7 @@ public abstract class ReadWalker extends GATKTool {
      *
      * The default implementation creates filters using {@link #makeReadFilter} and transformers using
      * {@link #makePreReadFilterTransformer()} {@link #makePostReadFilterTransformer()} and then iterates over all reads, applies
-     * the pre-filterSuffix transformer, the filterSuffix, then the post-filterSuffix transformer and hands the resulting reads to the {@link #apply}
+     * the pre-filter transformer, the filter, then the post-filter transformer and hands the resulting reads to the {@link #apply}
      * function of the walker (along with additional contextual information, if present, such as reference bases).
      */
     @Override
@@ -110,7 +110,7 @@ public abstract class ReadWalker extends GATKTool {
     /**
      * Returns the default list of CommandLineReadFilters that are used for this tool. The filters returned
      * by this method are subject to selective enabling/disabling by the user via the command line. The
-     * default implementation uses the {@link WellformedReadFilter} filterSuffix with all default options. Subclasses
+     * default implementation uses the {@link WellformedReadFilter} filter with all default options. Subclasses
      * can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is

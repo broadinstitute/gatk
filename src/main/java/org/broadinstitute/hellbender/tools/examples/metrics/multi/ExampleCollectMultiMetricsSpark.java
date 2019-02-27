@@ -104,7 +104,7 @@ public final class ExampleCollectMultiMetricsSpark
 
     /**
      * Execute the actual metrics collection.
-     * @param filteredReads Input reads, already filtered using the filterSuffix returned by {@link ##getDefaultReadFilters(SAMFileHeader)}
+     * @param filteredReads Input reads, already filtered using the filter returned by {@link ##getDefaultReadFilters(SAMFileHeader)}
      * @param samHeader SAMFileHeader for the input
      */
     @Override

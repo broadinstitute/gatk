@@ -22,14 +22,14 @@ import java.util.List;
  * Clears the 0x400 duplicate SAM flag from reads.
  * <p>
  * Most GATK tools employ the NotDuplicateReadFilter that removes duplicate reads from analysis.
- * For these GATK tools, it is possible to disable the engine-level NotDuplicateReadFilter with the --disable-read-filterSuffix argument.
- * Disabling the filterSuffix allows a tool to then include duplicate reads in its analysis.
+ * For these GATK tools, it is possible to disable the engine-level NotDuplicateReadFilter with the --disable-read-filter argument.
+ * Disabling the filter allows a tool to then include duplicate reads in its analysis.
  * Certain data types, e.g. amplicon data, need to include reads flagged as duplicate in downstream analyses.
  * </p>
  *
  * <p>
  * Removing the duplicate flag in its entirety may be desirable for convenience
- * or for analysis with programs that do not allow disabling their duplicate read filterSuffix.
+ * or for analysis with programs that do not allow disabling their duplicate read filter.
  * </p>
  *
  * <h3>Input</h3>

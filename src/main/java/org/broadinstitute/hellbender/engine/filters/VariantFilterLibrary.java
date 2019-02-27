@@ -10,7 +10,7 @@ public final class VariantFilterLibrary {
     public static VariantFilter NOT_SV_OR_SYMBOLIC = new NotSymbolicOrSVVariantFilter();
     public static VariantFilter PASSES_FILTERS = new PassesFiltersVariantFilter();
 
-    /** Do not filterSuffix out any variants. */
+    /** Do not filter out any variants. */
     public static class AllowAllVariantsVariantFilter implements VariantFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final VariantContext variant) { return true; }

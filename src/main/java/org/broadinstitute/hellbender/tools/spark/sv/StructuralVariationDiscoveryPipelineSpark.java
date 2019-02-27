@@ -434,7 +434,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
                     .map(alignedAssembly -> getAlignedContigsInOneAssembly(alignedAssembly, refNames, header))
                     .flatMap(Utils::stream)                                     // size == total # of contigs' from all successful assemblies
-                    .filter(contig -> !contig.getAlignments().isEmpty())     // filterSuffix out unmapped and contigs without primary alignments
+                    .filter(contig -> !contig.getAlignments().isEmpty())     // filter out unmapped and contigs without primary alignments
                     .collect(Collectors.toList());
         }
 

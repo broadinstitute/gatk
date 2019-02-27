@@ -134,7 +134,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
                 "--variant", vcfFile.getCanonicalPath(),
                 "--input", bamFile.getCanonicalPath(),
                 "--" + TestGATKToolWithFeatures.HAS_BACKING_READ_SOURCE_LONG_NAME, "true",
-                // reads we expect to see when using no filterSuffix
+                // reads we expect to see when using no filter
                 "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "a",
                 "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "d"
         };

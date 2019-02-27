@@ -24,7 +24,7 @@ import java.io.*;
 import java.util.*;
 
 /**
- * A class that acts as a filterSuffix for BreakpointEvidence.
+ * A class that acts as a filter for BreakpointEvidence.
  * Features are calculated according to evidence type, overlap information, mapping quality, etc.
  * A trained classifier scores the probability the evidence overlaps a breakpoint interval, and passes evidence above
  * the specified threshold.

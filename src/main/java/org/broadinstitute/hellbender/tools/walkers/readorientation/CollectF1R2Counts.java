@@ -42,8 +42,8 @@ import static org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2Fi
  */
 
 @CommandLineProgramProperties(
-        summary = "Collect F1R2 read counts for the Mutect2 orientation bias mixture model filterSuffix",
-        oneLineSummary = "Collect F1R2 read counts for the Mutect2 orientation bias mixture model filterSuffix",
+        summary = "Collect F1R2 read counts for the Mutect2 orientation bias mixture model filter",
+        oneLineSummary = "Collect F1R2 read counts for the Mutect2 orientation bias mixture model filter",
         programGroup = CoverageAnalysisProgramGroup.class
 )
 

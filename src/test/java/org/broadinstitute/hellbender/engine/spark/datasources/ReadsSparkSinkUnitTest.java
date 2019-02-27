@@ -238,7 +238,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null)
-                .filter(r -> !r.isUnmapped()); // filterSuffix out unmapped reads (see comment below)
+                .filter(r -> !r.isUnmapped()); // filter out unmapped reads (see comment below)
         SAMFileHeader header = readSource.getHeader(inputBam, null);
 
         ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), null, rddParallelReads, header, ReadsWriteFormat.ADAM, 0, null, true);

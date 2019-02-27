@@ -501,7 +501,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(missedObviousVariantsAtTenPercent.isEmpty());
 
-        // If the filterSuffix is smart, it won't filterSuffix variants with allele fraction much higher than the contamination
+        // If the filter is smart, it won't filter variants with allele fraction much higher than the contamination
         final List<VariantContext> highAlleleFractionFilteredVariantsAtFivePercent = VariantContextTestUtils.streamVcf(filteredVcfFivePctContamination)
                 .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
                 .filter(VariantContext::isBiallelic)
@@ -1028,7 +1028,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
 
-        // This site should be filtered by the strict strand bias and n-ratio filterSuffix
+        // This site should be filtered by the strict strand bias and n-ratio filter
         Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME));
         Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
 

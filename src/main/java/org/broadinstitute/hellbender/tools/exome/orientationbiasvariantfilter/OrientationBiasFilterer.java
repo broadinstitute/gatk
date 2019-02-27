@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Perform operations for the orientation bias filterSuffix.
+ * Perform operations for the orientation bias filter.
  */
 public class OrientationBiasFilterer {
 
@@ -34,9 +34,9 @@ public class OrientationBiasFilterer {
      */
     public static final double BIAS_P = 0.96;
 
-    /** Adds the annotations that can be created for individual variants.  The annotations placed on the genotypes here will be used by the filterSuffix.
-     * @param vc the variant to prepare for the orientation bias filterSuffix. Never {@code null}
-     * @param relevantTransitionsWithoutComplement the SNV artifact modes that we want to filterSuffix against.  Do not include the complement.  Never {@code null}
+    /** Adds the annotations that can be created for individual variants.  The annotations placed on the genotypes here will be used by the filter.
+     * @param vc the variant to prepare for the orientation bias filter. Never {@code null}
+     * @param relevantTransitionsWithoutComplement the SNV artifact modes that we want to filter against.  Do not include the complement.  Never {@code null}
      * @param preAdapterQScoreMap mapping from Artifact mode to the preAdapterQ score.  Never {@code null}
      * @return updated VariantContext with new genotypes already populated.
      */
@@ -114,18 +114,18 @@ public class OrientationBiasFilterer {
         return (isRelevantArtifact ? altF1R2 : altF2R1) / (double) (altF1R2 + altF2R1);
     }
 
-    /** Filter genotypes with orientation bias filterSuffix while trying to keep the false discovery rate for the sample below the threshold specified.
+    /** Filter genotypes with orientation bias filter while trying to keep the false discovery rate for the sample below the threshold specified.
      *
-     * @param fdrThreshold Maximum FDR filterSuffix should allow.
-     * @param relevantTransitionsWithoutComplements Transitions to filterSuffix.  Do not include complements. Never {@code null}.
+     * @param fdrThreshold Maximum FDR filter should allow.
+     * @param relevantTransitionsWithoutComplements Transitions to filter.  Do not include complements. Never {@code null}.
      * @param preAdapterQAnnotatedVariants Variant contexts that have already been annotated by {@link OrientationBiasFilterer#annotateVariantContextWithPreprocessingValues(VariantContext, SortedSet, Map)} Never {@code null}.
      * @param preAdapterQScoreMap Mapping from Transition to the preAdapterQ score.  relevantTransitions should be included as keys, but not required. Never {@code null}.
-     * @return The same variant contexts with the genotypes filterSuffix field populated with orientation bias filtering results.  If the variant contexts have no samples, then the variant contexts are returned without any annotation.
+     * @return The same variant contexts with the genotypes filter field populated with orientation bias filtering results.  If the variant contexts have no samples, then the variant contexts are returned without any annotation.
      */
     public static List<VariantContext> annotateVariantContextsWithFilterResults(final double fdrThreshold, final SortedSet<Transition> relevantTransitionsWithoutComplements, final List<VariantContext> preAdapterQAnnotatedVariants,
                                                                                 final Map<Transition, Double> preAdapterQScoreMap) {
 
-        // This holds the relevantArtifact modes and the complements, since we need to filterSuffix both.
+        // This holds the relevantArtifact modes and the complements, since we need to filter both.
         final SortedSet<Transition> relevantTransitions = new TreeSet<>();
         relevantTransitions.addAll(relevantTransitionsWithoutComplements);
         relevantTransitions.addAll(OrientationBiasUtils.createReverseComplementTransitions(relevantTransitionsWithoutComplements));
@@ -152,7 +152,7 @@ public class OrientationBiasFilterer {
 
             // Save some time, especially for the normal sample
             if (genotypesToConsiderForFiltering.keySet().size() == 0) {
-                logger.info(sampleName + ": Nothing to filterSuffix.");
+                logger.info(sampleName + ": Nothing to filter.");
                 continue;
             }
 
@@ -172,7 +172,7 @@ public class OrientationBiasFilterer {
             }
 
             // Add filtering results to genotypes and store a pair of genotype variant context, so that we can update variant contexts later.
-            logger.info(sampleName + ": Adding orientation bias filterSuffix results to genotypes...");
+            logger.info(sampleName + ": Adding orientation bias filter results to genotypes...");
 
             final Map<Transition, Long> transitionCutSoFar = new HashMap<>();
             relevantTransitions.stream().forEach(transition -> transitionCutSoFar.put(transition, 0L));
@@ -195,7 +195,7 @@ public class OrientationBiasFilterer {
                         logger.info("Cutting: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
                                 + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
                     } else {
-                        // No need to do anything for the genotype filterSuffix, so just log it.
+                        // No need to do anything for the genotype filter, so just log it.
                         logger.info("Passing: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
                                 + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
                     }
@@ -228,7 +228,7 @@ public class OrientationBiasFilterer {
                 newGenotypesForThisVariantContext.forEach(gcc::replace);
                 final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(vc).genotypes(gcc);
 
-                // Add the orientation bias filterSuffix to the variant context.
+                // Add the orientation bias filter to the variant context.
                 if (newGenotypesForThisVariantContext.stream().anyMatch(g -> (g != null) && (g.getFilters() != null) && (g.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)))) {
                     final List<String> result = GATKVariantContextUtils.createFilterListWithAppend(vc, OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
                     variantContextBuilder.filters(result.toArray(new String[result.size()]));
@@ -331,7 +331,7 @@ public class OrientationBiasFilterer {
         final ProgressMeter customProgressMeter = new ProgressMeter(0.1);
         customProgressMeter.start();
 
-        // Populate a mapping of genotypes that we might want to filterSuffix to their variant context.
+        // Populate a mapping of genotypes that we might want to filter to their variant context.
         //  Make sure that the keys are sorted by cumulative probability of being an artifact.
         for (final String sampleName : sampleNames) {
             final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering = new TreeMap<>(genotypePArtifactComparator);
@@ -363,7 +363,7 @@ public class OrientationBiasFilterer {
     }
 
     /**
-     * Determine whether this genotype can be filtered by the orientation bias filterSuffix.
+     * Determine whether this genotype can be filtered by the orientation bias filter.
      *
      * @param genotype
      * @param vc The variant context that contains the given genotype
@@ -376,7 +376,7 @@ public class OrientationBiasFilterer {
                     || genotype.getAnyAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE).equals(String.valueOf(true)));
     }
 
-    /** Ingest the current VCF header and update it with the information necessary for the Orientation Bias filterSuffix to run.
+    /** Ingest the current VCF header and update it with the information necessary for the Orientation Bias filter to run.
      *
      * @param inputVCFHeader original header.  Never {@code null}
      * @param commandLine The command line used to run this tool.
@@ -395,7 +395,7 @@ public class OrientationBiasFilterer {
         headerLines.add(new VCFFormatHeaderLine(OrientationBiasFilterConstants.FOB, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Fraction of alt reads indicating orientation bias error (taking into account artifact mode complement)."));
         headerLines.add(new VCFFormatHeaderLine(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Whether the variant can be one of the given REF/ALT artifact modes."));
         headerLines.add(new VCFFormatHeaderLine(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Whether the variant can be one of the given REF/ALT artifact mode complements."));
-        headerLines.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_FILTER_KEY, 1, VCFHeaderLineType.String, "Genotype-level filterSuffix"));
+        headerLines.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_FILTER_KEY, 1, VCFHeaderLineType.String, "Genotype-level filter"));
         headerLines.add(new VCFFilterHeaderLine(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT, "Orientation bias (in one of the specified artifact mode(s) or complement) seen in one or more samples."));
         headerLines.add(new VCFSimpleHeaderLine("orientation_bias_artifact_modes", String.join("|", transitions), "The artifact modes that were used for orientation bias artifact filtering for this VCF"));
         headerLines.add(new VCFHeaderLine("command", commandLine));

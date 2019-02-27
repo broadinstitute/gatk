@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ArtifactState.*;
 
 /**
- * Annotations for strand artifact filterSuffix calculated by a Bayesian model described in <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
+ * Annotations for strand artifact filter calculated by a Bayesian model described in <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
  *
  * <p>Output consists of two three-element arrays.  The elements of SA_POST_PROB are, respectively, the posterior probabilities that there exists an artifact on the forward strand, an artifact on the reverse strand, or no artifact.
  * These probabilities are normalized to sum to 1.  The elements of SA_MAP_AF are the max a posteriori estimates of the variant allele fraction given a
@@ -33,7 +33,7 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  * SA_MAP_AF = 0.01, 0.1, 0.2 together mean that the apparent variant is most likely a forward strand artifact, but if it is actually a true
  * variant its allele fraction is most likely 0.2.</p>
  */
-@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filterSuffix (SA_POST_PROB, SA_MAP_AF)")
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA_POST_PROB, SA_MAP_AF)")
 public class StrandArtifact extends InfoFieldAnnotation implements StandardMutectAnnotation {
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
