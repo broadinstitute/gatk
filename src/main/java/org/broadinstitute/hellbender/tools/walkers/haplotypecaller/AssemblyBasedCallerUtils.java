@@ -226,7 +226,7 @@ public final class AssemblyBasedCallerUtils {
         final List<String> haplotypeSources = vcs.stream().map(VariantContext::getSource).collect(Collectors.toList());
         return GATKVariantContextUtils.simpleMerge(vcs, haplotypeSources,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, null, false, false);
+                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, null, false, false);
     }
 
 
