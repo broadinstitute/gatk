@@ -52,6 +52,10 @@ public class ClinVarFilter extends FuncotationFilter {
      */
     private final AlleleFrequencyDataSource afDataSource;
 
+    /**
+     * Build a new ClinVar filter using the ExAC or gnomAD datasoure
+     * @param afDataSource ExAC or gnomAD {@link AlleleFrequencyDataSource}
+     */
     public ClinVarFilter(final AlleleFrequencyDataSource afDataSource) {
         super(CLINSIG_INFO_VALUE);
         this.afDataSource = afDataSource;

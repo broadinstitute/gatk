@@ -8,6 +8,9 @@ import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * Allele frequency calculations for the Exac dataset
+ */
 public class AlleleFrequencyExacUtils extends AlleleFrequencyUtils {
     /**
      * Sub-population suffixes used within ExAC. Used for calculating max MAF.

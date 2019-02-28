@@ -5,6 +5,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Stream;
 
+/**
+ * Allele frequency calculations for the Gnomad dataset
+ */
 class AlleleFrequencyGnomadUtils {
     /**
      * Sub-population suffixes used within gnomAD. Used for calculating max MAF.
@@ -52,7 +55,6 @@ class AlleleFrequencyGnomadUtils {
     /**
      * Prefix for gnomAD genome allele-frequency Funcotations.
      */
-
     private enum GnomadDataset {
         gnomAD_genome, gnomAD_exome;
 
@@ -65,7 +67,6 @@ class AlleleFrequencyGnomadUtils {
 
     /**
      * Calculate the max MAF across all gnomAD sub-populations from the given Funcotations.
-     * <p>
      * If a sub-population has an allele number of zero, it will be assigned a MAF of zero.
      */
     static double getMaxMinorAlleleFreq(final Map<String, String> funcotations) {
@@ -80,12 +81,12 @@ class AlleleFrequencyGnomadUtils {
         return datasetsPresent(funcotations).count() == 0;
     }
 
-    private static Stream<String> getSubpopAlleleFrequencies(Map<String, String> funcotations) {
+    private static Stream<String> getSubpopAlleleFrequencies(final Map<String, String> funcotations) {
         return datasetsPresent(funcotations)
                 .flatMap(dataset -> Arrays.stream(GnomadSubpopSuffixes.values()).map(suffix -> dataset.alleleFrequencyPrefix + suffix.name()));
     }
 
-    private static Stream<GnomadDataset> datasetsPresent(Map<String, String> funcotations) {
+    private static Stream<GnomadDataset> datasetsPresent(final Map<String, String> funcotations) {
         return Arrays.stream(GnomadDataset.values())
                 .filter(dataset ->
                         !funcotations.containsKey(dataset.filterAnnotation) ||

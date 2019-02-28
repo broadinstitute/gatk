@@ -59,6 +59,11 @@ public class LofFilter extends FuncotationFilter {
      */
     private final AlleleFrequencyDataSource afDataSource;
 
+    /**
+     * Build a new Loss of Function filter using the ExAC or gnomAD datasoure
+     * @param ref {@link FilterFuncotations.Reference} sequence to use for the filter
+     * @param afDataSource ExAC or gnomAD {@link AlleleFrequencyDataSource}
+     */
     public LofFilter(final FilterFuncotations.Reference ref, final AlleleFrequencyDataSource afDataSource) {
         super(CLINSIG_INFO_VALUE);
         this.classificationFuncotation = "Gencode_" + ref.getGencodeVersion() + "_variantClassification";

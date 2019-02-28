@@ -4,11 +4,12 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.Filter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -60,13 +61,13 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
 
         final File tmpOut = createTempFile(vcfName + ".filtered", ".vcf");
 
-        final List<String> args = Arrays.asList(
-                "-V", TEST_DATA_DIR.resolve(vcfName).toString(),
-                "-O", tmpOut.toString(),
-                "--ref-version", ref.name(),
-                "--allele-frequency-data-source", afDataSource.name()
-        );
-        runCommandLine(args);
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addFileArgument(StandardArgumentDefinitions.VARIANT_SHORT_NAME, TEST_DATA_DIR.resolve(vcfName).toFile())
+                .addArgument("ref-version", ref.name())
+                .addArgument("allele-frequency-data-source", afDataSource.name())
+                .addOutput(tmpOut);
+
+        runCommandLine(args.getArgsArray());
 
         final Pair<VCFHeader, List<VariantContext>> vcf = VariantContextTestUtils.readEntireVCFIntoMemory(tmpOut.toString());
         vcf.getRight().forEach(variant -> {
