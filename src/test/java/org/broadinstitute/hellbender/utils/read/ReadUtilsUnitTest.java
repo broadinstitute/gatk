@@ -5,6 +5,7 @@ import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -29,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 
@@ -857,5 +859,89 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
         final Map<GATKRead, GATKRead> bigFragmentResult = ReadUtils.getReadToMateMap(readsContext, 1000);
         Assert.assertEquals(bigFragmentResult.size(), 4);
+    }
+
+    @Test
+    public void testCountMismatches() throws FileNotFoundException {
+        final SAMFileHeader header;
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+            header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        }
+        final int readLength = 10;
+        final int readStart = 8975;
+        final int badBaseQuality = 15;
+        final byte[] refBeforeRead = "ACCTGTT".getBytes();
+        final byte[] refAtRead = "GGTCGTTATTGGTTAGCCTAGGG".getBytes();
+        final byte[] ref = (new String(refBeforeRead) + new String(refAtRead)).getBytes();
+        final int refOffset = readStart - refBeforeRead.length;
+
+        // perfectly matching read
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, readStart, readLength);
+        read1.setBases(Arrays.copyOf(refAtRead, readLength));
+        read1.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+        read1.setCigar("10M");
+
+        final Pair<Integer, Integer> counts1 = ReadUtils.countMismatches(read1, header, badBaseQuality, ref, refOffset);
+        Assert.assertEquals(counts1.getLeft().intValue(), 0);
+        Assert.assertEquals(counts1.getRight().intValue(), 0);
+
+        // single substitution at position 3
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, readStart, readLength);
+        final byte[] bases2 = Arrays.copyOf(refAtRead, readLength);
+        bases2[3] = BaseUtils.getComplement(bases2[3]);
+        read2.setBases(bases2);
+        read2.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+        read2.setCigar("10M");
+
+        final Pair<Integer, Integer> counts2 = ReadUtils.countMismatches(read2, header, badBaseQuality, ref, refOffset);
+        Assert.assertEquals(counts2.getLeft().intValue(), 1);
+        Assert.assertEquals(counts2.getRight().intValue(), 0);
+
+        // consecutive mismatches
+        final GATKRead read3 = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, readStart, readLength);
+        final byte[] bases3 = Arrays.copyOf(refAtRead, readLength);
+        bases3[3] = BaseUtils.getComplement(bases3[3]);
+        bases3[4] = BaseUtils.getComplement(bases3[4]);
+        read3.setBases(bases3);
+        read3.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+        read3.setCigar("10M");
+
+        final Pair<Integer, Integer> counts3 = ReadUtils.countMismatches(read3, header, badBaseQuality, ref, refOffset);
+        Assert.assertEquals(counts3.getLeft().intValue(), 1);
+        Assert.assertEquals(counts3.getRight().intValue(), 0);
+
+        // non-consecutive mismatches, one low-quality, one high-quality
+        final GATKRead read4 = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, readStart, readLength);
+        final byte[] bases4 = Arrays.copyOf(refAtRead, readLength);
+        bases4[3] = BaseUtils.getComplement(bases4[3]);
+        bases4[5] = BaseUtils.getComplement(bases4[5]);
+        read4.setBases(bases4);
+        final byte[] quals = Utils.dupBytes((byte)30, readLength);
+        quals[5] = (byte) 4;
+        read4.setBaseQualities(quals);
+        read4.setCigar("10M");
+
+        final Pair<Integer, Integer> counts4 = ReadUtils.countMismatches(read4, header, badBaseQuality, ref, refOffset);
+        Assert.assertEquals(counts4.getLeft().intValue(), 1);
+        Assert.assertEquals(counts4.getRight().intValue(), 1);
+
+        // non-consecutive mismatches, separated by a deletion
+        final GATKRead read5 = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, readStart, readLength);
+        final int deletionSize = 3;
+        final StringBuilder builder = new StringBuilder();
+        IntStream.range(0, readLength + deletionSize)
+                .filter(n -> n <= 5 || n > 5 + deletionSize)
+                .forEach(n -> builder.append((char) refAtRead[n]));
+        final byte[] bases5 = builder.toString().getBytes();
+
+        bases5[2] = BaseUtils.getComplement(bases5[2]);
+        bases4[8] = BaseUtils.getComplement(bases5[8]);
+        read5.setBases(bases5);
+        read4.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+        read4.setCigar("6M3D4M");
+
+        final Pair<Integer, Integer> counts5 = ReadUtils.countMismatches(read5, header, badBaseQuality, ref, refOffset);
+        Assert.assertEquals(counts5.getLeft().intValue(), 2);
+        Assert.assertEquals(counts5.getRight().intValue(), 0);
     }
 }
