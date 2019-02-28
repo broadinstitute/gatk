@@ -54,7 +54,7 @@
 ## funco_reference_version: "hg19" for hg19 or b37.  "hg38" for hg38.  Default: "hg19"
 ## funco_output_format: "MAF" to produce a MAF file, "VCF" to procude a VCF file.  Default: "MAF"
 ## funco_compress: (Only valid if funco_output_format == "VCF" )  If true, will compress the output of Funcotator.  If false, produces an uncompressed output file.  Default: false
-## funco_use_gnomad_AF: If true, wil include gnomAD allele frequency annotations in output by connecting to the internet to query gnomAD (this impacts performance).  If false, will not annotate with gnomAD.  Default: false
+## funco_use_gnomad_AF: If true, will include gnomAD allele frequency annotations in output by connecting to the internet to query gnomAD (this impacts performance).  If false, will not annotate with gnomAD.  Default: false
 ## funco_data_sources_tar_gz:  Funcotator datasources tar gz file.  Bucket location is recommended when running on the cloud.
 ## funco_transcript_selection_mode: How to select transcripts in Funcotator.  ALL, CANONICAL, or BEST_EFFECT
 ## funco_transcript_selection_list: Transcripts (one GENCODE ID per line) to give priority during selection process.

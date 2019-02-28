@@ -114,7 +114,7 @@ Versioned gzip archives of data source files are provided here:
 
 <a name="1.1.2.2"></a>
 ### 1.1.2.2 - gnomAD
-The pre-packaged data sources include a subset gnomAD, a large database of known variants.  This subset contains a set of INFO fields, primarily containing allele frequency data.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.  These two data sources are not equivalent and for complete coverage using gnomAD, we recommend annotating with both.
+The pre-packaged data sources include a subset of gnomAD, a large database of known variants.  This subset contains a greatly reduced subset of the INFO fields, primarily containing allele frequency data.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.  These two data sources are not equivalent and for complete coverage using gnomAD, we recommend annotating with both.
 Due to the size of gnomAD, it cannot be included in the data sources package directly.  Instead, the configuration data are present and point to a Google bucket in which
 the gnomAD data reside.  This will cause [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") to actively connect to that bucket when it is run.  
 For this reason, **gnomAD is disabled by default**.
