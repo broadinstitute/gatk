@@ -48,7 +48,7 @@ fi
 
 # Build
 echo "Building image to tag ${BASE_FULL_PATH}..."
-# docker build -f scripts/docker/gatkbase/Dockerfile --squash -t ${BASE_FULL_PATH} scripts/docker/gatkbase/
+docker build -f scripts/docker/gatkbase/Dockerfile --squash -t ${BASE_FULL_PATH} scripts/docker/gatkbase/
 
 echo "Building image to tag ${INTERMEDIATE_FULL_PATH}..."
 docker build -f scripts/docker/gatkPythonR/Dockerfile -t ${INTERMEDIATE_FULL_PATH} --build-arg ZIPPATH=./unzippedJar --build-arg BASEIMAGE=${BASE_FULL_PATH} .
