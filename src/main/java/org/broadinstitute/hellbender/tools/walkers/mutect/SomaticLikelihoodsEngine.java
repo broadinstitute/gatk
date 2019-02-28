@@ -18,6 +18,7 @@ import java.util.Arrays;
 public class SomaticLikelihoodsEngine {
 
     public static final double CONVERGENCE_THRESHOLD = 0.001;
+    private static double NEGLIGIBLE_RESPONSIBILITY = 1.0e-10;
 
     /**
      * Given a likelihoods matrix, calculate the parameters of the Dirichlet posterior distribution on their allele
@@ -96,13 +97,25 @@ public class SomaticLikelihoodsEngine {
         final double likelihoodsAndEntropyContribution = new IndexRange(0, log10Likelihoods.getColumnDimension()).sum(r -> {
             final double[] log10LikelihoodsForRead = log10Likelihoods.getColumn(r);
             final double[] responsibilities = MathUtils.posteriors(log10AlleleFractions, log10LikelihoodsForRead);
-            final double likelihoodsContribution = MathUtils.sum(MathArrays.ebeMultiply(log10LikelihoodsForRead, responsibilities));
             final double entropyContribution = Arrays.stream(responsibilities).map(SomaticLikelihoodsEngine::xLog10x).sum();
-            return likelihoodsContribution - entropyContribution;
+            return likelihoodsContribution(log10LikelihoodsForRead, responsibilities) - entropyContribution;
         });
 
         return priorContribution + thresholdedPosteriorContribution + likelihoodsAndEntropyContribution;
     }
+
+    private static double likelihoodsContribution(final double[] log10LikelihoodsForRead, final double[] responsibilities) {
+        // this is a safe version of MathUtils.sum(MathArrays.ebeMultiply(log10LikelihoodsForRead, responsibilities))
+        // in case the likelihood is zero, and the log likelihood in -Infinity, we have the responsibility is zero and the
+        // contribution x * log(y), where x and y go to zero at the same rate (ie within a constant factor of each other
+        // since the responsibility is related to the likelihood via the prior), is undefined but should be treated as zero.
+        double result = 0;
+        for (int n = 0; n < log10LikelihoodsForRead.length; n++) {
+            result += (responsibilities[n] < NEGLIGIBLE_RESPONSIBILITY ? 0 : log10LikelihoodsForRead[n] * responsibilities[n]);
+        }
+        return result;
+    }
+
 
     // same as above using the default flat prior
     public static double log10Evidence(final RealMatrix log10Likelihoods, final double minAF, final int nonRefIndex) {
