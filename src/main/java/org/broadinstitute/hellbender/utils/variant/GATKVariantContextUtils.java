@@ -627,7 +627,6 @@ public final class GATKVariantContextUtils {
      * @param priorityListOfVCs         priority list detailing the order in which we should grab the VCs
      * @param filteredRecordMergeType   merge type for filtered records
      * @param genotypeMergeOptions      merge option for genotypes
-     * @param setKey                    the key name of the set
      * @param filteredAreUncalled       are filtered records uncalled?
      * @param mergeInfoWithMaxAC        should we merge in info from the VC with maximum allele count?
      * @return new VariantContext       representing the merge of unsortedVCs
@@ -636,11 +635,10 @@ public final class GATKVariantContextUtils {
                                              final List<String> priorityListOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
-                                             final String setKey,
                                              final boolean filteredAreUncalled,
                                              final boolean mergeInfoWithMaxAC) {
         int originalNumOfVCs = priorityListOfVCs == null ? 0 : priorityListOfVCs.size();
-        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, setKey, filteredAreUncalled, mergeInfoWithMaxAC);
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled, mergeInfoWithMaxAC);
     }
 
     /**
@@ -656,7 +654,6 @@ public final class GATKVariantContextUtils {
      * @param priorityListOfVCs         priority list detailing the order in which we should grab the VCs
      * @param filteredRecordMergeType   merge type for filtered records
      * @param genotypeMergeOptions      merge option for genotypes
-     * @param setKey                    the key name of the set
      * @param filteredAreUncalled       are filtered records uncalled?
      * @param mergeInfoWithMaxAC        should we merge in info from the VC with maximum allele count?
      * @return new VariantContext       representing the merge of unsortedVCs
@@ -666,7 +663,6 @@ public final class GATKVariantContextUtils {
                                              final int originalNumOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
-                                             final String setKey,
                                              final boolean filteredAreUncalled,
                                              final boolean mergeInfoWithMaxAC) {
         if ( unsortedVCs == null || unsortedVCs.isEmpty() )
