@@ -57,7 +57,7 @@ public final class GenotypingGivenAllelesUtils {
         final List<String> haplotypeSources = vcsAtLoc.stream().map(VariantContext::getSource).collect(Collectors.toList());
         final VariantContext mergedVc = GATKVariantContextUtils.simpleMerge(vcsAtLoc, haplotypeSources,
                 keepFiltered ? KEEP_UNCONDITIONAL : KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false);
+                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false);
 
         return mergedVc;
     }

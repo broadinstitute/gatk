@@ -244,7 +244,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
                 inputs, priority,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false);
+                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false);
 
         Assert.assertEquals(merged.getAlleles().size(),cfg.expected.size());
         Assert.assertEquals(new LinkedHashSet<>(merged.getAlleles()), new LinkedHashSet<>(cfg.expected));   //HACK this is a hack to get around a bug in the htsjdk.  The method returns a list with an unspecified order.
@@ -301,7 +301,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
                 inputs,null,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.UNSORTED, false, false);
+                GATKVariantContextUtils.GenotypeMergeType.UNSORTED, false);
         Assert.assertEquals(merged.getID(), cfg.expected);
     }
 
@@ -416,7 +416,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     public void testMergeFiltered(MergeFilteredTest cfg) {
         final List<String> priority = vcs2priority(cfg.inputs);
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                cfg.inputs, priority, cfg.type, GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false);
+                cfg.inputs, priority, cfg.type, GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false);
 
         // test alleles are equal
         Assert.assertEquals(merged.getAlleles(), cfg.expected.getAlleles());
@@ -554,7 +554,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     public void testMergeGenotypes(MergeGenotypesTest cfg) {
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
                 cfg.inputs, cfg.priority, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false);
+                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false);
 
         // test alleles are equal
         Assert.assertEquals(merged.getAlleles(), cfg.expected.getAlleles());
@@ -595,7 +595,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
                 Arrays.asList(vc1, vc2), null, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false, false);
+                GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false);
 
         // test genotypes
         Assert.assertEquals(merged.getSampleNames(), new LinkedHashSet<>(Arrays.asList("s1.1", "s1.2")));
