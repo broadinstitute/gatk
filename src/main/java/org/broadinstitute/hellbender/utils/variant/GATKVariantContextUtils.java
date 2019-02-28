@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.CollectionUtil;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
@@ -24,11 +21,9 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -633,7 +628,6 @@ public final class GATKVariantContextUtils {
      * @param filteredRecordMergeType   merge type for filtered records
      * @param genotypeMergeOptions      merge option for genotypes
      * @param annotateOrigin            should we annotate the set it came from?
-     * @param printMessages             should we print messages?
      * @param setKey                    the key name of the set
      * @param filteredAreUncalled       are filtered records uncalled?
      * @param mergeInfoWithMaxAC        should we merge in info from the VC with maximum allele count?
@@ -644,12 +638,11 @@ public final class GATKVariantContextUtils {
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
                                              final boolean annotateOrigin,
-                                             final boolean printMessages,
                                              final String setKey,
                                              final boolean filteredAreUncalled,
-                                             final boolean mergeInfoWithMaxAC ) {
+                                             final boolean mergeInfoWithMaxAC) {
         int originalNumOfVCs = priorityListOfVCs == null ? 0 : priorityListOfVCs.size();
-        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, annotateOrigin, printMessages, setKey, filteredAreUncalled, mergeInfoWithMaxAC);
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, annotateOrigin, setKey, filteredAreUncalled, mergeInfoWithMaxAC);
     }
 
     /**
@@ -666,7 +659,6 @@ public final class GATKVariantContextUtils {
      * @param filteredRecordMergeType   merge type for filtered records
      * @param genotypeMergeOptions      merge option for genotypes
      * @param annotateOrigin            should we annotate the set it came from?
-     * @param printMessages             should we print messages?
      * @param setKey                    the key name of the set
      * @param filteredAreUncalled       are filtered records uncalled?
      * @param mergeInfoWithMaxAC        should we merge in info from the VC with maximum allele count?
@@ -678,7 +670,6 @@ public final class GATKVariantContextUtils {
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
                                              final boolean annotateOrigin,
-                                             final boolean printMessages,
                                              final String setKey,
                                              final boolean filteredAreUncalled,
                                              final boolean mergeInfoWithMaxAC ) {
@@ -724,8 +715,6 @@ public final class GATKVariantContextUtils {
         // counting the number of filtered and variant VCs
         int nFiltered = 0;
 
-        boolean remapped = false;
-
         // cycle through and add info from the other VCs, making sure the loc/reference matches
         for ( final VariantContext vc : VCs ) {
             Utils.validate(longestVC.getStart() == vc.getStart(), () -> "BUG: attempting to merge VariantContexts with different start sites: first="+ first.toString() + " second=" + vc.toString());
@@ -737,7 +726,6 @@ public final class GATKVariantContextUtils {
             if ( vc.isVariant() ) variantSources.add(vc.getSource());
 
             AlleleMapper alleleMapping = resolveIncompatibleAlleles(refAllele, vc, alleles);
-            remapped = remapped || alleleMapping.needsRemapping();
 
             alleles.addAll(alleleMapping.values());
 
@@ -868,7 +856,6 @@ public final class GATKVariantContextUtils {
 
         // Trim the padded bases of all alleles if necessary
         final VariantContext merged = builder.make();
-        if ( printMessages && remapped ) System.out.printf("Remapped => %s%n", merged);
         return merged;
     }
 
