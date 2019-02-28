@@ -60,8 +60,10 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
 
     @Override
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) {
-        final EStep eStep = calculateArtifactProbabilities(vc, filteringEngine);
-        eSteps.add(eStep);
+        if (requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
+            final EStep eStep = calculateArtifactProbabilities(vc, filteringEngine);
+            eSteps.add(eStep);
+        }
     }
 
     @Override

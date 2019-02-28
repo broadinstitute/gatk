@@ -19,7 +19,7 @@ public class FragmentLengthFilter extends HardFilter {
 
     @Override
     public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        final List<Integer> fragmentLengthByAllele = vc.getAttributeAsIntList(FragmentLength.KEY, 0);
+        final List<Integer> fragmentLengthByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY, 0);
 
         return Math.abs(fragmentLengthByAllele.get(1) - fragmentLengthByAllele.get(0)) > maxMedianFragmentLengthDifference;
     }
@@ -30,5 +30,5 @@ public class FragmentLengthFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(FragmentLength.KEY); }
+    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY); }
 }

@@ -667,7 +667,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test (dataProvider="vcfsForFiltering")
-    public void testFilterMitochondria(String unfiltered, List<String> filterList, List<Boolean> filtersWereApplied, String[] extraArgs) throws Exception {
+    public void testFilterMitochondria(String unfiltered, List<String> filterList, String[] extraArgs) throws Exception {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -681,10 +681,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
         final Iterator<String> expectedFilters = filterList.iterator();
-        final Iterator<Boolean> expectedStatus = filtersWereApplied.iterator();
 
         for(VariantContext v : variants){
-            Assert.assertEquals((Boolean)v.filtersWereApplied(), expectedStatus.next());  //toString below can't distinguish between PASS and unfiltered
             final List<String> sortedFilters = new ArrayList<>(v.getFilters());
             Collections.sort(sortedFilters);
             Assert.assertEquals(sortedFilters.toString(), expectedFilters.next(), "filters don't match expected");
@@ -1025,46 +1023,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return samFile;
     }
 
-    @Test
-    public void testStrictStrandBiasAndNRatio () throws Exception {
-        Utils.resetRandomGenerator();
-
-        final int numAlts = 2;
-        final int numNs = 10;
-        final int numRefs = 5;
-        final File samWithNsandStrandBias = createSamWithNsandStrandBias(numAlts, numNs, numRefs);
-
-        final File StrandBiasNVcf = createTempFile("strandBiasN", ".vcf");
-        final File filteredVcf = createTempFile("filtered", ".vcf");
-
-        final List<String> args = Arrays.asList(
-                "-I", samWithNsandStrandBias.getAbsolutePath(),
-                "-R", hg19_chr1_1M_Reference,
-                "-A", "StrandBiasBySample",
-                "-A", "CountNs",
-                "--count-reads", "true",
-                "-O", StrandBiasNVcf.getAbsolutePath());
-        runCommandLine(args);
-
-        // going to try filtering at this ratio
-        final double nRatio = numNs / numAlts;
-
-        // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
-                "-O", filteredVcf.getAbsolutePath(),
-                "-V", StrandBiasNVcf.getAbsolutePath(),
-                "-" + M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, "1",
-                "-" + M2FiltersArgumentCollection.MAX_N_RATIO_LONG_NAME, Double.toString(nRatio)),
-                FilterMutectCalls.class.getSimpleName()));
-
-        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
-
-        // This site should be filtered by the strict strand bias and n-ratio filter
-        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME));
-        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
-
-    }
-
     private void doMutect2Test(
             final String inputBam,
             final String tumorSample,
@@ -1137,20 +1095,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return new Object[][] {
                 {NA12878_MITO_VCF.getPath(), Arrays.asList(
                         "[]",
-                        "[chimeric_original_alignment]",
-                        "[low_avg_alt_quality, t_lod]",
+                        "[numt_chimera]",
+                        "[average_qual, weak_evidence]",
                         "[]",
                         "[]",
                         "[]"),
-                        Arrays.asList(true, true, true, true, true, true),
                         new String[0]},
                 {NA12878_MITO_GVCF.getPath(), Arrays.asList(
                     "[]",
-                        "[base_quality, t_lod]",
-                        "[t_lod]",
+                        "[base_qual, weak_evidence]",
+                        "[weak_evidence]",
                         "[]",
-                        "[base_quality, contamination, mapping_quality, t_lod]"),
-                        Arrays.asList(false, true, true, true, true),
+                        "[base_qual, contamination, map_qual, position, weak_evidence]"),
                  new String[]{"-L MT:1 -L MT:37 -L MT:40 -L MT:152 -L MT:157"}}
         };
     }

@@ -17,6 +17,7 @@
 ##FORMAT=<ID=POTENTIAL_POLYMORPHIC_NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
 ##FORMAT=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
 ##FORMAT=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##INFO=<ID=SEQQ,Number=1,Type=Integer,Description="None">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
 ##INFO=<ID=PON,Number=0,Type=Flag,Description="site found in panel of normals">

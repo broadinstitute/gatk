@@ -25,6 +25,7 @@
 ##GVCFBlock0-5=minGQ=0(inclusive),maxGQ=5(exclusive)
 ##GVCFBlock10-2147483647=minGQ=10(inclusive),maxGQ=2147483647(exclusive)
 ##GVCFBlock5-10=minGQ=5(inclusive),maxGQ=10(exclusive)
+##INFO=<ID=SEQQ,Number=1,Type=Integer,Description="Phred-scaled qualities that alt allele are not due to sequencing error">
 ##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Phred-scaled qualities that alt allele are not due to contamination">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
