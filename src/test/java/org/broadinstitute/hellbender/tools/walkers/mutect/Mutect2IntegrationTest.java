@@ -1150,25 +1150,4 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
-
-    @Test
-    public void testHomoplasmic() throws Exception {
-        Utils.resetRandomGenerator();
-        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
-
-        final List<String> args = Arrays.asList(
-                "-I", "/Users/davidben/Desktop/calvo/GTEX-14A6H-0003-SM-7DROY.chrM.bam",
-                "-R", "/Users/davidben/Desktop/calvo/mt_ref.fasta",
-                "-L", "chrM:12300-12500",
-                "--mitochondria-mode",
-                "-median-autosomal-coverage", "30",
-                "--max-mnp-distance", "0",
-                "--ignore-itr-artifacts",
-                "-O", unfilteredVcf.getAbsolutePath(),
-                "--max-reads-per-alignment-start", "75").stream().collect(Collectors.toList());
-
-        runCommandLine(args);
-
-        int g = 9;
-    }
 }
