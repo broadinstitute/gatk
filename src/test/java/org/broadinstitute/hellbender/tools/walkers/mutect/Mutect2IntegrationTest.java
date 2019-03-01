@@ -1150,20 +1150,4 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
-
-    @Test
-    public void testSachet() throws Exception {
-        Utils.resetRandomGenerator();
-        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
-
-        final List<String> args = Arrays.asList(
-                "-I", "gs://fc-908984e1-32e4-4745-910f-1319506618ce/RCCBMS-00150-T.bam",
-                "-R", b37Reference,
-                "-L", "20:19867355",
-                "-ip", "200",
-                "-O", unfilteredVcf.getAbsolutePath());
-        runCommandLine(args);
-
-        int g = 9;
-    }
 }
