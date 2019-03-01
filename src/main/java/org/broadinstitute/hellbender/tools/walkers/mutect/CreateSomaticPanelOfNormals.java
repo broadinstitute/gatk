@@ -5,10 +5,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -23,7 +20,9 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
 
@@ -112,14 +111,16 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        final VCFHeader outputHeader = new VCFHeader();
-        getDefaultToolVCFHeaderLines().forEach(outputHeader::addMetaDataLine);
-        outputHeader.setSequenceDictionary(getHeaderForVariants().getSequenceDictionary());
+        final Set<VCFHeaderLine> headerInfo = new HashSet<>(getDefaultToolVCFHeaderLines());
+        headerInfo.add(new VCFInfoHeaderLine(FRACTION_INFO_FIELD, 1, VCFHeaderLineType.Float, "Fraction of samples exhibiting artifact"));
+        headerInfo.add(new VCFInfoHeaderLine(BETA_SHAPE_INFO_FIELD, 2, VCFHeaderLineType.Float, "Beta distribution parameters to fit artifact allele fractions"));
 
-        outputHeader.addMetaDataLine(new VCFInfoHeaderLine(FRACTION_INFO_FIELD, 1, VCFHeaderLineType.Float, "Fraction of samples exhibiting artifact"));
-        outputHeader.addMetaDataLine(new VCFInfoHeaderLine(BETA_SHAPE_INFO_FIELD, 2, VCFHeaderLineType.Float, "Beta distribution parameters to fit artifact allele fractions"));
+        getHeaderForVariants().getGenotypeSamples()
+                .forEach(sample -> headerInfo.add(new VCFHeaderLine(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER, sample)));
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
+        final VCFHeader outputHeader = new VCFHeader(headerInfo);
+        outputHeader.setSequenceDictionary(getHeaderForVariants().getSequenceDictionary());
         vcfWriter.writeHeader(outputHeader);
 
         numSamples = getHeaderForVariants().getNGenotypeSamples();
