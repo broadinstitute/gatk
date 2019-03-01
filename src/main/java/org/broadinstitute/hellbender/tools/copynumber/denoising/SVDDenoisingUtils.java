@@ -58,7 +58,7 @@ public final class SVDDenoisingUtils {
     }
 
     /**
-     * Preprocess (i.e., transform to fractional coverage, correct GC bias, filter, impute, and truncate) 
+     * Preprocess (i.e., transform to fractional coverage, correct GC bias, filter, impute, and truncate)
      * and standardize read counts from a panel of normals.
      * All inputs are assumed to be valid.
      * The dimensions of {@code readCounts} should be samples x intervals.

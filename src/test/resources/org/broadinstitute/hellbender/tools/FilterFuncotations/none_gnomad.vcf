@@ -1,0 +1,13 @@
+##fileformat=VCFv4.2
+##Funcotator Version=0.0.3 | Gencode 27 ALL | LMMKnown 20180618
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_27_annotationTranscript|ACMG_recommendation_Disease_Name|ClinVar_VCF_CLNSIG|ACMGLMMLof_LOF_Mechanism|Gencode_27_variantClassification|gnomAD_genome_AF_afr|gnomAD_genome_AF_amr|gnomAD_genome_AF_asj|gnomAD_genome_AF_eas|gnomAD_genome_AF_fin|gnomAD_genome_AF_nfe|gnomAD_genome_AF_oth|gnomAD_genome_AF_sas|gnomAD_exome_AF_afr|gnomAD_exome_AF_amr|gnomAD_exome_AF_asj|gnomAD_exome_AF_eas|gnomAD_exome_AF_fin|gnomAD_exome_AF_nfe|gnomAD_exome_AF_oth|gnomAD_exome_AF_sas|gnomAD_genome_FILTER|gnomAD_exome_FILTER|LMMKnown_LMM_FLAGGED">
+##buildName=GRCh38
+##contig=<ID=chr1,length=248956422,assembly=Homo_sapiens_assembly38.fasta>
+##reference=file:///cromwell_root/broad-references/hg38/v0/Homo_sapiens_assembly38.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	55039931	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5||Likely_pathogenic|NO|NONSENSE|.005|.006|.007|.008|.009|.010|.011|.012|.005|.006|.007|.008|.009|.010|.011|.012|PASS|PASS|false]
+chr1	55039932	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Benign|NO|NONSENSE|.005|.006|.007|.008|.009|.010|.011|.012|.005|.006|.007|.008|.009|.010|.011|.012|PASS|PASS|false]
+chr1	55039933	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5||Likely_pathogenic|YES|COULD_NOT_DETERMINE|.005|.006|.007|.008|.009|.010|.011|.012|.005|.006|.007|.008|.009|.010|.011|.012|PASS|PASS|false]
+chr1	55039934	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Benign|YES|COULD_NOT_DETERMINE|.005|.006|.007|.008|.009|.010|.011|.012|.005|.006|.007|.008|.009|.010|.011|.012|PASS|PASS|false]
+chr1	55039935	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Likely_pathogenic|YES|NONSENSE|.005|.006|.007|.008|.009|.010|.011|.052|.005|.006|.007|.008|.009|.010|.011|.052|PASS|PASS|false]

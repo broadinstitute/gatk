@@ -1,17 +1,18 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
+import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations.AlleleFrequencyDataSource;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * {@link FuncotationFilter} matching variants which:
  * <ul>
  *     <li>Occur on a gene in the American College of Medical Genomics (ACMG)'s list of clinically-significant variants</li>
  *     <li>Have been labeled by ClinVar as pathogenic or likely pathogenic</li>
- *     <li>Have a max MAF of 5% across sub-populations of ExAC</li>
+ *     <li>Have a max MAF of 5% across sub-populations of ExAC or gnomAD</li>
  * </ul>
  */
 public class ClinVarFilter extends FuncotationFilter {
@@ -42,12 +43,22 @@ public class ClinVarFilter extends FuncotationFilter {
     private static final List<String> CLINVAR_SIGNIFICANCE_MATCHING_VALUES = Arrays.asList("Pathogenic", "Likely_pathogenic", "Pathogenic/Likely_pathogenic");
 
     /**
-     * Maximum MAF a variant can have in ExAC to pass this rule.
+     * Maximum MAF a variant can have in ExAC or gnomAD to pass this rule.
      */
     private static final double CLINVAR_MAX_MAF = 0.05;
 
-    public ClinVarFilter() {
+    /**
+     * The allele frequency data source (ExAC or gnomAD) that was used to Funcotate the input VCF.
+     */
+    private final AlleleFrequencyDataSource afDataSource;
+
+    /**
+     * Build a new ClinVar filter using the ExAC or gnomAD datasoure
+     * @param afDataSource ExAC or gnomAD {@link AlleleFrequencyDataSource}
+     */
+    public ClinVarFilter(final AlleleFrequencyDataSource afDataSource) {
         super(CLINSIG_INFO_VALUE);
+        this.afDataSource = afDataSource;
     }
 
     @Override
@@ -60,6 +71,6 @@ public class ClinVarFilter extends FuncotationFilter {
                             .collect(Collectors.toSet());
                     return CLINVAR_SIGNIFICANCE_MATCHING_VALUES.stream().anyMatch(significance::contains);
                 },
-                FilterFuncotationsExacUtils.buildExacMaxMafRule(CLINVAR_MAX_MAF));
+                AlleleFrequencyUtils.buildMaxMafRule(CLINVAR_MAX_MAF, afDataSource));
     }
 }

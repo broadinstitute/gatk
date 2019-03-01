@@ -1,0 +1,11 @@
+##fileformat=VCFv4.2
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_19_annotationTranscript|ACMGLMMLof_LOF_Mechanism|Gencode_19_variantClassification|gnomAD_genome_AF_afr|gnomAD_genome_AF_amr|gnomAD_genome_AF_asj|gnomAD_genome_AF_eas|gnomAD_genome_AF_fin|gnomAD_genome_AF_nfe|gnomAD_genome_AF_oth|gnomAD_genome_AF_sas|gnomAD_exome_AF_afr|gnomAD_exome_AF_amr|gnomAD_exome_AF_asj|gnomAD_exome_AF_eas|gnomAD_exome_AF_fin|gnomAD_exome_AF_nfe|gnomAD_exome_AF_oth|gnomAD_exome_AF_sas|gnomAD_genome_FILTER|gnomAD_exome_FILTER">
+##contig=<ID=1,length=249250621,assembly=Homo_sapiens_assembly19.fasta>
+##reference=file:///cromwell_root/broad-references/hg19/v0/Homo_sapiens_assembly19.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	17349142	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|YES|NONSENSE||||||||||||||||||]
+1	17349143	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|YES|NONSENSE|.005|.006|.007|.008|.009|.008|.007|.006|||||||||PASS|]
+1	17349144	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|YES|NONSENSE|.005|.006|.007|.008|.009|.008|.007|.006|.05|.06|.07|.08|.09|.08|.07|.06|PASS|FAIL]
+1	17349145	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|YES|NONSENSE|||||||||.005|.006|.007|.008|.009|.008|.007|.006||PASS]
+1	17349146	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|YES|NONSENSE|.005|.006|.007|.008|.009|.008|.007|.006|||||||||FAIL|]
+1	17349147	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|YES|NONSENSE|||||||||.005|.006|.007|.008|.009|.008|.007|.006||FAIL]
