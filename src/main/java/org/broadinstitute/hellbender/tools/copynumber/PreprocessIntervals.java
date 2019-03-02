@@ -5,7 +5,6 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -121,7 +120,7 @@ public final class PreprocessIntervals extends GATKTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private File outputFile;
+    private File outputPreprocessedIntervalsFile;
 
     @Override
     public boolean requiresReference() {
@@ -130,16 +129,20 @@ public final class PreprocessIntervals extends GATKTool {
 
     @Override
     public void onTraversalStart() {
+        validateArguments();
+    }
+
+    @Override
+    public void traverse() {}  // no traversal for this tool
+
+    @Override
+    public Object onTraversalSuccess() {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
-        final List<SimpleInterval> inputIntervals;
-        if (hasUserSuppliedIntervals()) {
-            CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
-            inputIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
-        } else {
-            // if the user didn't add any intervals, we assume that they wanted to do whole genome sequencing
-            inputIntervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        }
+        final List<SimpleInterval> inputIntervals = hasUserSuppliedIntervals()
+                ? intervalArgumentCollection.getIntervals(sequenceDictionary)
+                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);    // if the user didn't add any intervals,
+                                                                                    // we assume that they wanted to do whole genome sequencing
 
         logger.info("Padding intervals...");
         final IntervalList paddedIntervalList = padIntervals(inputIntervals, padding, sequenceDictionary);
@@ -151,8 +154,19 @@ public final class PreprocessIntervals extends GATKTool {
         final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferencePath());
         final IntervalList bins = filterBinsContainingOnlyNs(unfilteredBins, reference);
 
-        logger.info(String.format("Writing bins to %s...", outputFile));
-        bins.write(outputFile);
+        logger.info(String.format("Writing bins to %s...", outputPreprocessedIntervalsFile.getAbsolutePath()));
+        bins.write(outputPreprocessedIntervalsFile);
+
+        logger.info("PreprocessIntervals complete.");
+
+        return null;
+    }
+
+    private void validateArguments() {
+        if (hasUserSuppliedIntervals()) {
+            CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
+        }
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputPreprocessedIntervalsFile);
     }
 
     private static IntervalList padIntervals(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary sequenceDictionary) {
@@ -207,7 +221,4 @@ public final class PreprocessIntervals extends GATKTool {
         }
         return bins;
     }
-
-    @Override
-    public void traverse() {}  // no traversal for this tool
 }

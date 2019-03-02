@@ -227,7 +227,7 @@ def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
 
 
 def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, model_var_name: str,
-                                                   num_samples: int = 250) -> Generator:
+                                                   num_samples: int = 20) -> Generator:
     """Get a generator that returns samples of a precomputed model approximation for a specific variable in that model
 
     Args:

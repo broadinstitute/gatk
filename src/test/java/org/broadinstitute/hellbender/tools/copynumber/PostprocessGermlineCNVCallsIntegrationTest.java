@@ -51,19 +51,18 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
             new File(TEST_SUB_DIR, "segments_output_SAMPLE_002.vcf"));
 
     private static final int NUM_TEST_SAMPLES = 3;
-    private static final int TEST_CALLS_MAX_COPY_NUMBER = 5;
 
     /**
      * Runs {@link PostprocessGermlineCNVCalls} for a single sample. If {@code segmentsOutputVCF} is null,
      * the tool will only generate intervals VCF output (which is the expected behavior).
      */
-    public void runToolForSingleSample(final List<String> callShards,
-                                       final List<String> modelShards,
-                                       final int sampleIndex,
-                                       final File intervalsOutputVCF,
-                                       final File segmentsOutputVCF,
-                                       final List<String> allosomalContigs,
-                                       final int refAutosomalCopyNumber) {
+    private void runToolForSingleSample(final List<String> callShards,
+                                        final List<String> modelShards,
+                                        final int sampleIndex,
+                                        final File intervalsOutputVCF,
+                                        final File segmentsOutputVCF,
+                                        final List<String> allosomalContigs,
+                                        final int refAutosomalCopyNumber) {
         final ArgumentsBuilder argumentsBuilder = new ArgumentsBuilder();
         argumentsBuilder.addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE,
                 "false");
@@ -88,7 +87,6 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
             argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.OUTPUT_SEGMENTS_VCF_LONG_NAME,
                     segmentsOutputVCF.getAbsolutePath());
         }
-        argumentsBuilder.addArgument("verbosity", "DEBUG");
 
         runCommandLine(argumentsBuilder.getArgsList());
     }

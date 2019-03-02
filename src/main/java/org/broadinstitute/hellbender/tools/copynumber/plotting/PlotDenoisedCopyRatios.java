@@ -2,19 +2,17 @@ package org.broadinstitute.hellbender.tools.copynumber.plotting;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.DenoiseReadCounts;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
@@ -46,7 +44,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Output directory.
- *         This must be a pre-existing directory.
+ *         This will be created if it does not exist.
  *     </li>
  * </ul>
  *
@@ -110,6 +108,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     @Argument(
             doc = PlottingUtils.MINIMUM_CONTIG_LENGTH_DOC_STRING,
             fullName =  PlottingUtils.MINIMUM_CONTIG_LENGTH_LONG_NAME,
+            minValue = 0,
             optional = true
     )
     private int minContigLength = PlottingUtils.DEFAULT_MINIMUM_CONTIG_LENGTH;
@@ -121,15 +120,15 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            doc = "Output directory.",
+            doc = "Output directory.  This will be created if it does not exist.",
             fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputDir;
+    private File outputDir;
 
     @Override
     protected Object doWork() {
-        checkRegularReadableUserFiles();
+        validateArguments();
 
         logger.info("Reading and validating input files...");
         final CopyRatioCollection standardizedCopyRatios = new CopyRatioCollection(inputStandardizedCopyRatiosFile);
@@ -150,25 +149,26 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
         PlottingUtils.validateContigs(contigLengthMap, standardizedCopyRatios, inputStandardizedCopyRatiosFile, logger);
         PlottingUtils.validateContigs(contigLengthMap, denoisedCopyRatios, inputDenoisedCopyRatiosFile, logger);
 
-        logger.info("Generating plots...");
+        logger.info(String.format("Writing plots to %s...", outputDir.getAbsolutePath()));
         final List<String> contigNames = new ArrayList<>(contigLengthMap.keySet());
         final List<Integer> contigLengths = new ArrayList<>(contigLengthMap.values());
         writeDenoisingPlots(sampleName, contigNames, contigLengths);
 
-        return "SUCCESS";
+        logger.info("PlotDenoisedCopyRatios complete.");
+
+        return null;
     }
 
-    private void checkRegularReadableUserFiles() {
-        Utils.nonNull(outputPrefix);
-        IOUtils.canReadFile(inputStandardizedCopyRatiosFile);
-        IOUtils.canReadFile(inputDenoisedCopyRatiosFile);
-        IOUtils.canReadFile(inputSequenceDictionaryFile);
-        if (!new File(outputDir).exists()) {
-            throw new UserException(String.format("Output directory %s does not exist.", outputDir));
-        }
+    private void validateArguments() {
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputStandardizedCopyRatiosFile,
+                inputDenoisedCopyRatiosFile,
+                inputSequenceDictionaryFile);
+        Utils.nonEmpty(outputPrefix);
+        CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
     }
 
-    private String getSampleName(final CopyRatioCollection standardizedCopyRatios,
+    private static String getSampleName(final CopyRatioCollection standardizedCopyRatios,
                                  final CopyRatioCollection denoisedCopyRatios) {
         Utils.validateArg(standardizedCopyRatios.getMetadata().equals(denoisedCopyRatios.getMetadata()),
                 "Metadata in input files must be identical.");
@@ -185,7 +185,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
                                      final List<Integer> contigLengths) {
         final String contigNamesArg = contigNames.stream().collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));                            //names separated by delimiter
         final String contigLengthsArg = contigLengths.stream().map(Object::toString).collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));  //names separated by delimiter
-        final String outputDirArg = PlottingUtils.addTrailingSlashIfNecessary(outputDir);
+        final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(CopyNumberArgumentValidationUtils.getCanonicalPath(outputDir));
 
         final RScriptExecutor executor = new RScriptExecutor();
 
@@ -195,8 +195,8 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
         //--args is needed for Rscript to recognize other arguments properly
         executor.addArgs("--args",
                 "--sample_name=" + sampleName,
-                "--standardized_copy_ratios_file=" + inputStandardizedCopyRatiosFile,
-                "--denoised_copy_ratios_file=" + inputDenoisedCopyRatiosFile,
+                "--standardized_copy_ratios_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputStandardizedCopyRatiosFile),
+                "--denoised_copy_ratios_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputDenoisedCopyRatiosFile),
                 "--contig_names=" + contigNamesArg,
                 "--contig_lengths=" + contigLengthsArg,
                 "--output_dir=" + outputDirArg,

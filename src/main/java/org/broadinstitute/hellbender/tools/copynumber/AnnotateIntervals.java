@@ -7,7 +7,6 @@ import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -157,7 +156,7 @@ public final class AnnotateIntervals extends GATKTool {
 
     @Override
     public void onTraversalStart() {
-        CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
+        validateArguments();
 
         logger.info("Loading intervals for annotation...");
         sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -189,6 +188,11 @@ public final class AnnotateIntervals extends GATKTool {
         }
 
         logger.info("Annotating intervals...");
+    }
+
+    private void validateArguments() {
+        CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputAnnotatedIntervalsFile);
     }
 
     private static void checkForOverlaps(final FeatureManager featureManager,
@@ -229,8 +233,12 @@ public final class AnnotateIntervals extends GATKTool {
     public Object onTraversalSuccess() {
         reference.close();
         features.close();
-        logger.info(String.format("Writing annotated intervals to %s...", outputAnnotatedIntervalsFile));
+
+        logger.info(String.format("Writing annotated intervals to %s...", outputAnnotatedIntervalsFile.getAbsolutePath()));
         annotatedIntervals.write(outputAnnotatedIntervalsFile);
+
+        logger.info("AnnotateIntervals complete.");
+
         return super.onTraversalSuccess();
     }
 

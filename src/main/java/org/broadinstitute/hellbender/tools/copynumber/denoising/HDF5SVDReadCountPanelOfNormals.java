@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.CreateReadCountPanelOfNormals;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.spark.SparkConverter;
 
@@ -130,7 +129,6 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
      * Otherwise, some operations will hang.
      */
     private HDF5SVDReadCountPanelOfNormals(final HDF5File file) {
-        Utils.nonNull(file);
         IOUtils.canReadFile(file.getFile());
         this.file = file;
         sequenceDictionary = new Lazy<>(() -> {
@@ -224,7 +222,6 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
      * version number is not up to date.
      */
     public static HDF5SVDReadCountPanelOfNormals read(final HDF5File file) {
-        Utils.nonNull(file);
         IOUtils.canReadFile(file.getFile());
         final HDF5SVDReadCountPanelOfNormals pon = new HDF5SVDReadCountPanelOfNormals(file);
         if (pon.getVersion() < CURRENT_PON_VERSION) {
@@ -257,7 +254,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
                               final int maximumChunkSize,
                               final JavaSparkContext ctx) {
         try (final HDF5File file = new HDF5File(outFile, HDF5File.OpenMode.CREATE)) {
-            logger.info("Creating " + outFile.getAbsolutePath() + "...");
+            logger.info(String.format("Creating read-count panel of normals at %s...", outFile.getAbsolutePath()));
             final HDF5SVDReadCountPanelOfNormals pon = new HDF5SVDReadCountPanelOfNormals(file);
 
             logger.info(String.format("Writing version number (" + PON_VERSION_STRING_FORMAT + ")...", CURRENT_PON_VERSION));
@@ -357,7 +354,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
             throw new GATKException(String.format("Could not create panel of normals.  It may be necessary to use stricter parameters for filtering.  " +
                     "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME),  exception);
         }
-        logger.info(String.format("Read-count panel of normals written to %s.", outFile));
+        logger.info(String.format("Read-count panel of normals written to %s.", outFile.getAbsolutePath()));
     }
 
     //PRIVATE WRITERS (write values to HDF5 file)

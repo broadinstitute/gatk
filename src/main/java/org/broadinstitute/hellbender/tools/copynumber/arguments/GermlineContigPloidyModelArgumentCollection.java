@@ -33,6 +33,7 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
             doc = "Typical mapping error rate.",
             fullName = MAPPING_ERROR_RATE_LONG_NAME,
             minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double mappingErrorRate = 0.01;
@@ -68,13 +69,17 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
 
     public void validate() {
         ParamUtils.isPositive(meanBiasStandardDeviation,
-                "Prior standard deviation of the contig-level mean coverage bias must be positive.");
+                String.format("Prior standard deviation of the contig-level mean coverage bias (%s) must be positive.",
+                        MEAN_BIAS_STANDARD_DEVIATION_LONG_NAME));
         ParamUtils.isPositive(mappingErrorRate,
-                "Typical mapping error rate must be positive.");
+                String.format("Typical mapping error rate (%s) must be positive.",
+                        MAPPING_ERROR_RATE_LONG_NAME));
         ParamUtils.isPositive(globalPsiScale,
-                "Prior scale of contig coverage unexplained variance must be positive.");
+                String.format("Prior scale of contig coverage unexplained variance (%s) must be positive.",
+                        GLOBAL_PSI_SCALE_LONG_NAME));
         ParamUtils.isPositive(samplePsiScale,
-                "Prior scale of the sample-specific correction to the coverage unexplained variance " +
-                        "must be positive.");
+                String.format("Prior scale of the sample-specific correction to the coverage unexplained variance " +
+                                "(%s) must be positive.",
+                        SAMPLE_PSI_SCALE_LONG_NAME));
     }
 }

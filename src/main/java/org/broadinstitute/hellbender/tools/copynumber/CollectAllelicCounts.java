@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -80,11 +78,7 @@ import java.util.List;
 )
 @DocumentedFeature
 public final class CollectAllelicCounts extends LocusWalker {
-    private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
-
-    static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimum-base-quality";
-
-    static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
     static final int DEFAULT_MINIMUM_BASE_QUALITY = 20;
 
     static final List<ReadFilter> DEFAULT_ADDITIONAL_READ_FILTERS = ImmutableList.of(
@@ -92,6 +86,8 @@ public final class CollectAllelicCounts extends LocusWalker {
             ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT,
             ReadFilterLibrary.NOT_DUPLICATE,
             new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+
+    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimum-base-quality";
 
     @Argument(
             doc = "Output file for allelic counts.",
@@ -134,8 +130,12 @@ public final class CollectAllelicCounts extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
+        validateArguments();
+
         final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        //this check is currently redundant, since the master dictionary is taken from the reads;
+        //however, if any other dictionary is added in the future, such a check should be performed
         if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
             logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
         }
@@ -143,11 +143,18 @@ public final class CollectAllelicCounts extends LocusWalker {
         logger.info("Collecting allelic counts...");
     }
 
+    private void validateArguments() {
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputAllelicCountsFile);
+    }
+
     @Override
     public Object onTraversalSuccess() {
+        logger.info(String.format("Writing allelic counts to %s...", outputAllelicCountsFile.getAbsolutePath()));
         allelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
-        logger.info("Allelic counts written to " + outputAllelicCountsFile);
-        return("SUCCESS");
+
+        logger.info("CollectAllelicCounts complete.");
+
+        return null;
     }
 
     @Override

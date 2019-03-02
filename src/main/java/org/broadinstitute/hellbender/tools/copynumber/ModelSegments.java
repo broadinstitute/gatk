@@ -5,7 +5,6 @@ import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -26,7 +25,6 @@ import org.broadinstitute.hellbender.tools.copynumber.segmentation.CopyRatioKern
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.*;
@@ -102,7 +100,7 @@ import java.util.stream.Stream;
  *     </li>
  *     <li>
  *         Output directory.
- *         This must be a pre-existing directory.
+ *         This will be created if it does not exist.
  *     </li>
  * </ul>
  *
@@ -279,17 +277,17 @@ public final class ModelSegments extends CommandLineProgram {
     private File inputNormalAllelicCountsFile = null;
 
     @Argument(
-            doc = "Prefix for output files.",
+            doc = "Prefix for output filenames.",
             fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME
     )
     private String outputPrefix;
 
     @Argument(
-            doc = "Output directory.",
+            doc = "Output directory.  This will be created if it does not exist.",
             fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputDir;
+    private File outputDir;
 
     @Argument(
             doc = "Minimum total count for filtering allelic counts in the case sample, if available.  " +
@@ -323,6 +321,8 @@ public final class ModelSegments extends CommandLineProgram {
                     "from zero base-error rate up to this value.  Decreasing this value will increase " +
                     "the number of sites assumed to be heterozygous for modeling.",
             fullName = GENOTYPING_BASE_ERROR_RATE_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double genotypingBaseErrorRate = 5E-2;
@@ -566,29 +566,28 @@ public final class ModelSegments extends CommandLineProgram {
         writeSegments(copyRatioLegacySegments, COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX);
         writeSegments(alleleFractionLegacySegments, ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX);
 
-        logger.info("SUCCESS: ModelSegments run complete.");
+        logger.info("ModelSegments complete.");
 
-        return "SUCCESS";
+        return null;
     }
 
     private void validateArguments() {
-        Utils.nonNull(outputPrefix);
         Utils.validateArg(!(inputDenoisedCopyRatiosFile == null && inputAllelicCountsFile == null),
                 "Must provide at least a denoised-copy-ratios file or an allelic-counts file.");
         Utils.validateArg(!(inputAllelicCountsFile == null && inputNormalAllelicCountsFile != null),
                 "Must provide an allelic-counts file for the case sample to run in matched-normal mode.");
-        if (inputDenoisedCopyRatiosFile != null) {
-            IOUtils.canReadFile(inputDenoisedCopyRatiosFile);
-        }
-        if (inputAllelicCountsFile != null) {
-            IOUtils.canReadFile(inputAllelicCountsFile);
-        }
-        if (inputNormalAllelicCountsFile != null) {
-            IOUtils.canReadFile(inputNormalAllelicCountsFile);
-        }
-        if (!new File(outputDir).exists()) {
-            throw new UserException(String.format("Output directory %s does not exist.", outputDir));
-        }
+
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputDenoisedCopyRatiosFile,
+                inputAllelicCountsFile,
+                inputNormalAllelicCountsFile);
+        Utils.nonEmpty(outputPrefix);
+        CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
+
+        Utils.validateArg(numSamplesCopyRatio > numBurnInCopyRatio,
+                "Number of copy-ratio samples must be greater than number of copy-ratio burn-in samples.");
+        Utils.validateArg(numSamplesAlleleFraction > numBurnInAlleleFraction,
+                "Number of allele-fraction samples must be greater than number of allele-fraction burn-in samples.");
     }
 
     private <T> T readOptionalFileOrNull(final File file,
@@ -664,11 +663,11 @@ public final class ModelSegments extends CommandLineProgram {
                     filteredAllelicCounts.getRecords().stream()
                             .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
                             .collect(Collectors.toList()));
-            final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
-            hetAllelicCounts.write(hetAllelicCountsFile);
             logger.info(String.format("Retained %d / %d sites after testing for heterozygosity...",
                     hetAllelicCounts.size(), allelicCounts.size()));
-            logger.info(String.format("Heterozygous allelic counts written to %s.", hetAllelicCountsFile));
+            final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
+            logger.info(String.format("Writing heterozygous allelic counts to %s...", hetAllelicCountsFile.getAbsolutePath()));
+            hetAllelicCounts.write(hetAllelicCountsFile);
         } else {
             //use matched normal
             logger.info("Matched normal was provided, running in matched-normal mode...");
@@ -712,11 +711,11 @@ public final class ModelSegments extends CommandLineProgram {
                     filteredNormalAllelicCounts.getRecords().stream()
                             .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
                             .collect(Collectors.toList()));
-            final File hetNormalAllelicCountsFile = new File(outputDir, outputPrefix + NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX);
-            hetNormalAllelicCounts.write(hetNormalAllelicCountsFile);
             logger.info(String.format("Retained %d / %d sites in matched normal after testing for heterozygosity...",
                     hetNormalAllelicCounts.size(), normalAllelicCounts.size()));
-            logger.info(String.format("Heterozygous allelic counts for matched normal written to %s.", hetNormalAllelicCountsFile));
+            final File hetNormalAllelicCountsFile = new File(outputDir, outputPrefix + NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX);
+            logger.info(String.format("Writing heterozygous allelic counts for matched normal to %s...", hetNormalAllelicCountsFile.getAbsolutePath()));
+            hetNormalAllelicCounts.write(hetNormalAllelicCountsFile);
 
             //retrieve sites in case sample
             logger.info("Retrieving allelic counts at these sites in case sample...");
@@ -726,8 +725,8 @@ public final class ModelSegments extends CommandLineProgram {
                             .filter(ac -> hetNormalAllelicCounts.getOverlapDetector().overlapsAny(ac))
                             .collect(Collectors.toList()));
             final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
+            logger.info(String.format("Writing allelic counts for case sample at heterozygous sites in matched normal to %s...", hetAllelicCountsFile.getAbsolutePath()));
             hetAllelicCounts.write(hetAllelicCountsFile);
-            logger.info(String.format("Allelic counts for case sample at heterozygous sites in matched normal written to %s.", hetAllelicCountsFile));
         }
         return hetAllelicCounts;
     }
@@ -765,7 +764,7 @@ public final class ModelSegments extends CommandLineProgram {
     private void writeSegments(final AbstractRecordCollection<?, ?> segments,
                                final String fileSuffix) {
         final File segmentsFile = new File(outputDir, outputPrefix + fileSuffix);
+        logger.info(String.format("Writing segments to %s...", segmentsFile.getAbsolutePath()));
         segments.write(segmentsFile);
-        logger.info(String.format("Segments written to %s", segmentsFile));
     }
 }

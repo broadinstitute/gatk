@@ -110,6 +110,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
      * Writes the records to file.
      */
     public void write(final File outputFile) {
+        Utils.nonNull(outputFile);
         try (final FileWriter writer = new FileWriter(outputFile)) {
             writer.write(metadata.toHeader().getSAMString());
         } catch (final IOException e) {

@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LegacySegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
@@ -78,6 +79,7 @@ public final class LegacySegmentCollection extends AbstractSampleLocatableCollec
     // output of SAM-style header is suppressed
     @Override
     public void write(final File outputFile) {
+        Utils.nonNull(outputFile);
         try (final RecordWriter recordWriter = new RecordWriter(new FileWriter(outputFile, true))) {
             recordWriter.writeAllRecords(getRecords());
         } catch (final IOException e) {

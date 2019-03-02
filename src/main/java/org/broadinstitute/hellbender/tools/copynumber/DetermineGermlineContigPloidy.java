@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -18,7 +21,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Simple
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CoveragePerContig;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
-import org.broadinstitute.hellbender.tools.copynumber.utils.CopyNumberUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -196,8 +198,8 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
         COHORT, CASE
     }
 
-    private static final String COHORT_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT = "cohort_determine_ploidy_and_depth.py";
-    private static final String CASE_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT = "case_determine_ploidy_and_depth.py";
+    public static final String COHORT_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT = "cohort_determine_ploidy_and_depth.py";
+    public static final String CASE_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT = "case_determine_ploidy_and_depth.py";
 
     //name of the interval file output by the python code in the model directory
     public static final String INPUT_MODEL_INTERVAL_FILE = "interval_list.tsv";
@@ -231,7 +233,7 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             fullName = CopyNumberStandardArgument.MODEL_LONG_NAME,
             optional = true
     )
-    private String inputModelDir;
+    private File inputModelDir;
 
     @Argument(
             doc = "Prefix for output filenames.",
@@ -240,12 +242,11 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            doc = "Output directory for sample contig-ploidy calls and the contig-ploidy model parameters for " +
-                    "future use.",
+            doc = "Output directory.  This will be created if it does not exist.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputDir;
+    private File outputDir;
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection
@@ -273,7 +274,9 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        setModeAndValidateArguments();
+        validateArguments();
+
+        setModeAndResolveIntervals();
 
         //read in count files and output intervals and samples x coverage-per-contig table to temporary files
         specifiedIntervalsFile = IOUtils.createTempFile("intervals", ".tsv");
@@ -289,24 +292,30 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             throw new UserException("Python return code was non-zero.");
         }
 
-        logger.info("Germline contig ploidy determination complete.");
+        logger.info("DetermineGermlineContigPloidy complete.");
 
-        return "SUCCESS";
+        return null;
     }
 
-    private void setModeAndValidateArguments() {
+    private void validateArguments() {
         germlineContigPloidyModelArgumentCollection.validate();
         germlineContigPloidyHybridADVIArgumentCollection.validate();
-        Utils.nonNull(outputPrefix);
-        inputReadCountFiles.forEach(IOUtils::canReadFile);
+
         Utils.validateArg(inputReadCountFiles.size() == new HashSet<>(inputReadCountFiles).size(),
                 "List of input read-count files cannot contain duplicates.");
 
+        inputReadCountFiles.forEach(CopyNumberArgumentValidationUtils::validateInputs);
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputContigPloidyPriorsFile,
+                inputModelDir);
+        Utils.nonEmpty(outputPrefix);
+        CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
+    }
+
+    private void setModeAndResolveIntervals() {
         if (inputModelDir != null) {
             runMode = RunMode.CASE;
             logger.info("A contig-ploidy model was provided, running in case mode...");
-            Utils.validateArg(new File(inputModelDir).exists(),
-                    String.format("Input ploidy-model directory %s does not exist.", inputModelDir));
             if (inputContigPloidyPriorsFile != null) {
                 throw new UserException.BadInput("Invalid combination of inputs: Running in case mode, " +
                         "but contig-ploidy priors were provided.");
@@ -317,7 +326,7 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             }
             //intervals are retrieved from the input model directory
             specifiedIntervalsFile = new File(inputModelDir, INPUT_MODEL_INTERVAL_FILE);
-            IOUtils.canReadFile(specifiedIntervalsFile);
+            CopyNumberArgumentValidationUtils.validateInputs(specifiedIntervalsFile);
             specifiedIntervals = new SimpleIntervalCollection(specifiedIntervalsFile);
         } else {
             runMode = RunMode.COHORT;
@@ -329,7 +338,6 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             if (inputContigPloidyPriorsFile == null){
                 throw new UserException.BadInput("Contig-ploidy priors must be provided in cohort mode.");
             }
-            IOUtils.canReadFile(inputContigPloidyPriorsFile);
 
             //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
             //(this first file is read again below, which is slightly inefficient but is probably not worth the extra code)
@@ -382,25 +390,23 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
     private boolean executeDeterminePloidyAndDepthPythonScript(final File samplesByCoveragePerContigFile,
                                                                final File intervalsFile) {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        final String outputDirArg = Utils.nonEmpty(outputDir).endsWith(File.separator)
-                ? outputDir
-                : outputDir + File.separator;    //add trailing slash if necessary
+        final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(outputDir.getAbsolutePath());
         //note that the samples x coverage-by-contig table is referred to as "metadata" by gcnvkernel
         final List<String> arguments = new ArrayList<>(Arrays.asList(
-                "--sample_coverage_metadata=" + CopyNumberUtils.getCanonicalPath(samplesByCoveragePerContigFile),
-                "--output_calls_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX)));
+                "--sample_coverage_metadata=" + CopyNumberArgumentValidationUtils.getCanonicalPath(samplesByCoveragePerContigFile),
+                "--output_calls_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX)));
         arguments.addAll(germlineContigPloidyModelArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineContigPloidyHybridADVIArgumentCollection.generatePythonArguments());
 
         final String script;
         if (runMode == RunMode.COHORT) {
             script = COHORT_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT;
-            arguments.add("--interval_list=" + CopyNumberUtils.getCanonicalPath(intervalsFile));
-            arguments.add("--contig_ploidy_prior_table=" + CopyNumberUtils.getCanonicalPath(inputContigPloidyPriorsFile));
-            arguments.add("--output_model_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
+            arguments.add("--interval_list=" + CopyNumberArgumentValidationUtils.getCanonicalPath(intervalsFile));
+            arguments.add("--contig_ploidy_prior_table=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputContigPloidyPriorsFile));
+            arguments.add("--output_model_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
         } else {
             script = CASE_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT;
-            arguments.add("--input_model_path=" + CopyNumberUtils.getCanonicalPath(inputModelDir));
+            arguments.add("--input_model_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputModelDir));
         }
         return executor.executeScript(
                 new Resource(script, GermlineCNVCaller.class),

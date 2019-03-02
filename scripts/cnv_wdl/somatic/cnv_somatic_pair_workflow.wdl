@@ -597,7 +597,6 @@ task ModelSegments {
 
     command <<<
         set -e
-        mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx${command_mem_mb}m" ModelSegments \
@@ -727,7 +726,6 @@ task PlotDenoisedCopyRatios {
 
     command <<<
         set -e
-        mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx${command_mem_mb}m" PlotDenoisedCopyRatios \
@@ -787,7 +785,6 @@ task PlotModeledSegments {
 
     command <<<
         set -e
-        mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx${command_mem_mb}m" PlotModeledSegments \

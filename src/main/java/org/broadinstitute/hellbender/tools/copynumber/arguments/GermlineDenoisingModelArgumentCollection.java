@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
@@ -53,6 +52,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
             doc = "Typical mapping error rate.",
             fullName = MAPPING_ERROR_RATE_LONG_NAME,
             minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double mappingErrorRate = 0.01;
@@ -101,7 +101,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     @Argument(
             doc = "Number of bins used to represent the GC-bias curves.",
             fullName = NUM_GC_BINS_LONG_NAME,
-            minValue = 1,
+            minValue = 2,
             optional = true
     )
     private int numGCBins = 20;
@@ -170,26 +170,33 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
 
     public void validate() {
         ParamUtils.isPositive(maxBiasFactors,
-                "Maximum number of bias factors must be positive.");
+                String.format("Maximum number of bias factors (%s) must be positive.",
+                        MAX_BIAS_FACTORS_LONG_NAME));
         ParamUtils.isPositive(mappingErrorRate,
-                "Mapping error rate must be positive.");
+                String.format("Mapping error rate (%s) must be positive.",
+                        MAPPING_ERROR_RATE_LONG_NAME));
         ParamUtils.isPositive(intervalPsiScale,
-                "Typical scale of interval-specific unexplained variance must be positive.");
+                String.format("Typical scale of interval-specific unexplained variance (%s) must be positive.",
+                        INTERVAL_PSI_SCALE_LONG_NAME));
         ParamUtils.isPositive(samplePsiScale,
-                "Typical scale of sample-specific correction to the unexplained variance must be positive.");
+                String.format("Typical scale of sample-specific correction to the unexplained variance (%s) must be positive.",
+                        SAMPLE_PSI_SCALE_LONG_NAME));
         ParamUtils.isPositive(depthCorrectionTau,
-                "Precision of read depth pinning to its global value must be positive.");
+                String.format("Precision of read depth pinning to its global value (%s) must be positive.",
+                        DEPTH_CORRECTION_TAU_LONG_NAME));
         ParamUtils.isPositive(logMeanBiasStandardDeviation,
-                "Standard deviation of log mean bias must be positive.");
+                String.format("Standard deviation of log mean bias (%s) must be positive.",
+                        LOG_MEAN_BIAS_STANDARD_DEVIATION_LONG_NAME));
         ParamUtils.isPositive(initARDRelUnexplainedVariance,
-                "Initial value of ARD prior precision relative to the scale of " +
-                        "interval-specific unexplained variance must be positive.");
-        Utils.validateArg(numGCBins >= 2,
-                "Number of bins used to represent the GC-bias curves must be at least 2.");
+                String.format("Initial value of ARD prior precision relative to the scale of " +
+                                "interval-specific unexplained variance (%s) must be positive.",
+                        INIT_ARD_REL_UNEXPLAINED_VARIANCE_LONG_NAME));
         ParamUtils.isPositive(gcCurveStandardDeviation,
-                "Prior standard deviation of the GC curve from flat must be positive.");
+                String.format("Prior standard deviation of the GC curve from flat (%s) must be positive.",
+                        GC_CURVE_STANDARD_DEVIATION_LONG_NAME));
         ParamUtils.isPositiveOrZero(activeClassPaddingHybridMode,
-                "CNV-active interval padding in HYBRID copy-number posterior expectation mode must " +
-                        "be non-negative.");
+                String.format("CNV-active interval padding in HYBRID copy-number posterior expectation mode (%s) must " +
+                                "be non-negative.",
+                        ACTIVE_CLASS_PADDING_HYBRID_MODE_LONG_NAME));
     }
 }

@@ -273,7 +273,6 @@ task DetermineGermlineContigPloidyCaseMode {
 
     command <<<
         set -e
-        mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
@@ -369,7 +368,6 @@ task GermlineCNVCallerCaseMode {
 
     command <<<
         set -e
-        mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}

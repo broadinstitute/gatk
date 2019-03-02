@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.tools.copynumber.plotting;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.DenoiseReadCounts;
 import org.broadinstitute.hellbender.tools.copynumber.ModelSegments;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -21,7 +19,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
@@ -59,7 +56,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Output directory.
- *         This must be a pre-existing directory.
+ *         This will be created if it does not exist.
  *     </li>
  * </ul>
  *
@@ -113,6 +110,7 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public final class PlotModeledSegments extends CommandLineProgram {
     private static final String PLOT_MODELED_SEGMENTS_R_SCRIPT = "PlotModeledSegments.R";
+    private static final String MODELED_SEGMENTS_PLOT_FILE_SUFFIX = ".modeled.png";
 
     @Argument(
             doc = "Input file containing denoised copy ratios (output of DenoiseReadCounts).",
@@ -143,7 +141,9 @@ public final class PlotModeledSegments extends CommandLineProgram {
 
     @Argument(
             doc = PlottingUtils.MINIMUM_CONTIG_LENGTH_DOC_STRING,
-            fullName =  PlottingUtils.MINIMUM_CONTIG_LENGTH_LONG_NAME
+            fullName =  PlottingUtils.MINIMUM_CONTIG_LENGTH_LONG_NAME,
+            minValue = 0,
+            optional = true
     )
     private int minContigLength = PlottingUtils.DEFAULT_MINIMUM_CONTIG_LENGTH;
 
@@ -154,11 +154,11 @@ public final class PlotModeledSegments extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            doc = "Output directory.",
+            doc = "Output directory.  This will be created if it does not exist.",
             fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputDir;
+    private File outputDir;
 
     //read input files
     private CopyRatioCollection denoisedCopyRatios;
@@ -167,7 +167,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        checkRegularReadableUserFiles();
+        validateArguments();
 
         logger.info("Reading and validating input files...");
         denoisedCopyRatios = inputDenoisedCopyRatiosFile == null ? null : new CopyRatioCollection(inputDenoisedCopyRatiosFile);
@@ -201,28 +201,29 @@ public final class PlotModeledSegments extends CommandLineProgram {
         PlottingUtils.validateContigs(contigLengthMap, allelicCounts, inputAllelicCountsFile, logger);
         PlottingUtils.validateContigs(contigLengthMap, modeledSegments, inputModeledSegmentsFile, logger);
 
-        logger.info("Generating plot...");
         final List<String> contigNames = new ArrayList<>(contigLengthMap.keySet());
         final List<Integer> contigLengths = new ArrayList<>(contigLengthMap.values());
-        writeModeledSegmentsPlot(sampleName, contigNames, contigLengths);
-        return "SUCCESS";
+        final File outputFile = new File(outputDir, outputPrefix + MODELED_SEGMENTS_PLOT_FILE_SUFFIX);
+
+        logger.info(String.format("Writing plot to %s...", outputFile.getAbsolutePath()));
+        writeModeledSegmentsPlot(sampleName, contigNames, contigLengths, outputFile);
+
+        logger.info("PlotModeledSegments complete.");
+
+        return null;
     }
 
-    private void checkRegularReadableUserFiles() {
-        Utils.nonNull(outputPrefix);
+    private void validateArguments() {
         Utils.validateArg(!(inputDenoisedCopyRatiosFile == null && inputAllelicCountsFile == null),
                 "Must provide at least a denoised-copy-ratios file or an allelic-counts file.");
-        if (inputDenoisedCopyRatiosFile != null) {
-            IOUtils.canReadFile(inputDenoisedCopyRatiosFile);
-        }
-        if (inputAllelicCountsFile != null) {
-            IOUtils.canReadFile(inputAllelicCountsFile);
-        }
-        IOUtils.canReadFile(inputModeledSegmentsFile);
-        IOUtils.canReadFile(inputSequenceDictionaryFile);
-        if (!new File(outputDir).exists()) {
-            throw new UserException(String.format("Output directory %s does not exist.", outputDir));
-        }
+
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputDenoisedCopyRatiosFile,
+                inputAllelicCountsFile,
+                inputModeledSegmentsFile,
+                inputSequenceDictionaryFile);
+        Utils.nonEmpty(outputPrefix);
+        CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
     }
 
     private String getSampleName() {
@@ -267,10 +268,10 @@ public final class PlotModeledSegments extends CommandLineProgram {
      */
     private void writeModeledSegmentsPlot(final String sampleName,
                                           final List<String> contigNames,
-                                          final List<Integer> contigLengths) {
+                                          final List<Integer> contigLengths,
+                                          final File outputFile) {
         final String contigNamesArg = contigNames.stream().collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));                            //names separated by delimiter
         final String contigLengthsArg = contigLengths.stream().map(Object::toString).collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));  //lengths separated by delimiter
-        final String outputDirArg = PlottingUtils.addTrailingSlashIfNecessary(outputDir);
         final RScriptExecutor executor = new RScriptExecutor();
 
         //this runs the R statement "source("CNVPlottingLibrary.R")" before the main script runs
@@ -279,13 +280,12 @@ public final class PlotModeledSegments extends CommandLineProgram {
         //--args is needed for Rscript to recognize other arguments properly
         executor.addArgs("--args",
                 "--sample_name=" + sampleName,
-                "--denoised_copy_ratios_file=" + inputDenoisedCopyRatiosFile,
-                "--allelic_counts_file=" + inputAllelicCountsFile,
-                "--modeled_segments_file=" + inputModeledSegmentsFile,
+                "--denoised_copy_ratios_file=" + (inputDenoisedCopyRatiosFile == null ? null : CopyNumberArgumentValidationUtils.getCanonicalPath(inputDenoisedCopyRatiosFile)),
+                "--allelic_counts_file=" + (inputAllelicCountsFile == null ? null : CopyNumberArgumentValidationUtils.getCanonicalPath(inputAllelicCountsFile)),
+                "--modeled_segments_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputModeledSegmentsFile),
                 "--contig_names=" + contigNamesArg,
                 "--contig_lengths=" + contigLengthsArg,
-                "--output_dir=" + outputDirArg,
-                "--output_prefix=" + outputPrefix);
+                "--output_file=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputFile));
         executor.exec();
     }
 }

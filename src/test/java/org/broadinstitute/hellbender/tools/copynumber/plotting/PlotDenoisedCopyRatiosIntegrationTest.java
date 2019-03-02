@@ -76,18 +76,6 @@ public final class PlotDenoisedCopyRatiosIntegrationTest extends CommandLineProg
     }
 
     @Test(expectedExceptions = UserException.class)
-    public void testOutputDirExists() {
-        final String[] arguments = {
-                "--" + CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, STANDARDIZED_COPY_RATIOS_FILE.getAbsolutePath(),
-                "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, "Non-existent-path",
-                "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test(expectedExceptions = UserException.class)
     public void testNonExistentStandardizedFile() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {
