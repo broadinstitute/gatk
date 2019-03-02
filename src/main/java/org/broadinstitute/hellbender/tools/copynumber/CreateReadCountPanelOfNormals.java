@@ -7,7 +7,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5Library;
@@ -25,7 +24,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -121,15 +119,6 @@ import java.util.stream.Collectors;
 public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
 
-    //parameter names
-    public static final String MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME = "minimum-interval-median-percentile";
-    public static final String MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME = "maximum-zeros-in-sample-percentage";
-    public static final String MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME = "maximum-zeros-in-interval-percentage";
-    public static final String EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME = "extreme-sample-median-percentile";
-    public static final String IMPUTE_ZEROS_LONG_NAME = "do-impute-zeros";
-    public static final String EXTREME_OUTLIER_TRUNCATION_PERCENTILE_LONG_NAME = "extreme-outlier-truncation-percentile";
-    public static final String MAXIMUM_CHUNK_SIZE = "maximum-chunk-size";
-
     //default values for filtering
     private static final double DEFAULT_MINIMUM_INTERVAL_MEDIAN_PERCENTILE = 10.0;
     private static final double DEFAULT_MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE = 5.0;
@@ -141,6 +130,15 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     private static final int DEFAULT_NUMBER_OF_EIGENSAMPLES = 20;
     private static final int DEFAULT_CHUNK_DIVISOR = 16;
     private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
+
+    //parameter names
+    public static final String MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME = "minimum-interval-median-percentile";
+    public static final String MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME = "maximum-zeros-in-sample-percentage";
+    public static final String MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME = "maximum-zeros-in-interval-percentage";
+    public static final String EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME = "extreme-sample-median-percentile";
+    public static final String IMPUTE_ZEROS_LONG_NAME = "do-impute-zeros";
+    public static final String EXTREME_OUTLIER_TRUNCATION_PERCENTILE_LONG_NAME = "extreme-outlier-truncation-percentile";
+    public static final String MAXIMUM_CHUNK_SIZE = "maximum-chunk-size";
 
     @Argument(
             doc = "Input TSV or HDF5 files containing integer read counts in genomic intervals for all samples in the panel of normals (output of CollectReadCounts).  " +
@@ -258,7 +256,6 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
                     "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
         }
 
-        //validate parameters and parse optional parameters
         validateArguments();
 
         //get sample filenames
@@ -296,18 +293,22 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
                 extremeSampleMedianPercentile, doImputeZeros, extremeOutlierTruncationPercentile, numEigensamplesRequested,
                 maximumChunkSize, ctx);
 
-        logger.info("Panel of normals successfully created.");
+        logger.info("CreateReadCountPanelOfNormals complete.");
     }
 
     private void validateArguments() {
-        Utils.validateArg(inputReadCountFiles.size() == new HashSet<>(inputReadCountFiles).size(),
-                "List of input read-counts files cannot contain duplicates.");
-        inputReadCountFiles.forEach(IOUtils::canReadFile);
         if (numEigensamplesRequested > inputReadCountFiles.size()) {
             logger.warn(String.format("Number of eigensamples (%d) is greater than the number of input samples (%d); " +
                             "the number of samples retained after filtering will be used instead.",
                     numEigensamplesRequested, inputReadCountFiles.size()));
         }
+
+        Utils.validateArg(inputReadCountFiles.size() == new HashSet<>(inputReadCountFiles).size(),
+                "List of input read-counts files cannot contain duplicates.");
+
+        inputReadCountFiles.forEach(CopyNumberArgumentValidationUtils::validateInputs);
+        CopyNumberArgumentValidationUtils.validateInputs(inputAnnotatedIntervalsFile);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputPanelOfNormalsFile);
     }
 
     private static RealMatrix constructReadCountMatrix(final Logger logger,

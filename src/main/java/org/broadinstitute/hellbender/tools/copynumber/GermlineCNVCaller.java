@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -13,7 +16,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Annota
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
-import org.broadinstitute.hellbender.tools.copynumber.utils.CopyNumberUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -214,7 +216,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             doc = "Input contig-ploidy calls directory (output of DetermineGermlineContigPloidy).",
             fullName = CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME
     )
-    private String inputContigPloidyCallsDir;
+    private File inputContigPloidyCallsDir;
 
     @Argument(
             doc = "Input denoising-model directory. In COHORT mode, this argument is optional; if provided," +
@@ -223,7 +225,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             fullName = CopyNumberStandardArgument.MODEL_LONG_NAME,
             optional = true
     )
-    private String inputModelDir = null;
+    private File inputModelDir = null;
 
     @Argument(
             doc = "Input annotated-intervals file containing annotations for GC content in genomic intervals " +
@@ -242,11 +244,11 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            doc = "Output directory.",
+            doc = "Output directory.  This will be created if it does not exist.",
             fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputDir;
+    private File outputDir;
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection
@@ -280,6 +282,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     protected Object doWork() {
         validateArguments();
 
+        resolveIntervals();
+
         //read in count files, validate they contain specified subset of intervals, and output
         //count files for these intervals to temporary files
         final List<File> intervalSubsetReadCountFiles = writeIntervalSubsetReadCountFiles();
@@ -291,25 +295,33 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             throw new UserException("Python return code was non-zero.");
         }
 
-        logger.info("Germline denoising and CNV calling complete.");
+        logger.info("GermlineCNVCaller complete.");
 
-        return "SUCCESS";
+        return null;
     }
 
     private void validateArguments() {
-        inputReadCountFiles.forEach(IOUtils::canReadFile);
+        germlineCallingArgumentCollection.validate();
+        germlineDenoisingModelArgumentCollection.validate();
+        germlineCNVHybridADVIArgumentCollection.validate();
+
         Utils.validateArg(inputReadCountFiles.size() == new HashSet<>(inputReadCountFiles).size(),
                 "List of input read-count files cannot contain duplicates.");
 
-        if (inputModelDir != null) {
-            Utils.validateArg(new File(inputModelDir).exists(),
-                    String.format("Input denoising-model directory %s does not exist.", inputModelDir));
-        }
+        inputReadCountFiles.forEach(CopyNumberArgumentValidationUtils::validateInputs);
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputContigPloidyCallsDir,
+                inputModelDir,
+                inputAnnotatedIntervalsFile);
+        Utils.nonEmpty(outputPrefix);
+        CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
+    }
 
+    private void resolveIntervals() {
         if (inputModelDir != null) {
             //intervals are retrieved from the input model directory
             specifiedIntervalsFile = new File(inputModelDir, INPUT_MODEL_INTERVAL_FILE);
-            IOUtils.canReadFile(specifiedIntervalsFile);
+            CopyNumberArgumentValidationUtils.validateInputs(specifiedIntervalsFile);
             specifiedIntervals = new SimpleIntervalCollection(specifiedIntervalsFile);
         } else {
             //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
@@ -354,16 +366,6 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                         "but annotated intervals were provided.");
             }
         }
-
-        Utils.nonNull(outputPrefix);
-        Utils.validateArg(new File(inputContigPloidyCallsDir).exists(),
-                String.format("Input contig-ploidy calls directory %s does not exist.", inputContigPloidyCallsDir));
-        Utils.validateArg(new File(outputDir).exists(),
-                String.format("Output directory %s does not exist.", outputDir));
-
-        germlineCallingArgumentCollection.validate();
-        germlineDenoisingModelArgumentCollection.validate();
-        germlineCNVHybridADVIArgumentCollection.validate();
     }
 
     private List<File> writeIntervalSubsetReadCountFiles() {
@@ -400,27 +402,25 @@ public final class GermlineCNVCaller extends CommandLineProgram {
 
     private boolean executeGermlineCNVCallerPythonScript(final List<File> intervalSubsetReadCountFiles) {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        final String outputDirArg = Utils.nonEmpty(outputDir).endsWith(File.separator)
-                ? outputDir
-                : outputDir + File.separator;    //add trailing slash if necessary
+        final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(outputDir.getAbsolutePath());
 
         //add required arguments
         final List<String> arguments = new ArrayList<>(Arrays.asList(
-                "--ploidy_calls_path=" + CopyNumberUtils.getCanonicalPath(inputContigPloidyCallsDir),
-                "--output_calls_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX),
-                "--output_tracking_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX)));
+                "--ploidy_calls_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputContigPloidyCallsDir),
+                "--output_calls_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX),
+                "--output_tracking_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX)));
 
         //if a model path is given, add it to the argument (both COHORT and CASE modes)
         if (inputModelDir != null) {
-            arguments.add("--input_model_path=" + CopyNumberUtils.getCanonicalPath(inputModelDir));
+            arguments.add("--input_model_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputModelDir));
         }
 
         final String script;
         if (runMode == RunMode.COHORT) {
             script = COHORT_DENOISING_CALLING_PYTHON_SCRIPT;
             //these are the annotated intervals, if provided
-            arguments.add("--modeling_interval_list=" + CopyNumberUtils.getCanonicalPath(specifiedIntervalsFile));
-            arguments.add("--output_model_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
+            arguments.add("--modeling_interval_list=" + CopyNumberArgumentValidationUtils.getCanonicalPath(specifiedIntervalsFile));
+            arguments.add("--output_model_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
             if (inputAnnotatedIntervalsFile != null) {
                 arguments.add("--enable_explicit_gc_bias_modeling=True");
             } else {
@@ -432,7 +432,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         }
 
         arguments.add("--read_count_tsv_files");
-        arguments.addAll(intervalSubsetReadCountFiles.stream().map(CopyNumberUtils::getCanonicalPath).collect(Collectors.toList()));
+        arguments.addAll(intervalSubsetReadCountFiles.stream().map(CopyNumberArgumentValidationUtils::getCanonicalPath).collect(Collectors.toList()));
 
         arguments.addAll(germlineDenoisingModelArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineCallingArgumentCollection.generatePythonArguments(runMode));

@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
@@ -15,8 +16,10 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLoc
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -183,5 +186,83 @@ public final class CopyNumberArgumentValidationUtils {
         Utils.validateArg(subsetAnnotatedIntervals.size() == intervalsSubset.size(),
                 "Annotated intervals do not contain all specified intervals.");
         return new AnnotatedIntervalCollection(locatableCollection.getMetadata(), subsetAnnotatedIntervals);
+    }
+
+    /**
+     * Validate that input files and/or directories are readable if they are not {@code null} (i.e., optional inputs).
+     */
+    public static void validateInputs(final File ... inputs) {
+        if (inputs != null) {
+            for (final File input : inputs) {
+                if (input != null) {
+                    if (input.isFile()) {
+                        IOUtils.canReadFile(input);
+                    } else if (input.isDirectory() && !input.canRead()) {
+                        throw new UserException.CouldNotReadInputFile(input);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate that output files are writeable, whether or not they already exist.
+     */
+    public static void validateOutputFiles(final File ... outputs) {
+        Utils.nonNull(outputs);
+        for (final File output : outputs) {
+            Utils.nonNull(output);
+            if ((output.exists() && !output.canWrite()) || (!output.exists() && !output.getAbsoluteFile().getParentFile().canWrite())) {
+                throw new UserException.CouldNotCreateOutputFile(output, ": The output file is not writeable.");
+            }
+        }
+    }
+
+    /**
+     * Validate that output directories are writeable.  If a directory does not exist, create it.
+     */
+    public static void validateAndPrepareOutputDirectories(final File ... outputs) {
+        Utils.nonNull(outputs);
+        for (final File output : outputs) {
+            Utils.nonNull(output);
+            if (output.exists()) {
+                if (!output.canWrite()) {
+                    throw new UserException.CouldNotCreateOutputFile(output, ": The output directory is not writeable.");
+                }
+            } else {
+                try {
+                    IOUtils.createDirectory(output.getAbsolutePath());
+                } catch (final IOException e) {
+                    throw new UserException.CouldNotCreateOutputFile(output, ": The output directory does not exist and could not be created.");
+                }
+            }
+        }
+    }
+
+    /**
+     * File paths that are passed to {@link PythonScriptExecutor} must be canonical (rather than absolute).
+     * See https://github.com/broadinstitute/gatk/issues/4724.
+     */
+    public static String getCanonicalPath(final File file) {
+        Utils.nonNull(file);
+        try {
+            return file.getCanonicalPath();
+        } catch (final IOException e) {
+            throw new UserException.BadInput(String.format("Could not resolve a canonical file path: %s", file));
+        }
+    }
+
+    /**
+     * File paths that are passed to {@link PythonScriptExecutor} must be canonical (rather than absolute).
+     * See https://github.com/broadinstitute/gatk/issues/4724.
+     */
+    public static String getCanonicalPath(final String filename) {
+        Utils.nonEmpty(filename);
+        return getCanonicalPath(new File(filename));
+    }
+
+    public static String addTrailingSlashIfNecessary(final String outputDir) {
+        Utils.nonEmpty(outputDir);
+        return outputDir.endsWith(File.separator) ? outputDir : outputDir + File.separator;
     }
 }

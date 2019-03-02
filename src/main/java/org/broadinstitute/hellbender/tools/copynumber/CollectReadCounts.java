@@ -6,8 +6,6 @@ import com.google.common.collect.Multiset;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -34,7 +32,9 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -93,13 +93,11 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 public final class CollectReadCounts extends ReadWalker {
-    private static final Logger logger = LogManager.getLogger(CollectReadCounts.class);
-
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
-
-    enum Format {
+    public enum Format {
         TSV, HDF5
     }
+
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
     public static final String FORMAT_LONG_NAME = "format";
 
@@ -150,6 +148,8 @@ public final class CollectReadCounts extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
+        validateArguments();
+
         metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         //this check is currently redundant, since the master dictionary is taken from the reads;
@@ -158,12 +158,15 @@ public final class CollectReadCounts extends ReadWalker {
             logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
         }
 
-        CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
-
         intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         intervalMultiset = HashMultiset.create(intervals.size());
 
         logger.info("Collecting read counts...");
+    }
+
+    private void validateArguments() {
+        CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputCountsFile);
     }
 
     @Override
@@ -188,7 +191,7 @@ public final class CollectReadCounts extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        logger.info("Writing read counts to " + outputCountsFile);
+        logger.info(String.format("Writing read counts to %s...", outputCountsFile.getAbsolutePath()));
         final SimpleCountCollection readCounts = new SimpleCountCollection(
                 metadata,
                 ImmutableList.copyOf(intervals.stream()     //making this an ImmutableList avoids a defensive copy in SimpleCountCollection
@@ -201,7 +204,9 @@ public final class CollectReadCounts extends ReadWalker {
             readCounts.write(outputCountsFile);
         }
 
-        return "SUCCESS";
+        logger.info("CollectReadCounts complete.");
+
+        return null;
     }
 
     /**

@@ -301,29 +301,39 @@ task ScatterIntervals {
 
     String base_filename = basename(interval_list, ".interval_list")
 
+    String dollar = "$" #WDL workaround, see https://github.com/broadinstitute/cromwell/issues/1819
+
     command <<<
         set -e
+        # IntervalListTools will fail if the output directory does not exist, so we create it
         mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
-        
-        {
-            >&2 echo "Attempting to run IntervalListTools..."
+
+        # IntervalListTools behaves differently when scattering to a single or multiple shards, so we do some handling in bash
+
+        # IntervalListTools puts remainder intervals in the last shard, so integer division gives the number of shards
+        # (unless NUM_INTERVALS < num_intervals_per_scatter and NUM_SCATTERS = 0, in which case we still want a single shard)
+        NUM_INTERVALS=${dollar}(grep -v '@' ${interval_list} | wc -l)
+        NUM_SCATTERS=${dollar}(echo ${dollar}((NUM_INTERVALS / ${num_intervals_per_scatter})))
+
+        if [ $NUM_SCATTERS -le 1 ]; then
+            # if only a single shard is required, then we can just rename the original interval list
+            >&2 echo "Not running IntervalListTools because only a single shard is required. Copying original interval list..."
+            cp ${interval_list} ${output_dir_}/${base_filename}.scattered.0001.interval_list
+        else
             gatk --java-options "-Xmx${command_mem_mb}m" IntervalListTools \
                 --INPUT ${interval_list} \
                 --SUBDIVISION_MODE INTERVAL_COUNT \
                 --SCATTER_CONTENT ${num_intervals_per_scatter} \
-                --OUTPUT ${output_dir_} &&
+                --OUTPUT ${output_dir_}
+
             # output files are named output_dir_/temp_0001_of_N/scattered.interval_list, etc. (N = number of scatters);
-            # we rename them as output_dir_/base_filename.scattered.0000.interval_list, etc.
-            ls ${output_dir_}/*/scattered.interval_list | \
+            # we rename them as output_dir_/base_filename.scattered.0001.interval_list, etc.
+            ls -v ${output_dir_}/*/scattered.interval_list | \
                 cat -n | \
                 while read n filename; do mv $filename ${output_dir_}/${base_filename}.scattered.$(printf "%04d" $n).interval_list; done
             rm -rf ${output_dir_}/temp_*_of_*
-        } || {
-            # if only a single shard is required, then we can just rename the original interval list
-            >&2 echo "IntervalListTools failed because only a single shard is required. Copying original interval list..."
-            cp ${interval_list} ${output_dir_}/${base_filename}.scattered.1.interval_list
-        }
+        fi
     >>>
 
     runtime {

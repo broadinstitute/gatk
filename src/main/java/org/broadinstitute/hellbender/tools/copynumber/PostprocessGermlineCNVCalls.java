@@ -3,16 +3,14 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
@@ -97,8 +95,6 @@ import java.util.stream.IntStream;
 )
 @DocumentedFeature
 public final class PostprocessGermlineCNVCalls extends GATKTool {
-    private static final Logger logger = LogManager.getLogger(PostprocessGermlineCNVCalls.class);
-
     public static final String SEGMENT_GERMLINE_CNV_CALLS_PYTHON_SCRIPT = "segment_gcnv_calls.py";
 
     public static final String CALLS_SHARD_PATH_LONG_NAME = "calls-shard-path";
@@ -115,20 +111,20 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             fullName = CALLS_SHARD_PATH_LONG_NAME,
             minElements = 1
     )
-    private List<File> unsortedCallsShardPaths;
+    private List<File> inputUnsortedCallsShardPaths;
 
     @Argument(
             doc = "List of paths to GermlineCNVCaller model directories.",
             fullName = MODEL_SHARD_PATH_LONG_NAME,
             minElements = 1
     )
-    private List<File> unsortedModelShardPaths;
+    private List<File> inputUnsortedModelShardPaths;
 
     @Argument(
             doc = "Path to contig-ploidy calls directory (output of DetermineGermlineContigPloidy).",
             fullName = CONTIG_PLOIDY_CALLS_LONG_NAME
     )
-    private File contigPloidyCallsPath;
+    private File inputContigPloidyCallsPath;
 
     @Argument(
             doc = "Sample index in the call-set (must be contained in all shards).",
@@ -160,10 +156,9 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
     @Argument(
             doc = "Output segments VCF file.",
-            fullName = OUTPUT_SEGMENTS_VCF_LONG_NAME,
-            optional = true
+            fullName = OUTPUT_SEGMENTS_VCF_LONG_NAME
     )
-    private File outputSegmentsVCFFile = null;
+    private File outputSegmentsVCFFile;
 
     /**
      * A list of {@link SimpleIntervalCollection} for each shard
@@ -203,10 +198,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     @Override
     public void onStartup() {
         super.onStartup();
-        if (outputSegmentsVCFFile != null) {
-            /* check for successful import of gcnvkernel */
-            PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
-        }
+        /* check for successful import of gcnvkernel */
+        PythonScriptExecutor.checkPythonEnvironmentForPackage("gcnvkernel");
     }
 
     /**
@@ -215,15 +208,15 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
-        numShards = unsortedCallsShardPaths.size();
-        Utils.validateArg(unsortedModelShardPaths.size() == numShards,
-                "The number of input model shards must match the number of input call shards.");
+        validateArguments();
+
+        numShards = inputUnsortedCallsShardPaths.size();
 
         /* get intervals from each call and model shard in the provided (potentially arbitrary) order */
         final List<SimpleIntervalCollection> unsortedIntervalCollectionsFromCalls =
-                getIntervalCollectionsFromPaths(unsortedCallsShardPaths);
+                getIntervalCollectionsFromPaths(inputUnsortedCallsShardPaths);
         final List<SimpleIntervalCollection> unsortedIntervalCollectionsFromModels =
-                getIntervalCollectionsFromPaths(unsortedModelShardPaths);
+                getIntervalCollectionsFromPaths(inputUnsortedModelShardPaths);
 
         /* assert that all shards have the same SAM sequence dictionary */
         final SAMSequenceDictionary samSequenceDictionary = unsortedIntervalCollectionsFromCalls.get(0)
@@ -248,10 +241,10 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final List<Integer> sortedModelShardsOrder = AbstractLocatableCollection.getShardedCollectionSortOrder(
                 unsortedIntervalCollectionsFromModels);
         sortedCallsShardPaths = sortedCallShardsOrder.stream()
-                .map(unsortedCallsShardPaths::get)
+                .map(inputUnsortedCallsShardPaths::get)
                 .collect(Collectors.toList());
         sortedModelShardPaths = sortedModelShardsOrder.stream()
-                .map(unsortedModelShardPaths::get)
+                .map(inputUnsortedModelShardPaths::get)
                 .collect(Collectors.toList());
         final List<SimpleIntervalCollection> sortedIntervalCollectionsFromCalls = sortedCallShardsOrder.stream()
                 .map(unsortedIntervalCollectionsFromCalls::get)
@@ -290,10 +283,29 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         refAutosomalIntegerCopyNumberState = new IntegerCopyNumberState(refAutosomalCopyNumber);
     }
 
+    private void validateArguments() {
+        Utils.validateArg(inputUnsortedCallsShardPaths.size() == inputUnsortedModelShardPaths.size(),
+                "The number of input call shards must match the number of input model shards.");
+
+        inputUnsortedCallsShardPaths.forEach(CopyNumberArgumentValidationUtils::validateInputs);
+        inputUnsortedModelShardPaths.forEach(CopyNumberArgumentValidationUtils::validateInputs);
+        CopyNumberArgumentValidationUtils.validateInputs(inputContigPloidyCallsPath);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(
+                outputIntervalsVCFFile,
+                outputSegmentsVCFFile);
+    }
+
     @Override
-    public void traverse() {
+    public void traverse() {}  // no traversal for this tool
+
+    @Override
+    public Object onTraversalSuccess() {
         generateIntervalsVCFFileFromAllShards();
         generateSegmentsVCFFileFromAllShards();
+
+        logger.info("PostprocessGermlineCNVCalls complete.");
+
+        return null;
     }
 
     private void generateIntervalsVCFFileFromAllShards() {
@@ -305,6 +317,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                         refAutosomalIntegerCopyNumberState, allosomalContigSet);
         germlineCNVIntervalVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
 
+        logger.info(String.format("Writing intervals VCF file to %s...", outputIntervalsVCFFile.getAbsolutePath()));
         for (int shardIndex = 0; shardIndex < numShards; shardIndex++) {
             logger.info(String.format("Analyzing shard %d...", shardIndex));
             germlineCNVIntervalVariantComposer.writeAll(getShardIntervalCopyNumberPosteriorData(shardIndex));
@@ -427,40 +440,37 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     }
 
     private void generateSegmentsVCFFileFromAllShards() {
-        if (outputSegmentsVCFFile != null) {
-            logger.info("Generating segments VCF file...");
+        logger.info("Generating segments VCF file...");
 
-            /* perform segmentation */
-            final File pythonScriptOutputPath = IOUtils.createTempDir("gcnv-segmented-calls");
-            final boolean pythonScriptSucceeded = executeSegmentGermlineCNVCallsPythonScript(
-                    sampleIndex, contigPloidyCallsPath, sortedCallsShardPaths, sortedModelShardPaths,
-                    pythonScriptOutputPath);
-            if (!pythonScriptSucceeded) {
-                throw new UserException("Python return code was non-zero.");
-            }
-
-            /* parse segments */
-            final File copyNumberSegmentsFile = getCopyNumberSegmentsFile(pythonScriptOutputPath, sampleIndex);
-            final IntegerCopyNumberSegmentCollection integerCopyNumberSegmentCollection =
-                    new IntegerCopyNumberSegmentCollection(copyNumberSegmentsFile);
-            final String sampleNameFromSegmentCollection = integerCopyNumberSegmentCollection
-                    .getMetadata().getSampleName();
-            Utils.validate(sampleNameFromSegmentCollection.equals(sampleName),
-                    String.format("Sample name found in the header of copy-number segments file is " +
-                                    "different from the expected sample name (found: %s, expected: %s).",
-                            sampleNameFromSegmentCollection, sampleName));
-
-            /* write variants */
-            final VariantContextWriter segmentsVCFWriter = createVCFWriter(outputSegmentsVCFFile);
-            final GermlineCNVSegmentVariantComposer germlineCNVSegmentVariantComposer =
-                    new GermlineCNVSegmentVariantComposer(segmentsVCFWriter, sampleName,
-                            refAutosomalIntegerCopyNumberState, allosomalContigSet);
-            germlineCNVSegmentVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
-            germlineCNVSegmentVariantComposer.writeAll(integerCopyNumberSegmentCollection.getRecords());
-            segmentsVCFWriter.close();
-        } else {
-            logger.info("No segments output VCF file was provided -- skipping segmentation.");
+        /* perform segmentation */
+        final File pythonScriptOutputPath = IOUtils.createTempDir("gcnv-segmented-calls");
+        final boolean pythonScriptSucceeded = executeSegmentGermlineCNVCallsPythonScript(
+                sampleIndex, inputContigPloidyCallsPath, sortedCallsShardPaths, sortedModelShardPaths,
+                pythonScriptOutputPath);
+        if (!pythonScriptSucceeded) {
+            throw new UserException("Python return code was non-zero.");
         }
+
+        /* parse segments */
+        final File copyNumberSegmentsFile = getCopyNumberSegmentsFile(pythonScriptOutputPath, sampleIndex);
+        final IntegerCopyNumberSegmentCollection integerCopyNumberSegmentCollection =
+                new IntegerCopyNumberSegmentCollection(copyNumberSegmentsFile);
+        final String sampleNameFromSegmentCollection = integerCopyNumberSegmentCollection
+                .getMetadata().getSampleName();
+        Utils.validate(sampleNameFromSegmentCollection.equals(sampleName),
+                String.format("Sample name found in the header of copy-number segments file is " +
+                                "different from the expected sample name (found: %s, expected: %s).",
+                        sampleNameFromSegmentCollection, sampleName));
+
+        /* write variants */
+        logger.info(String.format("Writing segments VCF file to %s...", outputSegmentsVCFFile.getAbsolutePath()));
+        final VariantContextWriter segmentsVCFWriter = createVCFWriter(outputSegmentsVCFFile);
+        final GermlineCNVSegmentVariantComposer germlineCNVSegmentVariantComposer =
+                new GermlineCNVSegmentVariantComposer(segmentsVCFWriter, sampleName,
+                        refAutosomalIntegerCopyNumberState, allosomalContigSet);
+        germlineCNVSegmentVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
+        germlineCNVSegmentVariantComposer.writeAll(integerCopyNumberSegmentCollection.getRecords());
+        segmentsVCFWriter.close();
     }
 
     /**
@@ -486,13 +496,13 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final List<String> arguments = new ArrayList<>();
         arguments.add("--ploidy_calls_path");
-        arguments.add(contigPloidyCallsPath.getAbsolutePath());
+        arguments.add(CopyNumberArgumentValidationUtils.getCanonicalPath(contigPloidyCallsPath));
         arguments.add("--model_shards");
-        arguments.addAll(sortedModelDirectories.stream().map(File::getAbsolutePath).collect(Collectors.toList()));
+        arguments.addAll(sortedModelDirectories.stream().map(CopyNumberArgumentValidationUtils::getCanonicalPath).collect(Collectors.toList()));
         arguments.add("--calls_shards");
-        arguments.addAll(sortedCallDirectories.stream().map(File::getAbsolutePath).collect(Collectors.toList()));
+        arguments.addAll(sortedCallDirectories.stream().map(CopyNumberArgumentValidationUtils::getCanonicalPath).collect(Collectors.toList()));
         arguments.add("--output_path");
-        arguments.add(pythonScriptOutputPath.getAbsolutePath());
+        arguments.add(CopyNumberArgumentValidationUtils.getCanonicalPath(pythonScriptOutputPath));
         arguments.add("--sample_index");
         arguments.add(String.valueOf(sampleIndex));
 

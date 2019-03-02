@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
@@ -18,7 +17,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Annota
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.CopyNumberAnnotations;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 
@@ -177,12 +175,12 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                     "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
         }
 
-        IOUtils.canReadFile(inputReadCountFile);
+        validateArguments();
+
         logger.info(String.format("Reading read-counts file (%s)...", inputReadCountFile));
         final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
 
         if (inputPanelOfNormalsFile != null) {  //denoise using panel of normals
-            IOUtils.canReadFile(inputPanelOfNormalsFile);
             try (final HDF5File hdf5PanelOfNormalsFile = new HDF5File(inputPanelOfNormalsFile)) {  //HDF5File implements AutoCloseable
                 final SVDReadCountPanelOfNormals panelOfNormals = HDF5SVDReadCountPanelOfNormals.read(hdf5PanelOfNormalsFile);
 
@@ -201,8 +199,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                 }
                 final SVDDenoisedCopyRatioResult denoisedCopyRatioResult = panelOfNormals.denoise(readCounts, numEigensamples);
 
-                logger.info("Writing standardized and denoised copy ratios...");
-                denoisedCopyRatioResult.write(outputStandardizedCopyRatiosFile, outputDenoisedCopyRatiosFile);
+                writeResult(denoisedCopyRatioResult);
             }
         } else {    //standardize and perform optional GC-bias correction
             //get GC content (null if not provided)
@@ -226,11 +223,29 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                     readCounts.getIntervals(),
                     standardizedCopyRatioValues,
                     standardizedCopyRatioValues);
-            standardizedResult.write(outputStandardizedCopyRatiosFile, outputDenoisedCopyRatiosFile);
+
+            writeResult(standardizedResult);
         }
 
-        logger.info("Read counts successfully denoised.");
+        logger.info("DenoiseReadCounts complete.");
 
-        return "SUCCESS";
+        return null;
+    }
+
+    private void validateArguments() {
+        CopyNumberArgumentValidationUtils.validateInputs(
+                inputReadCountFile,
+                inputPanelOfNormalsFile,
+                inputAnnotatedIntervalsFile);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(
+                outputStandardizedCopyRatiosFile,
+                outputStandardizedCopyRatiosFile);
+    }
+
+    private void writeResult(final SVDDenoisedCopyRatioResult result) {
+        logger.info(String.format("Writing standardized and denoised copy ratios to %s and %s...",
+                outputStandardizedCopyRatiosFile.getAbsolutePath(),
+                outputDenoisedCopyRatiosFile.getAbsolutePath()));
+        result.write(outputStandardizedCopyRatiosFile, outputDenoisedCopyRatiosFile);
     }
 }

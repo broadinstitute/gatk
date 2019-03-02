@@ -28,7 +28,7 @@ public final class GermlineCNVHybridADVIArgumentCollection extends HybridADVIArg
         defaultValue.put(HybridADVIArgument.MAX_CALLING_ITERS, 10);
         defaultValue.put(HybridADVIArgument.CALLER_UPDATE_CONVERGENCE_THRESHOLD, 0.001);
         defaultValue.put(HybridADVIArgument.CALLER_INTERNAL_ADMIXING_RATE, 0.75);
-        defaultValue.put(HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE, 1.00);
+        defaultValue.put(HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE, 1.0);
         defaultValue.put(HybridADVIArgument.DISABLE_ANNEALING, false);
         defaultValue.put(HybridADVIArgument.DISABLE_CALLER, false);
         defaultValue.put(HybridADVIArgument.DISABLE_SAMPLER, false);

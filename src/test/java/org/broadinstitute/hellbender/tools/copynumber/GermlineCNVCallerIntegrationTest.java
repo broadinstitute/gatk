@@ -16,13 +16,13 @@ import java.util.stream.IntStream;
  * Integration tests for {@link GermlineCNVCaller}.
  */
 public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTest {
-    private static final String gCNVSimDataDir = toolsTestDir + "copynumber/gcnv-sim-data/";
-    private static final File[] testCountFiles = IntStream.range(0, 20)
-            .mapToObj(n -> new File(gCNVSimDataDir + String.format("SAMPLE_%03d_counts.tsv", n)))
+    private static final String GCNV_SIM_DATA_DIR = toolsTestDir + "copynumber/gcnv-sim-data/";
+    private static final File[] TEST_COUNT_FILES = IntStream.range(0, 20)
+            .mapToObj(n -> new File(GCNV_SIM_DATA_DIR + String.format("SAMPLE_%03d_counts.tsv", n)))
             .toArray(File[]::new);
-    private static final File contigPloidyCallsOutputDir = new File(gCNVSimDataDir + "contig-ploidy-calls/");
-    private static final File simIntervalListSubsetFile = new File(gCNVSimDataDir + "sim_intervals_subset.interval_list");
-    private final File tempOutputDir = createTempDir("test-germline-cnv");
+    private static final File CONTIG_PLOIDY_CALLS_OUTPUT_DIR = new File(GCNV_SIM_DATA_DIR + "contig-ploidy-calls/");
+    private static final File SIM_INTERVAL_LIST_SUBSET_FILE = new File(GCNV_SIM_DATA_DIR + "sim_intervals_subset.interval_list");
+    private static final File OUTPUT_DIR = createTempDir("test-germline-cnv");
 
     /**
      * Run the tool in the COHORT mode for all 20 samples on a small subset of intervals
@@ -30,15 +30,14 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     @Test(groups = {"python"})
     public void testCohortWithoutIntervalAnnotations() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        Arrays.stream(testCountFiles).forEach(argsBuilder::addInput);
+        Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
         argsBuilder.addArgument(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
-                .addArgument("L", simIntervalListSubsetFile.getAbsolutePath())
+                .addArgument("L", SIM_INTERVAL_LIST_SUBSET_FILE.getAbsolutePath())
                 .addArgument(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
-                        contigPloidyCallsOutputDir.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempOutputDir.getAbsolutePath())
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
-                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
         runCommandLine(argsBuilder);
     }
 
@@ -49,28 +48,26 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     @Test(groups = {"python"}, dependsOnMethods = "testCohortWithoutIntervalAnnotations")
     public void testCase() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        Arrays.stream(testCountFiles, 0, 5).forEach(argsBuilder::addInput);
+        Arrays.stream(TEST_COUNT_FILES, 0, 5).forEach(argsBuilder::addInput);
         argsBuilder.addArgument(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
                 .addArgument(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
-                        contigPloidyCallsOutputDir.getAbsolutePath())
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.MODEL_LONG_NAME,
-                        new File(tempOutputDir, "test-germline-cnv-cohort-model").getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempOutputDir.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case")
-                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");
+                        new File(OUTPUT_DIR, "test-germline-cnv-cohort-model").getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
         runCommandLine(argsBuilder);
     }
 
     @Test(groups = {"python"}, expectedExceptions = IllegalArgumentException.class)
     public void testCaseWithoutModel() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        Arrays.stream(testCountFiles, 0, 5).forEach(argsBuilder::addInput);
+        Arrays.stream(TEST_COUNT_FILES, 0, 5).forEach(argsBuilder::addInput);
         argsBuilder.addArgument(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
                 .addArgument(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
-                        contigPloidyCallsOutputDir.getAbsolutePath())
-                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempOutputDir.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case")
-                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
         runCommandLine(argsBuilder);
     }
 

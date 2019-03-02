@@ -9,7 +9,6 @@ import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -157,6 +156,8 @@ public final class FilterIntervals extends CommandLineProgram {
     @Argument(
             doc = "Minimum allowed value for GC-content annotation (inclusive).",
             fullName = MINIMUM_GC_CONTENT_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double minimumGCContent = 0.1;
@@ -164,6 +165,8 @@ public final class FilterIntervals extends CommandLineProgram {
     @Argument(
             doc = "Maximum allowed value for GC-content annotation (inclusive).",
             fullName = MAXIMUM_GC_CONTENT_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double maximumGCContent = 0.9;
@@ -171,6 +174,8 @@ public final class FilterIntervals extends CommandLineProgram {
     @Argument(
             doc = "Minimum allowed value for mappability annotation (inclusive).",
             fullName = MINIMUM_MAPPABILITY_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double minimumMappability = 0.9;
@@ -178,6 +183,8 @@ public final class FilterIntervals extends CommandLineProgram {
     @Argument(
             doc = "Maximum allowed value for mappability annotation (inclusive).",
             fullName = MAXIMUM_MAPPABILITY_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double maximumMappability = 1.;
@@ -185,6 +192,8 @@ public final class FilterIntervals extends CommandLineProgram {
     @Argument(
             doc = "Minimum allowed value for segmental-duplication-content annotation (inclusive).",
             fullName = MINIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double minimumSegmentalDuplicationContent = 0.;
@@ -192,6 +201,8 @@ public final class FilterIntervals extends CommandLineProgram {
     @Argument(
             doc = "Maximum allowed value for segmental-duplication-content annotation (inclusive).",
             fullName = MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME,
+            minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double maximumSegmentalDuplicationContent = 0.5;
@@ -260,29 +271,36 @@ public final class FilterIntervals extends CommandLineProgram {
 
     @Override
     public Object doWork() {
-        validateFilesAndResolveIntervals();
+        validateArguments();
+
+        resolveAndValidateIntervals();
+
         final SimpleIntervalCollection filteredIntervals = filterIntervals();
-        logger.info(String.format("Writing filtered intervals to %s...", outputFilteredIntervalsFile));
+        logger.info(String.format("Writing filtered intervals to %s...", outputFilteredIntervalsFile.getAbsolutePath()));
         final IntervalList filteredIntervalList = new IntervalList(filteredIntervals.getMetadata().getSequenceDictionary());
         filteredIntervals.getIntervals().forEach(i -> filteredIntervalList.add(new Interval(i)));
         filteredIntervalList.write(outputFilteredIntervalsFile);
 
-        return "SUCCESS";
+        logger.info("FilterIntervals complete.");
+
+        return null;
     }
 
-    private void validateFilesAndResolveIntervals() {
-        //validate input intervals and files
+    private void validateArguments() {
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
         if (inputAnnotatedIntervalsFile == null && inputReadCountFiles.isEmpty()) {
             throw new UserException("Must provide annotated intervals or counts.");
         }
-        if (inputAnnotatedIntervalsFile != null) {
-            IOUtils.canReadFile(inputAnnotatedIntervalsFile);
-        }
-        inputReadCountFiles.forEach(IOUtils::canReadFile);
+
         Utils.validateArg(inputReadCountFiles.size() == new HashSet<>(inputReadCountFiles).size(),
                 "List of input read-count files cannot contain duplicates.");
-        
+
+        CopyNumberArgumentValidationUtils.validateInputs(inputAnnotatedIntervalsFile);
+        inputReadCountFiles.forEach(CopyNumberArgumentValidationUtils::validateInputs);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputFilteredIntervalsFile);
+    }
+
+    private void resolveAndValidateIntervals() {
         //parse inputs to resolve and intersect intervals
         final LocatableMetadata metadata;
         final List<SimpleInterval> resolved;

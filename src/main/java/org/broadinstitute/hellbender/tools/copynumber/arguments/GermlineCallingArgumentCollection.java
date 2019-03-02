@@ -26,6 +26,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
                     "is set to the contig integer ploidy)",
             fullName = P_ALT_LONG_NAME,
             minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double pAlt = 1e-6;
@@ -35,6 +36,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
                     "copy-number states are equally likely to be called).",
             fullName = P_ACTIVE_LONG_NAME,
             minValue = 0.,
+            maxValue = 1.,
             optional = true
     )
     private double pActive = 1e-2;
@@ -77,15 +79,14 @@ public final class GermlineCallingArgumentCollection implements Serializable {
     }
 
     public void validate() {
-        ParamUtils.inRange(pAlt, 0.0, 1.0,
-                "Prior probability of alternative copy-number states must be between 0 and 1.");
-        ParamUtils.inRange(pActive, 0.0, 1.0,
-                "Prior probability of treating an interval as CNV-active must be between 0 and 1.");
         ParamUtils.isPositive(cnvCoherenceLength,
-                "Coherence length of CNV events must be positive.");
+                String.format("Coherence length of CNV events (%s) must be positive.",
+                        CNV_COHERENCE_LENGTH_LONG_NAME));
         ParamUtils.isPositive(classCoherenceLength,
-                "Coherence length of CNV class domains must be positive.");
+                String.format("Coherence length of CNV class domains (%s) must be positive.",
+                        CLASS_COHERENCE_LENGTH_LONG_NAME));
         ParamUtils.isPositive(maxCopyNumber,
-                "Highest allowed copy-number must be positive.");
+                String.format("Highest allowed copy-number (%s) must be positive.",
+                        MAX_COPY_NUMBER_LONG_NAME));
     }
 }

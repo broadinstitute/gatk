@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.caller.SimpleCopyRatioCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledLegacySegmentCollection;
@@ -55,6 +55,16 @@ import java.util.stream.Collectors;
  *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CalledCopyRatioSegmentCollection.CalledCopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
+ *     </li>
+ *     <li>
+ *         CBS-formatted .igv.seg file (compatible with IGV).
+ *         This is a tab-separated values (TSV) file with CBS-format column headers
+ *         (see <a href="http://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#CBS">
+ *             http://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#CBS</a>)
+ *         and the corresponding entry rows that can be plotted using IGV (see
+ *         <a href="https://software.broadinstitute.org/software/igv/SEG">
+ *             https://software.broadinstitute.org/software/igv/SEG</a>).
+ *         The mean log2 copy ratio is given in the SEGMENT_MEAN column.
  *     </li>
  * </ul>
  *
@@ -131,10 +141,11 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     )
     private double callingCopyRatioZScoreThreshold = 2.;
 
+    private File outputCalledLegacySegmentsFile;
+
     @Override
     protected Object doWork() {
-        Utils.validateArg(neutralSegmentCopyRatioLowerBound < neutralSegmentCopyRatioUpperBound,
-                "Copy-neutral lower bound must be less than upper bound.");
+        validateArguments();
 
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(inputCopyRatioSegmentsFile);
         final CalledCopyRatioSegmentCollection calledCopyRatioSegments =
@@ -142,18 +153,36 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
                         neutralSegmentCopyRatioLowerBound, neutralSegmentCopyRatioUpperBound,
                         outlierNeutralSegmentCopyRatioZScoreThreshold, callingCopyRatioZScoreThreshold)
                         .makeCalls();
+
+        logger.info(String.format("Writing called segments to %s...", outputCalledCopyRatioSegmentsFile.getAbsolutePath()));
         calledCopyRatioSegments.write(outputCalledCopyRatioSegmentsFile);
 
         // Write an IGV compatible collection
         final CalledLegacySegmentCollection legacySegmentCollection = createCalledLegacySegmentCollection(calledCopyRatioSegments);
-        legacySegmentCollection.write(createCalledLegacyOutputFilename(outputCalledCopyRatioSegmentsFile));
+        logger.info(String.format("Writing called segments in IGV-compatible format to %s...", outputCalledLegacySegmentsFile.getAbsolutePath()));
+        legacySegmentCollection.write(outputCalledLegacySegmentsFile);
 
-        return "SUCCESS";
+        logger.info("CallCopyRatioSegments complete.");
+
+        return null;
+    }
+
+    private void validateArguments() {
+        Utils.validateArg(neutralSegmentCopyRatioLowerBound < neutralSegmentCopyRatioUpperBound,
+                String.format("Copy-neutral lower bound (%s) must be less than upper bound (%s).",
+                        NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND_LONG_NAME,
+                        NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND_LONG_NAME));
+
+        CopyNumberArgumentValidationUtils.validateInputs(inputCopyRatioSegmentsFile);
+        outputCalledLegacySegmentsFile = createCalledLegacySegmentsFile(outputCalledCopyRatioSegmentsFile);
+        CopyNumberArgumentValidationUtils.validateOutputFiles(
+                outputCalledCopyRatioSegmentsFile,
+                outputCalledLegacySegmentsFile);
     }
 
     @VisibleForTesting
-    public static File createCalledLegacyOutputFilename(final File calledCopyRatioBaseFilename) {
-        return new File(FilenameUtils.removeExtension(calledCopyRatioBaseFilename.getAbsolutePath()) + LEGACY_SEGMENTS_FILE_SUFFIX);
+    static File createCalledLegacySegmentsFile(final File calledCopyRatioSegmentsFile) {
+        return new File(FilenameUtils.removeExtension(calledCopyRatioSegmentsFile.getAbsolutePath()) + LEGACY_SEGMENTS_FILE_SUFFIX);
     }
 
     private static CalledLegacySegmentCollection createCalledLegacySegmentCollection(final CalledCopyRatioSegmentCollection segments) {
