@@ -10,7 +10,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
@@ -41,22 +40,19 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
     @Argument(
-            doc = "Output allelic-counts file.",
+            doc = "Output file for allelic counts.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputAllelicCountsFile;
 
     @Argument(
-            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
-            fullName = "minimumBaseQuality",
-            shortName = "minBQ",
+            doc = "Minimum base quality.  Base calls with lower quality will be filtered out of pileups.",
+            fullName = CollectAllelicCounts.MINIMUM_BASE_QUALITY_LONG_NAME,
             minValue = 0,
             optional = true
     )
-    private int minimumBaseQuality = 20;
-
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+    private int minimumBaseQuality = CollectAllelicCounts.DEFAULT_MINIMUM_BASE_QUALITY;
 
     @Override
     public boolean emitEmptyLoci() {return true;}
@@ -66,6 +62,13 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
 
     @Override
     public boolean requiresIntervals() {return true;}
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
+        readFilters.addAll(CollectAllelicCounts.DEFAULT_ADDITIONAL_READ_FILTERS);
+        return readFilters;
+    }
 
     @Override
     protected void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx) {
@@ -97,13 +100,5 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
                                                                        final AllelicCountCollector allelicCountCollector2,
                                                                        final SampleLocatableMetadata sampleMetadata) {
         return AllelicCountCollector.combine(allelicCountCollector1, allelicCountCollector2, sampleMetadata);
-    }
-
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> initialReadFilters = new ArrayList<>(super.getDefaultReadFilters());
-        initialReadFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-
-        return initialReadFilters;
     }
 }

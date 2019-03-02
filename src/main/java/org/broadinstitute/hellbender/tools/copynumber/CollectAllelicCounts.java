@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLoc
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -81,9 +82,16 @@ import java.util.List;
 public final class CollectAllelicCounts extends LocusWalker {
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+    static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimum-base-quality";
 
-    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimum-base-quality";
+    static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+    static final int DEFAULT_MINIMUM_BASE_QUALITY = 20;
+
+    static final List<ReadFilter> DEFAULT_ADDITIONAL_READ_FILTERS = ImmutableList.of(
+            ReadFilterLibrary.MAPPED,
+            ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT,
+            ReadFilterLibrary.NOT_DUPLICATE,
+            new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
 
     @Argument(
             doc = "Output file for allelic counts.",
@@ -98,7 +106,7 @@ public final class CollectAllelicCounts extends LocusWalker {
             minValue = 0,
             optional = true
     )
-    private int minimumBaseQuality = 20;
+    private int minimumBaseQuality = DEFAULT_MINIMUM_BASE_QUALITY;
 
     private AllelicCountCollector allelicCountCollector;
 
@@ -118,6 +126,13 @@ public final class CollectAllelicCounts extends LocusWalker {
     }
 
     @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
+        readFilters.addAll(DEFAULT_ADDITIONAL_READ_FILTERS);
+        return readFilters;
+    }
+
+    @Override
     public void onTraversalStart() {
         final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -126,16 +141,6 @@ public final class CollectAllelicCounts extends LocusWalker {
         }
         allelicCountCollector = new AllelicCountCollector(metadata);
         logger.info("Collecting allelic counts...");
-    }
-
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> filters = super.getDefaultReadFilters();
-        filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
-        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-        return filters;
     }
 
     @Override

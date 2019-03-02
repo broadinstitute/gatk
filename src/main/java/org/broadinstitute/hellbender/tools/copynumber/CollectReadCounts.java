@@ -134,18 +134,18 @@ public final class CollectReadCounts extends ReadWalker {
     private Multiset<SimpleInterval> intervalMultiset;
 
     @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> filters = new ArrayList<>(super.getDefaultReadFilters());
-        filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
-        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-        return filters;
+    public boolean requiresIntervals() {
+        return true;
     }
 
     @Override
-    public boolean requiresIntervals() {
-        return true;
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
+        readFilters.add(ReadFilterLibrary.MAPPED);
+        readFilters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+        readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        readFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        return readFilters;
     }
 
     @Override
