@@ -34,9 +34,12 @@ import java.util.OptionalInt;
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median distance of variant starts from ends of reads supporting each allele (MPOS)")
 public class ReadPosition extends PerAlleleAnnotation implements StandardMutectAnnotation {
 
+    // we don't want a GGA mode allele with no reads to prejudice us against a site so we assign a non-suspicious value
+    private static final int VALUE_FOR_NO_READS = 50;
+
     @Override
     protected int aggregate(final List<Integer> values) {
-        return values.isEmpty() ? 0 : MathUtils.median(Ints.toArray(values));
+        return values.isEmpty() ? VALUE_FOR_NO_READS : MathUtils.median(Ints.toArray(values));
     }
 
     @Override
