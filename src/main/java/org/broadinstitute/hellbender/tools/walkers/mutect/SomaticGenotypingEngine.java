@@ -12,12 +12,10 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerGenotypingEngine;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceUtils;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -26,6 +24,7 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -37,34 +36,19 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
+public class SomaticGenotypingEngine {
 
     private final M2ArgumentCollection MTAC;
     private final Set<String> normalSamples;
     final boolean hasNormal;
     public static final String DISCARDED_MATE_READ_TAG = "DM";
+    protected VariantAnnotatorEngine annotationEngine;
 
-    // {@link GenotypingEngine} requires a non-null {@link AFCalculatorProvider} but this class doesn't need it.  Thus we make a dummy
-    private static final AFCalculatorProvider DUMMY_AF_CALCULATOR_PROVIDER = new AFCalculatorProvider() {
-        @Override
-        public AFCalculator getInstance(final int ploidy, final int maximumAltAlleles) { return null; }
-    };
-
-    @Override
-    protected String callSourceString() {
-        return "M2_call";
-    }
-
-    @Override
-    protected boolean forceKeepAllele(final Allele allele) { return false; }
-
-    public SomaticGenotypingEngine(final SampleList samples,
-                                   final M2ArgumentCollection MTAC,
-                                   final Set<String> normalSamples) {
-        super(MTAC, samples, DUMMY_AF_CALCULATOR_PROVIDER, !MTAC.doNotRunPhysicalPhasing);
+    public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples, final VariantAnnotatorEngine annotationEngine) {
         this.MTAC = MTAC;
         this.normalSamples = normalSamples;
         hasNormal = !normalSamples.isEmpty();
+        this.annotationEngine = annotationEngine;
     }
 
     /**
@@ -94,11 +78,8 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         final List<Haplotype> haplotypes = log10ReadLikelihoods.alleles();
 
-        // Note: passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
-        // non-empty.  At this point any given alleles have already been injected into the haplotypes, and passing
-        // givenAlleles to {@code decomposeHaplotypesIntoVariantContexts} actually overrides any non-given (discovery) alleles, which
-        // is not what we want.
-        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList(), MTAC.maxMnpDistance).stream()
+        final List<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, assemblyResultSet.getFullReferenceWithPadding(),
+                assemblyResultSet.getPaddedReferenceLoc(), MTAC.debug, MTAC.maxMnpDistance).stream()
                 .filter(loc -> activeRegionWindow.getStart() <= loc && loc <= activeRegionWindow.getEnd())
                 .collect(Collectors.toList());
 
@@ -111,16 +92,16 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         }
 
         for( final int loc : startPosKeySet ) {
-            final List<VariantContext> eventsAtThisLoc = getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
             VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;
             }
 
             // converting ReadLikelihoods<Haplotype> to ReadLikelihoods<Allele>
-            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, null);
             final ReadLikelihoods<Allele> log10Likelihoods = log10ReadLikelihoods.marginalize(alleleMapper,
-                    new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
+                    new SimpleInterval(mergedVC).expandWithinContig(HaplotypeCallerGenotypingEngine.ALLELE_EXTENSION, header.getSequenceDictionary()));
             filterOverlappingReads(log10Likelihoods, mergedVC.getReference(), loc, false);
 
             if (emitRefConf) {
@@ -198,7 +179,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             returnCalls.add( annotatedCall );
         }
 
-        final List<VariantContext> outputCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
+        final List<VariantContext> outputCalls = AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes);
         final int eventCount = outputCalls.size();
         final List<VariantContext> outputCallsWithEventCountAnnotation = outputCalls.stream()
                 .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
@@ -207,7 +188,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     }
 
     private Set<Allele> getAllelesConsistentWithGivenAlleles(List<VariantContext> givenAlleles, int loc, VariantContext mergedVC) {
-        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVariantContextsFromGivenAlleles(loc, givenAlleles, false).stream()
+        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  AssemblyBasedCallerUtils.getVariantContextsFromGivenAlleles(loc, givenAlleles, false).stream()
                 .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
 
         return mergedVC.getAlternateAlleles().stream()

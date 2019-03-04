@@ -117,13 +117,6 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public boolean errorCorrectReads = false;
 
     /**
-     * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.
-     */
-    @Advanced
-    @Argument(fullName = DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME,  doc = "Disable physical phasing", optional = true)
-    public boolean doNotRunPhysicalPhasing = false;
-
-    /**
      * Bases with a quality below this threshold will not be used for calling.
      */
     @Argument(fullName = MIN_BASE_QUALITY_SCORE_LONG_NAME, shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)

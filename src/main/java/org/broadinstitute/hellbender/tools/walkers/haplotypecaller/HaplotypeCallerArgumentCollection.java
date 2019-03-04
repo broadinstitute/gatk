@@ -135,4 +135,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs. " +
             "WARNING: When used in GVCF mode, resulting GVCFs cannot be joint-genotyped.", optional = true)
     public int maxMnpDistance = 0;
+
+    /**
+     * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.
+     */
+    @Advanced
+    @Argument(fullName = DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME,  doc = "Disable physical phasing", optional = true)
+    public boolean doNotRunPhysicalPhasing = false;
 }

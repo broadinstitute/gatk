@@ -127,8 +127,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
-        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, normalSamples);
-        genotypingEngine.setAnnotationEngine(annotationEngine);
+        genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer.initialize(MTAC.assemblyRegionTrimmerArgs, header.getSequenceDictionary(), MTAC.debug,
                 MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
@@ -233,7 +232,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
         readLikelihoods.changeReads(readRealignments);
 
-        final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(
+        final CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(
                 readLikelihoods, assemblyResult, referenceContext, regionForGenotyping.getSpan(), featureContext, givenAlleles, header, haplotypeBAMWriter.isPresent(), emitReferenceConfidence());
         writeBamOutput(assemblyResult, readLikelihoods, calledHaplotypes, regionForGenotyping.getSpan());
         if (emitReferenceConfidence()) {
@@ -288,13 +287,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     //TODO: refactor this
-    private boolean containsCalls(final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
+    private boolean containsCalls(final CalledHaplotypes calledHaplotypes) {
         return calledHaplotypes.getCalls().stream()
                 .flatMap(call -> call.getGenotypes().stream())
                 .anyMatch(Genotype::isCalled);
     }
 
-    private void writeBamOutput(AssemblyResultSet assemblyResult, ReadLikelihoods<Haplotype> readLikelihoods, HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes, Locatable callableRegion) {
+    private void writeBamOutput(AssemblyResultSet assemblyResult, ReadLikelihoods<Haplotype> readLikelihoods, CalledHaplotypes calledHaplotypes, Locatable callableRegion) {
         if ( haplotypeBAMWriter.isPresent() ) {
             final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
             haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(
