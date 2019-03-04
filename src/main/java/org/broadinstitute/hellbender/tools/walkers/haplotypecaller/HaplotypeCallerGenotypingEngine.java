@@ -200,21 +200,6 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
     }
 
-    public CalledHaplotypes assignGenotypeLikelihoods(final List<Haplotype> haplotypes,
-                                                      final ReadLikelihoods<Haplotype> readLikelihoods,
-                                                      final Map<String, List<GATKRead>> perSampleFilteredReadList,
-                                                      final byte[] ref,
-                                                      final SimpleInterval refLoc,
-                                                      final SimpleInterval activeRegionWindow,
-                                                      final FeatureContext tracker,
-                                                      final List<VariantContext> activeAllelesToGenotype,
-                                                      final boolean emitReferenceConfidence,
-                                                      final int maxMnpDistance,
-                                                      final SAMFileHeader header) {
-        return assignGenotypeLikelihoods(haplotypes,readLikelihoods,perSampleFilteredReadList,ref,refLoc,
-                activeRegionWindow,tracker,activeAllelesToGenotype,emitReferenceConfidence,maxMnpDistance,header,false);
-    }
-
     @VisibleForTesting
     static List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
         return eventsAtThisLoc.stream().map(vc -> replaceWithSpanDelVC(vc, refAllele, loc)).collect(Collectors.toList());
@@ -396,31 +381,6 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             result.add(new GenotypeBuilder(samples.getSample(s)).alleles(noCallAlleles).PL(likelihoods.sampleLikelihoods(s).getAsPLs()).make());
         }
         return result;
-    }
-
-    /**
-     * Removes symbolic events from list of haplotypes
-     * @param haplotypes       Input/output list of haplotypes, before/after removal
-     */
-    // TODO - split into input haplotypes and output haplotypes as not to share I/O arguments
-    protected static void cleanUpSymbolicUnassembledEvents( final List<Haplotype> haplotypes ) {
-        Utils.nonNull(haplotypes);
-        final List<Haplotype> haplotypesToRemove = new ArrayList<>();
-        for( final Haplotype h : haplotypes ) {
-            for( final VariantContext vc : h.getEventMap().getVariantContexts() ) {
-                if( vc.isSymbolic() ) {
-                    for( final Haplotype h2 : haplotypes ) {
-                        for( final VariantContext vc2 : h2.getEventMap().getVariantContexts() ) {
-                            if( vc.getStart() == vc2.getStart() && (vc2.isIndel() || vc2.isMNP()) ) { // unfortunately symbolic alleles can't currently be combined with non-point events
-                                haplotypesToRemove.add(h);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        haplotypes.removeAll(haplotypesToRemove);
     }
 
     /**
