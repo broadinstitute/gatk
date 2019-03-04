@@ -87,6 +87,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String cigar4 = read4.length() + "M";
             final String cigar5 = read5.length() + "M";
 
+            // Simple test cases, the repeating A's cause the ending bases to appear uninformative
             tests.add(new Object[]{read1, cigar1, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read2, cigar2, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read3, cigar3, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
@@ -107,6 +108,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String cigar4 = read4.length() + "M";
             final String cigar5 = read5.length() + "M";
 
+            // Testing that for all these cases the third bases still counts as uninformative given that there might be mismatches to the reference beyond its end, (reflects the previous set of cases)
             tests.add(new Object[]{read1, cigar1, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read2, cigar2, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read3, cigar3, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
@@ -138,6 +140,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
             final String cigar = repeatingread.length() + "M";
 
+            // None of these cases are informative because the reference/reads repeat in units of 3 (which is maxindel size)
             tests.add(new Object[]{repeatingread, cigar, null, repeatingref1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{repeatingread, cigar, null, repeatingref2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{repeatingread, cigar, null, repeatingref3, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
@@ -148,8 +151,11 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             tests.add(new Object[]{repeatingread, cigar, null, repeatingref8, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{repeatingread, cigar, null, repeatingref9, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
 
+            // Except for the bases < maxIndelSizeFrom the end of the read, the bases are informative here
             tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            // Checking the specific edge case where the reference ends within maxIndelSize of the end of the read (despite not being maxindel size from the end of the reference),
+            // making sure that the old behavior of making a zero base comparison to treat the last base as informative is faithfully reproduced
             tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref3, 3, 0, Arrays.asList(1, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref4, 3, 0, Arrays.asList(1, 1, 0, 0, 0, 0)});
             tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref5, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
@@ -174,6 +180,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String cigar4 = read4.length() + "M";
             final String cigar5 = read5.length() + "M";
 
+            // Ensuring that the code is not dependant on equivalent start positions between the ref/read (important case to catch in these tests)
             tests.add(new Object[]{read1, cigar1, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read2, cigar2, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read3, cigar3, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
@@ -188,6 +195,8 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final byte[] quals1 = Utils.dupBytes(qual, read1.length());
             quals1[quals1.length-1] = 9;
 
+            // Construct a read where the final T base has a very high mapping quality compared to other mismatching bases, so that for the read
+            // to be counted as uninformative that T base must have been aligned matching to some other T in the read.
             final String read2 = "ATAAT";
             final String cigar2 = read1.length() + "M";
             final byte[] quals2 = Utils.dupBytes(qual, read2.length());
@@ -199,6 +208,9 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String ref4 = "AAAACCT";
             final String ref5 = "AAACCCT";
 
+            // These references have T bases to align to at many offsets to the 5th base
+            // Some of these references have the candidate T beyond the fifth base in order to test that the indel code is indeed
+            // comparing the final bases of the read to bases off the end of the reference
             final String ref10 = "ATAATAA";
             final String ref11 = "ATATTAA";
             final String ref12 = "ATTATAA";
@@ -221,18 +233,18 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             tests.add(new Object[]{read1, cigar1, quals1, ref4, 2, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read1, cigar1, quals1, ref5, 2, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
 
-            tests.add(new Object[]{read2, cigar2, quals2, ref10, 2, 0, Arrays.asList(1, 1, 1, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, quals2, ref11, 2, 0, Arrays.asList(1, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, quals2, ref12, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
 
-            tests.add(new Object[]{read2, cigar2, quals2, ref13, 2, 0, Arrays.asList(1, 1, 1, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref10, 2, 0, Arrays.asList(1, 1, 1, 0, 0)}); // T has nowhere to align to, all bases informative
+            tests.add(new Object[]{read2, cigar2, quals2, ref11, 2, 0, Arrays.asList(1, 0, 0, 0, 0)}); // T has somewhere to align to other mismatches outweight in position 1
+            tests.add(new Object[]{read2, cigar2, quals2, ref12, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // All bases uninformative as 2 base deletion aligns perfectly
+            tests.add(new Object[]{read2, cigar2, quals2, ref13, 2, 0, Arrays.asList(1, 1, 1, 0, 0)}); // Still uninformative because reads original alignment score was low due to many matches
             tests.add(new Object[]{read2, cigar2, quals2, ref14, 2, 0, Arrays.asList(1, 1, 1, 0, 0)});
-
-            tests.add(new Object[]{read2, cigar2, quals2, ref15, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, quals2, ref16, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, quals2, ref17, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, quals2, ref18, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, quals2, ref19, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref15, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // Uninformative because realigning the T
+            tests.add(new Object[]{read2, cigar2, quals2, ref16, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // Same as above but for indel size of 2
+            tests.add(new Object[]{read2, cigar2, quals2, ref16, 1, 0, Arrays.asList(1, 1, 0, 0, 0)}); // Showing that a smaller indel size causes it to fail to align the final T
+            tests.add(new Object[]{read2, cigar2, quals2, ref17, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // The rest of these cases test shrinking references, mostly they are uninformative
+            tests.add(new Object[]{read2, cigar2, quals2, ref18, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // because the offending T that must be aligned off the edge is being aligned compared
+            tests.add(new Object[]{read2, cigar2, quals2, ref19, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // to the reference in such a way that it isn't counted
             tests.add(new Object[]{read2, cigar2, quals2, ref20, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
             tests.add(new Object[]{read2, cigar2, quals2, ref21, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
             tests.add(new Object[]{read2, cigar2, quals2, ref22, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
@@ -247,6 +259,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String ref = "TGTATATGTATGTGTATGTACATA";
             final byte qual = (byte)10;
             final byte[] quals = Utils.dupBytes(qual, read.length());
+            // Some of these bases would be marked as informative if not for the fact that their comparison offsets correspond to deletion bases (caught in a debugger)
             tests.add(new Object[]{read, cigar, quals, ref, 7, 0, Arrays.asList(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)});
         }
 
@@ -273,7 +286,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             }
         }
 
-        {//test that the behavior is still confusing and wrong in the case where read.length() disagrees with the realigned read length due to indels or possibly wizard magic
+        {//test that the behavior is still confusing and wrong in the case where read.length() disagrees with the realigned read length due to indels (caught in a debugger)
             final String read = "ACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTAAGCAGAT";
             final String ref = "TTGTTTATAAAAGGAAATCTTCACTGTTTTGAACATCAGTTATTTTAAACTTTTAAGTTGTTAGCACAGCAAAAGCAACAAAATTCTAAGTG"+
                     "CAGTAATCACTTTACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTATGCAAAACTAAGCAGAT"+
