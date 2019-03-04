@@ -199,10 +199,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
-        genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs), ! hcArgs.doNotRunPhysicalPhasing);
+        genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs.standardArgs), ! hcArgs.doNotRunPhysicalPhasing);
         genotypingEngine.setAnnotationEngine(annotationEngine);
 
-        referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel, hcArgs.genotypeArgs.numRefIfMissing);
+        referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel, hcArgs.standardArgs.genotypeArgs.numRefIfMissing);
 
         //Allele-specific annotations are not yet supported in the VCF mode
         if (isAlleleSpecificMode(annotationEngine) && isVCFMode()){
@@ -213,8 +213,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         assemblyEngine = hcArgs.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
 
-        trimmer.initialize(hcArgs.assemblyRegionTrimmerArgs, readsHeader.getSequenceDictionary(), hcArgs.debug,
-                hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
+        trimmer.initialize(hcArgs.assemblerArgs, readsHeader.getSequenceDictionary(),
+                hcArgs.standardArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
     }
 
     private boolean isVCFMode() {
@@ -232,7 +232,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     private void validateAndInitializeArgs() {
-        if ( hcArgs.genotypeArgs.samplePloidy != HomoSapiensConstants.DEFAULT_PLOIDY && ! hcArgs.doNotRunPhysicalPhasing ) {
+        if ( hcArgs.standardArgs.genotypeArgs.samplePloidy != HomoSapiensConstants.DEFAULT_PLOIDY && ! hcArgs.doNotRunPhysicalPhasing ) {
             hcArgs.doNotRunPhysicalPhasing = true;
             logger.info("Currently, physical phasing is only available for diploid samples.");
         }
@@ -242,27 +242,27 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         if ( emitReferenceConfidence() ) {
-            if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES) {
+            if ( hcArgs.standardArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES) {
                 throw new CommandLineException.BadArgumentValue("ERC/gt_mode", "you cannot request reference confidence output and GENOTYPE_GIVEN_ALLELES at the same time");
             }
 
-            hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
+            hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
-            if ( ! hcArgs.annotateAllSitesWithPLs ) {
+            if ( ! hcArgs.standardArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");
             }
-            hcArgs.annotateAllSitesWithPLs = true;
+            hcArgs.standardArgs.annotateAllSitesWithPLs = true;
         } else if ( ! hcArgs.doNotRunPhysicalPhasing ) {
             hcArgs.doNotRunPhysicalPhasing = true;
             logger.info("Disabling physical phasing, which is supported only for reference-model confidence output");
         }
 
-        if ( hcArgs.CONTAMINATION_FRACTION_FILE != null ) {
-            hcArgs.setSampleContamination(AlleleBiasedDownsamplingUtils.loadContaminationFile(hcArgs.CONTAMINATION_FRACTION_FILE, hcArgs.CONTAMINATION_FRACTION, sampleSet, logger));
+        if ( hcArgs.standardArgs.CONTAMINATION_FRACTION_FILE != null ) {
+            hcArgs.standardArgs.setSampleContamination(AlleleBiasedDownsamplingUtils.loadContaminationFile(hcArgs.standardArgs.CONTAMINATION_FRACTION_FILE, hcArgs.standardArgs.CONTAMINATION_FRACTION, sampleSet, logger));
         }
 
-        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES && hcArgs.assemblerArgs.consensusMode() ) {
+        if ( hcArgs.standardArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES && hcArgs.assemblerArgs.consensusMode() ) {
             throw new UserException("HaplotypeCaller cannot be run in both GENOTYPE_GIVEN_ALLELES mode and in consensus mode at the same time. Please choose one or the other.");
         }
 
@@ -295,17 +295,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private void initializeActiveRegionEvaluationGenotyperEngine() {
         // create a UAC but with the exactCallsLog = null, so we only output the log for the HC caller itself, if requested
         final UnifiedArgumentCollection simpleUAC = new UnifiedArgumentCollection();
-        simpleUAC.copyStandardCallerArgsFrom(hcArgs);
+        simpleUAC.copyStandardCallerArgsFrom(hcArgs.standardArgs);
 
         simpleUAC.outputMode = OutputMode.EMIT_VARIANTS_ONLY;
         simpleUAC.genotypingOutputMode = GenotypingOutputMode.DISCOVERY;
-        simpleUAC.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = Math.min(MAXMIN_CONFIDENCE_FOR_CONSIDERING_A_SITE_AS_POSSIBLE_VARIANT_IN_ACTIVE_REGION_DISCOVERY, hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING ); // low values used for isActive determination only, default/user-specified values used for actual calling
+        simpleUAC.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = Math.min(MAXMIN_CONFIDENCE_FOR_CONSIDERING_A_SITE_AS_POSSIBLE_VARIANT_IN_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING ); // low values used for isActive determination only, default/user-specified values used for actual calling
         simpleUAC.CONTAMINATION_FRACTION = 0.0;
         simpleUAC.CONTAMINATION_FRACTION_FILE = null;
         simpleUAC.exactCallsLog = null;
         // Seems that at least with some test data we can lose genuine haploid variation if we use
         // UGs engine with ploidy == 1
-        simpleUAC.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.genotypeArgs.samplePloidy);
+        simpleUAC.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.samplePloidy);
 
         activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(simpleUAC, samplesList,
                 FixedAFCalculatorProvider.createThreadSafeProvider(simpleUAC));
@@ -356,7 +356,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
-                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy);
+                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.standardArgs.genotypeArgs.samplePloidy);
             } catch ( IllegalArgumentException e ) {
                 throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
             }
@@ -389,7 +389,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_PL_KEY);
 
-        if (hcArgs.genotypeArgs.supportVariants != null) {
+        if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
             headerInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
             headerInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
             headerInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
@@ -443,16 +443,16 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     @Override
     public ActivityProfileState isActive( final AlignmentContext context, final ReferenceContext ref, final FeatureContext features ) {
 
-        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
+        if ( hcArgs.standardArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
             final VariantContext vcFromGivenAlleles = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(features,
-                    ref.getInterval(), hcArgs.genotypeFilteredAlleles, hcArgs.alleles);
+                    ref.getInterval(), hcArgs.standardArgs.genotypeFilteredAlleles, hcArgs.standardArgs.alleles);
             if( vcFromGivenAlleles != null ) {
                 return new ActivityProfileState(ref.getInterval(), 1.0);
             }
         }
 
         if ( hcArgs.USE_ALLELES_TRIGGER ) {
-            return new ActivityProfileState( ref.getInterval(), features.getValues(hcArgs.alleles, ref.getInterval()).size() > 0 ? 1.0 : 0.0 );
+            return new ActivityProfileState( ref.getInterval(), features.getValues(hcArgs.standardArgs.alleles, ref.getInterval()).size() > 0 ? 1.0 : 0.0 );
         }
 
         if( context == null || context.getBasePileup().isEmpty() ) {
@@ -512,8 +512,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final List<VariantContext> VCpriors = new ArrayList<>();
-        if (hcArgs.genotypeArgs.supportVariants != null) {
-            features.getValues(hcArgs.genotypeArgs.supportVariants).stream().forEach(VCpriors::add);
+        if (hcArgs.standardArgs.genotypeArgs.supportVariants != null) {
+            features.getValues(hcArgs.standardArgs.genotypeArgs.supportVariants).stream().forEach(VCpriors::add);
         }
 
         if ( hcArgs.sampleNameToUse != null ) {
@@ -526,8 +526,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final List<VariantContext> givenAlleles = new ArrayList<>();
-        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            features.getValues(hcArgs.alleles).stream().filter(vc -> hcArgs.genotypeFilteredAlleles || vc.isNotFiltered()).forEach(givenAlleles::add);
+        if ( hcArgs.standardArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
+            features.getValues(hcArgs.standardArgs.alleles).stream().filter(vc -> hcArgs.standardArgs.genotypeFilteredAlleles || vc.isNotFiltered()).forEach(givenAlleles::add);
 
             // No alleles found in this region so nothing to do!
             if ( givenAlleles.isEmpty() ) {
@@ -626,7 +626,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                                                              calledHaplotypeSet, readLikelihoods,regionForGenotyping.getSpan());
         }
 
-        if( hcArgs.debug) {
+        if( hcArgs.assemblerArgs.debugAssembly) {
             logger.info("----------------------------------------------------------------------------------");
         }
 
@@ -644,7 +644,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 // output variant containing region.
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.genotypeArgs.supportVariants != null,
+                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
                         VCpriors));
                 // output right-flanking non-variant section:
                 if (trimmingResult.hasRightFlankingRegion()) {
@@ -681,7 +681,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             //TODO - why the activeRegion cannot manage its own one-time finalization and filtering?
             //TODO - perhaps we can remove the last parameter of this method and the three lines bellow?
             if ( needsToBeFinalized ) {
-                AssemblyBasedCallerUtils.finalizeRegion(region, hcArgs.errorCorrectReads, hcArgs.dontUseSoftClippedBases, minTailQuality, readsHeader, samplesList, ! hcArgs.doNotCorrectOverlappingBaseQualities);
+                AssemblyBasedCallerUtils.finalizeRegion(region, hcArgs.assemblerArgs.errorCorrectReads, hcArgs.dontUseSoftClippedBases, minTailQuality, readsHeader, samplesList, ! hcArgs.doNotCorrectOverlappingBaseQualities);
             }
             filterNonPassingReads(region);
 
@@ -690,7 +690,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                     paddedLoc, region, AssemblyBasedCallerUtils.createDummyStratifiedReadMap(refHaplotype, samplesList, readsHeader, region),
-                    genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.genotypeArgs.supportVariants != null, VCpriors);
+                    genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.standardArgs.genotypeArgs.supportVariants != null, VCpriors);
         }
         else {
             return NO_CALLS;

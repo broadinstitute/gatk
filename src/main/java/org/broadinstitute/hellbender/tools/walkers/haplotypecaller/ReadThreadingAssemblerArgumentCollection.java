@@ -17,6 +17,42 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
 
     public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = 1.0;
 
+    public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
+
+    public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
+
+
+    //---------------------------------------------------------------------------------------------------------------
+    //
+    // Assembly Region Trimming Parameters
+    //
+    // ---------------------------------------------------------------------------------------------------------------
+    @Advanced
+    @Argument(fullName="dont-trim-active-regions", doc="If specified, we will not trim down the active region from the full region (active + extension) to just the active interval for genotyping", optional = true)
+    protected boolean dontTrimActiveRegions = false;
+
+    /**
+     * the maximum extent into the full active region extension that we're willing to go in genotyping our events
+     */
+    @Hidden
+    @Argument(fullName="max-disc-ar-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping our events for discovery", optional = true)
+    protected int discoverExtension = 25;
+
+    @Hidden
+    @Argument(fullName="max-gga-ar-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping our events for GGA mode", optional = true)
+    protected int ggaExtension = 300;
+
+    /**
+     * Include at least this many bases around an event for calling it
+     */
+    @Hidden
+    @Argument(fullName="padding-around-indels", doc = "Include at least this many bases around an event for calling indels", optional = true)
+    public int indelPadding = 150;
+
+    @Hidden
+    @Argument(fullName="padding-around-snps", doc = "Include at least this many bases around an event for calling snps", optional = true)
+    public int snpPadding = 20;
+
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
     // -----------------------------------------------------------------------------------------------
@@ -68,8 +104,6 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="recover-all-dangling-branches", doc="Recover all dangling branches", optional = true)
     public boolean recoverAllDanglingBranches = false;
 
-
-
     /**
      * The assembly graph can be quite complex, and could imply a very large number of possible haplotypes.  Each haplotype
      * considered requires N PairHMM evaluations if there are N reads across all samples.  In order to control the
@@ -117,6 +151,10 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="max-unpruned-variants", doc = "Maximum number of variants in graph the adaptive pruner will allow", optional = true)
     public int maxUnprunedVariants = 100;
 
+    @Advanced
+    @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
+    public boolean debugAssembly;
+
     @Hidden
     @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;
@@ -127,11 +165,21 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="graph-output", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
     public String graphOutput = null;
 
+    @Hidden
+    @Argument(fullName = CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME, doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
+    public boolean captureAssemblyFailureBAM = false;
+
     //---------------------------------------------------------------------------------------------------------------
     //
     // Read Error Corrector Related Parameters
     //
     // ---------------------------------------------------------------------------------------------------------------
+    /**
+     * Enabling this argument may cause fundamental problems with the assembly graph itself.
+     */
+    @Hidden
+    @Argument(fullName = ERROR_CORRECT_READS_LONG_NAME, doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    public boolean errorCorrectReads = false;
 
     /**
      * Enabling this argument may cause fundamental problems with the assembly graph itself.

@@ -86,6 +86,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private final SampleList samplesList;
     private final Set<String> normalSamples;
 
+    private final boolean forceCallingAllelesPresent;
+
     private CachingIndexedFastaSequenceFile referenceReader;
     private ReadThreadingAssembler assemblyEngine;
     private ReadLikelihoodCalculationEngine likelihoodCalculationEngine;
@@ -124,13 +126,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
         normalSamples.forEach(this::checkSampleInBamHeader);
 
+        forceCallingAllelesPresent = MTAC.alleles != null;
+
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
-        trimmer.initialize(MTAC.assemblyRegionTrimmerArgs, header.getSequenceDictionary(), MTAC.debug,
-                MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
+        trimmer.initialize(MTAC.assemblerArgs, header.getSequenceDictionary(), forceCallingAllelesPresent, emitReferenceConfidence());
         referenceConfidenceModel = new SomaticReferenceConfidenceModel(samplesList, header, 0, genotypingEngine);  //TODO: do something classier with the indel size arg
     }
 
@@ -202,9 +205,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         removeUnmarkedDuplicates(originalAssemblyRegion);
 
-        final List<VariantContext> givenAlleles = MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ?
-                featureContext.getValues(MTAC.alleles).stream().filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList()) :
-                Collections.emptyList();
+        final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
+                .filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList());
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
@@ -332,7 +334,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
-        if ( MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
+        if ( forceCallingAllelesPresent ) {
             final VariantContext vcFromGivenAlleles = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(featureContext,
                     ref.getInterval(), MTAC.genotypeFilteredAlleles, MTAC.alleles);
             if( vcFromGivenAlleles != null ) {

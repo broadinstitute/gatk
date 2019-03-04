@@ -252,8 +252,8 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner){
-        finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, ! argumentCollection.doNotCorrectOverlappingBaseQualities);
-        if( argumentCollection.debug) {
+        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, ! argumentCollection.doNotCorrectOverlappingBaseQualities);
+        if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
         }
 
@@ -261,11 +261,11 @@ public final class AssemblyBasedCallerUtils {
         final SimpleInterval paddedReferenceLoc = getPaddedReferenceLoc(region, REFERENCE_PADDING_FOR_ASSEMBLY, referenceReader);
         final Haplotype referenceHaplotype = createReferenceHaplotype(region, paddedReferenceLoc, referenceReader);
 
-        final ReadErrorCorrector readErrorCorrector = argumentCollection.errorCorrectReads ?
+        final ReadErrorCorrector readErrorCorrector = argumentCollection.assemblerArgs.errorCorrectReads ?
                 new ReadErrorCorrector(argumentCollection.assemblerArgs.kmerLengthForReadErrorCorrection,
                         HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
                         argumentCollection.assemblerArgs.minObservationsForKmerToBeSolid,
-                        argumentCollection.debug,
+                        argumentCollection.assemblerArgs.debugAssembly,
                         fullReferenceWithPadding) :
                 null;
 
@@ -273,12 +273,12 @@ public final class AssemblyBasedCallerUtils {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding,
                                                                                         paddedReferenceLoc, givenAlleles, readErrorCorrector, header,
                                                                                         aligner);
-            assemblyResultSet.setDebug(argumentCollection.debug);
+            assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
         } catch (final Exception e){
             // Capture any exception that might be thrown, and write out the assembly failure BAM if requested
-            if (argumentCollection.captureAssemblyFailureBAM){
+            if (argumentCollection.assemblerArgs.captureAssemblyFailureBAM){
                 try (final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(new File("assemblyFailure.bam"), null, header, false, false, false)){
                     for (final GATKRead read : region.getReads()) {
                         writer.addAlignment(read.convertToSAMRecord(header));

@@ -195,7 +195,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
-                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy,
+                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.standardArgs.genotypeArgs.samplePloidy,
                     0, createOutputVariantIndex);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);

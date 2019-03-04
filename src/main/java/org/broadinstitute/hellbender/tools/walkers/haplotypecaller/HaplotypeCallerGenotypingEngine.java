@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 /**
  * HaplotypeCaller's genotyping strategy implementation.
  */
-public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<HaplotypeCallerArgumentCollection> {
+public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
 
     public static final int ALLELE_EXTENSION = 2;
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
@@ -48,6 +48,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<HaplotypeC
 
     protected final boolean doPhysicalPhasing;
 
+    private final HaplotypeCallerArgumentCollection hcArgs;
+
     /**
      * {@inheritDoc}
      * @param configuration {@inheritDoc}
@@ -56,14 +58,15 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<HaplotypeC
      */
     public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples,
                                            final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
-        super(configuration, samples, afCalculatorProvider, false);
+        super(configuration.standardArgs, samples, afCalculatorProvider, false);
+        hcArgs = configuration;
         this.doPhysicalPhasing = doPhysicalPhasing;
-        ploidyModel = new HomogeneousPloidyModel(samples,configuration.genotypeArgs.samplePloidy);
+        ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
         genotypingModel = new IndependentSampleGenotypesModel();
-        maxGenotypeCountToEnumerate = configuration.genotypeArgs.MAX_GENOTYPE_COUNT;
+        maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
-        snpHeterozygosity = configuration.genotypeArgs.snpHeterozygosity;
-        indelHeterozygosity = configuration.genotypeArgs.indelHeterozygosity;
+        snpHeterozygosity = configuration.standardArgs.genotypeArgs.snpHeterozygosity;
+        indelHeterozygosity = configuration.standardArgs.genotypeArgs.indelHeterozygosity;
     }
 
     @Override
@@ -171,7 +174,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<HaplotypeC
 
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
 
-            if( configuration.debug && logger != null ) {
+            if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }
 
@@ -432,7 +435,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<HaplotypeC
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
         // event maps in the Haplotype objects!
-        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug, maxMnpDistance);
+        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, maxMnpDistance);
 
         if ( inGGAMode ) {
             startPosKeySet.clear();
@@ -460,7 +463,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<HaplotypeC
         // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
         // or the user want to use the contamination filtered set for annotations.
         // Otherwise (else part) we need to do it again.
-        if (configuration.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
+        if (hcArgs.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
             readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
             readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingReads(loc);
         } else {
