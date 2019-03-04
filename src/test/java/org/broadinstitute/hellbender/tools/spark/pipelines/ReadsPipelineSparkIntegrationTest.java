@@ -88,7 +88,8 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-    @Test(dataProvider = "ReadsPipeline", groups = "spark")
+    // disabled pending https://github.com/broadinstitute/gatk/issues/5680
+    @Test(enabled = false, dataProvider = "ReadsPipeline", groups = "spark")
     public void testReadsPipelineSpark(PipelineTest params) throws IOException {
         File outFile = BaseTest.createTempFile("readSparkPipelineTest", ".vcf");
         File outFileBam = BaseTest.createTempFile("readSparkPipelineTest", params.outputExtension);
