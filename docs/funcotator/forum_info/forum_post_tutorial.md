@@ -43,9 +43,10 @@ This page explains what **Funcotator** is and how to run it.
         4. [2.2.2 - --annotation-default](#2.2.4)
         5. [2.2.1 - --annotation-override](#2.2.5)
         6. [2.2.2 - --allow-hg19-gencode-b37-contig-matching](#2.2.6)
-3. [3.0 Known Issues](#3)
-4. [4.0 Github](#4)
-5. [5.0 Tool Documentation](#5)
+3. [3.0 FAQ](#3)
+4. [4.0 Known Issues](#4)
+5. [5.0 Github](#5)
+6. [6.0 Tool Documentation](#6)
 
 ----
 
@@ -114,7 +115,7 @@ Versioned gzip archives of data source files are provided here:
 
 <a name="1.1.2.2"></a>
 ### 1.1.2.2 - gnomAD
-The pre-packaged data sources include a subset of gnomAD, a large database of known variants.  This subset contains a greatly reduced subset of the INFO fields, primarily containing allele frequency data.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.  These two data sources are not equivalent and for complete coverage using gnomAD, we recommend annotating with both.
+The pre-packaged data sources include a subset of gnomAD, a large database of known variants.  This subset contains a greatly reduced subset of INFO fields, primarily containing allele frequency data.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.  These two data sources are not equivalent and for complete coverage using gnomAD, we recommend annotating with both.
 Due to the size of gnomAD, it cannot be included in the data sources package directly.  Instead, the configuration data are present and point to a Google bucket in which
 the gnomAD data reside.  This will cause [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") to actively connect to that bucket when it is run.  
 For this reason, **gnomAD is disabled by default**.
@@ -672,17 +673,35 @@ To run Funcotator without this hg19/b37 matching:
 ```
 ./gatk Funcotator --variant variants.vcf --reference Homo_sapiens_assembly19.fasta --ref-version hg19 --data-sources-path funcotator_dataSources.v1.2.20180329 --output variants.funcotated.maf --output-file-format MAF --allow-hg19-gencode-b37-contig-matching false
 ```
-
 <a name="3"></a>
-## 3 - Known Issues
-The current list of known open issues can be found on the GATK github page [here](https://github.com/broadinstitute/gatk/labels/Funcotator).
+## 3 - FAQ
+### Why do I not get annotations from my favorite data source on my favorite variant?
+This almost always happens when the data source does not overlap the variant.  Commonly a variant that is not within a gene will not be annotated by data sources because they are not in the region that the data sources cover (e.g. when the `VariantClassification` is `IGR`, `FIVE_PRIME_FLANK`, `COULD_NOT_DETERMINE`, etc.).
+This can also happen if the given reference file does not match the data sources' reference (for the pre-packaged data sources either `hg19`/`b37` or `hg38`).  In this case, Funcotator will produce a large obnoxious warning:
+
+```
+  _ _ _  __        ___    ____  _   _ ___ _   _  ____   _ _ _ 
+ | | | | \ \      / / \  |  _ \| \ | |_ _| \ | |/ ___| | | | |
+ | | | |  \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _  | | | |
+ |_|_|_|   \ V  V / ___ \|  _ <| |\  || || |\  | |_| | |_|_|_|
+ (_|_|_)    \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____| (_|_|_)
+--------------------------------------------------------------------------------
+Only IGRs were produced for this dataset.  This STRONGLY indicates that this   
+run was misconfigured.     
+You MUST check your data sources to make sure they are correct for these data.
+================================================================================
+```
 
 <a name="4"></a>
-## 4 - Github
-Funcotator is developed as part of GATK.  The GATK github page is [here](https://github.com/broadinstitute/gatk/).
+## 4 - Known Issues
+The current list of known open issues can be found on the GATK github page [here](https://github.com/broadinstitute/gatk/labels/Funcotator).
 
 <a name="5"></a>
-## 5 - Tool Documentation
+## 5 - Github
+Funcotator is developed as part of GATK.  The GATK github page is [here](https://github.com/broadinstitute/gatk/).
+
+<a name="6"></a>
+## 6 - Tool Documentation
 Tool documentation is written in the source code for Funcotator to better explain the options for running and some details of its features.
 The tool documentation for Funcotator is [here](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php).
 
