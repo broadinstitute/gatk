@@ -181,18 +181,18 @@ after_success:
     $GCLOUD_HOME/gcloud components -q update gsutil;
     gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
     ./gradlew bundle;
-    ZIP_FILE="$(ls build/ | grep SNAPSHOT.zip)";
+    ZIP_FILE="$(ls build/ | grep '^gatk.*.zip$' | grep -iv python)";
     echo "Uploading zip to gs://gatk-nightly-builds/";
     $GCLOUD_HOME/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
 
     sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
     DOCKER_TAG=$(docker images -q | head -n 1);
-    DATE=`date +%Y-%m-%d`;
-    DOCKER_UPLOAD=broadinstitute/gatk-nightly:$DATE-$(git describe)-SNAPSHOT;
+    DATE=$(date +%Y-%m-%d);
+    DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:$DATE-$(git describe)-NIGHTLY-SNAPSHOT;
 
-    echo "Pushing Docker image";
-    docker tag $DOCKER_TAG $DOCKER_UPLOAD;
-    docker push $DOCKER_UPLOAD;
+    echo "Pushing Nightly Docker image";
+    docker tag $DOCKER_TAG $DOCKER_NIGHTLY_TAG;
+    docker push $DOCKER_NIGHTLY_TAG;
   fi;
 after_failure:
 - dmesg | tail -100
