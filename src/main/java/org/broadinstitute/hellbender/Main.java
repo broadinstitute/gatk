@@ -340,7 +340,7 @@ public class Main {
 
         if (args.length < 1 || args[0].equals("-h") || args[0].equals("--help")) {
             printUsage(System.out, classes, commandLineName);
-        } else if ( args.length == 1 && (args[0].equals("-" + SpecialArgumentsCollection.VERSION_FULLNAME) || args[0].equals("--" + SpecialArgumentsCollection.VERSION_FULLNAME))) {
+        } else if ( Arrays.stream(args).anyMatch(arg -> arg.equals("-" + SpecialArgumentsCollection.VERSION_FULLNAME) || arg.equals("--" + SpecialArgumentsCollection.VERSION_FULLNAME)) ) {
             printVersionInfo(System.out);
         } else {
             if (simpleNameToClass.containsKey(args[0])) {
