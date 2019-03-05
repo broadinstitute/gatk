@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Iterator;
 
-public class ExampleMultiplePassVariantWalkerIntegrationTest extends CommandLineProgramTest {
+public class ExampleTwoPassVariantWalkerIntegrationTest extends CommandLineProgramTest {
     @Test
     public void test() {
         final File outputVcf = BaseTest.createTempFile("output", "vcf");
@@ -35,8 +35,8 @@ public class ExampleMultiplePassVariantWalkerIntegrationTest extends CommandLine
                 final VariantContext after = afterIterator.next();
 
                 Assert.assertEquals(before.getAttributeAsDouble(GATKVCFConstants.QUAL_BY_DEPTH_KEY, -1.0),
-                        after.getAttributeAsDouble(ExampleMultiplePassVariantWalker.COPY_OF_QD_KEY_NAME, -2.0));
-                Assert.assertTrue(after.getAttributeAsDouble(ExampleMultiplePassVariantWalker.QD_DISTANCE_FROM_MEAN, -1.0) > 0);
+                        after.getAttributeAsDouble(ExampleTwoPassVariantWalker.COPY_OF_QD_KEY_NAME, -2.0));
+                Assert.assertTrue(after.getAttributeAsDouble(ExampleTwoPassVariantWalker.QD_DISTANCE_FROM_MEAN, -1.0) > 0);
             }
 
             Assert.assertTrue(! afterIterator.hasNext() && ! beforeIterator.hasNext());

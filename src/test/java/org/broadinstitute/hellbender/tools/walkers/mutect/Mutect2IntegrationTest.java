@@ -535,7 +535,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(VariantContext::isBiallelic)
                 .filter(vc -> {
                     final int[] AD = vc.getGenotype(0).getAD();
-                    return MathUtils.sum(AD) > 20 && AD[1] > AD[0];
+                    return MathUtils.sum(AD) > 30 && AD[1] > AD[0];
                 }).collect(Collectors.toList());
 
         Assert.assertTrue(highAlleleFractionFilteredVariantsAtFivePercent.isEmpty());

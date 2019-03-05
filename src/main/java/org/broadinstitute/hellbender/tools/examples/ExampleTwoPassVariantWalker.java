@@ -30,7 +30,7 @@ import java.util.List;
         programGroup = ExampleProgramGroup.class,
         omitFromCommandLine = true
 )
-public class ExampleMultiplePassVariantWalker extends TwoPassVariantWalker {
+public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output vcf", optional = true)
     private File outputVcf = null;

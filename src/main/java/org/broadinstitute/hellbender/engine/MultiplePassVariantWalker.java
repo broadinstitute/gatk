@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
@@ -26,13 +25,14 @@ public abstract class MultiplePassVariantWalker extends VariantWalker {
         final CountingVariantFilter countingVariantFilter = makeVariantFilter();
         final CountingReadFilter readFilter = makeReadFilter();
 
-        for (final MutableInt n = new MutableInt(0); n.getValue() < numberOfPasses(); n.increment()) {
-            logger.info("Starting pass " + n.toString() + " through the variants");
-            traverseVariants(countingVariantFilter, readFilter, (vc, rc, ref, fc) -> nthPassApply(vc, rc, ref, fc, n.getValue()));
-            logger.info("Finished pass " + n.toString() + " through the variants");
+        for (int n = 0; n < numberOfPasses(); n++) {
+            logger.info("Starting pass " + n + " through the variants");
+            final int nCopyInLambda = n;
+            traverseVariants(countingVariantFilter, readFilter, (vc, rc, ref, fc) -> nthPassApply(vc, rc, ref, fc, nCopyInLambda));
+            logger.info("Finished pass " + n + " through the variants");
 
             // Process the data accumulated during the nth pass
-            afterNthPass(n.getValue());
+            afterNthPass(n);
         }
 
         logger.info(countingVariantFilter.getSummaryLine());

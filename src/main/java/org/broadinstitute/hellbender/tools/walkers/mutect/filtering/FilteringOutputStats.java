@@ -30,7 +30,6 @@ public class FilteringOutputStats {
     }
 
     public void recordCall(final ErrorProbabilities errorProbabilities, final double threshold) {
-
         final double errorProbability = errorProbabilities.getErrorProbability();
         final boolean filtered = errorProbability > threshold;
 
@@ -67,7 +66,6 @@ public class FilteringOutputStats {
     private Map<Mutect2VariantFilter, MutableDouble> makeEmptyFilterCounts() {
         return filters.stream().collect(Collectors.toMap(f -> f, f -> new MutableDouble(0)));
     }
-
 
     public void clear() {
         pass = 0;

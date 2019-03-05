@@ -118,24 +118,15 @@ public class SomaticClusteringModel {
                 }
 
                 final double[] clusterPosteriors = clusterProbabilities(datum);
-
                 final int[] indices = IntStream.range(0, clusters.size() + 1).toArray();
                 final int clusterIndex = new EnumeratedIntegerDistribution(rng.getRandomGenerator(), indices, clusterPosteriors).sample();
                 assignDatum(datumIndex, clusterIndex);
-
             }
 
             pruneEmptyClusters();
-
             final List<List<Datum>> dataByCluster = clusters.stream().map(c -> new ArrayList<Datum>()).collect(Collectors.toList());
-            for (final MutableInt datumIndex = new MutableInt(0); datumIndex.getValue() < clusterAssignments.size(); datumIndex.increment()) {
-                clusterAssignments.get(datumIndex.getValue()).ifPresent(c -> dataByCluster.get(c).add(data.get(datumIndex.getValue())));
-            }
-
-            for (int clusterIndex = 0; clusterIndex < clusters.size(); clusterIndex++) {
-                clusters.get(clusterIndex).learn(dataByCluster.get(clusterIndex));
-            }
-
+            new IndexRange(0, clusterAssignments.size()).forEach(n -> clusterAssignments.get(n).ifPresent(c -> dataByCluster.get(c).add(data.get(n))));
+            new IndexRange(0, clusters.size()).forEach(c -> clusters.get(c).learn(dataByCluster.get(c)));
             learnWeightsAndPriors();
         }
 

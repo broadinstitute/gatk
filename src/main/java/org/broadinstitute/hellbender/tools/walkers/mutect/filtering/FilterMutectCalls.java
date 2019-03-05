@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -128,6 +129,7 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
                                 final ReferenceContext referenceContext,
                                 final FeatureContext featureContext,
                                 final int n) {
+        ParamUtils.isPositiveOrZero(n, "Passes must start at the 0th pass.");
         if (n < NUMBER_OF_LEARNING_PASSES) {
             filteringEngine.accumulateData(variant);
         } else if (n == NUMBER_OF_LEARNING_PASSES) {

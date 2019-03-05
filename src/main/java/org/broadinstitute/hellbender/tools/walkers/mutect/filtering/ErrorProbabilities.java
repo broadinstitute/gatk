@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -15,17 +16,8 @@ public final class ErrorProbabilities {
 
     public ErrorProbabilities(final List<Mutect2VariantFilter> filters, final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
         probabilitiesByFilter = filters.stream().collect(Collectors.toMap(f -> f, f -> f.errorProbability(vc, filteringEngine)));
-
-        probabilitiesByType = new EnumMap<>(ErrorType.class);
-        for (final ErrorType type : ErrorType.values()) {
-            probabilitiesByType.put(type, 0.0);
-        }
-
-        for (final Mutect2VariantFilter filter : filters) {
-            final double probability = filter.errorProbability(vc, filteringEngine);
-            probabilitiesByFilter.put(filter, probability);
-            probabilitiesByType.compute(filter.errorType(), (type,prob) -> Math.max(prob, probability));
-        }
+        probabilitiesByType = Arrays.stream(ErrorType.values()).collect(Collectors.toMap(v -> v, v -> 0.0, (a,b) -> a, () -> new EnumMap<>(ErrorType.class)));
+        filters.forEach(f -> probabilitiesByType.compute(f.errorType(), (type,prob) -> Math.max(prob, probabilitiesByFilter.get(f))));
 
         // treat errors of different types as independent
         double trueProbability = 1;

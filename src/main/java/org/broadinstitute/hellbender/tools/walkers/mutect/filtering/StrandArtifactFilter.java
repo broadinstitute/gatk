@@ -43,7 +43,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     @Override
     public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
         final EStep probabilities = calculateArtifactProbabilities(vc, filteringEngine);
-        return probabilities.forwardArtifactProbability + probabilities.reverseArtifactProbability;
+        return probabilities.forwardArtifactResponsibility + probabilities.reverseArtifactResponsibility;
     }
 
     public EStep calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
@@ -77,15 +77,15 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
                 .filter(eStep -> eStep.getArtifactProbability() > 0.1).collect(Collectors.toList());
         final double totalArtifacts = potentialArtifacts.stream().mapToDouble(EStep::getArtifactProbability).sum();
         final double totalNonArtifacts = eSteps.stream().mapToDouble(e -> 1 - e.getArtifactProbability()).sum();
-        strandArtifactPrior = (totalArtifacts + ARTIFACT_PSEUDOCOUNT) / (totalNonArtifacts + NON_ARTIFACT_PSEUDOCOUNT);
+        strandArtifactPrior = (totalArtifacts + ARTIFACT_PSEUDOCOUNT) / (totalArtifacts + ARTIFACT_PSEUDOCOUNT + totalNonArtifacts + NON_ARTIFACT_PSEUDOCOUNT);
 
 
         final double artifactAltCount = potentialArtifacts.stream()
-                .mapToDouble(e -> e.forwardArtifactProbability * e.forwardAltCount + e.reverseArtifactProbability * e.reverseAltCount)
+                .mapToDouble(e -> e.forwardArtifactResponsibility * e.forwardAltCount + e.reverseArtifactResponsibility * e.reverseAltCount)
                 .sum();
 
         final double artifactDepth = potentialArtifacts.stream()
-                .mapToDouble(e -> e.forwardArtifactProbability * e.forwardCount + e.reverseArtifactProbability * e.reverseCount)
+                .mapToDouble(e -> e.forwardArtifactResponsibility * e.forwardCount + e.reverseArtifactResponsibility * e.reverseCount)
                 .sum();
 
         final double artifactBetaMean = (artifactAltCount + INITIAL_ALPHA_STRAND) / (artifactDepth + INITIAL_ALPHA_STRAND + INITIAL_BETA_STRAND);
@@ -97,8 +97,8 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
         final DoubleUnaryOperator objective = alpha -> {
             final double beta = (1 / artifactBetaMean - 1) * alpha;
             return potentialArtifacts.stream()
-                    .mapToDouble( e -> e.getForwardArtifactProbability() * artifactStrandLogLikelihood(e.forwardCount, e.forwardAltCount, alpha, beta)
-                            + e.getReverseArtifactProbability() * artifactStrandLogLikelihood(e.reverseCount, e.reverseAltCount, alpha, beta))
+                    .mapToDouble( e -> e.getForwardArtifactResponsibility() * artifactStrandLogLikelihood(e.forwardCount, e.forwardAltCount, alpha, beta)
+                            + e.getReverseArtifactResponsibility() * artifactStrandLogLikelihood(e.reverseCount, e.reverseAltCount, alpha, beta))
                     .sum();
         };
 
@@ -157,32 +157,32 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     }
 
     public static final class EStep {
-        private double forwardArtifactProbability;
-        private double reverseArtifactProbability;
+        private double forwardArtifactResponsibility;
+        private double reverseArtifactResponsibility;
         private int forwardCount;
         private int reverseCount;
         private int forwardAltCount;
         private int reverseAltCount;
 
-        public EStep(double forwardArtifactProbability, double reverseArtifactProbability, int forwardCount, int reverseCount, int forwardAltCount, int reverseAltCount) {
-            this.forwardArtifactProbability = forwardArtifactProbability;
-            this.reverseArtifactProbability = reverseArtifactProbability;
+        public EStep(double forwardArtifactResponsibility, double reverseArtifactResponsibility, int forwardCount, int reverseCount, int forwardAltCount, int reverseAltCount) {
+            this.forwardArtifactResponsibility = forwardArtifactResponsibility;
+            this.reverseArtifactResponsibility = reverseArtifactResponsibility;
             this.forwardCount = forwardCount;
             this.reverseCount = reverseCount;
             this.forwardAltCount = forwardAltCount;
             this.reverseAltCount = reverseAltCount;
         }
 
-        public double getForwardArtifactProbability() {
-            return forwardArtifactProbability;
+        public double getForwardArtifactResponsibility() {
+            return forwardArtifactResponsibility;
         }
 
-        public double getReverseArtifactProbability() {
-            return reverseArtifactProbability;
+        public double getReverseArtifactResponsibility() {
+            return reverseArtifactResponsibility;
         }
 
         public double getArtifactProbability() {
-            return getForwardArtifactProbability() + getReverseArtifactProbability();
+            return getForwardArtifactResponsibility() + getReverseArtifactResponsibility();
         }
 
         public int getForwardCount() {
