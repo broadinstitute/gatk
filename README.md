@@ -81,16 +81,13 @@ releases of the toolkit.
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
         * To "create" the conda environment:
             * If running from a zip or tar distribution, run the command ```conda env create -f gatkcondaenv.yml``` to
-              create the ```gatk``` environment, or the command ```conda env create -f gatkcondaenv.intel.yml``` to create
-              the ```gatk-intl``` environment.
+              create the ```gatk``` environment.
             * If running from a cloned repository, run ```./gradlew localDevCondaEnv```. This generates the Python
               package archive and conda yml dependency file(s) in the build directory, and also creates (or updates)
-              the local  ```gatk``` conda environment. (To create the ```gatk-intel``` conda environment once the files
-              have been generated, run the command ```conda env create -f gatkcondaenv.intel.yml```).
+              the local  ```gatk``` conda environment.
         * To "activate" the conda environment (the conda environment must be activated within the same shell from which
           GATK is run):
-             * Execute the shell command ```source activate gatk``` to activate the ```gatk``` environment, or
-               ```source activate gatk-intel``` to activate the ```gatk-intel``` environment.
+             * Execute the shell command ```source activate gatk``` to activate the ```gatk``` environment.
         * See the [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
           additional information about using and managing Conda environments.
 
