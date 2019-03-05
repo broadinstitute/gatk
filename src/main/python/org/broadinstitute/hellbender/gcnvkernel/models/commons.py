@@ -226,16 +226,18 @@ def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
     return outputs[-1] / size
 
 
-def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, model_var_name: str,
-                                                   num_samples: int = 250) -> Generator:
+def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, node,
+                                                   num_samples: int = 20) -> Generator:
     """Get a generator that returns samples of a precomputed model approximation for a specific variable in that model
 
     Args:
         model_approx: an instance of PyMC3 mean-field approximation
-        model_var_name: a stochastic node in the model
+        node: a stochastic node in the model
         num_samples: number of samples to draw
 
     Returns:
         A generator that will yield `num_samples` samples from an approximation to a posterior
     """
-    return (model_approx.sample()[model_var_name] for _ in range(num_samples))
+
+    sample = stochastic_node_mean_symbolic(model_approx, node, size=1)
+    return (sample.eval() for _ in range(num_samples))

@@ -154,12 +154,12 @@ class SampleDenoisingAndCallingPosteriorsWriter:
             self.denoising_model_approx)
 
         # compute approximate denoised copy ratios
-        denoising_copy_ratios_approx_generator = commons.get_sampling_generator_for_model_approximation(
-            model_approx=self.denoising_model_approx, model_var_name='denoised_copy_ratios')
-        denoised_copy_ratios_mean, denoised_copy_ratios_variance =\
-            math.calculate_mean_and_variance_online(denoising_copy_ratios_approx_generator)
-        denoised_copy_ratios_mean = np.transpose(denoised_copy_ratios_mean)
-        denoised_copy_ratios_std = np.transpose(np.sqrt(denoised_copy_ratios_variance))
+        _logger.info("Sampling and approximating posteriors for denoised copy ratios...")
+        denoising_copy_ratios_st_approx_generator = commons.get_sampling_generator_for_model_approximation(
+            model_approx=self.denoising_model_approx, node=self.denoising_model['denoised_copy_ratio_st'])
+        mu_denoised_copy_ratio_st, var_denoised_copy_ratio_st =\
+            math.calculate_mean_and_variance_online(denoising_copy_ratios_st_approx_generator)
+        std_denoised_copy_ratio_st = np.sqrt(var_denoised_copy_ratio_st)
 
         for si, sample_name in enumerate(self.denoising_calling_workspace.sample_names):
             sample_name_comment_line = [io_consts.sample_name_sam_header_prefix + sample_name]
@@ -201,20 +201,20 @@ class SampleDenoisingAndCallingPosteriorsWriter:
                 write_shape_info=False)
 
             # write denoised copy ratio means
-            denoised_copy_ratio_mu_s = denoised_copy_ratios_mean[:, si]
+            mu_denoised_copy_ratio_t = mu_denoised_copy_ratio_st[si, :]
             io_commons.write_ndarray_to_tsv(
                 os.path.join(sample_posterior_path, io_consts.default_denoised_copy_ratios_mean_tsv_filename),
-                denoised_copy_ratio_mu_s,
+                mu_denoised_copy_ratio_t,
                 extra_comment_lines=sample_name_comment_line,
                 header=io_consts.denoised_copy_ratio_mean_column_name,
                 write_shape_info=False
             )
 
             # write denoised copy ratio standard deviations
-            denoised_copy_ratio_std_s = denoised_copy_ratios_std[:, si]
+            std_denoised_copy_ratio_t = std_denoised_copy_ratio_st[si, :]
             io_commons.write_ndarray_to_tsv(
                 os.path.join(sample_posterior_path, io_consts.default_denoised_copy_ratios_std_tsv_filename),
-                denoised_copy_ratio_std_s,
+                std_denoised_copy_ratio_t,
                 extra_comment_lines=sample_name_comment_line,
                 header=io_consts.denoised_copy_ratio_std_column_name,
                 write_shape_info=False
