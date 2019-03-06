@@ -103,7 +103,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
 
     @Advanced
     @Argument(fullName = SMITH_WATERMAN_LONG_NAME, doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
-    public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.FASTEST_AVAILABLE;
+    public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
 
     @Argument(fullName = CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME)
     public boolean doNotCorrectOverlappingBaseQualities = false;
