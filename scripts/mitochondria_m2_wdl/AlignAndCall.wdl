@@ -176,7 +176,7 @@ task GetContamination {
   Int map_qual = 30
   Float vaf = 0.01
 
-  String basename = basename(input_bam)
+  String basename = basename(input_bam, ".bam")
 
   # runtime
   Int? preemptible_tries
