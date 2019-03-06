@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  */
 public abstract class LocusWalker extends GATKTool {
 
-    @Argument(fullName = "maxDepthPerSample", shortName = "maxDepthPerSample", doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    @Argument(fullName = "max-depth-per-sample", shortName = "max-depth-per-sample", doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
