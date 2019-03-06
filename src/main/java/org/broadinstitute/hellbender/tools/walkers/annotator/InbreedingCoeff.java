@@ -33,6 +33,7 @@ import java.util.*;
  * <h3>Details</h3>
  * <p>The output is the inbreeding coefficient 'F' (fixation) statistic, which for large sample sizes converges to the probability
  * that an individual's two alleles are identical by descent, provided that inbreeding is the only source of deviation from Hardy-Weinberg equilibrium.
+ * If this assumption is not true F may be negative and the excess heterozygosity often indicates an artifactual variant.
  * It is calculated as F = 1 - (# of het genotypes)/(# of het genotypes expected under Hardy-Weinberg equilibrium).  The number of het genotypes expeced under Hardy-Weinberg equilibrium
  * is 2*(# of samples)*(ref allele frequency)*(alt allele frequency), where allele frequencies are calculated from the samples' genotypes.</p>
  *
