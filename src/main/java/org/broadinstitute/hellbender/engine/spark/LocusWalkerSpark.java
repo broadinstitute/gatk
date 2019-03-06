@@ -30,7 +30,7 @@ import java.util.stream.StreamSupport;
 public abstract class LocusWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "max-depth-per-sample", shortName = "max-depth-per-sample", doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    @Argument(fullName = LocusWalker.MAX_DEPTH_PER_SAMPLE_NAME, shortName = LocusWalker.MAX_DEPTH_PER_SAMPLE_NAME, doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
@@ -57,9 +57,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
     /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */
     protected final LIBSDownsamplingInfo getDownsamplingInfo() {
         if (maxDepthPerSample < 0) {
-            throw new CommandLineException.BadArgumentValue("maxDepthPerSample",
-                    String.valueOf(maxDepthPerSample),
-                    "should be a positive number");
+            throw new CommandLineException.BadArgumentValue(LocusWalker.MAX_DEPTH_PER_SAMPLE_NAME, String.valueOf(maxDepthPerSample), "should be a positive number");
         }
         return (maxDepthPerSample == 0) ? LocusIteratorByState.NO_DOWNSAMPLING : new LIBSDownsamplingInfo(true, maxDepthPerSample);
     }
