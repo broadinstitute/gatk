@@ -11,8 +11,8 @@ import java.util.stream.IntStream;
  * This can be useful for finding the most significant local minima in noisy data and can be used
  * to smooth out less significant local minima that may be induced by noise.
  * Algorithm is adapted from
- * <a href="https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html">
- *     https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html</a>.
+ * <a href="https://www.csc.kth.se/~weinkauf/notes/persistence1d.html">
+ *     https://www.csc.kth.se/~weinkauf/notes/persistence1d.html</a>.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
