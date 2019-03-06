@@ -6,7 +6,7 @@ set -e
 # Gatk Base features
 BASE_REPO=jamesemery
 BASE_PROJECT=gatknightly
-BASE_VERSION=2.0.3
+BASE_VERSION=2.0.4
 
 # Gatk Python and R image features
 INTERMEDIATE_REPO=jamesemery
