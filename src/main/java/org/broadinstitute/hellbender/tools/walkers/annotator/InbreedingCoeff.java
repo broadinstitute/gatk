@@ -68,13 +68,6 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements Standar
     }
 
     @Override
-    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
-        if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
-            warning.warn("InbreedingCoeff annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
-        }
-    }
-
-    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {

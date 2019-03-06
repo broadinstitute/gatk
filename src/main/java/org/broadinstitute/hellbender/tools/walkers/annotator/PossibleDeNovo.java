@@ -52,18 +52,13 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
     }
 
-    public PossibleDeNovo(final Set<String> founderIds){
-        super(founderIds);
-        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
-    }
-
     public PossibleDeNovo(final File pedigreeFile){
         super(pedigreeFile);
         mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
     }
 
     public PossibleDeNovo(){
-        this((Set<String>) null);
+        this( null);
     }
 
     @Override

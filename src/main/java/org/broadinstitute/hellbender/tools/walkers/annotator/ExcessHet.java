@@ -60,13 +60,6 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
         super(pedigreeFile);
     }
 
-    @Override
-    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
-        if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
-            warning.warn("ExcessHet annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
-        }
-    }
-
     public ExcessHet() {
         this((Set<String>) null);
     }

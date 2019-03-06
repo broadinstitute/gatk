@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.samples.Trio;
@@ -24,6 +25,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     private Collection<String> founderIds;
     private File pedigreeFile = null;
     private boolean hasAddedPedigreeFounders = false;
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
     protected GenotypesContext getFounderGenotypes(VariantContext vc) {
         if ((pedigreeFile!= null) && (!hasAddedPedigreeFounders)) {
@@ -93,5 +95,9 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     public void validateArguments() {
         validateArguments(founderIds, pedigreeFile);
     }
-    abstract void validateArguments(final Collection<String> founderIds, final File pedigreeFile);
+    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
+        if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
+            warning.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
+        }
+    }
 }
