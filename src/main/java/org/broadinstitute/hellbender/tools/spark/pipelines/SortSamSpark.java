@@ -23,39 +23,38 @@ import java.util.List;
 /**
  * SortSam on Spark (works on SAM/BAM/CRAM)
  *
- * <h4>Overview</h4>
- * <p>A <a href='https://software.broadinstitute.org/gatk/blog?id=23420'>Spark</a> implementation of <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_SortSam.php'>Picard SortSam</a>. The Spark version can run in parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching the output of the single-core Picard version. See <a href="https://software.broadinstitute.org/gatk/blog?id=23420">Blog#23420</a> for performance benchmarks.</p>
+ * <p>A Spark implementation of <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_SortSam.php'>Picard SortSam</a>. The Spark version can run in parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching the output of the single-core Picard version. See <a href="https://software.broadinstitute.org/gatk/blog?id=23420">Blog#23420</a> for performance benchmarks.</p>
  *
  * <p>The tool sorts reads by coordinate order by default or alternatively by read name, the QNAME field, if asked with the '-SO queryname' option. The contig ordering in the reference dictionary defines coordinate order, and the tool uses the sequence dictionary represented by the @SQ header lines or that of the optionally provided reference to sort reads by the RNAME field. For those reads mapping to a contig, coordinate sorting further orders reads by the POS field of the SAM record, which contains the leftmost mapping position.</p>
  *
- *  <p>Queryname-sorted alignments are grouped first by readname and then are deterministically ordered among equal readnames by read flags including orientation, secondary, and supplemntary record flags (See {@link htsjdk.samtools.SAMRecordQueryNameComparator#compare(SAMRecord, SAMRecord)}} for details). For paired-end reads, reads in the pair share the same queryname. Because aligners can generate secondary and supplementary alignments, queryname groups can consists of, e.g. more than two records for a paired-end pair.</p>
+ *  <p>To queryname-sort, the tool first groups by readname and then deterministically sorts within a readname set by orientation, secondary and supplementary SAM flags. For paired-end reads, reads in the pair share the same queryname. Because aligners can generate secondary and supplementary alignments, queryname groups can consists of, e.g. more than two records for a paired-end pair.</p>
  *
- * <h4>Usage examples</h4>
+ * <h3>Usage examples</h3>
  * Coordinate-sort aligned reads using all cores available locally
  * <pre>
- * gatk SortSamSpark \<br />
- * -I aligned.bam \<br />
+ * gatk SortSamSpark \
+ * -I aligned.bam \
  * -O coordinatesorted.bam
  * </pre>
  *
  * Queryname-sort reads using four cores on a Spark cluster
  * <pre>
- * gatk SortSamSpark \<br />
- * -I coordinatesorted.bam \<br />
- * -SO queryname \<br />
+ * gatk SortSamSpark \
+ * -I coordinatesorted.bam \
+ * -SO queryname \
  * -O querygroupsorted.bam \
  * --
- *  --spark-runner SPARK \<br />
- *  --spark-master <SPARK-CLUSTER-NAME>\<br />
- *  --num-executors 5 \<br />
+ *  --spark-runner SPARK \
+ *  --spark-master <SPARK-CLUSTER-NAME>\
+ *  --num-executors 5 \
  *  --executor-cores 4
  * </pre>
  *
  * <h3>Notes</h3>
- * <ul>
+ * <ol>
  *     <li>This Spark tool requires a significant amount of disk operations. Run with both the input data and outputs on high throughput SSDs when possible. When pipelining this tool on Google Compute Engine instances, for best performance requisition machines with LOCAL SSDs.  </li>
  *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See the discussion at https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337 for details.</li>
- * </ul>
+ * </ol>
  */
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",

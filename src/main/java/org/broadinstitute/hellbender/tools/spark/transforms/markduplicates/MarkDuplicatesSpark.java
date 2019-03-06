@@ -37,17 +37,16 @@ import java.util.*;
 /**
  * MarkDuplicates on Spark
  *
- * <h4>Overview</h4>
  * <p>This is a Spark implementation of <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_MarkDuplicates.php'>Picard MarkDuplicates</a> that allows the tool to be run in parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching the output of the non-Spark Picard version of the tool. Since the tool requires holding all of the readnames in memory while it groups read information, machine configuration and starting sort-order impact tool performance. </p>
  *
  * Here are some differences of note between MarkDuplicatesSpark and Picard MarkDuplicates.
  *
  * <ul>
- *  <li>FMarkDuplicatesSpark processing can replace both the MarkDuplicates and SortSam steps of the Best Practices <a href="https://software.broadinstitute.org/gatk/documentation/article?id=7899#2">single sample pipeline </a>. After flagging duplicate sets, the tool automatically coordinate-sorts the records. It is still necessary to subsequently run SetNmMdAndUqTags before running BQSR. </li>
+ *  <li>MarkDuplicatesSpark processing can replace both the MarkDuplicates and SortSam steps of the Best Practices <a href="https://software.broadinstitute.org/gatk/documentation/article?id=7899#2">single sample pipeline</a>. After flagging duplicate sets, the tool automatically coordinate-sorts the records. It is still necessary to subsequently run SetNmMdAndUqTags before running BQSR. </li>
  *  <li>The tool is optimized to run on queryname-grouped alignments. If provided coordinate-sorted alignments, the tool will spend additional time first queryname sorting the reads internally. This can result in the tool being up to 2x slower processing under some circumstances.</li>
- *  <li>Due to MarkDuplicatesSpark queryname-sorting coordinate-sorted inputs internally at the start, the tool produces identical results regardless of the input sort-order. That is, it will flag duplicates sets that include secondary, and supplementary and unmapped mate records no matter the sort-order of the input. This differs from how Picard MarkDuplicates behaves given the differently sorted inputs. <li/>
- *  <li>CCollecting duplicate metrics slows down performance and thus the metrics collection is optional and must be specified for the Spark version of the tool with '-M'. It is possible to collect the metrics with the standalone Picard tool, <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_EstimateLibraryComplexity.php'>EstimateLibraryComplexity</a>.</li>
- *  <li>MarkDuplicatesSpark is optimized to run locally on a single machine by leveraging core parallelism that MarkDuplicates and SortSam cannot. It will typically run faster than MarkDuplicates and SortSam by a factor of 15% over the same data at 2 cores and will scale linearly to upwards of 16 cores. This means that the tool can be used to speedup MarkDuplicates even without access to a Spark cluster.</li>
+ *  <li>Due to MarkDuplicatesSpark queryname-sorting coordinate-sorted inputs internally at the start, the tool produces identical results regardless of the input sort-order. That is, it will flag duplicates sets that include secondary, and supplementary and unmapped mate records no matter the sort-order of the input. This differs from how Picard MarkDuplicates behaves given the differently sorted inputs. </li>
+ *  <li>Collecting duplicate metrics slows down performance and thus the metrics collection is optional and must be specified for the Spark version of the tool with '-M'. It is possible to collect the metrics with the standalone Picard tool <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_EstimateLibraryComplexity.php'>EstimateLibraryComplexity</a>.</li>
+ *  <li>MarkDuplicatesSpark is optimized to run locally on a single machine by leveraging core parallelism that MarkDuplicates and SortSam cannot. It will typically run faster than MarkDuplicates and SortSam by a factor of 15% over the same data at 2 cores and will scale linearly to upwards of 16 cores. This means MarkDuplicatesSpark, even without access to a Spark cluster, is faster than MarkDuplicates.</li>
  * </ul>
  *
  * <p>For a typical 30x coverage WGS BAM, we recommend running on a machine with at least 16 GB. Memory usage scales with library complexity and the tool will need more memory for larger or more complex data. If the tool is running slowly it is possible Spark is running out of memory and is spilling data to disk excessively. If this is the case then increasing the memory available to the tool should yield speedup to a threshold; otherwise, increasing memory should have no effect beyond that threshold. </p>
@@ -56,19 +55,19 @@ import java.util.*;
  *
  * <p>See <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_MarkDuplicates.php'>MarkDuplicates documentation</a> for details on tool features and background information. </p>
  *
- * <h4>Usage example:</h4>
+ * <h3>Usage examples</h3>
  * Provide queryname-grouped reads to MarkDuplicatesSpark
  *     <pre>
- *      gatk MarkDuplicatesSpark <br />
- *            -I input.bam <br />
+ *      gatk MarkDuplicatesSpark \
+ *            -I input.bam \
  *            -O marked_duplicates.bam
  *     </pre>
  *
  * Additionally produce estimated library complexity metrics
  *     <pre>
- *     gatk MarkDuplicatesSpark <br />
- *             -I input.bam <br />
- *             -O marked_duplicates.bam <br />
+ *     gatk MarkDuplicatesSpark \
+ *             -I input.bam \
+ *             -O marked_duplicates.bam \
  *             -M marked_dup_metrics.txt
  *
  *     </pre>
@@ -76,45 +75,45 @@ import java.util.*;
  *
  * MarkDuplicatesSpark run locally specifying the removal of sequencing duplicates and tagging OpticalDuplicates
  *     <pre>
- *       gatk MarkDuplicatesSpark <br />
- *            -I input.bam <br />
- *            -O marked_duplicates.bam <br />
- *            --remove-sequencing-duplicates <br />
+ *       gatk MarkDuplicatesSpark \
+ *            -I input.bam \
+ *            -O marked_duplicates.bam \
+ *            --remove-sequencing-duplicates \
  *            --duplicate-tagging-policy OpticalOnly
  *     </pre>
  *
  *  MarkDuplicates run locally specifying the core input. Note if 'spark.executor.cores' is unset, Spark will use all available cores on the machine.
  *     <pre>
- *       gatk MarkDuplicatesSpark <br />
- *            -I input.bam <br />
- *            -O marked_duplicates.bam <br />
- *            -M marked_dup_metrics.txt <br />
+ *       gatk MarkDuplicatesSpark \
+ *            -I input.bam \
+ *            -O marked_duplicates.bam \
+ *            -M marked_dup_metrics.txt \
  *            --conf 'spark.executor.cores=5'
  *     </pre>
  *
  *  MarkDuplicates run on a Spark cluster of five executors  and with eight executor cores
  *     <pre>
- *       gatk MarkDuplicatesSpark <br />
- *            -I input.bam <br />
- *            -O marked_duplicates.bam <br />
- *            -M marked_dup_metrics.txt <br />
- *            -- <br />
- *            --spark-runner SPARK <br />
- *            --spark-master MASTER_URL <br />
- *            --num-executors 5 <br />
+ *       gatk MarkDuplicatesSpark \
+ *            -I input.bam \
+ *            -O marked_duplicates.bam \
+ *            -M marked_dup_metrics.txt \
+ *            -- \
+ *            --spark-runner SPARK \
+ *            --spark-master MASTER_URL \
+ *            --num-executors 5 \
  *            --executor-cores 8
  *     </pre>
  *
  *    Please see
- *    <a href='http://broadinstitute.github.io/picard/picard-metric-definitions.html#DuplicationMetrics'>MarkDuplicates</a>
+ *    <a href='http://broadinstitute.github.io/picard/picard-metric-definitions.html#DuplicationMetrics'>Picard DuplicationMetrics</a>
  *    for detailed explanations of the output metrics.
  *    <hr />
  *
- * <h3>Additional Notes</h3>
- * <ul>
+ * <h3>Notes</h3>
+ * <ol>
  *     <li>This Spark tool requires a significant amount of disk operations. Run with both the input data and outputs on high throughput SSDs when possible. When pipelining this tool on Google Compute Engine instances, for best performance requisition machines with LOCAL SSDs.  </li>
- *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See the discussion at https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337 for details.</li>
- * </ul>
+ *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See <a href="https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337">this forum discussion</a> for details.</li>
+ * </ol>
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
