@@ -144,14 +144,14 @@ public class BandPassActivityProfile extends ActivityProfile {
         for ( final ActivityProfileState superState : super.processState(justAddedState) ) {
             if ( superState.isActiveProb() > 0.0 ) {
                 for( int i = -filterSize; i <= filterSize; i++ ) {
-                    final SimpleInterval loc = getLocForOffset(justAddedState.getLoc(), i);
+                    final SimpleInterval loc = getLocForOffset(superState.getLoc(), i);
                     if ( loc != null ) {
                         final double newProb = superState.isActiveProb() * gaussianKernel[i + filterSize];
                         states.add(new ActivityProfileState(loc, newProb));
                     }
                 }
             } else {
-                states.add(justAddedState);
+                states.add(superState);
             }
         }
 
