@@ -185,7 +185,7 @@ after_success:
     echo "Uploading zip to gs://gatk-nightly-builds/";
     $GCLOUD_HOME/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
 
-    sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
+    bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
     DOCKER_TAG=$(docker images -q | head -n 1);
     DATE=$(date +%Y-%m-%d);
     DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:$DATE-$(git describe)-NIGHTLY-SNAPSHOT;
