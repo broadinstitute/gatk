@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.testutils.testers;
 import htsjdk.samtools.*;
 import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.FormatUtil;
-import htsjdk.samtools.util.TestUtil;
+import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
@@ -158,7 +155,7 @@ public class MarkDuplicatesSparkTester extends SamFileTester {
             Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedMetrics.ESTIMATED_LIBRARY_SIZE, "ESTIMATED_LIBRARY_SIZE does not match expected");
             Assert.assertEquals(observedMetrics.SECONDARY_OR_SUPPLEMENTARY_RDS, expectedMetrics.SECONDARY_OR_SUPPLEMENTARY_RDS, "SECONDARY_OR_SUPPLEMENTARY_RDS does not match expected");
         } finally {
-            TestUtil.recursiveDelete(getOutputDir());
+            IOUtil.recursiveDelete(getOutputDir().toPath());
         }
     }
 

@@ -209,7 +209,8 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1"));
     }
 
-    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
+    // test disabled until https://github.com/samtools/htsjdk/issues/1323 is resolved
+    @Test(enabled = false)
     public void testUncompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22uncompressed.bcf");
         final File outName = createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");

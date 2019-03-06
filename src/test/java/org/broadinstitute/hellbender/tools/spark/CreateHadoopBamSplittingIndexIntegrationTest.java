@@ -114,7 +114,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
     @Test
     public void testCreateWithBaiCreatesBai(){
         final File splittingIndex = getTempIndexFile();
-        final File baiIndex = IOUtils.replaceExtension(splittingIndex, BAMIndex.BAMIndexSuffix);
+        final File baiIndex = IOUtils.replaceExtension(splittingIndex, BAMIndex.BAI_INDEX_SUFFIX);
         Assert.assertFalse(baiIndex.exists());
         final ArgumentsBuilder args = getInputAndOutputArgs(SORTED_BAM, splittingIndex)
                 .add("--" + CreateHadoopBamSplittingIndex.CREATE_BAI_LONG_NAME);

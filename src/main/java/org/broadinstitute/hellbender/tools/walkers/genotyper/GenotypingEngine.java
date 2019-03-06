@@ -384,8 +384,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             } else {
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
-                final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(
-                        Allele.NON_REF_ALLELE);
+                final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
                 final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
 
                 siteIsMonomorphic &= !isPlausible;
