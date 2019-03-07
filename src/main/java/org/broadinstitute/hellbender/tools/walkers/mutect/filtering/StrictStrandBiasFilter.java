@@ -37,7 +37,7 @@ public class StrictStrandBiasFilter extends HardFilter {
                 });
 
     // filter if there is no alt evidence in the forward or reverse strand
-        return Math.min(altForwardCount.getValue(), altReverseCount.getValue()) >= minReadsOnEachStrand;
+        return Math.min(altForwardCount.getValue(), altReverseCount.getValue()) < minReadsOnEachStrand;
 }
 
     @Override
