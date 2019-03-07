@@ -176,7 +176,7 @@ task GetContamination {
   Int map_qual = 30
   Float vaf = 0.01
 
-  String basename = basename(input_bam)
+  String basename = basename(input_bam, ".bam")
 
   # runtime
   Int? preemptible_tries
@@ -193,7 +193,7 @@ task GetContamination {
   command {
   set -e
 
-  java -jar /usr/mtdnaserver/mitolib-0.1.0.jar haplochecker \
+  java -jar /usr/mtdnaserver/mitolib.jar haplochecker \
     --in ${input_bam} \
     --ref ${ref_fasta} \
     --out haplochecker_out \
@@ -218,7 +218,7 @@ CODE
     preemptible: select_first([preemptible_tries, 5])
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "gatkworkflows/mtdnaserver:1.0"
+    docker: "gatkworkflows/mtdnaserver:1.2"
   }
   output {
     File contamination_file = "haplochecker_out/${basename}.contamination.txt"
