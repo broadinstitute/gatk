@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -176,6 +177,15 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     public String getName() {
         return name;
     }
+
+    @Override
+    /**
+     * {@inheritDoc}
+     * Since {@link SimpleKeyXsvFuncotationFactory} keys off a gene name or transcript ID, we don't actually need
+     * any features to create annotations.
+     */
+    @VisibleForTesting
+    public boolean requiresFeatures() { return false; }
 
     @Override
     public LinkedHashSet<String> getSupportedFuncotationFields() {

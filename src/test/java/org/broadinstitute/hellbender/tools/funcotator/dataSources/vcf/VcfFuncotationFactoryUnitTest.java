@@ -192,6 +192,11 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testRequiresFeatures() {
+        Assert.assertTrue(createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3)).requiresFeatures());
+    }
+
+    @Test
     public void testGetType() {
         final VcfFuncotationFactory vcfFuncotationFactory = createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
         Assert.assertEquals(vcfFuncotationFactory.getType(), FuncotatorArgumentDefinitions.DataSourceType.VCF);
