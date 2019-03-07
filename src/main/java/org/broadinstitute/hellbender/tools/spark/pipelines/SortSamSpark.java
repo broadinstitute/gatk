@@ -43,7 +43,7 @@ import java.util.List;
  * -I coordinatesorted.bam \
  * -SO queryname \
  * -O querygroupsorted.bam \
- * --
+ * -- \
  *  --spark-runner SPARK \
  *  --spark-master <SPARK-CLUSTER-NAME>\
  *  --num-executors 5 \
