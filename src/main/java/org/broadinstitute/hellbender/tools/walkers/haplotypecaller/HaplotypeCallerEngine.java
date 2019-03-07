@@ -253,9 +253,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");
             }
             hcArgs.annotateAllSitesWithPLs = true;
-        } else if ( ! hcArgs.doNotRunPhysicalPhasing ) {
-            hcArgs.doNotRunPhysicalPhasing = true;
-            logger.info("Disabling physical phasing, which is supported only for reference-model confidence output");
         }
 
         if ( hcArgs.CONTAMINATION_FRACTION_FILE != null ) {
