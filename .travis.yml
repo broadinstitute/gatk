@@ -166,9 +166,9 @@ script:
   fi;
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/
-#$TRAVIS_BRANCH == master && 
+#$TRAVIS_BRANCH == master &&
+#docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
 - if [[ $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
-  #docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
   $GCLOUD_HOME/gcloud components -q update gsutil;
   gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
   ./gradlew bundle;
@@ -194,7 +194,6 @@ after_success:
     git tag master;
     ./gradlew uploadArchives; 
   fi;
-
 
 after_failure:
 - dmesg | tail -100
