@@ -30,8 +30,12 @@ import java.util.*;
  * higher the chance that some samples are related. If samples are known to be related, a pedigree file can be provided so
  * that the calculation is only performed on founders and offspring are excluded.</p>
  *
- * <h3>Statistical notes</h3>
- * <p>The calculation is a continuous generalization of the Hardy-Weinberg test for disequilibrium that works well with limited coverage per sample. The output is a Phred-scaled p-value derived from running the HW test for disequilibrium with PL values. See the <a href="http://www.broadinstitute.org/gatk/guide/article?id=4732">method document on statistical tests</a> for a more detailed explanation of this statistical test.</p>
+ * <h3>Details</h3>
+ * <p>The output is the inbreeding coefficient 'F' (fixation) statistic, which for large sample sizes converges to the probability
+ * that an individual's two alleles are identical by descent, provided that cosanguinuity is the only source of deviation from Hardy-Weinberg equilibrium.
+ * If this assumption is not true F may be negative and the excess heterozygosity often indicates an artifactual variant.
+ * It is calculated as F = 1 - (# of het genotypes)/(# of het genotypes expected under Hardy-Weinberg equilibrium).  The number of het genotypes expeced under Hardy-Weinberg equilibrium
+ * is 2*(# of samples)*(ref allele frequency)*(alt allele frequency), where allele frequencies are calculated from the samples' genotypes.</p>
  *
  * <h3>Caveats</h3>
  * <ul>
