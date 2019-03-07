@@ -164,6 +164,26 @@ script:
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;
   fi;
+# This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
+# This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/
+- if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
+  docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
+  $GCLOUD_HOME/gcloud components -q update gsutil;
+  gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
+  ./gradlew bundle;
+  ZIP_FILE="$(ls build/ | grep '^gatk.*.zip$' | grep -iv python)";
+  echo "Uploading zip to gs://gatk-nightly-builds/";
+  $GCLOUD_HOME/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
+
+  bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u;
+  DOCKER_TAG=$(docker images -q | head -n 1);
+  DATE=$(date +%Y-%m-%d);
+  DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:$DATE-$(git describe)-NIGHTLY-SNAPSHOT;
+
+  echo "Pushing Nightly Docker image";
+  docker tag $DOCKER_TAG $DOCKER_NIGHTLY_TAG;
+  docker push $DOCKER_NIGHTLY_TAG;
+  fi;
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
@@ -174,18 +194,6 @@ after_success:
     ./gradlew uploadArchives; 
   fi;
 
-# This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
-# This also pokes the Dockerhub web api which is securely stored in the travis API with the variable "DOCKERHUB_URL"
-- if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
-    $GCLOUD_HOME/gcloud components -q update gsutil;
-    gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
-    ./gradlew bundle;
-    ZIP_FILE="$(ls build/ | grep .zip)";
-    echo "Uploading zip to gs://gatk-nightly-builds/";
-    $GCLOUD_HOME/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
-    echo "Triggering an automatic build on dockerhub";
-    curl -H "Content-Type:application/json" --data '{"build":true}' -X POST ${DOCKERHUB_URL};
-  fi;
 after_failure:
 - dmesg | tail -100
 after_script:

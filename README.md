@@ -103,7 +103,7 @@ releases of the toolkit.
 
 You can download and run pre-built versions of GATK4 from the following places:
 
-* A zip archive with everything you need to run GATK4 can be downloaded for each release from the [github releases page](https://github.com/broadinstitute/gatk/releases).
+* A zip archive with everything you need to run GATK4 can be downloaded for each release from the [github releases page](https://github.com/broadinstitute/gatk/releases). We also host unstable archives generated nightly in the Google bucket gs://gatk-nightly-builds.
 
 * You can download a GATK4 docker image from [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). We also host unstable nightly development builds on [this dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk-nightly/).
     * Within the docker image, run gatk commands as usual from the default startup directory (/gatk).
