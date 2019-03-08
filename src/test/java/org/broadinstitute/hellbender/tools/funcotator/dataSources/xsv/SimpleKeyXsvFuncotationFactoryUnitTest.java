@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
@@ -14,7 +15,6 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -424,5 +424,19 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         Assert.assertTrue(funcotation instanceof TableFuncotation, "Got back a funcotation of the wrong type");
         final TableFuncotation tableFuncotation = (TableFuncotation)funcotation;
         Assert.assertEquals(tableFuncotation.get(defaultName + "_Beatle"), "Harrison", "Wrong value for the Beatle column in returned funcotation");
+    }
+
+    @Test
+    public void testRequiresFeatures() {
+        final SimpleKeyXsvFuncotationFactory simpleKeyXsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(
+                defaultName,
+                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                "VERSION",
+                ",",
+                0,
+                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+        );
+
+        Assert.assertFalse(simpleKeyXsvFuncotationFactory.requiresFeatures());
     }
 }

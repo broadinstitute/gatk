@@ -2503,4 +2503,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             Assert.assertEquals(funcotation.getHugoSymbol(), expectedGeneName, "Gene name not correct");
         }
     }
+
+    @Test
+    public void testRequiresFeatures() {
+        Assert.assertTrue(testMuc16SnpCreateFuncotationsFuncotationFactory.requiresFeatures());
+    }
 }

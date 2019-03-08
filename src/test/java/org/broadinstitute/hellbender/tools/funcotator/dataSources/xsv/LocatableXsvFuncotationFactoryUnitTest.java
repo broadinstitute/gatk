@@ -248,6 +248,11 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
+    @Test
+    public void testRequiresFeatures() {
+        Assert.assertTrue(new LocatableXsvFuncotationFactory(LocatableXsvFuncotationFactory.DEFAULT_NAME, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null).requiresFeatures());
+    }
+
     @Test(dataProvider = "provideForTestGetName")
     public void testGetName(final String name, final String expected) {
         final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory;

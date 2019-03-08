@@ -136,6 +136,12 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
     }
 
     /**
+     * @return {@code True} if this {@link DataSourceFuncotationFactory} requires features to create {@link Funcotation}s.  {@code False} otherwise.
+     */
+    @VisibleForTesting
+    public boolean requiresFeatures() { return true; }
+
+    /**
      * @return An ordered {@link LinkedHashSet} of the names of annotations that this Data Source supports.
      */
     public abstract LinkedHashSet<String> getSupportedFuncotationFields();
@@ -169,10 +175,14 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         Utils.nonNull(referenceContext);
         Utils.nonNull(featureContext);
 
-        // Query this funcotation factory to get the list of overlapping features.
-        final List<Feature> featureList = queryFeaturesFromFeatureContext(featureContext);
-
         final List<Funcotation> outputFuncotations;
+
+        // Query this funcotation factory to get the list of overlapping features.
+        // NOTE: This will only get features that are LOCATABLE!
+        //       This corresponds to requiresFeatures() returning `True`.
+        final List<Feature> featureList = requiresFeatures() ?
+                queryFeaturesFromFeatureContext(featureContext) :
+                Collections.emptyList();
 
         // If our featureList is compatible with this DataSourceFuncotationFactory, then we make our funcotations:
         if ( isFeatureListCompatible(featureList) ) {
@@ -203,12 +213,22 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      * Checks to see if the given featureList is compatible with this {@link DataSourceFuncotationFactory}.
      * Cues off of the feature type in the feature list and whether the given list contains any non-null features.
      * This method acts as a sanity-check before attempting to do any annotations on features.
+     * If this {@link DataSourceFuncotationFactory} does not require features as per {@link #requiresFeatures()}, then
+     * this method will always return {@code True}.
      * @param featureList {@link List} of {@link Feature} that might be applicable to this {@link DataSourceFuncotationFactory} for annotation.
      * @return {@code true} if the given {@code featureList} contains at least one non-null feature of type {@link #getAnnotationFeatureClass()}; {@code false} otherwise.
      */
     private boolean isFeatureListCompatible(final List<Feature> featureList) {
-        // Make sure these features can be annotated by this DataSourceFuncotationFactory:
+        // Make sure these features can be annotated by this DataSourceFuncotationFactory.
         // NOTE: We only check the first non-null element of the list for feature type:
+
+        // The feature list is compatible if we found a compatible feature
+        // OR
+        // if this DataSourceFuncotationFactory does not require features.
+        if ( !requiresFeatures() ) {
+            return true;
+        }
+
         boolean foundCompatibleFeature = false;
         for ( final Feature f : featureList ) {
             if (f != null) {

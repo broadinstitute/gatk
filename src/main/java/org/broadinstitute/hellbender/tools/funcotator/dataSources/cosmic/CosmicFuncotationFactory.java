@@ -203,6 +203,15 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     @Override
+    /**
+     * {@inheritDoc}
+     * Since {@link CosmicFuncotationFactory} primarily keys off a gene name, we don't actually need
+     * any features to create annotations.
+     */
+    @VisibleForTesting
+    public boolean requiresFeatures() { return false; }
+
+    @Override
     public LinkedHashSet<String> getSupportedFuncotationFields() {
         return supportedFields;
     }
@@ -250,7 +259,7 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
         // Then query our DB for matches on the gene name.
         // Then grab Genome position / Protein position and see if we overlap.
         // If any do, we create our CosmicFuncotation
-        for (  final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
+        for ( final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
             final String geneName = gencodeFuncotation.getHugoSymbol();
 
             final SimpleInterval genomePosition = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd());

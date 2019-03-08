@@ -221,6 +221,11 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
+    @Test
+    public void testRequiresFeatures() {
+        Assert.assertFalse(new CosmicFuncotationFactory(PATH_TO_TEST_DB).requiresFeatures());
+    }
+
     @Test(dataProvider = "provideDataForTestProteinPositionRegex")
     public void testPositionRegex(final Pattern regex, final List<String> dbPositions, final int expectedNumResults) {
 
