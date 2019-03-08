@@ -174,11 +174,11 @@ public final class ReblockGVCF extends VariantWalker {
     private HaplotypeCallerGenotypingEngine createGenotypingEngine(SampleList samples) {
         final HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
         // create the genotyping engine
-        hcArgs.outputMode = OutputMode.EMIT_ALL_SITES;
-        hcArgs.annotateAllSitesWithPLs = true;
-        hcArgs.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+        hcArgs.standardArgs.outputMode = OutputMode.EMIT_ALL_SITES;
+        hcArgs.standardArgs.annotateAllSitesWithPLs = true;
+        hcArgs.standardArgs.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
         hcArgs.emitReferenceConfidence = ReferenceConfidenceMode.GVCF;   //this is important to force emission of all alleles at a multiallelic site
-        return new HaplotypeCallerGenotypingEngine(hcArgs, samples, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs), true);
+        return new HaplotypeCallerGenotypingEngine(hcArgs, samples, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs.standardArgs), true);
 
     }
 

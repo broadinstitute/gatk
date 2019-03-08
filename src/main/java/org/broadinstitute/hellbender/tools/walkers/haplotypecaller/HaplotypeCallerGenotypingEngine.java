@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -29,8 +30,9 @@ import java.util.stream.Collectors;
 /**
  * HaplotypeCaller's genotyping strategy implementation.
  */
-public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
+public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
 
+    public static final int ALLELE_EXTENSION = 2;
     private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
 
 
@@ -44,6 +46,10 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
     private final int maxGenotypeCountToEnumerate;
     private final Map<Integer, Integer> practicalAlleleCountForPloidy = new HashMap<>();
 
+    protected final boolean doPhysicalPhasing;
+
+    private final HaplotypeCallerArgumentCollection hcArgs;
+
     /**
      * {@inheritDoc}
      * @param configuration {@inheritDoc}
@@ -52,13 +58,20 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
      */
     public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples,
                                            final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
-        super(configuration, samples, afCalculatorProvider, doPhysicalPhasing);
-        ploidyModel = new HomogeneousPloidyModel(samples,configuration.genotypeArgs.samplePloidy);
+        super(configuration.standardArgs, samples, afCalculatorProvider, false);
+        hcArgs = configuration;
+        this.doPhysicalPhasing = doPhysicalPhasing;
+        ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
         genotypingModel = new IndependentSampleGenotypesModel();
-        maxGenotypeCountToEnumerate = configuration.genotypeArgs.MAX_GENOTYPE_COUNT;
+        maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
-        snpHeterozygosity = configuration.genotypeArgs.snpHeterozygosity;
-        indelHeterozygosity = configuration.genotypeArgs.indelHeterozygosity;
+        snpHeterozygosity = configuration.standardArgs.genotypeArgs.snpHeterozygosity;
+        indelHeterozygosity = configuration.standardArgs.genotypeArgs.indelHeterozygosity;
+    }
+
+    @Override
+    protected boolean forceSiteEmission() {
+        return configuration.outputMode == OutputMode.EMIT_ALL_SITES || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
     }
 
     @Override
@@ -143,9 +156,9 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
             final List<VariantContext> activeEventVariantContexts;
             if( activeAllelesToGenotype.isEmpty() ) {
-                activeEventVariantContexts = getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
+                activeEventVariantContexts = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
             } else { // we are in GGA mode!
-                activeEventVariantContexts = getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
+                activeEventVariantContexts = AssemblyBasedCallerUtils.getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
             }
 
             final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced =
@@ -159,9 +172,9 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 continue;
             }
 
-            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
 
-            if( configuration.debug && logger != null ) {
+            if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }
 
@@ -196,23 +209,8 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             }
         }
 
-        final List<VariantContext> phasedCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
+        final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
-    }
-
-    public CalledHaplotypes assignGenotypeLikelihoods(final List<Haplotype> haplotypes,
-                                                      final ReadLikelihoods<Haplotype> readLikelihoods,
-                                                      final Map<String, List<GATKRead>> perSampleFilteredReadList,
-                                                      final byte[] ref,
-                                                      final SimpleInterval refLoc,
-                                                      final SimpleInterval activeRegionWindow,
-                                                      final FeatureContext tracker,
-                                                      final List<VariantContext> activeAllelesToGenotype,
-                                                      final boolean emitReferenceConfidence,
-                                                      final int maxMnpDistance,
-                                                      final SAMFileHeader header) {
-        return assignGenotypeLikelihoods(haplotypes,readLikelihoods,perSampleFilteredReadList,ref,refLoc,
-                activeRegionWindow,tracker,activeAllelesToGenotype,emitReferenceConfidence,maxMnpDistance,header,false);
     }
 
     @VisibleForTesting
@@ -399,31 +397,6 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
     }
 
     /**
-     * Removes symbolic events from list of haplotypes
-     * @param haplotypes       Input/output list of haplotypes, before/after removal
-     */
-    // TODO - split into input haplotypes and output haplotypes as not to share I/O arguments
-    protected static void cleanUpSymbolicUnassembledEvents( final List<Haplotype> haplotypes ) {
-        Utils.nonNull(haplotypes);
-        final List<Haplotype> haplotypesToRemove = new ArrayList<>();
-        for( final Haplotype h : haplotypes ) {
-            for( final VariantContext vc : h.getEventMap().getVariantContexts() ) {
-                if( vc.isSymbolic() ) {
-                    for( final Haplotype h2 : haplotypes ) {
-                        for( final VariantContext vc2 : h2.getEventMap().getVariantContexts() ) {
-                            if( vc.getStart() == vc2.getStart() && (vc2.isIndel() || vc2.isMNP()) ) { // unfortunately symbolic alleles can't currently be combined with non-point events
-                                haplotypesToRemove.add(h);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        haplotypes.removeAll(haplotypesToRemove);
-    }
-
-    /**
      * Returns the ploidy-model used by this genotyping engine.
      *
      * @return never {@code null}.
@@ -436,5 +409,100 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
     protected static GenotypeLikelihoodsCalculationModel getGLModel(final VariantContext vc) {
         final boolean isSNP = vc.getAlleles().stream().filter(a -> !a.isSymbolic()).allMatch(a -> a.length() == 1);
         return isSNP ? GenotypeLikelihoodsCalculationModel.SNP : GenotypeLikelihoodsCalculationModel.INDEL;
+    }
+
+    /**
+     * Go through the haplotypes we assembled, and decompose them into their constituent variant contexts
+     *
+     * @param haplotypes the list of haplotypes we're working with
+     * @param ref the reference bases (over the same interval as the haplotypes)
+     * @param refLoc the span of the reference bases
+     * @param activeAllelesToGenotype alleles we want to ensure are scheduled for genotyping (GGA mode)
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at positions 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
+     * @return never {@code null} but perhaps an empty list if there is no variants to report.
+     */
+    private TreeSet<Integer> decomposeHaplotypesIntoVariantContexts(final List<Haplotype> haplotypes,
+                                                                      final byte[] ref,
+                                                                      final SimpleInterval refLoc,
+                                                                      final List<VariantContext> activeAllelesToGenotype,
+                                                                      final int maxMnpDistance) {
+        final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
+
+        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
+        // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
+        // event maps in the Haplotype objects!
+        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, maxMnpDistance);
+
+        if ( inGGAMode ) {
+            startPosKeySet.clear();
+            for( final VariantContext compVC : activeAllelesToGenotype ) {
+                startPosKeySet.add(compVC.getStart());
+            }
+        }
+
+        return startPosKeySet;
+    }
+
+    // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection
+    // used for genotyping.
+    private ReadLikelihoods<Allele> prepareReadAlleleLikelihoodsForAnnotation(
+            final ReadLikelihoods<Haplotype> readHaplotypeLikelihoods,
+            final Map<String, List<GATKRead>> perSampleFilteredReadList,
+            final boolean emitReferenceConfidence,
+            final Map<Allele, List<Haplotype>> alleleMapper,
+            final ReadLikelihoods<Allele> readAlleleLikelihoodsForGenotyping,
+            final VariantContext call) {
+
+        final ReadLikelihoods<Allele> readAlleleLikelihoodsForAnnotations;
+        final SimpleInterval loc = new SimpleInterval(call);
+
+        // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
+        // or the user want to use the contamination filtered set for annotations.
+        // Otherwise (else part) we need to do it again.
+        if (hcArgs.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
+            readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
+            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingReads(loc);
+        } else {
+            readAlleleLikelihoodsForAnnotations = readHaplotypeLikelihoods.marginalize(alleleMapper, loc);
+            if (emitReferenceConfidence) {
+                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(Allele.NON_REF_ALLELE);
+            }
+        }
+
+        if (call.getAlleles().size() != readAlleleLikelihoodsForAnnotations.numberOfAlleles()) {
+            readAlleleLikelihoodsForAnnotations.updateNonRefAlleleLikelihoods(new IndexedAlleleList<>(call.getAlleles()));
+        }
+
+        // Skim the filtered map based on the location so that we do not add filtered read that are going to be removed
+        // right after a few lines of code below.
+        final Map<String, List<GATKRead>> overlappingFilteredReads = overlappingFilteredReads(perSampleFilteredReadList, loc);
+
+        readAlleleLikelihoodsForAnnotations.addReads(overlappingFilteredReads,0);
+
+        return readAlleleLikelihoodsForAnnotations;
+    }
+
+    private static Map<String, List<GATKRead>> overlappingFilteredReads(final Map<String, List<GATKRead>> perSampleFilteredReadList, final SimpleInterval loc) {
+        final Map<String,List<GATKRead>> overlappingFilteredReads = new HashMap<>(perSampleFilteredReadList.size());
+
+        for (final Map.Entry<String,List<GATKRead>> sampleEntry : perSampleFilteredReadList.entrySet()) {
+            final List<GATKRead> originalList = sampleEntry.getValue();
+            final String sample = sampleEntry.getKey();
+            if (originalList == null || originalList.isEmpty()) {
+                continue;
+            }
+            final List<GATKRead> newList = originalList.stream()
+                    .filter(read -> read.overlaps(loc))
+                    .collect(Collectors.toCollection(() -> new ArrayList<>(originalList.size())));
+
+            if (!newList.isEmpty()) {
+                overlappingFilteredReads.put(sample,newList);
+            }
+        }
+        return overlappingFilteredReads;
     }
 }

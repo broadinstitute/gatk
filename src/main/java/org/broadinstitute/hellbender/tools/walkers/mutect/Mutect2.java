@@ -146,6 +146,18 @@ import java.util.List;
  * For the value, provide the median coverage expected in autosomal regions with coverage.  The mode accepts only a
  * single sample, which can be provided in multiple files.</p>
  *
+ * <h4>(iv) Force-calling mode</h4>
+ * <p>This mode force-calls all alleles in force-call-alleles.vcf in addition to any other variants Mutect2 discovers.
+ *
+ * <pre>
+ *  gatk Mutect2 \
+ *   -R reference.fa \
+ *   -I sample.bam \
+ *   -alleles force-call-alleles.vcf
+ *   -tumor sample_name \
+ *   -O single_sample.vcf.gz
+ * </pre>
+ *
  * <h3>Notes</h3>
  * <ol>
  *     <li>Mutect2 does not require a germline resource nor a panel of normals (PoN) to run. The tool prefilters sites

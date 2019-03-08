@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -24,6 +25,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
+
+    @ArgumentCollection
+    public StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
 
     @Override
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
@@ -135,4 +139,15 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs. " +
             "WARNING: When used in GVCF mode, resulting GVCFs cannot be joint-genotyped.", optional = true)
     public int maxMnpDistance = 0;
+
+    /**
+     * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.
+     */
+    @Advanced
+    @Argument(fullName = DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME,  doc = "Disable physical phasing", optional = true)
+    public boolean doNotRunPhysicalPhasing = false;
+
+    @Advanced
+    @Argument(fullName= USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME, doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
+    public boolean useFilteredReadMapForAnnotations = false;
 }

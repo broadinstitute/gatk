@@ -405,7 +405,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
-                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", givenAllelesVcf.getAbsolutePath());
         runCommandLine(args);
 
@@ -429,7 +428,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:1119000-1120000",
                 "-O", unfilteredVcf.getAbsolutePath(),
-                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", givenAllelesVcf.getAbsolutePath());
         runCommandLine(args);
     }
