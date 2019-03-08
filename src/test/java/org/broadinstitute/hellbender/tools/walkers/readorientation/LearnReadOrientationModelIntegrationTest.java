@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.StreamSupport;
 
-public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest {
+public class LearnReadOrientationModelIntegrationTest extends CommandLineProgramTest {
     /**
      * Test the tool on a real bam to make sure that it does not crash
      */
@@ -83,9 +83,8 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
                 Arrays.asList(
                         "-V", unfilteredVcf.getAbsolutePath(),
                         "-R", b37_reference_20_21,
-                        "-O", filteredVcf.getAbsolutePath(),
-                        "--" + M2FiltersArgumentCollection.FALSE_DISCOVERY_RATE_LONG_NAME, "0.04",
-                FilterMutectCalls.class.getSimpleName())));
+                        "-O", filteredVcf.getAbsolutePath()),
+                FilterMutectCalls.class.getSimpleName()));
 
 
         // These artifacts have been verified manually
