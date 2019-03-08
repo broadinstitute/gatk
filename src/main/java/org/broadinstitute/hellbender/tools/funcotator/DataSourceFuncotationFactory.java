@@ -180,15 +180,9 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         // Query this funcotation factory to get the list of overlapping features.
         // NOTE: This will only get features that are LOCATABLE!
         //       This corresponds to requiresFeatures() returning `True`.
-        final List<Feature> featureList;
-
-        // Only get features if we need them:
-        if ( requiresFeatures() ) {
-            featureList = queryFeaturesFromFeatureContext(featureContext);
-        }
-        else {
-            featureList = Collections.emptyList();
-        }
+        final List<Feature> featureList = requiresFeatures() ?
+                queryFeaturesFromFeatureContext(featureContext) :
+                Collections.emptyList();
 
         // If our featureList is compatible with this DataSourceFuncotationFactory, then we make our funcotations:
         if ( isFeatureListCompatible(featureList) ) {

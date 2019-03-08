@@ -292,7 +292,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet2.vcf
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestHg19Large.vcf
     #INPUT=/Users/jonn/Development/gatk/hg38_trio_liftoverb37.vcf
-    INPUT=/Users/jonn/Development/gatk/tmp.vcf
+    #INPUT=/Users/jonn/Development/gatk/tmp.vcf
     #INPUT=/Users/jonn/Development/gatk/tmp2.vcf
     #INPUT=/Users/jonn/Development/data_to_run/problem_samples/splice_site_should_not_be_splice_site/error_case.vcf
     
