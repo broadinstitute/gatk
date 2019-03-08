@@ -165,8 +165,8 @@ public class FindAssemblyRegionsSpark {
         // 4. Fill in the reads. Each shard is an assembly region, with its overlapping reads.
         JavaRDD<Shard<GATKRead>> assemblyRegionShardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), readlessAssemblyRegions, shardingArgs.readShardSize);
 
-        // 5. Convert shards to assembly regions. Reads downsampling is done again here, and is assumed to be consistent
-        // with the downsampling done in step 1, since it is deterministic by locus.
+        // 5. Convert shards to assembly regions. Reads downsampling is done again here. Note it will only be
+        // consistent with the downsampling done in step 1 when https://github.com/broadinstitute/gatk/issues/5437 is in.
         JavaRDD<AssemblyRegion> assemblyRegions = assemblyRegionShardedReads.mapPartitions((FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegion>) shardedReadIterator -> {
             final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
                     new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
