@@ -2,7 +2,7 @@ import os
 import shutil
 
 # set theano flags
-os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore,openmp=true"
+os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore,openmp=true,blas.ldflags=-lmkl_rt"
 
 import logging
 import argparse
