@@ -38,24 +38,23 @@ import java.util.*;
  * <p><b>InbreedingCoeff</b> also describes the heterozygosity of the called samples, though without explicitly taking into account the number of samples</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Phred-scaled p-value for exact test of excess heterozygosity (ExcessHet)")
-public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation {
+public final class ExcessHet extends FounderAnnotation implements StandardAnnotation {
 
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
     private static final boolean ROUND_GENOTYPE_COUNTS = true;
     
     public static final double PHRED_SCALED_MIN_P_VALUE = -10.0 * Math.log10(MIN_NEEDED_VALUE);
 
-    public ExcessHet(final Set<String> founderIds){
-        super(founderIds);
-    }
+    /**
+     * No-arg constructor is required for command line plugins.
+     */
+    public ExcessHet() {}
 
     public ExcessHet(final File pedigreeFile){
         super(pedigreeFile);
     }
 
-    public ExcessHet() {
-        this((Set<String>) null);
-    }
+    public ExcessHet(final Set<String> founderIds){ super(founderIds); }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

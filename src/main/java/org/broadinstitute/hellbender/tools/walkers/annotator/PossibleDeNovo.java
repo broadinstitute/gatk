@@ -42,38 +42,26 @@ import java.util.*;
 public final class PossibleDeNovo extends PedigreeAnnotation {
     protected final Logger warning = LogManager.getLogger(this.getClass());
     private final MendelianViolation mendelianViolation;
-    private Set<Trio> trios;
+
+    /**
+     * No-arg constructor is required for command line plugins.
+     */
+    public PossibleDeNovo(){
+        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
+    }
+
+    /**
+     */
+    public PossibleDeNovo(final File pedigreeFile){
+        super(pedigreeFile);
+        Utils.nonNull(pedigreeFile);
+        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
+    }
 
     @VisibleForTesting
     public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
-        super((Set<String>) null);
-        this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
+        super(trios);
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
-    }
-
-    public PossibleDeNovo(final File pedigreeFile){
-        super(pedigreeFile);
-        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
-    }
-
-    public PossibleDeNovo(){
-        super((Set<String>) null);
-        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
-    }
-
-    @Override
-    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
-        if (pedigreeFile == null) {
-            if ((founderIds != null && !founderIds.isEmpty())) {
-                warning.warn("PossibleDenovo annotation will not be calculated, must provide a valid PED file (-ped). Founder-id arguments cannot be used for this annotation");
-            } else {
-                warning.warn("PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
-            }
-        } else {
-            if ((founderIds != null && !founderIds.isEmpty())) {
-                warning.warn("PossibleDenovo annotation does not take founder-id arguments, trio information will be extracted only from the provided PED file");
-            }
-        }
     }
 
     // Static thresholds for the denovo calculation
@@ -83,12 +71,6 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
     private static final double percentOfSamplesCutoff = 0.001; //for many, many samples use 0.1% of samples as allele frequency threshold for de novos
     private static final int flatNumberOfSamplesCutoff = 4;
 
-    private Set<Trio> initializeAndGetTrios() {
-        if (trios == null) {
-            trios = getTrios();
-        }
-        return trios;
-    }
 
     @Override
     public List<String> getKeyNames() {
@@ -102,10 +84,7 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
-        Set<Trio> trioSet = initializeAndGetTrios();
-        if (trioSet.isEmpty()){
-            return Collections.emptyMap();
-        }
+        final Set<Trio> trioSet = getTrios();
         final List<String> highConfDeNovoChildren = new ArrayList<>();
         final List<String> lowConfDeNovoChildren = new ArrayList<>();
         for (final Trio trio : trioSet) {

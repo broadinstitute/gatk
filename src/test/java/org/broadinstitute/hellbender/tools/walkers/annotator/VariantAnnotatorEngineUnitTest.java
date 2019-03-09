@@ -44,8 +44,6 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
 
         final int[] MQs = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, QualityUtils.MAPPING_QUALITY_UNAVAILABLE};
         final int[] MQ2s = {1, 2, 3, 4, 5, 6, 7, 8, 9, QualityUtils.MAPPING_QUALITY_UNAVAILABLE};
-        final List<Integer> MQsList = Arrays.asList(ArrayUtils.toObject(MQs));
-
 
         final List<GATKRead> altReads = Arrays.stream(MQs).mapToObj(mq -> ArtificialAnnotationUtils.makeRead(30, mq)).collect(Collectors.toList());
         final List<GATKRead> refReads = Arrays.stream(MQ2s).mapToObj(mq -> ArtificialAnnotationUtils.makeRead(30, mq)).collect(Collectors.toList());

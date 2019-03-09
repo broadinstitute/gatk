@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.FounderAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.PedigreeAnnotation;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
@@ -48,6 +49,8 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
 
     private static final Class<?> PLUGIN_BASE_CLASS = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
 
+    static final String FOUNDER_ID_LONG_NAME = "founder-id";
+
     protected transient Logger logger = LogManager.getLogger(this.getClass());
 
     @ArgumentCollection
@@ -74,8 +77,8 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     private List<Annotation> resolvedInstances;
 
     // Annotation arguments that are shared and thus must be part of the plugin descriptor
-    @Argument(fullName = "founder-id", shortName = "founder-id", doc="Samples representing the population \"founders\"", optional=true)
-    private List<String> founderIds;
+    @Argument(fullName = FOUNDER_ID_LONG_NAME, shortName = FOUNDER_ID_LONG_NAME, doc="Samples representing the population \"founders\"", optional=true)
+    private List<String> founderIds = new ArrayList<>();
 
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
     private File pedigreeFile;
@@ -393,23 +396,57 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
             }
         }
 
-        // Populating any discovered pedigree annotations with the pedigree arguments from the command line.
-        if (((founderIds!=null && !founderIds.isEmpty()) || (pedigreeFile!=null)) && getResolvedInstances().stream()
-                    .filter(PedigreeAnnotation.class::isInstance)
-                    .map(a -> (PedigreeAnnotation) a)
-                    .peek(a -> {
-                        if (!founderIds.isEmpty()) a.setFounderIds(founderIds);
-                        if (pedigreeFile != null) a.setPedigreeFile(pedigreeFile);
-                        a.validateArguments();
-                    })
-                    .count() == 0) {
-            // Throwing an exception if no pedigree annotations were found
-            throw new CommandLineException(
-                    String.format(
-                            "Pedigree argument \"%s\" or \"%s\" was specified without a pedigree annotation being requested, (eg: %s))",
-                            StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME,
-                            "founder-id",
-                            allDiscoveredAnnotations.values().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
+        propagatePedigreeAnnotationArguments();
+    }
+
+    private void propagatePedigreeAnnotationArguments() {
+        // Populate any discovered Pedigree annotations with arguments from the command line.
+        final List<PedigreeAnnotation> unresolvedPedigreeAnnotations = getResolvedInstances().stream()
+                .filter(PedigreeAnnotation.class::isInstance) // all Pedigree Annotations including Founder Annotations
+                .map(a -> (PedigreeAnnotation) a)
+                .collect(Collectors.toList());
+        final List<FounderAnnotation> allFounderAnnotations = unresolvedPedigreeAnnotations.stream()
+                .filter(FounderAnnotation.class::isInstance) // only Founder Annotations
+                .map(a -> (FounderAnnotation) a)
+                .collect(Collectors.toList());
+
+        if (!founderIds.isEmpty()) {
+            if (allFounderAnnotations.isEmpty()) {
+                throw new CommandLineException(
+                        String.format(
+                                "Argument \"%s\" or was specified but no Founder annotation was requested (eg: %s)).",
+                                FOUNDER_ID_LONG_NAME,
+                                allDiscoveredAnnotations.values()
+                                        .stream()
+                                        .filter(FounderAnnotation.class::isInstance)
+                                        .map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
+
+            } else {
+                allFounderAnnotations.forEach(a -> {
+                    a.setFounderIds(founderIds);
+                    // Founder annotations can be satisfied with either founderIds *OR* a pedigree file,
+                    // so remove the ones that have been satisfied with founder IDs; all remaining ones
+                    // need to be resolved with a pedigree File
+                    unresolvedPedigreeAnnotations.remove(a);
+                });
+            }
+        }
+
+        if (pedigreeFile != null) {
+            if (unresolvedPedigreeAnnotations.isEmpty() && allFounderAnnotations.isEmpty()) {
+                throw new CommandLineException(
+                        String.format(
+                                "Argument \"%s\" was specified but no Pedigree annotation was requested (eg: %s))",
+                                StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME,
+                                allDiscoveredAnnotations.values().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
+            } else {
+                // populate all Pedigree annotations (this includes Founder Annotations that were not resolved by founderID
+                unresolvedPedigreeAnnotations.forEach(a -> a.setPedigreeFile(pedigreeFile));
+                unresolvedPedigreeAnnotations.clear();
+                // populate any Founder annotations that were also given founderIDs
+                allFounderAnnotations.forEach(a -> a.setPedigreeFile(pedigreeFile));
+                allFounderAnnotations.clear();
+            }
         }
     }
 

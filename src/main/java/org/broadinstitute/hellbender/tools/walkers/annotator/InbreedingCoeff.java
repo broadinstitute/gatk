@@ -47,15 +47,13 @@ import java.util.Set;
  * <p><b>ExcessHet</b> also describes the heterozygosity of the called samples, giving a probability of excess heterozygosity being observed</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
-public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {
+public final class InbreedingCoeff extends FounderAnnotation implements StandardAnnotation {
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
     private static final boolean ROUND_GENOTYPE_COUNTS = false;
 
-    public InbreedingCoeff(){
-        super((Set<String>) null);
-    }
+    public InbreedingCoeff() {}
 
     public InbreedingCoeff(final Set<String> founderIds){
         super(founderIds);

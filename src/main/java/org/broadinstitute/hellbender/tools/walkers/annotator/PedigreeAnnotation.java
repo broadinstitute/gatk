@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
@@ -23,82 +22,49 @@ import java.util.*;
  * return a set of Trio objects corresponding to a parsing of pedigree file.
  */
 public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
-    private Collection<String> founderIds;
-    private File pedigreeFile = null;
-    private boolean hasAddedPedigreeFounders = false;
     protected transient final Logger logger = LogManager.getLogger(this.getClass());
 
-    protected GenotypesContext getFounderGenotypes(VariantContext vc) {
-        if ((pedigreeFile!= null) && (!hasAddedPedigreeFounders)) {
-            initializeSampleDBAndSetFounders(pedigreeFile);
-        }
-        return (founderIds == null || founderIds.isEmpty()) ? vc.getGenotypes() : vc.getGenotypes(new HashSet<>(founderIds));
-    }
+    protected File pedigreeFile;
+    private final Set<Trio> trios = new HashSet<>();
 
-    public PedigreeAnnotation(final Set<String> founderIds){
-        //If available, get the founder IDs and cache them. the IC will only be computed on founders then.
-        this.founderIds = founderIds == null? new ArrayList<>() : new ArrayList<>(founderIds);
-    }
+    /**
+     * No-arg constructor is required for command line plugins.
+     */
+    protected PedigreeAnnotation(){}
 
     public PedigreeAnnotation(final File pedigreeFile){
-        //If available, get the founder IDs and cache them. the IC will only be computed on founders then.
-        this.pedigreeFile = pedigreeFile;
-        initializeSampleDBAndSetFounders(pedigreeFile);
+        setPedigreeFile(pedigreeFile);
     }
 
-    /**
-     * Entry-point function to initialize the founders database from input data
-     */
-    private void initializeSampleDBAndSetFounders(File pedigreeFile) {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
+    @VisibleForTesting
+    public PedigreeAnnotation(final Set<Trio> trios) {
+        setTrios(trios);
+    }
 
-        Set<String> founderIdsToAdd = sampleDBBuilder.getFinalSampleDB().getFounderIds();
-        if (this.founderIds == null || this.founderIds.isEmpty()) {
-            this.founderIds = founderIdsToAdd;
-        } else {
-            this.founderIds.addAll(founderIdsToAdd);
+    public void setTrios(final Set<Trio> trios) {
+        if (!getTrios().isEmpty()) {
+            logger.warn("Replacing existing trios");
+            this.trios.clear();
         }
-        hasAddedPedigreeFounders = true;
+        this.trios.addAll(trios);
     }
 
     /**
-     * Computes the trios from the provided pedigree file
+     * Gets the trios from the provided pedigree file or trio args
      */
     protected Set<Trio> getTrios() {
-        if (pedigreeFile!= null) {
-            final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-            return sampleDBBuilder.getFinalSampleDB().getTrios();
-        }
-        return Collections.emptySet();
+        return trios;
     }
 
     /**
-     * Setter for pedigree file and founderIDs to be used by the GATKAnnotationPluginDescriptor to handle duplicated annotaiton
+     * Setter for pedigree file and founderIDs to be used by the GATKAnnotationPluginDescriptor to handle duplicated annotation
      * arguments between InbreedingCoeff and ExcessHet
      */
-    public void setPedigreeFile(File pedigreeFile) {
+    public void setPedigreeFile(final File pedigreeFile) {
         this.pedigreeFile = pedigreeFile;
-        hasAddedPedigreeFounders = false;
-    }
-    public void setFounderIds(List<String> founderIds) {
-        this.founderIds = founderIds;
-        hasAddedPedigreeFounders = false;
+        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
+        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
+        setTrios(sampleDBBuilder.getFinalSampleDB().getTrios());
     }
 
-    /**
-     * Provide input arguments so as to warn the user if they are providing an incorrect subset of pedigree inputs.
-     *
-     * This is expected to be called immediately after calling setPedigreeFile() and setFounderIDs() during argument
-     * propagation in the {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor}.
-     */
-    public void validateArguments() {
-        validateArguments(founderIds, pedigreeFile);
-    }
-    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
-        if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
-            logger.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
-        }
-    }
 }

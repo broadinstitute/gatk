@@ -366,35 +366,33 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     @Test
     // Note: this test takes advantage of the fact that InbreedingCoefficient does not compute for pedigrees with fewer than 10 founders.
     public void testToolDefaultAnnotationArgumentsOverridingFromCommandLine() {
-        String argName = "--founder-id";
-        String[] goodArguments = new String[]{"s1", "s2",  "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"};
+        final String founderIDArgName = "--" + GATKAnnotationPluginDescriptor.FOUNDER_ID_LONG_NAME;
+        final List<String> founderIDs = Arrays.asList("s1", "s2",  "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10");
 
-        CommandLineParser clp1 = new CommandLineArgumentParser(
+        final CommandLineParser noDefaultFoundersCLP = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new InbreedingCoeff(Collections.emptySet())), null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new InbreedingCoeff()), null)),
                 Collections.emptySet());
-        CommandLineParser clp2 = new CommandLineArgumentParser(
-                new Object(),
-                // Adding a default value which should result in different annotations
-                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new InbreedingCoeff(new HashSet<>(Arrays.asList(goodArguments)))), null)),
-                Collections.emptySet());
-
-        List<String> completeArguments = Lists.newArrayList("--annotation", InbreedingCoeff.class.getSimpleName());
-        List<String> incompleteArguments = Lists.newArrayList("--annotation", InbreedingCoeff.class.getSimpleName(), argName, "s1"); // These arguments are "incomplete" because InbreedingCoefficient
-        Arrays.asList(goodArguments).forEach(arg -> {completeArguments.addAll(Arrays.asList(argName, arg));});
-
-        clp1.parseArguments(nullMessageStream, completeArguments.toArray(new String[completeArguments.size()]));
-        List<Annotation> goodArgumentsOverridingincompleteArguments = instantiateAnnotations(clp1);
-        clp2.parseArguments(nullMessageStream, incompleteArguments.toArray(new String[incompleteArguments.size()]));
-        List<Annotation> incompleteArgumentsOverridingGoodArguments = instantiateAnnotations(clp2);
-
+        final List<String> completeArguments = Lists.newArrayList("--annotation", InbreedingCoeff.class.getSimpleName());
+        founderIDs.forEach(arg -> {completeArguments.addAll(Arrays.asList(founderIDArgName, arg));});
+        noDefaultFoundersCLP.parseArguments(nullMessageStream, completeArguments.toArray(new String[completeArguments.size()]));
+        final List<Annotation> goodArgumentsOverridingincompleteArguments = instantiateAnnotations(noDefaultFoundersCLP);
         Assert.assertEquals(goodArgumentsOverridingincompleteArguments.size(), 1);
-        Assert.assertEquals(incompleteArgumentsOverridingGoodArguments.size(), 1);
         // assert that with good arguments overriding that the inbreeding coefficient is computed correctly
         Assert.assertEquals(Double.valueOf((String) ((InbreedingCoeff) goodArgumentsOverridingincompleteArguments.get(0))
                         .annotate(null, inbreedingCoefficientVC, null)
                         .get(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY)),
                 -0.3333333, 0.001, "InbreedingCoefficientScores");
+
+        final CommandLineParser defaultFounderCLP = new CommandLineArgumentParser(
+                new Object(),
+                // Adding a default value which should result in different annotations
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new InbreedingCoeff(new HashSet<>(founderIDs))), null)),
+                Collections.emptySet());
+        final List<String> incompleteArguments = Lists.newArrayList("--annotation", InbreedingCoeff.class.getSimpleName(), founderIDArgName, "s1"); // These arguments are "incomplete" because InbreedingCoefficient
+        defaultFounderCLP.parseArguments(nullMessageStream, incompleteArguments.toArray(new String[incompleteArguments.size()]));
+        final List<Annotation> incompleteArgumentsOverridingGoodArguments = instantiateAnnotations(defaultFounderCLP);
+        Assert.assertEquals(incompleteArgumentsOverridingGoodArguments.size(), 1);
         // assert that with incomplete arguments overriding that the inbreeding coefficient is not calculated
         Assert.assertEquals(((InbreedingCoeff) incompleteArgumentsOverridingGoodArguments.get(0)).annotate(null, inbreedingCoefficientVC, null), Collections.emptyMap());
     }
