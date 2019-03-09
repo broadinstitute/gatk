@@ -6,6 +6,7 @@ os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float64,optimizer=fast_run,compu
 import logging
 import argparse
 import gcnvkernel
+import theano
 import shutil
 import json
 from typing import Dict, Any
@@ -142,6 +143,8 @@ def update_args_dict_from_saved_model(input_model_path: str,
 
 
 if __name__ == "__main__":
+
+    print(theano.config)
 
     # parse arguments
     args = parser.parse_args()
