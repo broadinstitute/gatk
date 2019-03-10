@@ -35,7 +35,7 @@ public class StrandArtifactFilterUnitTest {
     @Test(dataProvider = "ObviousCalls")
     public void testObviousCalls(final double prior, final int forwardCount, final int reverseCount, final int forwardAltCount, final int reverseAltCount, final boolean isArtifact) throws IOException {
         final double artifactProbability = new StrandArtifactFilter()
-                .strandArtifactProbability(prior, forwardCount, reverseCount, forwardAltCount, reverseAltCount)
+                .strandArtifactProbability(prior, forwardCount, reverseCount, forwardAltCount, reverseAltCount, 0)
                 .getArtifactProbability();
         Assert.assertEquals(artifactProbability, isArtifact ? 1.0 : 0.0, 1.0e-2);
     }
@@ -53,10 +53,10 @@ public class StrandArtifactFilterUnitTest {
             final int reverseAltCount = rdg.nextInt(0, reverseCount);
 
             final double prob = new StrandArtifactFilter()
-                    .strandArtifactProbability(prior, forwardCount, reverseCount, forwardAltCount, reverseAltCount)
+                    .strandArtifactProbability(prior, forwardCount, reverseCount, forwardAltCount, reverseAltCount, 0)
                     .getArtifactProbability();
             final double flipped = new StrandArtifactFilter()
-                    .strandArtifactProbability(prior, reverseCount, forwardCount, reverseAltCount, forwardAltCount)
+                    .strandArtifactProbability(prior, reverseCount, forwardCount, reverseAltCount, forwardAltCount, 0)
                     .getArtifactProbability();
 
             Assert.assertEquals(prob, flipped, 1.0e-8);

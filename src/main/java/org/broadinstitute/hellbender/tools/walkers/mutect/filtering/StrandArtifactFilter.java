@@ -18,14 +18,18 @@ import java.util.stream.Collectors;
 public class StrandArtifactFilter extends Mutect2VariantFilter {
     // beta prior on strand bias allele fraction
     private double INITIAL_ALPHA_STRAND = 1.0;
-    private double INITIAL_BETA_STRAND = 6.0;
+    private double INITIAL_BETA_STRAND = 20.0;
 
     private double alphaStrand = INITIAL_ALPHA_STRAND;
     private double betaStrand = INITIAL_BETA_STRAND;
 
     // beta prior on sequencing error allele fraction
-    private static final double ALPHA_SEQ = 10;
-    private static final double BETA_SEQ = 2000;
+    private static final double ALPHA_SEQ = 1;
+    private static final double BETA_SEQ_SNV = 1000;
+    private static final double BETA_SEQ_SHORT_INDEL = 5000;
+    private static final double BETA_SEQ_LONG_INDEL = 50000;
+    private static final int LONG_INDEL_SIZE = 3;
+    private static final int LONGEST_STRAND_ARTIFACT_INDEL_SIZE = 4;
 
     private static final double INITIAL_STRAND_ARTIFACT_PRIOR = 0.01;
 
@@ -47,6 +51,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     }
 
     public EStep calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+
         final int[] totalCounts = filteringEngine.sumADsOverSamples(vc, true, true);
         final int[] forwardCounts = vc.getAttributeAsIntList(GATKVCFConstants.FORWARD_STRAND_COUNT_KEY, 0).stream().mapToInt(x->x).toArray();
         final int forwardCount = (int) MathUtils.sum(forwardCounts);
@@ -54,7 +59,13 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
         final int forwardAltCount = forwardCount - forwardCounts[0];
         final int reverseAltCount = (int) MathUtils.sum(totalCounts) - totalCounts[0] - forwardAltCount;
 
-        return strandArtifactProbability(strandArtifactPrior, forwardCount, reverseCount, forwardAltCount, reverseAltCount);
+        final int indelSize = Math.abs(vc.getReference().length() - vc.getAlternateAllele(0).length());
+        if (indelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
+            return new EStep(0, 0, forwardCount, reverseCount, forwardAltCount, reverseAltCount);
+        }
+
+
+        return strandArtifactProbability(strandArtifactPrior, forwardCount, reverseCount, forwardAltCount, reverseAltCount, indelSize);
 
     }
 
@@ -109,11 +120,11 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     }
 
     @VisibleForTesting
-    EStep strandArtifactProbability(final double strandArtifactPrior, int forwardCount, int reverseCount, int forwardAltCount, int reverseAltCount) {
+    EStep strandArtifactProbability(final double strandArtifactPrior, int forwardCount, int reverseCount, int forwardAltCount, int reverseAltCount, final int indelSize) {
         final double forwardLogLikelihood = artifactStrandLogLikelihood(forwardCount, forwardAltCount)
-                + nonArtifactStrandLogLikelihood(reverseCount, reverseAltCount);
+                + nonArtifactStrandLogLikelihood(reverseCount, reverseAltCount, indelSize);
         final double reverseLogLikelihood = artifactStrandLogLikelihood(reverseCount, reverseAltCount)
-                + nonArtifactStrandLogLikelihood(forwardCount, forwardAltCount);
+                + nonArtifactStrandLogLikelihood(forwardCount, forwardAltCount, indelSize);
         final double noneLogLikelihood = CombinatoricsUtils.binomialCoefficientLog(forwardCount, forwardAltCount)
                 + CombinatoricsUtils.binomialCoefficientLog(reverseCount, reverseAltCount)
                 - CombinatoricsUtils.binomialCoefficientLog(forwardCount + reverseCount, forwardAltCount + reverseAltCount)
@@ -147,8 +158,9 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
         return new BetaBinomialDistribution(null, alpha, beta, strandCount).logProbability(strandAltCount);
     }
 
-    private double nonArtifactStrandLogLikelihood(final int strandCount, final int strandAltCount) {
-        return new BetaBinomialDistribution(null, ALPHA_SEQ, BETA_SEQ, strandCount).logProbability(strandAltCount);
+    private double nonArtifactStrandLogLikelihood(final int strandCount, final int strandAltCount, final int indelSize) {
+        final double betaSeq = indelSize == 0 ? BETA_SEQ_SNV : (indelSize < LONG_INDEL_SIZE ? BETA_SEQ_SHORT_INDEL : BETA_SEQ_LONG_INDEL);
+        return new BetaBinomialDistribution(null, ALPHA_SEQ, betaSeq, strandCount).logProbability(strandAltCount);
     }
 
     @Override

@@ -227,6 +227,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-L", "20",
                 "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
+                "-A", "StrandBiasBySample",
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
                 "--max-reads-per-alignment-start", "4",
@@ -236,7 +237,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         if (normalBam.isPresent()) {
             args.addAll(Arrays.asList("-I", normalBam.get().getAbsolutePath(), "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal));
         }
-        ;
 
         runCommandLine(args);
 
