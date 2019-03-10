@@ -10,9 +10,7 @@ import java.util.OptionalInt;
 
 public class ForwardStrandCounts extends PerAlleleAnnotation implements StandardMutectAnnotation {
     @Override
-    protected int aggregate(final List<Integer> values) {
-        return values.size();
-    }
+    protected int aggregate(final List<Integer> values) { return values.stream().mapToInt(n->n).sum(); }
 
     @Override
     protected String getVcfKey() { return GATKVCFConstants.FORWARD_STRAND_COUNT_KEY; }
