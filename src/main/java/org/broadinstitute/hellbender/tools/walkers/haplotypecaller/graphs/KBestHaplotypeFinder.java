@@ -161,7 +161,6 @@ public final class KBestHaplotypeFinder {
                 reachesSink = reachesSink || childReachSink;
             }
         }
-        parentVertices.remove(currentVertex);
         if (!reachesSink) {
             verticesToRemove.add(currentVertex);
         }
