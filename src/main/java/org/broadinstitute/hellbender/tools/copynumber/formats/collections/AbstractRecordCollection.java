@@ -5,6 +5,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BufferedLineReader;
 import htsjdk.samtools.util.LineReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
@@ -76,7 +78,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         this.recordToDataLineEncoder = Utils.nonNull(recordToDataLineEncoder);
         Utils.nonEmpty(mandatoryColumns.names());
 
-        try (final RecordCollectionReader reader = new RecordCollectionReader(inputFile)) {
+        try (final RecordCollectionReader reader = new RecordCollectionReader(IOUtils.fileToPath(inputFile))) {
             metadata = MetadataUtils.fromHeader(reader.getHeader(), getMetadataType());
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
             records = reader.stream().collect(Collectors.collectingAndThen(Collectors.toList(), ImmutableList::copyOf));
@@ -164,11 +166,11 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
 
     final class RecordCollectionReader extends TableReader<RECORD> {
         private static final String COMMENT_PREFIX = CopyNumberFormatsUtils.COMMENT_PREFIX;   //SAMTextHeaderCodec.HEADER_LINE_START; we need TableReader to treat SAM header as comment lines
-        private final File file;
+        private final Path path;
 
-        RecordCollectionReader(final File file) throws IOException {
-            super(file);
-            this.file = file;
+        RecordCollectionReader(final Path path) throws IOException {
+            super(path);
+            this.path = path;
         }
 
         @Override
@@ -178,8 +180,12 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         }
 
         private SAMFileHeader getHeader() throws FileNotFoundException {
-            final LineReader lineReader = new BufferedLineReader(new FileInputStream(file));
-            return new SAMTextHeaderCodec().decode(lineReader, getSource());
+            try {
+                final LineReader lineReader = new BufferedLineReader(Files.newInputStream(path));
+                return new SAMTextHeaderCodec().decode(lineReader, getSource());
+            } catch (IOException ex) {
+                throw new FileNotFoundException(ex.getMessage());
+            }
         }
 
         @Override

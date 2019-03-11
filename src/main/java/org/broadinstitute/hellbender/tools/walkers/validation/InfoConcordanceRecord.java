@@ -106,7 +106,7 @@ public class InfoConcordanceRecord {
      */
     public static class InfoConcordanceWriter extends TableWriter<InfoConcordanceRecord> {
         private InfoConcordanceWriter(Path output) throws IOException {
-            super(output.toFile(), new TableColumnCollection(INFO_CONCORDANCE_COLUMN_HEADER));
+            super(output, new TableColumnCollection(INFO_CONCORDANCE_COLUMN_HEADER));
         }
 
         @Override
@@ -124,7 +124,7 @@ public class InfoConcordanceRecord {
      */
     public static class InfoConcordanceReader extends TableReader<InfoConcordanceRecord> {
         public InfoConcordanceReader(Path summary) throws IOException {
-            super(summary.toFile());
+            super(summary);
         }
 
         @Override

@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import com.opencsv.CSVReader;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -151,8 +154,29 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IllegalArgumentException if {@code name} is {@code null}.
      * @throws IOException              if any is raised when accessing the file.
      */
-    public TableReader(final File file) throws IOException {
-        this(Utils.nonNull(file, "the input file cannot be null").getPath(), new FileReader(file));
+    // public TableReader(final File file) throws IOException {
+    //     this(Utils.nonNull(file, "the input file cannot be null").getPath(), new FileReader(file));
+    // }
+
+    /**
+     * Creates a new table reader given the input file path.
+     * <p>
+     * This operation will read the first lines of the input file until the
+     * column name header line is found.
+     * </p>
+     * <p>
+     * The source's name used in error reporting is the file's path as returned by
+     * {@link File#getPath}.
+     * </p>
+     *
+     * @param path the input file path.
+     * @throws IllegalArgumentException if {@code name} is {@code null}.
+     * @throws IOException              if any is raised when accessing the file.
+     */
+    public TableReader(final Path path) throws IOException {
+        this(
+            Utils.nonNull(path, "the input file cannot be null").toString(),
+            new InputStreamReader(Files.newInputStream(path)));
     }
 
     /**

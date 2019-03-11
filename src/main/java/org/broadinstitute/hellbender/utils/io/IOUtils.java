@@ -1030,4 +1030,14 @@ public final class IOUtils {
             Files.deleteIfExists(path);
         }
     }
+
+    /**
+     * Convert File to Path, returning null if input was null.
+     *
+     * @param toConvert File to convert to a Path
+     * @return a Path, or null if the input was null.
+     */
+    public static Path fileToPath(File toConvert) {
+        return (null == toConvert ? null : toConvert.toPath());
+    }
 }

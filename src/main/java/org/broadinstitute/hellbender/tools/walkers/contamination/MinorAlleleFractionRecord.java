@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.samtools.util.Locatable;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
@@ -42,7 +44,7 @@ public class MinorAlleleFractionRecord implements Locatable {
 
     //----- The following two public static methods read and write contamination files
     public static void writeToFile(final String sample, final List<MinorAlleleFractionRecord> records, final File outputTable) {
-        try ( MinorAlleleFractionTableWriter writer = new MinorAlleleFractionTableWriter(outputTable) ) {
+        try ( MinorAlleleFractionTableWriter writer = new MinorAlleleFractionTableWriter(IOUtils.fileToPath(outputTable)) ) {
             writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -51,17 +53,21 @@ public class MinorAlleleFractionRecord implements Locatable {
     }
 
     public static ImmutablePair<String, List<MinorAlleleFractionRecord>> readFromFile(final File tableFile) {
-        try( MinorAlleleFractionTableReader reader = new MinorAlleleFractionTableReader(tableFile) ) {
+        return readFromPath(IOUtils.fileToPath(tableFile));
+    }
+
+    public static ImmutablePair<String, List<MinorAlleleFractionRecord>> readFromPath(final Path tablePath) {
+        try( MinorAlleleFractionTableReader reader = new MinorAlleleFractionTableReader(tablePath) ) {
             final List<MinorAlleleFractionRecord> list = reader.toList();
             return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), list);
         } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
+            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tablePath));
         }
     }
 
     //-------- The following methods are boilerplate for reading and writing contamination tables
     private static class MinorAlleleFractionTableWriter extends TableWriter<MinorAlleleFractionRecord> {
-        private MinorAlleleFractionTableWriter(final File output) throws IOException {
+        private MinorAlleleFractionTableWriter(final Path output) throws IOException {
             super(output, MinorAlleleFractionTableColumn.COLUMNS);
         }
 
@@ -76,8 +82,8 @@ public class MinorAlleleFractionRecord implements Locatable {
     }
 
     public static class MinorAlleleFractionTableReader extends TableReader<MinorAlleleFractionRecord> {
-        public MinorAlleleFractionTableReader(final File file) throws IOException {
-            super(file);
+        public MinorAlleleFractionTableReader(final Path path) throws IOException {
+            super(path);
         }
 
         @Override

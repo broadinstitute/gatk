@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import com.google.common.collect.Sets;
+import java.nio.file.Path;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -89,18 +90,18 @@ public final class TableUtils {
      * error.
      * </p>
      *
-     * @param file                   the input file
+     * @param path                   the input file
      * @param recordExtractorFactory the record extractor function factory.
      * @param <R>                    the end record type.
      * @return never {@code null}.
      * @throws IOException              if any took place while instantiating the reader.
      * @throws IllegalArgumentException if {@code file} is {@code null}.
      */
-    public static <R> TableReader<R> reader(final File file,
+    public static <R> TableReader<R> reader(final Path path,
                                             final BiFunction<TableColumnCollection, Function<String, RuntimeException>, Function<DataLine, R>> recordExtractorFactory)
             throws IOException {
         Utils.nonNull(recordExtractorFactory,"the record extractor factory cannot be null");
-        return new TableReader<R>(file) {
+        return new TableReader<R>(path) {
             private Function<DataLine,R> recordExtractor;
 
             @Override
@@ -206,7 +207,7 @@ public final class TableUtils {
 
     /**
      * Creates a new table writer given the destination file, columns and the data-line composer.
-     * @param file the destination file.
+     * @param path the destination file.
      * @param columns the output columns.
      * @param dataLineComposer the data-line composer given the record object.
      * @param <R> the record type.
@@ -214,8 +215,8 @@ public final class TableUtils {
      * @throws IllegalArgumentException if any, {@code file}, {@code columns} or {@code dataLineComposer}, is {@code null}.
      * @throws IOException if any was thrown when instantiating the writer.
      */
-    public static <R> TableWriter<R> writer(final File file, final TableColumnCollection columns, final BiConsumer<R, DataLine> dataLineComposer) throws IOException {
-        return new DataLineComposerBasedTableWriter<>(file, columns, dataLineComposer);
+    public static <R> TableWriter<R> writer(final Path path, final TableColumnCollection columns, final BiConsumer<R, DataLine> dataLineComposer) throws IOException {
+        return new DataLineComposerBasedTableWriter<>(path, columns, dataLineComposer);
     }
 
     /**
@@ -250,8 +251,8 @@ public final class TableUtils {
     private static final class DataLineComposerBasedTableWriter<R> extends TableWriter<R> {
         private final BiConsumer<R, DataLine> dataLineComposer;
 
-        private DataLineComposerBasedTableWriter(final File file, final TableColumnCollection columns, final BiConsumer<R, DataLine> dataLineComposer) throws IOException {
-            super(file, columns);
+        private DataLineComposerBasedTableWriter(final Path path, final TableColumnCollection columns, final BiConsumer<R, DataLine> dataLineComposer) throws IOException {
+            super(path, columns);
             this.dataLineComposer = Utils.nonNull(dataLineComposer, "the data-line composer cannot be null");
         }
 

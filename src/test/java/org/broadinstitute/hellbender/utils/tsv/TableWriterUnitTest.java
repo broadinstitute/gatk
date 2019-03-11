@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -18,9 +20,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testNoRecordsOutput() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<Object> writer = new TableWriter<Object>(testFile, columnNames) {
+        final TableWriter<Object> writer = new TableWriter<Object>(testPath, columnNames) {
             @Override
             protected void composeLine(Object record, final DataLine dataLine) {
                 dataLine.append(record.toString());
@@ -28,16 +30,16 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         };
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 1);
         Assert.assertEquals(outLines.get(0), String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"));
     }
 
     @Test
     public void testNoRecordsOutputWithCommentsAndDuplicatedAttemptsToWriterHeader() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<Object> writer = new TableWriter<Object>(testFile, columnNames) {
+        final TableWriter<Object> writer = new TableWriter<Object>(testPath, columnNames) {
             @Override
             protected void composeLine(Object record, final DataLine dataLine) {
                 dataLine.append(record.toString());
@@ -52,7 +54,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeHeaderIfApplies();
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 5, outLines.toString());
         Assert.assertEquals(outLines.get(0), TableUtils.COMMENT_PREFIX + "commentLine1");
         Assert.assertEquals(outLines.get(1), TableUtils.COMMENT_PREFIX + "commentLine2");
@@ -63,9 +65,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testNoRecordsOutputWithComments() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<Object> writer = new TableWriter<Object>(testFile, columnNames) {
+        final TableWriter<Object> writer = new TableWriter<Object>(testPath, columnNames) {
             @Override
             protected void composeLine(Object record, final DataLine dataLine) {
                 dataLine.append(record.toString());
@@ -78,7 +80,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeComment("commentLine4");
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 5, outLines.toString());
         Assert.assertEquals(outLines.get(0), TableUtils.COMMENT_PREFIX + "commentLine1");
         Assert.assertEquals(outLines.get(1), TableUtils.COMMENT_PREFIX + "commentLine2");
@@ -89,9 +91,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testSomeRecordsOutputWithCommentsAndLateAttemptToWriteHeader() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<String[]> writer = new TableWriter<String[]>(testFile, columnNames) {
+        final TableWriter<String[]> writer = new TableWriter<String[]>(testPath, columnNames) {
             @Override
             protected void composeLine(final String[] record, final DataLine dataLine) {
                 dataLine.setAll(record);
@@ -110,7 +112,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeComment("commentLine4");
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 8, outLines.toString());
         Assert.assertEquals(outLines.get(0), TableUtils.COMMENT_PREFIX + "commentLine1");
         Assert.assertEquals(outLines.get(1), TableUtils.COMMENT_PREFIX + "commentLine2");
@@ -124,9 +126,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testSomeRecordsOutputWithComments() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<String[]> writer = new TableWriter<String[]>(testFile, columnNames) {
+        final TableWriter<String[]> writer = new TableWriter<String[]>(testPath, columnNames) {
             @Override
             protected void composeLine(final String[] record, final DataLine dataLine) {
                 dataLine.setAll(record);
@@ -141,7 +143,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeComment("commentLine4");
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 8, outLines.toString());
         Assert.assertEquals(outLines.get(0), TableUtils.COMMENT_PREFIX + "commentLine1");
         Assert.assertEquals(outLines.get(1), TableUtils.COMMENT_PREFIX + "commentLine2");
@@ -155,9 +157,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testMetadata() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<String[]> writer = new TableWriter<String[]>(testFile, columnNames) {
+        final TableWriter<String[]> writer = new TableWriter<String[]>(testPath, columnNames) {
             @Override
             protected void composeLine(final String[] record, final DataLine dataLine) {
                 dataLine.setAll(record);
@@ -180,7 +182,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeComment("commentLine4");
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.get(0), TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key1 + "=" + value1);
         Assert.assertEquals(outLines.get(1), TableUtils.COMMENT_PREFIX + "commentLine1");
         Assert.assertEquals(outLines.get(2), TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key2 + "=" + value2);
@@ -191,9 +193,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testWriteRecordFromIterable() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<String[]> writer = new TableWriter<String[]>(testFile, columnNames) {
+        final TableWriter<String[]> writer = new TableWriter<String[]>(testPath, columnNames) {
             @Override
             protected void composeLine(final String[] record, final DataLine dataLine) {
                 dataLine.setAll(record);
@@ -206,7 +208,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeAllRecords(records);
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 4, outLines.toString());
         Assert.assertEquals(outLines.get(0), String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"));
         Assert.assertEquals(outLines.get(1), String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"));
@@ -216,9 +218,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testWriteRecordFromArray() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
-        final TableWriter<String[]> writer = new TableWriter<String[]>(testFile, columnNames) {
+        final TableWriter<String[]> writer = new TableWriter<String[]>(testPath, columnNames) {
             @Override
             protected void composeLine(final String[] record, final DataLine dataLine) {
                 dataLine.setAll(record);
@@ -231,7 +233,7 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         writer.writeAllRecords(records);
         writer.close();
 
-        final List<String> outLines = outputLines(testFile);
+        final List<String> outLines = outputLines(testPath);
         Assert.assertEquals(outLines.size(), 4, outLines.toString());
         Assert.assertEquals(outLines.get(0), String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"));
         Assert.assertEquals(outLines.get(1), String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"));
@@ -241,9 +243,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testTestTupleWriting() throws IOException {
-        final File testFile = createTempFile("test", ".tab");
+        final Path testPath = createTempPath("test", ".tab");
         final TableWriter<TableReaderUnitTest.TestTuple>
-                writer = new TableWriter<TableReaderUnitTest.TestTuple>(testFile, new TableColumnCollection("col1.str", "col2.int", "col3.dbl")) {
+                writer = new TableWriter<TableReaderUnitTest.TestTuple>(testPath, new TableColumnCollection("col1.str", "col2.int", "col3.dbl")) {
             @Override
             protected void composeLine(final TableReaderUnitTest.TestTuple record, final DataLine dataLine) {
                 dataLine.set("col1.str", record.strValue)
@@ -253,8 +255,12 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         };
     }
 
-    private List<String> outputLines(File testFile) throws FileNotFoundException {
-        final BufferedReader bufferedReader = new BufferedReader(new FileReader(testFile));
-        return bufferedReader.lines().collect(Collectors.toList());
+    private List<String> outputLines(Path testPath) throws FileNotFoundException {
+
+        try (BufferedReader bufferedReader = Files.newBufferedReader(testPath)) {
+            return bufferedReader.lines().collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new FileNotFoundException(e.getMessage());
+        }
     }
 }

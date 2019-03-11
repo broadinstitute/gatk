@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import com.opencsv.CSVWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
@@ -129,13 +131,16 @@ public abstract class TableWriter<R> implements Closeable {
     /**
      * Creates a new table writer given the file and column names.
      *
-     * @param file         the destination file.
+     * @param path         the destination path.
      * @param tableColumns the table column names.
      * @throws IllegalArgumentException if either {@code file} or {@code tableColumns} are {@code null}.
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
-    public TableWriter(final File file, final TableColumnCollection tableColumns) throws IOException {
-        this(new FileWriter(Utils.nonNull(file, "The file cannot be null.")), tableColumns);
+    public TableWriter(final Path path, final TableColumnCollection tableColumns) throws IOException {
+        this(
+            new OutputStreamWriter(
+                Files.newOutputStream(Utils.nonNull(path, "The path cannot be null."))),
+            tableColumns);
     }
 
     /**

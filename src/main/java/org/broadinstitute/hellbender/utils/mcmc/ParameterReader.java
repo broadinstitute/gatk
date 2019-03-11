@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.mcmc;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 
@@ -18,8 +19,8 @@ public final class ParameterReader<T extends Enum<T> & ParameterEnum> extends Ta
 
     private final Class<T> parameterClass;
 
-    public ParameterReader(final File file, final Class<T> parameterClass) throws IOException {
-        super(file);
+    public ParameterReader(final Path path, final Class<T> parameterClass) throws IOException {
+        super(path);
         this.parameterClass = parameterClass;
     }
 

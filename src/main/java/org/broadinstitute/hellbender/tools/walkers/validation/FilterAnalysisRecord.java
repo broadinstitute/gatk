@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -42,8 +44,12 @@ public class FilterAnalysisRecord {
     public void incrementUniqueTrueNegative() { uniqueTrueNegativeCount++; }
     public void incrementUniqueFalseNegative() { uniqueFalseNegativeCount++; }
 
-    //----- The following two public static methods read and write contamination files
+    //----- The following four public static methods read and write contamination files
     public static void writeToFile(final Collection<FilterAnalysisRecord> records, final File outputTable) {
+        writeToPath(records, IOUtils.fileToPath(outputTable));
+    }
+
+    public static void writeToPath(final Collection<FilterAnalysisRecord> records, final Path outputTable) {
         try ( FilterAnalysisTableWriter writer = new FilterAnalysisTableWriter(outputTable) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -52,16 +58,20 @@ public class FilterAnalysisRecord {
     }
 
     public static List<FilterAnalysisRecord> readFromFile(final File tableFile) {
-        try( FilterAnalysisTableReader reader = new FilterAnalysisTableReader(tableFile) ) {
+        return readFromPath(IOUtils.fileToPath(tableFile));
+    }
+
+    public static List<FilterAnalysisRecord> readFromPath(final Path tablePath) {
+        try( FilterAnalysisTableReader reader = new FilterAnalysisTableReader(tablePath) ) {
             return reader.toList();
         } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
+            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tablePath));
         }
     }
 
     //-------- The following methods are boilerplate for reading and writing contamination tables
     private static class FilterAnalysisTableWriter extends TableWriter<FilterAnalysisRecord> {
-        private FilterAnalysisTableWriter(final File output) throws IOException {
+        private FilterAnalysisTableWriter(final Path output) throws IOException {
             super(output, FilterAnalysisTableColumn.COLUMNS);
         }
 
@@ -76,8 +86,8 @@ public class FilterAnalysisRecord {
     }
 
     private static class FilterAnalysisTableReader extends TableReader<FilterAnalysisRecord> {
-        public FilterAnalysisTableReader(final File file) throws IOException {
-            super(file);
+        public FilterAnalysisTableReader(final Path path) throws IOException {
+            super(path);
         }
 
         @Override

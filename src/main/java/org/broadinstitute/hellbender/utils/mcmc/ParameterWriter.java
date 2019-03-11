@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.mcmc;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
@@ -16,8 +17,8 @@ public final class ParameterWriter<T extends Enum<T> & ParameterEnum> extends Ta
     
     private final String doubleFormat;
 
-    public ParameterWriter(final File file, final String doubleFormat) throws IOException {
-        super(file, ParameterTableColumn.COLUMNS);
+    public ParameterWriter(final Path path, final String doubleFormat) throws IOException {
+        super(path, ParameterTableColumn.COLUMNS);
         this.doubleFormat = doubleFormat;
     }
 

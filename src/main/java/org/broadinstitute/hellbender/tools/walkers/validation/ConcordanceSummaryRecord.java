@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -50,7 +52,7 @@ public class ConcordanceSummaryRecord {
     public double getPrecision() { return (double) truePositives / (truePositives + falsePositives); }
 
     public static class Writer extends TableWriter<ConcordanceSummaryRecord> {
-        private Writer(final File output) throws IOException {
+        private Writer(final Path output) throws IOException {
             super(output, new TableColumnCollection(SUMMARY_TABLE_COLUMN_HEADER));
         }
 
@@ -67,7 +69,7 @@ public class ConcordanceSummaryRecord {
 
     public static Writer getWriter(final File outputTable){
         try {
-            Writer writer = new Writer(outputTable);
+            Writer writer = new Writer(IOUtils.fileToPath(outputTable));
             return writer;
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", outputTable), e);
@@ -75,7 +77,7 @@ public class ConcordanceSummaryRecord {
     }
 
     public static class Reader extends TableReader<ConcordanceSummaryRecord> {
-        public Reader(final File summary) throws IOException {
+        public Reader(final Path summary) throws IOException {
             super(summary);
         }
 

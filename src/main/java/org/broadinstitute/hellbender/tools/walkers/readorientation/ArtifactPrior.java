@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.util.SequenceUtil;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
@@ -56,7 +57,7 @@ public class ArtifactPrior {
     public int getNumAltExamples() { return numAltExamples; }
 
     public static class ArtifactPriorTableWriter extends TableWriter<ArtifactPrior> {
-        public ArtifactPriorTableWriter(final File output, final String sample) throws IOException {
+        public ArtifactPriorTableWriter(final Path output, final String sample) throws IOException {
             super(output, ArtifactPriorTableColumn.COLUMNS);
             writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
         }
@@ -95,7 +96,7 @@ public class ArtifactPrior {
     }
 
     public static class ArtifactPriorTableReader extends TableReader<ArtifactPrior> {
-        public ArtifactPriorTableReader(final File table) throws IOException {
+        public ArtifactPriorTableReader(final Path table) throws IOException {
             super(table);
         }
 

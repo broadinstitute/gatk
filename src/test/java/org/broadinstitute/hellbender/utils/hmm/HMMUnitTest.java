@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.hmm;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
@@ -71,7 +73,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
     private static File TEST_SEQUENCE_FILE;
 
-    private static File TEST_R_RESULTS_FILE;
+    private static Path TEST_R_RESULTS_FILE;
 
     private static List<ExpectedResult> TEST_EXPECTED_RESULTS;
 
@@ -113,7 +115,7 @@ public final class HMMUnitTest extends GATKBaseTest {
             writer.println(builder.toString());
         });
         writer.close();
-        TEST_R_RESULTS_FILE = createTempFile("r-output", ".tab");
+        TEST_R_RESULTS_FILE = createTempPath("r-output", ".tab");
         RScriptExecutor rExecutor = new RScriptExecutor();
         final File script = composeRScriptFile();
         rExecutor.addScript(script);
@@ -164,7 +166,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         final File script = createTempFile("r-script", ".R");
         try (final PrintWriter scriptWriter = new PrintWriter(new FileWriter(script))) {
             scriptWriter.println(TestHMM.toHMMInstallRString());
-            scriptWriter.println("outfile = \"" + TEST_R_RESULTS_FILE.getAbsolutePath() + '"');
+            scriptWriter.println("outfile = \"" + TEST_R_RESULTS_FILE.toAbsolutePath() + '"');
             scriptWriter.println("sequences = strsplit(readLines(\"" + TEST_SEQUENCE_FILE.getPath() + "\"), ',')");
             scriptWriter.println("sequences.n = length(sequences)");
             scriptWriter.println();
@@ -197,7 +199,11 @@ public final class HMMUnitTest extends GATKBaseTest {
             TEST_SEQUENCE_FILE.delete();
         }
         if (TEST_R_RESULTS_FILE != null) {
-            TEST_R_RESULTS_FILE.delete();
+            try {
+                Files.delete(TEST_R_RESULTS_FILE);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -933,8 +939,8 @@ public final class HMMUnitTest extends GATKBaseTest {
     }
 
     private static class RResultReader extends TableReader<RResultRecord> {
-        public RResultReader(File file) throws IOException {
-            super(file);
+        public RResultReader(Path path) throws IOException {
+            super(path);
         }
 
         @Override

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -37,7 +38,7 @@ public class MixingFraction {
 
     public static List<MixingFraction> readMixingFractions(final File file) {
         IOUtils.canReadFile(file);
-        try (final MixingFractionReader reader = new MixingFractionReader(file)) {
+        try (final MixingFractionReader reader = new MixingFractionReader(IOUtils.fileToPath(file))) {
             return reader.toList();
         } catch (final FileNotFoundException ex) {
             throw new UserException.CouldNotReadInputFile("Mixing fraction table file not found.", ex);
@@ -47,7 +48,7 @@ public class MixingFraction {
     }
 
     public static void writeMixingFractions(List<MixingFraction> mixingFractions, final File file) {
-        try (MixingFractionWriter writer = new MixingFractionWriter(file)) {
+        try (MixingFractionWriter writer = new MixingFractionWriter(IOUtils.fileToPath(file))) {
             writer.writeAllRecords(mixingFractions);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while trying to create output file %s.", file));
@@ -73,7 +74,7 @@ public class MixingFraction {
     }
 
     private static class MixingFractionWriter extends TableWriter<MixingFraction> {
-        public MixingFractionWriter(final File output) throws IOException {
+        public MixingFractionWriter(final Path output) throws IOException {
             super(output, MixingFractionTableColumn.COLUMNS);
         }
 
@@ -85,8 +86,8 @@ public class MixingFraction {
     }
 
     private static class MixingFractionReader extends TableReader<MixingFraction> {
-        public MixingFractionReader(final File file) throws IOException {
-            super(file);
+        public MixingFractionReader(final Path path) throws IOException {
+            super(path);
         }
 
         @Override

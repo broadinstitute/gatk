@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -27,7 +28,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     public void testSimple() throws Exception {
         final File evalVcf = new File(CONCORDANCE_TEST_DIR, "gatk4-dream3-mini.vcf");
         final File truthVcf = new File(CONCORDANCE_TEST_DIR, "gatk3-dream3-mini.vcf");
-        final File summary = createTempFile("summary", ".txt");
+        final Path summary = createTempPath("summary", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
@@ -62,7 +63,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File tpfp = createTempFile("tpfp", ".vcf");
         final File tpfn = createTempFile("tpfn", ".vcf");
         final File ftnfn = createTempFile("ftnfn", ".vcf");
-        final File summary = createTempFile("summary", ".txt");
+        final Path summary = createTempPath("summary", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
@@ -108,7 +109,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     public void testPerfectMatchVcf() throws Exception {
         final File truthVcf = new File(CONCORDANCE_TEST_DIR, "same-truth.vcf");
         final File evalVcf = new File(CONCORDANCE_TEST_DIR, "same-eval.vcf");
-        final File summary = createTempFile("summary", ".txt");
+        final Path summary = createTempPath("summary", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
@@ -136,13 +137,13 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     public void testFilterAnalysis() throws Exception {
         final File truthVcf = new File(CONCORDANCE_TEST_DIR, "filter-analysis-truth.vcf");
         final File evalVcf = new File(CONCORDANCE_TEST_DIR, "filter-analysis-eval.vcf");
-        final File summary = createTempFile("summary", ".txt");
+        final Path summary = createTempPath("summary", ".txt");
         final File filterAnalysis = createTempFile("filter-analysis", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.getAbsolutePath(),
                 "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.getAbsolutePath(),
-                "--" + Concordance.SUMMARY_LONG_NAME, summary.getAbsolutePath(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toAbsolutePath().toString(),
                 "--" + Concordance.FILTER_ANALYSIS_LONG_NAME, filterAnalysis.getAbsolutePath()
         };
 
@@ -179,7 +180,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     public void testDreamSensitivity() throws Exception {
         final File evalVcf = new File(CONCORDANCE_TEST_DIR, "dream3-chr21.vcf");
         final File truthVcf = new File(CONCORDANCE_TEST_DIR, "dream3-truth-minus-SV-chr21.vcf");
-        final File summary = createTempFile("summary", ".txt");
+        final Path summary = createTempPath("summary", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
@@ -214,7 +215,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     public void testDoesNotCrashWithNO_VARIATIONAlleles() {
         final File evalVcf = new File(CONCORDANCE_TEST_DIR, "noVariationAlleles.vcf");
         final File truthVcf = new File(CONCORDANCE_TEST_DIR, "noVariationAlleles.vcf");
-        final File summary = createTempFile("summary", ".txt");
+        final Path summary = createTempPath("summary", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
