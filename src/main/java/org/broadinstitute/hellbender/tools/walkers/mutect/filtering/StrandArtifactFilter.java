@@ -52,7 +52,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
         final int[] counts = filteringEngine.sumStrandCountsOverSamples(vc, true, false);
 
         final int indelSize = Math.abs(vc.getReference().length() - vc.getAlternateAllele(0).length());
-        if (indelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
+        if (counts[2] + counts[3] == 0 || indelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
             return new EStep(0, 0, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3]);
         }
 
