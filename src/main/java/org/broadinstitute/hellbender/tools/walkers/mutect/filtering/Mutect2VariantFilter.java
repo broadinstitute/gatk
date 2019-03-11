@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Comparator;
 import java.util.List;
@@ -13,7 +11,8 @@ public abstract class Mutect2VariantFilter {
     public Mutect2VariantFilter() { }
 
     public double errorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        return requiredAnnotations().stream().allMatch(vc::hasAttribute) ? calculateErrorProbability(vc, filteringEngine) : 0;
+        final double result = requiredAnnotations().stream().allMatch(vc::hasAttribute) ? calculateErrorProbability(vc, filteringEngine) : 0;
+        return Mutect2FilteringEngine.roundFinitePrecisionErrors(result);
     }
 
     protected abstract double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine);

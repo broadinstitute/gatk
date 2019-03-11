@@ -25,7 +25,7 @@ public final class ErrorProbabilities {
             trueProbability *= (1 - errorProb);
         }
 
-        errorProbability = 1 - trueProbability;
+        errorProbability = Mutect2FilteringEngine.roundFinitePrecisionErrors(1 - trueProbability);
     }
 
     public double getErrorProbability() { return errorProbability; }

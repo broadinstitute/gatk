@@ -180,6 +180,10 @@ public class Mutect2FilteringEngine {
         return vcb.make();
     }
 
+    public static double roundFinitePrecisionErrors(final double probability) {
+        return Math.max(Math.min(probability, 1.0), 0.0);
+    }
+
     /**
      * Write statistics collected in the final pass of {@link FilterMutectCalls}
      * @param filteringStatsFile
