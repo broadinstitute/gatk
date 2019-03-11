@@ -119,7 +119,6 @@ public final class GATKVCFConstants {
     public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
     public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
     public static final String MEDIAN_MAPPING_QUALITY_KEY = "MMQ";
-    public static final String FORWARD_STRAND_COUNT_KEY = "FWD";
     public static final String MEDIAN_FRAGMENT_LENGTH_KEY = "MFRL";
     public static final String MEDIAN_READ_POSITON_KEY = "MPOS";
 

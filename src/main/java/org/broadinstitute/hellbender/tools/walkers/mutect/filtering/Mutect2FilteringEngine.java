@@ -33,8 +33,7 @@ public class Mutect2FilteringEngine {
             GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY,
             GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY,
             GATKVCFConstants.MEDIAN_READ_POSITON_KEY,
-            GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY,
-            GATKVCFConstants.FORWARD_STRAND_COUNT_KEY
+            GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY
     );
 
     /**

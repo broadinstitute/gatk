@@ -50,7 +50,7 @@ import java.util.List;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of forward and reverse reads that support REF and ALT alleles (SB)")
-public final class StrandBiasBySample extends GenotypeAnnotation {
+public final class StrandBiasBySample extends GenotypeAnnotation implements StandardMutectAnnotation {
     private final static Logger logger = LogManager.getLogger(StrandBiasBySample.class);
 
     @Override

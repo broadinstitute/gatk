@@ -8,10 +8,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
 
@@ -142,7 +139,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
 
     @Override
     protected List<String> requiredAnnotations() {
-        return Arrays.asList(GATKVCFConstants.FORWARD_STRAND_COUNT_KEY);
+        return Collections.emptyList();
     }
 
     private double artifactStrandLogLikelihood(final int strandCount, final int strandAltCount) {
