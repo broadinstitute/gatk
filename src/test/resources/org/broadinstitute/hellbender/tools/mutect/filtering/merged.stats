@@ -1,0 +1,35 @@
+#<METADATA>Log10 prior of deletion of length 10=-7.0
+#<METADATA>Log10 prior of deletion of length 9=-7.0
+#<METADATA>Log10 prior of deletion of length 8=-7.0
+#<METADATA>Log10 prior of deletion of length 7=-7.0
+#<METADATA>Log10 prior of deletion of length 6=-7.0
+#<METADATA>Log10 prior of deletion of length 5=-7.0
+#<METADATA>Log10 prior of deletion of length 4=-7.0
+#<METADATA>Log10 prior of deletion of length 3=-7.0
+#<METADATA>Log10 prior of deletion of length 2=-7.0
+#<METADATA>Log10 prior of deletion of length 1=-7.0
+#<METADATA>Log10 prior of SNV=-6.0
+#<METADATA>Log10 prior of insertion of length 1=-7.0
+#<METADATA>Log10 prior of insertion of length 2=-7.0
+#<METADATA>Log10 prior of insertion of length 3=-7.0
+#<METADATA>Log10 prior of insertion of length 4=-7.0
+#<METADATA>Log10 prior of insertion of length 5=-7.0
+#<METADATA>Log10 prior of insertion of length 6=-7.0
+#<METADATA>Log10 prior of insertion of length 7=-7.0
+#<METADATA>Log10 prior of insertion of length 8=-7.0
+#<METADATA>Log10 prior of insertion of length 9=-7.0
+#<METADATA>Log10 prior of insertion of length 10=-7.0
+#<METADATA>High-AF beta-binomial cluster=weight = 0.1111, alpha = 10.00, beta = 1.00
+#<METADATA>Background beta-binomial cluster=weight = 0.1111, alpha = 0.90, beta = 1.08
+#<METADATA>Binomial cluster 1=weight = 0.9231, mean = 0.050
+#<METADATA>threshold=0.521
+#<METADATA>fdr=0.057
+#<METADATA>sensitivity=0.669
+filter	FP	FDR	FN	FNR
+weak_evidence	0.06	0.01	1.62	0.23
+strand_bias	0.0	0.0	0.0	0.0
+contamination	0.23	0.05	0.09	0.01
+normal_artifact	0.0	0.0	0.05	0.01
+slippage	0.0	0.0	0.0	0.0
+haplotype	0.0	0.0	0.24	0.03
+germline	0.0	0.0	0.0	0.0

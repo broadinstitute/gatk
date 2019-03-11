@@ -108,18 +108,19 @@ public final class GATKVCFConstants {
     public static final String IN_PON_VCF_ATTRIBUTE =               "PON";
     public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "NALOD";
     public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POPAF";
-    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =        "GERMQ";
+    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =  "GERMQ";
+    public static final String SEQUENCING_QUAL_VCF_ATTRIBUTE =  "SEQQ";
+    public static final String POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE =  "STRQ";
+    public static final String STRAND_QUAL_VCF_ATTRIBUTE =  "STRANDQ";
     public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
-    public static final String CONTAMINATION_QUAL_ATTRIBUTE =       "CONTQ";
+    public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
-    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY =      "UNIQ_ALT_READ_COUNT";
-    public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SAPP"; // Strand Artifact Filter
-    public static final String STRAND_ARTIFACT_AF_KEY =             "SAAF"; // Strand Artifact Filter
-    public static final String MEDIAN_BASE_QUALITY_KEY =            "MBQ";
-    public static final String MEDIAN_MAPPING_QUALITY_KEY =         "MMQ";
-    public static final String MEDIAN_READ_POSITON_KEY =            "MPOS";
-    public static final String MEDIAN_FRAGMENT_LENGTH_KEY =         "MFRL";
+    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
+    public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
+    public static final String MEDIAN_MAPPING_QUALITY_KEY = "MMQ";
+    public static final String MEDIAN_FRAGMENT_LENGTH_KEY = "MFRL";
+    public static final String MEDIAN_READ_POSITON_KEY = "MPOS";
 
     // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
@@ -152,30 +153,30 @@ public final class GATKVCFConstants {
        their names (or descriptions) depend on some threshold.  Those filters are not included here
      */
     public static final String CLUSTERED_EVENTS_FILTER_NAME =                 "clustered_events"; //M2
-    public static final String GERMLINE_RISK_FILTER_NAME =                    "germline_risk"; //M2
+    public static final String GERMLINE_RISK_FILTER_NAME =                    "germline"; //M2
     public static final String LOW_QUAL_FILTER_NAME =                         "LowQual";
-    public static final String ALIGNMENT_ARTIFACT_FILTER_NAME =               "alignment_artifact";
+    public static final String ALIGNMENT_ARTIFACT_FILTER_NAME =               "alignment";
     public static final String PON_FILTER_NAME =                              "panel_of_normals"; //M2
-    public static final String STR_CONTRACTION_FILTER_NAME =                  "str_contraction"; //M2
-    public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod"; //M2
+    public static final String POLYMERASE_SLIPPAGE =                          "slippage"; //M2
+    public static final String TUMOR_EVIDENCE_FILTER_NAME =                   "weak_evidence"; //M2
     public static final String MULTIALLELIC_FILTER_NAME =                     "multiallelic"; //M2
-    public static final String STRAND_ARTIFACT_FILTER_NAME =                  "strand_artifact"; // M2
-    public static final String DUPLICATED_EVIDENCE_FILTER_NAME =              "duplicate_evidence";
-    public final static String ARTIFACT_IN_NORMAL_FILTER_NAME =                "artifact_in_normal";
-    public final static String MEDIAN_BASE_QUALITY_FILTER_NAME =                "base_quality";
-    public final static String MEDIAN_MAPPING_QUALITY_FILTER_NAME =             "mapping_quality";
-    public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
-    public final static String READ_POSITION_FILTER_NAME =                      "read_position";
-    public final static String CONTAMINATION_FILTER_NAME =                      "contamination";
-    public final static String READ_ORIENTATION_ARTIFACT_FILTER_NAME =          "read_orientation_artifact";
-    public final static String BAD_HAPLOTYPE_FILTER_NAME =          "bad_haplotype";
-    public final static String STRICT_STRAND_BIAS_FILTER_NAME =                     "strict_strand_bias";
-    public final static String N_RATIO_FILTER_NAME =                         "n_ratio";
-    public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =        "chimeric_original_alignment"; //mitochondria
-    public final static String LOW_AVG_ALT_QUALITY_FILTER_NAME =                "low_avg_alt_quality"; //mitochondria
+    public static final String STRAND_ARTIFACT_FILTER_NAME =                  "strand_bias"; // M2
+    public static final String DUPLICATED_EVIDENCE_FILTER_NAME =              "duplicate";
+    public final static String ARTIFACT_IN_NORMAL_FILTER_NAME =               "normal_artifact";
+    public final static String MEDIAN_BASE_QUALITY_FILTER_NAME =              "base_qual";
+    public final static String MEDIAN_MAPPING_QUALITY_FILTER_NAME =           "map_qual";
+    public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment";
+    public final static String READ_POSITION_FILTER_NAME =                    "position";
+    public final static String CONTAMINATION_FILTER_NAME =                    "contamination";
+    public final static String READ_ORIENTATION_ARTIFACT_FILTER_NAME =        "orientation";
+    public final static String BAD_HAPLOTYPE_FILTER_NAME =                    "haplotype";
+    public final static String STRICT_STRAND_BIAS_FILTER_NAME =               "strict_strand";
+    public final static String N_RATIO_FILTER_NAME =                           "n_ratio";
+    public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =       "numt_chimera"; //mitochondria
+    public final static String LOW_AVG_ALT_QUALITY_FILTER_NAME =               "average_qual"; //mitochondria
 
-    public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(STR_CONTRACTION_FILTER_NAME,
-            PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_LOD_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
+    public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(POLYMERASE_SLIPPAGE,
+            PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
             MULTIALLELIC_FILTER_NAME, STRAND_ARTIFACT_FILTER_NAME, ARTIFACT_IN_NORMAL_FILTER_NAME,
             MEDIAN_BASE_QUALITY_FILTER_NAME, MEDIAN_MAPPING_QUALITY_FILTER_NAME,
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,

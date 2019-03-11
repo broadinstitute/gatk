@@ -52,8 +52,6 @@
 ##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
 ##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
-##INFO=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
-##INFO=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
 ##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
 ##INFO=<ID=Samples,Number=.,Type=String,Description="List of polymorphic samples">

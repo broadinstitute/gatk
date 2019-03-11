@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.MutectReadThr
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 
 import java.io.File;
 import java.io.Serializable;
@@ -46,6 +47,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String ANNOTATE_BASED_ON_READS_LONG_NAME = "count-reads";
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "median-autosomal-coverage";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
+    public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -55,6 +57,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_INITIAL_LOD = 2.0;
     public static final double DEFAULT_MITO_INITIAL_LOD = 0;
     public static final double DEFAULT_GVCF_LOD = Double.NEGATIVE_INFINITY;
+    public static final int DEFAULT_CALLABLE_DEPTH = 10;
 
     public static final double DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD = -4;
 
@@ -187,6 +190,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = DOWNSAMPLING_STRIDE_LONG_NAME, shortName = DOWNSAMPLING_STRIDE_SHORT_NAME, optional = true, doc = "Downsample a pool of reads starting within a range of one or more bases.")
     public int downsamplingStride = 1;
+
+    @Argument(fullName = CALLABLE_DEPTH_LONG_NAME, optional = true, doc = "Minimum depth to be considered callable for Mutect stats.  Does not affect genotyping.")
+    public int callableDepth = DEFAULT_CALLABLE_DEPTH;
 
     /**
      * Maximum number of suspicious reads (mediocre mapping quality or too many substitutions) allowed in a downsampling stride.

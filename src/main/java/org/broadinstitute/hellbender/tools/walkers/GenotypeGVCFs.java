@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_R
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -118,7 +118,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      */
     @Argument(fullName=M2ArgumentCollection.EMISSION_LOD_LONG_NAME, shortName = M2ArgumentCollection.EMISSION_LOG_SHORT_NAME,
     doc = "LOD threshold to emit variant to VCF.")
-    protected double tlodThreshold = 0.8 * M2FiltersArgumentCollection.DEFAULT_TLOD_FILTER_THRESHOLD;  //allow for some lower quality variants
+    protected double tlodThreshold = 3.5;  //allow for some lower quality variants
 
 
     /**

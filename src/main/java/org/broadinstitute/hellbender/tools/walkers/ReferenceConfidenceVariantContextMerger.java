@@ -5,7 +5,10 @@ import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -13,7 +16,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Alle
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -44,8 +47,6 @@ public final class ReferenceConfidenceVariantContextMerger {
 
     private static final List<String> SOMATIC_FORMAT_ANNOTATIONS_TO_KEEP = Arrays.asList(
             GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY,
-            GATKVCFConstants.STRAND_ARTIFACT_AF_KEY,
-            GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY,
             GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY,
             GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY,
             VCFConstants.PHASE_SET_KEY);

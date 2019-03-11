@@ -147,7 +147,6 @@ public class CalculateMixingFractions extends VariantWalker {
                 || vc.getGenotypes().stream().filter(genotype -> genotype.isHet()).count() == 1);
     }
 
-    //TODO: copied from Mutect2FilteringEngine
     private static double[] getArrayAttribute(final VariantContext vc, final String attribute) {
         return GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, attribute, () -> null, -1);
     }

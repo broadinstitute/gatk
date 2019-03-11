@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.function.Function;
@@ -213,6 +214,19 @@ public final class DataLine {
     }
 
     /**
+     * Sets the double value in the data-line that correspond to a column by its name.
+     *
+     * @param name  the column name.
+     * @param value the new value.
+     * @param numDecimals the number of decimals to print
+     * @return reference to this data-line.
+     * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
+     */
+    public DataLine set(final String name, final double value, final int numDecimals) {
+        return set(columnIndex(name), value, numDecimals);
+    }
+
+    /**
      * Sets the string value of a column given its index.
      *
      * @param index the target column index.
@@ -271,6 +285,19 @@ public final class DataLine {
             set(index, Double.toString(value));
         }
         return set(index, Double.toString(value));
+    }
+
+    /**
+     * Sets the value for a column to a double given its index.
+     *
+     * @param index the target column index.
+     * @param value the new value for that column.
+     * @param numDecimals the number of decimal places to print
+     * @return reference to this data-line.
+     * @throws IllegalArgumentException if {@code index} is not a valid column index.
+     */
+    public DataLine set(final int index, final double value, final int numDecimals) {
+        return set(index, MathUtils.roundToNDecimalPlaces(value, numDecimals));
     }
 
     /**

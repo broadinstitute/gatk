@@ -4,6 +4,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 public class BetaDistributionShape {
+    public static final BetaDistributionShape FLAT_BETA = new BetaDistributionShape(1,1);
+
     private double alpha;
     private double beta;
 

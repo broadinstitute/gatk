@@ -20,7 +20,8 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -35,7 +36,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.tools.nsc.transform.patmat.ScalaLogic;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,7 +61,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File DREAM_2_NORMAL = new File(DREAM_BAMS_DIR, "normal_2.bam");
     private static final File DREAM_1_NORMAL = new File(DREAM_BAMS_DIR, "normal_1.bam");
     private static final File DREAM_2_TUMOR = new File(DREAM_BAMS_DIR, "tumor_2.bam");
-    private static final File DREAM_1_TUMOR = new File(DREAM_BAMS_DIR, "tumor_1.bam");;
+    private static final File DREAM_1_TUMOR = new File(DREAM_BAMS_DIR, "tumor_1.bam");
+    ;
 
     private static final String DREAM_VCFS_DIR = toolsTestDir + "mutect/dream/vcfs/";
     private static final File DREAM_4_TRUTH = new File(DREAM_VCFS_DIR, "sample_4.vcf");
@@ -75,6 +76,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File DREAM_2_MASK = new File(DREAM_MASKS_DIR, "mask2.list");
     private static final File DREAM_1_MASK = new File(DREAM_MASKS_DIR, "mask1.list");
 
+    private static final File DREAM_4_FALSE_POSITIVES = new File(DREAM_VCFS_DIR, "sample_4.false_positives.vcf");
+
     private static final File NO_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/no-contamination.table");
     private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/five-pct-contamination.table");
     private static final File TEN_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/ten-pct-contamination.table");
@@ -86,6 +89,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
 
+    private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
+
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
 
     private static final double TLOD_MATCH_EPSILON = 0.05;
@@ -95,12 +100,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
      * to chromosome 20, leaving ~100-200 variants, and then further restricted to 400-bp intervals centered around
      * these variants.
-     *
+     * <p>
      * Because this truth data is synthetic, ideal performance is perfect concordance with the truth vcfs.
-     *
+     * <p>
      * The characteristics of the data are as follows (note that we removed structural variants from the original
      * DREAM challenge vcfs):
-     *
+     * <p>
      * Sample 1: pure monoclonal sample, SNVs only
      * Sample 2: 80% pure monoclonal sample, SNVs only
      * Sample 3: pure triclonal sample, subclone minor allele frequencies are 1/2, 1/3, and 1/5, SNVs and indels
@@ -124,14 +129,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
                 "--max-reads-per-alignment-start", "4",
-                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());;
-
+                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());
 
         // tumor-only calling with gnomAD
         if (!tumorOnly) {
             final String normal = getSampleName(normalBam);
             args.addAll(Arrays.asList("-I", normalBam.getAbsolutePath(), "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal));
-        };
+        }
+        ;
 
         runCommandLine(args);
 
@@ -169,6 +174,30 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         });
     }
 
+    @Test
+    public void testNA12878NormalNormalFiltering() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = new File(FILTERING_DIR, "NA12878.vcf");
+        final File contamination = new File(FILTERING_DIR, "contamination.table");
+        final File segments = new File(FILTERING_DIR, "segments.table");
+        final File stats = new File(FILTERING_DIR, "merged.stats");
+
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath(),
+                "--" + M2FiltersArgumentCollection.TUMOR_SEGMENTATION_LONG_NAME, segments.getAbsolutePath(),
+                "--" + M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination.getAbsolutePath(),
+                "--" + FilterMutectCalls.FILTERING_STATS_LONG_NAME, stats.getAbsolutePath()),
+                FilterMutectCalls.class.getSimpleName()));
+
+        final long numPassVariants = VariantContextTestUtils.streamVcf(filteredVcf)
+                .filter(vc -> vc.getFilters().isEmpty()).count();
+
+        Assert.assertTrue(numPassVariants < 10);
+    }
+
     private String getSampleName(File bam) throws IOException {
         final File nameFile = createTempFile("sample_name", ".txt");
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", bam.getAbsolutePath(), "-O", nameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
@@ -196,14 +225,16 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-L", "20",
                 "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
+                "-A", "StrandBiasBySample",
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
                 "--max-reads-per-alignment-start", "4",
-                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());;
+                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());
+        ;
 
         if (normalBam.isPresent()) {
             args.addAll(Arrays.asList("-I", normalBam.get().getAbsolutePath(), "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal));
-        };
+        }
 
         runCommandLine(args);
 
@@ -337,7 +368,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         final File bam = new File(toolsTestDir, "mnp.bam");
 
-        for (final int maxMnpDistance : new int[] {0, 1, 2, 3, 5}) {
+        for (final int maxMnpDistance : new int[]{0, 1, 2, 3, 5}) {
             final File outputVcf = createTempFile("unfiltered", ".vcf");
 
             final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
@@ -409,7 +440,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(unfilteredVcf)
-                .collect(Collectors.toMap(vc -> vc.getStart(), vc-> vc.getAlternateAlleles()));
+                .collect(Collectors.toMap(vc -> vc.getStart(), vc -> vc.getAlternateAlleles()));
         for (final VariantContext vc : new FeatureDataSource<VariantContext>(givenAllelesVcf)) {
             final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
             vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
@@ -446,7 +477,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
     }
-    
+
     @Test
     public void testContaminationFilter() throws Exception {
         Utils.resetRandomGenerator();
@@ -505,7 +536,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(VariantContext::isBiallelic)
                 .filter(vc -> {
                     final int[] AD = vc.getGenotype(0).getAD();
-                    return MathUtils.sum(AD) > 20 && AD[1] > AD[0];
+                    return MathUtils.sum(AD) > 30 && AD[1] > AD[0];
                 }).collect(Collectors.toList());
 
         Assert.assertTrue(highAlleleFractionFilteredVariantsAtFivePercent.isEmpty());
@@ -557,8 +588,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     /*
-    * Test that the min_base_quality_score parameter works
-    */
+     * Test that the min_base_quality_score parameter works
+     */
     @Test
     public void testMinBaseQualityScore() throws Exception {
         Utils.resetRandomGenerator();
@@ -589,7 +620,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(highThresholdArgs);
 
         try (final FeatureDataSource<VariantContext> lowThresholdSource = new FeatureDataSource<>(outputAtLowThreshold);
-        final FeatureDataSource<VariantContext> highThresholdSource = new FeatureDataSource<>(outputAtHighThreshold)) {
+             final FeatureDataSource<VariantContext> highThresholdSource = new FeatureDataSource<>(outputAtHighThreshold)) {
             final List<VariantContext> variantsWithLowThreshold =
                     StreamSupport.stream(lowThresholdSource.spliterator(), false).collect(Collectors.toList());
 
@@ -636,8 +667,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
     }
 
-    @Test (dataProvider="vcfsForFiltering")
-    public void testFilterMitochondria(String unfiltered, List<String> filterList, List<Boolean> filtersWereApplied, String[] extraArgs) throws Exception {
+    @Test(dataProvider = "vcfsForFiltering")
+    public void testFilterMitochondria(String unfiltered, List<String> filterList, String[] extraArgs) throws Exception {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -651,10 +682,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
         final Iterator<String> expectedFilters = filterList.iterator();
-        final Iterator<Boolean> expectedStatus = filtersWereApplied.iterator();
 
-        for(VariantContext v : variants){
-            Assert.assertEquals((Boolean)v.filtersWereApplied(), expectedStatus.next());  //toString below can't distinguish between PASS and unfiltered
+        for (VariantContext v : variants) {
             final List<String> sortedFilters = new ArrayList<>(v.getFilters());
             Collections.sort(sortedFilters);
             Assert.assertEquals(sortedFilters.toString(), expectedFilters.next(), "filters don't match expected");
@@ -776,8 +805,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         if (v1.getGenotype(0).isHomRef()) {
             tlods1 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, 0)};
             tlods2 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, 0)};
-        }
-        else {
+        } else {
             tlods1 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOD_KEY);
             tlods2 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOD_KEY);
 
@@ -789,16 +817,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             //we expect the AF threshold to have a significant effect on the NON_REF TLOD, but only for that allele
             if (!v1.getAlternateAllele(i).equals(Allele.NON_REF_ALLELE)) {
                 if (tlods1[i] > 0) {
-                    if (Math.abs(tlods1[i]-tlods2[i])/tlods1[i] > VARIANT_TLOD_MATCH_PCT) {
+                    if (Math.abs(tlods1[i] - tlods2[i]) / tlods1[i] > VARIANT_TLOD_MATCH_PCT) {
                         return false;
                     }
-                }
-                else if (Math.abs(tlods1[i]-tlods2[i]) > TLOD_MATCH_EPSILON) {
+                } else if (Math.abs(tlods1[i] - tlods2[i]) > TLOD_MATCH_EPSILON) {
                     return false;
                 }
-            }
-            else {
-                if (Math.abs(tlods1[i]-tlods2[i]) < TLOD_MATCH_EPSILON) {
+            } else {
+                if (Math.abs(tlods1[i] - tlods2[i]) < TLOD_MATCH_EPSILON) {
                     return false;
                 }
             }
@@ -806,9 +832,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return true;
     }
 
-   @Test
-   @SuppressWarnings("deprecation")
-   public void testAFAtHighDP() throws Exception {
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testAFAtHighDP() throws Exception {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
@@ -828,18 +854,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final int[] ADs = g.getAD();
             Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
             //Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 1e-6);
-            Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getAttributeAsString(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 2e-3);
+            Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getAttributeAsString(GATKVCFConstants.ALLELE_FRACTION_KEY, "0"))), (double) ADs[1] / (ADs[0] + ADs[1]), 2e-3);
         }
     }
 
-    @DataProvider(name="bamoutVariations")
+    @DataProvider(name = "bamoutVariations")
     public Object[][] bamoutVariations() {
         return new Object[][]{
                 // bamout, index, md5
-                { true, true, true },
-                { true, true, false },
-                { true, false, true },
-                { true, false, false },
+                {true, true, true},
+                {true, true, false},
+                {true, false, true},
+                {true, false, false},
         };
     }
 
@@ -903,7 +929,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final List<GATKRead> refReads = M2TestingUtils.createReads(refDepth, M2TestingUtils.DEFAULT_REF_BASES, samHeader, refQuality, "ref");
         refReads.forEach(writer::addRead);
-        for (int i = 0; i < numAltPairs; i++){
+        for (int i = 0; i < numAltPairs; i++) {
             // Create a read pair that completely overlap each other, which is not realistic but is easy to implement
             // and captures the essence of the issue
             final List<GATKRead> overlappingPair = ArtificialReadUtils.createPair(samHeader, "alt" + i, M2TestingUtils.DEFAULT_READ_LENGTH,
@@ -928,7 +954,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // Case 1: with the read correction we lose the variant - blood biopsy-like case
         final int numAltPairs = 5;
         final int depth = 100;
-        final int refDepth = depth - 2*numAltPairs;
+        final int refDepth = depth - 2 * numAltPairs;
         final File samFileWithOverlappingReads = createSamWithOverlappingReads(numAltPairs, refDepth);
 
         final File unfilteredVcf = File.createTempFile("unfiltered", ".vcf");
@@ -954,8 +980,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final int REF_REV_INDEX = 1;
         final int ALT_FWD_INDEX = 2;
         final int ALT_REV_INDEX = 3;
-        Assert.assertEquals(contingencyTable[REF_FWD_INDEX], refDepth/2);
-        Assert.assertEquals(contingencyTable[REF_REV_INDEX], refDepth/2);
+        Assert.assertEquals(contingencyTable[REF_FWD_INDEX], refDepth / 2);
+        Assert.assertEquals(contingencyTable[REF_REV_INDEX], refDepth / 2);
         Assert.assertEquals(contingencyTable[ALT_FWD_INDEX], numAltPairs);
         Assert.assertEquals(contingencyTable[ALT_REV_INDEX], numAltPairs);
 
@@ -995,46 +1021,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return samFile;
     }
 
-    @Test
-    public void testStrictStrandBiasAndNRatio () throws Exception {
-        Utils.resetRandomGenerator();
-
-        final int numAlts = 2;
-        final int numNs = 10;
-        final int numRefs = 5;
-        final File samWithNsandStrandBias = createSamWithNsandStrandBias(numAlts, numNs, numRefs);
-
-        final File StrandBiasNVcf = createTempFile("strandBiasN", ".vcf");
-        final File filteredVcf = createTempFile("filtered", ".vcf");
-
-        final List<String> args = Arrays.asList(
-                "-I", samWithNsandStrandBias.getAbsolutePath(),
-                "-R", hg19_chr1_1M_Reference,
-                "-A", "StrandBiasBySample",
-                "-A", "CountNs",
-                "--count-reads", "true",
-                "-O", StrandBiasNVcf.getAbsolutePath());
-        runCommandLine(args);
-
-        // going to try filtering at this ratio
-        final double nRatio = numNs / numAlts;
-
-        // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
-                "-O", filteredVcf.getAbsolutePath(),
-                "-V", StrandBiasNVcf.getAbsolutePath(),
-                "-" + M2FiltersArgumentCollection.STRICT_STRAND_BIAS_LONG_NAME, "true",
-                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, Double.toString(nRatio)),
-                FilterMutectCalls.class.getSimpleName()));
-
-        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
-
-        // This site should be filtered by the strict strand bias and n-ratio filter
-        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME));
-        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
-
-    }
-
     private void doMutect2Test(
             final String inputBam,
             final String tumorSample,
@@ -1043,7 +1029,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final boolean createBamoutIndex,
             final boolean createBamoutMD5) {
         final File tempDir = GATKBaseTest.createTempDir("mutect2");
-        final File outputVcf = new File(tempDir,"output.vcf");
+        final File outputVcf = new File(tempDir, "output.vcf");
         File bamoutFile = null;
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
@@ -1104,36 +1090,34 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "vcfsForFiltering")
     public Object[][] vcfsForFiltering() {
-        return new Object[][] {
+        return new Object[][]{
                 {NA12878_MITO_VCF.getPath(), Arrays.asList(
                         "[]",
-                        "[chimeric_original_alignment]",
-                        "[low_avg_alt_quality, t_lod]",
+                        "[numt_chimera]",
+                        "[average_qual, weak_evidence]",
                         "[]",
                         "[]",
                         "[]"),
-                        Arrays.asList(true, true, true, true, true, true),
                         new String[0]},
                 {NA12878_MITO_GVCF.getPath(), Arrays.asList(
-                    "[]",
-                        "[base_quality, t_lod]",
-                        "[t_lod]",
                         "[]",
-                        "[base_quality, contamination, mapping_quality, t_lod]"),
-                        Arrays.asList(false, true, true, true, true),
-                 new String[]{"-L MT:1 -L MT:37 -L MT:40 -L MT:152 -L MT:157"}}
+                        "[base_qual, weak_evidence]",
+                        "[weak_evidence]",
+                        "[]",
+                        "[base_qual, contamination, map_qual, position, weak_evidence]"),
+                        new String[]{"-L MT:1 -L MT:37 -L MT:40 -L MT:152 -L MT:157"}}
         };
     }
 
     //TODO: bring this to HaplotypeCallerIntegrationTest
-    private Pair<Double, Double> calculateConcordance(final File outputVcf, final File truthVcf ) {
+    private Pair<Double, Double> calculateConcordance(final File outputVcf, final File truthVcf) {
         final Set<String> outputKeys = VariantContextTestUtils.streamVcf(outputVcf)
                 .filter(vc -> vc.getFilters().isEmpty())
-                .filter(vc -> ! vc.isSymbolicOrSV())
+                .filter(vc -> !vc.isSymbolicOrSV())
                 .map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
         final Set<String> truthKeys = VariantContextTestUtils.streamVcf(truthVcf)
                 .filter(vc -> vc.getFilters().isEmpty())
-                .filter(vc -> ! vc.isSymbolicOrSV())
+                .filter(vc -> !vc.isSymbolicOrSV())
                 .map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
 
         final long truePositives = outputKeys.stream().filter(truthKeys::contains).count();
@@ -1144,7 +1128,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return new ImmutablePair<>(sensitivity, fdr);
     }
 
-    private static String keyForVariant( final VariantContext variant ) {
+    private static String keyForVariant(final VariantContext variant) {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }

@@ -83,17 +83,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             }
 
             foundData = true;
-            int[] data;
-            if ( g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(String.class)) {
-                final String sbbsString = (String)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
-                data = encodeSBBS(sbbsString);
-            } else if (g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(ArrayList.class)) {
-                @SuppressWarnings("unchecked")
-                final List<Integer> sbbsList = (ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
-                data = encodeSBBS(sbbsList);
-            } else {
-                throw new GATKException("Unexpected " + GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY + " type");
-            }
+            int[] data = getStrandCounts(g);
 
             if ( passesMinimumThreshold(data, minCount) ) {
                 for( int index = 0; index < sbArray.length; index++ ) {
@@ -103,6 +93,21 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         }
 
         return foundData ? decodeSBBS(sbArray) : null ;
+    }
+
+    public static int[] getStrandCounts(final Genotype g) {
+        int[] data;
+        if ( g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(String.class)) {
+            final String sbbsString = (String)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
+            data = encodeSBBS(sbbsString);
+        } else if (g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(ArrayList.class)) {
+            @SuppressWarnings("unchecked")
+            final List<Integer> sbbsList = (ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
+            data = encodeSBBS(sbbsList);
+        } else {
+            throw new GATKException("Unexpected " + GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY + " type");
+        }
+        return data;
     }
 
     /**
