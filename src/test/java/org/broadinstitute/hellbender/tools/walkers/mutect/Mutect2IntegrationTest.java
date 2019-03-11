@@ -1134,19 +1134,4 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
-
-    @Test
-    public void test() throws Exception {
-        final File filteredVcf = createTempFile("filtered", ".vcf");
-
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("V", "/Users/davidben/Desktop/strand/dream3.vcf");
-        args.addArgument("O", filteredVcf.getPath());
-
-        new Main().instanceMain(makeCommandLineArgs(args.getArgsList(), FilterMutectCalls.class.getSimpleName()));
-
-        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
-
-    }
-
 }
