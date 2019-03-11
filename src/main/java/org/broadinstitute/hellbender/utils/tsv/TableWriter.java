@@ -10,7 +10,7 @@ import java.io.*;
 /**
  * Class to write tab separated value files.
  * <p>
- * The column (and they names) are passed in the constructor parameter along the output {@link File file}
+ * The column (and they names) are passed in the constructor parameter along the output {@link Path path}
  * or {@link Writer writer}.
  * </p>
  * <p>

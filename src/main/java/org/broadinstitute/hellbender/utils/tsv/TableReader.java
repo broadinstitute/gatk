@@ -140,25 +140,6 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     private R nextRecord;
 
     /**
-     * Creates a new table reader given the input file name.
-     * <p>
-     * This operation will read the first lines of the input file until the
-     * column name header line is found.
-     * </p>
-     * <p>
-     * The source's name used in error reporting is the file's path as returned by
-     * {@link File#getPath}.
-     * </p>
-     *
-     * @param file the input file name.
-     * @throws IllegalArgumentException if {@code name} is {@code null}.
-     * @throws IOException              if any is raised when accessing the file.
-     */
-    // public TableReader(final File file) throws IOException {
-    //     this(Utils.nonNull(file, "the input file cannot be null").getPath(), new FileReader(file));
-    // }
-
-    /**
      * Creates a new table reader given the input file path.
      * <p>
      * This operation will read the first lines of the input file until the
