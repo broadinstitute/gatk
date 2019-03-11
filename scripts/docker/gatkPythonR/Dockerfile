@@ -7,6 +7,7 @@ FROM $BASEIMAGE
 RUN mkdir /condaenv
 
 ADD scripts/gatkcondaenv.yml.template /condaenv/gatkcondaenv.yml
+ADD R_HMM_testing_packages.R /condaenv/R_HMM_testing_packages.R
 
 RUN ls -lath /condaenv
 
@@ -33,4 +34,6 @@ RUN conda env create -n gatk -f /condaenv/gatkcondaenv.yml && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -y -all && \
     rm -rf /root/.cache/pip
+
+RUN Rscript /condaenv/R_HMM_testing_packages.R
 # End GATK Python environment
