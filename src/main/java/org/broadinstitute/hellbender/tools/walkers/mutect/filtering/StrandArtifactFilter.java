@@ -37,7 +37,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
 
     private static final double ARTIFACT_PSEUDOCOUNT = 1;
 
-    private static final double NON_ARTIFACT_PSEUDOCOUNT = 10;
+    private static final double NON_ARTIFACT_PSEUDOCOUNT = 100;
 
     private final List<EStep> eSteps = new ArrayList<>();
 
@@ -51,21 +51,16 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     }
 
     public EStep calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-
-        final int[] totalCounts = filteringEngine.sumADsOverSamples(vc, true, true);
-        final int[] forwardCounts = vc.getAttributeAsIntList(GATKVCFConstants.FORWARD_STRAND_COUNT_KEY, 0).stream().mapToInt(x->x).toArray();
-        final int forwardCount = (int) MathUtils.sum(forwardCounts);
-        final int reverseCount = (int) MathUtils.sum(totalCounts) - forwardCount;
-        final int forwardAltCount = forwardCount - forwardCounts[0];
-        final int reverseAltCount = (int) MathUtils.sum(totalCounts) - totalCounts[0] - forwardAltCount;
+        // {fwd ref, rev ref, fwd alt, rev alt}
+        final int[] counts = filteringEngine.sumStrandCountsOverSamples(vc, true, false);
 
         final int indelSize = Math.abs(vc.getReference().length() - vc.getAlternateAllele(0).length());
         if (indelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
-            return new EStep(0, 0, forwardCount, reverseCount, forwardAltCount, reverseAltCount);
+            return new EStep(0, 0, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3]);
         }
 
 
-        return strandArtifactProbability(strandArtifactPrior, forwardCount, reverseCount, forwardAltCount, reverseAltCount, indelSize);
+        return strandArtifactProbability(strandArtifactPrior, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3], indelSize);
 
     }
 
