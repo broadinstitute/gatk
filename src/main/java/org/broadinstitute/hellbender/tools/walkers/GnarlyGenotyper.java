@@ -308,7 +308,7 @@ public final class GnarlyGenotyper extends VariantWalker {
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
                                                 final boolean nonRefReturned, final boolean summarizePLs) {
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
-        if(!inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
+        if(nonRefReturned && !inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalStateException("This tool assumes that the NON_REF allele is listed last, as in HaplotypeCaller GVCF output,"
             + " but that was not the case at position " + vc.getContig() + ":" + vc.getStart() + ".");
         }
