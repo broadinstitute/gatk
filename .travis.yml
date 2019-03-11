@@ -80,7 +80,7 @@ before_install:
     ssh -T git@github.com;
     echo "Done testing github authentication";
   fi;
-- cat /proc/cpuinfo
+- cat /proc/cpuinfo;
 #install R
 #- if [[ $TEST_DOCKER != true ]]; then
 #   sudo mkdir -p /usr/local/lib/R/;
