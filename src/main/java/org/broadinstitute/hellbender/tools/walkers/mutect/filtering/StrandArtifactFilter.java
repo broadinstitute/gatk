@@ -28,13 +28,13 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     private static final int LONG_INDEL_SIZE = 3;
     private static final int LONGEST_STRAND_ARTIFACT_INDEL_SIZE = 4;
 
-    private static final double INITIAL_STRAND_ARTIFACT_PRIOR = 0.01;
+    private static final double INITIAL_STRAND_ARTIFACT_PRIOR = 0.001;
 
     private double strandArtifactPrior = INITIAL_STRAND_ARTIFACT_PRIOR;
 
     private static final double ARTIFACT_PSEUDOCOUNT = 1;
 
-    private static final double NON_ARTIFACT_PSEUDOCOUNT = 100;
+    private static final double NON_ARTIFACT_PSEUDOCOUNT = 1000;
 
     private final List<EStep> eSteps = new ArrayList<>();
 
