@@ -49,7 +49,6 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
 public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {
-    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;

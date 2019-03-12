@@ -27,7 +27,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     private Collection<String> founderIds;
     private File pedigreeFile = null;
     private boolean hasAddedPedigreeFounders = false;
-    protected final Logger warning = LogManager.getLogger(this.getClass());
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     protected GenotypesContext getFounderGenotypes(VariantContext vc) {
         if ((pedigreeFile!= null) && (!hasAddedPedigreeFounders)) {
@@ -99,7 +99,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     }
     void validateArguments(Collection<String> founderIds, File pedigreeFile) {
         if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
-            warning.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
+            logger.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
         }
     }
 }
