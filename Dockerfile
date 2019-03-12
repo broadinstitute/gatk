@@ -43,7 +43,7 @@ RUN cp -r gatk.jar /gatk
 ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 
 WORKDIR /gatk
-RUN ln -s /condaenv/gatkcondaenv.yml /gatk/gatkcondaenv.yml && \
+RUN mv /condaenv/gatkcondaenv.yml /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc
 
