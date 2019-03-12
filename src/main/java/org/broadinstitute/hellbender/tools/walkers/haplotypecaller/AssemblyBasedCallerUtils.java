@@ -128,7 +128,9 @@ public final class AssemblyBasedCallerUtils {
         Collections.sort(readsToUse, new ReadCoordinateComparator(readsHeader)); // TODO: sort may be unnecessary here
 
         // handle overlapping read pairs from the same fragment
-        cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, correctOverlappingBaseQualities);
+        if (correctOverlappingBaseQualities) {
+            cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader);
+        }
 
         region.clearReads();
         region.addAll(readsToUse);
@@ -139,14 +141,12 @@ public final class AssemblyBasedCallerUtils {
      * Clean up reads/bases that overlap within read pairs
      *
      * @param reads the list of reads to consider
-     * @param correctOverlappingBaseQualities
      */
-    private static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader,
-                                                  final boolean correctOverlappingBaseQualities) {
+    private static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader) {
         for ( final List<GATKRead> perSampleReadList : splitReadsBySample(samplesList, readsHeader, reads).values() ) {
             final FragmentCollection<GATKRead> fragmentCollection = FragmentCollection.create(perSampleReadList);
             for ( final List<GATKRead> overlappingPair : fragmentCollection.getOverlappingPairs() ) {
-                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair, correctOverlappingBaseQualities);
+                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair);
             }
         }
     }

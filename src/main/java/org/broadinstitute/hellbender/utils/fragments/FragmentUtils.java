@@ -27,23 +27,21 @@ public final class FragmentUtils {
      * nothing if the algorithm cannot create a meaningful one
      *  @param clippedFirstRead the left most read
      * @param clippedSecondRead the right most read
-     * @param correctOverlappingBaseQualities
      *
      */
-    public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead,
-                                                               final boolean correctOverlappingBaseQualities) {
+    public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead) {
         Utils.nonNull(clippedFirstRead);
         Utils.nonNull(clippedSecondRead);
         Utils.validateArg(clippedFirstRead.getName().equals(clippedSecondRead.getName()), () ->
                 "attempting to merge two reads with different names " + clippedFirstRead + " and " + clippedSecondRead);
 
         // don't adjust fragments that do not overlap
-        if ( clippedFirstRead.getEnd() < clippedSecondRead.getStart() || !clippedFirstRead.getContig().equals(clippedSecondRead.getContig()) ) {
+        if (clippedFirstRead.getEnd() < clippedSecondRead.getStart() || !clippedFirstRead.getContig().equals(clippedSecondRead.getContig())) {
             return;
         }
 
         final Pair<Integer, Boolean> pair = ReadUtils.getReadCoordinateForReferenceCoordinate(clippedFirstRead, clippedSecondRead.getStart());
-        final int firstReadStop = ( pair.getRight() ? pair.getLeft() + 1 : pair.getLeft() );
+        final int firstReadStop = (pair.getRight() ? pair.getLeft() + 1 : pair.getLeft());
         final int numOverlappingBases = Math.min(clippedFirstRead.getLength() - firstReadStop, clippedSecondRead.getLength());
 
         final byte[] firstReadBases = clippedFirstRead.getBases();
@@ -51,16 +49,14 @@ public final class FragmentUtils {
         final byte[] secondReadBases = clippedSecondRead.getBases();
         final byte[] secondReadQuals = clippedSecondRead.getBaseQualities();
 
-        for ( int i = 0; i < numOverlappingBases; i++ ) {
-            if (! correctOverlappingBaseQualities) {
-                break;
-            }
+
+        for (int i = 0; i < numOverlappingBases; i++) {
 
             final int firstReadIndex = firstReadStop + i;
             final byte firstReadBase = firstReadBases[firstReadIndex];
             final byte secondReadBase = secondReadBases[i];
 
-            if ( firstReadBase == secondReadBase ) {
+            if (firstReadBase == secondReadBase) {
                 firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
                 secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
             } else {
@@ -69,22 +65,21 @@ public final class FragmentUtils {
                 secondReadQuals[i] = 0;
             }
         }
-
         clippedFirstRead.setBaseQualities(firstReadQuals);
         clippedSecondRead.setBaseQualities(secondReadQuals);
     }
 
-    public static void adjustQualsOfOverlappingPairedFragments(final List<GATKRead> overlappingPair, final boolean correctOverlappingBaseQualities) {
+    public static void adjustQualsOfOverlappingPairedFragments(final List<GATKRead> overlappingPair) {
         Utils.validateArg( overlappingPair.size() == 2, () -> "Found overlapping pair with " + overlappingPair.size() + " reads, but expecting exactly 2.");
 
         final GATKRead firstRead = overlappingPair.get(0);
         final GATKRead secondRead = overlappingPair.get(1);
 
         if ( secondRead.getSoftStart() < firstRead.getSoftStart() ) {
-            adjustQualsOfOverlappingPairedFragments(secondRead, firstRead, correctOverlappingBaseQualities);
+            adjustQualsOfOverlappingPairedFragments(secondRead, firstRead);
         }
         else {
-            adjustQualsOfOverlappingPairedFragments(firstRead, secondRead, correctOverlappingBaseQualities);
+            adjustQualsOfOverlappingPairedFragments(firstRead, secondRead);
         }
     }
 }
