@@ -24,7 +24,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -237,7 +236,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         removeReadStubs(regionForGenotyping);
-        AssemblyBasedCallerUtils.cleanOverlappingReadPairs(regionForGenotyping.getReads(), samplesList, header);
+        AssemblyBasedCallerUtils.cleanOverlappingReadPairs(regionForGenotyping.getReads(), samplesList, header,
+                false, OptionalInt.of(MTAC.PCRSnvQual/2), OptionalInt.of(MTAC.PCRIndelQual/2));
 
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
@@ -371,14 +371,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             callableSites.increment();
         }
         final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
-        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.initialPCRErrorQual);
+        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.PCRSnvQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
 
         if (tumorLog10Odds < MTAC.getInitialLod()) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
-            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.initialPCRErrorQual);
+            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.PCRSnvQual);
             final int normalAltCount = normalAltQuals.size();
             final double normalQualSum = normalAltQuals.stream().mapToDouble(Byte::doubleValue).sum();
             if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {

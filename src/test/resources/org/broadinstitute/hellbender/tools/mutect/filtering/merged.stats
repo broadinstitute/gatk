@@ -27,7 +27,6 @@
 #<METADATA>sensitivity=0.669
 filter	FP	FDR	FN	FNR
 weak_evidence	0.06	0.01	1.62	0.23
-strand_bias	0.0	0.0	0.0	0.0
 contamination	0.23	0.05	0.09	0.01
 normal_artifact	0.0	0.0	0.05	0.01
 slippage	0.0	0.0	0.0	0.0

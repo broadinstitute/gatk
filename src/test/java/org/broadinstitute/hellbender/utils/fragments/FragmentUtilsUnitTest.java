@@ -10,8 +10,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class FragmentUtilsUnitTest extends GATKBaseTest {
 
@@ -60,7 +59,7 @@ public class FragmentUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "AdjustFragmentsTest")
     public void testAdjustingTwoReads(final GATKRead read1, final GATKRead read2, final int overlapSize) {
-        FragmentUtils.adjustQualsOfOverlappingPairedFragments(read1, read2);
+        FragmentUtils.adjustQualsOfOverlappingPairedFragments(Arrays.asList(read1, read2), true, OptionalInt.empty(), OptionalInt.empty());
 
         for ( int i = 0; i < read1.getLength() - overlapSize; i++ ) {
             Assert.assertEquals(read1.getBaseQualities()[i], HIGH_QUALITY);
