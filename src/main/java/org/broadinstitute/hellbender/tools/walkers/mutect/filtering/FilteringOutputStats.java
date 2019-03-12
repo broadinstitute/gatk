@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import java.nio.file.Path;
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -51,7 +52,7 @@ public class FilteringOutputStats {
         }
     }
 
-    public void writeFilteringStats(final File filteringStatsFile, final double threshold, List<Pair<String, String>> clusteringMetadata) {
+    public void writeFilteringStats(final Path filteringStats, final double threshold, List<Pair<String, String>> clusteringMetadata) {
         final double totalTrueVariants = TPs + FNs;
 
         final List<FilterStats> filterStats = filters.stream()
@@ -60,7 +61,7 @@ public class FilteringOutputStats {
                 .filter(stats -> stats.getFalsePositiveCount() > 0 || stats.getFalseNegativeCount() > 0)
                 .collect(Collectors.toList());
 
-        FilterStats.writeM2FilterSummary(filterStats, filteringStatsFile, clusteringMetadata, threshold, pass, TPs, FPs, FNs);
+        FilterStats.writeM2FilterSummary(filterStats, filteringStats, clusteringMetadata, threshold, pass, TPs, FPs, FNs);
     }
 
     private Map<Mutect2VariantFilter, MutableDouble> makeEmptyFilterCounts() {
