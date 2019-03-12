@@ -140,7 +140,6 @@ workflow Mutect2 {
     Boolean? funco_filter_funcotations
     String? funcotator_extra_args
 
-    Boolean run_funcotator_or_default = select_first([run_funcotator, false])
     String funco_default_output_format = "MAF"
 
 
