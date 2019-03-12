@@ -31,7 +31,8 @@ RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
 ###########
 
 # Set environment variables.
-ENV HOME /root
+RUN mkdir /home
+ENV HOME /home
 
 # Define working directory.
 WORKDIR /root
