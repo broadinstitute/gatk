@@ -8,139 +8,158 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MethylationProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.variant.MethylationVCFConstants;
 
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Example tool that prints methtylation-based coverage from supplied read to the specified output vcf file
- * walker that prints methtylation-based coverage with contextual data
+ * Tool which identifies methylated bases from bisulfite sequencing data
+ * printing methylation-based coverage from supplied read to the specified output vcf file
+ * walker that prints methylation-based coverage with contextual data
  *
  * @author Benjamin Carlin
  */
 @CommandLineProgramProperties(
-    summary = "Example tool that prints methtylation-based coverage from supplied read to the specified output vcf file",
-    oneLineSummary = "walker that prints methtylation-based coverage with contextual data",
-    programGroup = ExampleProgramGroup.class
+    summary = "Tool that prints methylation-based coverage from supplied bisulfite BAM to the specified output vcf file",
+    oneLineSummary = "Identify methylated bases from bisulfite BAMs",
+    programGroup = MethylationProgramGroup.class
 )
 public class CembaTypeCaller extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file")
-    private File OUTPUT_FILE = null;
+    private File outputFile = null;
 
-    private htsjdk.variant.variantcontext.writer.VariantContextWriter vcfWriter = null;
+    private VariantContextWriter vcfWriter = null;
+
+    private static final int REFERENCE_CONTEXT_LENGTH = 2;
+
 
     @Override
     public void onTraversalStart() {
         try {
-            vcfWriter = createVCFWriter(OUTPUT_FILE);
+            vcfWriter = createVCFWriter(outputFile);
         }
         catch ( RuntimeException e ) {
-            throw new UserException.CouldNotReadInputFile(OUTPUT_FILE, e);
+            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
-        vcfWriter.writeHeader(createMethylationHeader());
+
+        vcfWriter.writeHeader(createMethylationHeader(getHeaderForReads()));
     }
 
-    private VCFHeader createMethylationHeader() {
-        VCFInfoHeaderLine mcLine = new VCFInfoHeaderLine("mC", 1, VCFHeaderLineType.Integer, "count of reads supporting methylation that are unconverted ");
-        VCFInfoHeaderLine coverageLine = new VCFInfoHeaderLine("methCov", 1, VCFHeaderLineType.Integer, "count of reads supporting methylation");
-        VCFInfoHeaderLine contextLine = new VCFInfoHeaderLine("CT", 1, VCFHeaderLineType.Integer, "reference context");
-        VCFInfoHeaderLine readDepthLine = VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY);
-        VCFFormatHeaderLine gtLine = VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY);
+    private static VCFHeader createMethylationHeader(SAMFileHeader header) {
+        if(header == null) {
+            throw new UserException.BadInput("Error writing header, getHeaderForReads() returns null");
+
+        }
+
+        final VCFInfoHeaderLine unconvertedCoverageLine = new VCFInfoHeaderLine(MethylationVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are unconverted ");
+        final VCFInfoHeaderLine coverageLine = new VCFInfoHeaderLine(MethylationVCFConstants.CONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are converted ");
+        final VCFInfoHeaderLine contextLine = new VCFInfoHeaderLine(MethylationVCFConstants.METHYLATOION_CONTEXT_KEY, 1, VCFHeaderLineType.String, "Forward Strand Reference context");
+        final VCFInfoHeaderLine readDepthLine = VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY);
+        final VCFFormatHeaderLine gtLine = VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY);
 
         LinkedHashSet<VCFHeaderLine> headerLines = new LinkedHashSet<>();
-        headerLines.add(readDepthLine);
-        headerLines.add(contextLine);
-        headerLines.add(mcLine);
+        headerLines.add(unconvertedCoverageLine);
         headerLines.add(coverageLine);
+        headerLines.add(contextLine);
+        headerLines.add(readDepthLine);
         headerLines.add(gtLine);
 
-        htsjdk.samtools.SAMFileHeader header = getHeaderForReads();
-        if(header != null) {
-            List<String> samples = header.getReadGroups()
-                    .stream()
-                    .map(SAMReadGroupRecord::getSample)
-                    .sorted()
-                    .distinct()
-                    .collect(Collectors.toList());
+        List<String> samples = header.getReadGroups()
+                .stream()
+                .map(SAMReadGroupRecord::getSample)
+                .sorted()
+                .distinct()
+                .collect(Collectors.toList());
 
-            return new VCFHeader(headerLines, samples);
-        }
-
-        return null;
+        return new VCFHeader(headerLines, samples);
     }
-
 
     @Override
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        if(referenceContext.hasBackingDataSource()) {
-            String strand = new String(referenceContext.getBases());
-            int unconverted_bases, converted_bases = unconverted_bases = 0;
-            String alt, context = alt = null;
+        final byte referenceBase = referenceContext.getBases()[0];
+        final int unconvertedBases;
+        final int convertedBases;
+        final byte alt;
+        byte[] context = null;
 
-            // check the forward strand for methylated coverage
-            if(strand.equals("C")) {
-                ReadPileup forwardBasePileup = alignmentContext.stratify(AlignmentContext.ReadOrientation.FORWARD).getBasePileup();
-                // unconverted: C; converted: T
-                unconverted_bases = forwardBasePileup.getBaseCounts()[1];
-                converted_bases = forwardBasePileup.getBaseCounts()[3];
+        // check the forward strand for methylated coverage
+        if(referenceBase == (byte)'C') {
+            alt = (byte)'T';
+            ReadPileup forwardBasePileup = alignmentContext.stratify(AlignmentContext.ReadOrientation.FORWARD).getBasePileup();
+            // unconverted: C, index=1; converted: T, index=3
+            final int[] forwardBaseCounts = forwardBasePileup.getBaseCounts();
+            unconvertedBases = forwardBaseCounts[BaseUtils.simpleBaseToBaseIndex((byte)'C')];
+            convertedBases = forwardBaseCounts[BaseUtils.simpleBaseToBaseIndex((byte)'T')];
 
-                // if there is methylated coverage
-                if (unconverted_bases + converted_bases > 0) {
-                    alt = "T";
-                    context = new String(referenceContext.getBases(0,2));
-                }
+            // if there is methylated coverage
+            if (unconvertedBases + convertedBases > 0) {
+                context = referenceContext.getBases(0, REFERENCE_CONTEXT_LENGTH);
             }
-            // check the reverse strand for methylated coverage
-            else if(strand.equals("G")) {
-                ReadPileup reverseBasePileup = alignmentContext.stratify(AlignmentContext.ReadOrientation.REVERSE).getBasePileup();
-                // unconverted: G; converted: A
-                unconverted_bases = reverseBasePileup.getBaseCounts()[2];
-                converted_bases = reverseBasePileup.getBaseCounts()[0];
+        }
+        // check the reverse strand for methylated coverage
+        else if(referenceBase == (byte)'G') {
+            alt = (byte)'A';
+            ReadPileup reverseBasePileup = alignmentContext.stratify(AlignmentContext.ReadOrientation.REVERSE).getBasePileup();
+            // unconverted: G, index=2; converted: A, index=0
+            final int[] reverseBaseCounts = reverseBasePileup.getBaseCounts();
+            unconvertedBases = reverseBaseCounts[BaseUtils.simpleBaseToBaseIndex((byte)'G')];
+            convertedBases = reverseBaseCounts[BaseUtils.simpleBaseToBaseIndex((byte)'A')];
 
-                // if there is methylated coverage
-                if (unconverted_bases + converted_bases > 0) {
-                    alt = "A";
-                    // get the reverse complement for context b/c we are on the reverse strand
-                    context = new String(org.broadinstitute.hellbender.utils.BaseUtils.simpleReverseComplement(
-                            referenceContext.getBases(2,0)));
-                }
+            // if there is methylated coverage
+            if (unconvertedBases + convertedBases > 0) {
+                // get the reverse complement for context b/c we are on the reverse strand
+                context = BaseUtils.simpleReverseComplement(referenceContext.getBases(REFERENCE_CONTEXT_LENGTH,0));
             }
+        }
+        // if reference strand does not support methylation
+        else {
+            return;
+        }
 
-            // if there are reads that have methylated coverage
-            if (alt != null) {
-                LinkedHashSet<Allele> alleles = new LinkedHashSet<>();
-                alleles.add(Allele.create(strand, true));
-                alleles.add(Allele.create(alt, false));
+        // if there are reads that have methylated coverage
+        if (unconvertedBases + convertedBases > 0) {
+            LinkedHashSet<Allele> alleles = new LinkedHashSet<>();
+            alleles.add(Allele.create(referenceBase, true));
+            alleles.add(Allele.create(alt, false));
 
-                VariantContextBuilder vcb = new VariantContextBuilder();
-                vcb.chr(alignmentContext.getContig());
-                vcb.start(alignmentContext.getPosition());
-                vcb.stop(alignmentContext.getPosition());
-                vcb.noID();
-                vcb.alleles(alleles);
-                vcb.noGenotypes();
-                vcb.unfiltered();
-                vcb.attribute("mC", unconverted_bases);
-                vcb.attribute("methCov", converted_bases);
-                vcb.attribute("CT", context);
-                vcb.attribute(VCFConstants.DEPTH_KEY, alignmentContext.size());
+            VariantContextBuilder vcb = new VariantContextBuilder();
+            vcb.chr(alignmentContext.getContig());
+            vcb.start(alignmentContext.getPosition());
+            vcb.stop(alignmentContext.getPosition());
+            vcb.noID();
+            vcb.alleles(alleles);
+            vcb.noGenotypes();
+            vcb.unfiltered();
+            vcb.attribute(MethylationVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, unconvertedBases);
+            vcb.attribute(MethylationVCFConstants.CONVERTED_BASE_COVERAGE_KEY, convertedBases);
+            vcb.attribute(MethylationVCFConstants.METHYLATOION_CONTEXT_KEY, new String(context));
+            vcb.attribute(VCFConstants.DEPTH_KEY, alignmentContext.size());
 
-                // write to VCF
-                VariantContext vc = vcb.make();
-                vcfWriter.add(vc);
-            }
+            // write to VCF
+            final VariantContext vc = vcb.make();
+            vcfWriter.add(vc);
         }
     }
 
     @Override
     public void closeTool() {
-        if (vcfWriter != null )
-           vcfWriter.close();
+        if (vcfWriter != null ) {
+            vcfWriter.close();
+        }
+    }
+
+    @Override
+    public boolean requiresReference() {
+        return true;
     }
 }

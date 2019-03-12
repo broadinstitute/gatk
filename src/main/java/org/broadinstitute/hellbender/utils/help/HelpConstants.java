@@ -53,6 +53,9 @@ public final class HelpConstants {
     public final static String DOC_CAT_RNA = "RNA-Specific Tools";
     public final static String DOC_CAT_RNA_SUMMARY = "Tools intended to be used for processing RNA data.";
 
+    public final static String DOC_CAT_METHYLATION_DISCOVERY = "Methylation-Specific Tools";
+    public final static String DOC_CAT_METHYLATION_DISCOVERY_SUMMARY = "Tools that perform methylation calling and process methylated bases for bisulfite BAMs";
+
     // End GATK Program groups
 
     /**
