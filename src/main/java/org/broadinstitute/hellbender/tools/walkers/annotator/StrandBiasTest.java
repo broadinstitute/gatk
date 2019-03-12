@@ -178,12 +178,6 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             // a normal read with an actual strand
             final boolean isForward = !read.isReverseStrand();
             table[offset + (isForward ? 0 : 1)]++;
-
-            // This read's mate got discarded by SomaticGenotypingEngine::clipOverlappingReads()
-            if (read.hasAttribute(SomaticGenotypingEngine.DISCARDED_MATE_READ_TAG)){
-                // Note that if this read is forward, then we increment its mate which we assume is reverse
-                table[offset + (isForward ? 1 : 0)]++;
-            }
         }
     }
 

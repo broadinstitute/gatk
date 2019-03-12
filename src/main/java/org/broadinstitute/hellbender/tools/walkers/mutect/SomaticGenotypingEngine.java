@@ -42,7 +42,6 @@ public class SomaticGenotypingEngine {
     private final M2ArgumentCollection MTAC;
     private final Set<String> normalSamples;
     final boolean hasNormal;
-    public static final String DISCARDED_MATE_READ_TAG = "DM";
     protected VariantAnnotatorEngine annotationEngine;
 
     public SomaticGenotypingEngine(final M2ArgumentCollection MTAC, final Set<String> normalSamples, final VariantAnnotatorEngine annotationEngine) {
@@ -103,7 +102,6 @@ public class SomaticGenotypingEngine {
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, null);
             final ReadLikelihoods<Allele> log10Likelihoods = log10ReadLikelihoods.marginalize(alleleMapper,
                     new SimpleInterval(mergedVC).expandWithinContig(HaplotypeCallerGenotypingEngine.ALLELE_EXTENSION, header.getSequenceDictionary()));
-            filterOverlappingReads(log10Likelihoods, mergedVC.getReference(), loc, false);
 
             if (emitRefConf) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
@@ -296,51 +294,6 @@ public class SomaticGenotypingEngine {
         final OptionalInt optionalRefIndex = IntStream.range(0, matrix.numberOfAlleles()).filter(a -> matrix.getAllele(a).isReference()).findFirst();
         Utils.validateArg(optionalRefIndex.isPresent(), "No ref allele found in likelihoods");
         return optionalRefIndex.getAsInt();
-    }
-
-    private void filterOverlappingReads(final ReadLikelihoods<Allele> likelihoods, final Allele ref, final int location, final boolean retainMismatches) {
-        for (final String sample : likelihoods.samples()) {
-            // Get the best alleles of each read and group them by the read name.
-            // This puts paired reads from the same fragment together
-            final Map<String, List<ReadLikelihoods<Allele>.BestAllele>> fragments = likelihoods.bestAllelesBreakingTies(sample).stream()
-                    .collect(Collectors.groupingBy(ba -> ba.read.getName()));
-
-            // We only potentially filter read pairs that overlap at this position
-            final List<Pair<ReadLikelihoods<Allele>.BestAllele, ReadLikelihoods<Allele>.BestAllele>> overlappingReadPairs =
-                    fragments.values().stream()
-                            .filter(l -> l.size() == 2)
-                            .map(l -> new ImmutablePair<>(l.get(0), l.get(1)))
-                            .filter(p -> ReadUtils.isInsideRead(p.getLeft().read, location) && ReadUtils.isInsideRead(p.getRight().read, location))
-                            .collect(Collectors.toList());
-
-            final Set<GATKRead> readsToDiscard = new HashSet<>();
-
-            for (final Pair<ReadLikelihoods<Allele>.BestAllele, ReadLikelihoods<Allele>.BestAllele> pair : overlappingReadPairs) {
-                final ReadLikelihoods<Allele>.BestAllele read = pair.getLeft();
-                final ReadLikelihoods<Allele>.BestAllele mate = pair.getRight();
-
-                if (read.allele.equals(mate.allele)) {
-                    // keep the higher-quality read
-                    readsToDiscard.add(read.likelihood < mate.likelihood ? read.read : mate.read);
-
-                    // mark the read to indicate that its mate was dropped - so that we can account for it in {@link StrandArtifactFilter}
-                    // and {@link StrandBiasBySample}
-                    if (MTAC.annotateBasedOnReads){
-                        final GATKRead readToKeep = read.likelihood >= mate.likelihood ? read.read : mate.read;
-                        readToKeep.setAttribute(DISCARDED_MATE_READ_TAG, 1);
-                    }
-                } else if (retainMismatches) {
-                    // keep the alt read
-                    readsToDiscard.add(read.allele.equals(ref) ? read.read : mate.read);
-                } else {
-                    // throw out both
-                    readsToDiscard.add(read.read);
-                    readsToDiscard.add(mate.read);
-                }
-            }
-
-            likelihoods.removeSampleReads(likelihoods.indexOfSample(sample), readsToDiscard, likelihoods.numberOfAlleles());
-        }
     }
 
     //convert a likelihood matrix of alleles x reads into a RealMatrix
