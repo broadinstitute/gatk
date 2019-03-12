@@ -142,7 +142,7 @@ public final class AssemblyBasedCallerUtils {
      *
      * @param reads the list of reads to consider
      */
-    private static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader) {
+    public static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader) {
         for ( final List<GATKRead> perSampleReadList : splitReadsBySample(samplesList, readsHeader, reads).values() ) {
             final FragmentCollection<GATKRead> fragmentCollection = FragmentCollection.create(perSampleReadList);
             for ( final List<GATKRead> overlappingPair : fragmentCollection.getOverlappingPairs() ) {
@@ -251,8 +251,9 @@ public final class AssemblyBasedCallerUtils {
                                                   final Logger logger,
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
-                                                  final SmithWatermanAligner aligner){
-        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, ! argumentCollection.doNotCorrectOverlappingBaseQualities);
+                                                  final SmithWatermanAligner aligner,
+                                                  final boolean correctOverlappingBaseQualities){
+        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities);
         if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
         }

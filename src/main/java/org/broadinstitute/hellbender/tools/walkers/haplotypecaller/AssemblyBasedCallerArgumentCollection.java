@@ -23,7 +23,6 @@ public abstract class AssemblyBasedCallerArgumentCollection {
 
     public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
     public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
-    public static final String CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "correct-overlapping-quality";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -104,9 +103,6 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Advanced
     @Argument(fullName = SMITH_WATERMAN_LONG_NAME, doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
-
-    @Argument(fullName = CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME)
-    public boolean doNotCorrectOverlappingBaseQualities = false;
 
     /**
      * (BETA feature) The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.

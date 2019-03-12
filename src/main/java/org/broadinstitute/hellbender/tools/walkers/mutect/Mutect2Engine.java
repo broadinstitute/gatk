@@ -219,7 +219,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 .filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList());
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents);
@@ -237,6 +237,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         removeReadStubs(regionForGenotyping);
+        AssemblyBasedCallerUtils.cleanOverlappingReadPairs(regionForGenotyping.getReads(), samplesList, header);
+
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
@@ -433,7 +435,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * @return a list of variant contexts (can be empty) to emit for this ref region
      */
     private List<VariantContext> referenceModelForNoVariation(final AssemblyRegion region) {
-        AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, ! MTAC.doNotCorrectOverlappingBaseQualities);  //take off soft clips and low Q tails before we calculate likelihoods
+        AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, false);  //take off soft clips and low Q tails before we calculate likelihoods
         final SimpleInterval paddedLoc = region.getExtendedSpan();
         final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
         final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
