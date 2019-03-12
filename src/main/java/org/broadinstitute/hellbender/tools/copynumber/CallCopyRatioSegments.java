@@ -162,7 +162,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
         logger.info(String.format("Writing called segments in IGV-compatible format to %s...", outputCalledLegacySegmentsFile.getAbsolutePath()));
         legacySegmentCollection.write(outputCalledLegacySegmentsFile);
 
-        logger.info("CallCopyRatioSegments complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

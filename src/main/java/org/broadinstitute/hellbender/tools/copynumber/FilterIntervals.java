@@ -281,7 +281,7 @@ public final class FilterIntervals extends CommandLineProgram {
         filteredIntervals.getIntervals().forEach(i -> filteredIntervalList.add(new Interval(i)));
         filteredIntervalList.write(outputFilteredIntervalsFile);
 
-        logger.info("FilterIntervals complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

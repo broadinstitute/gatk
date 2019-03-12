@@ -292,7 +292,7 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             throw new UserException("Python return code was non-zero.");
         }
 
-        logger.info("DetermineGermlineContigPloidy complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

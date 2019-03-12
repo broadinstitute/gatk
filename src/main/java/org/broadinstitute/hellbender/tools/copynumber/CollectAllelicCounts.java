@@ -152,7 +152,7 @@ public final class CollectAllelicCounts extends LocusWalker {
         logger.info(String.format("Writing allelic counts to %s...", outputAllelicCountsFile.getAbsolutePath()));
         allelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
 
-        logger.info("CollectAllelicCounts complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

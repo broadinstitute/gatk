@@ -237,7 +237,7 @@ public final class AnnotateIntervals extends GATKTool {
         logger.info(String.format("Writing annotated intervals to %s...", outputAnnotatedIntervalsFile.getAbsolutePath()));
         annotatedIntervals.write(outputAnnotatedIntervalsFile);
 
-        logger.info("AnnotateIntervals complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return super.onTraversalSuccess();
     }

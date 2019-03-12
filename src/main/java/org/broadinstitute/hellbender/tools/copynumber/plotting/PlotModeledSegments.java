@@ -208,7 +208,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
         logger.info(String.format("Writing plot to %s...", outputFile.getAbsolutePath()));
         writeModeledSegmentsPlot(sampleName, contigNames, contigLengths, outputFile);
 
-        logger.info("PlotModeledSegments complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

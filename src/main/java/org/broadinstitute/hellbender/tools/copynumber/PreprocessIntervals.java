@@ -157,7 +157,7 @@ public final class PreprocessIntervals extends GATKTool {
         logger.info(String.format("Writing bins to %s...", outputPreprocessedIntervalsFile.getAbsolutePath()));
         bins.write(outputPreprocessedIntervalsFile);
 
-        logger.info("PreprocessIntervals complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

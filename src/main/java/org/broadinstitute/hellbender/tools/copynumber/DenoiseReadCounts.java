@@ -227,7 +227,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
             writeResult(standardizedResult);
         }
 
-        logger.info("DenoiseReadCounts complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

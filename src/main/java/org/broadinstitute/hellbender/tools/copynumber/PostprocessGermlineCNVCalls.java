@@ -303,7 +303,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         generateIntervalsVCFFileFromAllShards();
         generateSegmentsVCFFileFromAllShards();
 
-        logger.info("PostprocessGermlineCNVCalls complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

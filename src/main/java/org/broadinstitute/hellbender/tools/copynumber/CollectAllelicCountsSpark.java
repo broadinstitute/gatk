@@ -87,7 +87,7 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         logger.info(String.format("Writing allelic counts to %s...", outputAllelicCountsFile.getAbsolutePath()));
         finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
 
-        logger.info("CollectAllelicCountsSpark complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
     }
 
     private void validateArguments() {

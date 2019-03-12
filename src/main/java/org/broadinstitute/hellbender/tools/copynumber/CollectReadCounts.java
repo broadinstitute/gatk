@@ -204,7 +204,7 @@ public final class CollectReadCounts extends ReadWalker {
             readCounts.write(outputCountsFile);
         }
 
-        logger.info("CollectReadCounts complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

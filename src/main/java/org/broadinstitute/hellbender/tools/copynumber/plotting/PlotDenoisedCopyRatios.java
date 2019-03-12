@@ -154,7 +154,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
         final List<Integer> contigLengths = new ArrayList<>(contigLengthMap.values());
         writeDenoisingPlots(sampleName, contigNames, contigLengths);
 
-        logger.info("PlotDenoisedCopyRatios complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

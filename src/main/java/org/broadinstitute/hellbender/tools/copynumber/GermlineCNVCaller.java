@@ -295,7 +295,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             throw new UserException("Python return code was non-zero.");
         }
 
-        logger.info("GermlineCNVCaller complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }

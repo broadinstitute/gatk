@@ -293,7 +293,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
                 extremeSampleMedianPercentile, doImputeZeros, extremeOutlierTruncationPercentile, numEigensamplesRequested,
                 maximumChunkSize, ctx);
 
-        logger.info("CreateReadCountPanelOfNormals complete.");
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
     }
 
     private void validateArguments() {

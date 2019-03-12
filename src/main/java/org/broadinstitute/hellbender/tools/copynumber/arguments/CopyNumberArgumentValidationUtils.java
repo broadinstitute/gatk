@@ -78,30 +78,9 @@ public final class CopyNumberArgumentValidationUtils {
         if (dictionary1 == dictionary2) {
             return true;
         }
-
-        final Iterator<SAMSequenceRecord> dictionary1Sequences = dictionary1.getSequences().iterator();
-        for (final SAMSequenceRecord dictionary2Sequence : dictionary2.getSequences()) {
-            if (!dictionary1Sequences.hasNext()) {
-                return false;
-            } else {
-                final SAMSequenceRecord dictionary1Sequence = dictionary1Sequences.next();
-                if (!isSameSequence(dictionary1Sequence, dictionary2Sequence)) {
-                    return false;
-                }
-            }
-        }
-        return !dictionary1Sequences.hasNext();
-    }
-
-    private static boolean isSameSequence(final SAMSequenceRecord sequence1,
-                                          final SAMSequenceRecord sequence2) {
-        return sequence1 == sequence2 ||
-                !(sequence1 == null || sequence2 == null) &&
-                        sequence1.getSequenceIndex() == sequence2.getSequenceIndex() &&
-                        sequence1.getSequenceName() == sequence2.getSequenceName() &&       // Compare using == since we intern() the Strings
-                        !(sequence1.getSequenceLength() != SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH &&
-                                sequence2.getSequenceLength() != SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH &&
-                                sequence1.getSequenceLength() != sequence2.getSequenceLength());
+        final boolean checkContigOrdering = true;
+        return SequenceDictionaryUtils.compareDictionaries(dictionary1, dictionary2, checkContigOrdering) ==
+                SequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL;
     }
 
     /**
@@ -208,12 +187,12 @@ public final class CopyNumberArgumentValidationUtils {
     /**
      * Validate that output files are writeable, whether or not they already exist.
      */
-    public static void validateOutputFiles(final File ... outputs) {
-        Utils.nonNull(outputs);
-        for (final File output : outputs) {
-            Utils.nonNull(output);
-            if ((output.exists() && !output.canWrite()) || (!output.exists() && !output.getAbsoluteFile().getParentFile().canWrite())) {
-                throw new UserException.CouldNotCreateOutputFile(output, ": The output file is not writeable.");
+    public static void validateOutputFiles(final File ... outputFiles) {
+        Utils.nonNull(outputFiles);
+        for (final File outputFile : outputFiles) {
+            Utils.nonNull(outputFile);
+            if ((outputFile.exists() && !outputFile.canWrite()) || (!outputFile.exists() && !outputFile.getAbsoluteFile().getParentFile().canWrite())) {
+                throw new UserException.CouldNotCreateOutputFile(outputFile, ": The output file is not writeable.");
             }
         }
     }
@@ -221,19 +200,19 @@ public final class CopyNumberArgumentValidationUtils {
     /**
      * Validate that output directories are writeable.  If a directory does not exist, create it.
      */
-    public static void validateAndPrepareOutputDirectories(final File ... outputs) {
-        Utils.nonNull(outputs);
-        for (final File output : outputs) {
-            Utils.nonNull(output);
-            if (output.exists()) {
-                if (!output.canWrite()) {
-                    throw new UserException.CouldNotCreateOutputFile(output, ": The output directory is not writeable.");
+    public static void validateAndPrepareOutputDirectories(final File ... outputDirectories) {
+        Utils.nonNull(outputDirectories);
+        for (final File outputDirectory : outputDirectories) {
+            Utils.nonNull(outputDirectory);
+            if (outputDirectory.exists()) {
+                if (!outputDirectory.canWrite()) {
+                    throw new UserException.CouldNotCreateOutputFile(outputDirectory, ": The output directory is not writeable.");
                 }
             } else {
                 try {
-                    IOUtils.createDirectory(output.getAbsolutePath());
+                    IOUtils.createDirectory(outputDirectory.getAbsolutePath());
                 } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile(output, ": The output directory does not exist and could not be created.");
+                    throw new UserException.CouldNotCreateOutputFile(outputDirectory, ": The output directory does not exist and could not be created.");
                 }
             }
         }
