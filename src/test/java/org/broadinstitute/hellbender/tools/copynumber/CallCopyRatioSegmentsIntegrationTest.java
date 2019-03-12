@@ -32,7 +32,7 @@ public final class CallCopyRatioSegmentsIntegrationTest extends CommandLineProgr
         Assert.assertEquals(calledCopyRatioSegments.getRecords().stream().map(s -> s.getCall().getOutputString()).toArray(), new String[] {"+", "-", "0", "0"});
 
         // Test writing the legacy format.  Note that reading cannot be done through the CNV tools, since the header has been stripped away.
-        final File legacySegmentFile = CallCopyRatioSegments.createCalledLegacyOutputFilename(outputFile);
+        final File legacySegmentFile = CallCopyRatioSegments.createCalledLegacySegmentsFile(outputFile);
         Assert.assertTrue(legacySegmentFile.exists());
         Assert.assertTrue(legacySegmentFile.length() > 0);
 

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -9,11 +8,11 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
@@ -30,33 +29,27 @@ import java.util.List;
  * See {@link CollectAllelicCounts}.  This behaves the same, except that it supports spark.
  */
 @CommandLineProgramProperties(
-        summary = "Collects ref/alt counts at sites.",
-        oneLineSummary = "Collects ref/alt counts at sites.",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Collects reference and alternate allele counts at specified sites",
+        oneLineSummary = "Collects reference and alternate allele counts at specified sites",
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 public class CollectAllelicCountsSpark extends LocusWalkerSpark {
-
     private static final long serialVersionUID = 1L;
 
-    private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
-
     @Argument(
-            doc = "Output allelic-counts file.",
+            doc = "Output file for allelic counts.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputAllelicCountsFile;
 
     @Argument(
-            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
-            fullName = "minimumBaseQuality",
-            shortName = "minBQ",
+            doc = "Minimum base quality.  Base calls with lower quality will be filtered out of pileups.",
+            fullName = CollectAllelicCounts.MINIMUM_BASE_QUALITY_LONG_NAME,
             minValue = 0,
             optional = true
     )
-    private int minimumBaseQuality = 20;
-
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+    private int minimumBaseQuality = CollectAllelicCounts.DEFAULT_MINIMUM_BASE_QUALITY;
 
     @Override
     public boolean emitEmptyLoci() {return true;}
@@ -68,14 +61,37 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
     public boolean requiresIntervals() {return true;}
 
     @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
+        readFilters.addAll(CollectAllelicCounts.DEFAULT_ADDITIONAL_READ_FILTERS);
+        return readFilters;
+    }
+
+    @Override
     protected void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx) {
+        validateArguments();
+
         final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        //this check is currently redundant, since the master dictionary is taken from the reads;
+        //however, if any other dictionary is added in the future, such a check should be performed
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
+        }
         final Broadcast<SampleLocatableMetadata> sampleMetadataBroadcast = ctx.broadcast(metadata);
 
         final AllelicCountCollector finalAllelicCountCollector =
                 rdd.mapPartitions(distributedCount(sampleMetadataBroadcast, minimumBaseQuality))
                 .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2, sampleMetadataBroadcast.getValue()));
+
+        logger.info(String.format("Writing allelic counts to %s...", outputAllelicCountsFile.getAbsolutePath()));
         finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
+
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
+    }
+
+    private void validateArguments() {
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputAllelicCountsFile);
     }
 
     private static FlatMapFunction<Iterator<LocusWalkerContext>, AllelicCountCollector> distributedCount(final Broadcast<SampleLocatableMetadata> sampleMetadataBroadcast,
@@ -97,13 +113,5 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
                                                                        final AllelicCountCollector allelicCountCollector2,
                                                                        final SampleLocatableMetadata sampleMetadata) {
         return AllelicCountCollector.combine(allelicCountCollector1, allelicCountCollector2, sampleMetadata);
-    }
-
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> initialReadFilters = new ArrayList<>(super.getDefaultReadFilters());
-        initialReadFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-
-        return initialReadFilters;
     }
 }

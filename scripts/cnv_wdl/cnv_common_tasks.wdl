@@ -279,6 +279,11 @@ task CollectAllelicCounts {
     }
 }
 
+# Users should consult the IntervalListTools documentation and/or manually inspect the results of this task
+# to ensure that the number of intervals in each shard is as desired, as the logic IntervalListTools uses
+# for dividing intervals can yield shards that are unexpectedly larger than num_intervals_per_scatter.
+# Depending on their use case, users may want to modify this task to instead use the SCATTER_COUNT option of
+# IntervalListTools, which allows the number of shards to be directly specified.
 task ScatterIntervals {
     File interval_list
     Int num_intervals_per_scatter
@@ -301,28 +306,40 @@ task ScatterIntervals {
 
     String base_filename = basename(interval_list, ".interval_list")
 
+    String dollar = "$" #WDL workaround, see https://github.com/broadinstitute/cromwell/issues/1819
+
     command <<<
         set -e
+        # IntervalListTools will fail if the output directory does not exist, so we create it
         mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
-        
-        {
-            >&2 echo "Attempting to run IntervalListTools..."
+
+        # IntervalListTools behaves differently when scattering to a single or multiple shards, so we do some handling in bash
+
+        # IntervalListTools tries to equally divide intervals across shards to give at least INTERVAL_COUNT in each and
+        # puts remainder intervals in the last shard, so integer division gives the number of shards
+        # (unless NUM_INTERVALS < num_intervals_per_scatter and NUM_SCATTERS = 0, in which case we still want a single shard)
+        NUM_INTERVALS=${dollar}(grep -v '@' ${interval_list} | wc -l)
+        NUM_SCATTERS=${dollar}(echo ${dollar}((NUM_INTERVALS / ${num_intervals_per_scatter})))
+
+        if [ $NUM_SCATTERS -le 1 ]; then
+            # if only a single shard is required, then we can just rename the original interval list
+            >&2 echo "Not running IntervalListTools because only a single shard is required. Copying original interval list..."
+            cp ${interval_list} ${output_dir_}/${base_filename}.scattered.0001.interval_list
+        else
             gatk --java-options "-Xmx${command_mem_mb}m" IntervalListTools \
                 --INPUT ${interval_list} \
                 --SUBDIVISION_MODE INTERVAL_COUNT \
                 --SCATTER_CONTENT ${num_intervals_per_scatter} \
-                --OUTPUT ${output_dir_} &&
-            # output files are named output_dir_/temp_0001_of_N/scattered.interval_list, etc. (N = num_intervals_per_scatter);
-            # we rename them as output_dir_/base_filename.scattered.0000.interval_list, etc.
-            ls ${output_dir_}/*/scattered.interval_list | \
+                --OUTPUT ${output_dir_}
+
+            # output files are named output_dir_/temp_0001_of_N/scattered.interval_list, etc. (N = number of scatters);
+            # we rename them as output_dir_/base_filename.scattered.0001.interval_list, etc.
+            ls -v ${output_dir_}/*/scattered.interval_list | \
                 cat -n | \
                 while read n filename; do mv $filename ${output_dir_}/${base_filename}.scattered.$(printf "%04d" $n).interval_list; done
-        } || {
-            # if only a single shard is required, then we can just rename the original interval list
-            >&2 echo "IntervalListTools failed because only a single shard is required. Copying original interval list..."
-            cp ${interval_list} ${output_dir_}/${base_filename}.scattered.1.interval_list
-        }
+            rm -rf ${output_dir_}/temp_*_of_*
+        fi
     >>>
 
     runtime {
@@ -405,21 +422,22 @@ task PostprocessGermlineCNVCalls {
             model_args="$model_args --model-shard-path MODEL_$index"
         done
 
-        mkdir extracted-contig-ploidy-calls
-        tar xzf ${contig_ploidy_calls_tar} -C extracted-contig-ploidy-calls
+        mkdir contig-ploidy-calls
+        tar xzf ${contig_ploidy_calls_tar} -C contig-ploidy-calls
 
         gatk --java-options "-Xmx${command_mem_mb}m" PostprocessGermlineCNVCalls \
             $calls_args \
             $model_args \
             ${sep=" " allosomal_contigs_args} \
             --autosomal-ref-copy-number ${ref_copy_number_autosomal_contigs} \
-            --contig-ploidy-calls extracted-contig-ploidy-calls \
+            --contig-ploidy-calls contig-ploidy-calls \
             --sample-index ${sample_index} \
             --output-genotyped-intervals ${genotyped_intervals_vcf_filename} \
             --output-genotyped-segments ${genotyped_segments_vcf_filename}
 
-        rm -r CALLS_*
-        rm -r MODEL_*
+        rm -rf CALLS_*
+        rm -rf MODEL_*
+        rm -rf contig-ploidy-calls
     >>>
 
     runtime {

@@ -100,9 +100,4 @@ final class PlottingUtils {
                 String.format("Sequence dictionary (%s) must be a subset of those contained in other input files (%s).",
                         sequencesSubset, sequences));
     }
-
-    static String addTrailingSlashIfNecessary(final String outputDir) {
-        Utils.nonEmpty(outputDir);
-        return outputDir.endsWith(File.separator) ? outputDir : outputDir + File.separator;
-    }
 }

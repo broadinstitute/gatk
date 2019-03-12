@@ -191,9 +191,9 @@ public final class MultidimensionalModeller {
         Utils.nonNull(copyRatioParameterFile);
         Utils.nonNull(alleleFractionParameterFile);
         ensureModelIsFit();
-        logger.info("Writing posterior summaries for copy-ratio global parameters to " + copyRatioParameterFile);
+        logger.info(String.format("Writing posterior summaries for copy-ratio global parameters to %s...", copyRatioParameterFile.getAbsolutePath()));
         copyRatioModeller.getGlobalParameterDeciles().write(copyRatioParameterFile);
-        logger.info("Writing posterior summaries for allele-fraction global parameters to " + alleleFractionParameterFile);
+        logger.info(String.format("Writing posterior summaries for allele-fraction global parameters to %s...", alleleFractionParameterFile.getAbsolutePath()));
         alleleFractionModeller.getGlobalParameterDeciles().write(alleleFractionParameterFile);
     }
 

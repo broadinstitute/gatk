@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.barclay.utils.Utils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
@@ -93,6 +94,7 @@ public final class CalledLegacySegmentCollection extends AbstractSampleLocatable
     // output of SAM-style header is suppressed
     @Override
     public void write(final File outputFile) {
+        Utils.nonNull(outputFile);
         try (final RecordWriter recordWriter = new RecordWriter(new FileWriter(outputFile, true))) {
             recordWriter.writeAllRecords(getRecords());
         } catch (final IOException e) {

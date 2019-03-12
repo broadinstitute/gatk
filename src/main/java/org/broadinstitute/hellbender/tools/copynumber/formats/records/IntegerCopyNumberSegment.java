@@ -43,7 +43,7 @@ public class IntegerCopyNumberSegment implements Locatable {
         this.qualityStart = ParamUtils.isPositiveOrZero(qualityStart,
                 "The phred-scaled quality of \"segment start\" must be non-negative.");
         this.qualityEnd = ParamUtils.isPositiveOrZero(qualityEnd,
-                "The phred-scaled quality of \"segment end\" must be non-negative");
+                "The phred-scaled quality of \"segment end\" must be non-negative.");
     }
 
     @Override

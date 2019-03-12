@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -77,27 +76,27 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0.
     )
     private double learningRate =
-            (Double)getDefaultValue(HybridADVIArgument.LEARNING_RATE);
+            (Double) getDefaultValue(HybridADVIArgument.LEARNING_RATE);
 
     @Argument(
             doc="Adamax optimizer first moment estimation forgetting factor.",
             fullName = ADAMAX_BETA_1_LONG_NAME,
             optional = true,
             minValue = 0.,
-            maxValue = 1.0
+            maxValue = 1.
     )
     private double adamaxBeta1 =
-            (Double)getDefaultValue(HybridADVIArgument.ADAMAX_BETA_1);
+            (Double) getDefaultValue(HybridADVIArgument.ADAMAX_BETA_1);
 
     @Argument(
             doc="Adamax optimizer second moment estimation forgetting factor.",
             fullName = ADAMAX_BETA_2_LONG_NAME,
             optional = true,
             minValue = 0.,
-            maxValue = 1.0
+            maxValue = 1.
     )
     private double adamaxBeta2 =
-            (Double)getDefaultValue(HybridADVIArgument.ADAMAX_BETA_2);
+            (Double) getDefaultValue(HybridADVIArgument.ADAMAX_BETA_2);
 
     @Argument(
             doc="Log emission samples drawn per round of sampling.",
@@ -106,7 +105,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int logEmissionSamplesPerRound =
-            (Integer)getDefaultValue(HybridADVIArgument.LOG_EMISSION_SAMPLES_PER_ROUND);
+            (Integer) getDefaultValue(HybridADVIArgument.LOG_EMISSION_SAMPLES_PER_ROUND);
 
     @Argument(
             doc="Maximum tolerated median relative error in log emission sampling.",
@@ -115,7 +114,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private double logEmissionMedianRelError =
-            (Double)getDefaultValue(HybridADVIArgument.LOG_EMISSION_SAMPLING_MEDIAN_REL_ERROR);
+            (Double) getDefaultValue(HybridADVIArgument.LOG_EMISSION_SAMPLING_MEDIAN_REL_ERROR);
 
     @Argument(
             doc="Log emission maximum sampling rounds.",
@@ -124,7 +123,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int logEmissionSamplingRounds =
-            (Integer)getDefaultValue(HybridADVIArgument.LOG_EMISSION_SAMPLING_ROUNDS);
+            (Integer) getDefaultValue(HybridADVIArgument.LOG_EMISSION_SAMPLING_ROUNDS);
 
     @Argument(
             doc="Maximum ADVI iterations in the first epoch.",
@@ -133,7 +132,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int maxADVIItersFirstEpoch =
-            (Integer)getDefaultValue(HybridADVIArgument.MAX_ADVI_ITER_FIRST_EPOCH);
+            (Integer) getDefaultValue(HybridADVIArgument.MAX_ADVI_ITER_FIRST_EPOCH);
 
     @Argument(
             doc="Maximum ADVI iterations in subsequent epochs.",
@@ -142,7 +141,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int maxADVIItersSubsequentEpochs =
-            (Integer)getDefaultValue(HybridADVIArgument.MAX_ADVI_ITER_SUBSEQUENT_EPOCHS);
+            (Integer) getDefaultValue(HybridADVIArgument.MAX_ADVI_ITER_SUBSEQUENT_EPOCHS);
 
     @Argument(
             doc="Minimum number of training epochs.",
@@ -151,7 +150,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int minTrainingEpochs =
-            (Integer)getDefaultValue(HybridADVIArgument.MIN_TRAINING_EPOCHS);
+            (Integer) getDefaultValue(HybridADVIArgument.MIN_TRAINING_EPOCHS);
 
     @Argument(
             doc="Maximum number of training epochs.",
@@ -160,7 +159,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int maxTrainingEpochs =
-            (Integer)getDefaultValue(HybridADVIArgument.MAX_TRAINING_EPOCHS);
+            (Integer) getDefaultValue(HybridADVIArgument.MAX_TRAINING_EPOCHS);
 
     @Argument(
             doc="Initial temperature (for DA-ADVI).",
@@ -169,7 +168,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private double initialTemperature =
-            (Double)getDefaultValue(HybridADVIArgument.INITIAL_TEMPERATURE);
+            (Double) getDefaultValue(HybridADVIArgument.INITIAL_TEMPERATURE);
 
     @Argument(
             doc="Number of thermal ADVI iterations (for DA-ADVI).",
@@ -178,7 +177,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int numThermalADVIIters =
-            (Integer)getDefaultValue(HybridADVIArgument.NUM_THERMAL_ADVI_ITERS);
+            (Integer) getDefaultValue(HybridADVIArgument.NUM_THERMAL_ADVI_ITERS);
 
     @Argument(
             doc="Averaging window for calculating training signal-to-noise ratio (SNR) for convergence checking.",
@@ -187,7 +186,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int convergenceSNRAveragingWindow =
-            (Integer)getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_AVERAGING_WINDOW);
+            (Integer) getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_AVERAGING_WINDOW);
 
     @Argument(
             doc="The SNR threshold to be reached before triggering the convergence countdown.",
@@ -196,7 +195,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private double convergenceSNRTriggerThreshold =
-            (Double)getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_TRIGGER_THRESHOLD);
+            (Double) getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_TRIGGER_THRESHOLD);
 
     @Argument(
             doc="The number of ADVI iterations during which the SNR is required to stay below the set threshold " +
@@ -206,7 +205,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int convergenceSNRCountdownWindow =
-            (Integer)getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_COUNTDOWN_WINDOW);
+            (Integer) getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_COUNTDOWN_WINDOW);
 
     @Argument(
             doc="Maximum number of internal self-consistency iterations within each calling step.",
@@ -215,7 +214,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private int maxCallingIters =
-            (Integer)getDefaultValue(HybridADVIArgument.MAX_CALLING_ITERS);
+            (Integer) getDefaultValue(HybridADVIArgument.MAX_CALLING_ITERS);
 
     @Argument(
             doc="Maximum tolerated calling update size for convergence.",
@@ -224,7 +223,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private double callerUpdateConvergenceThreshold =
-            (Double)getDefaultValue(HybridADVIArgument.CALLER_UPDATE_CONVERGENCE_THRESHOLD);
+            (Double) getDefaultValue(HybridADVIArgument.CALLER_UPDATE_CONVERGENCE_THRESHOLD);
 
     @Argument(
             doc="Admixing ratio of new and old called posteriors (between 0 and 1; larger values implies using " +
@@ -234,7 +233,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private double callerInternalAdmixingRate =
-            (Double)getDefaultValue(HybridADVIArgument.CALLER_INTERNAL_ADMIXING_RATE);
+            (Double) getDefaultValue(HybridADVIArgument.CALLER_INTERNAL_ADMIXING_RATE);
 
     @Argument(
             doc="Admixing ratio of new and old called posteriors (between 0 and 1; larger values implies using " +
@@ -244,7 +243,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             minValue = 0
     )
     private double callerExternalAdmixingRate =
-            (Double)getDefaultValue(HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE);
+            (Double) getDefaultValue(HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE);
 
     @Argument(
             doc="(advanced) Disable sampler.",
@@ -252,7 +251,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             optional = true
     )
     private boolean disableSampler =
-            (Boolean)getDefaultValue(HybridADVIArgument.DISABLE_SAMPLER);
+            (Boolean) getDefaultValue(HybridADVIArgument.DISABLE_SAMPLER);
 
     @Argument(
             doc="(advanced) Disable caller.",
@@ -260,7 +259,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             optional = true
     )
     private boolean disableCaller =
-            (Boolean)getDefaultValue(HybridADVIArgument.DISABLE_CALLER);
+            (Boolean) getDefaultValue(HybridADVIArgument.DISABLE_CALLER);
 
     @Argument(
             doc="(advanced) Disable annealing.",
@@ -268,12 +267,12 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             optional = true
     )
     private boolean disableAnnealing =
-            (Boolean)getDefaultValue(HybridADVIArgument.DISABLE_ANNEALING);
+            (Boolean) getDefaultValue(HybridADVIArgument.DISABLE_ANNEALING);
 
     public void validate() {
-        Utils.validateArg(maxTrainingEpochs >= minTrainingEpochs,
-                "Maximum number of training epochs must be greater or equal to minimum number of training " +
-                        "epochs.");
+        //we could validate some of these arguments and fail early,
+        //but let's assume most users won't mess with them unless they know what they're doing;
+        //they are validated with assertion statements in the HybridInferenceParameters class in inference_task_base.py
     }
 
     public List<String> generatePythonArguments() {

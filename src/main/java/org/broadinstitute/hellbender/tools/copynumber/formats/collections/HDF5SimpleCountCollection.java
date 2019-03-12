@@ -64,7 +64,7 @@ public final class HDF5SimpleCountCollection {
      * Otherwise, some operations will hang.
      */
     HDF5SimpleCountCollection(final HDF5File file) {
-        Utils.nonNull(file, "The input file cannot be null.");
+        Utils.nonNull(file);
         this.file = file;
         sampleName = new Lazy<>(() -> file.readStringArray(SAMPLE_NAME_PATH)[0]);
         sequenceDictionary = new Lazy<>(() -> {
