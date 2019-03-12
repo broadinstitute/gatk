@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -471,9 +474,25 @@ public class TableReaderUnitTest extends GATKBaseTest {
     @Test
     public void testColumnValueAsString() throws IOException {
         final Path testFile = createTestInput(
+            String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+            String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
+        );
+        testColumnValueAsStringInternal(testFile);
+    }
+
+    @Test
+    public void testColumnValueAsStringRamfs() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path testFile = createTestInputInMemory(
+                jimfs,
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
-        );
+            );
+            testColumnValueAsStringInternal(testFile);
+        }
+    }
+
+    public void testColumnValueAsStringInternal(Path testFile) throws IOException {
 
         final boolean[] tested = new boolean[1];
 
@@ -663,15 +682,27 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     private Path createTestInput(final String... lines) throws IOException {
         final Path testFile = createTempPath("test", ".tab");
-        final PrintWriter testWriter = new PrintWriter(Files.newBufferedWriter(testFile));
+        fillTestInput(testFile, lines);
+        return testFile;
+    }
+
+    private Path createTestInputInMemory(final java.nio.file.FileSystem ramfs, final String... lines) throws IOException {
+        // We rely on the fact that the filesystem's in-memory so we don't need to delete.
+        final Path testFile = ramfs.getPath("test.tab");
+        fillTestInput(testFile, lines);
+        return testFile;
+    }
+
+    private void fillTestInput(final Path path, final String... lines) throws IOException {
+        final PrintWriter testWriter = new PrintWriter(Files.newBufferedWriter(path));
         for (final String line : lines) {
             testWriter.println(line);
         }
         testWriter.close();
-        return testFile;
     }
 
-    @DataProvider(name = "ordinaryValuesData")
+
+        @DataProvider(name = "ordinaryValuesData")
     public Object[][] ordinaryValuesData() {
         final String comment1 = TableUtils.COMMENT_PREFIX + "comment1";
         final String comment2 = TableUtils.COMMENT_PREFIX + "comment2";
