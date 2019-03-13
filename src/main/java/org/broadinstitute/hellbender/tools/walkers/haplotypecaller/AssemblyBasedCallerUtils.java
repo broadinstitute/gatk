@@ -128,7 +128,9 @@ public final class AssemblyBasedCallerUtils {
         Collections.sort(readsToUse, new ReadCoordinateComparator(readsHeader)); // TODO: sort may be unnecessary here
 
         // handle overlapping read pairs from the same fragment
-        cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, correctOverlappingBaseQualities);
+        if (correctOverlappingBaseQualities) {
+            cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
+        }
 
         region.clearReads();
         region.addAll(readsToUse);
@@ -136,17 +138,30 @@ public final class AssemblyBasedCallerUtils {
     }
 
     /**
-     * Clean up reads/bases that overlap within read pairs
+     *  Modify base qualities when paired reads overlap to account for the possibility of PCR error.
+     *
+     *  Overlapping mates provded independent evidence as far as sequencing error is concerned, but their PCR errors
+     *  are correlated.  The base qualities are thus limited by the sequencing base quality as well as half of the PCR
+     *  quality.  We use half of the PCR quality because downstream we treat read pairs as independent, and summing two halves
+     *  effectively gives the PCR quality of the pairs when taken together.
      *
      * @param reads the list of reads to consider
-     * @param correctOverlappingBaseQualities
+     * @param samplesList   list of samples
+     * @param readsHeader   bam header of reads' source
+     * @param setConflictingToZero if true, set base qualities to zero when mates have different base at overlapping position
+     * @param halfOfPcrSnvQual half of phred-scaled quality of substitution errors from PCR
+     * @param halfOfPcrIndelQual half of phred-scaled quality of indel errors from PCR
      */
-    private static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader,
-                                                  final boolean correctOverlappingBaseQualities) {
+    public static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader,
+                                                 final boolean setConflictingToZero, final OptionalInt halfOfPcrSnvQual, final OptionalInt halfOfPcrIndelQual) {
+        Utils.nonNull(reads);
+        Utils.nonNull(samplesList);
+        Utils.nonNull(halfOfPcrSnvQual);
+        Utils.nonNull(halfOfPcrSnvQual);
         for ( final List<GATKRead> perSampleReadList : splitReadsBySample(samplesList, readsHeader, reads).values() ) {
             final FragmentCollection<GATKRead> fragmentCollection = FragmentCollection.create(perSampleReadList);
-            for ( final List<GATKRead> overlappingPair : fragmentCollection.getOverlappingPairs() ) {
-                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair, correctOverlappingBaseQualities);
+            for ( final Pair<GATKRead, GATKRead> overlappingPair : fragmentCollection.getOverlappingPairs() ) {
+                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair, setConflictingToZero, halfOfPcrSnvQual, halfOfPcrIndelQual);
             }
         }
     }
@@ -251,8 +266,9 @@ public final class AssemblyBasedCallerUtils {
                                                   final Logger logger,
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
-                                                  final SmithWatermanAligner aligner){
-        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, ! argumentCollection.doNotCorrectOverlappingBaseQualities);
+                                                  final SmithWatermanAligner aligner,
+                                                  final boolean correctOverlappingBaseQualities){
+        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities);
         if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
         }

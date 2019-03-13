@@ -33,7 +33,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
     public static final String INITIAL_TUMOR_LOD_LONG_NAME = "initial-tumor-lod";
     public static final String INITIAL_TUMOR_LOD_SHORT_NAME = "init-lod";
-    public static final String INITIAL_PCR_ERROR_QUAL = "initial-pcr-qual";
     public static final String MAX_POPULATION_AF_LONG_NAME = "max-population-af";
     public static final String MAX_POPULATION_AF_SHORT_NAME = "max-af";
     public static final String DOWNSAMPLING_STRIDE_LONG_NAME = "downsampling-stride";
@@ -48,6 +47,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "median-autosomal-coverage";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
+    public static final String PCR_SNV_QUAL_LONG_NAME = "pcr-snv-qual";
+    public static final String PCR_INDEL_QUAL_LONG_NAME = "pcr-indel-qual";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -173,11 +174,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         return mitochondria && initialLod == DEFAULT_INITIAL_LOD ? DEFAULT_MITO_INITIAL_LOD : initialLod;
     }
 
-    /**
-     * PCR error rate for overlapping fragments in isActive()
-     */
-    @Argument(fullName = INITIAL_PCR_ERROR_QUAL, optional = true, doc = "PCR error rate for overlapping fragments in isActive()")
-    public int initialPCRErrorQual = 40;
+
+    @Argument(fullName = PCR_SNV_QUAL_LONG_NAME, optional = true, doc = "Phred-scaled PCR SNV qual for overlapping fragments")
+    public int pcrSnvQual = 40;
+
+    @Argument(fullName = PCR_INDEL_QUAL_LONG_NAME, optional = true, doc = "Phred-scaled PCR SNV qual for overlapping fragments")
+    public int pcrIndelQual = 40;
 
     /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.

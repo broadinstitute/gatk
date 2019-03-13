@@ -7,84 +7,94 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 public final class FragmentUtils {
     private FragmentUtils() {}
 
-    public final static double DEFAULT_PCR_ERROR_RATE = 1e-4;
-    public final static int DEFAULT_PCR_ERROR_QUAL = QualityUtil.getPhredScoreFromErrorProbability(DEFAULT_PCR_ERROR_RATE);
-    public final static int HALF_OF_DEFAULT_PCR_ERROR_QUAL = DEFAULT_PCR_ERROR_QUAL / 2;
+    public final static double DEFAULT_PCR_SNV_ERROR_RATE = 1e-4;
+    public final static int DEFAULT_PCR_SNV_ERROR_QUAL = QualityUtil.getPhredScoreFromErrorProbability(DEFAULT_PCR_SNV_ERROR_RATE);
+    public final static int HALF_OF_DEFAULT_PCR_SNV_ERROR_QUAL = DEFAULT_PCR_SNV_ERROR_QUAL / 2;
 
     /**
      * Fix two overlapping reads from the same fragment by adjusting base qualities, if possible
      *
-     * firstRead and secondRead must be part of the same fragment (though this isn't checked).  Looks
-     * at the bases and alignment, and tries its best to create adjusted base qualities so that the observations
-     * are not treated independently.
-     *
-     * Assumes that firstRead starts before secondRead (according to their soft clipped starts)
-     * Sets the qualities of clippedFirstRead and clippedSecondRead to mimic a merged read or
+     *  Looks at the bases and alignment, and tries its best to create adjusted base qualities so that the observations
+     * are not treated independently.  Sets the qualities of firstRead and secondRead to mimic a merged read or
      * nothing if the algorithm cannot create a meaningful one
-     *  @param clippedFirstRead the left most read
-     * @param clippedSecondRead the right most read
-     * @param correctOverlappingBaseQualities
-     *
+     * @param pair two overlapping paired reads
+     * @param setConflictingToZero if true, set base qualities to zero when mates have different base at overlapping position
+     * @param halfOfPcrSnvQual half of phred-scaled quality of substitution errors from PCR. May not be negative.
+     * @param halfOfPcrIndelQual half of phred-scaled quality of indel errors from PCR. May not be negative.
      */
-    public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead,
-                                                               final boolean correctOverlappingBaseQualities) {
-        Utils.nonNull(clippedFirstRead);
-        Utils.nonNull(clippedSecondRead);
-        Utils.validateArg(clippedFirstRead.getName().equals(clippedSecondRead.getName()), () ->
-                "attempting to merge two reads with different names " + clippedFirstRead + " and " + clippedSecondRead);
+    public static void adjustQualsOfOverlappingPairedFragments(final Pair<GATKRead, GATKRead> pair, final boolean setConflictingToZero,
+                                                               final OptionalInt halfOfPcrSnvQual, final OptionalInt   halfOfPcrIndelQual) {
+        final boolean inOrder = pair.getLeft().getSoftStart() < pair.getRight().getSoftStart();
+        final GATKRead firstRead = inOrder ? pair.getLeft() : pair.getRight();
+        final GATKRead secondRead = inOrder ? pair.getRight() : pair.getLeft();
+
+        Utils.nonNull(firstRead);
+        Utils.nonNull(secondRead);
+        Utils.validateArg(firstRead.getName().equals(secondRead.getName()), () ->
+                "attempting to merge two reads with different names " + firstRead + " and " + secondRead);
 
         // don't adjust fragments that do not overlap
-        if ( clippedFirstRead.getEnd() < clippedSecondRead.getStart() || !clippedFirstRead.getContig().equals(clippedSecondRead.getContig()) ) {
+        if (firstRead.getEnd() < secondRead.getStart() || !firstRead.getContig().equals(secondRead.getContig())) {
             return;
         }
 
-        final Pair<Integer, Boolean> pair = ReadUtils.getReadCoordinateForReferenceCoordinate(clippedFirstRead, clippedSecondRead.getStart());
-        final int firstReadStop = ( pair.getRight() ? pair.getLeft() + 1 : pair.getLeft() );
-        final int numOverlappingBases = Math.min(clippedFirstRead.getLength() - firstReadStop, clippedSecondRead.getLength());
+        final Pair<Integer, Boolean> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart());
+        final int firstReadStop = (offset.getRight() ? offset.getLeft() + 1 : offset.getLeft());
+        final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength());
 
-        final byte[] firstReadBases = clippedFirstRead.getBases();
-        final byte[] firstReadQuals = clippedFirstRead.getBaseQualities();
-        final byte[] secondReadBases = clippedSecondRead.getBases();
-        final byte[] secondReadQuals = clippedSecondRead.getBaseQualities();
+        final byte[] firstReadBases = firstRead.getBases();
+        final byte[] firstReadQuals = firstRead.getBaseQualities();
+        final byte[] secondReadBases = secondRead.getBases();
+        final byte[] secondReadQuals = secondRead.getBaseQualities();
 
-        for ( int i = 0; i < numOverlappingBases; i++ ) {
-            if (! correctOverlappingBaseQualities) {
-                break;
-            }
+        final int halfOfPcrErrorQual = halfOfPcrSnvQual.orElse(HALF_OF_DEFAULT_PCR_SNV_ERROR_QUAL);
+
+        for (int i = 0; i < numOverlappingBases; i++) {
 
             final int firstReadIndex = firstReadStop + i;
             final byte firstReadBase = firstReadBases[firstReadIndex];
             final byte secondReadBase = secondReadBases[i];
 
-            if ( firstReadBase == secondReadBase ) {
-                firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
-                secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
-            } else {
-                // TODO -- use the proper statistical treatment of the quals from DiploidSNPGenotypeLikelihoods.java
+            if (firstReadBase == secondReadBase) {
+                firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], halfOfPcrErrorQual);
+                secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], halfOfPcrErrorQual);
+            } else if (setConflictingToZero) {
+                // If downstream processing forces read pairs to support the same haplotype, setConflictingToZero should be false
+                // because the original base qualities of conflicting bases, when pegged to the same haplotype, will
+                // automatically weaken the strength of one another's evidence.  Furthermore, if one base if low quality
+                // and one is high it will essentially ignore the low quality base without compromising the high-quality base
                 firstReadQuals[firstReadIndex] = 0;
                 secondReadQuals[i] = 0;
             }
         }
+        firstRead.setBaseQualities(firstReadQuals);
+        secondRead.setBaseQualities(secondReadQuals);
 
-        clippedFirstRead.setBaseQualities(firstReadQuals);
-        clippedSecondRead.setBaseQualities(secondReadQuals);
-    }
+        if (halfOfPcrIndelQual.isPresent()) {
+            final int maxIndelQual = halfOfPcrIndelQual.getAsInt();
+            final byte[] firstReadInsertionQuals = ReadUtils.getBaseInsertionQualities(firstRead);
+            final byte[] firstReadDeletionQuals = ReadUtils.getBaseInsertionQualities(firstRead);
+            final byte[] secondReadInsertionQuals = ReadUtils.getBaseInsertionQualities(secondRead);
+            final byte[] secondReadDeletionQuals = ReadUtils.getBaseInsertionQualities(secondRead);
 
-    public static void adjustQualsOfOverlappingPairedFragments(final List<GATKRead> overlappingPair, final boolean correctOverlappingBaseQualities) {
-        Utils.validateArg( overlappingPair.size() == 2, () -> "Found overlapping pair with " + overlappingPair.size() + " reads, but expecting exactly 2.");
+            for (int i = 0; i < numOverlappingBases; i++) {
+                final int firstReadIndex = firstReadStop + i;
+                firstReadDeletionQuals[firstReadIndex] = (byte) Math.min(firstReadDeletionQuals[firstReadIndex], maxIndelQual);
+                firstReadInsertionQuals[firstReadIndex] = (byte) Math.min(firstReadInsertionQuals[firstReadIndex], maxIndelQual);
+                secondReadDeletionQuals[i] = (byte) Math.min(secondReadDeletionQuals[i], maxIndelQual);
+                secondReadInsertionQuals[i] = (byte) Math.min(secondReadInsertionQuals[i], maxIndelQual);
+            }
 
-        final GATKRead firstRead = overlappingPair.get(0);
-        final GATKRead secondRead = overlappingPair.get(1);
-
-        if ( secondRead.getSoftStart() < firstRead.getSoftStart() ) {
-            adjustQualsOfOverlappingPairedFragments(secondRead, firstRead, correctOverlappingBaseQualities);
-        }
-        else {
-            adjustQualsOfOverlappingPairedFragments(firstRead, secondRead, correctOverlappingBaseQualities);
+            ReadUtils.setDeletionBaseQualities(firstRead, firstReadDeletionQuals);
+            ReadUtils.setInsertionBaseQualities(firstRead, firstReadInsertionQuals);
+            ReadUtils.setDeletionBaseQualities(secondRead, secondReadDeletionQuals);
+            ReadUtils.setInsertionBaseQualities(secondRead, secondReadInsertionQuals);
         }
     }
 }
