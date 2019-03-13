@@ -1,0 +1,48 @@
+version: 2.1
+
+jobs:
+  buildDocker:
+    docker:
+      - image: broadinstitute/gatk:gatkbase-2.0.3
+        environment:
+          TEST_VERBOSITY=minimal
+  runStandardTests:
+    description: "Run one of our standard test groups"
+    parameters:
+      testtype:
+         description: "value for TEST_TYPE"
+         type: string
+    docker:
+      - image: broadinstitute/gatk:gatkbase-2.0.3
+        environment:
+          TEST_VERBOSITY=minimal
+    steps:
+      - run: export TEST_TYPE=<< parameters.testtype >>
+      - run:
+          name: install git-lfs
+          command: |
+            set +e
+            apt-get update -y
+            apt-get install -y openssh-client
+            ssh -T -oStrictHostKeyChecking=no git@github.com 2>&1 | grep -q "You've successfully authenticated"
+            set -e
+            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+            apt-get install -y git-lfs
+            git lfs install
+            git lfs --version
+            git --version
+            git config --global --add lfs.concurrenttransfers 50
+      - checkout
+      - run:
+          name: compile
+          command: ./gradlew compileTestJava
+      - run:
+          name: run tests
+          command: ./gradlew test
+workflows:
+  build:
+    jobs:
+      - runStandardTests:
+          testtype: integration
+      - runStandardTests:
+          testtype: unit
