@@ -100,9 +100,13 @@ public final class ProgressReportingDelegatingCodec<A extends Feature, B> implem
             throw new IllegalStateException("this codec cannot be used without a delegatee.");
         }
         final boolean done = delegatee.isDone(b);
-        if (done){
+
+        // Make sure the progress meter has been started before trying to stop it (it might not
+        // have been started if there were 0 records in the file):
+        if (done && pm.started()){
             pm.stop();
         }
+        
         return done;
     }
 
