@@ -208,6 +208,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+        // divide PCR qual by two in order to get the correct total qual when treating paired reads as independent
+        AssemblyBasedCallerUtils.cleanOverlappingReadPairs(originalAssemblyRegion.getReads(), samplesList, header,
+                false, OptionalInt.of(MTAC.pcrSnvQual /2), OptionalInt.of(MTAC.pcrIndelQual /2));
+
         if ( !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
             return emitReferenceConfidence() ? referenceModelForNoVariation(originalAssemblyRegion) : NO_CALLS;  //TODD: does this need to be finalized?
         }
@@ -236,10 +240,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         removeReadStubs(regionForGenotyping);
-        // divide PCR qual by two in order to get the correct total qual when treating paired reads as independent
-        AssemblyBasedCallerUtils.cleanOverlappingReadPairs(regionForGenotyping.getReads(), samplesList, header,
-                false, OptionalInt.of(MTAC.pcrSnvQual /2), OptionalInt.of(MTAC.pcrIndelQual /2));
-
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 

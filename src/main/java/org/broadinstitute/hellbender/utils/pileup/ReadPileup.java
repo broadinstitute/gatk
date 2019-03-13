@@ -303,7 +303,7 @@ public class ReadPileup implements Iterable<PileupElement> {
         final FragmentCollection<PileupElement> fragments = FragmentCollection.create(this);
         fragments.getOverlappingPairs().stream()
                 .forEach(
-                        elements -> fixPairOverlappingQualities(elements.get(0), elements.get(1))
+                        elements -> fixPairOverlappingQualities(elements.getLeft(), elements.getRight())
                 );
     }
 
