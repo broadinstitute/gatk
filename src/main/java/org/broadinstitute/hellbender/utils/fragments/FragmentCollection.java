@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.fragments;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -16,7 +18,7 @@ import java.util.function.Function;
 public final class FragmentCollection<T> {
 
     private final Collection<T> singletons;
-    private final Collection<List<T>> overlappingPairs;
+    private final Collection<Pair<T,T>> overlappingPairs;
 
     /**
      * Makes a new collection.
@@ -25,7 +27,7 @@ public final class FragmentCollection<T> {
      *
      * The constructor is private - use the factory method if you need an object.
      */
-    private FragmentCollection(final Collection<T> singletons, final Collection<List<T>> overlappingPairs) {
+    private FragmentCollection(final Collection<T> singletons, final Collection<Pair<T,T>> overlappingPairs) {
         this.singletons = singletons == null ? Collections.emptyList() : singletons;
         this.overlappingPairs = overlappingPairs == null ? Collections.emptyList() : overlappingPairs;
     }
@@ -42,7 +44,7 @@ public final class FragmentCollection<T> {
      * Gets the T elements containing overlapping elements, in no particular order
      * The returned collection is unmodifiable.
      */
-    public Collection<List<T>> getOverlappingPairs() {
+    public Collection<Pair<T,T>> getOverlappingPairs() {
         return Collections.unmodifiableCollection(overlappingPairs);
     }
 
@@ -60,7 +62,7 @@ public final class FragmentCollection<T> {
      */
     private static <T> FragmentCollection<T> create(final Iterable<T> readContainingObjects, final int nElements, final Function<T, GATKRead> getter) {
         Collection<T> singletons = null;
-        Collection<List<T>> overlapping = null;
+        Collection<Pair<T,T>> overlapping = null;
         Map<String, T> nameMap = null;
 
         int lastStart = -1;
@@ -93,7 +95,7 @@ public final class FragmentCollection<T> {
                     if ( overlapping == null ) {
                         overlapping = new ArrayList<>(); // lazy init
                     }
-                    overlapping.add(Arrays.asList(pe1, p));
+                    overlapping.add(ImmutablePair.of(pe1, p));
                     nameMap.remove(readName);
                 } else {
                     if ( nameMap == null ) {

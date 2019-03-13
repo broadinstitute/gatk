@@ -23,14 +23,16 @@ public final class FragmentUtils {
      *  Looks at the bases and alignment, and tries its best to create adjusted base qualities so that the observations
      * are not treated independently.  Sets the qualities of firstRead and secondRead to mimic a merged read or
      * nothing if the algorithm cannot create a meaningful one
+     * @param pair two overlapping paired reads
+     * @param setConflictingToZero if true, set base qualities to zero when mates have different base at overlapping position
+     * @param halfOfPcrSnvQual half of phred-scaled quality of substitution errors from PCR. May not be negative.
+     * @param halfOfPcrIndelQual half of phred-scaled quality of indel errors from PCR. May not be negative.
      */
-    public static void adjustQualsOfOverlappingPairedFragments(final List<GATKRead> pair, final boolean setConflictingToZero,
+    public static void adjustQualsOfOverlappingPairedFragments(final Pair<GATKRead, GATKRead> pair, final boolean setConflictingToZero,
                                                                final OptionalInt halfOfPcrSnvQual, final OptionalInt   halfOfPcrIndelQual) {
-        Utils.validateArg( pair.size() == 2, () -> "Found overlapping pair with " + pair.size() + " reads, but expecting exactly 2.");
-
-        final boolean inOrder = pair.get(0).getSoftStart() < pair.get(1).getSoftStart();
-        final GATKRead firstRead = inOrder ? pair.get(0) : pair.get(1);
-        final GATKRead secondRead = inOrder ? pair.get(1) : pair.get(0);
+        final boolean inOrder = pair.getLeft().getSoftStart() < pair.getRight().getSoftStart();
+        final GATKRead firstRead = inOrder ? pair.getLeft() : pair.getRight();
+        final GATKRead secondRead = inOrder ? pair.getRight() : pair.getLeft();
 
         Utils.nonNull(firstRead);
         Utils.nonNull(secondRead);

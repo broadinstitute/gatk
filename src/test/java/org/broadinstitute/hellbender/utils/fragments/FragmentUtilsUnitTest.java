@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.fragments;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -59,7 +60,7 @@ public class FragmentUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "AdjustFragmentsTest")
     public void testAdjustingTwoReads(final GATKRead read1, final GATKRead read2, final int overlapSize) {
-        FragmentUtils.adjustQualsOfOverlappingPairedFragments(Arrays.asList(read1, read2), true, OptionalInt.empty(), OptionalInt.empty());
+        FragmentUtils.adjustQualsOfOverlappingPairedFragments(ImmutablePair.of(read1, read2), true, OptionalInt.empty(), OptionalInt.empty());
 
         for ( int i = 0; i < read1.getLength() - overlapSize; i++ ) {
             Assert.assertEquals(read1.getBaseQualities()[i], HIGH_QUALITY);

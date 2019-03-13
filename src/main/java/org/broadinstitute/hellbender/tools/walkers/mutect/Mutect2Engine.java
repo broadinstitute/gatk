@@ -236,8 +236,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         removeReadStubs(regionForGenotyping);
+        // divide PCR qual by two in order to get the correct total qual when treating paired reads as independent
         AssemblyBasedCallerUtils.cleanOverlappingReadPairs(regionForGenotyping.getReads(), samplesList, header,
-                false, OptionalInt.of(MTAC.PCRSnvQual/2), OptionalInt.of(MTAC.PCRIndelQual/2));
+                false, OptionalInt.of(MTAC.pcrSnvQual /2), OptionalInt.of(MTAC.pcrIndelQual /2));
 
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
@@ -371,14 +372,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             callableSites.increment();
         }
         final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
-        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.PCRSnvQual);
+        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
 
         if (tumorLog10Odds < MTAC.getInitialLod()) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
-            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.PCRSnvQual);
+            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final int normalAltCount = normalAltQuals.size();
             final double normalQualSum = normalAltQuals.stream().mapToDouble(Byte::doubleValue).sum();
             if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
@@ -435,6 +436,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * @return a list of variant contexts (can be empty) to emit for this ref region
      */
     private List<VariantContext> referenceModelForNoVariation(final AssemblyRegion region) {
+        // don't correct overlapping base qualities because we did that upstream
         AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, false);  //take off soft clips and low Q tails before we calculate likelihoods
         final SimpleInterval paddedLoc = region.getExtendedSpan();
         final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
