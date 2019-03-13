@@ -1,11 +1,6 @@
 version: 2.1
 
 jobs:
-  buildDocker:
-    docker:
-      - image: broadinstitute/gatk:gatkbase-2.0.3
-        environment:
-          TEST_VERBOSITY=minimal
   runStandardTests:
     description: "Run one of our standard test groups"
     parameters:
