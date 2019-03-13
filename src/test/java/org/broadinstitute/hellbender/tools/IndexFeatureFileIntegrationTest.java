@@ -366,4 +366,20 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         };
         final Object res = this.runCommandLine(args);
     }
+
+    // Make sure we can index a VCF with 0 records without crashing:
+    @Test
+    public void testVCFWithNoRecords() {
+        final File emptyVCF = getTestFile("header_only.vcf");
+        final File output = createTempFile("header_only.vcf", ".idx");
+
+        final String[] args = {
+                "--feature-file", emptyVCF.getAbsolutePath(),
+                "-O", output.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        Assert.assertTrue(output.exists());
+        Assert.assertTrue(output.length() > 0);
+    }
 }
