@@ -48,6 +48,7 @@ jobs:
               mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ./testJars
               echo "Building image to tag gatk-test-docker"
               docker build -t gatk-test-docker --build-arg ZIPPATH=./unzippedJar .
+      - setup_remote_docker
       - run: docker save -o docker.tar gatk-test-docker
       - run: ls -lh docker.tar
       - persist_to_workspace:
