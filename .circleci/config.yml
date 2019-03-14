@@ -36,6 +36,7 @@ jobs:
       - checkout
       - run: git lfs pull -I src/main/resources/large
       - run: ./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar
+      - setup_remote_docker
       - run:
           name: "Build Docker"
           command: |
@@ -48,7 +49,6 @@ jobs:
               mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ./testJars
               echo "Building image to tag gatk-test-docker"
               docker build -t gatk-test-docker --build-arg ZIPPATH=./unzippedJar .
-      - setup_remote_docker
       - run: docker save -o docker.tar gatk-test-docker
       - run: ls -lh docker.tar
       - persist_to_workspace:
