@@ -2,6 +2,7 @@ version: 2.1
 
 jobs:
   downloadLFSFiles:
+    description: "Download the LFS files and save them to the workspace"
     docker:
       - image: circleci/openjdk:8u181-jdk
     steps:
@@ -20,6 +21,7 @@ jobs:
             - src/test/resources/large
             - src/main/resources/large
   buildDocker:
+    description: "Build the docker image and save it to the workspace"
     environment:
       GIT_LFS_SKIP_SMUDGE=1
     docker:
@@ -51,12 +53,13 @@ jobs:
               docker build -t gatk-test-docker --build-arg ZIPPATH=./unzippedJar .
       - run: docker save -o docker.tar gatk-test-docker
       - run: ls -lh docker.tar
+      - run: cp scripts/docker/dockertest.gradle .
       - persist_to_workspace:
           root: "."
           paths:
             - docker.tar
             - testJars
-
+            - dockertest.gradle
   runStandardTests:
     description: "Run one of our standard test groups"
     parameters:
@@ -71,8 +74,32 @@ jobs:
       - run:
           name: run tests
           command: ./gradlew test
+
+  runTestInDocker:
+    environment:
+       TEST_TYPE=unit
+    description: "Run tests in the prebuilt docker"
+    machine: true
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          description: "Run the tests"
+          command: |
+            echo ${TEST_TYPE}
+            sudo mkdir -p build/reports/
+            sudo chmod -R a+w build/reports/
+            cp scripts/docker/dockertest.gradle .
+            docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
+            TEST_EXIT_VALUE=$?
+            sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
+            $( exit ${TEST_EXIT_VALUE} )
 workflows:
   build:
     jobs:
       - buildDocker
       - downloadLFSFiles
+      - runTestInDocker:
+          requires:
+            - buildDocker
+            - downloadLFSFiles
