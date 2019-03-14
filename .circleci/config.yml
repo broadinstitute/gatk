@@ -5,14 +5,14 @@ jobs:
     docker:
       - image: circleci/openjdk:8u181-jdk
     steps:
-      - run:
-          name: install git-lfs
-          command: |
-            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
-            sudo apt-get install -y git-lfs
-            git lfs --version
-            git --version
-            git config --global --add lfs.concurrenttransfers 50
+#      - run:
+#          name: install git-lfs
+#          command: |
+#            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+#            sudo apt-get install -y git-lfs
+#            git lfs --version
+#            git --version
+#            git config --global --add lfs.concurrenttransfers 50
       - checkout
       - persist_to_workspace:
           root: .
@@ -23,15 +23,15 @@ jobs:
     docker:
       - image: circleci/openjdk:8u181-jdk
     steps:
-      - run:
-          name: "Install git-lfs"
-          command: |
-            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
-            sudo apt-get install -y git-lfs
-            git lfs --version
-            git --version
-            git config --global --add lfs.concurrenttransfers 50
-            export GIT_LFS_SKIP_SMUDGE=1
+#      - run:
+#          name: "Install git-lfs"
+#          command: |
+#            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+#            sudo apt-get install -y git-lfs
+#            git lfs --version
+#            git --version
+#            git config --global --add lfs.concurrenttransfers 50
+#            export GIT_LFS_SKIP_SMUDGE=1
       - checkout
       - run: git lfs pull -I src/main/resources/large
       - run: ./gradlew clean collectBundleIntoDir
