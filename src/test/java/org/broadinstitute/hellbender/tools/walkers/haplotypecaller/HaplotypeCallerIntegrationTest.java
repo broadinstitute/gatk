@@ -65,7 +65,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      */
     @Test
     public void testGKLLoad() throws Exception {
-        load(null, "gkl_utils");
+        load(null, "gkl_pairhmm");
     }
 
     private static final Logger logger = LogManager.getLogger(NativeLibraryLoader.class);
