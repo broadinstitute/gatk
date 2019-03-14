@@ -8,9 +8,8 @@ jobs:
       - run:
           name: install git-lfs
           command: |
-            apt-get install -y curl
-            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-            apt-get install -y git-lfs
+            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+            sudo apt-get install -y git-lfs
             git lfs --version
             git --version
             git config --global --add lfs.concurrenttransfers 50
@@ -27,9 +26,8 @@ jobs:
       - run:
           name: "Install git-lfs"
           command: |
-            apt-get install -y curl
-            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-            apt-get install -y git-lfs
+            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+            sudo apt-get install -y git-lfs
             git lfs --version
             git --version
             git config --global --add lfs.concurrenttransfers 50
