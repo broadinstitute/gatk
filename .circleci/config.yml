@@ -8,6 +8,7 @@ jobs:
       - run:
           name: install git-lfs
           command: |
+            apt-get install -y curl
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
             apt-get install -y git-lfs
             git lfs --version
@@ -26,6 +27,7 @@ jobs:
       - run:
           name: "Install git-lfs"
           command: |
+            apt-get install -y curl
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
             apt-get install -y git-lfs
             git lfs --version
