@@ -31,7 +31,7 @@ jobs:
             git lfs --version
             git --version
             git config --global --add lfs.concurrenttransfers 50
-            git lfs init --skip-smudge
+            git config --global filter.lfs.smudge "git-lfs smudge --skip %f"
       - checkout
       - run: git lfs checkout -I src/main/resources/large
       - run: ./gradlew clean collectBundleIntoDir
