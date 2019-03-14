@@ -33,7 +33,7 @@ jobs:
             git config --global --add lfs.concurrenttransfers 50
             git config --global filter.lfs.smudge "git-lfs smudge --skip %f"
       - checkout
-      - run: git lfs checkout -I src/main/resources/large
+      - run: git lfs pull -I src/main/resources/large
       - run: ./gradlew clean collectBundleIntoDir
       - run:
           name: "Build Docker"
@@ -52,41 +52,23 @@ jobs:
       - persist_to_workspace:
           root: "."
           paths: docker.tar
-#  runStandardTests:
-#    description: "Run one of our standard test groups"
-#    parameters:
-#      testtype:
-#         description: "value for TEST_TYPE"
-#         type: string
-#    docker:
-#      - image: broadinstitute/gatk:gatkbase-2.0.3
-#        environment:
-#          TEST_VERBOSITY=minimal
-#    steps:
-#      - run: export TEST_TYPE=<< parameters.testtype >>
-#      - run:
-#          name: install git-lfs
-#          command: |
-#            set +e
-#            apt-get update -y
-#            apt-get install -y openssh-client
-#            ssh -T -oStrictHostKeyChecking=no git@github.com 2>&1 | grep -q "You've successfully authenticated"
-#            set -e
-#            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-#            apt-get install -y git-lfs
-#            git lfs install
-#            git lfs --version
-#            git --version
-#            git config --global --add lfs.concurrenttransfers 50
-#      - checkout
-#      - run:
-#          name: compile
-#          command: ./gradlew compileTestJava
-#      - run:
-#          name: run tests
-#          command: ./gradlew test
+  runStandardTests:
+    description: "Run one of our standard test groups"
+    parameters:
+      testtype:
+         description: "value for TEST_TYPE"
+         type: string
+    docker:
+      - image: broadinstitute/gatk:gatkbase-2.0.3
+        environment:
+          TEST_VERBOSITY=minimal
+    steps:
+      - run:
+          name: run tests
+          command: ./gradlew test
 workflows:
   build:
     jobs:
       - buildDocker
       - downloadLFSFiles
+      -
