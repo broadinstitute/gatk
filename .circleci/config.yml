@@ -35,7 +35,7 @@ jobs:
             git config --global --add lfs.concurrenttransfers 50
       - checkout
       - run: git lfs pull -I src/main/resources/large
-      - run: ./gradlew clean collectBundleIntoDir
+      - run: ./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar
       - run:
           name: "Build Docker"
           command: |
@@ -52,7 +52,10 @@ jobs:
       - run: ls -lh docker.tar
       - persist_to_workspace:
           root: "."
-          paths: docker.tar
+          paths:
+            - docker.tar
+            - testJars
+
   runStandardTests:
     description: "Run one of our standard test groups"
     parameters:
