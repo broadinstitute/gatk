@@ -1,43 +1,97 @@
 version: 2.1
 
 jobs:
-  runStandardTests:
-    description: "Run one of our standard test groups"
-    parameters:
-      testtype:
-         description: "value for TEST_TYPE"
-         type: string
+#  downloadLFSFiles:
+#    docker:
+#      - image: circle/java
+#    steps:
+#      - run:
+#          name: install git-lfs
+#          command: |
+#            set +e
+#            apt-get update -y
+#            apt-get install -y openssh-client
+#            ssh -T -oStrictHostKeyChecking=no git@github.com 2>&1 | grep -q "You've successfully authenticated"
+#            set -e
+#            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+#            apt-get install -y git-lfs
+#            git lfs install
+#            git lfs --version
+#            git --version
+#            git config --global --add lfs.concurrenttransfers 50
+#      - checkout
+#      - persist_to_workspace:
+#          root: gatk
+#          paths:
+#            - src/test/resources/large
+#            - src/main/resources/large
+  buildDocker:
     docker:
-      - image: broadinstitute/gatk:gatkbase-2.0.3
-        environment:
-          TEST_VERBOSITY=minimal
+      - image: circleci/openjdk:8u181-jdk
     steps:
-      - run: export TEST_TYPE=<< parameters.testtype >>
       - run:
-          name: install git-lfs
+          name: "Install git-lfs"
           command: |
-            set +e
-            apt-get update -y
-            apt-get install -y openssh-client
-            ssh -T -oStrictHostKeyChecking=no git@github.com 2>&1 | grep -q "You've successfully authenticated"
-            set -e
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
             apt-get install -y git-lfs
-            git lfs install
             git lfs --version
             git --version
             git config --global --add lfs.concurrenttransfers 50
+            git config --global --add lfs_skip_smudge true
       - checkout
+      - run: git lfs checkout -I src/main/resources/large
+      - run: ./gradlew clean collectBundleIntoDir
       - run:
-          name: compile
-          command: ./gradlew compileTestJava
-      - run:
-          name: run tests
-          command: ./gradlew test
+          name: "Build Docker"
+          command: |
+              ZIPPATHGATK=$( find ./build -name "*bundle-files-collected" )
+              mv ${ZIPPATHGATK} ./unzippedJar
+              ZIPPATHPYTHON=$( find ./unzippedJar -name "gatkPython*.zip" )
+              unzip -o -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
+              mkdir ./testJars
+              mv $( find ./build/libs/ -name "gatk*test.jar" ) ./testJars
+              mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ./testJars
+              echo "Building image to tag gatk-test-docker"
+              docker build -t gatk-test-docker --build-arg ZIPPATH=./unzippedJar .
+      - run: docker save -o docker.tar gatk-test-docker
+      - run: ls -lh docker.tar
+      - persist_to_workspace:
+          root: "."
+          paths: docker.tar
+#  runStandardTests:
+#    description: "Run one of our standard test groups"
+#    parameters:
+#      testtype:
+#         description: "value for TEST_TYPE"
+#         type: string
+#    docker:
+#      - image: broadinstitute/gatk:gatkbase-2.0.3
+#        environment:
+#          TEST_VERBOSITY=minimal
+#    steps:
+#      - run: export TEST_TYPE=<< parameters.testtype >>
+#      - run:
+#          name: install git-lfs
+#          command: |
+#            set +e
+#            apt-get update -y
+#            apt-get install -y openssh-client
+#            ssh -T -oStrictHostKeyChecking=no git@github.com 2>&1 | grep -q "You've successfully authenticated"
+#            set -e
+#            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+#            apt-get install -y git-lfs
+#            git lfs install
+#            git lfs --version
+#            git --version
+#            git config --global --add lfs.concurrenttransfers 50
+#      - checkout
+#      - run:
+#          name: compile
+#          command: ./gradlew compileTestJava
+#      - run:
+#          name: run tests
+#          command: ./gradlew test
 workflows:
   build:
     jobs:
-      - runStandardTests:
-          testtype: integration
-      - runStandardTests:
-          testtype: unit
+      - buildDocker
