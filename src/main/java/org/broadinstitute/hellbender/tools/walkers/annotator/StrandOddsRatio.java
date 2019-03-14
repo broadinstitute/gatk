@@ -95,7 +95,7 @@ import static java.lang.Math.min;
  *
  * <p>and</p>
  *
- * <p><img src="http://latex.codecogs.com/svg.latex?$$ altRaio = \frac{(smaller\;of\;altFw\;and\;altRv)}{(larger\;of\;altFw\;and\;altRv)} $$" border="0"/></p>
+ * <p><img src="http://latex.codecogs.com/svg.latex?$$ altRatio = \frac{(smaller\;of\;altFw\;and\;altRv)}{(larger\;of\;altFw\;and\;altRv)} $$" border="0"/></p>
  *
  * <p>Fill out the component equations with the example counts to calculate SOR.</p>
  *
