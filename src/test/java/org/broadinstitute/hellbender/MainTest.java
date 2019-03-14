@@ -129,7 +129,7 @@ public final class MainTest extends CommandLineProgramTest {
 
         processAllCommandLinePrograms(
                 packages,
-                (Class<CommandLineProgram> clazz, CommandLineProgramProperties clProperties) ->
+                (Class<?> clazz, CommandLineProgramProperties clProperties) ->
                     {
                         if (clProperties != null) { // some test tools have no properties
                             Assert.assertTrue(
@@ -150,11 +150,11 @@ public final class MainTest extends CommandLineProgramTest {
      */
     public static void processAllCommandLinePrograms(
             final List<String> packageList,
-            final BiConsumer<Class<CommandLineProgram>, CommandLineProgramProperties> clpClassProcessor) {
+            final BiConsumer<Class<?>, CommandLineProgramProperties> clpClassProcessor) {
         final ClassFinder classFinder = new ClassFinder();
         packageList.forEach(pkg -> classFinder.find(pkg, CommandLineProgram.class));
 
-        for (final Class clazz : classFinder.getClasses()) {
+        for (final Class<?> clazz : classFinder.getClasses()) {
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (!clazz.isInterface() && !clazz.isSynthetic() && !clazz.isPrimitive() && !clazz.isLocalClass()
                     && !Modifier.isAbstract(clazz.getModifiers())
