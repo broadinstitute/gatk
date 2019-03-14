@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
 #    apt-get install -y python && \
     apt-get install -y wget \
+    libomp-dev \
     curl \
     bc \
     unzip \
