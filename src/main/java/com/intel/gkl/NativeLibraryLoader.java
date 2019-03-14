@@ -28,7 +28,7 @@ public final class NativeLibraryLoader {
      * @param libraryName  name of the shared library without system dependent modifications
      * @return true if the library was loaded successfully, false otherwise
      */
-    public static synchronized boolean load(File tempDir, String libraryName) throws Exception {
+    public static synchronized boolean load(File tempDir, String libraryName) {
         if (loadedLibraries.contains(libraryName)) {
             return true;
         }
