@@ -28,7 +28,9 @@ ENV CI true
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
+    echo "cp /jars/com/intel/gkl/NativeLibraryLoader.class" >> /root/run_unit_tests.sh && \
     echo "jar tvf \$TEST_JAR | grep gkl" >> /root/run_unit_tests.sh && \
+    echo "jar uf ./gatk.jar com/intel/gkl/NativeLibraryLoader.class" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \

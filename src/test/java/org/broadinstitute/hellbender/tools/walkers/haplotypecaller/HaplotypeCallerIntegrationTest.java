@@ -98,7 +98,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 return true;
             } catch (Exception|Error e) {
                 logger.error(String.format("OVERRIDE DEFAULT: Unable to load %s from %s", systemLibraryName, javaLibraryPath));
-                throw new Exception(e.getCause());
+                throw new RuntimeException(String.format("OVERRIDE DEFAULT: Unable to load %s from %s", systemLibraryName, javaLibraryPath)+e.getCause());
 //                return false;
             }
         }
@@ -108,7 +108,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final URL inputUrl = NativeLibraryLoader.class.getResource(resourcePath);
         if (inputUrl == null) {
             logger.error("Unable to find native library: " + resourcePath);
-            throw new Exception("Unable to find native library: " + resourcePath);
+            throw new RuntimeException("Unable to find native library: " + resourcePath);
 //            return false;
         }
         logger.error(String.format("Loading %s from %s", systemLibraryName, inputUrl.toString()));
@@ -122,7 +122,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             System.load(temp.getAbsolutePath());
         } catch (Exception|Error e) {
             logger.error(String.format("Unable to load %s from %s (%s)", systemLibraryName, resourcePath, e.getMessage()));
-            throw new Exception(String.format("Unable to load %s from %s (%s)", systemLibraryName, resourcePath, e.getMessage()));
+            throw new RuntimeException(String.format("Unable to load %s from %s (%s)", systemLibraryName, resourcePath, e.getMessage()));
             //            return false;
         }
 
