@@ -54,8 +54,8 @@ import java.util.Map;
  *
  * <p>See the <a href="http://www.broadinstitute.org/gatk/guide/article?id=4732">method document on statistical tests</a>
  * for a more detailed explanation of this statistical test, and see
- * <a href="https://gatkforums.broadinstitute.org/gatk/discussion/5533/strandoddsratio-computation">this post</a> for an
- * example calculation.</p>
+ * <a href="https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_annotator_StrandOddsRatio.php">StrandOddsRatio</a>
+ * documentation for an example calculation.</p>
  *
  * <h3>Caveat</h3>
  * <p>

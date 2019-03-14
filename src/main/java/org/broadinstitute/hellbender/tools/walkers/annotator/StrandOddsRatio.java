@@ -58,9 +58,53 @@ import static java.lang.Math.min;
  * <p>ensures that the annotation value is large only. The final SOR annotation is given in natural log space.</p>
  *
  * <p>See the <a href="http://www.broadinstitute.org/gatk/guide/article?id=4732">method document on statistical tests</a>
- * for a more detailed explanation of this statistical test, and see
- * <a href="https://gatkforums.broadinstitute.org/gatk/discussion/5533/strandoddsratio-computation">this post</a> for an
- * example calculation.</p>
+ * for a more detailed explanation of this statistical test.</p>
+ *
+ * <h3>Example calculation</h3>
+ *
+ * <p>Here is a variant record where SOR is 0.592.</p>
+ *
+ * <pre>
+ *     AC=78;AF=2.92135e-02;AN=2670;DP=31492;FS=48.628;MQ=58.02;MQRankSum=-2.02400e+00;MQ_DP=3209;QD=3.03; \
+ *     ReadPosRankSum=-1.66500e-01;SB_TABLE=1450,345,160,212;SOR=0.592;VarDP=2167
+ * </pre>
+ *
+ * <p>Read support shows some strand bias for the reference allele but not
+ * the alternate allele. The SB_TABLE annotation (a non-GATK annotation) indicates 1450 reference alleles on the forward strand, 345
+ * reference alleles on the reverse strand, 160 alternate alleles on the forward strand and 212 alternate alleles on
+ * the reverse strand. The tool uses these counts towards calculating SOR. To avoid multiplying or dividing by zero
+ * values, the tool adds one to each count.</p>
+ *
+ * <pre>
+ * refFw = 1450 + 1 = 1451
+ * refRv = 345 + 1 = 346
+ * altFw = 160 + 1 = 161
+ * altRv = 212 + 1 = 213
+ * </pre>
+ *
+ * <p>Calculate SOR with the following.</p>
+ *
+ * <p><img src="http://latex.codecogs.com/svg.latex?$$ SOR = ln(symmetricalRatio) + ln(refRatio) - ln(altRatio) $$" border="0"/></p>
+ *
+ * <p>where</p>
+ *
+ * <p><img src="http://latex.codecogs.com/svg.latex?$$ symmetricalRatio = R + \frac{1}{R} $$" border="0"/></p>
+ * <p><img src="http://latex.codecogs.com/svg.latex?$$ R = \frac{(\frac{refFw}{refRv})}{(\frac{altFw}{altRv})} = \frac{(refFw*altRv)}{(altFw*refRv)} $$" border="0"/></p>
+ *
+ * <p><img src="http://latex.codecogs.com/svg.latex?$$ refRatio = \frac{(smaller\;of\;refFw\;and\;refRv)}{(larger\;of\;refFw\;and\;refRv)} $$" border="0"/></p>
+ *
+ * <p>and</p>
+ *
+ * <p><img src="http://latex.codecogs.com/svg.latex?$$ altRaio = \frac{(smaller\;of\;altFw\;and\;altRv)}{(larger\;of\;altFw\;and\;altRv)} $$" border="0"/></p>
+ *
+ * <p>Fill out the component equations with the example counts to calculate SOR.</p>
+ *
+ * <pre>
+ * symmetricalRatio  = (1451*213)/(161*346) + (161*346)/(1451*213) = 5.7284
+ * refRatio = 346/1451 = 0.2385
+ * altRatio = 161/213 = 0.7559
+ * SOR = ln(5.7284) + ln(0.2385) – ln(0.7559) = 1.7454427755 + (-1.433) – (-0.2798) = 0.592
+ * </pre>
  *
  * <h3>Related annotations</h3>
  * <ul>
