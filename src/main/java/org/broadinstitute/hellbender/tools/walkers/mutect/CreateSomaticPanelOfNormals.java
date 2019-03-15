@@ -89,6 +89,8 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
     private static final double ARTIFACT_ALPHA = 1;
     private static final double ARTIFACT_BETA = 7;
 
+    private static final double NEGLIGIBLE_ALLELE_FREQUENCY = 1.0e-8;
+
     @Argument(fullName = MIN_SAMPLE_COUNT_LONG_NAME, doc="Number of samples containing a variant site required to include it in the panel of normals.", optional = true)
     private int minSampleCount = DEFAULT_MIN_SAMPLE_COUNT;
 
@@ -181,6 +183,10 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
     }
 
     private static final double germlineProbability(final double alleleFrequency, final int altCount, final int totalCount) {
+        if (alleleFrequency < NEGLIGIBLE_ALLELE_FREQUENCY || alleleFrequency > 1) {
+            return 0;
+        }
+
         final double hetPrior = alleleFrequency * (1 - alleleFrequency) * 2;
         final double homPrior = MathUtils.square(alleleFrequency);
         final double hetLikelihood = MathUtils.binomialProbability(totalCount, altCount, 0.5);
@@ -188,7 +194,11 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
 
         final double artifactLikelihood = new BetaBinomialDistribution(null, ARTIFACT_ALPHA, ARTIFACT_BETA, totalCount).probability(altCount);
 
-        return MathUtils.normalizeFromRealSpace(new double[] {hetPrior * hetLikelihood + homPrior * homLikelihood, ARTIFACT_PRIOR * artifactLikelihood})[0];
+        // the indices of this array are 0 -- germline het, 1 -- germline hom alt, 2 -- not germline
+        final double[] relativeProbsOfHetHomArtifact = {hetPrior * hetLikelihood + homPrior * homLikelihood, ARTIFACT_PRIOR * artifactLikelihood};
+
+        // check for invalid probabilities just in case of finite precision error
+        return MathUtils.sum(relativeProbsOfHetHomArtifact) < 0 ? 0 : MathUtils.normalizeFromRealSpace(relativeProbsOfHetHomArtifact)[0];
     }
 
     private BetaDistributionShape fitBeta(final List<int[]> altAndRefCounts) {
