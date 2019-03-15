@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 @BetaFeature
-public class CembaTypeCaller extends LocusWalker {
+public class MethylationTypeCaller extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file")
     private GATKPathSpecifier outputFile = null;
@@ -124,7 +124,7 @@ public class CembaTypeCaller extends LocusWalker {
         }
 
         // if there are reads that have methylated coverage
-        if (unconvertedBases + convertedBases > 0) {
+        if (context != null) {
             LinkedHashSet<Allele> alleles = new LinkedHashSet<>();
             alleles.add(Allele.create(referenceBase, true));
             alleles.add(Allele.create(alt, false));
