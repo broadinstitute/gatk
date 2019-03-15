@@ -400,6 +400,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
                     .peek(a -> {
                         if (!founderIds.isEmpty()) a.setFounderIds(founderIds);
                         if (pedigreeFile != null) a.setPedigreeFile(pedigreeFile);
+                        a.validateArguments();
                     })
                     .count() == 0) {
             // Throwing an exception if no pedigree annotations were found

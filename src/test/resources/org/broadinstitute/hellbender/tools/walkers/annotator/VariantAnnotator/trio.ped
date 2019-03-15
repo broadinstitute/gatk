@@ -1,0 +1,4 @@
+#Family ID	Individual ID	Paternal ID	Maternal ID	Sex (1=male; 2=female; other=unknown)	Phenotype
+CEUtrio	NA12877	0	0	1	0
+CEUtrio	NA12878	0	0	2	0
+CEUtrio	NA12882	NA12877	NA12878	1	0
