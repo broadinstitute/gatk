@@ -6,7 +6,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MethylationProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -16,6 +18,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,11 +30,14 @@ import java.util.stream.Collectors;
  *
  * @author Benjamin Carlin
  */
+
 @CommandLineProgramProperties(
-    summary = "Tool that prints methylation-based coverage from supplied bisulfite BAM to the specified output vcf file",
-    oneLineSummary = "Identify methylated bases from bisulfite BAMs",
-    programGroup = MethylationProgramGroup.class
+        summary = "Tool that prints methylation-based coverage from supplied bisulfite BAM to the specified output vcf file",
+        oneLineSummary = "Identify methylated bases from bisulfite BAMs",
+        programGroup = MethylationProgramGroup.class
 )
+@DocumentedFeature
+@BetaFeature
 public class CembaTypeCaller extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file")
