@@ -15,9 +15,8 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.variant.MethylationVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,7 +35,7 @@ import java.util.stream.Collectors;
 public class CembaTypeCaller extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file")
-    private File outputFile = null;
+    private GATKPathSpecifier outputFile = null;
 
     private VariantContextWriter vcfWriter = null;
 
@@ -45,29 +44,21 @@ public class CembaTypeCaller extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        try {
-            vcfWriter = createVCFWriter(outputFile);
-        }
-        catch ( RuntimeException e ) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
-        }
-
-        vcfWriter.writeHeader(createMethylationHeader(getHeaderForReads()));
+        vcfWriter = createVCFWriter(outputFile.toPath());
+        vcfWriter.writeHeader(createMethylationHeader(getHeaderForReads(), getDefaultToolVCFHeaderLines()));
     }
 
-    private static VCFHeader createMethylationHeader(SAMFileHeader header) {
+    private static VCFHeader createMethylationHeader(SAMFileHeader header, Set<VCFHeaderLine> headerLines) {
         if(header == null) {
             throw new UserException.BadInput("Error writing header, getHeaderForReads() returns null");
-
         }
 
-        final VCFInfoHeaderLine unconvertedCoverageLine = new VCFInfoHeaderLine(MethylationVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are unconverted ");
-        final VCFInfoHeaderLine coverageLine = new VCFInfoHeaderLine(MethylationVCFConstants.CONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are converted ");
-        final VCFInfoHeaderLine contextLine = new VCFInfoHeaderLine(MethylationVCFConstants.METHYLATOION_CONTEXT_KEY, 1, VCFHeaderLineType.String, "Forward Strand Reference context");
+        final VCFInfoHeaderLine unconvertedCoverageLine = new VCFInfoHeaderLine(GATKVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are unconverted ");
+        final VCFInfoHeaderLine coverageLine = new VCFInfoHeaderLine(GATKVCFConstants.CONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are converted ");
+        final VCFInfoHeaderLine contextLine = new VCFInfoHeaderLine(GATKVCFConstants.METHYLATOION_CONTEXT_KEY, 1, VCFHeaderLineType.String, "Forward Strand Reference context");
         final VCFInfoHeaderLine readDepthLine = VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY);
         final VCFFormatHeaderLine gtLine = VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_KEY);
 
-        LinkedHashSet<VCFHeaderLine> headerLines = new LinkedHashSet<>();
         headerLines.add(unconvertedCoverageLine);
         headerLines.add(coverageLine);
         headerLines.add(contextLine);
@@ -140,9 +131,9 @@ public class CembaTypeCaller extends LocusWalker {
             vcb.alleles(alleles);
             vcb.noGenotypes();
             vcb.unfiltered();
-            vcb.attribute(MethylationVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, unconvertedBases);
-            vcb.attribute(MethylationVCFConstants.CONVERTED_BASE_COVERAGE_KEY, convertedBases);
-            vcb.attribute(MethylationVCFConstants.METHYLATOION_CONTEXT_KEY, new String(context));
+            vcb.attribute(GATKVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, unconvertedBases);
+            vcb.attribute(GATKVCFConstants.CONVERTED_BASE_COVERAGE_KEY, convertedBases);
+            vcb.attribute(GATKVCFConstants.METHYLATOION_CONTEXT_KEY, new String(context));
             vcb.attribute(VCFConstants.DEPTH_KEY, alignmentContext.size());
 
             // write to VCF
