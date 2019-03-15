@@ -239,5 +239,5 @@ def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, n
         A generator that will yield `num_samples` samples from an approximation to a posterior
     """
 
-    sample = stochastic_node_mean_symbolic(model_approx, node, size=1)
+    sample = model_approx.sample_node(node, size=1)[0]
     return (sample.eval() for _ in range(num_samples))
