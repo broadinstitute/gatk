@@ -100,4 +100,20 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         };
         runCommandLine(args);
     }
+
+    /* Make sure that we can handle a standard BAM file */
+    @Test
+    public void testBamFile() throws IOException {
+        final File input = new File(packageRootTestDir + "engine/reads_data_source_test1.bam");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testBamFile", ".out");
+        final File expectedOutput = new File(toolsTestDir + "PrintBGZFBlockInformation/expected_PrintBGZFBlockInformationIntegrationTest_testBamFile.out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
 }

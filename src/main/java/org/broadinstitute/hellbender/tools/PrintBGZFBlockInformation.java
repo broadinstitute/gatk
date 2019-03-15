@@ -71,11 +71,6 @@ public class PrintBGZFBlockInformation extends CommandLineProgram {
             throw new UserException.CouldNotReadInputFile("File " + bgzfPathString + " does not exist");
         }
 
-        if ( ! IOUtil.hasBlockCompressedExtension(bgzfPathString) ) {
-            throw new UserException.CouldNotReadInputFile("File " + bgzfPathString + " does not end in a recognized BGZF file extension (" +
-                    StringUtils.join(IOUtil.BLOCK_COMPRESSED_EXTENSIONS, ",") + ")");
-        }
-
         try {
             // Check that the file is in BGZF format. This catches the "regular GZIP" case as well:
             if ( ! IOUtil.isBlockCompressed(bgzfPath) ) {
