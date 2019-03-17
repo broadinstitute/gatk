@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.fragments;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -138,9 +139,7 @@ public final class FragmentCollection<T> {
      * @return a non-null FragmentCollection
      */
     public static FragmentCollection<GATKRead> create(final List<GATKRead> reads) {
-        if ( reads == null ) {
-            throw new IllegalArgumentException("Pileup cannot be null");
-        }
+        Utils.nonNull(reads);
         return create(reads, reads.size(), read -> read);
     }
 }

@@ -27,7 +27,7 @@ public class UniqueAltReadCountUnitTest {
 
     @Test
     public void testSingleDuplicate() throws IOException {
-        final ReadLikelihoods<Allele> likelihoods = createTestLikelihoods(Optional.empty());
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = createTestLikelihoods(Optional.empty());
         final UniqueAltReadCount uniqueAltReadCountAnnotation = new UniqueAltReadCount();
         final Map<String, Object> annotations = uniqueAltReadCountAnnotation.annotate(null, vc, likelihoods);
 
@@ -42,7 +42,7 @@ public class UniqueAltReadCountUnitTest {
 
         // should get three unique sets of ALT reads
         final int numUniqueStarts1 = 3;
-        final ReadLikelihoods<Allele> likelihoods1 = createTestLikelihoods(Optional.of(numUniqueStarts1));
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods1 = createTestLikelihoods(Optional.of(numUniqueStarts1));
         final Map<String, Object> annotations1 = duplicateReadCountsAnnotation.annotate(null, vc, likelihoods1);
 
 
@@ -51,7 +51,7 @@ public class UniqueAltReadCountUnitTest {
 
         // here ALT reads are all distinct
         final int numUniqueStarts2 = numAltReads;
-        final ReadLikelihoods<Allele> likelihoods2 = createTestLikelihoods(Optional.of(numUniqueStarts2));
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods2 = createTestLikelihoods(Optional.of(numUniqueStarts2));
         final Map<String, Object> annotations2 = duplicateReadCountsAnnotation.annotate(null, vc, likelihoods2);
 
 
@@ -60,7 +60,7 @@ public class UniqueAltReadCountUnitTest {
         Assert.assertEquals(uniqueReadSetCount2, numUniqueStarts2);
     }
 
-    private ReadLikelihoods<Allele> createTestLikelihoods(final Optional<Integer> shiftModulus) {
+    private AlleleLikelihoods<GATKRead, Allele> createTestLikelihoods(final Optional<Integer> shiftModulus) {
         final int numChromosomes = 2;
         final int startingChromosome = 1;
         final int chromosomeSize = 1000;
@@ -95,9 +95,9 @@ public class UniqueAltReadCountUnitTest {
 
         readMap.put(sampleName, reads);
 
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readMap);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readMap);
         final int sampleIndex = 0;
-        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(sampleIndex);
+        final LikelihoodMatrix<GATKRead, Allele> matrix = likelihoods.sampleMatrix(sampleIndex);
 
         final double logLikelihoodOfBestAllele = 10.0;
         final int refAlleleIndex = 0;

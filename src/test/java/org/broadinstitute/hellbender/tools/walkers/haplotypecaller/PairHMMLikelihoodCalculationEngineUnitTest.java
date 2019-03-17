@@ -7,10 +7,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
-import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -193,11 +190,11 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTe
             assemblyResultSet.add(hap2);
 
 
-            final ReadLikelihoods<Haplotype> likes = lce.computeReadLikelihoods(assemblyResultSet, samples, perSampleReadList);
-            final LikelihoodMatrix<Haplotype> mtx = likes.sampleMatrix(0);
+            final AlleleLikelihoods<GATKRead, Haplotype> likes = lce.computeReadLikelihoods(assemblyResultSet, samples, perSampleReadList);
+            final LikelihoodMatrix<GATKRead, Haplotype> mtx = likes.sampleMatrix(0);
 
             Assert.assertEquals(mtx.numberOfAlleles(), 2);
-            Assert.assertEquals(mtx.numberOfReads(), 1);
+            Assert.assertEquals(mtx.evidenceCount(), 1);
             final double v1 = mtx.get(0, 0);
             final double v2 = mtx.get(1, 0);
 

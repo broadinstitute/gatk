@@ -54,7 +54,7 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
 
         final List<GATKRead> refReads = IntStream.range(0, refDepth).mapToObj(i -> makeRead()).collect(Collectors.toList());
         final List<GATKRead> altReads = IntStream.range(0, altDepth).mapToObj(i -> makeRead()).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(SAMPLE, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
@@ -81,7 +81,7 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of(SAMPLE, reads);
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList(SAMPLE));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(REF));
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
 
         final GenotypeBuilder gb = new GenotypeBuilder(gAC);
@@ -98,7 +98,7 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
 
         Map<String, List<GATKRead>> emptyMap = new HashMap<>();
         emptyMap.put(SAMPLE, Collections.emptyList());
-        final ReadLikelihoods<Allele> likelihoods = new UnfilledReadsLikelihoods<Allele>(new IndexedSampleList(SAMPLE), new IndexedAlleleList<>(ALLELES), emptyMap);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new UnfilledReadsLikelihoods<Allele>(new IndexedSampleList(SAMPLE), new IndexedAlleleList<>(ALLELES), emptyMap);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
 

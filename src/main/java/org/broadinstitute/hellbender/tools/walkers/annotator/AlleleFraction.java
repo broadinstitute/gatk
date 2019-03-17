@@ -6,8 +6,9 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -40,7 +41,7 @@ public final class AlleleFraction extends GenotypeAnnotation {
                          final VariantContext vc,
                          final Genotype g,
                          final GenotypeBuilder gb,
-                         final ReadLikelihoods<Allele> likelihoods) {
+                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(gb, "gb is null");
         Utils.nonNull(vc, "vc is null");
 

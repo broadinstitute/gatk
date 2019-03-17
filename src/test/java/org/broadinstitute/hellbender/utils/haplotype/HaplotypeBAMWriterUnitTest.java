@@ -13,11 +13,7 @@ import htsjdk.samtools.SamFiles;
 import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -42,7 +38,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         final Haplotype haplotype = makeHaplotype(haplotypeBaseSignature);
         final int sampleCounts[] = {2, 2};
         final Locatable loc = new SimpleInterval("20", 10, 20);
-        final ReadLikelihoods<Haplotype> readLikelihoods = generateReadLikelihoods(sampleCounts);
+        final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = generateReadLikelihoods(sampleCounts);
 
         return new Object[][]{
                 { haplotypeBaseSignature, Collections.singletonList(haplotype), loc, readLikelihoods }
@@ -55,7 +51,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             @SuppressWarnings("unused") final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         ) throws IOException
     {
         // create output SAM file
@@ -70,7 +66,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             @SuppressWarnings("unused") final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         ) throws IOException
     {
         // create output BAM file
@@ -85,7 +81,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     @SuppressWarnings("unused") final String haplotypeBaseSignature,
                     final List<Haplotype> haplotypes,
                     final Locatable genomeLoc,
-                    final ReadLikelihoods <Haplotype> readLikelihoods
+                    final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
             ) throws IOException
     {
         // create output BAM file
@@ -100,7 +96,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     @SuppressWarnings("unused") final String haplotypeBaseSignature,
                     final List<Haplotype> haplotypes,
                     final Locatable genomeLoc,
-                    final ReadLikelihoods <Haplotype> readLikelihoods
+                    final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
             ) throws IOException
     {
         // create output BAM file
@@ -114,7 +110,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final String outputFileExtension,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods,
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
             final boolean createIndex,
             final boolean createMD5
         ) throws IOException
@@ -148,7 +144,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             @SuppressWarnings("unused")  final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
     ) throws IOException {
         final Path outputPath = GATKBaseTest.createTempFile("fromHeaderSAM", ".sam").toPath();
 
@@ -171,7 +167,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
         final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
@@ -194,7 +190,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
         final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
@@ -221,7 +217,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
         final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
@@ -244,7 +240,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final String haplotypeBaseSignature,
             final List<Haplotype> haplotypes,
             final Locatable genomeLoc,
-            final ReadLikelihoods <Haplotype> readLikelihoods
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
         final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
@@ -294,7 +290,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         }
     }
 
-    private ReadLikelihoods<Haplotype> generateReadLikelihoods(final int[] readCount) {
+    private AlleleLikelihoods<GATKRead, Haplotype> generateReadLikelihoods(final int[] readCount) {
         final AlleleList<Haplotype> haplotypeList = generateHaplotypeList();
         final SampleList sampleList = generateSampleList(readCount.length);
         final Map<String,List<GATKRead>> readSamples = new LinkedHashMap<>(readCount.length);
@@ -303,7 +299,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             readSamples.put(sampleList.getSample(i), generateReadsList(i, readCount[i]));
         }
 
-        return new ReadLikelihoods<>(sampleList, haplotypeList, readSamples);
+        return new AlleleLikelihoods<>(sampleList, haplotypeList, readSamples);
     }
 
     private AlleleList<Haplotype> generateHaplotypeList() {

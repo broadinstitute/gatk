@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoodsUnitTester;
-import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.genotyper.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +17,7 @@ public final class GenotypingDataUnitTest {
 
     @Test(dataProvider="ploidyAndMaximumAlleleAndReadCountsData")
     public void testInstantiation(final int[] ploidies, final int[] readCounts) {
-        final ReadLikelihoods<Allele> likelihoods = ReadLikelihoodsUnitTester.readLikelihoods(2, readCounts);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = ReadLikelihoodsUnitTester.readLikelihoods(2, readCounts);
         final SampleList sampleList = likelihoods;
         final PloidyModel ploidyModel = new HeterogeneousPloidyModel(sampleList, ploidies);
         final GenotypingData<Allele> data = new GenotypingData<>(ploidyModel, likelihoods);

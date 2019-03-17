@@ -8,9 +8,10 @@ import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,7 +41,7 @@ public class ReferenceBases extends InfoFieldAnnotation {
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         if (ref==null)  {
             warning.warn("REF_BASES requires the reference to annotate, none was provided");
             return Collections.emptyMap();

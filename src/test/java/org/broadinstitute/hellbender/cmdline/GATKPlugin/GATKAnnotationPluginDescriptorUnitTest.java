@@ -16,7 +16,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.mockito.internal.util.collections.Sets;
 import org.mockito.internal.util.io.IOUtil;
@@ -626,7 +627,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         public int argument = 5;
 
         @Override
-        public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, ReadLikelihoods<Allele> likelihoods) {
+        public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods) {
             return Collections.singletonMap("Child",Integer.toString(argument));
         }
         @Override
@@ -645,7 +646,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         }
 
         @Override
-        public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, ReadLikelihoods<Allele> likelihoods) {
+        public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods) {
             if (!dontAnnotate) {
                 return Collections.singletonMap("Parent","foo");
             } else {

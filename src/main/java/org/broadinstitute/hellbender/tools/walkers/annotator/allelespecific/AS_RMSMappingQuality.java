@@ -10,9 +10,10 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -53,7 +54,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
         if ( likelihoods == null) {
             return Collections.emptyMap();
@@ -70,7 +71,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final ReadLikelihoods<Allele> likelihoods ) {
+                                               final AlleleLikelihoods<GATKRead, Allele> likelihoods ) {
         Utils.nonNull(vc);
         if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
             return Collections.emptyMap();
@@ -86,7 +87,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
     public void calculateRawData(final VariantContext vc,
-                                 final ReadLikelihoods<Allele> likelihoods,
+                                 final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                  final ReducibleAnnotationData myData){
         //For the raw data here, we're only keeping track of the sum of the squares of our values
         //When we go to reduce, we'll use the AD info to get the number of reads
@@ -180,10 +181,10 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @Override
     public String getRawKeyName() { return GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY; }
 
-    private void getRMSDataFromLikelihoods(final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData<Double> myData) {
-        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {
+    private void getRMSDataFromLikelihoods(final AlleleLikelihoods<GATKRead, Allele> likelihoods, ReducibleAnnotationData<Double> myData) {
+        for ( final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {
             if (bestAllele.isInformative()) {
-                final int mq = bestAllele.read.getMappingQuality();
+                final int mq = bestAllele.evidence.getMappingQuality();
                 if ( mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE ) {
                     final double currSquareSum = myData.hasAttribute(bestAllele.allele) ? (double) myData.getAttribute(bestAllele.allele) : 0;
                     myData.putAttribute(bestAllele.allele, currSquareSum + mq * mq);

@@ -118,7 +118,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
      * {@inheritDoc}
      */
     @Override
-    public void computeLog10Likelihoods(final LikelihoodMatrix<Haplotype> logLikelihoods,
+    public void computeLog10Likelihoods(final LikelihoodMatrix<GATKRead, Haplotype> logLikelihoods,
                                         final List<GATKRead> processedReads,
                                         final Map<GATKRead, byte[]> gcp) {
         if (processedReads.isEmpty()) {

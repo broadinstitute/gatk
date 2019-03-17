@@ -6,7 +6,7 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
@@ -178,7 +178,7 @@ public final class FisherStrandUnitTest {
 
         final List<GATKRead> refReads = Arrays.asList(makeRead(true), makeRead(true));
         final List<GATKRead> altReads = Arrays.asList(makeRead(false), makeRead(true));
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods("SAMPLE", refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final VariantContext vc = makeVC(REF, ALT);
@@ -204,7 +204,7 @@ public final class FisherStrandUnitTest {
 
         final List<GATKRead> refReads = Arrays.asList(makeRead(true), makeRead(true), makeRead(true), makeRead(true));
         final List<GATKRead> altReads = Arrays.asList(makeRead(false), makeRead(true), makeRead(false), makeRead(true));
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods("SAMPLE", refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final VariantContext vc = makeVC(REF, ALT);

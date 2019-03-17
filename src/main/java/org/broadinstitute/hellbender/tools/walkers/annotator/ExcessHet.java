@@ -16,8 +16,9 @@ import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
@@ -65,7 +66,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         GenotypesContext genotypes = getFounderGenotypes(vc);
         if (genotypes == null || !vc.isVariant()) {
             return Collections.emptyMap();
@@ -221,7 +222,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
      * @param likelihoods likelihoods indexed by sample, allele, and read within sample
      */
     //@Override
-    public Map<String, Object> annotateRawData(ReferenceContext ref, VariantContext vc, ReadLikelihoods<Allele> likelihoods) {
+    public Map<String, Object> annotateRawData(ReferenceContext ref, VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         return null;
     }
 

@@ -4,8 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
      */
     public abstract Map<String, Object> annotate(final ReferenceContext ref,
                                                  final VariantContext vc,
-                                                 final ReadLikelihoods<Allele> likelihoods);
+                                                 final AlleleLikelihoods<GATKRead, Allele> likelihoods);
 
     /**
      * Returns the descriptions used for the VCF INFO meta field.

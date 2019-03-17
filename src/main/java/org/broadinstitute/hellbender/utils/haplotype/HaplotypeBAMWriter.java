@@ -9,13 +9,12 @@ import htsjdk.samtools.util.Locatable;
 import java.nio.file.Path;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.function.Function;
 import java.util.Set;
 
 /**
@@ -119,7 +118,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
                                               final Locatable paddedReferenceLoc,
                                               final Collection<Haplotype> bestHaplotypes,
                                               final Set<Haplotype> calledHaplotypes,
-                                              final ReadLikelihoods<Haplotype> readLikelihoods,
+                                              final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
                                               final Locatable callableRegion) {
 
         Utils.nonNull(haplotypes, "haplotypes cannot be null");
@@ -140,7 +139,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
 
         final int sampleCount = readLikelihoods.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
-            for (final GATKRead read : readLikelihoods.sampleReads(i)) {
+            for (final GATKRead read : readLikelihoods.sampleEvidence(i)) {
                 writeReadAgainstHaplotype(read);
             }
         }
@@ -150,7 +149,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
                                               final Locatable paddedReferenceLoc,
                                               final Collection<Haplotype> bestHaplotypes,
                                               final Set<Haplotype> calledHaplotypes,
-                                              final ReadLikelihoods<Haplotype> readLikelihoods) {
+                                              final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods) {
         writeReadsAlignedToHaplotypes(haplotypes, paddedReferenceLoc, bestHaplotypes, calledHaplotypes, readLikelihoods, null);
     }
 

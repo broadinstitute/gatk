@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.function.ToDoubleFunction;
 
 /*
  * Classic likelihood computation: full pair-hmm all haplotypes vs all reads.
@@ -166,7 +167,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     @Override
-    public ReadLikelihoods<Haplotype> computeReadLikelihoods( final AssemblyResultSet assemblyResultSet, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList ) {
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods( final AssemblyResultSet assemblyResultSet, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList ) {
         Utils.nonNull(assemblyResultSet, "assemblyResultSet is null");
         Utils.nonNull(samples, "samples is null");
         Utils.nonNull(perSampleReadList, "perSampleReadList is null");
@@ -177,15 +178,23 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         initializePairHMM(haplotypeList, perSampleReadList);
 
         // Add likelihoods for each sample's reads to our result
-        final ReadLikelihoods<Haplotype> result = new ReadLikelihoods<>(samples, haplotypes, perSampleReadList);
+        final AlleleLikelihoods<GATKRead, Haplotype> result = new AlleleLikelihoods<>(samples, haplotypes, perSampleReadList);
         final int sampleCount = result.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
         result.normalizeLikelihoods(log10globalReadMismappingRate);
-        result.filterPoorlyModeledReads(EXPECTED_ERROR_RATE_PER_BASE);
+        result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE));
         return result;
+    }
+
+    private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase) {
+        return read -> {
+            final double maxErrorsForRead = Math.min(2.0, Math.ceil(read.getLength() * maximumErrorPerBase));
+            final double log10QualPerBase = -4.0;
+            return maxErrorsForRead * log10QualPerBase;
+        };
     }
 
     /**
@@ -242,9 +251,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         pairHMM.initialize(haplotypes, perSampleReadList, readMaxLength, haplotypeMaxLength);
     }
 
-    private void computeReadLikelihoods(final LikelihoodMatrix<Haplotype> likelihoods) {
+    private void computeReadLikelihoods(final LikelihoodMatrix<GATKRead, Haplotype> likelihoods) {
         // Modify the read qualities by applying the PCR error model and capping the minimum base,insertion,deletion qualities
-        final List<GATKRead> processedReads = modifyReadQualities(likelihoods.reads());
+        final List<GATKRead> processedReads = modifyReadQualities(likelihoods.evidence());
 
         final Map<GATKRead, byte[]> gapContinuationPenalties = buildGapContinuationPenalties(processedReads, constantGCP);
 
@@ -302,12 +311,12 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         return result;
     }
 
-    private void writeDebugLikelihoods(final LikelihoodMatrix<Haplotype> likelihoods) {
+    private void writeDebugLikelihoods(final LikelihoodMatrix<GATKRead, Haplotype> likelihoods) {
         if (!writeLikelihoodsToFile || likelihoodsStream == null) {
             return;
         }
 
-        final List<GATKRead> reads = likelihoods.reads();
+        final List<GATKRead> reads = likelihoods.evidence();
         final List<Haplotype> haplotypes = likelihoods.alleles();
         for (int i = 0; i < reads.size(); i++) {
             for (int j = 0; j < haplotypes.size(); j++) {

@@ -6,17 +6,15 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.collections4.map.DefaultedMap;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * The purpose of this set of utilities is to downsample a set of reads to remove contamination.
@@ -35,7 +33,7 @@ public final class AlleleBiasedDownsamplingUtils {
      * @return non-null array of new counts needed per allele
      */
     @VisibleForTesting
-    static int[] runSmartDownsampling(final int[] alleleCounts, final int numReadsToRemove) {
+    static int[] targetAlleleCounts(final int[] alleleCounts, final int numReadsToRemove) {
         final int numAlleles = alleleCounts.length;
 
         int maxScore = scoreAlleleCounts(alleleCounts);
@@ -85,82 +83,42 @@ public final class AlleleBiasedDownsamplingUtils {
         return Math.min(maxCount - nextBestCount + remainderCount, Math.abs(nextBestCount + remainderCount));
     }
 
-   /**
-     *
-     * Computes reads to remove based on an allele biased down-sampling
-     *
-     * @param alleleReadMap             original list of records per allele
-     * @param contaminationFraction      the fraction of total reads to remove per allele
-     * @return list of reads TO REMOVE from allele biased down-sampling
-     */
-    public static <A extends Allele> List<GATKRead> selectAlleleBiasedReads(final Map<A, List<GATKRead>> alleleReadMap, final double contaminationFraction) {
-        Utils.nonNull(alleleReadMap, "alleleReadMap is null");
-        if (contaminationFraction < 0.0 || contaminationFraction > 1.0) {
-            throw new IllegalArgumentException("invalid contamination fraction " + contaminationFraction);
-        }
-        return selectAlleleBiasedReads(alleleReadMap, totalReads(alleleReadMap), contaminationFraction);
-    }
-
     /**
      * Computes reads to remove based on an allele biased down-sampling
      *
-     * @param alleleReadMap             original list of records per allele
+     * @param alleleEvidenceMap             original list of records per allele
      * @param contaminationFraction      the fraction of total reads to remove per allele
      * @return list of reads TO REMOVE from allele biased down-sampling
      */
-    public static <A extends Allele> List<GATKRead> selectAlleleBiasedReads(final Map<A, List<GATKRead>> alleleReadMap, final int totalReads, final double contaminationFraction) {
+    public static <EVIDENCE, A extends Allele> List<EVIDENCE> selectAlleleBiasedEvidence(final Map<A, List<EVIDENCE>> alleleEvidenceMap, final double contaminationFraction) {
+
+        final int totalEvidence = Utils.nonNull(alleleEvidenceMap).values().stream().mapToInt(list -> list.size()).sum();
         //no checks here - done on the public level
-        final int numReadsToRemove = (int)(totalReads * contaminationFraction);
+        final int numEvidenceToRemove = (int) (totalEvidence * contaminationFraction);
 
         // make a listing of allele counts
-        final List<Allele> alleles = new ArrayList<>(alleleReadMap.keySet());
+        final List<Allele> alleles = new ArrayList<>(alleleEvidenceMap.keySet());
         alleles.remove(Allele.NO_CALL);    // ignore the no-call bin
-        final int numAlleles = alleles.size();
 
-        final int[] alleleCounts = new int[numAlleles];
-        for ( int i = 0; i < numAlleles; i++ ) {
-            alleleCounts[i] = alleleReadMap.get(alleles.get(i)).size();
-        }
+        final int[] alleleCounts = alleles.stream().mapToInt(allele -> alleleEvidenceMap.get(allele).size()).toArray();
+        final int[] targetAlleleCounts = targetAlleleCounts(alleleCounts, numEvidenceToRemove);
 
-        final int[] targetAlleleCounts = runSmartDownsampling(alleleCounts, numReadsToRemove);
-
-        final List<GATKRead> readsToRemove = new ArrayList<>(numReadsToRemove);
-        for ( int i = 0; i < numAlleles; i++ ) {
-            if ( alleleCounts[i] > targetAlleleCounts[i] ) {
-                readsToRemove.addAll(downsampleElements(alleleReadMap.get(alleles.get(i)), alleleCounts[i] - targetAlleleCounts[i]));
-            }
-        }
-
-        return readsToRemove;
+        return IntStream.range(0, alleles.size()).filter(i -> alleleCounts[i] > targetAlleleCounts[i])
+                .mapToObj(i -> i)
+                .flatMap(i -> downsampleElements(alleleEvidenceMap.get(alleles.get(i)), alleleCounts[i] - targetAlleleCounts[i]).stream())
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Returns the sum of length of the lists.
-     */
-    public static int totalReads(final Map<?, List<GATKRead>> alleleReadMap){
-        return Utils.nonNull(alleleReadMap).values().stream().mapToInt(list -> list.size()).sum();
-    }
-
-    /**
-     * Performs allele biased down-sampling on a pileup and computes the list of elements to remove
-     *
-     * @param reads                     original list of records
-     * @param numElementsToRemove       the number of records to remove
-     * @return the list of pileup elements TO REMOVE. The list is unmodifable.
-     */
-    private static List<GATKRead> downsampleElements(final List<GATKRead> reads, final int numElementsToRemove) {
+    private static <EVIDENCE> List<EVIDENCE> downsampleElements(final List<EVIDENCE> evidence, final int numElementsToRemove) {
         if ( numElementsToRemove == 0 ) {  //remove none
             return Collections.emptyList();
+        } else if ( numElementsToRemove >= evidence.size()) {    //remove all
+            return Collections.unmodifiableList(evidence);
+        } else {
+            return Collections.unmodifiableList(Arrays.stream(MathUtils.sampleIndicesWithoutReplacement(evidence.size(), numElementsToRemove))
+                    .mapToObj(evidence::get)
+                    .collect(Collectors.toList()));
         }
-        if ( numElementsToRemove >= reads.size()) {    //remove all
-            return Collections.unmodifiableList(reads);
-        }
-
-        final List<GATKRead> elementsToRemove = new ArrayList<>(numElementsToRemove);
-        for (final int idx : MathUtils.sampleIndicesWithoutReplacement(reads.size(), numElementsToRemove)){
-            elementsToRemove.add(reads.get(idx));
-        }
-        return Collections.unmodifiableList(elementsToRemove);
     }
 
     /**

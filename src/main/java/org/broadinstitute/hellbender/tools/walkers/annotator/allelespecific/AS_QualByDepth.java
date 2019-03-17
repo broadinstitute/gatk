@@ -12,8 +12,9 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -63,7 +64,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods ) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods ) {
         return Collections.emptyMap();
     }
 
@@ -79,7 +80,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final ReadLikelihoods<Allele> likelihoods) {
+                                               final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         return Collections.emptyMap();
     }
 

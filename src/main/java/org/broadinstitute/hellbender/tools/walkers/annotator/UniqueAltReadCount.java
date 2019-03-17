@@ -2,17 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.sam.markduplicates.MarkDuplicates;
@@ -54,7 +51,7 @@ public class UniqueAltReadCount extends InfoFieldAnnotation {
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                          final VariantContext vc,
-                         final ReadLikelihoods<Allele> likelihoods) {
+                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
 
         final Allele altAllele = vc.getAlternateAllele(0); // assume single-allelic
 
@@ -62,7 +59,7 @@ public class UniqueAltReadCount extends InfoFieldAnnotation {
         // start position and fragment size
         Map<ImmutablePair<Integer, Integer>, Long> duplicateReadMap = likelihoods.bestAllelesBreakingTies().stream()
                 .filter(ba -> ba.allele.equals(altAllele) && ba.isInformative())
-                .map(ba -> new ImmutablePair<>(ba.read.getStart(), ba.read.getFragmentLength()))
+                .map(ba -> new ImmutablePair<>(ba.evidence.getStart(), ba.evidence.getFragmentLength()))
                 .collect(Collectors.groupingBy(x -> x, Collectors.counting()));
 
         return ImmutableMap.of(KEY, duplicateReadMap.size());

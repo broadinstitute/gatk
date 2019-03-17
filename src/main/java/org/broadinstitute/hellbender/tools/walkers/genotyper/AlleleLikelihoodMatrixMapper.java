@@ -4,36 +4,38 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
-import java.util.function.UnaryOperator;
 
 /**
  * Creates {@link org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix} mappers to be used when working with a subset of the original alleles.
  */
-@FunctionalInterface
-public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOperator<LikelihoodMatrix<A>>{
+public class AlleleLikelihoodMatrixMapper<A extends Allele> {
 
+    private final AlleleListPermutation<A> permutation;
     /**
-     * Instantiates a new mapper given an allele-list permutation.
+     * Constructs a new mapper given an allele-list permutation.
      * @param permutation the requested permutation.
-     * @param <A> the allele type.
      *
      * @throws IllegalArgumentException if {@code permutation} is {@code null}.
      *
      * @return never {@code null}.
      */
-    public static <A extends Allele> AlleleLikelihoodMatrixMapper<A> newInstance(final AlleleListPermutation<A> permutation) {
-        Utils.nonNull(permutation, "the permutation must not be null");
+    public AlleleLikelihoodMatrixMapper(final AlleleListPermutation<A> permutation) {
+        this.permutation = Utils.nonNull(permutation);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public <EVIDENCE> LikelihoodMatrix<EVIDENCE, A> mapAlleles(final LikelihoodMatrix<EVIDENCE, A> original) {
         if (permutation.isNonPermuted()) {
-            return read -> read;
+            return original;
         }
-        return original -> new LikelihoodMatrix<A>() {
+
+        return new LikelihoodMatrix<EVIDENCE, A>() {
 
             @Override
-            public List<GATKRead> reads() {
-                return original.reads();
+            public List<EVIDENCE> evidence() {
+                return original.evidence();
             }
 
             @Override
@@ -42,17 +44,17 @@ public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOpe
             }
 
             @Override
-            public void set(final int alleleIndex, final int readIndex, final double value) {
+            public void set(final int alleleIndex, final int evidenceIndex, final double value) {
                 Utils.validateArg(alleleIndex >= 0, "alleleIndex");
-                Utils.validateArg(readIndex >= 0, "readIndex");
-                original.set(permutation.fromIndex(alleleIndex), readIndex, value);
+                Utils.validateArg(evidenceIndex >= 0, "readIndex");
+                original.set(permutation.fromIndex(alleleIndex), evidenceIndex, value);
             }
 
             @Override
-            public double get(final int alleleIndex, final int readIndex) {
+            public double get(final int alleleIndex, final int evidenceIndex) {
                 Utils.validateArg(alleleIndex >= 0, "alleleIndex");
-                Utils.validateArg(readIndex >= 0, "readIndex");
-                return original.get(permutation.fromIndex(alleleIndex),readIndex);
+                Utils.validateArg(evidenceIndex >= 0, "readIndex");
+                return original.get(permutation.fromIndex(alleleIndex), evidenceIndex);
             }
 
             @Override
@@ -62,9 +64,9 @@ public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOpe
             }
 
             @Override
-            public int indexOfRead(final GATKRead read) {
+            public int indexOfEvidence(final EVIDENCE read) {
                 Utils.nonNull(read);
-                return original.indexOfRead(read);
+                return original.indexOfEvidence(read);
             }
 
             @Override
@@ -73,8 +75,8 @@ public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOpe
             }
 
             @Override
-            public int numberOfReads() {
-                return original.numberOfReads();
+            public int evidenceCount() {
+                return original.evidenceCount();
             }
 
             @Override
@@ -84,9 +86,9 @@ public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOpe
             }
 
             @Override
-            public GATKRead getRead(final int readIndex) {
-                Utils.validateArg(readIndex >= 0, "readIndex");
-                return original.getRead(readIndex);
+            public EVIDENCE getEvidence(final int evidenceIndex) {
+                Utils.validateArg(evidenceIndex >= 0, "readIndex");
+                return original.getEvidence(evidenceIndex);
             }
 
             @Override
@@ -97,5 +99,4 @@ public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOpe
             }
         };
     }
-
 }

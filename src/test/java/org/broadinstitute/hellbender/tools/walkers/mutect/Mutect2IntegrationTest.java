@@ -629,7 +629,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "20:10018000-10020000",
                 false,
                 false,
-                false
+                false,
+                true
         );
     }
 
@@ -921,7 +922,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "20:10018000-10020000",
                 createBamout,
                 createBamoutIndex,
-                createBamoutMD5
+                createBamoutMD5,
+                true
         );
     }
 
@@ -1070,7 +1072,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final String interval,
             final boolean createBamout,
             final boolean createBamoutIndex,
-            final boolean createBamoutMD5) {
+            final boolean createBamoutMD5,
+            final boolean independentMates) {
         final File tempDir = GATKBaseTest.createTempDir("mutect2");
         final File outputVcf = new File(tempDir, "output.vcf");
         File bamoutFile = null;
@@ -1085,6 +1088,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         if (createBamout) {
             bamoutFile = new File(tempDir, "bamout.bam");
             argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamoutFile.getAbsolutePath());
+        }
+        if (independentMates) {
+            argBuilder.addArgument(M2ArgumentCollection.INDEPENDENT_MATES_LONG_NAME);
         }
         argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
         argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);

@@ -208,7 +208,7 @@ public abstract class PairHMM implements Closeable{
      * @param gcp penalty for gap continuations base array map for processed reads.
      *
      */
-    public void computeLog10Likelihoods(final LikelihoodMatrix<Haplotype> logLikelihoods,
+    public void computeLog10Likelihoods(final LikelihoodMatrix<GATKRead, Haplotype> logLikelihoods,
                                       final List<GATKRead> processedReads,
                                       final Map<GATKRead, byte[]> gcp) {
         if (processedReads.isEmpty()) {

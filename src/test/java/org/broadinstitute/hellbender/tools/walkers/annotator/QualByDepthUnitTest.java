@@ -111,7 +111,7 @@ public class QualByDepthUnitTest extends GATKBaseTest {
         final List<GATKRead> reads = IntStream.range(0, depth)
                 .mapToObj(n -> ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"))).collect(Collectors.toList());
 
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(sample1, reads, -100.0, REF, ALT);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
@@ -202,10 +202,10 @@ public class QualByDepthUnitTest extends GATKBaseTest {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of(sample1, reads);
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList(sample1));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(A, C, G));
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
 
         // modify likelihoods in-place
-        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(0);
+        final LikelihoodMatrix<GATKRead, Allele> matrix = likelihoods.sampleMatrix(0);
 
         for (int n = 0; n < depth; n++) {
             matrix.set(0, n, -1.0);

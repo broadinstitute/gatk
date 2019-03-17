@@ -55,7 +55,7 @@ public final class BaseQualityRankSumTestUnitTest {
         final int[] refBaseQuals = {50, 60};
         final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> altReads = Arrays.stream(altBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(SAMPLE_1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final ReferenceContext ref = null;
@@ -81,7 +81,7 @@ public final class BaseQualityRankSumTestUnitTest {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of(SAMPLE_1, reads);
         final SampleList sampleList = new IndexedSampleList(Arrays.asList(SAMPLE_1));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(Allele.NO_CALL));
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
 
         final Map<String, Object> annotate = ann.annotate(null, when(mock(VariantContext.class).getGenotypesOrderedByName()).thenReturn(Collections.<Genotype>emptyList()).getMock(), likelihoods);
         Assert.assertTrue(annotate.isEmpty());

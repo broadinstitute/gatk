@@ -8,10 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
@@ -50,7 +47,7 @@ public final class CoverageUnitTest extends GATKBaseTest {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of("sample1", reads);
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList("sample1"));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(Allele.NO_CALL));
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
 
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
@@ -76,7 +73,7 @@ public final class CoverageUnitTest extends GATKBaseTest {
         final int altDepth= 3;
         final List<GATKRead>  refReads = IntStream.range(0, refDepth).mapToObj(n -> makeRead()).collect(Collectors.toList());
         final List<GATKRead>  altReads = IntStream.range(0, altDepth).mapToObj(n -> makeRead()).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final VariantContext vc= makeVC();

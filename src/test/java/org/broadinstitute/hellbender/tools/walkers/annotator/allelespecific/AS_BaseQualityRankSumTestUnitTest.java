@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTestUnitTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -68,7 +68,7 @@ public class AS_BaseQualityRankSumTestUnitTest extends ReducibleAnnotationBaseTe
         final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> alt1Reads = Arrays.stream(alt1BaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> alt2Reads = Arrays.stream(alt2BaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeTriAllelicLikelihoods(SAMPLE_1, refReads, alt1Reads, alt2Reads, new ArrayList<GATKRead>(), -100.0, -100.0, -100,0, REF, ALT1, ALT2);
 
         final ReferenceContext ref = null;
@@ -110,7 +110,7 @@ public class AS_BaseQualityRankSumTestUnitTest extends ReducibleAnnotationBaseTe
         final int[] refBaseQuals = {50, 60};
         final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> alt1Reads = Arrays.stream(alt1BaseQuals).mapToObj(i -> BaseQualityRankSumTestUnitTest.makeRead(i)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(SAMPLE_1, refReads, alt1Reads,  -100.0, -100.0, REF, ALT1);
 
         final ReferenceContext ref = null;

@@ -2,19 +2,17 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -42,7 +40,7 @@ public class OriginalAlignment extends InfoFieldAnnotation {
     public static final String KEY = GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY;
 
     @Override
-    public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, ReadLikelihoods<Allele> likelihoods) {
+    public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
         Utils.nonNull(likelihoods);
 
@@ -53,12 +51,12 @@ public class OriginalAlignment extends InfoFieldAnnotation {
         }
         final int indexOfMaxLod = MathUtils.maxElementIndex(lods);
         final Allele altAlelle = vc.getAlternateAllele(indexOfMaxLod);
-        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = likelihoods.bestAllelesBreakingTies();
+        final Collection<AlleleLikelihoods<GATKRead, Allele>.BestAllele> bestAlleles = likelihoods.bestAllelesBreakingTies();
         final String currentContig = ref.getInterval().getContig();
 
         final long nonChrMAlt = bestAlleles.stream()
-                .filter(ba -> ba.read.hasAttribute(AddOriginalAlignmentTags.OA_TAG_NAME) && ba.isInformative() && ba.allele.equals(altAlelle) &&
-                        !AddOriginalAlignmentTags.getOAContig(ba.read).equals(currentContig))
+                .filter(ba -> ba.evidence.hasAttribute(AddOriginalAlignmentTags.OA_TAG_NAME) && ba.isInformative() && ba.allele.equals(altAlelle) &&
+                        !AddOriginalAlignmentTags.getOAContig(ba.evidence).equals(currentContig))
                 .count();
         return ImmutableMap.of(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, nonChrMAlt);
     }

@@ -8,8 +8,9 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,13 +40,13 @@ public final class Coverage extends InfoFieldAnnotation implements StandardAnnot
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
-        if (likelihoods == null || likelihoods.readCount() == 0) {
+        if (likelihoods == null || likelihoods.evidenceCount() == 0) {
             return Collections.emptyMap();
         }
 
-        final int depth = likelihoods.readCount();
+        final int depth = likelihoods.evidenceCount();
         return Collections.singletonMap(getKeyNames().get(0), String.format("%d", depth));
     }
 

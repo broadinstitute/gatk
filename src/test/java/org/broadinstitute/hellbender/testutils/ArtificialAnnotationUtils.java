@@ -42,7 +42,7 @@ public class ArtificialAnnotationUtils {
                 .alleles(Arrays.asList(refAllele, altAllele)).chr("1").start(15L).stop(15L).genotypes(testGC).make();
     }
 
-    public static ReadLikelihoods<Allele> makeLikelihoods(final String sample,
+    public static AlleleLikelihoods<GATKRead, Allele> makeLikelihoods(final String sample,
                                                           final List<GATKRead> refReads,
                                                           final double refReadAltLikelihood,
                                                           final Allele refAllele,
@@ -50,7 +50,7 @@ public class ArtificialAnnotationUtils {
         return makeLikelihoods(sample, refReads, Collections.emptyList(), refReadAltLikelihood, 0, refAllele, altAllele);
     }
 
-    public static ReadLikelihoods<Allele> makeLikelihoods(final String sample,
+    public static AlleleLikelihoods<GATKRead, Allele> makeLikelihoods(final String sample,
                                                           final List<GATKRead> refReads,
                                                           final List<GATKRead> altReads,
                                                           final double refReadAltLikelihood,
@@ -61,7 +61,7 @@ public class ArtificialAnnotationUtils {
                 0, refAllele, altAllele);
     }
 
-    public static ReadLikelihoods<Allele> makeLikelihoods(final String sample,
+    public static AlleleLikelihoods<GATKRead, Allele> makeLikelihoods(final String sample,
                                                           final List<GATKRead> refReads,
                                                           final List<GATKRead> altReads,
                                                           final List<GATKRead> uninformativeReads,
@@ -71,9 +71,9 @@ public class ArtificialAnnotationUtils {
                                                           final Allele refAllele,
                                                           final Allele altAllele) {
         final List<GATKRead> reads = ListUtils.union(ListUtils.union(refReads, altReads), uninformativeReads);
-        final ReadLikelihoods<Allele> likelihoods = initializeReadLikelihoods(sample, new IndexedAlleleList<>(Arrays.asList(refAllele, altAllele)), reads);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = initializeReadLikelihoods(sample, new IndexedAlleleList<>(Arrays.asList(refAllele, altAllele)), reads);
 
-        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(0);
+        final LikelihoodMatrix<GATKRead, Allele> matrix = likelihoods.sampleMatrix(0);
         int readIndex = 0;
         for (int i = 0; i < refReads.size(); i++) {
             matrix.set(0, readIndex, MATCH_LIKELIHOOD);
@@ -96,7 +96,7 @@ public class ArtificialAnnotationUtils {
         return likelihoods;
     }
 
-    public static ReadLikelihoods<Allele> makeTriAllelicLikelihoods(final String sample,
+    public static AlleleLikelihoods<GATKRead, Allele> makeTriAllelicLikelihoods(final String sample,
                                                                     final List<GATKRead> refReads,
                                                                     final List<GATKRead> alt1Reads,
                                                                     final List<GATKRead> alt2Reads,
@@ -109,9 +109,9 @@ public class ArtificialAnnotationUtils {
                                                                     final Allele alt1Allele,
                                                                     final Allele alt2Allele) {
         final List<GATKRead> reads = ListUtils.union(ListUtils.union(refReads, ListUtils.union(alt1Reads,alt2Reads)), uninformativeReads);
-        final ReadLikelihoods<Allele> likelihoods = initializeReadLikelihoods(sample, new IndexedAlleleList<>(Arrays.asList(refAllele, alt1Allele, alt2Allele)), reads);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = initializeReadLikelihoods(sample, new IndexedAlleleList<>(Arrays.asList(refAllele, alt1Allele, alt2Allele)), reads);
 
-        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(0);
+        final LikelihoodMatrix<GATKRead, Allele> matrix = likelihoods.sampleMatrix(0);
         int readIndex = 0;
         for (int i = 0; i < refReads.size(); i++) {
             matrix.set(0, readIndex, MATCH_LIKELIHOOD);
@@ -144,10 +144,10 @@ public class ArtificialAnnotationUtils {
         return likelihoods;
     }
 
-    private static ReadLikelihoods<Allele> initializeReadLikelihoods(String sample, AlleleList<Allele> alleleList, List<GATKRead> reads) {
+    private static AlleleLikelihoods<GATKRead, Allele> initializeReadLikelihoods(String sample, AlleleList<Allele> alleleList, List<GATKRead> reads) {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of(sample, reads);
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList(sample));
-        return new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        return new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
     }
 
     // TODO Add a way to get the likelihoods from this path
@@ -161,7 +161,7 @@ public class ArtificialAnnotationUtils {
 
         final List<GATKRead> refReads = IntStream.range(0, refDepth).mapToObj(i -> makeRead(30, 5)).collect(Collectors.toList());
         final List<GATKRead> altReads = IntStream.range(0, altDepth).mapToObj(i -> makeRead(30, 5)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(SAMPLE, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         return new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();

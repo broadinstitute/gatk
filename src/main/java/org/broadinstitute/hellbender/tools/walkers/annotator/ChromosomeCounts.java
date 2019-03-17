@@ -9,8 +9,9 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 
@@ -48,7 +49,7 @@ public final class ChromosomeCounts extends InfoFieldAnnotation implements Stand
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        ReadLikelihoods<Allele> likelihoods) {
+                                        AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
         if ( ! vc.hasGenotypes() ) {
             return Collections.emptyMap();

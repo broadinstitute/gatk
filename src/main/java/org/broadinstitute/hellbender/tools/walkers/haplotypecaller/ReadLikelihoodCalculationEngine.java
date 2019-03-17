@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -39,8 +39,8 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
      * @return never {@code null}, and with at least one entry for input sample (keys in {@code perSampleReadList}.
      *    The value maps can be potentially empty though.
      */
-    public ReadLikelihoods<Haplotype> computeReadLikelihoods(AssemblyResultSet assemblyResultSet, SampleList samples,
-                                                             Map<String, List<GATKRead>> perSampleReadList);
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(AssemblyResultSet assemblyResultSet, SampleList samples,
+                                                                         Map<String, List<GATKRead>> perSampleReadList);
 
     /**
      * This method must be called when the client is done with likelihood calculations.
