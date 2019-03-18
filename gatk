@@ -23,6 +23,8 @@ import hashlib
 import signal
 import re
 
+###############################################################################
+
 script = os.path.dirname(os.path.realpath(__file__))
 
 projectName = "gatk"
@@ -33,30 +35,20 @@ GATK_LOCAL_JAR_ENV_VARIABLE = "GATK_LOCAL_JAR"
 GATK_SPARK_JAR_ENV_VARIABLE = "GATK_SPARK_JAR"
 BIN_PATH = script + "/build/libs"
 
-EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
-                   "-Dsamjdk.use_async_io_read_samtools=false " \
-                   "-Dsamjdk.use_async_io_write_samtools=false " \
-                   "-Dsamjdk.use_async_io_write_tribble=false " \
-                   "-Dsamjdk.compression_level=2 "
-
-PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
-                  "-Dsamjdk.use_async_io_write_samtools=true",
-                  "-Dsamjdk.use_async_io_write_tribble=false",
-                  "-Dsamjdk.compression_level=2"]
+PACKAGED_LOCAL_JAR_OPTIONS = []
 
 DEFAULT_SPARK_ARGS_PREFIX = '--conf'
-DEFAULT_SPARK_ARGS = {
-    "spark.kryoserializer.buffer.max" : "512m",
-    "spark.driver.maxResultSize" : "0",
-    "spark.driver.userClassPathFirst" : "false",
-    "spark.io.compression.codec" : "lzf",
-    "spark.yarn.executor.memoryOverhead" : "600",
-    "spark.driver.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK,
-    "spark.executor.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK
-}
+
+GATK_CONFIG_FILE_ARG = '--gatk-config-file'
+
+configFileSpecified = False
+configFilePath = ""
+
+###############################################################################
+
 
 def createSparkConfArgs(javaOptions):
-    sparkConfArgs = DEFAULT_SPARK_ARGS
+    sparkConfArgs = {}
 
     if javaOptions is not None:
         sparkConfArgs["spark.driver.extraJavaOptions"] = sparkConfArgs["spark.driver.extraJavaOptions"] + ' ' + javaOptions
@@ -91,7 +83,7 @@ def main(args):
             print("    gatk Tool --help  Print help on a particular tool" )
             print("")
             print(" Configuration File Specification")
-            print("     --gatk-config-file                PATH/TO/GATK/PROPERTIES/FILE")
+            print("     " + GATK_CONFIG_FILE_ARG + "                PATH/TO/GATK/PROPERTIES/FILE")
             print("")
             print(" gatk forwards commands to GATK and adds some sugar for submitting spark jobs")
             print("")
@@ -139,6 +131,15 @@ def main(args):
             i = args.index("--spark-submit-command")
             del args[i] #remove sparkSubmitCommand target
             del args[i] #and its parameter
+
+        # This may be bad style (using globals here):
+        global configFilePath
+        configFilePath = getValueForArgument(args, GATK_CONFIG_FILE_ARG)
+        if configFilePath is not None:
+            global configFileSpecified
+            configFileSpecified = True
+            configFilePath = os.path.realpath(configFilePath)
+            print('has a config file: ' + configFilePath)
 
         (gatkArgs, sparkArgs) = getSplitArgs(args)
 
@@ -326,16 +327,29 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
     if sparkRunner is None or sparkRunner == "LOCAL":
         cmd = getLocalGatkRunCommand(javaOptions) + gatkArgs + sparkArgs
         runCommand(cmd, dryrun)
+
     elif sparkRunner == "SPARK":
         sparkSubmitCmd = getSparkSubmitCommand(suppliedSparkSubmitCommand)
 
         sparkConfArgsPrefix, sparkConfArgs = createSparkConfArgs(javaOptions)
-        sparkConfArgList = [[sparkConfArgsPrefix, "%s=%s" % (a, sparkConfArgs[a])] for a in sparkConfArgs];
+
+        new_spark_args, new_spark_conf_args = force_files_option_and_add_config_file_to_spark_args(sparkArgs, sparkConfArgs)
+
+        sparkConfArgList = [[sparkConfArgsPrefix, "%s=%s" % (a, new_spark_conf_args[a])] for a in new_spark_conf_args];
+
+        # we need to change the path of the config file when we run on dataproc
+        # this is because the config file itself will be placed in the same directory
+        # as the executable:
+        for i in range(len(gatkArgs)):
+            if gatkArgs[i] == GATK_CONFIG_FILE_ARG:
+                i += 1
+                gatkArgs[i] = os.path.basename(gatkArgs[i])
+                break
 
         cmd = [ sparkSubmitCmd,
           "--master", getSparkMasterSpecified(gatkArgs)] \
               + [s for args in sparkConfArgList for s in args] \
-              + sparkArgs \
+              + new_spark_args \
               + [getSparkJar()] \
               + gatkArgs
 
@@ -343,6 +357,7 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
             runCommand(cmd, dryrun)
         except OSError:
             raise GATKLaunchException("Tried to run %s but failed.\nMake sure %s is available in your path" % (sparkSubmitCmd, sparkSubmitCmd))
+
     elif sparkRunner == "GCS":
         jarPath = cacheJarOnGCS(getSparkJar(), dryrun)
         gcloudCmd = getGCloudSubmitCommand(suppliedSparkSubmitCommand)
@@ -353,6 +368,16 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
         dataprocargs = convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs)
 
         sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + " ".join(sparkArgs) +" -> " + " ".join(dataprocargs) +"\n" )
+
+        # we need to change the path of the config file when we run on dataproc
+        # this is because the config file itself will be placed in the same directory
+        # as the executable:
+        for i in range(len(gatkArgs)):
+            if gatkArgs[i] == GATK_CONFIG_FILE_ARG:
+                i += 1
+                gatkArgs[i] = os.path.basename(gatkArgs[i])
+                print(gatkArgs[i])
+                break
 
         cmd = [ gcloudCmd, "dataproc", "jobs", "submit", "spark"] \
               + dataprocargs \
@@ -421,6 +446,43 @@ def getSparkMasterSpecified(args):
     else:
         return value
 
+def force_files_option_and_add_config_file_to_spark_args(spark_args, spark_conf_args):
+
+    new_spark_args = []
+    new_spark_conf_args = dict(spark_conf_args)
+    files = ''
+
+    i = 0
+    while i < len(spark_args):
+        arg = spark_args[i]
+        if arg == "--files":
+            i += 1
+            files = spark_args[i]
+        else:
+            new_spark_args.append(arg)
+
+        i = i + 1
+
+    if 'spark.yarn.dist.files' in new_spark_conf_args:
+        if len(files) != 0:
+            files += ','
+        files += new_spark_conf_args['spark.yarn.dist.files']
+        del new_spark_conf_args['spark.yarn.dist.files']
+
+    if len(files) != 0:
+        new_spark_args.append('--files')
+        new_spark_args.append(files)
+
+    if configFileSpecified:
+        if len(files) != 0:
+            new_spark_args.append(',')
+            new_spark_args.append(configFilePath)
+        else:
+            new_spark_args.append('--files')
+            new_spark_args.append(configFilePath)
+
+    return new_spark_args, new_spark_conf_args
+
 
 # translate select spark-submit parameters to their gcloud equivalent
 def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
@@ -433,6 +495,11 @@ def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
     dataprocargs = []
     filesToAdd = []
     properties = []
+
+    # Make sure we include our config file to distribute to spark nodes if we have specified one:
+    if configFileSpecified:
+        filesToAdd = filesToAdd + [configFilePath]
+
     try:
 
         # Arguments passed as the sparkConfArgs should be passed through as properties.
@@ -460,7 +527,9 @@ def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
 
             else:
                 dataprocargs.append(arg)
+
             i +=1
+
     except IndexError:
         raise GATKLaunchException("Found an argument: " + arg + "with no matching value.")
 
