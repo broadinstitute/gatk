@@ -437,12 +437,17 @@ class DenoisingCallingWorkspace:
         self.log_trans_tkk: Optional[np.ndarray] = None
 
         # GC bias factors
-        # (to be initialize by calling `initialize_bias_inference_vars`)
+        # (to be initialized by calling `initialize_bias_inference_vars`)
         self.W_gc_tg: Optional[tst.SparseConstant] = None
 
         # auxiliary data structures for hybrid q_c_expectation_mode calculation
-        # (to be initialize by calling `initialize_bias_inference_vars`)
+        # (to be initialized by calling `initialize_bias_inference_vars`)
         self.interval_neighbor_index_list: Optional[List[List[int]]] = None
+
+        # denoised copy ratios
+        denoised_copy_ratio_st = np.zeros((self.num_samples, self.num_intervals), dtype=types.floatX)
+        self.denoised_copy_ratio_st: types.TensorSharedVariable = th.shared(
+            denoised_copy_ratio_st, name="denoised_copy_ratio_st", borrow=config.borrow_numpy)
 
         # initialize posterior
         posterior_initializer.initialize_posterior(denoising_config, calling_config, self)
@@ -778,10 +783,10 @@ class DenoisingModel(GeneralizedContinuousModel):
         # the expected number of erroneously mapped reads
         mean_mapping_error_correction_s = eps * read_depth_s * shared_workspace.average_ploidy_s
 
-        denoised_copy_ratios = ((shared_workspace.n_st - mean_mapping_error_correction_s.dimshuffle(0, 'x'))
+        denoised_copy_ratio_st = ((shared_workspace.n_st - mean_mapping_error_correction_s.dimshuffle(0, 'x'))
                                 / ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x') * bias_st))
 
-        Deterministic(name='denoised_copy_ratios', var=denoised_copy_ratios)
+        Deterministic(name='denoised_copy_ratio_st', var=denoised_copy_ratio_st)
 
         mu_stc = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x', 'x')
                   * bias_st.dimshuffle(0, 1, 'x')

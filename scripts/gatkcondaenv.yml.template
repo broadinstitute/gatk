@@ -8,6 +8,7 @@ dependencies:
 - intel-openmp=2018.0.0
 - mkl=2018.0.1
 - mkl-service=1.1.2
+- defaults::numpy==1.13.3
 - openssl=1.0.2l=0
 - pip=9.0.1=py36_1
 - python=3.6.2=0
@@ -29,7 +30,6 @@ dependencies:
   - keras==2.2.0
   - markdown==2.6.9
   - matplotlib==2.1.0
-  - numpy==1.13.3
   - pandas==0.21.0
   - patsy==0.4.1
   - protobuf==3.5.0.post1
@@ -44,7 +44,7 @@ dependencies:
   - scipy==1.0.0
   - six==1.11.0
   - $tensorFlowDependency
-  - theano==0.9.0
+  - theano==1.0.4
   - tqdm==4.19.4
   - werkzeug==0.12.2
   - gatkPythonPackageArchive.zip
