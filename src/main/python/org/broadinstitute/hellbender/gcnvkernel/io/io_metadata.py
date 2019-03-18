@@ -2,7 +2,6 @@ import csv
 import logging
 import numpy as np
 import os
-import pandas as pd
 from typing import List
 
 from . import io_commons
@@ -63,16 +62,17 @@ def read_sample_coverage_metadata(sample_metadata_collection: SampleMetadataColl
     Returns:
         list of samples in the same order as encountered in `input_file`
     """
-    coverage_metadata_pd = pd.read_csv(input_file, delimiter=delimiter, comment=comment)
-    found_columns_list = [str(column) for column in coverage_metadata_pd.columns.values]
-    io_commons.assert_mandatory_columns({io_consts.sample_name_column_name}, set(found_columns_list), input_file)
-    contig_list = found_columns_list.copy()
+    coverage_metadata_pd = io_commons.read_csv(input_file,
+                                               dtypes_dict=io_consts.sample_coverage_metadata_dtypes_dict,
+                                               comment=comment,
+                                               delimiter=delimiter)
+    contig_list = [str(column_name) for column_name in coverage_metadata_pd.columns]
     contig_list.remove(io_consts.sample_name_column_name)
     num_contigs = len(contig_list)
     sample_names = []
     for tup in zip(coverage_metadata_pd[io_consts.sample_name_column_name],
                    *(coverage_metadata_pd[contig] for contig in contig_list)):
-        sample_name = str(tup[0])
+        sample_name = tup[0]
         n_j = np.asarray([int(tup[k + 1]) for k in range(num_contigs)], dtype=types.big_uint)
         sample_metadata_collection.add_sample_coverage_metadata(SampleCoverageMetadata(
             sample_name, n_j, contig_list))
@@ -107,12 +107,10 @@ def update_sample_metadata_collection_from_ploidy_determination_calls(
 
         _sample_name = io_commons.extract_sample_name_from_header(sample_read_depth_file)
 
-        sample_read_depth_pd = pd.read_csv(sample_read_depth_file, delimiter=delimiter, comment=comment)
-
-        io_commons.assert_mandatory_columns(
-            SampleReadDepthMetadata.mandatory_tsv_columns,
-            {str(column) for column in sample_read_depth_pd.columns.values},
-            sample_read_depth_file)
+        sample_read_depth_pd = io_commons.read_csv(sample_read_depth_file,
+                                                   dtypes_dict=io_consts.sample_read_depth_metadata_dtypes_dict,
+                                                   comment=comment,
+                                                   delimiter=delimiter)
 
         global_read_depth = sample_read_depth_pd[io_consts.global_read_depth_column_name].values[0]
         average_ploidy = sample_read_depth_pd[io_consts.average_ploidy_column_name].values[0]
@@ -127,21 +125,16 @@ def update_sample_metadata_collection_from_ploidy_determination_calls(
 
         _sample_name = io_commons.extract_sample_name_from_header(sample_ploidy_file)
 
-        sample_ploidy_pd = pd.read_csv(sample_ploidy_file, delimiter=delimiter, comment=comment)
+        sample_ploidy_pd = io_commons.read_csv(sample_ploidy_file,
+                                               dtypes_dict=io_consts.sample_ploidy_metadata_dtypes_dict,
+                                               comment=comment,
+                                               delimiter=delimiter)
 
-        io_commons.assert_mandatory_columns(
-            SamplePloidyMetadata.mandatory_tsv_columns,
-            {str(column) for column in sample_ploidy_pd.columns.values},
-            sample_ploidy_file)
+        contig_list = sample_ploidy_pd[io_consts.contig_column_name].values
+        ploidy_list = sample_ploidy_pd[io_consts.ploidy_column_name].values
+        ploidy_gq_list = sample_ploidy_pd[io_consts.ploidy_gq_column_name].values
 
-        contig_list = [str(x) for x in sample_ploidy_pd[io_consts.contig_column_name].values]
-        ploidy_list = [int(x) for x in sample_ploidy_pd[io_consts.ploidy_column_name].values]
-        ploidy_gq_list = [float(x) for x in sample_ploidy_pd[io_consts.ploidy_gq_column_name].values]
-
-        return SamplePloidyMetadata(_sample_name,
-                                    np.asarray(ploidy_list, dtype=types.small_uint),
-                                    np.asarray(ploidy_gq_list, dtype=types.floatX),
-                                    contig_list)
+        return SamplePloidyMetadata(_sample_name, ploidy_list, ploidy_gq_list, contig_list)
 
     _logger.info("Loading germline contig ploidy and global read depth metadata...")
     assert os.path.exists(input_calls_path) and os.path.isdir(input_calls_path), \

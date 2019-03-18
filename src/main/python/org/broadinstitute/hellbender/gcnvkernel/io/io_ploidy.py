@@ -3,7 +3,6 @@ import os
 from typing import List, Dict
 
 import numpy as np
-import pandas as pd
 import pymc3 as pm
 
 from . import io_commons
@@ -177,7 +176,10 @@ class PloidyModelReader:
 def get_contig_ploidy_prior_map_from_tsv_file(input_path: str,
                                               comment=io_consts.default_comment_char,
                                               delimiter=io_consts.default_delimiter_char) -> Dict[str, np.ndarray]:
-    contig_ploidy_prior_pd = pd.read_csv(input_path, delimiter=delimiter, comment=comment)
+    contig_ploidy_prior_pd = io_commons.read_csv(input_path,
+                                                 dtypes_dict=io_consts.ploidy_prior_dtypes_dict,
+                                                 comment=comment,
+                                                 delimiter=delimiter)
     columns = [str(x) for x in contig_ploidy_prior_pd.columns.values]
     assert len(columns) > 1
     assert columns[0] == io_consts.ploidy_prior_contig_name_column

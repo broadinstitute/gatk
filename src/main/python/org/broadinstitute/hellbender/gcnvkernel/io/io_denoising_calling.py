@@ -3,7 +3,6 @@ import os
 from typing import List, Optional
 
 import numpy as np
-import pandas as pd
 import pymc3 as pm
 
 from . import io_commons
@@ -240,7 +239,7 @@ class SampleDenoisingAndCallingPosteriorsReader:
                                                 delimiter=io_consts.default_delimiter_char) -> np.ndarray:
         """Reads a TSV-formatted dim-2 (intervals x copy-number) ndarray from a sample posterior path."""
         ndarray_tc_tsv_file = os.path.join(sample_posterior_path, input_file_name)
-        ndarray_tc_pd = pd.read_csv(ndarray_tc_tsv_file, delimiter=delimiter, comment=comment)
+        ndarray_tc_pd = io_commons.read_csv(ndarray_tc_tsv_file, comment=comment, delimiter=delimiter)
         read_columns = [str(column_name) for column_name in ndarray_tc_pd.columns.values]
         num_read_columns = len(read_columns)
         expected_copy_number_header_columns =\

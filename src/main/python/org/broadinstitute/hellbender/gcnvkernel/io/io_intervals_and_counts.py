@@ -10,20 +10,11 @@ from ..structs.interval import Interval, interval_annotations_dtypes, interval_a
 
 _logger = logging.getLogger(__name__)
 
-interval_dtypes_dict = {
-    io_consts.contig_column_name: np.str,
-    io_consts.start_column_name: types.med_uint,
-    io_consts.end_column_name: types.med_uint
-}
-
-read_count_dtypes_dict = {
-    **interval_dtypes_dict,
-    io_consts.count_column_name: types.med_uint
-}
+interval_dtypes_dict = io_consts.interval_dtypes_dict
+read_count_dtypes_dict = io_consts.read_count_dtypes_dict
 
 
 def load_read_counts_tsv_file(read_counts_tsv_file: str,
-                              max_rows: Optional[int] = None,
                               return_interval_list: bool = False,
                               comment=io_consts.default_comment_char,
                               delimiter=io_consts.default_delimiter_char) \
@@ -32,7 +23,6 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
 
     Args:
         read_counts_tsv_file: input read counts .tsv file
-        max_rows: (optional) maximum number of rows to process
         return_interval_list: if true, an interval list will also be generated and returned
         delimiter: delimiter character
         comment: comment character
@@ -41,8 +31,10 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
         sample name, counts, (and optionally a list of intervals if `return_interval_list` == True)
     """
     sample_name = io_commons.extract_sample_name_from_header(read_counts_tsv_file)
-    counts_pd = pd.read_csv(read_counts_tsv_file, delimiter=delimiter, comment=comment, nrows=max_rows,
-                            dtype={**read_count_dtypes_dict})
+    counts_pd = io_commons.read_csv(read_counts_tsv_file,
+                                    dtypes_dict=read_count_dtypes_dict,
+                                    comment=comment,
+                                    delimiter=delimiter)
     if return_interval_list:
         interval_list_pd = counts_pd[list(interval_dtypes_dict.keys())]
         interval_list = _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, read_counts_tsv_file)
@@ -57,14 +49,17 @@ def load_interval_list_tsv_file(interval_list_tsv_file: str,
     """Loads an interval list .tsv file.
     Args:
         interval_list_tsv_file: input interval list .tsv file
-        delimiter: delimiter character
         comment: comment character
+        delimiter: delimiter character
 
     Returns:
         interval list
     """
-    interval_list_pd = pd.read_csv(interval_list_tsv_file, delimiter=delimiter, comment=comment,
-                                   dtype={**interval_dtypes_dict, **interval_annotations_dtypes})
+    interval_list_pd = io_commons.read_csv(interval_list_tsv_file,
+                                           dtypes_dict={**interval_dtypes_dict, **interval_annotations_dtypes},
+                                           mandatory_columns_set=set(interval_dtypes_dict.keys()),
+                                           comment=comment,
+                                           delimiter=delimiter)
     return _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, interval_list_tsv_file)
 
 
