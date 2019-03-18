@@ -21,7 +21,10 @@ public class DataLineUnitTest extends GATKBaseTest {
     @Test(dataProvider = "tableColumnsData")
     public void testToArray(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
-        Assert.assertEquals(subject.toArray(), new String[columns.columnCount()]);
+        final String[] array = subject.toArray();
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertNull(array[i]);
+        }
         Assert.assertNotSame(subject.toArray(), subject.toArray());
     }
 
