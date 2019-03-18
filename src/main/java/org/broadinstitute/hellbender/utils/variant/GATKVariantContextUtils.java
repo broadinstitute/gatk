@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.CollectionUtil;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
@@ -21,9 +24,11 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -627,16 +632,24 @@ public final class GATKVariantContextUtils {
      * @param priorityListOfVCs         priority list detailing the order in which we should grab the VCs
      * @param filteredRecordMergeType   merge type for filtered records
      * @param genotypeMergeOptions      merge option for genotypes
+     * @param annotateOrigin            should we annotate the set it came from?
+     * @param printMessages             should we print messages?
+     * @param setKey                    the key name of the set
      * @param filteredAreUncalled       are filtered records uncalled?
+     * @param mergeInfoWithMaxAC        should we merge in info from the VC with maximum allele count?
      * @return new VariantContext       representing the merge of unsortedVCs
      */
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
                                              final List<String> priorityListOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
-                                             final boolean filteredAreUncalled) {
+                                             final boolean annotateOrigin,
+                                             final boolean printMessages,
+                                             final String setKey,
+                                             final boolean filteredAreUncalled,
+                                             final boolean mergeInfoWithMaxAC ) {
         int originalNumOfVCs = priorityListOfVCs == null ? 0 : priorityListOfVCs.size();
-        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, filteredAreUncalled);
+        return simpleMerge(unsortedVCs, priorityListOfVCs, originalNumOfVCs, filteredRecordMergeType, genotypeMergeOptions, annotateOrigin, printMessages, setKey, filteredAreUncalled, mergeInfoWithMaxAC);
     }
 
     /**
@@ -652,7 +665,11 @@ public final class GATKVariantContextUtils {
      * @param priorityListOfVCs         priority list detailing the order in which we should grab the VCs
      * @param filteredRecordMergeType   merge type for filtered records
      * @param genotypeMergeOptions      merge option for genotypes
+     * @param annotateOrigin            should we annotate the set it came from?
+     * @param printMessages             should we print messages?
+     * @param setKey                    the key name of the set
      * @param filteredAreUncalled       are filtered records uncalled?
+     * @param mergeInfoWithMaxAC        should we merge in info from the VC with maximum allele count?
      * @return new VariantContext       representing the merge of unsortedVCs
      */
     public static VariantContext simpleMerge(final Collection<VariantContext> unsortedVCs,
@@ -660,12 +677,19 @@ public final class GATKVariantContextUtils {
                                              final int originalNumOfVCs,
                                              final FilteredRecordMergeType filteredRecordMergeType,
                                              final GenotypeMergeType genotypeMergeOptions,
-                                             final boolean filteredAreUncalled) {
+                                             final boolean annotateOrigin,
+                                             final boolean printMessages,
+                                             final String setKey,
+                                             final boolean filteredAreUncalled,
+                                             final boolean mergeInfoWithMaxAC ) {
         if ( unsortedVCs == null || unsortedVCs.isEmpty() )
             return null;
 
         if (priorityListOfVCs != null && originalNumOfVCs != priorityListOfVCs.size())
             throw new IllegalArgumentException("the number of the original VariantContexts must be the same as the number of VariantContexts in the priority list");
+
+        if ( annotateOrigin && priorityListOfVCs == null && originalNumOfVCs == 0)
+            throw new IllegalArgumentException("Cannot merge calls and annotate their origins without a complete priority list of VariantContexts or the number of original VariantContexts");
 
         final List<VariantContext> preFilteredVCs = sortVariantContextsByPriority(unsortedVCs, priorityListOfVCs, genotypeMergeOptions);
         // Make sure all variant contexts are padded with reference base in case of indels if necessary
@@ -690,12 +714,17 @@ public final class GATKVariantContextUtils {
 
         VariantContext longestVC = first;
         int depth = 0;
+        int maxAC = -1;
+        final Map<String, Object> attributesWithMaxAC = new LinkedHashMap<>();
         double log10PError = CommonInfo.NO_LOG10_PERROR;
         boolean anyVCHadFiltersApplied = false;
+        VariantContext vcWithMaxAC = null;
         GenotypesContext genotypes = GenotypesContext.create();
 
         // counting the number of filtered and variant VCs
         int nFiltered = 0;
+
+        boolean remapped = false;
 
         // cycle through and add info from the other VCs, making sure the loc/reference matches
         for ( final VariantContext vc : VCs ) {
@@ -708,6 +737,7 @@ public final class GATKVariantContextUtils {
             if ( vc.isVariant() ) variantSources.add(vc.getSource());
 
             AlleleMapper alleleMapping = resolveIncompatibleAlleles(refAllele, vc, alleles);
+            remapped = remapped || alleleMapping.needsRemapping();
 
             alleles.addAll(alleleMapping.values());
 
@@ -728,6 +758,26 @@ public final class GATKVariantContextUtils {
             if (vc.hasAttribute(VCFConstants.DEPTH_KEY))
                 depth += vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0);
             if ( vc.hasID() ) rsIDs.add(vc.getID());
+            if (mergeInfoWithMaxAC && vc.hasAttribute(VCFConstants.ALLELE_COUNT_KEY)) {
+                String rawAlleleCounts = vc.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, null);
+                // lets see if the string contains a "," separator
+                if (rawAlleleCounts.contains(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)) {
+                    final List<String> alleleCountArray = Arrays.asList(rawAlleleCounts.substring(1, rawAlleleCounts.length() - 1).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
+                    for (final String alleleCount : alleleCountArray) {
+                        final int ac = Integer.valueOf(alleleCount.trim());
+                        if (ac > maxAC) {
+                            maxAC = ac;
+                            vcWithMaxAC = vc;
+                        }
+                    }
+                } else {
+                    final int ac = Integer.valueOf(rawAlleleCounts);
+                    if (ac > maxAC) {
+                        maxAC = ac;
+                        vcWithMaxAC = vc;
+                    }
+                }
+            }
 
             for (final Map.Entry<String, Object> p : vc.getAttributes().entrySet()) {
                 final String key = p.getKey();
@@ -767,9 +817,39 @@ public final class GATKVariantContextUtils {
             }
         }
 
+        // take the VC with the maxAC and pull the attributes into a modifiable map
+        if ( mergeInfoWithMaxAC && vcWithMaxAC != null ) {
+            attributesWithMaxAC.putAll(vcWithMaxAC.getAttributes());
+        }
+
         // if at least one record was unfiltered and we want a union, clear all of the filters
         if ( (filteredRecordMergeType == FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED && nFiltered != VCs.size()) || filteredRecordMergeType == FilteredRecordMergeType.KEEP_UNCONDITIONAL )
             filters.clear();
+
+
+        if ( annotateOrigin ) { // we care about where the call came from
+            String setValue;
+            if ( nFiltered == 0 && variantSources.size() == originalNumOfVCs ) // nothing was unfiltered
+                setValue = MERGE_INTERSECTION;
+            else if ( nFiltered == VCs.size() )     // everything was filtered out
+                setValue = MERGE_FILTER_IN_ALL;
+            else if ( variantSources.isEmpty() )    // everyone was reference
+                setValue = MERGE_REF_IN_ALL;
+            else {
+                final LinkedHashSet<String> s = new LinkedHashSet<>();
+                for ( final VariantContext vc : VCs )
+                    if ( vc.isVariant() )
+                        s.add( vc.isFiltered() ? MERGE_FILTER_PREFIX + vc.getSource() : vc.getSource() );
+                setValue = Utils.join("-", s);
+            }
+
+            if ( setKey != null ) {
+                attributes.put(setKey, setValue);
+                if( mergeInfoWithMaxAC && vcWithMaxAC != null ) {
+                    attributesWithMaxAC.put(setKey, setValue);
+                }
+            }
+        }
 
         if ( depth > 0 )
             attributes.put(VCFConstants.DEPTH_KEY, String.valueOf(depth));
@@ -784,10 +864,11 @@ public final class GATKVariantContextUtils {
         if ( anyVCHadFiltersApplied ) {
             builder.filters(filters.isEmpty() ? filters : new TreeSet<>(filters));
         }
-        builder.attributes(new TreeMap<>(attributes));
+        builder.attributes(new TreeMap<>(mergeInfoWithMaxAC ? attributesWithMaxAC : attributes));
 
         // Trim the padded bases of all alleles if necessary
         final VariantContext merged = builder.make();
+        if ( printMessages && remapped ) System.out.printf("Remapped => %s%n", merged);
         return merged;
     }
 
