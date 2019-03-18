@@ -122,44 +122,26 @@ One can force \code{Mutect2} to assemble and genotype all the variants in force-
 %ACTIVE REGION DETERMINATION
 %%%%%%%%%%%%%%%%%%%%
 \subsection{Finding Active Regions}
-\code{Mutect2} triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation \code{Mutect2} proceeds with local reassembly and realignment.  As in the downstream parts of \code{Mutect2} we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.  Supposing we have an effective quality for each element in the read pileup we can now estimate the likelihoods of no variation and of a true alt allele with allele fraction $f$.  Let $\mathcal{R}$ and $\mathcal{A}$ denote the sets of ref and alt reads.  The likelihood of no variation is the likelihood that every alt read was in error.  Letting $\epsilon_i$ be the error probability of pileup element $i$ we have:
+\code{Mutect2} triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation \code{Mutect2} proceeds with local reassembly and realignment.  As in the downstream parts of \code{Mutect2} we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.
 
-\begin{align}
-L({\rm no~variation}) =& \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j \approx \prod_{j \in \mathcal{A}} \epsilon_j \\
-L(f) =& \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i) + f \epsilon_i \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right]
-\approx (1-f)^{N_{\rm ref}} \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right],
-\end{align}
-where the approximations amount to giving ref reads infinite quality, which speeds the computation, and we let $N_{\rm ref} = | \mathcal{R}|$.  This is equivalent to the following model in which we give the $n$th alt read a latent indicator $z_j$ which equals 1 when the read is an error:
-\begin{align}
-P({\rm reads}, f, \vz) = (1-f)^{N_{\rm ref}} \prod_{n=1}^{N_{\rm alt}} \left[ (1-f)\epsilon_n \right]^{z_n} \left[ f (1 - \epsilon_n) \right]^{1 - z_n}
-\end{align}
-We approximate the model evidence $L(f) = \sum_\vz \int \, df P({\rm reads}, f, \vz)$ via a mean field variational Bayes approximation in which we factorize the full data likelihood as $P({\rm reads}, f, \vz) \approx q(f) q(\vz) = q(f) \prod_n q(z_n)$\footnote{The latter step is an induced factorization -- once $f$ and $\vz$ are decoupled, then the different $z_n$ become independent as well.}.  For simplicity and speed, we will not iteratively compute $q(f)$.  Rather, we use the fact that $z_n$ is almost always 0 to see, by inspection, that
-\begin{equation}
-q(f) \approx {\rm Beta}(f | \alpha, \beta), \quad \alpha = N_{\rm alt} + 1, \beta = N_{\rm ref} + 1.
-\end{equation}
-Here the ``$+1$"s come from the pseudocounts of a flat prior on $f$.  Then, following the usual recipe of averaging the log likelihood with respect to $f$ and re-exponentiating, we find
-\begin{equation}
-q(z_n) = {\rm Bernoulli}(z_n | \gamma_n), \quad \gamma_n = \frac{ \rho \epsilon_n}{\rho \epsilon_n + \tau (1 - \epsilon_n)},
-\end{equation}
-where $\ln \rho \equiv E_{q(f)}\left[ \ln (1 - f) \right] = \psi(\beta) - \psi(\alpha + \beta)$ and $\ln \tau \equiv E_{q(f)}\left[ \ln f \right] = \psi(\alpha) - \psi(\alpha + \beta)$.  Then, Equation 10.3 of Bishop gives us the variational lower bound on $L(f)$:
-\begin{align}
-L(f) &\approx E_q \left[ \ln P({\rm reads}, f, \vz) \right] + {\rm entropy}[q(f)] + \sum_n {\rm entropy}[q(z_n)] \\
-&= H(\alpha, \beta) +  N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n) \ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right],
-\end{align}
-where $H(\alpha, \beta)$ and $H(\gamma)$ are Beta and Bernoulli entropies.  We summarize these steps in the following algorithm:
+We use a version of the somatic likelihoods model, described below, with the following modifications:
+\begin{itemize}
+\item We treat every ref base as completely certain.  That is, $\ell_{r,{\rm ref}} = 1$ for ref bases.
+\item We combine all alt alleles and reads supporting them into a single effective alt allele.
+\item Starting from the same initialization as below, we stop after a single iteration.
+\end{itemize}
 
-\begin{algorithm}
-\begin{algorithmic}[1]
-\State Record the base qualities, hence the error probabilities $\epsilon_n$ of each alt read.
-\State $\alpha = N_{\rm alt} + 1$, $\beta = N_{\rm ref} + 1$
-\State $\rho = \exp \left( \psi(\beta) - \psi(\alpha + \beta) \right) $, $\tau = \exp \left( \psi(\alpha) - \psi(\alpha + \beta) \right)$.
-\State $\gamma_n =  \rho \epsilon_n / \left[ \rho \epsilon_n + \tau (1 - \epsilon_n) \right]$
-\State $L(f) \approx H(\alpha, \beta) + N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n)\ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right]$
-\end{algorithmic}
-%\caption{Pair HMM algorithm}
-%\label{pairHMM}
-\end{algorithm}
-To get the log odds we subtract the log likelihood, $\sum_n \ln \epsilon_n$, from $L(f)$.
+Under the first assumption the contribution of ref bases to the sum in Equation \ref{tumor-lod} vanishes -- errorless ref bases contribute no entropy -- so we only need to sum over alt bases.  By the second assumption the likelihood of an alt read is related to its base quality (and associated error rate $\epsilon$) as $\ell_{r,{\rm alt}} = 1 - \epsilon_r$.
+
+We compute Equation \ref{tumor-lod} for two possibilities; first, that an alt allele exists, second that only the ref allele exists.  In the former case, Initializing $\bar{z}_{r,{\rm ref(alt)}} = 1$ for ref (alt) bases a single iteration for $q(\vf)$ gives $\vbeta = (N_{\rm alt} + 1, N_{\rm ref} + 1)$.  For alt reads $r$ we then obtain from Equation \ref{f-tilde}
+\begin{equation}
+\bar{z}_{r,{\rm alt}} = \frac{\tilde{f}_{\rm alt} (1 - \epsilon_r)}{\tilde{f}_{\rm alt} (1 - \epsilon_r) + \tilde{f}_{\rm ref} \epsilon_r},
+\end{equation}
+where $\tilde{f}_{\rm ref(alt)} = \exp \left( \psi(N_{\rm ref(alt)} + 1) - \psi(N + 2) \right)$.  We also have $g(\valpha) = 0$ for a flat prior and $g(\vbeta) = \ln (N+1) + \ln \binom{N}{N_{\rm alt}}$.  For the ref-only case $g(\valpha) = g(\vbeta) = 0$ and Equation \ref{tumor-lod} reduces to $\sum_{\text{alt reads}} \ln \epsilon_r$.  Subtracting the variational log likelihoods for the two cases gives
+\begin{equation}
+\text{log odds} \approx -\ln (N+1) - \ln \binom{N}{N_{\rm alt}} + \sum_{\text{alt reads}} H(\bar{z}_{r,{\rm alt}}) + \bar{z}_{r,{\rm alt}} \left( \ln (1 - \epsilon_r) - \ln \epsilon_r \right),
+\end{equation}
+where $H(x) = - x \ln x - (1-x) \ln (1-x)$ is the Bernoulli entropy.
 
 %%%%%%%%%%%%%%%
 %ASSEMBLY AND PAIR-HMM
@@ -186,6 +168,7 @@ where, with $\psi$ denoting the digamma function, the moments
 \begin{align}
 \bar{z}_{ra} =& E_{q(\vz)} \left[ z_{ra} \right] = \frac{\tilde{f}_a \ell_{ra}}{\sum_{a^\prime} \tilde{f}_{a^\prime} \ell_{ra^\prime}} \\
 \ln \tilde{f}_a =& E_{q(\vf)}[\ln f_a] = \psi(\beta_a) - \psi(\sum_{a^\prime} \beta_{a^\prime})
+\label{f-tilde}
 \end{align}
 are easily obtained from the categorical distribution $q(\vz)$ and the Dirichlet distribution $q(\vf)$\footnote{Note that we didn't \textit{impose} this in any way.  It simply falls out of the mean field equations.}.  We initialize $\bar{z}_{ra} = 1$ if $a$ is the most likely allele for read $r$, 0 otherwise and iterate Equations \ref{z_mean_field} and \ref{f_mean_field} until convergence. Having obtained the mean fields of $q(\vz)$ and $q(\vf)$, we use the variational approximation (Bishop's Eq 10.3) to the model evidence:
 \begin{align}
