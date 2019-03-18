@@ -187,7 +187,7 @@ public class OrientationBiasUtils {
                                                                                             final Function<DataLine, T> dataLineToSummaryFunction) {
         Utils.nonNull(inputFile);
         IOUtils.canReadFile(inputFile);
-        Path inputPath = IOUtils.fileToPath(inputFile);
+        final Path inputPath = IOUtils.fileToPath(inputFile);
         final TableColumnCollection mandatoryColumns = OrientationBiasFilterSummaryTableColumn.COLUMNS;
         try (final TableReader<T> reader = TableUtils.reader(inputPath,
                 (columns, formatExceptionFactory) -> {

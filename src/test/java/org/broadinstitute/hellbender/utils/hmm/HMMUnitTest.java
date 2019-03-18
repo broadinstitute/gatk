@@ -194,16 +194,12 @@ public final class HMMUnitTest extends GATKBaseTest {
 
     @SuppressWarnings("all")
     @AfterClass
-    private void tearDown() {
+    private void tearDown() throws IOException {
         if (TEST_SEQUENCE_FILE != null) {
             TEST_SEQUENCE_FILE.delete();
         }
         if (TEST_R_RESULTS_FILE != null) {
-            try {
-                Files.delete(TEST_R_RESULTS_FILE);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+             Files.delete(TEST_R_RESULTS_FILE);
         }
     }
 

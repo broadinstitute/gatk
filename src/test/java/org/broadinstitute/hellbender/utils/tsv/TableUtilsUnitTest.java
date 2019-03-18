@@ -77,8 +77,8 @@ public class TableUtilsUnitTest extends GATKBaseTest {
     }
 
     /**
-     * Check that TableWriter can accept paths that have no corresponding File
-     * on the local disk.
+     * Check that TableWriter can accept a Path and doesn't just convert it
+     * to a File along the way.
      *
      * @throws IOException
      */

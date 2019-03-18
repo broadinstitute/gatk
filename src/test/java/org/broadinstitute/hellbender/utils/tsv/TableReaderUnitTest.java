@@ -483,12 +483,12 @@ public class TableReaderUnitTest extends GATKBaseTest {
     @Test
     public void testColumnValueAsStringRamfs() throws IOException {
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
-            final Path testFile = createTestInputInMemory(
-                jimfs,
+            final Path testPath = createTestInputonPath(
+                jimfs.getPath("test.tab"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
             );
-            testColumnValueAsStringInternal(testFile);
+            testColumnValueAsStringInternal(testPath);
         }
     }
 
@@ -682,23 +682,16 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     private Path createTestInput(final String... lines) throws IOException {
         final Path testFile = createTempPath("test", ".tab");
-        fillTestInput(testFile, lines);
-        return testFile;
+        return createTestInputonPath(testFile, lines);
     }
 
-    private Path createTestInputInMemory(final java.nio.file.FileSystem ramfs, final String... lines) throws IOException {
-        // We rely on the fact that the filesystem's in-memory so we don't need to delete.
-        final Path testFile = ramfs.getPath("test.tab");
-        fillTestInput(testFile, lines);
-        return testFile;
-    }
-
-    private void fillTestInput(final Path path, final String... lines) throws IOException {
-        final PrintWriter testWriter = new PrintWriter(Files.newBufferedWriter(path));
-        for (final String line : lines) {
-            testWriter.println(line);
+    private Path createTestInputonPath(final Path path, final String... lines) throws IOException {
+        try (final PrintWriter testWriter = new PrintWriter(Files.newBufferedWriter(path))) {
+            for (final String line : lines) {
+                testWriter.println(line);
+            }
         }
-        testWriter.close();
+        return path;
     }
 
 

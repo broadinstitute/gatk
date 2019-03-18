@@ -179,13 +179,9 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
             return recordFromDataLineDecoder.apply(dataLine);
         }
 
-        private SAMFileHeader getHeader() throws FileNotFoundException {
-            try {
-                final LineReader lineReader = new BufferedLineReader(Files.newInputStream(path));
-                return new SAMTextHeaderCodec().decode(lineReader, getSource());
-            } catch (final IOException ex) {
-                throw new FileNotFoundException(ex.getMessage());
-            }
+        private SAMFileHeader getHeader() throws IOException {
+            final LineReader lineReader = new BufferedLineReader(Files.newInputStream(path));
+            return new SAMTextHeaderCodec().decode(lineReader, getSource());
         }
 
         @Override

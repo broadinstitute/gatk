@@ -255,12 +255,9 @@ public final class TableWriterUnitTest extends GATKBaseTest {
         };
     }
 
-    private List<String> outputLines(Path testPath) throws FileNotFoundException {
-
+    private List<String> outputLines(Path testPath) throws IOException {
         try (BufferedReader bufferedReader = Files.newBufferedReader(testPath)) {
             return bufferedReader.lines().collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new FileNotFoundException(e.getMessage());
         }
     }
 }
