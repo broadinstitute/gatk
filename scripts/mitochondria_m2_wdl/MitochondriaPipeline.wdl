@@ -190,7 +190,7 @@ task SubsetBam {
   runtime {
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: final_preemptible_tries
   }
   output {
@@ -262,7 +262,7 @@ task RevertSam {
   runtime {
     disks: "local-disk " + disk_size + " HDD"
     memory: "2 GB"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: select_first([preemptible_tries, 5])
   }
   output {
@@ -339,7 +339,7 @@ task CoverageAtEveryBase {
   runtime {
     disks: "local-disk " + disk_size + " HDD"
     memory: "1200 MB"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: select_first([preemptible_tries, 5])
   }
   output {

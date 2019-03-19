@@ -143,7 +143,7 @@ task AlignAndMarkDuplicates {
     memory: "6 GB"
     cpu: "2"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
   }
   output {
     File output_bam = "${output_bam_basename}.bam"
@@ -166,7 +166,7 @@ task GetBwaVersion {
   }
   runtime {
     memory: "1 GB"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
   }
   output {
     String version = read_string(stdout())
