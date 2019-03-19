@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -2076,7 +2077,17 @@ public final class FuncotatorUtils {
      */
     public static String sanitizeFuncotationFieldForVcf(final String individualFuncotationField) {
         Utils.nonNull(individualFuncotationField);
-        return StringUtils.replaceEach(individualFuncotationField, new String[]{",", ";", "=", "\t", "|", " ", "\n"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_", "_%20_", "_%0A_"});
+
+        // List of letters to encode:
+        final List<String> badLetters = Arrays.asList(",", ";", "=", "\t", VcfOutputRenderer.HEADER_LISTED_FIELD_DELIMITER, " ", "\n", VcfOutputRenderer.ALL_TRANSCRIPT_DELIMITER);
+
+        // Encoded version:
+        final List<String> cleanLetters = badLetters.stream().map(
+                s -> "_%" + String.format("%02X", s.getBytes(StandardCharsets.US_ASCII)[0]) + "_")
+                .collect(Collectors.toList());
+
+        // Now replace them:
+        return StringUtils.replaceEach(individualFuncotationField, badLetters.toArray(new String[]{}), cleanLetters.toArray(new String[]{}));
     }
 
     /**
