@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -27,7 +29,8 @@ public class MutectStats {
 
     //----- The following two public static methods read and write contamination files
     public static void writeToFile(final List<MutectStats> records, final File outputTable) {
-        try ( MutectStats.MutectStatsWriter writer = new MutectStats.MutectStatsWriter(outputTable) ) {
+        try ( MutectStats.MutectStatsWriter writer = new MutectStats.MutectStatsWriter(
+            IOUtils.fileToPath(outputTable)) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
@@ -35,7 +38,8 @@ public class MutectStats {
     }
 
     public static List<MutectStats> readFromFile(final File tableFile) {
-        try( MutectStats.MutectStatsReader reader = new MutectStats.MutectStatsReader(tableFile) ) {
+        try( MutectStats.MutectStatsReader reader = new MutectStats.MutectStatsReader(
+            IOUtils.fileToPath(tableFile)) ) {
             return reader.toList();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
@@ -44,7 +48,7 @@ public class MutectStats {
 
     //-------- The following methods are boilerplate for reading and writing contamination tables
     private static class MutectStatsWriter extends TableWriter<MutectStats> {
-        private MutectStatsWriter(final File output) throws IOException {
+        private MutectStatsWriter(final Path output) throws IOException {
             super(output, MutectStats.MutectStatsColumn.COLUMNS);
         }
 
@@ -56,7 +60,7 @@ public class MutectStats {
     }
 
     private static class MutectStatsReader extends TableReader<MutectStats> {
-        public MutectStatsReader(final File file) throws IOException {
+        public MutectStatsReader(final Path file) throws IOException {
             super(file);
         }
 

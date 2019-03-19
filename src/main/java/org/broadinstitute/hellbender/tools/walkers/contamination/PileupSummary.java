@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.*;
 
@@ -90,7 +92,7 @@ public class PileupSummary implements Locatable {
 
     //----- The following two public static methods read and write pileup summary files
     public static void writeToFile(final String sample, final List<PileupSummary> records, final File outputTable) {
-        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(outputTable) ) {
+        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(IOUtils.fileToPath(outputTable)) ) {
             writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -99,7 +101,7 @@ public class PileupSummary implements Locatable {
     }
 
     public static ImmutablePair<String, List<PileupSummary>> readFromFile(final File tableFile) {
-        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(tableFile) ) {
+        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
             final List<PileupSummary> pileupSummaries = reader.toList();
             return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), pileupSummaries);
         } catch (IOException e){
@@ -109,7 +111,7 @@ public class PileupSummary implements Locatable {
 
     //-------- The following methods are boilerplate for reading and writing pileup summary tables
     private static class PileupSummaryTableWriter extends TableWriter<PileupSummary> {
-        private PileupSummaryTableWriter(final File output) throws IOException {
+        private PileupSummaryTableWriter(final Path output) throws IOException {
             super(output, PileupSummaryTableColumn.COLUMNS);
         }
 
@@ -125,7 +127,7 @@ public class PileupSummary implements Locatable {
     }
 
     private static class PileupSummaryTableReader extends TableReader<PileupSummary> {
-        public PileupSummaryTableReader(final File file) throws IOException { super(file); }
+        public PileupSummaryTableReader(final Path path) throws IOException { super(path); }
 
         @Override
         protected PileupSummary createRecord(final DataLine dataLine) {

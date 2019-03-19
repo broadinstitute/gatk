@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
@@ -54,7 +55,8 @@ public class ArtifactPriorCollection {
     public void writeArtifactPriors(final File output){
         final List<ArtifactPrior> priors = new ArrayList<>(map.values());
 
-        try (ArtifactPrior.ArtifactPriorTableWriter writer = new ArtifactPrior.ArtifactPriorTableWriter(output, sample)) {
+        try (ArtifactPrior.ArtifactPriorTableWriter writer = new ArtifactPrior.ArtifactPriorTableWriter(
+            IOUtils.fileToPath(output), sample)) {
             writer.writeAllRecords(priors);
         } catch (IOException e) {
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", output), e);
@@ -67,7 +69,7 @@ public class ArtifactPriorCollection {
     public static ArtifactPriorCollection readArtifactPriors(final File input){
         final List<ArtifactPrior> priors;
         final String sample;
-        try (ArtifactPrior.ArtifactPriorTableReader reader = new ArtifactPrior.ArtifactPriorTableReader(input)) {
+        try (ArtifactPrior.ArtifactPriorTableReader reader = new ArtifactPrior.ArtifactPriorTableReader(IOUtils.fileToPath(input))) {
             priors = reader.toList();
             sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
             if (priors.size() != F1R2FilterConstants.NUM_KMERS){

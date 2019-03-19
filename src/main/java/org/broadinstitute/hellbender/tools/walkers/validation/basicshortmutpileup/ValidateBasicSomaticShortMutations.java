@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -270,7 +271,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     @Override
     public Object onTraversalSuccess(){
         final TableColumnCollection tableColumnCollection = new TableColumnCollection(headers);
-        try (final TableWriter<BasicValidationResult> writer = new TableWriter<BasicValidationResult>(new File(outputFile), tableColumnCollection) {
+        try (final TableWriter<BasicValidationResult> writer = new TableWriter<BasicValidationResult>(IOUtils.getPath(outputFile), tableColumnCollection) {
             @Override
             protected void composeLine(BasicValidationResult record, DataLine dataLine) {
                 dataLine.set(CONTIG, record.getContig());

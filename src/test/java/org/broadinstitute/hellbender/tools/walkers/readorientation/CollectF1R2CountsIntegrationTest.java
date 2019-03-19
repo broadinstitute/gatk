@@ -6,6 +6,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2TestingUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -28,7 +29,7 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
     public void testOnSyntheticBam() throws IOException {
         final File refMetrics = createTempFile("ref", ".metrics");
         final File altMetrics = createTempFile("alt", ".metrics");
-        final File altTable = createTempFile("alt", ".table");
+        final Path altTable = createTempPath("alt", ".table");
 
         final int numAltReads = 30;
         final int numRefReads = 70;
@@ -38,7 +39,7 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-R", hg19_chr1_1M_Reference,
                 "-I", samFile.getAbsolutePath(),
-                "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTable.getAbsolutePath(),
+                "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTable.toAbsolutePath().toString(),
                 "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetrics.getAbsolutePath(),
                 "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, altMetrics.getAbsolutePath()
         };

@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -37,7 +39,7 @@ public class ContaminationRecord {
 
     //----- The following two public static methods read and write contamination files
     public static void writeToFile(final List<ContaminationRecord> records, final File outputTable) {
-        try ( ContaminationRecord.ContaminationTableWriter writer = new ContaminationRecord.ContaminationTableWriter(outputTable) ) {
+        try ( ContaminationRecord.ContaminationTableWriter writer = new ContaminationRecord.ContaminationTableWriter(IOUtils.fileToPath(outputTable)) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
@@ -45,7 +47,7 @@ public class ContaminationRecord {
     }
 
     public static List<ContaminationRecord> readFromFile(final File tableFile) {
-        try( ContaminationTableReader reader = new ContaminationTableReader(tableFile) ) {
+        try( ContaminationTableReader reader = new ContaminationTableReader(IOUtils.fileToPath(tableFile)) ) {
             return reader.toList();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
@@ -54,7 +56,7 @@ public class ContaminationRecord {
 
     //-------- The following methods are boilerplate for reading and writing contamination tables
     private static class ContaminationTableWriter extends TableWriter<ContaminationRecord> {
-        private ContaminationTableWriter(final File output) throws IOException {
+        private ContaminationTableWriter(final Path output) throws IOException {
             super(output, ContaminationTableColumn.COLUMNS);
         }
 
@@ -67,8 +69,8 @@ public class ContaminationRecord {
     }
 
     private static class ContaminationTableReader extends TableReader<ContaminationRecord> {
-        public ContaminationTableReader(final File file) throws IOException {
-            super(file);
+        public ContaminationTableReader(final Path path) throws IOException {
+            super(path);
         }
 
         @Override

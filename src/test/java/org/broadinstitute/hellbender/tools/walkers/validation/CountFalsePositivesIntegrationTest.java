@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.validation.FalsePositiveRecord;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -25,7 +26,7 @@ public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testSimple() throws Exception {
-        final File output = createTempFile("output", ".txt");
+        final Path output = createTempPath("output", ".txt");
         final String[] args = {
                 "-V", dreamDir + "/vcfs/dream3-chr20.vcf",
                 "-R", b37_reference_20_21,
@@ -43,7 +44,7 @@ public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testWGS() throws Exception {
-        final File output = createTempFile("output", ".txt");
+        final Path output = createTempPath("output", ".txt");
         final String[] args = {
                 "-V", dreamDir + "/vcfs/dream3-chr20.vcf",
                 "-R", b37_reference_20_21,
@@ -65,7 +66,7 @@ public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
 
 
     private class FalsePositiveRecordReader extends TableReader<FalsePositiveRecord> {
-        private FalsePositiveRecordReader(final File falsePositiveTable) throws IOException {
+        private FalsePositiveRecordReader(final Path falsePositiveTable) throws IOException {
             super(falsePositiveTable);
         }
 

@@ -1,7 +1,12 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -44,31 +49,51 @@ public class TableUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(actualTuples, TEST_RECORD);
     }
 
-    @Test(dependsOnMethods = "testReader")
-    public void testWriter0() throws IOException {
-        final File testFile = createTempFile("test",".tsv");
-        final TableWriter<TestTuple> writer = TableUtils.writer(testFile,TEST_COLUMNS,
-                (tuple,dataLine) -> {
-                    dataLine.append(tuple.strValue).append(tuple.intValue).append(tuple.dblValue);
-                });
+    private void testWriter0_internal(Path testPath) throws IOException {
+        final TableWriter<TestTuple> writer = TableUtils.writer(testPath, TEST_COLUMNS,
+            (tuple, dataLine) -> {
+                dataLine.append(tuple.strValue).append(tuple.intValue).append(tuple.dblValue);
+            });
         for (final TestTuple tuple : TEST_RECORD) {
             writer.writeRecord(tuple);
         }
         writer.close();
-        final TableReader<TestTuple> reader = TableUtils.reader(testFile,(columns, exceptionFactory) -> {
-            if (!columns.matchesExactly("col1.str","col2.int","col3.dbl"))
-                Assert.fail();
-            return (dataLine) -> new TestTuple(dataLine.get(0),dataLine.getInt(1),dataLine.getDouble(2));
-        });
+        final TableReader<TestTuple> reader = TableUtils
+            .reader(testPath, (columns, exceptionFactory) -> {
+                if (!columns.matchesExactly("col1.str", "col2.int", "col3.dbl"))
+                    Assert.fail();
+                return (dataLine) -> new TestTuple(dataLine.get(0), dataLine.getInt(1),
+                    dataLine.getDouble(2));
+            });
         final TestTuple[] actualTuples = reader.stream().toArray(TestTuple[]::new);
         Assert.assertEquals(actualTuples, TEST_RECORD);
         reader.close();
     }
 
     @Test(dependsOnMethods = "testReader")
+    public void testWriter0() throws IOException {
+        final Path testPath = createTempPath("testWriter0",".tsv");
+        testWriter0_internal(testPath);
+    }
+
+    /**
+     * Check that TableWriter can accept a Path and doesn't just convert it
+     * to a File along the way.
+     *
+     * @throws IOException
+     */
+    @Test(dependsOnMethods = "testReader")
+    public void testWriter0Nio() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path testPath = jimfs.getPath("testWriter0Nio.tsv");
+            testWriter0_internal(testPath);
+        }
+    }
+
+    @Test(dependsOnMethods = "testReader")
     public void testWriter1() throws IOException {
-        final File testFile = createTempFile("test",".tsv");
-        final TableWriter<TestTuple> writer = TableUtils.writer(new FileWriter(testFile),TEST_COLUMNS,
+        final Path testFile = createTempPath("test",".tsv");
+        final TableWriter<TestTuple> writer = TableUtils.writer(testFile,TEST_COLUMNS,
                 (tuple,dataLine) -> {
                     dataLine.append(tuple.strValue).append(tuple.intValue).append(tuple.dblValue);
                 });
@@ -88,7 +113,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testReaderInvalidFactory0() throws IOException {
-        TableUtils.reader(CORRECT_TEST_FILE, null);
+        TableUtils.reader(IOUtils.fileToPath(CORRECT_TEST_FILE), null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -103,7 +128,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void testReaderInvalidFactoryStateNull0() throws IOException {
-        TableUtils.reader(CORRECT_TEST_FILE, (c, e) -> null );
+        TableUtils.reader(IOUtils.fileToPath(CORRECT_TEST_FILE), (c, e) -> null );
     }
 
     @Test(expectedExceptions = IllegalStateException.class)
@@ -126,7 +151,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testInvalidHeaderReader0() throws IOException {
-        TableUtils.<TestTuple>reader(INVALID_HEADER_FILE,
+        TableUtils.<TestTuple>reader(IOUtils.fileToPath(INVALID_HEADER_FILE),
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesExactly("col1.str", "col2.int", "col3.dbl"))
                         throw formatExceptionFactory.apply("Bad header");
@@ -170,7 +195,7 @@ public class TableUtilsUnitTest extends GATKBaseTest {
     private Object[][] readers(final File inputFile) throws IOException {
         return new Object[][]{
                 {
-                     TableUtils.<TestTuple>reader(inputFile,
+                     TableUtils.<TestTuple>reader(IOUtils.fileToPath(inputFile),
                         (columns, formatExceptionFactory) -> {
                             if (!columns.matchesExactly("col1.str", "col2.int", "col3.dbl"))
                                 throw formatExceptionFactory.apply("Bad header");

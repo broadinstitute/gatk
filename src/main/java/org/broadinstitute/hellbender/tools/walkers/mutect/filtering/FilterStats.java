@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -62,7 +64,7 @@ public class FilterStats {
     }
 
     private static class Mutect2FilterStatsWriter extends TableWriter<FilterStats> {
-        private Mutect2FilterStatsWriter(final File output) throws IOException {
+        private Mutect2FilterStatsWriter(final Path output) throws IOException {
             super(output, M2FilterStatsTableColumn.COLUMNS);
         }
 
@@ -76,7 +78,7 @@ public class FilterStats {
         }
     }
 
-    public static void writeM2FilterSummary(final Collection<FilterStats> filterStats, final File outputTable, List<Pair<String, String>> clusteringMetadata,
+    public static void writeM2FilterSummary(final Collection<FilterStats> filterStats, final Path outputTable, List<Pair<String, String>> clusteringMetadata,
                                             final double threshold, final double totalCalls, final double expectedTruePositives,
                                             final double expectedFalsePositives, final double expectedFalseNegatives) {
         try (Mutect2FilterStatsWriter writer = new Mutect2FilterStatsWriter(outputTable)) {

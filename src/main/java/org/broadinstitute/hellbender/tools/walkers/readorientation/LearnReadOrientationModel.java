@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * Learn the prior probability of read orientation artifact from the output of {@link CollectF1R2Counts}
@@ -87,7 +88,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     public Object doWork(){
         final int defaultInitialListSize = 1_000_000;
 
-        final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(altDataTable, defaultInitialListSize);
+        final Pair<String, List<AltSiteRecord>> sampleAndRecords =
+            AltSiteRecord.readAltSiteRecords(IOUtils.fileToPath(altDataTable), defaultInitialListSize);
 
         final String sample = sampleAndRecords.getLeft();
         final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = sampleAndRecords.getRight().stream()

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 public class AltSiteRecordUnitTest extends GATKBaseTest {
     @Test
     public void test() throws IOException {
-        File table = BaseTest.createTempFile("alt-site-design-matrix","tsv");
+        Path table = BaseTest.createTempPath("alt-site-design-matrix","tsv");
         AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(table, "SAMPLE");
 
         List<String> referenceContexts = Arrays.asList("ACT", "GAT", "CCA");

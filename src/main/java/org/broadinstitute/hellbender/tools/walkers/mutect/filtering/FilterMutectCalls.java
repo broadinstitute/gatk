@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -144,8 +146,10 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
         if (n < NUMBER_OF_LEARNING_PASSES) {
             filteringEngine.learnParameters();
         } else if (n == NUMBER_OF_LEARNING_PASSES) {
-            final File filteringStatsFile = new File(filteringStatsOutput != null ? filteringStatsOutput : outputVcf + FILTERING_STATS_EXTENSION);
-            filteringEngine.writeFilteringStats(filteringStatsFile);
+            final Path filteringStats = IOUtils.getPath(
+                filteringStatsOutput != null ? filteringStatsOutput
+                    : outputVcf + FILTERING_STATS_EXTENSION);
+            filteringEngine.writeFilteringStats(filteringStats);
         } else {
             throw new GATKException.ShouldNeverReachHereException("This walker should never reach (zero-indexed) pass " + n);
         }

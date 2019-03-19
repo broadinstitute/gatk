@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.util.SequenceUtil;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -96,7 +97,7 @@ public class AltSiteRecord {
 
     /*** Writer ***/
     public static class AltSiteRecordTableWriter extends TableWriter<AltSiteRecord> {
-        public AltSiteRecordTableWriter(final File output, final String sample) throws IOException {
+        public AltSiteRecordTableWriter(final Path output, final String sample) throws IOException {
             super(output, AltSiteRecord.AltSiteRecordTableColumn.COLUMNS);
             writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
         }
@@ -118,7 +119,7 @@ public class AltSiteRecord {
 
     /*** Reader ***/
     private static class AltSiteRecordTableReader extends TableReader<AltSiteRecord> {
-        private AltSiteRecordTableReader(final File table) throws IOException {
+        private AltSiteRecordTableReader(final Path table) throws IOException {
             super(table);
         }
 
@@ -136,7 +137,7 @@ public class AltSiteRecord {
     }
 
     /** Code for reading sample name and alt site records from a table **/
-    public static Pair<String, List<AltSiteRecord>> readAltSiteRecords(final File table, final int initialListSize) {
+    public static Pair<String, List<AltSiteRecord>> readAltSiteRecords(final Path table, final int initialListSize) {
         List<AltSiteRecord> records = new ArrayList<>(initialListSize);
         final String sample;
         try (AltSiteRecordTableReader reader = new AltSiteRecordTableReader(table)) {
@@ -148,7 +149,7 @@ public class AltSiteRecord {
         return ImmutablePair.of(sample, records);
     }
 
-    public static Pair<String, List<AltSiteRecord>> readAltSiteRecords(final File table) {
+    public static Pair<String, List<AltSiteRecord>> readAltSiteRecords(final Path table) {
         // arbitrarily initialize the list to size 100
         return readAltSiteRecords(table, 100);
     }

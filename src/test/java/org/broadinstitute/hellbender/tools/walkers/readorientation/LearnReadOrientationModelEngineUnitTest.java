@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.Histogram;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
@@ -199,7 +200,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
     @Test
     public void testReverseComplement() throws IOException {
-        final File altMatrixOutput = GATKBaseTest.createTempFile("alt-table", ".tsv");
+        final Path altMatrixOutput = GATKBaseTest.createTempPath("alt-table", ".tsv");
         final File refHistogramOutput = GATKBaseTest.createTempFile("ref-histogram", "metrics");
 
         final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
@@ -247,7 +248,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final File artifactPriorTable = GATKBaseTest.createTempFile("prior", ".tsv");
         new Main().instanceMain(makeCommandLineArgs(
                 Arrays.asList(
-                        "-alt-table", altMatrixOutput.getAbsolutePath(),
+                        "-alt-table", altMatrixOutput.toAbsolutePath().toString(),
                         "-ref-hist", refHistogramOutput.getAbsolutePath(),
                         "-O", artifactPriorTable.getAbsolutePath()),
                 LearnReadOrientationModel.class.getSimpleName()));

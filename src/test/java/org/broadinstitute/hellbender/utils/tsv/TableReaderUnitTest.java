@@ -1,5 +1,10 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -71,15 +76,15 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     protected static class TestTupleReader extends TableReader<TestTuple> {
 
-        public TestTupleReader(final File file) throws IOException {
-            super(file);
+        public TestTupleReader(final Path path) throws IOException {
+            super(path);
         }
 
-        public TestTupleReader(final FileReader reader) throws IOException {
+        public TestTupleReader(final Reader reader) throws IOException {
             super(reader);
         }
 
-        public TestTupleReader(final String sourceName, final FileReader reader) throws IOException {
+        public TestTupleReader(final String sourceName, final Reader reader) throws IOException {
             super(sourceName, reader);
         }
 
@@ -107,7 +112,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ordinaryValuesData")
     public void testIterator(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TableReader<TestTuple> reader = new TestTupleReader(testFile);
         final List<TestTuple> actual = new ArrayList<>();
         final Iterator<TestTuple> it = reader.iterator();
@@ -123,7 +128,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ordinaryValuesData")
     public void testForEach(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TableReader<TestTuple> reader = new TestTupleReader(testFile);
         final List<TestTuple> actual = new ArrayList<>();
         for (final TestTuple tuple : reader) {
@@ -136,7 +141,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ordinaryValuesData")
     public void testStream(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TableReader<TestTuple> reader = new TestTupleReader(testFile);
         final List<TestTuple> actual = reader.stream()
                 .collect(Collectors.toList());
@@ -146,7 +151,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ordinaryValuesData")
     public void testToList(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TableReader<TestTuple> reader = new TestTupleReader(testFile);
         final List<TestTuple> actual = reader.toList();
         // make sure is the end and is not close:
@@ -157,8 +162,8 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ordinaryValuesData")
     public void testStandardValuesUsingReader(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
-        final TableReader<TestTuple> reader = new TestTupleReader(new FileReader(testFile));
+        final Path testFile = createTestInput(lines);
+        final TableReader<TestTuple> reader = new TestTupleReader(testFile);
         // read the expected three records:
         final TestTuple firstRecord = reader.readRecord();
         final TestTuple secondRecord = reader.readRecord();
@@ -186,7 +191,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ordinaryValuesData")
     public void testStandardValues(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TableReader<TestTuple> reader = new TestTupleReader(testFile);
         // read the expected three records:
         final TestTuple firstRecord = reader.readRecord();
@@ -214,13 +219,13 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "commentsOnlyData", expectedExceptions = UserException.BadInput.class)
     public void testEmptyInput(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         new TestTupleReader(testFile);
     }
 
     @Test(dataProvider = "headerOnlyData")
     public void testHeaderOnly(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TestTupleReader reader = new TestTupleReader(testFile);
         final TestTuple testTuple = reader.readRecord();
         Assert.assertNull(testTuple);
@@ -228,7 +233,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testBadHeader() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         new TestTupleReader(testFile);
@@ -236,24 +241,24 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dependsOnMethods = "testBadHeader", expectedExceptions = UserException.BadInput.class)
     public void testSourceNameFromFile() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         try {
             new TestTupleReader(testFile);
         } catch (final Throwable tb) {
-            Assert.assertTrue(tb.getMessage().matches(".*" + Pattern.quote(testFile.getPath()) + ".*$"));
+            Assert.assertTrue(tb.getMessage().matches(".*" + Pattern.quote(testFile.toString()) + ".*$"));
             throw tb;
         }
     }
 
     @Test(dependsOnMethods = "testBadHeader", expectedExceptions = UserException.BadInput.class)
     public void testArbitrarySourceName() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         try {
-            new TestTupleReader("funny-name", new FileReader(testFile));
+            new TestTupleReader("funny-name", Files.newBufferedReader(testFile));
         } catch (final Throwable tb) {
             Assert.assertTrue(tb.getMessage().matches(".*" + Pattern.quote("funny-name") + ".*$"), tb.getMessage());
             throw tb;
@@ -262,7 +267,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testColumnNames() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
@@ -288,7 +293,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testReadFromString() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3")
         );
 
@@ -307,7 +312,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testReadFromStringTooManyValues() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3")
         );
 
@@ -325,7 +330,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testReadFromStringTooFewValues() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3")
         );
 
@@ -343,7 +348,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testColumnIndex() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
@@ -372,7 +377,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
         final String key2 = "key2";
         final String value2 = "val2";
 
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key1 + "=" + value1,
                 TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key2 + "=" + value2,
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
@@ -404,7 +409,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testColumnValueAsInt() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
@@ -436,7 +441,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testColumnValueAsDouble() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
@@ -468,10 +473,26 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testColumnValueAsString() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
+            String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+            String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
+        );
+        testColumnValueAsStringInternal(testFile);
+    }
+
+    @Test
+    public void testColumnValueAsStringRamfs() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path testPath = createTestInputonPath(
+                jimfs.getPath("test.tab"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
-        );
+            );
+            testColumnValueAsStringInternal(testPath);
+        }
+    }
+
+    public void testColumnValueAsStringInternal(Path testFile) throws IOException {
 
         final boolean[] tested = new boolean[1];
 
@@ -501,11 +522,11 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dependsOnMethods = "testBadHeader", expectedExceptions = UserException.BadInput.class)
     public void testNoSourceName() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         try {
-            new TestTupleReader(null, new FileReader(testFile));
+            new TestTupleReader(null, Files.newBufferedReader(testFile));
         } catch (final Throwable tb) {
             Assert.assertTrue(tb.getMessage().matches("^.*format error at line.*$"), tb.getMessage());
             throw tb;
@@ -514,7 +535,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testTooManyValues() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3", "4"),
@@ -534,7 +555,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
      * @return never {@code null}.
      * @throws IOException
      */
-    private TableReader<String> firstOfThreeColumnReader(final File testFile) throws IOException {
+    private TableReader<String> firstOfThreeColumnReader(final Path testFile) throws IOException {
         return new TableReader<String>(testFile) {
 
             @Override
@@ -546,7 +567,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testTooFewValues() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"),
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2"),
@@ -560,7 +581,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "dataTypeConversionErrorData", expectedExceptions = UserException.BadInput.class)
     public void testDataTypeConversionError(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final TestTupleReader reader = new TestTupleReader(testFile);
         while (reader.readRecord() != null) {
             // eventually will cause the exception.
@@ -569,7 +590,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testIgnoreHeaderRepetitions() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 TableUtils.COMMENT_PREFIX + "comment1",
                 "Column1",
                 "",
@@ -605,7 +626,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test
     public void testSingleColumnWithEmptyDataLines() throws IOException {
-        final File testFile = createTestInput(
+        final Path testFile = createTestInput(
                 TableUtils.COMMENT_PREFIX + "comment1",
                 "Column1",
                 "",
@@ -636,7 +657,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "processCommentData")
     public void testProcessComments(final String[] lines) throws IOException {
-        final File testFile = createTestInput(lines);
+        final Path testFile = createTestInput(lines);
         final List<Pair<String,Long>> expected = IntStream.range(0, lines.length)
                 .mapToObj(i -> new ImmutablePair<>(lines[i], (long) (i + 1)))
                 .filter(p -> p.getLeft().startsWith(TableUtils.COMMENT_PREFIX))
@@ -659,17 +680,22 @@ public class TableReaderUnitTest extends GATKBaseTest {
         Assert.assertEquals(actual, expected);
     }
 
-    private File createTestInput(final String... lines) throws IOException {
-        final File testFile = createTempFile("test", ".tab");
-        final PrintWriter testWriter = new PrintWriter(new FileWriter(testFile));
-        for (final String line : lines) {
-            testWriter.println(line);
-        }
-        testWriter.close();
-        return testFile;
+    private Path createTestInput(final String... lines) throws IOException {
+        final Path testFile = createTempPath("test", ".tab");
+        return createTestInputonPath(testFile, lines);
     }
 
-    @DataProvider(name = "ordinaryValuesData")
+    private Path createTestInputonPath(final Path path, final String... lines) throws IOException {
+        try (final PrintWriter testWriter = new PrintWriter(Files.newBufferedWriter(path))) {
+            for (final String line : lines) {
+                testWriter.println(line);
+            }
+        }
+        return path;
+    }
+
+
+        @DataProvider(name = "ordinaryValuesData")
     public Object[][] ordinaryValuesData() {
         final String comment1 = TableUtils.COMMENT_PREFIX + "comment1";
         final String comment2 = TableUtils.COMMENT_PREFIX + "comment2";

@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import java.nio.file.Path;
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
@@ -186,10 +187,10 @@ public class Mutect2FilteringEngine {
 
     /**
      * Write statistics collected in the final pass of {@link FilterMutectCalls}
-     * @param filteringStatsFile
+     * @param filteringStats where to write the statistics.
      */
-    public void writeFilteringStats(final File filteringStatsFile) {
-        filteringOutputStats.writeFilteringStats(filteringStatsFile, getThreshold(), somaticClusteringModel.clusteringMetadata());
+    public void writeFilteringStats(final Path filteringStats) {
+        filteringOutputStats.writeFilteringStats(filteringStats, getThreshold(), somaticClusteringModel.clusteringMetadata());
     }
 
     private void buildFiltersList(final M2FiltersArgumentCollection MTFAC) {

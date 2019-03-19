@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -142,7 +143,7 @@ public class OrientationBiasUtils {
 
         // This code is inefficient, since it loops through all variant contexts for each sampleTransition pair.
         try (final TableWriter<Pair<String, Transition> > writer =
-                     TableUtils.writer(outFile, OrientationBiasFilterSummaryTableColumn.COLUMNS,
+                     TableUtils.writer(IOUtils.fileToPath(outFile), OrientationBiasFilterSummaryTableColumn.COLUMNS,
                              //lambda for creating DataLine with sampleName and segment fields
                              (sampleTransitionPair, dataLine) -> {
                                  // Create instance of a sample artifact mode and then write it.
@@ -186,8 +187,9 @@ public class OrientationBiasUtils {
                                                                                             final Function<DataLine, T> dataLineToSummaryFunction) {
         Utils.nonNull(inputFile);
         IOUtils.canReadFile(inputFile);
+        final Path inputPath = IOUtils.fileToPath(inputFile);
         final TableColumnCollection mandatoryColumns = OrientationBiasFilterSummaryTableColumn.COLUMNS;
-        try (final TableReader<T> reader = TableUtils.reader(inputFile,
+        try (final TableReader<T> reader = TableUtils.reader(inputPath,
                 (columns, formatExceptionFactory) -> {
                     TableUtils.checkMandatoryColumns(columns, mandatoryColumns, formatExceptionFactory);
                     //return the lambda to translate dataLines into called segments
@@ -195,7 +197,7 @@ public class OrientationBiasUtils {
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(inputFile, e);
+            throw new UserException.CouldNotReadInputFile(inputPath, e);
         }
     }
 

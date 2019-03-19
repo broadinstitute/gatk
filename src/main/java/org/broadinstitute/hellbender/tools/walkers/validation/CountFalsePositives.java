@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import java.nio.file.Path;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -83,7 +85,7 @@ public class CountFalsePositives extends VariantWalker {
         final List<SimpleInterval> intervals =  intervalArgumentCollection.getIntervals(getReferenceDictionary());
         final long targetTerritory = intervals.stream().mapToLong(i -> i.size()).sum();
 
-        try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(outputFile) ) {
+        try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(IOUtils.fileToPath(outputFile)) ) {
             FalsePositiveRecord falsePositiveRecord = new FalsePositiveRecord(id, snpFalsePositiveCount, indelFalsePositiveCount, targetTerritory);
             writer.writeRecord(falsePositiveRecord);
         } catch (IOException e){
@@ -94,7 +96,7 @@ public class CountFalsePositives extends VariantWalker {
     }
 
     private class FalsePositiveTableWriter extends TableWriter<FalsePositiveRecord> {
-        private FalsePositiveTableWriter(final File output) throws IOException {
+        private FalsePositiveTableWriter(final Path output) throws IOException {
             super(output, new TableColumnCollection(FalsePositiveRecord.ID_COLUMN_NAME, FalsePositiveRecord.SNP_COLUMN_NAME,
                     FalsePositiveRecord.INDEL_COLUMN_NAME, FalsePositiveRecord.SNP_FPR_COLUMN_NAME, FalsePositiveRecord.INDEL_FPR_COLUMN_NAME, FalsePositiveRecord.TARGET_TERRITORY_COLUMN_NAME));
         }
