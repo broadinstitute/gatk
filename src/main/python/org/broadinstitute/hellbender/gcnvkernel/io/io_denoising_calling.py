@@ -259,7 +259,7 @@ class SampleDenoisingAndCallingPosteriorsReader:
             delimiter=delimiter,
             comment=comment)
         assert read_log_q_c_tc.shape == (self.denoising_calling_workspace.num_intervals,
-                                             self.denoising_calling_workspace.calling_config.num_copy_number_states)
+                                         self.denoising_calling_workspace.calling_config.num_copy_number_states)
         return read_log_q_c_tc
 
     def _read_sample_copy_number_log_emission(self,
@@ -271,9 +271,8 @@ class SampleDenoisingAndCallingPosteriorsReader:
             io_consts.default_copy_number_log_emission_tsv_filename,
             delimiter=delimiter,
             comment=comment)
-        assert read_log_emission_tc.shape ==\
-               (self.denoising_calling_workspace.num_intervals,
-                self.denoising_calling_workspace.calling_config.num_copy_number_states)
+        assert read_log_emission_tc.shape == (self.denoising_calling_workspace.num_intervals,
+                                              self.denoising_calling_workspace.calling_config.num_copy_number_states)
         return read_log_emission_tc
 
     def __call__(self):

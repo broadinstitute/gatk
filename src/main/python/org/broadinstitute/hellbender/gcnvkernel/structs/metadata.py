@@ -143,8 +143,7 @@ class SamplePloidyMetadata:
         for j, contig in enumerate(self.contig_list):
             if rectify_contig(contig) not in all_standard_contigs:
                 _logger.warning("Sample {0} has an unrecognized contig ({1}). Germline contig ploidy determination "
-                                "may not be reliable for decoy/non-standard contigs.".format(
-                    self.sample_name, contig))
+                                "may not be reliable for decoy/non-standard contigs.".format(self.sample_name, contig))
             if rectify_contig(contig) in autosomal_contigs and self.ploidy_j[j] != homo_sapiens_autosomal_contig_ploidy:
                 _logger.warning("Sample {0} has an anomalous ploidy ({1}) for contig {2}. ".format(
                                     self.sample_name, self.ploidy_j[j], contig) + general_warning_msg)
