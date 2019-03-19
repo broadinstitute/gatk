@@ -5,10 +5,16 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutorException;
+import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
+import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * Integration tests for {@link CNNScoreVariants}.
@@ -40,6 +46,19 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testInference", this);
     }
 
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testRequirePythonEnvironment() throws IOException {
+        // This test is deliberately left out of the "python" test group in order to ensure that
+        // it only executes when the Python environment has *NOT* been properly established. Also,
+        // skip this test if we're running on the Docker because the Python environment is always
+        // activated there.
+        final String isDockerCI = System.getenv("CI");
+        if (isDockerCI != null && isDockerCI.equalsIgnoreCase("true")) {
+            throw new SkipException("Python environment validation test must be skipped when running on the Docker");
+        }
+        // Re-running the "testAllDefaultArgs" test should throw when run outside of the GATK Python environment
+        testAllDefaultArgs();
+    }
 
     @Test(groups = {"python"})
     public void testInferenceArchitecture() throws IOException {
