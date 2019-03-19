@@ -16,11 +16,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
 

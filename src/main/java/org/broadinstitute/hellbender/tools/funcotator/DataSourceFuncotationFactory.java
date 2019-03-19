@@ -248,27 +248,44 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      * @return Features from our FeatureInput {@link #mainSourceFileAsFeatureInput} queried from the FeatureContext
      */
     @SuppressWarnings("unchecked")
-    protected List<Feature> queryFeaturesFromFeatureContext(final FeatureContext featureContext) {
+    private List<Feature> queryFeaturesFromFeatureContext(final FeatureContext featureContext) {
         final List<Feature> features;
+
+        SimpleInterval queryInterval = featureContext.getInterval();
 
         // Do we need to do a fuzzy hg19 / b37 conversion for querying our features:
         if ( dataSourceIsB37 ) {
             // Create a B37 interval:
-            final SimpleInterval b37Interval =
-                    new SimpleInterval(
-                            FuncotatorUtils.convertHG19ContigToB37Contig(featureContext.getInterval().getContig()),
-                            featureContext.getInterval().getStart(),
-                            featureContext.getInterval().getEnd()
-                        );
-            // Get the features:
-            features = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput, b37Interval);
+            queryInterval = new SimpleInterval(
+                            FuncotatorUtils.convertHG19ContigToB37Contig(queryInterval.getContig()),
+                            queryInterval.getStart(),
+                            queryInterval.getEnd()
+                    );
         }
-        // Query as normal:
-        else {
+
+        // Perform extra transformations on the query interval:
+        queryInterval = transformFeatureQueryInterval(queryInterval);
+
+        // If the interval has not changed, we should use the original one:
+        if ( queryInterval.equals(featureContext.getInterval() ) ) {    // Get the features:
             features = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput);
+        }
+        else {
+            // Query as normal:
+            features = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput, queryInterval);
         }
 
         return features;
+    }
+
+    /**
+     * A Method to allow {@link DataSourceFuncotationFactory} objects to adjust the query interval further for their
+     * own needs (e.g. for flanking).
+     * @param queryInterval The baseline {@link SimpleInterval} to be modified.
+     * @return A {@link SimpleInterval} that has been modified for this {@link DataSourceFuncotationFactory}'s specific needs.
+     */
+    protected SimpleInterval transformFeatureQueryInterval(final SimpleInterval queryInterval) {
+        return queryInterval;
     }
 
     /**

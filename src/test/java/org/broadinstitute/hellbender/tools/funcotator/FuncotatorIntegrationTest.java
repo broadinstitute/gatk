@@ -89,6 +89,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // Non-locatable funcotation file:
     private static final String NON_LOCATABLE_FUNCOTATED_INPUT_VCF = toolsTestDir + "funcotator" + File.separator + "non_locatable_proof_input.vcf";
 
+    // Symbollic allele funcotation file:
+    private static final String SYMBOLLIC_ALLELE_FUNCOTATED_INPUT_VCF = toolsTestDir + "funcotator" + File.separator + "symbollic_allele_proof_input.vcf";
+
     private static final List<String> VCF_FIELDS_GENCODE_19_DS = Arrays.asList("Gencode_19_hugoSymbol","Gencode_19_ncbiBuild","Gencode_19_chromosome","Gencode_19_start","Gencode_19_end","Gencode_19_variantClassification","Gencode_19_variantType","Gencode_19_refAllele","Gencode_19_tumorSeqAllele1","Gencode_19_tumorSeqAllele2","Gencode_19_genomeChange","Gencode_19_annotationTranscript","Gencode_19_transcriptStrand","Gencode_19_transcriptExon","Gencode_19_transcriptPos","Gencode_19_cDnaChange","Gencode_19_codonChange","Gencode_19_proteinChange","Gencode_19_gcContent","Gencode_19_referenceContext","Gencode_19_otherTranscripts");//,"Achilles_Top_Genes","CGC_Name","CGC_GeneID","CGC_Chr","CGC_Chr_Band","CGC_Cancer_Somatic_Mut","CGC_Cancer_Germline_Mut","CGC_Tumour_Types__(Somatic_Mutations)","CGC_Tumour_Types_(Germline_Mutations)","CGC_Cancer_Syndrome","CGC_Tissue_Type","CGC_Cancer_Molecular_Genetics","CGC_Mutation_Type","CGC_Translocation_Partner","CGC_Other_Germline_Mut","CGC_Other_Syndrome/Disease","ClinVar_HGMD_ID","ClinVar_SYM","ClinVar_TYPE","ClinVar_ASSEMBLY","ClinVar_rs","Cosmic_overlapping_mutations","CosmicFusion_fusion_genes","CosmicFusion_fusion_id","CosmicTissue_total_alterations_in_gene","CosmicTissue_tissue_types_affected","DNARepairGenes_Activity_linked_to_OMIM","DNARepairGenes_Chromosome_location_linked_to_NCBI_MapView","DNARepairGenes_Accession_number_linked_to_NCBI_Entrez","Familial_Cancer_Genes_Syndrome","Familial_Cancer_Genes_Synonym","Familial_Cancer_Genes_Reference","Gencode_XHGNC_hgnc_id","Gencode_XRefSeq_mRNA_id","Gencode_XRefSeq_prot_acc","HGNC_HGNC_ID","HGNC_Approved_Name","HGNC_Status","HGNC_Locus_Type","HGNC_Locus_Group","HGNC_Previous_Symbols","HGNC_Previous_Name","HGNC_Synonyms","HGNC_Name_Synonyms","HGNC_Chromosome","HGNC_Date_Modified","HGNC_Date_Symbol_Changed","HGNC_Date_Name_Changed","HGNC_Accession_Numbers","HGNC_Enzyme_IDs","HGNC_Entrez_Gene_ID","HGNC_Ensembl_Gene_ID","HGNC_Pubmed_IDs","HGNC_RefSeq_IDs","HGNC_Gene_Family_ID","HGNC_Gene_Family_Name","HGNC_CCDS_IDs","HGNC_Vega_ID","HGNC_Entrez_Gene_ID(supplied_by_NCBI)","HGNC_OMIM_ID(supplied_by_OMIM)","HGNC_RefSeq(supplied_by_NCBI)","HGNC_UniProt_ID(supplied_by_UniProt)","HGNC_Ensembl_ID(supplied_by_Ensembl)","HGNC_UCSC_ID(supplied_by_UCSC)","Oreganno_Build","Oreganno_ID","Oreganno_Values","Simple_Uniprot_uniprot_entry_name","Simple_Uniprot_DrugBank","Simple_Uniprot_alt_uniprot_accessions","Simple_Uniprot_uniprot_accession","Simple_Uniprot_GO_Biological_Process","Simple_Uniprot_GO_Cellular_Component","Simple_Uniprot_GO_Molecular_Function","dbSNP_ASP","dbSNP_ASS","dbSNP_CAF","dbSNP_CDA","dbSNP_CFL","dbSNP_COMMON","dbSNP_DSS","dbSNP_G5","dbSNP_G5A","dbSNP_GENEINFO","dbSNP_GNO","dbSNP_HD","dbSNP_INT","dbSNP_KGPhase1","dbSNP_KGPhase3","dbSNP_LSD","dbSNP_MTP","dbSNP_MUT","dbSNP_NOC","dbSNP_NOV","dbSNP_NSF","dbSNP_NSM","dbSNP_NSN","dbSNP_OM","dbSNP_OTH","dbSNP_PM","dbSNP_PMC","dbSNP_R3","dbSNP_R5","dbSNP_REF","dbSNP_RS","dbSNP_RSPOS","dbSNP_RV","dbSNP_S3D","dbSNP_SAO","dbSNP_SLO","dbSNP_SSR","dbSNP_SYN","dbSNP_TOPMED","dbSNP_TPA","dbSNP_U3","dbSNP_U5","dbSNP_VC","dbSNP_VLD","dbSNP_VP","dbSNP_WGT","dbSNP_WTD","dbSNP_dbSNPBuildID");
     private static final List<String> VCF_FIELDS_GENCODE_28_DS = Arrays.asList("Gencode_28_hugoSymbol","Gencode_28_ncbiBuild","Gencode_28_chromosome","Gencode_28_start","Gencode_28_end","Gencode_28_variantClassification","Gencode_28_variantType","Gencode_28_refAllele","Gencode_28_tumorSeqAllele1","Gencode_28_tumorSeqAllele2","Gencode_28_genomeChange","Gencode_28_annotationTranscript","Gencode_28_transcriptStrand","Gencode_28_transcriptExon","Gencode_28_transcriptPos","Gencode_28_cDnaChange","Gencode_28_codonChange","Gencode_28_proteinChange","Gencode_28_gcContent","Gencode_28_referenceContext","Gencode_28_otherTranscripts");//,"Achilles_Top_Genes","CGC_Name","CGC_GeneID","CGC_Chr","CGC_Chr_Band","CGC_Cancer_Somatic_Mut","CGC_Cancer_Germline_Mut","CGC_Tumour_Types__(Somatic_Mutations)","CGC_Tumour_Types_(Germline_Mutations)","CGC_Cancer_Syndrome","CGC_Tissue_Type","CGC_Cancer_Molecular_Genetics","CGC_Mutation_Type","CGC_Translocation_Partner","CGC_Other_Germline_Mut","CGC_Other_Syndrome/Disease","ClinVar_HGMD_ID","ClinVar_SYM","ClinVar_TYPE","ClinVar_ASSEMBLY","ClinVar_rs","Cosmic_overlapping_mutations","CosmicFusion_fusion_genes","CosmicFusion_fusion_id","CosmicTissue_total_alterations_in_gene","CosmicTissue_tissue_types_affected","DNARepairGenes_Activity_linked_to_OMIM","DNARepairGenes_Chromosome_location_linked_to_NCBI_MapView","DNARepairGenes_Accession_number_linked_to_NCBI_Entrez","Familial_Cancer_Genes_Syndrome","Familial_Cancer_Genes_Synonym","Familial_Cancer_Genes_Reference","Gencode_XHGNC_hgnc_id","Gencode_XRefSeq_mRNA_id","Gencode_XRefSeq_prot_acc","HGNC_HGNC_ID","HGNC_Approved_Name","HGNC_Status","HGNC_Locus_Type","HGNC_Locus_Group","HGNC_Previous_Symbols","HGNC_Previous_Name","HGNC_Synonyms","HGNC_Name_Synonyms","HGNC_Chromosome","HGNC_Date_Modified","HGNC_Date_Symbol_Changed","HGNC_Date_Name_Changed","HGNC_Accession_Numbers","HGNC_Enzyme_IDs","HGNC_Entrez_Gene_ID","HGNC_Ensembl_Gene_ID","HGNC_Pubmed_IDs","HGNC_RefSeq_IDs","HGNC_Gene_Family_ID","HGNC_Gene_Family_Name","HGNC_CCDS_IDs","HGNC_Vega_ID","HGNC_Entrez_Gene_ID(supplied_by_NCBI)","HGNC_OMIM_ID(supplied_by_OMIM)","HGNC_RefSeq(supplied_by_NCBI)","HGNC_UniProt_ID(supplied_by_UniProt)","HGNC_Ensembl_ID(supplied_by_Ensembl)","HGNC_UCSC_ID(supplied_by_UCSC)","Oreganno_Build","Oreganno_ID","Oreganno_Values","Simple_Uniprot_uniprot_entry_name","Simple_Uniprot_DrugBank","Simple_Uniprot_alt_uniprot_accessions","Simple_Uniprot_uniprot_accession","Simple_Uniprot_GO_Biological_Process","Simple_Uniprot_GO_Cellular_Component","Simple_Uniprot_GO_Molecular_Function","dbSNP_ASP","dbSNP_ASS","dbSNP_CAF","dbSNP_CDA","dbSNP_CFL","dbSNP_COMMON","dbSNP_DSS","dbSNP_G5","dbSNP_G5A","dbSNP_GENEINFO","dbSNP_GNO","dbSNP_HD","dbSNP_INT","dbSNP_KGPhase1","dbSNP_KGPhase3","dbSNP_LSD","dbSNP_MTP","dbSNP_MUT","dbSNP_NOC","dbSNP_NOV","dbSNP_NSF","dbSNP_NSM","dbSNP_NSN","dbSNP_OM","dbSNP_OTH","dbSNP_PM","dbSNP_PMC","dbSNP_R3","dbSNP_R5","dbSNP_REF","dbSNP_RS","dbSNP_RSPOS","dbSNP_RV","dbSNP_S3D","dbSNP_SAO","dbSNP_SLO","dbSNP_SSR","dbSNP_SYN","dbSNP_TOPMED","dbSNP_TPA","dbSNP_U3","dbSNP_U5","dbSNP_VC","dbSNP_VLD","dbSNP_VP","dbSNP_WGT","dbSNP_WTD","dbSNP_dbSNPBuildID");
     private static final List<String> MAF_FIELDS_GENCODE_DS = Arrays.asList(MafOutputRendererConstants.FieldName_Hugo_Symbol, MafOutputRendererConstants.FieldName_NCBI_Build, MafOutputRendererConstants.FieldName_Chromosome,
@@ -1684,8 +1687,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testCanCreateNonLocatableFuncotations() {
 
-//        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT
-
         final File outputFile = createTempFile(tmpOutDir + File.separator + NON_LOCATABLE_FUNCOTATED_INPUT_VCF + ".funcotator", ".vcf");
 
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
@@ -1730,7 +1731,78 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(funcotations.get(0).getField("HGNC_Locus_Group"), "protein-coding_%20_gene");
         Assert.assertEquals(funcotations.get(0).getField("HGNC_Previous_Name"), "\"pleckstrin_%20_homology_%20_domain_%20_containing_%2C__%20_family_%20_N_%20_member_%20_1\"");
         Assert.assertEquals(funcotations.get(0).getField("HGNC_Synonyms"), "DKFZP434H2010");
+    }
 
+    @Test
+    public void testCanHandleSymbollicAlleleFuncotations() {
+        // NOTE: This is an integration test because of the plumbing to convert B37 variants into compatible intervals
+        //       for the HG19 data sources.
+
+        final File outputFile = createTempFile(tmpOutDir + File.separator + SYMBOLLIC_ALLELE_FUNCOTATED_INPUT_VCF + ".funcotator", ".vcf");
+
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                SYMBOLLIC_ALLELE_FUNCOTATED_INPUT_VCF,
+                outputFile,
+                b37Reference,
+                FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                FuncotatorArgumentDefinitions.OutputFormatType.VCF,
+                true);
+
+        // Run the tool with our args:
+        runCommandLine(arguments);
+
+        // ===============================
+
+        final Pair<VCFHeader, List<VariantContext>> vcfInfo
+                = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+
+        final VCFInfoHeaderLine funcotationHeaderLine = vcfInfo.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+        final String[] funcotationFieldNames = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+
+
+        // Set up our expected values:
+        final String[][] expectedValues = new String[][]{
+                {
+                    "ENST00000453464.2",
+                    "RNF223",
+                    "COULD_NOT_DETERMINE"
+                },
+                {
+                    "ENST00000400809.3",
+                    "CCNL2",
+                    "FIVE_PRIME_FLANK"
+                },
+        };
+
+        // Now we validate our output:
+
+        Assert.assertEquals(vcfInfo.getRight().size(), 2);
+
+        for ( int i = 0; i < vcfInfo.getRight().size() ; ++i ) {
+
+            final VariantContext variant = vcfInfo.getRight().get(i);
+            final String[] expected = expectedValues[i];
+
+            final Map<Allele, FuncotationMap> alleleToFuncotationMap =
+                    FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                            funcotationFieldNames,
+                            variant,
+                            "Gencode_19_annotationTranscript",
+                            "TEST");
+
+            // Make sure we get the correct transcript here:
+            Assert.assertEquals(alleleToFuncotationMap.get(variant.getAlternateAllele(0)).getTranscriptList().size(), 1);
+
+            // Now get the transcript annotations:
+            final List<Funcotation> funcotations = alleleToFuncotationMap.get(variant.getAlternateAllele(0)).get(expected[0]);
+
+            Assert.assertEquals(funcotations.size(), 1);
+
+            // Now assert that we got what we should have gotten:
+            Assert.assertEquals(funcotations.get(0).getField("Gencode_19_hugoSymbol"), expected[1]);
+            Assert.assertEquals(funcotations.get(0).getField("Gencode_19_variantClassification"), expected[2]);
+        }
     }
 }
 

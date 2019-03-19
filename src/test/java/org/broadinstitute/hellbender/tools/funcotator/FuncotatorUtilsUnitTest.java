@@ -2323,4 +2323,27 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         final String guess = FuncotatorUtils.renderSanitizedFuncotationForVcf(funcotation, includedFields);
         Assert.assertEquals(guess, gt);
     }
+
+    @DataProvider
+    public Object[][] provideForTestSanitizeFuncotationFieldForVcf() {
+        return new Object[][] {
+                { "", "" },
+                { ",", "_%2C_" },
+                { ";", "_%3B_" },
+                { "=", "_%3D_" },
+                { "\t", "_%09_" },
+                { "|", "_%7C_" },
+                { " ", "_%20_" },
+                { "\n", "_%0A_" },
+                { "#", "_%23_" },
+                { ",;=\t| \n#", "_%2C__%3B__%3D__%09__%7C__%20__%0A__%23_" },
+                { "ASDFJKL:", "ASDFJKL:" },
+                { "ASDF;JKL:", "ASDF_%3B_JKL:" },
+        };
+    }
+
+    @Test(dataProvider = "provideForTestSanitizeFuncotationFieldForVcf" )
+    public void testSanitizeFuncotationFieldForVcf(final String input, final String expected) {
+        Assert.assertEquals( FuncotatorUtils.sanitizeFuncotationFieldForVcf(input), expected );
+    }
 }
