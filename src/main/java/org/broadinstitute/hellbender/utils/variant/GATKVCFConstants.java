@@ -126,7 +126,7 @@ public final class GATKVCFConstants {
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";
     public static final String CONVERTED_BASE_COVERAGE_KEY =        "CONVERTED_BASE_COV";
-    public static final String METHYLATION_REFERENCE_CONTEXT_KEY =            "CONTEXT";
+    public static final String METHYLATION_REFERENCE_CONTEXT_KEY =  "REFERENCE_CONTEXT";
 
 
     // FORMAT keys
