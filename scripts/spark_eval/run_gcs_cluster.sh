@@ -24,7 +24,7 @@ gcloud beta dataproc clusters create "$GCS_CLUSTER" \
 # Run scripts
 for script in "$@"
 do
-  eval "$script" || exit $?
+  eval "$script" || (echo "Script $script returned exit status $?, exiting. NOT deleting cluster immediately." && exit 1)
 done
 
 # Delete cluster
