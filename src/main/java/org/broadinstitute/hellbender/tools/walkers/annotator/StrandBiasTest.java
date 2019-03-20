@@ -95,15 +95,26 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         return foundData ? decodeSBBS(sbArray) : null ;
     }
 
+    @SuppressWarnings("unchecked")
     public static int[] getStrandCounts(final Genotype g) {
         int[] data;
         if ( g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(String.class)) {
             final String sbbsString = (String)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
             data = encodeSBBS(sbbsString);
         } else if (g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(ArrayList.class)) {
-            @SuppressWarnings("unchecked")
-            final List<Integer> sbbsList = (ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
-            data = encodeSBBS(sbbsList);
+           if (((ArrayList<Object>)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)).get(0) instanceof Integer) {
+                data = encodeSBBS((ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
+            }
+            else if (((ArrayList<Object>)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)).get(0) instanceof String) {
+                final List<Integer> sbbsList = new ArrayList<>();
+                for (final Object o : (ArrayList<Object>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+                    sbbsList.add(Integer.parseInt(o.toString()));
+                }
+                data = encodeSBBS(sbbsList);
+            } else {
+                throw new GATKException("Unexpected " + GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY + " type");
+            }
+
         } else {
             throw new GATKException("Unexpected " + GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY + " type");
         }

@@ -325,7 +325,10 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 // it difficult to recover the data mapping due to the keyed alleles no longer being present in the variant context.
                 final VariantContext withGenotypingAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), regenotypedVC);
                 final VariantContext withAnnotations = annotationEngine.finalizeAnnotations(withGenotypingAnnotations, originalVC);
-                result = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
+                final int[] relevantIndices = regenotypedVC.getAlleles().stream().mapToInt(a -> originalVC.getAlleles().indexOf(a)).toArray();
+                final VariantContext trimmed = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
+                final GenotypesContext updatedGTs = subsetAlleleSpecificFormatFields(outputHeader, trimmed.getGenotypes(), relevantIndices);
+                result = new VariantContextBuilder(trimmed).genotypes(updatedGTs).make();
             } else if (includeNonVariants) {
                 result = originalVC;
             } else {
@@ -393,6 +396,22 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         } else {
             return vc;
         }
+    }
+
+    private GenotypesContext subsetAlleleSpecificFormatFields(final VCFHeader outputHeader, final GenotypesContext originalGs, final int[] relevantIndices) {
+        final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
+        GenotypeBuilder gb;
+        for (final Genotype g : originalGs) {
+            gb = new GenotypeBuilder(g);
+            Set<String> keys = g.getExtendedAttributes().keySet();
+            for (final String key : keys) {
+                final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
+                gb.attribute(key, ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
+                        GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices));
+            }
+            newGTs.add(gb.make());
+        }
+        return newGTs;
     }
 
     /**
