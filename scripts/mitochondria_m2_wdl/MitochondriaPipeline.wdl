@@ -9,15 +9,12 @@ workflow MitochondriaPipeline {
     wgs_aligned_input_bam_or_cram: "Full WGS hg38 bam or cram"
     autosomal_coverage: "Median coverage of full input bam"
     out_vcf: "Final VCF of mitochondrial SNPs and INDELs"
+    vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
+    f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
   }
   File wgs_aligned_input_bam_or_cram
-  Int? autosomal_coverage
+  Float? autosomal_coverage
 
-  File MT_with_numts_intervals
-
-  # Using an older version of the default Mutect LOD cutoff. This value can be changed and is only useful at low depths
-  # to catch sites that would not get caught by the LOD divided by depth filter.
-  Float lod_cutoff = 6.3
   # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
   # affected by this number. Default is 151.
   Int? max_read_length
@@ -58,6 +55,9 @@ workflow MitochondriaPipeline {
 
   File? gatk_override
   String? m2_extra_args
+  String? m2_filter_extra_args
+  Float? vaf_filter_threshold
+  Float? f_score_beta
 
   #Optional runtime arguments
   Int? preemptible_tries
@@ -65,24 +65,16 @@ workflow MitochondriaPipeline {
   call SubsetBam {
     input:
       input_bam = wgs_aligned_input_bam_or_cram,
-      interval_list = MT_with_numts_intervals,
       ref_fasta = ref_fasta,
       ref_fasta_index = ref_fasta_index,
       ref_dict = ref_dict,
-      preemptible_tries = preemptible_tries
-  }
-
-  call AddOriginalAlignmentTags {
-    input:
-      input_bam = SubsetBam.output_bam,
-      input_bam_index = SubsetBam.output_bai,
       gatk_override = gatk_override,
       preemptible_tries = preemptible_tries
   }
 
   call RevertSam {
     input:
-      input_bam = AddOriginalAlignmentTags.output_bam,
+      input_bam = SubsetBam.output_bam,
       preemptible_tries = preemptible_tries
   }
 
@@ -113,7 +105,9 @@ workflow MitochondriaPipeline {
       shift_back_chain = shift_back_chain,
       gatk_override = gatk_override,
       m2_extra_args = m2_extra_args,
-      lod_cutoff = lod_cutoff,
+      m2_filter_extra_args = m2_filter_extra_args,
+      vaf_filter_threshold = vaf_filter_threshold,
+      f_score_beta = f_score_beta,
       max_read_length = max_read_length,
       preemptible_tries = preemptible_tries
   }
@@ -156,76 +150,43 @@ workflow MitochondriaPipeline {
 }
 
 task SubsetBam {
-  File input_bam
+  String input_bam
   String cram_basename = basename(input_bam, ".cram")
   String basename = basename(cram_basename, ".bam")
-  File interval_list
   File? ref_fasta
   File? ref_fasta_index
   File? ref_dict
 
-  # runtime
-  Int? preemptible_tries
-  Float bam_size = size(input_bam, "GB")
-  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
-  Int disk_size = ceil(bam_size * 2 + ref_size) + 20
-  Int final_preemptible_tries = if bam_size > 110.0 then 0 else select_first([preemptible_tries, 5])
-
-  meta {
-    description: "Subsets a whole genome bam to just NuMT and Mitochondria reads and their mates"
-  }
-  parameter_meta {
-    interval_list: "Interval list with NuMTs and chrM"
-    ref_fasta: "Reference is only required for cram input. If it is provided ref_fasta_index and ref_dict are also required."
-  }
-  command <<<
-    java -jar -Xmx2500m /usr/gitc/picard.jar FilterSamReads \
-      I=${input_bam} \
-      ${"R=" + ref_fasta} \
-      O=${basename}.bam \
-      FILTER=includePairedIntervals \
-      INTERVAL_LIST=${interval_list} \
-      CREATE_INDEX=true
-  >>>
-  runtime {
-    memory: "3 GB"
-    disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
-    preemptible: final_preemptible_tries
-  }
-  output {
-    File output_bam = "${basename}.bam"
-    File output_bai = "${basename}.bai"
-  }
-}
-
-task AddOriginalAlignmentTags {
-  File input_bam
-  File input_bam_index
-  String basename = basename(input_bam, ".bam")
   File? gatk_override
 
   # runtime
   Int? preemptible_tries
-  Int disk_size = ceil(size(input_bam, "GB")) + 20
+  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
+  Int disk_size = ceil(ref_size) + 20
 
   meta {
-    description: "Adds OriginalAlignment tag (OA) and an Original Mate Contig (XM) tag."
+    description: "Subsets a whole genome bam to just Mitochondria reads"
+  }
+  parameter_meta {
+    ref_fasta: "Reference is only required for cram input. If it is provided ref_fasta_index and ref_dict are also required."
   }
   command <<<
     set -e
-
     export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-    gatk --java-options "-Xmx2500m" AddOriginalAlignmentTags \
+    gatk PrintReads \
+      ${"-R " + ref_fasta} \
+      -L chrM \
+      --read-filter MateOnSameContigOrNoMappedMateReadFilter \
+      --read-filter MateUnmappedAndUnmappedReadFilter \
       -I ${input_bam} \
       -O ${basename}.bam
   >>>
   runtime {
-      memory: "3 GB"
-      disks: "local-disk " + disk_size + " HDD"
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.0.0"
-      preemptible: select_first([preemptible_tries, 5])
+    memory: "3 GB"
+    disks: "local-disk " + disk_size + " HDD"
+    docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+    preemptible: select_first([preemptible_tries, 5])
   }
   output {
     File output_bam = "${basename}.bam"
