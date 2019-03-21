@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.IntStream;
 
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2FilterConstants.ALL_KMERS;
+
 public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramTest {
     private static final double EPSILON = 1e-3;
 
@@ -224,15 +226,18 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
         final List<AltSiteRecord> altDesignMatrix = new ArrayList<>();
 
+        final Map<String, Histogram<Integer>> refSiteHistograms = new HashMap<>(ALL_KMERS.size());
+        ALL_KMERS.forEach(context -> {
+            Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
+            refSiteHistograms.put(context, emptyRefHistogram);
+        });
+
         for (final Triple<String, Nucleotide, ReadOrientation> transition : transitions) {
             final String refContext = transition.getLeft();
             final Nucleotide altAllele = transition.getMiddle();
             final ReadOrientation f1r2 = transition.getRight();
 
-            final Histogram<Integer> refSiteHistogram = F1R2FilterUtils.createRefHistogram(refContext, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
-
-            refSiteHistogram.increment(refDepth, numRefExamples);
-            refMetricsFile.addHistogram(refSiteHistogram);
+            refSiteHistograms.get(refContext).increment(refDepth, numRefExamples);
 
             final int refF1R2 = refDepth / 2;
             final int altF1R2 = f1r2 == ReadOrientation.F1R2 ? altDepth : 0;
@@ -240,10 +245,10 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
             IntStream.range(0, numArtifactExamples).forEach(i -> altDesignMatrix.add(new AltSiteRecord(refContext, refDepth, altDepth, refF1R2, altF1R2, altAllele)));
         }
 
+        refSiteHistograms.values().forEach(hist -> refMetricsFile.addHistogram(hist));
         refMetricsFile.write(refHistogramOutput);
         altTableWriter.writeAllRecords(altDesignMatrix);
         altTableWriter.close();
-
 
         final File artifactPriorTable = GATKBaseTest.createTempFile("prior", ".tsv");
         new Main().instanceMain(makeCommandLineArgs(

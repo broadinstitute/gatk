@@ -8,14 +8,16 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -25,47 +27,70 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.StreamSupport;
 
-public class LearnReadOrientationModelIntegrationTest extends CommandLineProgramTest {
+public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest {
+    public static final String testDir = toolsTestDir + "read_orientation_filter/";
+    public static final String hapmapBamSnippet = testDir + "hapmap-20-plex-chr-20-21-read-orientation.bam";
+    public static final String intervalList = testDir + "hapmap-20-plex-chr-20-21-read-orientation.interval_list";
+
+    @DataProvider(name = "scatterCounts")
+    public Object[][] getScatterCounts(){
+        return new Object[][]{{1}, {5}};
+    }
     /**
-     * Test the tool on a real bam to make sure that it does not crash
+     * Test that the tool sites of orientation bias that are manually picked out.
+     * Also tests scattering CollectF1R2Counts
      */
-    @Test
-    public void testOnRealBam() throws IOException {
-        final File refMetrics = createTempFile("ref", ".table");
-        final File altMetrics = createTempFile("alt", ".table");
-        final File altTable = createTempFile("alt", ".table");
+    @Test(dataProvider = "scatterCounts")
+    public void testOnRealBam(final int scatterCount) throws IOException {
+        final File refMetricsDir = createTempDir("rh");
+        final File altMetricsDir = createTempDir("ah");
+        final File altTableDir = createTempDir("at");
 
-        final String testDir = toolsTestDir + "read_orientation_filter/";
-        // final String hapmapBamSnippet = testDir + "hapmap-20-plex-chr20-ROF.bam";
-        final String hapmapBamSnippet = testDir + "hapmap-20-plex-chr-20-21-read-orientation.bam";
+        // Step 1: SplitIntervals
+        final File intervalDir = createTempDir("intervals");
+        runCommandLine(
+            Arrays.asList(
+                    "-R", b37_reference_20_21,
+                    "-L", intervalList,
+                    "-O", intervalDir.getAbsolutePath(),
+                    "-" + SplitIntervals.SCATTER_COUNT_SHORT_NAME, Integer.toString(scatterCount)),
+            SplitIntervals.class.getSimpleName());
 
-        new Main().instanceMain(makeCommandLineArgs(
-                Arrays.asList(
-                        "-R", b37_reference_20_21,
-                        "-I", hapmapBamSnippet,
-                        "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTable.getAbsolutePath(),
-                        "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetrics.getAbsolutePath(),
-                        "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, altMetrics.getAbsolutePath()),
-                CollectF1R2Counts.class.getSimpleName()));
+        // Step 2: CollectF1R2Counts
+        final File[] intervals = intervalDir.listFiles();
+        for (int i = 0; i < intervals.length; i++){
+            runCommandLine(Arrays.asList(
+                    "-R", b37_reference_20_21,
+                    "-I", hapmapBamSnippet,
+                    "-L", intervals[i].getAbsolutePath(),
+                    "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTableDir.getAbsolutePath() + "/" + i + ".tsv",
+                    "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetricsDir.getAbsolutePath() + "/" + i + ".metrics",
+                    "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, altMetricsDir.getAbsolutePath() + "/" + i + ".metrics"),
+                    CollectF1R2Counts.class.getSimpleName());
 
-        int lineCount = (int) Files.lines(Paths.get(refMetrics.getAbsolutePath())).filter(l -> l.matches("^[0-9].+")).count();
+            // Ensure that we print every bin, even when the count is 0
+            final int lineCount = (int) Files.lines(Paths.get(refMetricsDir.getAbsolutePath() + "/" + i + ".metrics")).filter(l -> l.matches("^[0-9].+")).count();
+            Assert.assertEquals(lineCount, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
+        }
 
-        // Ensure that we print every bin, even when the count is 0
-        Assert.assertEquals(lineCount, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
-
-        // Run the prior probabilities of artifact
+        // Step 3: LearnReadOrientationModel
         final File priorTable = createTempFile("prior", ".tsv");
-        new Main().instanceMain(makeCommandLineArgs(
-                Arrays.asList(
-                    "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTable.getAbsolutePath(),
-                    "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME,  altMetrics.getAbsolutePath(),
-                    "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetrics.getAbsolutePath(),
-                    "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorTable.getAbsolutePath()),
-                LearnReadOrientationModel.class.getSimpleName()));
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorTable.getAbsolutePath());
+        final File[] refMetricsFiles = refMetricsDir.listFiles();
+        Arrays.stream(refMetricsFiles).forEach(f ->
+                args.addArgument(CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, f.getAbsolutePath()));
+        final File[] altMetricsFiles = altMetricsDir.listFiles();
+        Arrays.stream(altMetricsFiles).forEach(f ->
+                args.addArgument(CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, f.getAbsolutePath()));
+        final File[] altTableFiles = altTableDir.listFiles();
+        Arrays.stream(altTableFiles).forEach(f ->
+                args.addArgument(CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, f.getAbsolutePath()));
+        runCommandLine(args.getArgsList(), LearnReadOrientationModel.class.getSimpleName());
 
         final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(priorTable);
 
-        // Run Mutect 2
+        // Step 4: Mutect 2
         final File unfilteredVcf = GATKBaseTest.createTempFile("unfiltered", ".vcf");
         final File filteredVcf = GATKBaseTest.createTempFile("filtered", ".vcf");
         final File bamout = GATKBaseTest.createTempFile("SM-CEMAH", ".bam");

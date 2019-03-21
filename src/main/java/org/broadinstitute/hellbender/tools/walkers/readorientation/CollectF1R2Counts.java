@@ -98,6 +98,7 @@ public class CollectF1R2Counts extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
+        // TODO: extract a method
         // Initialize for each reference the histogram of the counts of reference sites by depth
         ALL_KMERS.forEach(context -> {
             Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, maxDepth);

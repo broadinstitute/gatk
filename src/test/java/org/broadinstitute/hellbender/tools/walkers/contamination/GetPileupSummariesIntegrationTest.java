@@ -17,13 +17,11 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void test() {
-        final File thousandGenomes = new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf");
-
         final File output = createTempFile("output", ".table");
         final String[] args = {
                 "-I", NA12878.getAbsolutePath(),
-                "-V", thousandGenomes.getAbsolutePath(),
-                "-L", thousandGenomes.getAbsolutePath(),
+                "-V", thousandGenomes,
+                "-L", thousandGenomes,
                 "-O", output.getAbsolutePath(),
                 "-" + GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, "0.9"
         };

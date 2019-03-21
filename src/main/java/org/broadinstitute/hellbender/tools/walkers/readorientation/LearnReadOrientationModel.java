@@ -6,16 +6,19 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -47,16 +50,16 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     public static final String MAX_DEPTH_LONG_NAME = "max-depth";
 
     @Argument(fullName = CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, doc = "histograms of depths over ref sites for each reference context")
-    private File refHistogramTable;
+    private List<File> refHistogramFiles;
 
-    @Argument(fullName = CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME,  doc = "a table of F1R2 and depth counts")
-    private File altDataTable;
+    @Argument(fullName = CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, doc = "a table of F1R2 and depth counts")
+    private List<File> altDataTables;
+
+    @Argument(fullName = CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, doc = "histograms of depth 1 alt sites", optional = true)
+    private List<File> altHistogramFiles = null;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "table of artifact priors")
     private File output;
-
-    @Argument(fullName = CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, doc = "histograms of depth 1 alt sites", optional = true)
-    private File altHistogramTable = null;
 
     @Argument(fullName = EM_CONVERGENCE_THRESHOLD_LONG_NAME, doc = "Stop the EM when the distance between parameters between iterations falls below this value", optional = true)
     private double converagenceThreshold = DEFAULT_CONVERGENCE_THRESHOLD;
@@ -73,12 +76,12 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
     @Override
     protected void onStartup(){
-        final MetricsFile<?, Integer> referenceSiteMetrics = readMetricsFile(refHistogramTable);
-        refHistograms = referenceSiteMetrics.getAllHistograms();
+        Utils.validate(refHistogramFiles.size() == altDataTables.size(), "The same number of ref histograms and alt tables must be provided");
+        Utils.validate(altHistogramFiles.size() == 0 || altDataTables.size() == altHistogramFiles.size(), "If provided, the number of alt histograms must match others");
+        refHistograms = sumHistogramsFromFiles(refHistogramFiles, true);
 
-        if (altHistogramTable != null) {
-            final MetricsFile<?, Integer> altSiteMetrics = readMetricsFile(altHistogramTable);
-            altHistograms = altSiteMetrics.getAllHistograms();
+        if (altHistogramFiles.size() > 0) {
+            altHistograms = sumHistogramsFromFiles(altHistogramFiles, false);
         } else {
             altHistograms = Collections.emptyList();
         }
@@ -86,13 +89,11 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
     @Override
     public Object doWork(){
-        final int defaultInitialListSize = 1_000_000;
+        final Pair<String, List<AltSiteRecord>> recordsSamplePair = gatherAltSiteRecords(altDataTables);
+        final String sample = recordsSamplePair.getLeft();
+        final List<AltSiteRecord> records = recordsSamplePair.getRight();
 
-        final Pair<String, List<AltSiteRecord>> sampleAndRecords =
-            AltSiteRecord.readAltSiteRecords(IOUtils.fileToPath(altDataTable), defaultInitialListSize);
-
-        final String sample = sampleAndRecords.getLeft();
-        final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = sampleAndRecords.getRight().stream()
+        final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = records.stream()
                 .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
 
         final ArtifactPriorCollection artifactPriorCollection = new ArtifactPriorCollection(sample);
@@ -222,7 +223,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     /**
      * Contract: this method must be called after grouping the design matrices by context.
      * That is, {@param altDesignMatrix} must be a list of {@link AltSiteRecord} of a single reference context
-     * (which is in {@link F1R2FilterConstants.CANONICAL_KMERS}) and {@param altDesignRevComp} contains only
+     * (which is in F1R2FilterConstants.CANONICAL_KMERS) and {@param altDesignRevComp} contains only
      * {@link AltSiteRecord} of its reverse complement.
      */
     @VisibleForTesting
@@ -249,7 +250,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         altDesignMatrix.addAll(altDesignMatrixRevComp.stream().map(AltSiteRecord::getReverseComplementOfRecord).collect(Collectors.toList()));
     }
 
-    private MetricsFile<?, Integer> readMetricsFile(File file){
+    public static MetricsFile<?, Integer> readMetricsFile(File file){
         final MetricsFile<?, Integer> metricsFile = new MetricsFile<>();
         final Reader reader = IOUtil.openFileForBufferedReading(file);
         metricsFile.read(reader);
@@ -257,4 +258,47 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         return metricsFile;
     }
 
+    public static List<Histogram<Integer>> sumHistogramsFromFiles(final List<File> files, final boolean ref){
+        Utils.nonNull(files, "files may not be null");
+        final List<Histogram<Integer>> histogramList = readMetricsFile(files.get(0)).getAllHistograms();
+        if (ref){
+            Utils.validate(histogramList.size() == F1R2FilterConstants.NUM_KMERS,
+                    "The list of ref histograms need to include all kmers as enforced by CollectF1R2Counts");
+            Utils.validate(histogramList.stream().allMatch(h -> F1R2FilterConstants.ALL_KMERS.contains(h.getValueLabel())),
+                    "a histogram contains an unsupported, non-kmer header");
+        } else {
+            Utils.validate(histogramList.size() == F1R2FilterConstants.NUM_KMERS * F1R2FilterConstants.numAltHistogramsPerContext,
+                    "The list of alt histograms missing some (kmer, alt allele, f1r2) triple");
+        }
+
+        for (int i = 1; i < files.size(); i++){
+            final List<Histogram<Integer>> ithHistograms = readMetricsFile(files.get(i)).getAllHistograms();
+            for (final Histogram<Integer> jthHistogram : ithHistograms){
+                final String refContext = jthHistogram.getValueLabel();
+                final Optional<Histogram<Integer>> hist = histogramList.stream().filter(h -> h.getValueLabel().equals(refContext)).findAny();
+                Utils.validate(hist.isPresent(),"Missing histogram header for: " + refContext);
+
+                hist.get().addHistogram(jthHistogram);
+            }
+        }
+        return histogramList;
+    }
+
+    public static Pair<String, List<AltSiteRecord>> gatherAltSiteRecords(final List<File> tables){
+        final int defaultInitialListSize = 1_000_000;
+        final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(tables.get(0).toPath(), defaultInitialListSize);
+        final String sample = sampleAndRecords.getLeft();
+
+        final List<AltSiteRecord> records = sampleAndRecords.getRight();
+        for (int i = 1; i < tables.size(); i++){
+            final Pair<String, List<AltSiteRecord>> ithSampleAndRecords = AltSiteRecord.readAltSiteRecords(tables.get(i).toPath(), defaultInitialListSize);
+            if (! sample.equals(ithSampleAndRecords.getLeft())){
+                throw new UserException("altDataTables contains records for two samples: " + sample + " and " + ithSampleAndRecords.getLeft());
+            }
+
+            records.addAll(ithSampleAndRecords.getRight());
+        }
+
+        return new ImmutablePair<>(sample, records);
+    }
 }
