@@ -257,6 +257,7 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
         Array[File] qc_status_files = CollectSampleQualityMetrics.qc_status_file
         Array[String] qc_status_strings = CollectSampleQualityMetrics.qc_status_string
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
     }
 }
 
