@@ -273,7 +273,7 @@ task CollectWgsMetrics {
     preemptible: select_first([preemptible_tries, 5])
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
   }
   output {
     File metrics = "metrics.txt"
@@ -325,7 +325,7 @@ task LiftoverAndCombineVcfs {
     runtime {
       disks: "local-disk " + disk_size + " HDD"
       memory: "1200 MB"
-      docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+      docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
       preemptible: select_first([preemptible_tries, 5])
     }
     output{
