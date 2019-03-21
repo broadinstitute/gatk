@@ -1,6 +1,6 @@
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Copy number maximum a posteriori value">
-##FORMAT=<ID=CNLP,Number=A,Type=Integer,Description="Copy number log posterior (in Phred-scale) rounded down">
+##FORMAT=<ID=CNLP,Number=.,Type=Integer,Description="Copy number log posterior (in Phred-scale) rounded down">
 ##FORMAT=<ID=CNQ,Number=1,Type=Integer,Description="Genotype call quality as the difference between the best and second best phred-scaled log posterior scores">
 ##FORMAT=<ID=GT,Number=1,Type=Integer,Description="Genotype">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of the variant">
