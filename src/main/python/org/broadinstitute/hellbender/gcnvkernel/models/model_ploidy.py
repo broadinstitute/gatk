@@ -44,7 +44,6 @@ class PloidyModelConfig:
         self.contig_ploidy_prior_map, self.num_ploidy_states = self._get_validated_contig_ploidy_prior_map(
             contig_ploidy_prior_map)
         self.contig_set = set(contig_ploidy_prior_map.keys())
-        self.unordered_contig_list = list(self.contig_set)
 
     @staticmethod
     def _get_validated_contig_ploidy_prior_map(given_contig_ploidy_prior_map: Dict[str, np.ndarray],
@@ -189,10 +188,6 @@ class PloidyWorkspace:
         contig_exclusion_mask_jj = (np.ones((self.num_contigs, self.num_contigs), dtype=types.small_uint)
                                     - np.eye(self.num_contigs, dtype=types.small_uint))
         self.contig_exclusion_mask_jj = th.shared(contig_exclusion_mask_jj, name='contig_exclusion_mask_jj')
-
-    @staticmethod
-    def _get_contig_set_from_interval_list(interval_list: List[Interval]) -> Set[str]:
-        return {interval.contig for interval in interval_list}
 
 
 class PloidyModel(GeneralizedContinuousModel):

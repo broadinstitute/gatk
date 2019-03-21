@@ -296,7 +296,7 @@ def write_dict_to_json_file(output_file: str,
         dict_to_write: dictionary to write to file
         ignored_keys: a set of keys to ignore
     """
-    filtered_dict = {k: v for k, v in dict_to_write.items() if k not in ignored_keys}
+    filtered_dict = {k: v for k, v in sorted(dict_to_write.items()) if k not in ignored_keys}
     with open(output_file, 'w') as fp:
         json.dump(filtered_dict, fp, indent=1)
 
