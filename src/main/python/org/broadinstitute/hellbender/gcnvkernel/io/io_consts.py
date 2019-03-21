@@ -24,8 +24,8 @@ ploidy_column_name = "PLOIDY"
 ploidy_gq_column_name = "PLOIDY_GQ"
 
 # column names for copy-number segments file
-call_copy_number_column_name = "CALL_COPY_NUMBER"
 num_points_column_name = "NUM_POINTS"
+call_copy_number_column_name = "CALL_COPY_NUMBER"
 quality_some_called_column_name = "QUALITY_SOME_CALLED"
 quality_all_called_column_name = "QUALITY_ALL_CALLED"
 quality_start_column_name = "QUALITY_START"
@@ -47,7 +47,8 @@ sample_name_sam_header_prefix = "RG\tID:GATKCopyNumber\tSM:"
 default_comment_char = "@"
 default_delimiter_char = "\t"
 
-# dtype dictionaries
+# dtype dictionaries giving types of mandatory columns whose names are known ahead of time
+# (some of these dictionaries are not currently used, but we define their formats for future reference)
 interval_dtypes_dict = {
     contig_column_name: str,
     start_column_name: types.med_uint,
@@ -79,16 +80,18 @@ sample_read_depth_metadata_dtypes_dict = {
 }
 
 copy_number_segment_dtypes_dict = {
-    call_copy_number_column_name: types.small_uint,
+    **interval_dtypes_dict,
     num_points_column_name: types.med_uint,
+    call_copy_number_column_name: types.small_uint,
+    baseline_copy_number_column_name: types.small_uint,
     quality_some_called_column_name: types.floatX,
     quality_all_called_column_name: types.floatX,
     quality_start_column_name: types.floatX,
-    quality_end_column_name: types.floatX,
-    baseline_copy_number_column_name: types.small_uint
+    quality_end_column_name: types.floatX
 }
 
 denoised_copy_ratio_dtypes_dict = {
+    **interval_dtypes_dict,
     denoised_copy_ratio_mean_column_name: types.floatX,
     denoised_copy_ratio_std_column_name: types.floatX
 }
