@@ -406,8 +406,15 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             Set<String> keys = g.getExtendedAttributes().keySet();
             for (final String key : keys) {
                 final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
-                gb.attribute(key, ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
-                        GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices));
+                final Object attribute;
+                if (headerLine.getCountType().equals(VCFHeaderLineCount.INTEGER) && headerLine.getCount() == 1) {
+                    attribute = g.getAnyAttribute(key);
+                }
+                else {
+                    attribute = ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
+                            GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices);
+                }
+                gb.attribute(key, attribute);
             }
             newGTs.add(gb.make());
         }
