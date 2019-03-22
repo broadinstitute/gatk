@@ -50,7 +50,7 @@ def read_csv(input_file: str,
         input_pd = pd.read_csv(fh, delimiter=delimiter, dtype=dtypes_dict)  # dtypes_dict keys may not be present
     found_columns_set = {str(column) for column in input_pd.columns.values}
     assert dtypes_dict is not None or mandatory_columns_set is None, \
-        "Invalid combination of dtypes_dict and mandatory_columns_set."
+        "Cannot specify mandatory_columns_set if dtypes_dict is not specified."
     if dtypes_dict is not None:
         dtypes_dict_keys_set = set(dtypes_dict.keys())
         if mandatory_columns_set is None:
