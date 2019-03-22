@@ -14,7 +14,7 @@ import java.util.List;
  *      3.  the global outlier probability <p>
  *      4.  minor-allele fractions for each segment <p>
  * <p>
- * See docs/CNVs/CNV-methods.pdf for details.
+ * See docs/CNV/archived/archived-CNV-methods.pdf for details.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;

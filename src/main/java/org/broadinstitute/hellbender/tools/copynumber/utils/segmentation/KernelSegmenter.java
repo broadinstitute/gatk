@@ -51,7 +51,7 @@ import java.util.stream.IntStream;
  *     <li>
  *         For each of these cost functions, find (up to) the  <i>C<sub>max</sub></i> most significant local minima.
  *         The problem of finding local minima of a noisy function can be solved by using topological persistence
- *         (see, e.g., <a href="https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html">https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html</a>
+ *         (see, e.g., <a href="https://www.csc.kth.se/~weinkauf/notes/persistence1d.html">https://www.csc.kth.se/~weinkauf/notes/persistence1d.html</a>
  *         and <a href="http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification">http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification</a>).
  *     </li>
  *     <li>

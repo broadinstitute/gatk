@@ -48,7 +48,7 @@ import java.util.stream.IntStream;
  *     along with the global outlier probability.
  * </p>
  *
- * See docs/CNVs/CNV-methods.pdf for a thorough description of the model.
+ * See docs/CNV/archived/archived-CNV-methods.pdf for a thorough description of the model.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
