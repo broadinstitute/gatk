@@ -279,6 +279,17 @@ public final class ReadFilterLibrary {
     }
 
     /**
+     * Filter reads whose mate is unmapped as well as unmapped reads.
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary = HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filters reads whose mate is unmapped as well as unmapped reads.")
+    public static class MateUnmappedAndUnmappedReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read) {
+            return !(read.isUnmapped() || (read.isPaired() && read.mateIsUnmapped()));
+        }
+    }
+
+    /**
      * Static, stateless read filter instances
      */
     public static final AllowAllReadsReadFilter ALLOW_ALL_READS = new AllowAllReadsReadFilter();
@@ -307,5 +318,5 @@ public final class ReadFilterLibrary {
     public static final ValidAlignmentStartReadFilter VALID_ALIGNMENT_START = new ValidAlignmentStartReadFilter();
     public static final ValidAlignmentEndReadFilter VALID_ALIGNMENT_END = new ValidAlignmentEndReadFilter();
     public static final NonChimericOriginalAlignmentReadFilter NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER = new NonChimericOriginalAlignmentReadFilter();
-
+    public static final MateUnmappedAndUnmappedReadFilter MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER = new MateUnmappedAndUnmappedReadFilter();
 }

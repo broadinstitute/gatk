@@ -816,4 +816,20 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertFalse(ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER.test(read));
     }
 
+    @Test
+    public void testMateUnmappedAndUnmappedReadFilter() {
+        final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
+        //keep regular read
+        Assert.assertTrue(MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER.test(read));
+
+        //filter when mate is unmapped
+        read.setIsPaired(true);
+        read.setMateIsUnmapped();
+        Assert.assertFalse(MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER.test(read));
+
+        //filter when unmapped
+        read.setIsUnmapped();
+        Assert.assertFalse(MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER.test(read));
+    }
+
 }
