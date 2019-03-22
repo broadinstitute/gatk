@@ -26,12 +26,18 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     @Override
     protected Object doWork() {
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkArgs.getSparkProperties(), sparkArgs.getSparkMaster());
+        setSparkVerbosity(ctx);
         try{
             runPipeline(ctx);
             return null;
         } finally {
             afterPipeline(ctx);
         }
+    }
+
+    private final void setSparkVerbosity(final JavaSparkContext ctx) {
+        logger.info("Spark verbosity set to " + sparkArgs.getSparkVerbosity() + " (see --" + SparkCommandLineArgumentCollection.SPARK_VERBOSITY_LONG_NAME + " argument)");
+        ctx.setLogLevel(sparkArgs.getSparkVerbosity());
     }
 
     // ---------------------------------------------------

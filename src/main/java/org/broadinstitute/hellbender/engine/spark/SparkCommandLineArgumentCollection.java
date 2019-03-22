@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 
+import org.apache.logging.log4j.Level;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,7 +18,10 @@ import java.util.Map;
 public final class SparkCommandLineArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "spark-master", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
+    public static final String SPARK_MASTER_LONG_NAME = "spark-master";
+    public static final String SPARK_VERBOSITY_LONG_NAME = "spark-verbosity";
+
+    @Argument(fullName = SPARK_MASTER_LONG_NAME, doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     private String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
 
     @Argument(
@@ -27,6 +31,9 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
             optional = true
     )
     final List<String> sparkProperties = new ArrayList<>();
+
+    @Argument(fullName = SPARK_VERBOSITY_LONG_NAME, doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE)", optional = true)
+    private String sparkVerbosity = Level.WARN.name(); // Default INFO is too verbose
 
     public Map<String,String> getSparkProperties(){
         final Map<String, String> propertyMap = new LinkedHashMap<>();
@@ -43,6 +50,9 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
 
     public String getSparkMaster() {
         return sparkMaster;
+    }
+    public String getSparkVerbosity() {
+        return sparkVerbosity;
     }
 
 }
