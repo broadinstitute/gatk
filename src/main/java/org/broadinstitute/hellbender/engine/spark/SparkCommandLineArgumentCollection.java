@@ -28,7 +28,7 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     private String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
 
     @Argument(
-            doc = "spark properties to set on the spark context in the format <property>=<value>",
+            doc = "Spark properties to set on the Spark context in the format <property>=<value>",
             fullName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
             shortName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
             optional = true
