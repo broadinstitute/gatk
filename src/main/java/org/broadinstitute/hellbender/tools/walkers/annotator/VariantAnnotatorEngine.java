@@ -35,6 +35,7 @@ public final class VariantAnnotatorEngine {
     private final VariantOverlapAnnotator variantOverlapAnnotator;
     private boolean expressionAlleleConcordance;
     private final boolean useRawAnnotations;
+    private final boolean keepRawCombinedAnnotations;
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
 
@@ -42,19 +43,20 @@ public final class VariantAnnotatorEngine {
      * Creates an annotation engine from a list of selected annotations output from command line parsing
      * @param annotationList list of annotation objects (with any parameters already filled) to include
      * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
+     *                   The annotation engine will mark variants overlapping anything in this set using {@link VCFConstants#DBSNP_KEY}.
      * @param featureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
+ *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
+ *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
+ *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
      * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, ReadLikelihoods)}
-     *               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)},
-     *               which is the default for all annotations.
+*               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)},
+     * @param keepCombined If true, retain the combined raw annotation values instead of removing them after finalizing
      */
     public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
-                                   final FeatureInput<VariantContext> dbSNPInput,
-                                   final List<FeatureInput<VariantContext>> featureInputs,
-                                   final boolean useRaw){
+                                  final FeatureInput<VariantContext> dbSNPInput,
+                                  final List<FeatureInput<VariantContext>> featureInputs,
+                                  final boolean useRaw,
+                                  boolean keepCombined){
         Utils.nonNull(featureInputs, "comparisonFeatureInputs is null");
         infoAnnotations = new ArrayList<>();
         genotypeAnnotations = new ArrayList<>();
@@ -69,6 +71,7 @@ public final class VariantAnnotatorEngine {
         variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput, featureInputs);
         reducibleKeys = new HashSet<>();
         useRawAnnotations = useRaw;
+        keepRawCombinedAnnotations = keepCombined;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
                 reducibleKeys.add(((ReducibleAnnotation) annot).getRawKeyName());
@@ -221,7 +224,9 @@ public final class VariantAnnotatorEngine {
                     variantAnnotations.putAll(annotationsFromCurrentType);
                 }
                 //clean up raw annotation data after annotations are finalized
-                variantAnnotations.remove(currentASannotation.getRawKeyName());
+                if (!keepRawCombinedAnnotations) {
+                    variantAnnotations.remove(currentASannotation.getRawKeyName());
+                }
             }
         }
 

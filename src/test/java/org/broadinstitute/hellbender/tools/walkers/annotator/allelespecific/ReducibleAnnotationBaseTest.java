@@ -87,7 +87,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
     // NOTE: this code is mimicking the behavior of GATK3 combineGVCFS insofar as it is important for the annotations
     @Test(dataProvider = "interestingSitesCombineResults")
     public void testCombineAnnotationGATK3Concordance(List<VariantContext> VCs, VariantContext result, VariantContext genotyped) throws Exception {
-        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false, false);
         ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(annotatorEngine, new VCFHeader());
         VariantContext merged = merger.merge(VCs, new SimpleInterval(result.getContig(), result.getStart(), result.getStart()), result.getReference().getBases()[0], false, false);
         Assert.assertTrue(VariantContextTestUtils.alleleSpecificAnnotationEquals(merged, result, getRawKey()));
@@ -100,7 +100,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
             return;
         }
 
-        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false, false);
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection();
         GeneralPloidyFailOverAFCalculatorProvider calculatorProvider = new GeneralPloidyFailOverAFCalculatorProvider(uac.genotypeArgs);

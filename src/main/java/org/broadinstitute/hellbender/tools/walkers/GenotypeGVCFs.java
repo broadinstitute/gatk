@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_R
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -94,6 +93,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME = "only-output-calls-starting-in-intervals";
     public static final String ALL_SITES_LONG_NAME = "include-non-variant-sites";
     public static final String ALL_SITES_SHORT_NAME = "all-sites";
+    public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
+    public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
     private static final String GVCF_BLOCK = "GVCFBlock";
     private VCFHeader outputHeader;
 
@@ -126,6 +127,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      */
     @Argument(fullName=CombineGVCFs.ALLELE_FRACTION_DELTA_LONG_NAME, doc = "Margin of error in allele fraction to consider a somatic variant homoplasmic")
     protected double afTolerance = 1e-3;  //based on Q30 as a "good" base quality score
+
+    /**
+     * If specified, keep the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations
+     */
+    @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations")
+    protected boolean keepCombined = false;
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -199,7 +206,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
 
-        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false);
+        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
 
         // Request INFO field annotations inheriting from RankSumTest and RMSAnnotation added to remove list
         for ( final InfoFieldAnnotation annotation :  annotationEngine.getInfoAnnotations() ) {

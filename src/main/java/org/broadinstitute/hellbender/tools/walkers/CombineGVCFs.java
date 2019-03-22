@@ -257,7 +257,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         }
 
         // create the annotation engine
-        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false);
+        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, false);
 
         vcfWriter = getVCFWriter();
 

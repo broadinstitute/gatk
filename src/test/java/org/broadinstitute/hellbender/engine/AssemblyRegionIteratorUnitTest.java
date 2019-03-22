@@ -63,7 +63,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(shardIntervals, assemblyRegionPadding, readsSource);
             final HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
             final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(hcArgs, false, false, readsSource.getHeader(),
-                                                                                referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false));
+                                                                                referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
             final ReadCoordinateComparator readComparator = new ReadCoordinateComparator(readsSource.getHeader());
 
             final List<ReadFilter> readFilters = new ArrayList<>(2);
