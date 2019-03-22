@@ -213,6 +213,29 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testWriteTarGz() throws Exception {
+        final File tarFile = createTempFile("tar", ".tar");
+
+        // Prepare our output directory:
+        final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
+        final Path tmpDirPath            = tmpDir.toPath();
+        final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
+
+        // Copy our data sources to the destination folder:
+        try {
+            Files.copy(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), outputDataSourcesPath);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not copy files for testing!", ex);
+        }
+
+        // Extract the files:
+        IOUtils.extractTarGz( outputDataSourcesPath );
+
+        IOUtils.writeTarGz(tarFile.getAbsolutePath(), tmpDir.listFiles());
+    }
+
+    @Test
     public void testCreateFifoFile() {
 
         // Create an output location for the test files to go:

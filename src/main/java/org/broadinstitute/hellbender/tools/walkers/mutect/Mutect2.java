@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
-import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
@@ -213,9 +212,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
     public File outputVCF;
 
-    @Argument(shortName = MUTECT_STATS_SHORT_NAME, doc = "Output statistics table", optional = true)
-    public String statsTable = null;
-
     private VariantContextWriter vcfWriter;
 
     private Mutect2Engine m2Engine;
@@ -289,11 +285,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public Collection<Annotation> makeVariantAnnotations(){
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
 
-        if (!MTAC.artifactPriorTables.isEmpty()){
-            // Enable the annotations associated with the read orientation model
-            annotations.add(new ReadOrientationArtifact(MTAC.artifactPriorTables));
-            annotations.add(new ReferenceBases());
-        }
         if (MTAC.autosomalCoverage > 0) {
             annotations.add(new PolymorphicNuMT(MTAC.autosomalCoverage));
         }
@@ -305,7 +296,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        m2Engine.writeMutectStats(new File(statsTable == null ? outputVCF + DEFAULT_STATS_EXTENSION : statsTable));
+        m2Engine.writeExtraOutputs(new File(outputVCF + DEFAULT_STATS_EXTENSION));
 
         return "SUCCESS";
     }

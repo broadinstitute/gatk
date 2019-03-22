@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.util.CombinatoricsUtils;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
@@ -42,7 +43,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         final EStep probabilities = calculateArtifactProbabilities(vc, filteringEngine);
         return probabilities.forwardArtifactResponsibility + probabilities.reverseArtifactResponsibility;
     }

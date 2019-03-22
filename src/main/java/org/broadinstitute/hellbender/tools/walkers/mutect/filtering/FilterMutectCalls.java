@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -102,6 +103,9 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
     protected int numberOfPasses() { return NUMBER_OF_LEARNING_PASSES + 1; }
 
     @Override
+    public boolean requiresReference() { return true;}
+
+    @Override
     public void onTraversalStart() {
         final VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> headerLines = inputHeader.getMetaDataInSortedOrder().stream()
@@ -121,7 +125,9 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
         final File mutect2StatsTable = new File(statsTable == null ? drivingVariantFile + Mutect2.DEFAULT_STATS_EXTENSION : statsTable);
         filteringEngine = new Mutect2FilteringEngine(MTFAC, vcfHeader, mutect2StatsTable);
         if (!mutect2StatsTable.exists()) {
-            logger.warn("Mutect stats table " + mutect2StatsTable + " not found.  Filtering will proceed without this information.");
+            throw new UserException.CouldNotReadInputFile("Mutect stats table " + mutect2StatsTable + " not found.  When Mutect2 outputs a file calls.vcf it also creates" +
+                    " a calls.vcf" + Mutect2.DEFAULT_STATS_EXTENSION + " file.  Perhaps this file was not moved along with the vcf, or perhaps it was not delocalized from a" +
+                    " virtual machine while running in the cloud." );
         }
     }
 
@@ -133,9 +139,9 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
                                 final int n) {
         ParamUtils.isPositiveOrZero(n, "Passes must start at the 0th pass.");
         if (n < NUMBER_OF_LEARNING_PASSES) {
-            filteringEngine.accumulateData(variant);
+            filteringEngine.accumulateData(variant, referenceContext);
         } else if (n == NUMBER_OF_LEARNING_PASSES) {
-            vcfWriter.add(filteringEngine.applyFiltersAndAccumulateOutputStats(variant));
+            vcfWriter.add(filteringEngine.applyFiltersAndAccumulateOutputStats(variant, referenceContext));
         } else {
             throw new GATKException.ShouldNeverReachHereException("This walker should never reach (zero-indexed) pass " + n);
         }

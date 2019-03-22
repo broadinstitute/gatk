@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.util.Optional;
 
 public abstract class HardFilter extends Mutect2VariantFilter {
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         return isArtifact(vc, filteringEngine) ? 1 : 0;
     }
 
