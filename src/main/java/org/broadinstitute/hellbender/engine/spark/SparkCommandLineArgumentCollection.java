@@ -21,18 +21,24 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     public static final String SPARK_MASTER_LONG_NAME = "spark-master";
     public static final String SPARK_VERBOSITY_LONG_NAME = "spark-verbosity";
 
-    @Argument(fullName = SPARK_MASTER_LONG_NAME, doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
+    @Argument(
+            doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.",
+            fullName = SPARK_MASTER_LONG_NAME,
+            optional = true)
     private String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
 
     @Argument(
             doc = "spark properties to set on the spark context in the format <property>=<value>",
-            shortName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
             fullName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
+            shortName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
             optional = true
     )
     final List<String> sparkProperties = new ArrayList<>();
 
-    @Argument(fullName = SPARK_VERBOSITY_LONG_NAME, doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE)", optional = true)
+    @Argument(
+            doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE)",
+            fullName = SPARK_VERBOSITY_LONG_NAME,
+            optional = true)
     private String sparkVerbosity = Level.WARN.name(); // Default INFO is too verbose
 
     public Map<String,String> getSparkProperties(){
@@ -54,5 +60,4 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     public String getSparkVerbosity() {
         return sparkVerbosity;
     }
-
 }
