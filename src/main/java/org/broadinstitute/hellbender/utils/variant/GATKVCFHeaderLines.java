@@ -95,7 +95,6 @@ public class GATKVCFHeaderLines {
 
         //Mitochondrial M2-related filters
         addFilterLine(new VCFFilterHeaderLine(CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME, "NuMT variant with too many ALT reads originally from autosome"));
-        addFilterLine(new VCFFilterHeaderLine(LOW_AVG_ALT_QUALITY_FILTER_NAME, "Low average alt quality"));
 
         addFormatLine(new VCFFormatHeaderLine(ALLELE_BALANCE_KEY, 1, VCFHeaderLineType.Float, "Allele balance for each het genotype"));
         addFormatLine(new VCFFormatHeaderLine(MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY, 1, VCFHeaderLineType.Integer, "Number of Mapping Quality Zero Reads per sample"));

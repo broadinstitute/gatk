@@ -36,7 +36,7 @@ public class M2FiltersArgumentCollection {
     public double initialPosteriorThreshold = DEFAULT_INITIAL_POSTERIOR_THRESHOLD;
 
     /**
-     * Mitochondria mode includes the filters {@link LogOddsOverDepthFilter} and {@link ChimericOriginalAlignmentFilter}
+     * Mitochondria mode includes the filter{@link ChimericOriginalAlignmentFilter}
      * and excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter}, {@link PolymeraseSlippageFilter},
      * {@link FilteredHaplotypeFilter}, and {@link GermlineFilter}
      */
@@ -67,7 +67,6 @@ public class M2FiltersArgumentCollection {
     private static final int DEFAULT_MAX_MEDIAN_FRAGMENT_LENGTH_DIFFERENCE = 10000;
     private static final int DEFAULT_MIN_MEDIAN_READ_POSITION = 1;
     private static final double DEFAULT_MAX_N_RATIO = Double.POSITIVE_INFINITY;
-    private static final double DEFAULT_MIN_LOG_10_ODDS_DIVIDED_BY_DEPTH = 0;
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
     private static final double DEFAULT_MAX_NUMT_FRACTION = 0.85;
 
@@ -94,9 +93,6 @@ public class M2FiltersArgumentCollection {
 
     @Argument(fullName = MAX_N_RATIO_LONG_NAME, optional = true, doc = "Maximum fraction of non-ref bases in the pileup that are N (unknown)")
     public double nRatio = DEFAULT_MAX_N_RATIO;
-
-    @Argument(fullName = MIN_LOG_10_ODDS_DIVIDED_BY_DEPTH, doc="Minimum log10 odds divided by depth", optional = true)
-    public double minLog10OddsDividedByDepth = DEFAULT_MIN_LOG_10_ODDS_DIVIDED_BY_DEPTH;
 
     @Argument(fullName = MIN_READS_ON_EACH_STRAND_LONG_NAME, optional = true, doc = "Minimum alt reads required on both forward and reverse strands")
     public int minReadsOnEachStrand = DEFAULT_MIN_READS_ON_EACH_STRAND;

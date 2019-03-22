@@ -173,7 +173,6 @@ public final class GATKVCFConstants {
     public final static String STRICT_STRAND_BIAS_FILTER_NAME =               "strict_strand";
     public final static String N_RATIO_FILTER_NAME =                           "n_ratio";
     public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =       "numt_chimera"; //mitochondria
-    public final static String LOW_AVG_ALT_QUALITY_FILTER_NAME =               "average_qual"; //mitochondria
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
@@ -182,7 +181,7 @@ public final class GATKVCFConstants {
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
             READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
             READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME, CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME,
-            LOW_AVG_ALT_QUALITY_FILTER_NAME, STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME);
+            STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";

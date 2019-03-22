@@ -676,7 +676,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         args.addArgument("V", unfiltered);
         args.addArgument("O", filteredVcf.getPath());
         args.addBooleanArgument(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true);
-        args.addArgument("lod-divided-by-depth", ".005");
         Arrays.stream(extraArgs).forEach(args::add);
 
         new Main().instanceMain(makeCommandLineArgs(args.getArgsList(), FilterMutectCalls.class.getSimpleName()));
@@ -1095,7 +1094,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 {NA12878_MITO_VCF.getPath(), Arrays.asList(
                         "[]",
                         "[numt_chimera]",
-                        "[average_qual, weak_evidence]",
+                        "[weak_evidence]",
                         "[]",
                         "[]",
                         "[]"),
