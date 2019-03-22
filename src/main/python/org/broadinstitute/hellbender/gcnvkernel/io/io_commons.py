@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import pandas as pd
 from ast import literal_eval as make_tuple
 from typing import List, Optional, Tuple, Set, Dict
 
@@ -16,14 +17,60 @@ from ..models.fancy_model import GeneralizedContinuousModel
 _logger = logging.getLogger(__name__)
 
 
+def read_csv(input_file: str,
+             dtypes_dict: Dict[str, object]=None,
+             mandatory_columns_set: Set[str]=None,
+             comment=io_consts.default_comment_char,
+             delimiter=io_consts.default_delimiter_char) -> pd.DataFrame:
+    """Opens a file and seeks to the first line that does not start with the comment character,
+       checks for mandatory columns in this column-header line, and returns a pandas DataFrame.
+       Prefer using this method rather than pandas read_csv, because the comment character will only have an effect 
+       when it is present at the beginning of a line at the beginning of the file (pandas can otherwise strip 
+       characters that follow a comment character that appears in the middle of a line, which can corrupt sample names).
+       Dtypes for columns can be provided, but those for column names that are not known ahead of time will be inferred.
+
+    Args:
+        input_file: input file
+        dtypes_dict: dictionary of column headers to dtypes; keys will be taken as mandatory columns unless
+                     mandatory_columns_set is also provided
+        mandatory_columns_set: set of mandatory header columns; must be subset of dtypes_dict keys if provided
+        comment: comment character
+        delimiter: delimiter character
+
+    Returns:
+        pandas DataFrame
+    """
+    with open(input_file, 'r') as fh:
+        while True:
+            pos = fh.tell()
+            line = fh.readline()
+            if not line.startswith(comment):
+                fh.seek(pos)
+                break
+        input_pd = pd.read_csv(fh, delimiter=delimiter, dtype=dtypes_dict)  # dtypes_dict keys may not be present
+    found_columns_set = {str(column) for column in input_pd.columns.values}
+    assert dtypes_dict is not None or mandatory_columns_set is None, \
+        "Cannot specify mandatory_columns_set if dtypes_dict is not specified."
+    if dtypes_dict is not None:
+        dtypes_dict_keys_set = set(dtypes_dict.keys())
+        if mandatory_columns_set is None:
+            assert_mandatory_columns(dtypes_dict_keys_set, found_columns_set, input_file)
+        else:
+            assert mandatory_columns_set.issubset(dtypes_dict_keys_set), \
+                "The mandatory_columns_set must be a subset of the dtypes_dict keys."
+            assert_mandatory_columns(mandatory_columns_set, found_columns_set, input_file)
+
+    return input_pd
+
+
 def extract_sample_name_from_header(input_file: str,
-                                    max_scan_lines: int = 10000,
+                                    comment=io_consts.default_comment_char,
                                     sample_name_header_regexp: str = io_consts.sample_name_header_regexp) -> str:
-    """Extracts sample name from header.
+    """Extracts sample name from header (all lines up to the first line that does not start with the comment character).
 
     Args:
         input_file: any readable text file
-        max_scan_lines: maximum number of lines to scan from the top of the file
+        comment: comment character
         sample_name_header_regexp: the regular expression for identifying the header line that contains
             the sample name
 
@@ -31,8 +78,10 @@ def extract_sample_name_from_header(input_file: str,
         Sample name
     """
     with open(input_file, 'r') as f:
-        for _ in range(max_scan_lines):
+        while True:
             line = f.readline()
+            if not line.startswith(comment):
+                break
             match = re.search(sample_name_header_regexp, line, re.M)
             if match is None:
                 continue
@@ -186,7 +235,7 @@ def read_ndarray_from_tsv(input_file: str,
                 if shape is None:
                     shape = _get_value('shape', stripped_line)
             else:
-                assert dtype is not None and shape is not None,\
+                assert dtype is not None and shape is not None, \
                     "Shape and dtype information could not be found in the header of " \
                     "\"{0}\"".format(input())
                 row = np.asarray(stripped_line.split(delimiter), dtype=dtype)
@@ -212,7 +261,7 @@ def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[pm.blo
         raise Exception("Unsupported PyMC3 version")
 
 
-def extract_mean_field_posterior_parameters(approx: pm.MeanField)\
+def extract_mean_field_posterior_parameters(approx: pm.MeanField) \
         -> Tuple[Set[str], Dict[str, np.ndarray], Dict[str, np.ndarray]]:
     """Extracts mean-field posterior parameters in the right shape and dtype from an instance
     of PyMC3 mean-field approximation.
@@ -247,7 +296,7 @@ def write_dict_to_json_file(output_file: str,
         dict_to_write: dictionary to write to file
         ignored_keys: a set of keys to ignore
     """
-    filtered_dict = {k: v for k, v in dict_to_write.items() if k not in ignored_keys}
+    filtered_dict = {k: v for k, v in sorted(dict_to_write.items()) if k not in ignored_keys}
     with open(output_file, 'w') as fp:
         json.dump(filtered_dict, fp, indent=1)
 
@@ -293,12 +342,12 @@ def _get_singleton_slice_along_axis(array: np.ndarray, axis: int, index: int):
 
 
 def write_mean_field_sample_specific_params(sample_index: int,
-                                           sample_posterior_path: str,
-                                           approx_var_name_set: Set[str],
-                                           approx_mu_map: Dict[str, np.ndarray],
-                                           approx_std_map: Dict[str, np.ndarray],
-                                           model: GeneralizedContinuousModel,
-                                           extra_comment_lines: Optional[List[str]] = None):
+                                            sample_posterior_path: str,
+                                            approx_var_name_set: Set[str],
+                                            approx_mu_map: Dict[str, np.ndarray],
+                                            approx_std_map: Dict[str, np.ndarray],
+                                            model: GeneralizedContinuousModel,
+                                            extra_comment_lines: Optional[List[str]] = None):
     """Writes sample-specific parameters contained in an instance of PyMC3 mean-field approximation
     to disk.
 
@@ -329,8 +378,8 @@ def write_mean_field_sample_specific_params(sample_index: int,
 
 
 def write_mean_field_global_params(output_path: str,
-                                  approx: pm.MeanField,
-                                  model: GeneralizedContinuousModel):
+                                   approx: pm.MeanField,
+                                   model: GeneralizedContinuousModel):
     """Writes global parameters contained in an instance of PyMC3 mean-field approximation to disk.
 
     Args:
@@ -356,8 +405,8 @@ def write_mean_field_global_params(output_path: str,
 
 
 def read_mean_field_global_params(input_model_path: str,
-                                 approx: pm.MeanField,
-                                 model: GeneralizedContinuousModel) -> None:
+                                  approx: pm.MeanField,
+                                  model: GeneralizedContinuousModel) -> None:
     """Reads global parameters of a given model from saved mean-field posteriors and injects them
     into a provided mean-field instance.
 
@@ -392,7 +441,7 @@ def read_mean_field_global_params(input_model_path: str,
 
         for vmap in vmap_list:
             if vmap.var == var_name:
-                assert var_mu.shape == vmap.shp,\
+                assert var_mu.shape == vmap.shp, \
                     "Loaded mean for \"{0}\" has an unexpected shape; loaded: {1}, " \
                     "expected: {2}".format(var_name, var_mu.shape, vmap.shp)
                 assert var_rho.shape == vmap.shp, \
@@ -405,10 +454,10 @@ def read_mean_field_global_params(input_model_path: str,
 
 
 def read_mean_field_sample_specific_params(input_sample_calls_path: str,
-                                          sample_index: int,
-                                          sample_name: str,
-                                          approx: pm.MeanField,
-                                          model: GeneralizedContinuousModel):
+                                           sample_index: int,
+                                           sample_name: str,
+                                           approx: pm.MeanField,
+                                           model: GeneralizedContinuousModel):
     """Reads sample-specific parameters of a given sample from saved mean-field posteriors and injects them
     into a provided mean-field instance.
 

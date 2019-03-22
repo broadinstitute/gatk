@@ -78,7 +78,7 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
                 VCFHeaderLineType.Integer, "Genotype"));
         result.addMetaDataLine(new VCFFormatHeaderLine(CN, 1,
                 VCFHeaderLineType.Integer, "Copy number maximum a posteriori value"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(CNLP, VCFHeaderLineCount.A,
+        result.addMetaDataLine(new VCFFormatHeaderLine(CNLP, VCFHeaderLineCount.UNBOUNDED,
                 VCFHeaderLineType.Integer, "Copy number log posterior (in Phred-scale) rounded down"));
         result.addMetaDataLine(new VCFFormatHeaderLine(CNQ, 1,
                 VCFHeaderLineType.Integer, "Genotype call quality as the difference between" +

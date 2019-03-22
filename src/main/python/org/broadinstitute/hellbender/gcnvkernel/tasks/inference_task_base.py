@@ -533,8 +533,8 @@ class HybridInferenceTask(InferenceTask):
                 # if there is a self-consistency loop and not converged ...
                 if not iters_converged and self.hybrid_inference_params.max_calling_iters > 1:
                     _logger.warning('{0} did not converge. Increase maximum calling rounds (current: {1}) '
-                                    'if this behavior persists.'.format(
-                        self.calling_task_name, self.hybrid_inference_params.max_calling_iters))
+                                    'if this behavior persists.'.format(self.calling_task_name,
+                                                                        self.hybrid_inference_params.max_calling_iters))
 
         return iters_converged
 

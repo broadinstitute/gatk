@@ -30,8 +30,7 @@ def get_normalized_prob_vector(prob_vector: np.ndarray, prob_sum_tol: float) -> 
     else:
         _logger.warning("The given probability vector ({0}) is not normalized to unity within the provided "
                         "tolerance ({1}); sum = {2}. Normalization was enforced. However, please check the inputs "
-                        "for unintentional errors.".format(
-            prob_vector, prob_sum_tol, prob_sum))
+                        "for unintentional errors.".format(prob_vector, prob_sum_tol, prob_sum))
         return prob_vector / prob_sum
 
 
