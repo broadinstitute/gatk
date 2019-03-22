@@ -5,5 +5,5 @@
 ##buildName=GRCh38
 ##contig=<ID=chr1,length=248956422,assembly=Homo_sapiens_assembly38.fasta>
 ##reference=file:///cromwell_root/broad-references/hg38/v0/Homo_sapiens_assembly38.fasta
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-chr1	55039931	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Likely_pathogenic|YES|NONSENSE|5|1000|6|1000|7|1000|8|1000|0|1000|0|1000|9|1000|true]
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST
+chr1	55039931	.	G	A	.	.	FUNCOTATION=[ATP7B|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Likely_pathogenic|YES|NONSENSE|5|1000|6|1000|7|1000|8|1000|0|1000|0|1000|9|1000|true]	GT:DP:GQ:MIN_DP:PL	1/1:1,76,0:77:99:2378,195,0,2381,227,2413:0,1,35,41

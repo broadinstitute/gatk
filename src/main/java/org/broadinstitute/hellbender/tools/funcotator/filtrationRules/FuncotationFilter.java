@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
@@ -36,13 +37,15 @@ public abstract class FuncotationFilter {
      *
      * @param prunedTranscriptFuncotations Funcotation values of a single transcript. Assumed to have
      *                                     been "pruned" to remove null / empty values. Never {@code null}
+     * @param variant VariantContext of this transcript.
+     *
      * @return true if the Funcotations match all of this filter's rules, and false otherwise
      */
-    public Boolean checkFilter(final Set<Map.Entry<String, String>> prunedTranscriptFuncotations) {
+    public Boolean checkFilter(final Set<Map.Entry<String, String>> prunedTranscriptFuncotations, VariantContext variant) {
         Utils.nonNull(prunedTranscriptFuncotations);
 
         return getRules().stream()
-                .map(rule -> rule.checkRule(prunedTranscriptFuncotations))
+                .map(rule -> rule.checkRule(prunedTranscriptFuncotations, variant))
                 .reduce(Boolean::logicalAnd)
                 .orElse(false);
     }

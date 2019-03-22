@@ -16,8 +16,9 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ArHomvarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.FuncotationFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
@@ -57,7 +58,7 @@ import java.util.stream.Stream;
 )
 @DocumentedFeature
 @ExperimentalFeature
-public class FilterFuncotations extends VariantWalker {
+public class FilterFuncotations extends TwoPassVariantWalker {
 
     static final String ONE_LINE_SUMMARY = "Filter variants based on clinically-significant Funcotations.";
     static final String SUMMARY = ONE_LINE_SUMMARY +
@@ -141,11 +142,24 @@ public class FilterFuncotations extends VariantWalker {
         funcotationFilters.add(new ClinVarFilter(afDataSource));
         funcotationFilters.add(new LofFilter(reference, afDataSource));
         funcotationFilters.add(new LmmFilter());
+        funcotationFilters.add(new ArHomvarFilter());
     }
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        outputVcfWriter.add(applyFilters(variant, getMatchingFilters(variant)));
+    public void firstPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        Set<String> matchingFilters = getMatchingFilters(variant);
+
+        outputVcfWriter.add(applyFilters(variant, matchingFilters));
+    }
+
+    @Override
+    protected void afterFirstPass() {
+
+    }
+
+    @Override
+    public void secondPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+
     }
 
     /**
@@ -171,7 +185,7 @@ public class FilterFuncotations extends VariantWalker {
 
             transcriptFuncotations.forEach(funcotations -> {
                 final Set<String> matches = funcotationFilters.stream()
-                        .filter(f -> f.checkFilter(funcotations))
+                        .filter(f -> f.checkFilter(funcotations, variant))
                         .map(FuncotationFilter::getFilterName)
                         .collect(Collectors.toSet());
                 matchingFilters.addAll(matches);

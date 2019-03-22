@@ -142,7 +142,7 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
     chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
 
     cp build.gradle build.gradle.backup
-    cp /scripts/docker/dockertest.gradle .
+    cp scripts/docker/dockertest.gradle .
 
 	echo docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
     docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
