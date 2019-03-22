@@ -137,8 +137,10 @@ public class M2FiltersArgumentCollection {
     public static final String LONG_INDEL_LENGTH_LONG_NAME = "long-indel-length";
 
     private static final double DEFAULT_LOG_10_PRIOR_OF_SNV = -6.0;
-    private static final double DEFAULT_LOG_10_PRIOR_OF_SNV_FOR_MITO = -2.5;
     private static final double DEFAULT_LOG_10_PRIOR_OF_INDEL = -7.0;
+    // Mitochondria defaults from a back of the envelope calculation. This assumes ~3 indels and ~50 snps in the 16kb
+    // mitochondria, which is a reasonable assumption for some haplogroups.
+    private static final double DEFAULT_LOG_10_PRIOR_OF_SNV_FOR_MITO = -2.5;
     private static final double DEFAULT_LOG_10_PRIOR_OF_INDEL_FOR_MITO = -3.75;
     private static final double DEFAULT_INITIAL_LOG_10_PRIOR_OF_VARIANT_VERSUS_ARTIFACT = -1;
     private static final double DEFAULT_NORMAL_P_VALUE_THRESHOLD = 0.001;
