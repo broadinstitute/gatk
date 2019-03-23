@@ -211,7 +211,7 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
         if (!pcAckResult.isPositiveAck()) {
             throw new PythonScriptExecutorException(
                     String.format(
-                            "A nack was received from the Python process (most likely caused by a raised exception caused by): %s",
+                            "An ack was received from the Python process (most likely caused by a raised exception caused by): %s",
                             pcAckResult.getDisplayMessage()
                     )
             );

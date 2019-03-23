@@ -79,6 +79,12 @@ public class ReadElementExtractorImpl {
             return String.valueOf(!read.isUnmapped());
         }
     }
+    static class First implements ReadElementExtractor {
+        @Override public String header() { return "FIRST"; }
+        @Override public String extractElement(final GATKRead read) {
+            return String.valueOf(read.isFirstOfPair());
+        }
+    }
 
     static class BaseQual implements ReadElementExtractor {
         @Override public String header() { return "BASE_QUAL"; }
@@ -86,7 +92,6 @@ public class ReadElementExtractorImpl {
             return String.valueOf(extractMeanQual(read));
         }
     }
-
 
 
     //average base quality
