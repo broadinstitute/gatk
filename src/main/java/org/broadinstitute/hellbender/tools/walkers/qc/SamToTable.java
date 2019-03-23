@@ -87,6 +87,7 @@ public final class SamToTable extends ReadWalker {
         filters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
 
         filters.add(new ReadFilter() {
+            static private final long serialVersionUID = 42L;
             @Override
             public boolean test(final GATKRead read) {
                 return readgroupPattern.matcher(read.getName()).matches();
@@ -94,6 +95,7 @@ public final class SamToTable extends ReadWalker {
         });
 
         filters.add(new ReadFilter() {
+            static private final long serialVersionUID = 42L;
             @Override
             public boolean test(final GATKRead read) {
                 opticalDuplicateFinder.addLocationInformation(read.getName(), location);
