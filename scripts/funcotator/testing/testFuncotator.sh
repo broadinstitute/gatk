@@ -302,7 +302,6 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     REF=$HG19
   else
     INPUT=/Users/jonn/Development/FUNCOTATOR_LARGE_TEST_INPUTS/hg38_trio.vcf
-    INPUT=/Users/jonn/Development/tmp/2aaecceb-fe3f-48cc-bdf6-a9091c24d712/problemVariants.vcf
 		#INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSetHG38.vcf
     #INPUT=/Users/jonn/Development/tmp/cohort24_23_seg.subset.vcf
     #INPUT=/Users/jonn/Development/gatk/tmp.38.vcf
