@@ -36,7 +36,7 @@ public class Mutect2EngineUnitTest extends GATKBaseTest {
 
         final double calculated = Mutect2Engine.lnLikelihoodRatio(numRef, altQuals, 1);
         final double expected = Beta.logBeta(numRef + 1, numAlt + 1) - numAlt * Math.log(errorRate);
-        Assert.assertEquals(calculated, expected, 0.01);
+        Assert.assertEquals(calculated, expected, 0.07);
 
     }
 

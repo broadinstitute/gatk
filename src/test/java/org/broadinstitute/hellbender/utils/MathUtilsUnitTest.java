@@ -1436,4 +1436,19 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     public void testToIntExactOrThrowGoodCases(long value){
         Assert.assertEquals(MathUtils.toIntExactOrThrow(value,() -> new GATKException("")), (int)value);
     }
+
+    @Test
+    public void testFastBernoulliEntropy() {
+        final int N = 100;
+        IntStream.range(0, N + 1).forEach(n -> {
+            final double p = (double) n / N;
+            final double computed = MathUtils.fastBernoulliEntropy(p);
+            if (n == 0 || n == N) {
+                Assert.assertEquals(computed, 0, 1.0e-8);
+            } else {
+                final double exact = -(p * Math.log(p) + (1-p)*Math.log(1-p));
+                Assert.assertEquals(computed, exact, 0.01);
+            }
+        });
+    }
 }

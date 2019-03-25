@@ -358,6 +358,9 @@ public final class GenotypeLikelihoodCalculators {
 
         checkPloidyAndMaximumAllele(ploidy, ploidy); // a hack to check ploidy makes sense (could duplicate code but choice must be made)
 
+        if (ploidy == 1) {
+            return maxGenotypeCount;
+        }
         final double log10MaxGenotypeCount = Math.log10(maxGenotypeCount);
 
         // Math explanation: genotype count is determined by ${P+A-1 \choose A-1}$, this leads to constraint

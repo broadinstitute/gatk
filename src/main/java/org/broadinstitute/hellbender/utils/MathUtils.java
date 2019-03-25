@@ -13,8 +13,6 @@ import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -63,6 +61,10 @@ public final class MathUtils {
      * based on https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
      */
     private static final double LN_1_M_EXP_THRESHOLD = - Math.log(2);
+
+    private static final Log10Cache LOG_10_CACHE = new Log10Cache();
+    private static final Log10FactorialCache LOG_10_FACTORIAL_CACHE = new Log10FactorialCache();
+    private static final DigammaCache DIGAMMA_CACHE = new DigammaCache();
 
     /**
      * Private constructor.  No instantiating this class!
@@ -682,7 +684,11 @@ public final class MathUtils {
     }
 
     public static double log10(int i) {
-        return Log10Cache.get(i);
+        return LOG_10_CACHE.get(i);
+    }
+
+    public static double digamma(int i) {
+        return DIGAMMA_CACHE.get(i);
     }
 
     public static double log10sumLog10(final double[] log10values) {
@@ -708,64 +714,6 @@ public final class MathUtils {
         return maxValue + Math.log10(sum);
     }
 
-
-    /**
-     * A helper class to maintain a cache of log10 values.
-     * The cache expands when a number is not available.
-     * NOTE: this cache is thread safe and it may be accessed from multiple threads.
-     */
-    private static final class Log10Cache {
-        private static final Logger logger = LogManager.getLogger(Log10Cache.class);
-
-        //initialize with the special case: log(0) = NEGATIVE_INFINITY
-        private static double[] cache = new double[] { Double.NEGATIVE_INFINITY };
-
-        /**
-         * Get the value of log10(n), expanding the cache as necessary
-         * @param i operand
-         * @return log10(n)
-         */
-        public static double get(final int i) {
-            Utils.validateArg(i >= 0, () -> String.format("Can't take the log of a negative number: %d", i));
-            if (i >= cache.length) {
-                final int newCapacity = Math.max(i + 10, 2 * cache.length);
-                logger.debug("cache miss " + i + " > " + (cache.length-1) + " expanding to " + newCapacity);
-                expandCache(newCapacity);
-            }
-            /*
-               Array lookups are not atomic.  It's possible that the reference to cache could be
-               changed between the time the reference is loaded and the data is fetched from the correct
-               offset.  However, the value retrieved can't change, and it's guaranteed to be present in the
-               old reference by the conditional above.
-             */
-            return cache[i];
-        }
-
-        /**
-         * Ensures that the cache contains a value for n.  After completion of expandCache(n),
-         * #get(n) is guaranteed to return without causing a cache expansion
-         * @param newCapacity desired value to be precomputed
-         */
-        private static synchronized void expandCache(final int newCapacity) {
-            if (newCapacity < cache.length) {
-                //prevents a race condition when multiple threads want to expand the cache at the same time.
-                //in that case, one of them will be first to enter the synchronized method expandCache and
-                //so the others may end up in this method even if n < cache.length
-                return;
-            }
-            final double[] newCache = new double[newCapacity + 1];
-            System.arraycopy(cache, 0, newCache, 0, cache.length);
-            for (int i = cache.length; i < newCache.length; i++) {
-                newCache[i] = Math.log10(i);
-            }
-            cache = newCache;
-        }
-
-        public static int size() {
-            return cache.length;
-        }
-
-    }
 
     /**
      * Encapsulates the second term of Jacobian log identity for differences up to MAX_TOLERANCE
@@ -1288,7 +1236,7 @@ public final class MathUtils {
     }
 
     public static double log10Factorial(final int n) {
-        return n >=0 && n < Log10FactorialCache.size() ? Log10FactorialCache.get(n) : log10Gamma(n+1);
+        return LOG_10_FACTORIAL_CACHE.get(n);
     }
 
     /**
@@ -1300,40 +1248,6 @@ public final class MathUtils {
     public static double[] toLog10(final double[] prRealSpace) {
         Utils.nonNull(prRealSpace);
         return applyToArray(prRealSpace, Math::log10);
-    }
-
-    /**
-     * Wrapper class so that the log10Factorial array is only calculated if it's used
-     */
-    private static class Log10FactorialCache {
-
-        /**
-         * The size of the precomputed cache.  Must be a positive number!
-         */
-        private static final int CACHE_SIZE = 10_000;
-
-        private static double[] cache = null;
-
-        public static int size() { return CACHE_SIZE; }
-
-        public static double get(final int n) {
-            if (cache == null) {
-                initialize();
-            }
-            return cache[n];
-        }
-
-        private static synchronized void initialize() {
-            if (cache == null) {//this null check is here to prevent a race condition
-                // when multiple threads want to initialize the cache
-                Log10Cache.expandCache(CACHE_SIZE);
-                cache = new double[CACHE_SIZE];
-                cache[0] = 0.0;
-                for (int k = 1; k < cache.length; k++) {
-                    cache[k] = cache[k - 1] + Log10Cache.get(k);
-                }
-            }
-        }
     }
 
     /**
@@ -1561,5 +1475,16 @@ public final class MathUtils {
         } else {
             throw exceptionSupplier.get();
         }
+    }
+
+    /**
+     * Computes the entropy -p*ln(p) - (1-p)*ln(1-p) of a Bernoulli distribution with success probability p
+     * using an extremely fast Pade approximation that is very accurate for all values of 0 <= p <= 1.
+     *
+     * See http://www.nezumi.demon.co.uk/consult/logx.htm
+     */
+    public static final double fastBernoulliEntropy(final double p) {
+        final double product = p * (1 - p);
+        return product * (11 + 33 * product) / (2 + 20 * product);
     }
 }

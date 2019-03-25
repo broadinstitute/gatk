@@ -483,30 +483,23 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     // the multiplicative factor is for the special case where we pass a singleton list
     // of alt quals and want to duplicate that alt qual over multiple reads
     @VisibleForTesting
-    static double lnLikelihoodRatio(final int refCount, final List<Byte> altQuals, final double repeatFactor) {
-        final double beta = refCount + 1;
-        final double alpha = repeatFactor * altQuals.size() + 1;
-        final double digammaAlpha = Gamma.digamma(alpha);
-        final double digammaBeta = Gamma.digamma(beta);
-        final double digammaAlphaPlusBeta = Gamma.digamma(alpha + beta);
-        final double lnRho = digammaBeta - digammaAlphaPlusBeta;
-        final double rho = FastMath.exp(lnRho);
-        final double lnTau = digammaAlpha - digammaAlphaPlusBeta;
-        final double tau = FastMath.exp(lnTau);
+    static double lnLikelihoodRatio(final int nRef, final List<Byte> altQuals, final int repeatFactor) {
+        final int nAlt = repeatFactor * altQuals.size();
+        final int n = nRef + nAlt;
 
-        final double betaEntropy = Beta.logBeta(alpha, beta) - (alpha - 1)*digammaAlpha - (beta-1)*digammaBeta + (alpha + beta - 2)*digammaAlphaPlusBeta;
+        final double fTildeRatio = FastMath.exp(MathUtils.digamma(nRef + 1) - MathUtils.digamma(nAlt + 1));
+        final double betaEntropy = -MathUtils.log10Factorial(n+1) + MathUtils.log10Factorial(nAlt) + MathUtils.log10Factorial(nRef);
 
         double readSum = 0;
         for (final byte qual : altQuals) {
             final double epsilon = QualityUtils.qualToErrorProb(qual);
-            final double gamma = rho * epsilon / (rho * epsilon + tau * (1-epsilon));
-            final double bernoulliEntropy = -gamma * FastMath.log(gamma) - (1-gamma)*FastMath.log1p(-gamma);
-            final double lnEpsilon = MathUtils.log10ToLog(QualityUtils.qualToErrorProbLog10(qual));
-            final double lnOneMinusEpsilon = MathUtils.log10ToLog(QualityUtils.qualToProbLog10(qual));
-            readSum += gamma * (lnRho + lnEpsilon) + (1-gamma)*(lnTau + lnOneMinusEpsilon) - lnEpsilon + bernoulliEntropy;
+            final double zBarAlt = (1 - epsilon) / (1 - epsilon + epsilon * fTildeRatio);
+            final double log10Epsilon = QualityUtils.qualToErrorProbLog10(qual);
+            final double log10OneMinusEpsilon = QualityUtils.qualToProbLog10(qual);
+            readSum += zBarAlt * (log10OneMinusEpsilon - log10Epsilon) + MathUtils.logToLog10(MathUtils.fastBernoulliEntropy(zBarAlt));
         }
 
-        return betaEntropy +  refCount * lnRho + readSum * repeatFactor;
+        return MathUtils.log10ToLog(betaEntropy + readSum * repeatFactor);
 
     }
 
