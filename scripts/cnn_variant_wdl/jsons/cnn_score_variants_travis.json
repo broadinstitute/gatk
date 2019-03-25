@@ -9,11 +9,11 @@
   "CNNScoreVariantsWorkflow.reference_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta",
   "CNNScoreVariantsWorkflow.reference_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.dict",
   "CNNScoreVariantsWorkflow.reference_fasta_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta.fai",
-  "CNNScoreVariantsWorkflow.resources" : [
+  "CNNScoreVariantsWorkflow.resources": [
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf",
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf"
   ],
-  "CNNScoreVariantsWorkflow.resources_index" : [
+  "CNNScoreVariantsWorkflow.resources_index": [
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf.idx",
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf.idx"
   ],
