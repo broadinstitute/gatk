@@ -19,8 +19,7 @@ public class StreamingPythonExecutorIntegrationTest extends GATKBaseTest {
         // it only executes when the Python environment has *NOT* been properly established. Also,
         // skip this test if we're running on the Docker because the Python environment is always
         // activated there.
-        final String isDockerCI = System.getenv("CI");
-        if (isDockerCI != null && isDockerCI.equalsIgnoreCase("true")) {
+        if (isGATKDockerContainer()) {
             throw new SkipException("Python environment validation test must be skipped when running on the Docker");
         }
 
