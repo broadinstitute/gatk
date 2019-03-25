@@ -1,0 +1,257 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=artifact_in_normal,Description="artifact_in_normal">
+##FILTER=<ID=bad_haplotype,Description="Variant near filtered variant on same haplotype.">
+##FILTER=<ID=base_quality,Description="alt median base quality">
+##FILTER=<ID=chimeric_original_alignment,Description="NuMT variant with too many ALT reads originally from autosome">
+##FILTER=<ID=clustered_events,Description="Clustered events observed in the tumor">
+##FILTER=<ID=contamination,Description="contamination">
+##FILTER=<ID=duplicate_evidence,Description="evidence for alt allele is overrepresented by apparent duplicates">
+##FILTER=<ID=fragment_length,Description="abs(ref - alt) median fragment length">
+##FILTER=<ID=germline_risk,Description="Evidence indicates this site is germline, not somatic">
+##FILTER=<ID=low_avg_alt_quality,Description="Low average alt quality">
+##FILTER=<ID=mapping_quality,Description="ref - alt median mapping quality">
+##FILTER=<ID=multiallelic,Description="Site filtered because too many alt alleles pass tumor LOD">
+##FILTER=<ID=n_ratio,Description="Ratio of N to alt exceeds specified ratio">
+##FILTER=<ID=panel_of_normals,Description="Blacklisted site in panel of normals">
+##FILTER=<ID=read_orientation_artifact,Description="orientation bias detected by the orientation bias mixture model">
+##FILTER=<ID=read_position,Description="median distance of alt variants from end of reads">
+##FILTER=<ID=str_contraction,Description="Site filtered due to contraction of short tandem repeat region">
+##FILTER=<ID=strand_artifact,Description="Evidence for alt allele comes from one read direction only">
+##FILTER=<ID=strict_strand_bias,Description="Evidence for alt allele is not represented in both directions">
+##FILTER=<ID=t_lod,Description="Mutation does not meet likelihood threshold">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=ECNT,Number=1,Type=Integer,Description="">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MBQ,Number=R,Type=Integer,Description="">
+##FORMAT=<ID=MFRL,Number=R,Type=Integer,Description="">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=MMQ,Number=R,Type=Integer,Description="">
+##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phasing set (typically the position of the first variant in the set)">
+##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
+##FORMAT=<ID=TLOD,Number=A,Type=Float,Description="Log odds ratio score for variant">
+##GATKCommandLine=<ID=CombineGVCFs,CommandLine="CombineGVCFs  --output threeSamples.g.vcf --input-is-somatic true --variant NA19240.MT.filtered.g.vcf --variant NA12878.MT.filtered.g.vcf --variant NA12891.MT.filtered.g.vcf --reference /Users/gauthier/workspaces/gatk/src/test/resources/large/Homo_sapiens_assembly19.fasta.gz  --convert-to-base-pair-resolution false --break-bands-at-multiples-of 0 --ignore-variants-starting-outside-interval false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --disable-tool-default-annotations false --enable-all-annotations false",Version=4.0.12.0-56-ge755e75-SNAPSHOT,Date="January 25, 2019 3:19:42 PM EST">
+##GATKCommandLine=<ID=FilterMutectCalls,CommandLine="FilterMutectCalls  --output NA19240.MT.filtered.g.vcf --tumor-lod 6.3 --contamination-estimate 0.0 --mitochondria-mode true --variant ../gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA19240.MT.g.vcf  --log-somatic-prior -6.0 --normal-artifact-lod 0.0 --normal-p-value-threshold 0.001 --max-germline-posterior 0.1 --max-alt-allele-count 1 --min-pcr-slippage-size 8 --pcr-slippage-rate 0.1 --pcr-slippage-p-value 0.001 --min-median-mapping-quality 30 --min-median-base-quality 20 --max-median-fragment-length-difference 10000 --min-median-read-position 1 --max-events-in-region 2 --max-strand-artifact-probability 0.99 --min-strand-artifact-allele-fraction 0.01 --max-contamination-probability 0.1 --unique-alt-read-count 0 --n-ratio Infinity --strict-strand-bias false --orientation-bias-fdr 0.05 --stats Mutect2FilteringStats.tsv --distance-on-haplotype 100 --long-indel-length 5 --lod-divided-by-depth 0.0035 --non-mt-alts-divided-by-alts 0.85 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version=4.0.12.0-53-g7544cf0-SNAPSHOT,Date="January 25, 2019 10:27:50 AM EST">
+##GATKCommandLine=<ID=GenotypeGVCFs,CommandLine="GenotypeGVCFs  --output threeSamples.2alts.vcf --input-is-somatic true --max-alternate-alleles 2 --variant threeSamples.g.vcf --reference /Users/gauthier/workspaces/gatk/src/test/resources/large/Homo_sapiens_assembly19.fasta.gz  --include-non-variant-sites false --tumor-lod-to-emit 4.24 --allele-fraction-error 0.001 --use-new-qual-calculator false --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 10.0 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --only-output-calls-starting-in-intervals false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --disable-tool-default-annotations false --enable-all-annotations false",Version=4.0.12.0-56-ge755e75-SNAPSHOT,Date="January 30, 2019 3:41:48 PM EST">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Phred-scaled qualities that alt allele are not due to contamination">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=GERMQ,Number=A,Type=Integer,Description="Phred-scaled qualities that alt allele are not germline variants">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##INFO=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##INFO=<ID=MLEAC,Number=A,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##INFO=<ID=MLEAF,Number=A,Type=Float,Description="Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed">
+##INFO=<ID=MMQ,Number=R,Type=Integer,Description="median mapping quality">
+##INFO=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=NALOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=NCount,Number=1,Type=Integer,Description="Count of N bases in the pileup">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal LOD score">
+##INFO=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
+##INFO=<ID=PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=POPAF,Number=A,Type=Float,Description="negative-log-10 population allele frequencies of alt alleles">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##INFO=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="Log odds ratio score for variant">
+##INFO=<ID=UNIQ_ALT_READ_COUNT,Number=1,Type=Integer,Description="Number of ALT reads with unique start and mate end positions at a variant site">
+##MutectVersion=2.1
+##contig=<ID=1,length=249250621,assembly=GRCh37>
+##contig=<ID=2,length=243199373,assembly=GRCh37>
+##contig=<ID=3,length=198022430,assembly=GRCh37>
+##contig=<ID=4,length=191154276,assembly=GRCh37>
+##contig=<ID=5,length=180915260,assembly=GRCh37>
+##contig=<ID=6,length=171115067,assembly=GRCh37>
+##contig=<ID=7,length=159138663,assembly=GRCh37>
+##contig=<ID=8,length=146364022,assembly=GRCh37>
+##contig=<ID=9,length=141213431,assembly=GRCh37>
+##contig=<ID=10,length=135534747,assembly=GRCh37>
+##contig=<ID=11,length=135006516,assembly=GRCh37>
+##contig=<ID=12,length=133851895,assembly=GRCh37>
+##contig=<ID=13,length=115169878,assembly=GRCh37>
+##contig=<ID=14,length=107349540,assembly=GRCh37>
+##contig=<ID=15,length=102531392,assembly=GRCh37>
+##contig=<ID=16,length=90354753,assembly=GRCh37>
+##contig=<ID=17,length=81195210,assembly=GRCh37>
+##contig=<ID=18,length=78077248,assembly=GRCh37>
+##contig=<ID=19,length=59128983,assembly=GRCh37>
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
+##contig=<ID=22,length=51304566,assembly=GRCh37>
+##contig=<ID=X,length=155270560,assembly=GRCh37>
+##contig=<ID=Y,length=59373566,assembly=GRCh37>
+##contig=<ID=MT,length=16569,assembly=GRCh37>
+##contig=<ID=GL000207.1,length=4262,assembly=GRCh37>
+##contig=<ID=GL000226.1,length=15008,assembly=GRCh37>
+##contig=<ID=GL000229.1,length=19913,assembly=GRCh37>
+##contig=<ID=GL000231.1,length=27386,assembly=GRCh37>
+##contig=<ID=GL000210.1,length=27682,assembly=GRCh37>
+##contig=<ID=GL000239.1,length=33824,assembly=GRCh37>
+##contig=<ID=GL000235.1,length=34474,assembly=GRCh37>
+##contig=<ID=GL000201.1,length=36148,assembly=GRCh37>
+##contig=<ID=GL000247.1,length=36422,assembly=GRCh37>
+##contig=<ID=GL000245.1,length=36651,assembly=GRCh37>
+##contig=<ID=GL000197.1,length=37175,assembly=GRCh37>
+##contig=<ID=GL000203.1,length=37498,assembly=GRCh37>
+##contig=<ID=GL000246.1,length=38154,assembly=GRCh37>
+##contig=<ID=GL000249.1,length=38502,assembly=GRCh37>
+##contig=<ID=GL000196.1,length=38914,assembly=GRCh37>
+##contig=<ID=GL000248.1,length=39786,assembly=GRCh37>
+##contig=<ID=GL000244.1,length=39929,assembly=GRCh37>
+##contig=<ID=GL000238.1,length=39939,assembly=GRCh37>
+##contig=<ID=GL000202.1,length=40103,assembly=GRCh37>
+##contig=<ID=GL000234.1,length=40531,assembly=GRCh37>
+##contig=<ID=GL000232.1,length=40652,assembly=GRCh37>
+##contig=<ID=GL000206.1,length=41001,assembly=GRCh37>
+##contig=<ID=GL000240.1,length=41933,assembly=GRCh37>
+##contig=<ID=GL000236.1,length=41934,assembly=GRCh37>
+##contig=<ID=GL000241.1,length=42152,assembly=GRCh37>
+##contig=<ID=GL000243.1,length=43341,assembly=GRCh37>
+##contig=<ID=GL000242.1,length=43523,assembly=GRCh37>
+##contig=<ID=GL000230.1,length=43691,assembly=GRCh37>
+##contig=<ID=GL000237.1,length=45867,assembly=GRCh37>
+##contig=<ID=GL000233.1,length=45941,assembly=GRCh37>
+##contig=<ID=GL000204.1,length=81310,assembly=GRCh37>
+##contig=<ID=GL000198.1,length=90085,assembly=GRCh37>
+##contig=<ID=GL000208.1,length=92689,assembly=GRCh37>
+##contig=<ID=GL000191.1,length=106433,assembly=GRCh37>
+##contig=<ID=GL000227.1,length=128374,assembly=GRCh37>
+##contig=<ID=GL000228.1,length=129120,assembly=GRCh37>
+##contig=<ID=GL000214.1,length=137718,assembly=GRCh37>
+##contig=<ID=GL000221.1,length=155397,assembly=GRCh37>
+##contig=<ID=GL000209.1,length=159169,assembly=GRCh37>
+##contig=<ID=GL000218.1,length=161147,assembly=GRCh37>
+##contig=<ID=GL000220.1,length=161802,assembly=GRCh37>
+##contig=<ID=GL000213.1,length=164239,assembly=GRCh37>
+##contig=<ID=GL000211.1,length=166566,assembly=GRCh37>
+##contig=<ID=GL000199.1,length=169874,assembly=GRCh37>
+##contig=<ID=GL000217.1,length=172149,assembly=GRCh37>
+##contig=<ID=GL000216.1,length=172294,assembly=GRCh37>
+##contig=<ID=GL000215.1,length=172545,assembly=GRCh37>
+##contig=<ID=GL000205.1,length=174588,assembly=GRCh37>
+##contig=<ID=GL000219.1,length=179198,assembly=GRCh37>
+##contig=<ID=GL000224.1,length=179693,assembly=GRCh37>
+##contig=<ID=GL000223.1,length=180455,assembly=GRCh37>
+##contig=<ID=GL000195.1,length=182896,assembly=GRCh37>
+##contig=<ID=GL000212.1,length=186858,assembly=GRCh37>
+##contig=<ID=GL000222.1,length=186861,assembly=GRCh37>
+##contig=<ID=GL000200.1,length=187035,assembly=GRCh37>
+##contig=<ID=GL000193.1,length=189789,assembly=GRCh37>
+##contig=<ID=GL000194.1,length=191469,assembly=GRCh37>
+##contig=<ID=GL000225.1,length=211173,assembly=GRCh37>
+##contig=<ID=GL000192.1,length=547496,assembly=GRCh37>
+##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1>
+##filtering_status=These calls have been filtered by FilterMutectCalls to label false positives with a list of failed filters and true positives with PASS.
+##source=CombineGVCFs
+##source=FilterMutectCalls
+##source=GenotypeGVCFs
+##tumor_sample=NA19240
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12891	NA19240
+MT	73	.	A	G	.	.	CONTQ=93.00;DP=9767;MFRL=207;MPOS=35;POPAF=7.30;SAAF=0.990;SAPP=0.030	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:3492,0:0.00:3492:.,.:.,.:-2.632e+00	0:3514,0:0.00:3514:.,.:.,.:-2.094e+00	0/1:8,2682:0.997:2690:29,28:60,60:8376.04
+MT	150	.	C	T	.	.	CONTQ=93.00;DP=18733;MFRL=274;MPOS=38;POPAF=7.30;SAAF=0.990;SAPP=0.026	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6275,0:0.00:6275:.,.:.,.:-3.763e+00	0:7064,0:0.00:7064:.,.:.,.:-2.594e+00	0/1:24,5409:0.997:5433:28,28:60,60:17405.92
+MT	152	.	T	C	.	.	CONTQ=93.00;DP=19244;MFRL=409;MPOS=23;POPAF=7.30;SAAF=0.990;SAPP=0.033	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:7,6417:0.999:6432:29,29:60,60:20915.39	0:7157,0:0.00:7157:.,.:.,.:0.458	1:5,5509:0.999:5514:28,29:60,60:23971.11
+MT	195	.	T	C	.	.	CONTQ=93.00;DP=18801;MFRL=347;MPOS=12;POPAF=7.30;SAAF=0.990;SAPP=0.043	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7101,0:0.00:7101:.,.:.,.:-1.060e+00	1:2,5784:1.00:5786:12,29:60,60:19342.45	0/1:19,5544:0.998:5566:28,29:60,60:18094.06
+MT	263	.	A	G	.	.	CONTQ=93.00;DP=12219;MFRL=162;MPOS=32;POPAF=7.30;SAAF=0.990;SAPP=0.028	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:3,3826:0.999:3829:14,28:60,60:11637.51	1:4,3995:0.999:3999:13,28:60,60:12507.85	1:0,4016:1.00:4016:0,28:0,60:12281.25
+MT	301	.	A	AC	.	.	CONTQ=93.00;DP=10123;MFRL=331;MPOS=17;POPAF=7.30;SAAF=0.061;SAPP=6.468e-05	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0/1:2505,360:0.045:2933:base_quality;strand_artifact:24,14:60,60:40.44	0/1:3125,192:8.308e-03:3452:base_quality;t_lod:26,15:60,60:6.21	0:3236,0:0.00:3236:PASS:.,.:.,.:-3.495e+00
+MT	302	.	A	AC,ACC	.	.	CONTQ=93.00;DP=10313;MFRL=312;MPOS=12;POPAF=7.30;SAAF=0.374;SAPP=2.788e-08	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0/./1/2/.:67,1957,107:0.862,0.041:2553:base_quality:12,15,15:60,60,60:3307.49,64.62	0/./1/2/./.:50,1395,589:0.632,0.257:2485:PASS:29,22,20:60,60,60:2821.14,933.64	0/./1:2424,36,0:6.293e-03,3.086e-04:2843:base_quality:16,26,0:60,60,0:5.66,-3.034e+00
+MT	310	.	T	TC,C	.	.	CONTQ=93.00;DP=10390;MFRL=317;MPOS=3;POPAF=7.30;SAAF=0.990;SAPP=0.035	GT:AD:AF:DP:MBQ:MMQ:TLOD	1/2:1,2897,109:0.992,7.771e-03:3007:5,25,23:60,60,60:7391.53,5.52	1/2:1,3334,131:0.984,0.016:3466:2,25,23:60,60,60:13739.28,43.14	0/1:78,2810,12:0.986,3.243e-04:2900:6,25,13:60,60,60:7224.99,-3.013e+00
+MT	316	.	G	C	.	.	CONTQ=93.00;DP=10172;MFRL=317;MPOS=3;POPAF=7.30;SAAF=0.010;SAPP=0.00	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:3292,30:1.783e-03:3322:base_quality;strand_artifact;t_lod:28,4:60,60:-1.276e-01	0:3397,0:0.00:3397:PASS:.,.:.,.:-3.533e+00	0|1:3249,74:0.011:3323:strand_artifact:28,22:60,60:24.36
+MT	317	.	CTT	C	.	.	CONTQ=93.00;DP=10022;MFRL=317;MPOS=3;POPAF=7.30;SAAF=0.020;SAPP=0.00	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:3123,0:0.00:3123:PASS:.,.:.,.:-3.497e+00	0:3397,0:0.00:3397:PASS:.,.:.,.:-3.533e+00	0|1:3361,74:0.011:3435:base_quality;strand_artifact:28,2:60,60:23.83
+MT	320	.	CTGG	C	.	.	CONTQ=93.00;DP=11229;MFRL=318;MPOS=0;POPAF=7.30;SAAF=0.019;SAPP=0.00	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:4190,0:0.00:4190:PASS:.,.:.,.:-3.394e+00	0:3487,0:0.00:3487:PASS:.,.:.,.:-3.541e+00	0|1:3490,69:9.096e-03:3559:base_quality;strand_artifact:28,2:60,60:19.73
+MT	326	.	A	C	.	.	CONTQ=93.00;DP=11622;MFRL=317;MPOS=0;POPAF=7.30;SAAF=0.018;SAPP=0.00	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:4386,0:0.00:4386:PASS:.,.:.,.:-3.613e+00	0:3700,0:0.00:3700:PASS:.,.:.,.:-3.562e+00	0|1:3415,63:9.006e-03:3478:base_quality:29,2:60,60:21.06
+MT	513	.	G	GCA	.	.	CONTQ=93.00;DP=11906;MFRL=302;MPOS=38;POPAF=7.30;SAAF=0.990;SAPP=0.049	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:4150,0:0.00:4150:PASS:.,.:.,.:-3.625e+00	0/1:25,3359:0.996:3384:PASS:10,29:60,60:12882.44	0:3808,8:1.865e-03:3816:t_lod:28,28:60,60:1.92
+MT	567	.	A	C,AC	.	.	CONTQ=93.00;DP=17598;MFRL=333;MPOS=28;POPAF=7.30;SAAF=0.017;SAPP=6.855e-07	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6418,0,0:0.00,0.00:6418:PASS:.,.,.:.,.,.:3.75,3.75	0:4403,75,2:3.228e-04,2.656e-04:4480:base_quality;t_lod:27,6,21:60,60,60:-3.018e+00,-3.097e+00	0/1/2:6423,0,0:0.00,0.00:6423:PASS:.,.,.:.,.,.:8.94,8.94
+MT	606	.	A	G	.	.	CONTQ=93.00;DP=19175;MFRL=303;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.033	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6758,0:0.00:6758:.,.:.,.:-3.371e+00	0/1:12,5486:0.998:5498:29,29:60,60:17697.32	0:6815,0:0.00:6815:.,.:.,.:-3.366e+00
+MT	750	.	A	G	.	.	CONTQ=93.00;DP=20612;MFRL=343;MPOS=22;POPAF=7.30;SAAF=0.990;SAPP=0.028	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:8,6621:1.00:6629:12,28:60,60:20901.35	1:4,6832:1.00:6843:6,29:60,60:22083.78	1:9,6576:1.00:6585:12,28:60,60:20681.99
+MT	1438	.	A	G	.	.	CONTQ=93.00;DP=20309;MFRL=283;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.027	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:4,6561:1.00:6565:11,28:60,60:21123.79	1:0,6713:1.00:6713:0,29:0,60:22026.44	1:2,6492:1.00:6494:15,28:60,60:20686.62
+MT	2259	.	C	T	.	.	CONTQ=93.00;DP=21127;MFRL=341;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.089	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:23,6545:0.999:6568:6,29:60,60:21385.76	0:7244,0:0.00:7244:.,.:.,.:-3.309e+00	0/1:7153,0:0.00:7153:.,.:.,.:6.45
+MT	2352	.	T	C	.	.	CONTQ=93.00;DP=20966;MFRL=338;MPOS=27;POPAF=7.30;SAAF=0.990;SAPP=0.028	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7074,0:0.00:7074:.,.:.,.:-1.127e+00	0:7198,0:0.00:7198:.,.:.,.:-2.324e+00	0/1:26,6505:0.996:6542:28,28:60,60:20632.13
+MT	2623	.	A	G	.	.	CONTQ=93.00;DP=21241;MFRL=345;MPOS=36;POPAF=7.30;SAAF=0.232;SAPP=2.897e-03	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7110,0:0.00:7110:.,.:.,.:-3.425e+00	0/1:5263,1593:0.231:6856:29,29:60,60:3538.80	0:7084,0:0.00:7084:.,.:.,.:-3.459e+00
+MT	2706	.	A	G	.	.	CONTQ=93.00;DP=21343;MFRL=309;MPOS=36;POPAF=7.30;SAAF=0.990;SAPP=0.027	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7260,0:0.00:7260:.,.:.,.:0.697	0:7325,0:0.00:7325:.,.:.,.:-3.313e+00	0/1:26,6559:0.996:6585:29,28:60,60:20727.39
+MT	3010	.	G	A	.	.	CONTQ=93.00;DP=21159;MFRL=321;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.026	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7064,0:0.00:7064:.,.:.,.:-3.479e+00	1:21,6794:0.999:6815:23,29:60,60:22336.57	0:7161,0:0.00:7161:.,.:.,.:-3.840e+00
+MT	4713	.	G	A	.	.	CONTQ=93.00;DP=709;MFRL=365;MPOS=68;POPAF=7.30;SAAF=0.045;SAPP=0.345	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0|1:42,2:0.064:44:t_lod:23,28:60,59:4.65	0:90,0:0.00:90:PASS:.,.:.,.:-1.988e+00	0:583,0:0.00:583:PASS:.,.:.,.:-2.771e+00
+MT	4720	.	G	A	.	.	CONTQ=93.00;DP=745;MFRL=365;MPOS=61;POPAF=7.30;SAAF=0.040;SAPP=0.290	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0|1:43,2:0.063:45:t_lod:28,28:60,59:4.63	0:102,0:0.00:102:PASS:.,.:.,.:-1.970e+00	0:602,0:0.00:602:PASS:.,.:.,.:-2.716e+00
+MT	4745	.	A	G	.	.	CONTQ=93.00;DP=802;MFRL=365;MPOS=36;POPAF=7.30;SAAF=0.980;SAPP=0.028	GT:AD:AF:DP:MBQ:MMQ:TLOD	0/1:1,49:0.960:50:13,27:60,60:139.11	0:109,0:0.00:109:.,.:.,.:-2.046e+00	0:643,0:0.00:643:.,.:.,.:-2.315e+00
+MT	4769	.	A	G	.	.	CONTQ=93.00;DP=1621;MFRL=355;MPOS=30;POPAF=7.30;SAAF=0.798;SAPP=0.073	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0/1:55,231:0.805:287:PASS:11,27:60,60:643.99	0:37,0:0.013:48:base_quality;t_lod:10,0:60,0:-1.597e+00	0/1:22,753:0.991:786:PASS:11,28:60,40:2232.86
+MT	4781	.	A	G	.	.	CONTQ=93.00;DP=3093;MFRL=338;MPOS=8;POPAF=7.30;SAAF=0.990;SAPP=0.030	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:781,0:1.220e-03:783:base_quality;t_lod:29,0:60,0:-2.613e+00	0/1:1,854:0.997:855:PASS:23,29:60,60:2717.22	0:1281,0:0.00:1281:PASS:.,.:.,.:-2.668e+00
+MT	5460	.	G	A	.	.	CONTQ=93.00;DP=20580;MFRL=351;MPOS=11;POPAF=7.30;SAAF=0.990;SAPP=0.044	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6875,0:0.00:6875:.,.:.,.:-6.620e-01	1:18,6570:0.999:6644:24,29:60,60:20738.61	0:6947,0:0.00:6947:.,.:.,.:-3.424e+00
+MT	6233	.	A	C,T	.	.	CONTQ=93.00;DP=19827;MFRL=347;MPOS=33;POPAF=7.30;SAAF=0.018;SAPP=2.440e-11	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6748,0,0:0.00,0.00:6748:PASS:.,.,.:.,.,.:-9.936e-01,-9.936e-01	0/1/2:6814,0,0:0.00,0.00:6814:PASS:.,.,.:.,.,.:4.75,4.75	0:6003,112,16:5.447e-04,1.927e-04:6131:base_quality;t_lod:28,8,12:60,60,60:-2.702e+00,-3.237e+00
+MT	6261	.	G	A	.	.	CONTQ=93.00;DP=21109;MFRL=327;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.031	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7120,0:0.00:7120:.,.:.,.:-3.289e+00	0:7230,0:0.00:7230:.,.:.,.:-3.826e+00	0/1:52,6501:0.995:6553:28,28:60,60:20220.84
+MT	7028	.	C	T	.	.	CONTQ=93.00;DP=7817;MFRL=339;MPOS=27;POPAF=7.30;SAAF=0.990;SAPP=0.051	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:2592,0:0.00:2592:.,.:.,.:-2.314e+00	0:2640,0:0.00:2640:.,.:.,.:-1.771e+00	0/1:17,2479:0.996:2496:23,28:60,60:7889.61
+MT	7337	.	G	A	.	.	CONTQ=93.00;DP=9211;MFRL=328;MPOS=34;POPAF=7.30;SAAF=0.990;SAPP=0.047	GT:AD:AF:DP:MBQ:MMQ:TLOD	0/1:8,2765:0.998:2773:21,29:60,60:9139.52	0:3213,0:0.00:3213:.,.:.,.:-1.830e+00	0:3135,0:0.00:3135:.,.:.,.:-1.794e+00
+MT	8512	.	A	G	.	.	CONTQ=93.00;DP=20327;MFRL=328;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.128	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6877,0:0.00:6877:.,.:.,.:-2.984e+00	1:28,6317:0.999:6345:12,29:60,60:20226.39	0:6943,0:0.00:6943:.,.:.,.:-3.691e+00
+MT	8701	.	A	G	.	.	CONTQ=93.00;DP=17960;MFRL=345;MPOS=43;POPAF=7.30;SAAF=0.986;SAPP=0.112	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7152,0:0.00:7152:.,.:.,.:-3.831e+00	0:7179,0:0.00:7179:.,.:.,.:-3.832e+00	0/1:55,3893:0.989:3955:28,28:60,60:12367.69
+MT	8860	.	A	G	.	.	CONTQ=93.00;DP=554;MFRL=362;MPOS=6;POPAF=7.30;SAAF=0.990;SAPP=0.042	GT:AD:AF:DP:MBQ:MMQ:TLOD	0/1:3,29:0.917:32:9,25:60,60:71.64	0:6,0:0.00:6:.,.:.,.:3.76	0/1:1,512:0.996:513:2,24:58,39:1416.29
+MT	8975	.	T	C	.	.	CONTQ=93.00;DP=9975;MFRL=282;MPOS=32;POPAF=7.30;SAAF=0.990;SAPP=0.031	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:3237,0:0.00:3237:.,.:.,.:-3.456e+00	1:2,3139:0.999:3141:30,29:60,60:10374.49	0:3530,0:0.00:3530:.,.:.,.:-3.500e+00
+MT	8999	.	T	C	.	.	CONTQ=93.00;DP=12901;MFRL=334;MPOS=46;POPAF=7.30;SAAF=0.990;SAPP=0.050	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:4438,0:0.00:4438:PASS:.,.:.,.:-3.474e+00	0:4149,3:3.460e-04:4152:t_lod:29,21:60,60:-3.139e+00	0/1:23,4118:0.995:4141:PASS:28,28:60,60:13169.63
+MT	9540	.	T	C	.	.	CONTQ=93.00;DP=20550;MFRL=336;MPOS=36;POPAF=7.30;SAAF=0.990;SAPP=0.033	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7013,0:0.00:7013:.,.:.,.:-2.479e+00	0:7133,0:0.00:7133:.,.:.,.:-1.590e+00	0/1:24,6216:0.997:6240:26,28:60,60:19328.71
+MT	10398	.	A	G	.	.	CONTQ=93.00;DP=20992;MFRL=341;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.024	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7079,0:0.00:7079:.,.:.,.:2.22	0:7250,0:0.00:7250:.,.:.,.:-1.940e+00	0/1:25,6442:0.997:6467:28,28:60,60:20309.55
+MT	10819	.	A	G	.	.	CONTQ=93.00;DP=20274;MFRL=293;MPOS=39;POPAF=7.30;SAAF=0.990;SAPP=0.035	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7211,0:0.00:7211:.,.:.,.:-2.374e+00	0:7237,0:0.00:7237:.,.:.,.:-1.747e+00	0/1:24,5668:0.997:5692:28,29:60,60:18243.78
+MT	10873	.	T	C	.	.	CONTQ=93.00;DP=18693;MFRL=334;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.037	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7122,0:0.00:7122:.,.:.,.:-2.765e+00	0:7207,0:0.00:7207:.,.:.,.:-1.736e+00	0/1:14,4236:0.997:4255:28,29:60,60:13773.30
+MT	11719	.	G	A	.	.	CONTQ=93.00;DP=19802;MFRL=340;MPOS=25;POPAF=7.30;SAAF=0.990;SAPP=0.033	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6983,0:0.00:6983:.,.:.,.:0.595	0:7082,0:0.00:7082:.,.:.,.:0.164	0/1:44,5475:0.995:5569:26,28:60,60:17026.83
+MT	12684	.	G	A	.	.	CONTQ=93.00;DP=20874;MFRL=280;MPOS=21;POPAF=7.30;SAAF=0.010;SAPP=3.248e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7071,0:0.00:7071:PASS:.,.:.,.:-3.395e+00	0/1:7148,0:0.00:7148:PASS:.,.:.,.:5.14	0:6451,16:1.466e-03:6467:t_lod:28,28:60,60:0.415
+MT	12705	.	C	T	.	.	CONTQ=93.00;DP=21073;MFRL=303;MPOS=36;POPAF=7.30;SAAF=0.990;SAPP=0.052	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7145,0:0.00:7145:.,.:.,.:-1.948e+00	0/1:7260,0:0.00:7260:.,.:.,.:6.03	0/1:31,6466:0.997:6497:28,29:60,60:20935.18
+MT	13015	.	T	C	.	.	CONTQ=93.00;DP=20572;MFRL=344;MPOS=19;POPAF=7.30;SAAF=0.990;SAPP=0.032	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7027,0:0.00:7027:PASS:.,.:.,.:-2.419e+00	0:6607,22:1.519e-04:6629:base_quality;t_lod:29,7:60,60:-3.517e+00	0/1:44,6499:0.994:6543:PASS:28,28:60,60:20404.45
+MT	13020	.	T	C	.	.	CONTQ=93.00;DP=20441;MFRL=342;MPOS=13;POPAF=7.30;SAAF=0.990;SAPP=0.024	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6938,0:0.00:6938:PASS:.,.:.,.:-2.548e+00	0/1:22,6625:0.998:6647:PASS:28,29:60,60:21958.04	0:6407,17:2.483e-04:6431:base_quality;t_lod:28,6:60,60:-3.109e+00
+MT	13326	.	T	C	.	.	CONTQ=93.00;DP=21087;MFRL=300;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.037	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:11,6649:0.999:6660:27,29:60,60:21618.17	0:7245,0:0.00:7245:.,.:.,.:-3.830e+00	0:7151,0:0.00:7151:.,.:.,.:1.56
+MT	13680	.	C	T	.	.	CONTQ=93.00;DP=20937;MFRL=325;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.035	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:27,6444:0.999:6471:8,29:60,60:20735.68	0:7237,0:0.00:7237:.,.:.,.:-1.671e+00	0:7103,0:0.00:7103:.,.:.,.:1.05
+MT	13779	.	A	C	.	.	CONTQ=93.00;DP=15745;MFRL=334;MPOS=19;POPAF=7.30;SAAF=0.010;SAPP=4.858e-03	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0/1:6044,0:0.00:6044:PASS:.,.:.,.:5.07	0:4732,42:2.181e-04:4774:base_quality;t_lod:28,8:60,60:-3.361e+00	0:4590,38:2.922e-04:4628:base_quality;t_lod:28,7:60,60:-3.236e+00
+MT	13787	.	T	C	.	.	CONTQ=93.00;DP=15649;MFRL=330;MPOS=35;POPAF=7.30;SAAF=0.011;SAPP=1.384e-17	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0/1:5858,0:0.00:5858:PASS:.,.:.,.:6.27	0:4790,53:2.258e-04:4843:base_quality;t_lod:28,4:60,60:-3.347e+00	0:4538,73:3.368e-04:4611:base_quality;t_lod:28,5:60,60:-3.191e+00
+MT	14212	.	T	C	.	.	CONTQ=93.00;DP=20581;MFRL=326;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.026	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7037,0:0.00:7037:.,.:.,.:0.614	0:7131,0:0.00:7131:.,.:.,.:-2.898e+00	0/1:28,6218:0.996:6246:28,28:60,60:20182.27
+MT	14766	.	C	T	.	.	CONTQ=93.00;DP=20664;MFRL=331;MPOS=36;POPAF=7.30;SAAF=0.990;SAPP=0.033	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6994,0:0.00:6994:.,.:.,.:0.095	0:7148,0:0.00:7148:.,.:.,.:-2.900e+00	0/1:55,6273:0.996:6328:12,28:60,60:19301.26
+MT	14831	.	G	A	.	.	CONTQ=93.00;DP=20327;MFRL=325;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.032	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:20,6227:0.999:6247:22,28:60,60:20236.29	0:7016,0:0.00:7016:.,.:.,.:-3.021e+00	0/1:6886,0:0.00:6886:.,.:.,.:8.27
+MT	14872	.	C	T	.	.	CONTQ=93.00;DP=20224;MFRL=325;MPOS=18;POPAF=7.30;SAAF=0.990;SAPP=0.026	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0/1:48,6187:0.998:6235:PASS:8,28:60,60:18990.33	0:7234,0:0.00:7234:PASS:.,.:.,.:-2.523e+00	0:6407,17:2.086e-03:6424:t_lod:28,27:60,60:2.12
+MT	14902	.	C	T	.	.	CONTQ=93.00;DP=20694;MFRL=247;MPOS=37;POPAF=7.30;SAAF=0.990;SAPP=0.049	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7115,0:0.00:7115:.,.:.,.:-3.819e+00	0/1:36,6778:0.995:6814:29,30:60,60:22595.90	0:6650,0:0.00:6650:.,.:.,.:-3.388e+00
+MT	14905	.	G	A	.	.	CONTQ=93.00;DP=20572;MFRL=336;MPOS=15;POPAF=7.30;SAAF=0.990;SAPP=0.033	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7055,0:0.00:7055:.,.:.,.:-3.324e+00	0:6829,0:0.00:6829:.,.:.,.:-3.450e+00	0/1:48,6415:0.995:6502:28,29:60,60:20506.80
+MT	15301	.	G	A	.	.	CONTQ=93.00;DP=19570;MFRL=324;MPOS=17;POPAF=7.30;SAAF=0.990;SAPP=0.083	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6435,0:0.00:6435:PASS:.,.:.,.:-2.709e+00	0:6626,7:4.128e-04:6648:t_lod:29,28:60,60:-2.786e+00	0/1:32,6030:0.996:6062:PASS:28,28:60,60:18678.39
+MT	15326	.	A	G	.	.	CONTQ=93.00;DP=19858;MFRL=337;MPOS=36;POPAF=7.30;SAAF=0.990;SAPP=0.027	GT:AD:AF:DP:MBQ:MMQ:TLOD	1:4,6480:1.00:6484:8,28:60,60:20614.51	1:1,6693:1.00:6694:14,29:60,60:21768.93	1:0,6240:1.00:6240:0,28:0,60:26024.92
+MT	16023	.	G	A	.	.	CONTQ=93.00;DP=20904;MFRL=332;MPOS=36;POPAF=7.30;SAAF=0.091;SAPP=3.991e-03	GT:AD:AF:DP:MBQ:MMQ:TLOD	0/1:5927,598:0.089:6525:28,29:60,60:1061.12	0:7226,0:0.00:7226:.,.:.,.:-3.845e+00	0:6994,0:0.00:6994:.,.:.,.:-9.394e-01
+MT	16129	.	G	A	.	.	CONTQ=93.00;DP=18196;MFRL=311;MPOS=73;POPAF=7.30;SAAF=0.010;SAPP=2.576e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7034,0:0.00:7034:PASS:.,.:.,.:0.987	0/1:7172,0:0.00:7172:PASS:.,.:.,.:5.77	0:3883,3:3.313e-04:3886:t_lod:27,28:60,60:-3.166e+00
+MT	16172	.	T	C	.	.	CONTQ=93.00;DP=16470;MFRL=327;MPOS=23;POPAF=7.30;SAAF=0.960;SAPP=5.313e-03	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6357,0:1.556e-04:6366:base_quality;t_lod:28,0:60,0:-3.507e+00	0:7162,0:0.00:7162:PASS:.,.:.,.:-3.127e+00	0/1:43,2590:0.984:2633:PASS:28,28:60,60:10723.90
+MT	16179	.	CAA	CA,C	.	.	CONTQ=93.00;DP=16023;MFRL=326;MPOS=32;POPAF=7.30;SAAF=0.030;SAPP=4.425e-03	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6421,0,0:0.00,0.00:6421:.,.,.:.,.,.:-3.808e+00,-3.808e+00	0:7192,0,0:0.00,0.00:7192:.,.,.:.,.,.:-3.802e+00,-3.802e+00	0/1/2:1545,55,182:0.027,0.020:1782:27,27,25:60,60,60:39.06,7.92
+MT	16182	.	A	AC,ACC	.	.	CONTQ=93.00;DP=15891;MFRL=327;MPOS=27;POPAF=7.30;SAAF=0.556;SAPP=0.229	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6421,0,0:0.00,0.00:6421:PASS:.,.,.:.,.,.:-3.808e+00,-3.808e+00	0:7192,0,0:0.00,0.00:7192:PASS:.,.,.:.,.,.:-3.802e+00,-3.802e+00	0/1/2:638,805,136:0.473,0.087:1658:base_quality:20,15,14:60,60,60:936.86,159.49
+MT	16183	.	A	C,ACCC	.	.	CONTQ=93.00;DP=15950;MFRL=325;MPOS=12;POPAF=7.30;SAAF=0.828;SAPP=2.352e-06	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6179,202,0:6.822e-04,1.590e-04:6390:base_quality;t_lod:28,5,0:60,60,0:-2.593e+00,-3.322e+00	0:7018,0,0:0.00,0.00:7018:PASS:.,.,.:.,.,.:1.70,1.70	0/1/2:98,1487,185:0.925,0.022:1771:PASS:24,28,14:60,60,60:3477.78,9.03
+MT	16189	.	T	C,A	.	.	CONTQ=93.00;DP=15748;MFRL=293;MPOS=15;POPAF=7.30;SAAF=0.980;SAPP=6.039e-04	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6408,0,0:0.00,0.00:6408:.,.,.:.,.,.:-3.806e+00,-3.806e+00	0/1/2:7076,0,0:0.00,0.00:7076:.,.,.:.,.,.:7.91,7.91	0/1:37,2227,2:0.982,1.027e-03:2266:27,28,29:60,60,60:7129.46,-1.455e+00
+MT	16192	.	C	T	.	.	CONTQ=93.00;DP=15761;MFRL=333;MPOS=42;POPAF=7.30;SAAF=0.010;SAPP=5.393e-04	GT:AD:AF:DP:MBQ:MMQ:TLOD	0/1:6371,42:5.593e-03:6413:28,28:60,60:21.96	0:7188,0:0.00:7188:.,.:.,.:-3.849e+00	0:2055,0:0.00:2055:.,.:.,.:-3.344e+00
+MT	16209	.	T	C	.	.	CONTQ=93.00;DP=15828;MFRL=255;MPOS=52;POPAF=7.30;SAAF=0.010;SAPP=0.182	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6372,0:0.00:6372:PASS:.,.:.,.:-3.797e+00	0:7196,0:0.00:7196:PASS:.,.:.,.:-3.838e+00	0|1:2355,6:2.890e-03:2361:t_lod:29,29:60,60:5.60
+MT	16218	.	C	T	.	.	CONTQ=93.00;DP=16016;MFRL=257;MPOS=23;POPAF=7.30;SAAF=4.032e-04;SAPP=2.417e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6372,0:0.00:6372:PASS:.,.:.,.:-3.797e+00	0/1:7188,0:0.00:7188:PASS:.,.:.,.:6.35	0:2479,1:7.835e-04:2480:t_lod:28,31:60,60:-1.968e+00
+MT	16223	.	C	T	.	.	CONTQ=93.00;DP=16207;MFRL=278;MPOS=23;POPAF=7.30;SAAF=0.980;SAPP=0.058	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:6248,7:4.767e-04:6267:t_lod:28,28:60,60:-2.635e+00	0:7196,0:0.00:7196:PASS:.,.:.,.:-1.895e+00	0/1:40,2481:0.989:2521:PASS:27,28:60,60:8024.53
+MT	16230	.	A	G	.	.	CONTQ=93.00;DP=16918;MFRL=257;MPOS=39;POPAF=7.30;SAAF=0.010;SAPP=2.231e-03	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7036,0:0.00:7036:.,.:.,.:-3.349e+00	0/1:7148,0:0.00:7148:.,.:.,.:4.69	0/1:2727,7:2.894e-03:2734:28,28:60,60:8.05
+MT	16234	.	C	T	.	.	CONTQ=93.00;DP=16967;MFRL=255;MPOS=36;POPAF=7.30;SAAF=0.010;SAPP=3.346e-03	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7046,0:0.00:7046:PASS:.,.:.,.:-2.883e+00	0:7167,0:0.00:7167:PASS:.,.:.,.:-3.797e+00	0|1:2734,6:2.520e-03:2740:t_lod:28,29:60,60:6.13
+MT	16249	.	T	C	.	.	CONTQ=93.00;DP=16865;MFRL=257;MPOS=52;POPAF=7.30;SAAF=0.010;SAPP=7.463e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7020,0:0.00:7020:PASS:.,.:.,.:-5.779e-01	0|1:6695,13:2.056e-03:6708:PASS:29,29:60,60:15.12	0:3136,1:6.167e-04:3137:t_lod:28,30:60,60:-2.164e+00
+MT	16257	.	C	CA	.	.	CONTQ=93.00;DP=16979;MFRL=257;MPOS=46;POPAF=7.30;SAAF=0.010;SAPP=8.097e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7026,0:0.00:7026:PASS:.,.:.,.:-3.754e+00	0|1:6690,13:2.057e-03:6703:PASS:29,29:60,60:15.12	0:3341,1:5.777e-04:3342:t_lod:28,30:60,60:-2.218e+00
+MT	16263	.	TC	T	.	.	CONTQ=93.00;DP=17341;MFRL=257;MPOS=40;POPAF=7.30;SAAF=0.010;SAPP=5.677e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7089,0:0.00:7089:PASS:.,.:.,.:-3.495e+00	0|1:6767,12:1.887e-03:6779:PASS:29,29:60,60:13.27	0:3582,1:5.376e-04:3583:t_lod:28,30:60,60:-2.276e+00
+MT	16274	.	G	A	.	.	CONTQ=93.00;DP=17657;MFRL=313;MPOS=29;POPAF=7.30;SAAF=0.010;SAPP=5.707e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7058,0:0.00:7058:PASS:.,.:.,.:-3.747e+00	0/1:6543,20:2.132e-03:6563:PASS:29,28:60,60:15.33	0:3894,1:4.930e-04:3895:t_lod:28,29:60,60:-2.346e+00
+MT	16278	.	C	T	.	.	CONTQ=93.00;DP=17888;MFRL=323;MPOS=17;POPAF=7.30;SAAF=0.990;SAPP=0.243	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7097,0:0.00:7097:PASS:.,.:.,.:-2.756e+00	1:32,6544:0.999:6576:PASS:5,29:60,60:21115.99	0:3914,1:4.787e-04:3918:t_lod:28,28:60,60:-2.193e+00
+MT	16284	.	A	G	.	.	CONTQ=93.00;DP=18075;MFRL=257;MPOS=20;POPAF=7.30;SAAF=0.010;SAPP=8.989e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7130,0:0.00:7130:PASS:.,.:.,.:-3.750e+00	0/1:6518,13:2.041e-03:6571:PASS:29,28:60,60:15.25	0:4217,1:4.538e-04:4218:base_quality;t_lod:28,19:60,60:-2.412e+00
+MT	16288	.	T	C	.	.	CONTQ=93.00;DP=18200;MFRL=257;MPOS=17;POPAF=7.30;SAAF=0.010;SAPP=4.085e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7122,0:0.00:7122:PASS:.,.:.,.:-3.339e+00	0|1:6730,13:2.045e-03:6743:PASS:29,28:60,60:15.08	0:4344,1:4.400e-04:4345:t_lod:28,29:60,60:-2.437e+00
+MT	16290	.	C	T	.	.	CONTQ=93.00;DP=18239;MFRL=257;MPOS=15;POPAF=7.30;SAAF=0.010;SAPP=4.075e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7104,0:0.00:7104:PASS:.,.:.,.:-3.735e+00	0|1:6723,13:2.047e-03:6736:PASS:29,27:60,60:15.09	0:4413,1:4.328e-04:4414:t_lod:28,25:60,60:-2.450e+00
+MT	16293	.	A	T,C	.	.	CONTQ=93.00;DP=18311;MFRL=322;MPOS=17;POPAF=7.30;SAAF=0.990;SAPP=0.111	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7103,0,0:0.00,0.00:7103:PASS:.,.,.:.,.,.:-1.803e+00,-1.803e+00	0/2:6483,3,48:1.762e-04,2.353e-03:6534:base_quality:29,10,9:60,60,60:-3.273e+00,15.29	0/1:24,4372,1:0.995,4.252e-04:4397:PASS:29,28,29:60,60,60:14070.36,-2.288e+00
+MT	16301	.	C	T	.	.	CONTQ=93.00;DP=18429;MFRL=257;MPOS=19;POPAF=7.30;SAAF=0.010;SAPP=4.572e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7051,0:0.00:7051:PASS:.,.:.,.:-2.855e+00	0|1:6676,13:1.915e-03:6689:PASS:29,29:60,60:13.35	0:4699,1:4.053e-04:4700:t_lod:28,30:60,60:-2.502e+00
+MT	16311	.	T	C	.	.	CONTQ=93.00;DP=18651;MFRL=254;MPOS=20;POPAF=7.30;SAAF=0.010;SAPP=3.720e-04	GT:AD:AF:DP:FT:MBQ:MMQ:TLOD	0:7055,0:0.00:7055:PASS:.,.:.,.:-3.438e+00	0/1:6463,10:1.492e-03:6479:PASS:29,28:60,60:8.45	0:4934,1:3.851e-04:4935:t_lod:29,29:60,60:-2.543e+00
+MT	16320	.	C	T	.	.	CONTQ=93.00;DP=19463;MFRL=311;MPOS=39;POPAF=7.30;SAAF=0.990;SAPP=0.047	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:7076,0:0.00:7076:.,.:.,.:-3.445e+00	0:7167,0:0.00:7167:.,.:.,.:-3.687e+00	0/1:32,5073:0.995:5105:28,28:60,60:16350.64
+MT	16519	.	T	C	.	.	CONTQ=93.00;DP=14433;MFRL=462;MPOS=26;POPAF=7.30;SAAF=0.990;SAPP=0.030	GT:AD:AF:DP:MBQ:MMQ:TLOD	0:6270,0:0.00:6270:.,.:.,.:1.94	0/1:4,2478:0.998:2482:28,29:60,60:8041.94	0/1:25,5459:0.996:5484:27,28:60,60:17429.14
