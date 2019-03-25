@@ -250,7 +250,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCF_BLOCK));
 
-        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
+        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(keepCombined));
         headerLines.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
 
         // add headers for annotations added by this tool
@@ -258,6 +258,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));   // needed for gVCFs without DP tags
+        if (keepCombined) {
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_QUAL_KEY));
+        }
         if ( dbsnp.dbsnp != null  ) {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
         }

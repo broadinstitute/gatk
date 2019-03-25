@@ -121,12 +121,17 @@ public final class VariantAnnotatorEngine {
      * Returns the set of descriptions to be added to the VCFHeader line (for all annotations in this engine).
      * @param useRaw Whether to prefer reducible annotation raw key descriptions over their normal descriptions
      */
-    public Set<VCFHeaderLine> getVCFAnnotationDescriptions(boolean useRaw) {
+    public Set<VCFHeaderLine> getVCFAnnotationDescriptions(final boolean useRaw) {
         final Set<VCFHeaderLine> descriptions = new LinkedHashSet<>();
 
         for ( final InfoFieldAnnotation annotation : infoAnnotations) {
-            if (annotation instanceof ReducibleAnnotation && useRaw) {
-                descriptions.addAll(((ReducibleAnnotation)annotation).getRawDescriptions());
+            if (annotation instanceof ReducibleAnnotation) {
+                if (useRaw || keepRawCombinedAnnotations) {
+                    descriptions.addAll(((ReducibleAnnotation) annotation).getRawDescriptions());
+                }
+                if (!useRaw) {
+                    descriptions.addAll(annotation.getDescriptions());
+                }
             } else {
                 descriptions.addAll(annotation.getDescriptions());
             }
