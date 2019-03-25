@@ -36,7 +36,7 @@ public class M2FiltersArgumentCollection {
     public double initialPosteriorThreshold = DEFAULT_INITIAL_POSTERIOR_THRESHOLD;
 
     /**
-     * Mitochondria mode includes the filters {@link LogOddsOverDepthFilter} and {@link ChimericOriginalAlignmentFilter}
+     * Mitochondria mode includes the filter{@link ChimericOriginalAlignmentFilter}
      * and excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter}, {@link PolymeraseSlippageFilter},
      * {@link FilteredHaplotypeFilter}, and {@link GermlineFilter}
      */
@@ -67,7 +67,6 @@ public class M2FiltersArgumentCollection {
     private static final int DEFAULT_MAX_MEDIAN_FRAGMENT_LENGTH_DIFFERENCE = 10000;
     private static final int DEFAULT_MIN_MEDIAN_READ_POSITION = 1;
     private static final double DEFAULT_MAX_N_RATIO = Double.POSITIVE_INFINITY;
-    private static final double DEFAULT_MIN_LOG_10_ODDS_DIVIDED_BY_DEPTH = 0.0035;
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
     private static final double DEFAULT_MAX_NUMT_FRACTION = 0.85;
 
@@ -94,9 +93,6 @@ public class M2FiltersArgumentCollection {
 
     @Argument(fullName = MAX_N_RATIO_LONG_NAME, optional = true, doc = "Maximum fraction of non-ref bases in the pileup that are N (unknown)")
     public double nRatio = DEFAULT_MAX_N_RATIO;
-
-    @Argument(fullName = MIN_LOG_10_ODDS_DIVIDED_BY_DEPTH, doc="Minimum log10 odds divided by depth", optional = true)
-    public double minLog10OddsDividedByDepth = DEFAULT_MIN_LOG_10_ODDS_DIVIDED_BY_DEPTH;
 
     @Argument(fullName = MIN_READS_ON_EACH_STRAND_LONG_NAME, optional = true, doc = "Minimum alt reads required on both forward and reverse strands")
     public int minReadsOnEachStrand = DEFAULT_MIN_READS_ON_EACH_STRAND;
@@ -138,6 +134,10 @@ public class M2FiltersArgumentCollection {
 
     private static final double DEFAULT_LOG_10_PRIOR_OF_SNV = -6.0;
     private static final double DEFAULT_LOG_10_PRIOR_OF_INDEL = -7.0;
+    // Mitochondria defaults from a back of the envelope calculation. This assumes ~3 indels and ~50 snps in the 16kb
+    // mitochondria, which is a reasonable assumption for some haplogroups.
+    private static final double DEFAULT_LOG_10_PRIOR_OF_SNV_FOR_MITO = -2.5;
+    private static final double DEFAULT_LOG_10_PRIOR_OF_INDEL_FOR_MITO = -3.75;
     private static final double DEFAULT_INITIAL_LOG_10_PRIOR_OF_VARIANT_VERSUS_ARTIFACT = -1;
     private static final double DEFAULT_NORMAL_P_VALUE_THRESHOLD = 0.001;
     private static final int DEFAULT_MIN_SLIPPAGE_LENGTH = 8;
@@ -148,8 +148,16 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName= LOG_10_PRIOR_OF_SNV_LONG_NAME, doc="Log10 prior probability that a site has a somatic SNV", optional = true)
     public double log10SNVPrior = DEFAULT_LOG_10_PRIOR_OF_SNV;
 
+    public double getLog10PriorOfSnv() {
+        return mitochondria && log10SNVPrior == DEFAULT_LOG_10_PRIOR_OF_SNV ? DEFAULT_LOG_10_PRIOR_OF_SNV_FOR_MITO : log10SNVPrior;
+    }
+
     @Argument(fullName= LOG_10_PRIOR_OF_INDEL_LONG_NAME, doc="Log10 prior probability that a site has a somatic indel", optional = true)
     public double log10IndelPrior = DEFAULT_LOG_10_PRIOR_OF_INDEL;
+
+    public double getLog10PriorOfIndel() {
+        return mitochondria && log10IndelPrior == DEFAULT_LOG_10_PRIOR_OF_INDEL ? DEFAULT_LOG_10_PRIOR_OF_INDEL_FOR_MITO : log10IndelPrior;
+    }
 
     @Argument(fullName= INITIAL_LOG_10_PRIOR_OF_ARTIFACT_VERSUS_VARIANT_LONG_NAME, doc="Initial guess for log10 prior probability that a called site is not a technical artifact", optional = true)
     public double initialLog10PriorOfVariantVersusArtifact = DEFAULT_INITIAL_LOG_10_PRIOR_OF_VARIANT_VERSUS_ARTIFACT;
@@ -162,7 +170,6 @@ public class M2FiltersArgumentCollection {
 
     @Argument(fullName = PCR_SLIPPAGE_RATE_LONG_NAME, optional = true, doc = "The frequency of polymerase slippage in contexts where it is suspected")
     public double slippageRate = DEFAULT_SLIPPAGE_RATE;
-
 
     @Argument(fullName = MAX_DISTANCE_TO_FILTERED_CALL_ON_SAME_HAPLOTYPE_LONG_NAME, optional = true, doc = "On second filtering pass, variants with same PGT and PID tags as a filtered variant within this distance are filtered.")
     public int maxDistanceToFilteredCallOnSameHaplotype = DEFAULT_MAX_INTRA_HAPLOTYPE_DISTANCE;

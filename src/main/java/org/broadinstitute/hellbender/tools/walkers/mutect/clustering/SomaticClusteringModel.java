@@ -62,8 +62,8 @@ public class SomaticClusteringModel {
     private boolean firstPass = true;
 
     public SomaticClusteringModel(final M2FiltersArgumentCollection MTFAC, final List<MutectStats> mutectStats) {
-        IntStream.range(-MAX_INDEL_SIZE_IN_PRIOR_MAP, MAX_INDEL_SIZE_IN_PRIOR_MAP + 1).forEach(n -> log10VariantPriors.put(n, MTFAC.log10IndelPrior));
-        log10VariantPriors.put(0, MTFAC.log10SNVPrior);
+        IntStream.range(-MAX_INDEL_SIZE_IN_PRIOR_MAP, MAX_INDEL_SIZE_IN_PRIOR_MAP + 1).forEach(n -> log10VariantPriors.put(n, MTFAC.getLog10PriorOfIndel()));
+        log10VariantPriors.put(0, MTFAC.getLog10PriorOfSnv());
 
         log10VariantVsArtifactPrior = MTFAC.initialLog10PriorOfVariantVersusArtifact;
         callableSites = mutectStats.stream().filter(stat -> stat.getStatistic().equals(Mutect2Engine.CALLABLE_SITES_NAME))

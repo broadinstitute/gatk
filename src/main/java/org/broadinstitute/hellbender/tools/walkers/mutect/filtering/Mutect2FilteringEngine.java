@@ -208,7 +208,6 @@ public class Mutect2FilteringEngine {
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
 
         if (MTFAC.mitochondria) {
-            filters.add(new LogOddsOverDepthFilter(MTFAC.minLog10OddsDividedByDepth));
             filters.add(new ChimericOriginalAlignmentFilter(MTFAC.maxNuMTFraction));
         } else {
             filters.add(new ClusteredEventsFilter(MTFAC.maxEventsInRegion));
