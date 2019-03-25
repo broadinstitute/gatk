@@ -5,20 +5,6 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 
-# java -jar /seq/software/picard/current/bin/picard-private.jar UpdateVcfSequenceDictionary INPUT=/dsde/data/deep/vqsr/vcfs/nist_na12878_giab_hg38.vcf.gz OUTPUT=/dsde/data/deep/vqsr/vcfs/nist_na12878_giab_hg38_sd_fix.vcf SD=/dsde/data/deep/vqsr/vcfs/illumina_na12878_platinum_scored_chr2.vcf
-# ./gatk GenotypeConcordance --CALL_VCF=/dsde/data/deep/vqsr/vcfs/illumina_na12878_platinum_scored_chr20.vcf.gz --CALL_SAMPLE=NA12878 --TRUTH_VCF=/dsde/data/deep/vqsr/vcfs/nist_na12878_giab_hg38_sd_fix.vcf.gz --TRUTH_SAMPLE=HG001 --INTERVALS=/dsde/data/deep/vqsr/beds/HG001_NA12878_GRCh38_GIAB_highconf.interval_list --OUTPUT_VCF=true -O=na12878_hg38_chr20_concordance
-# ./gatk VariantsToTable -V /dsde/data/deep/vqsr/vcfs/illumina_na12878_platinum_scored_chr2.vcf.gz -F CHROM -F POS -F REF -F ALT -F FILTER -F G947_SITE_LABELLED_RRAB -F EVENTLENGTH -F AC -F MULTI-ALLELIC -F TRANSITION -F TYPE --show-filtered -O ~/Documents/illumin_chr2.table
-# ./gatk VariantsToTable -V na12878_hg38_chr2_concordance.genotype_concordance.vcf.gz -F CHROM -F POS -F REF -F ALT -F CONC_ST -O ~/Documents/illumina_chr2_truth.table
-# d <- read.table("illumina_chr2.table", header=TRUE)
-# dt <- read.table("illumina_chr2_truth.table", header=TRUE)
-#score_key <- "G947_SITE_LABELLED_RRAB"
-#d <- read.table("g947h_chr20.table", header=TRUE)
-#dt <- read.table("g947_chr20_truth.table", header=TRUE)
-# d <- read.table("g94982_chr20.table", header=TRUE)
-# dt <- read.table("g94982_chr20_truth.table", header=TRUE)
-# score_key <- "CNN_2D"
-# plot_title <- "yo"
-
 args = commandArgs(trailingOnly=TRUE)
 if (length(args) != 3) {
   stop("We need 3 arguments: call_vcf_table concordance_vcf_table score_key")
@@ -62,6 +48,8 @@ statusColor <- c("True Positive" = "springgreen3", "True Negative" = "aquamarine
 
 # All variant plots
 print("Make all variant plots.")
+
+# Plot histogram of scores separately for SNPs and INDELs.
 p1 <- ggplot(d, aes(get(score_key), color=SNP, fill=SNP)) + 
   scale_fill_discrete(name="Variant\nType", breaks=c("TRUE", "FALSE"), labels=c("SNPs", "INDELs")) +
   geom_density(alpha=0.55) +
@@ -69,6 +57,7 @@ p1 <- ggplot(d, aes(get(score_key), color=SNP, fill=SNP)) +
   xlab(score_label) +
   guides(color=FALSE)
 
+# Violin plot of scores stratified by event length, including all insertions and deletions.
 p2 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Truth_Status, shape=Variant_Type)) + 
   scale_color_manual(values=statusColor) +
   scale_shape_discrete(name='', breaks=c("INDEL TRUE", "INDEL FALSE", "SNP FALSE"), labels=c("Deletion", "Insertion", "SNP")) +
@@ -77,6 +66,7 @@ p2 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Tr
   ylab(score_label) + 
   xlab("Event Length: - Deletions, 0 SNPs, + Insertions")
 
+# Violin plot of scores stratified by event length, insertions and deletions smaller than 20 base pairs.
 p3 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Truth_Status)) + xlim(-20, 20) + 
   scale_color_manual(values=statusColor) +
   geom_jitter(height = 0, width = 0.1, alpha=0.4) + 
@@ -86,6 +76,7 @@ p3 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Tr
   ylab(score_label) + 
   xlab("Event Length: - Deletions, 0 SNPs, + Insertions")
 
+# Violin plot of scores stratified by event length, insertions and deletions smaller than 10 base pairs.
 p4 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Truth_Status)) + xlim(-10, 10) + 
   scale_color_manual(values=statusColor) +
   geom_jitter(height = 0, width = 0.2, alpha=0.4) + 
@@ -94,15 +85,16 @@ p4 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Tr
   ylab(score_label) + 
   xlab("Event Length: - Deletions, 0 SNPs, + Insertions")
 
+# Violin plot of scores stratified by event length, insertions and deletions smaller than 5 base pairs.
 p5 <- ggplot(d, aes(x=EVENTLENGTH, y=get(score_key), group=EVENTLENGTH, color=Truth_Status)) + 
-  scale_color_manual(values=statusColor) +
-  xlim(-5, 5) + 
+  scale_color_manual(values=statusColor) + xlim(-5, 5) +
   geom_jitter(height = 0, width = 0.35, alpha=0.4) + 
   geom_violin(color="grey", alpha=0.0) + 
   geom_text(aes(x=EVENTLENGTH, y=14, label=EVENTLENGTH_SUM), color="grey30", size=4, angle=30) +
   ggtitle(plot_title) +
   ylab(score_label) + 
   xlab("Event Length: - Deletions, 0 SNPs, + Insertions")
+
 
 # SNP specific plots
 print("Make SNP plots.")
@@ -124,6 +116,7 @@ ti <- get_proportion(snps, num_bins, snps$TRANSITION, snps$QUALITY_BIN)
 tv <- get_proportion(snps, num_bins, snps$TRANSVERSION, snps$QUALITY_BIN)
 snps$TI_TV <- ti/tv
 
+# Plot transition transversion ratios as a function of score bins
 p6 <- ggplot(snps, aes(x=get(score_key), y=TI_TV, group=QUALITY_BIN, color=Truth_Status, shape=TRANSITION==1)) + 
   scale_color_manual(values=statusColor) +
   scale_shape_discrete(name='', breaks=c("TRUE", "FALSE"), labels=c("Transition", "Transversion")) +
@@ -133,11 +126,13 @@ p6 <- ggplot(snps, aes(x=get(score_key), y=TI_TV, group=QUALITY_BIN, color=Truth
   xlab(score_label) +
   ylim(0, 4)
 
+# SNP calibration plot
 p7 <- ggplot(snps, aes(x=TPR_PREDICTION, y=TPR, group=QUALITY_BIN, color=Truth_Status)) + 
   scale_color_manual(values=statusColor) +
   geom_jitter(height = 0.01, width = 0.01, alpha=0.4) + 
   ggtitle(paste("SNP Calibration", plot_title)) +
   ylim(0, 1) + xlim(0, 1)
+
 
 # INDEL specific plots
 print("Make INDEL plots.")
@@ -156,6 +151,7 @@ indels$TPR <- get_proportion(indels, num_bins, indels$TP, indels$QUALITY_BIN)
 indels$ONEBP <- as.numeric(abs(indels$EVENTLENGTH)==1)
 indels$PROPORTION_ONEBP <- get_proportion(indels, num_bins, indels$ONEBP, indels$QUALITY_BIN)
 
+# Plot proportion of each socre bin that are 1 base pair Insertion or deletion
 p8 <- ggplot(indels, aes(x=get(score_key), y=PROPORTION_ONEBP, group=QUALITY_BIN, color=Truth_Status, shape=EVENTLENGTH<0)) +
   scale_color_manual(values=statusColor) +
   scale_shape_discrete(name='', breaks=c("TRUE", "FALSE"), labels=c("Deletion", "Insertion")) +
@@ -164,6 +160,7 @@ p8 <- ggplot(indels, aes(x=get(score_key), y=PROPORTION_ONEBP, group=QUALITY_BIN
   ggtitle("Proportion of 1bp INDELs per score bin") +
   xlab(score_label)
 
+# INDEL calibration plot
 p9 <- ggplot(indels, aes(x=TPR_PREDICTION, y=TPR, group=QUALITY_BIN, color=Truth_Status)) +
   scale_color_manual(values=statusColor) +
   geom_jitter(height = 0.01, width = 0.01, alpha=0.4) + 

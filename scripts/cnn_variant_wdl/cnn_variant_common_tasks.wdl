@@ -137,6 +137,7 @@ task FilterVariantTranches {
     String snp_tranches
     String indel_tranches
     String info_key
+    String? extra_args
     File? gatk_override
 
     # Runtime parameters
@@ -168,7 +169,8 @@ command <<<
         -resource ${sep=" -resource " resources} \
         -info-key ${info_key} \
         ${snp_tranches} \
-        ${indel_tranches}
+        ${indel_tranches} \
+        ${extra_args}
 >>>
 
   runtime {

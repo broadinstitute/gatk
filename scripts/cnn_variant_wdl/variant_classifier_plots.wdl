@@ -1,13 +1,13 @@
 # Run VCF evaluation over input vcf given a validated truth vcf and confidence region
 workflow VariantClassifierPlots {
-    File call_vcf
-    File call_vcf_index
+    File call_vcf                   # VCF to be evaluated
+    File call_vcf_index             # Index of VCF to be evaluated
     String? call_sample
     String score_key
 
-    File? truth_vcf
-    File? truth_vcf_index
-    String? truth_sample
+    File? truth_vcf                 # Optional truth VCF. If provided, plot colors show true positives and
+    File? truth_vcf_index           # true negatives in green with false positives in red and false negatives in yellow.
+    String? truth_sample            # Otherwise, plot colors show filtered variants in red and passing variant in green.
 
     File? intervals
 

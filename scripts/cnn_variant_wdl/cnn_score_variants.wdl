@@ -27,6 +27,7 @@ workflow CNNScoreVariantsWorkflow {
     String info_key                 # The score key for the INFO field of the vcf (e.g. CNN_1D, CNN_2D)
     String snp_tranches             # Filtering threshold(s) for SNPs in terms of sensitivity to overlapping known variants in resources
     String indel_tranches           # Filtering threshold(s) for INDELs in terms of sensitivity to overlapping known variants in resources
+    String filter_tranches_extra    # Additional arguments for filter variant tranches
     String output_prefix            # Identifying string for this run which will be used to name output files (the gzipped VCF and, for the 2D CNN, bamout)
     Int? inference_batch_size       # Batch size for python in CNNScoreVariants
     Int? transfer_batch_size        # Batch size for java transfers to python in CNNScoreVariants
@@ -100,6 +101,7 @@ workflow CNNScoreVariantsWorkflow {
             snp_tranches = snp_tranches,
             indel_tranches = indel_tranches,
             info_key = info_key,
+            extra_args = filter_tranches_extra,
             gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
             gatk_docker = gatk_docker
