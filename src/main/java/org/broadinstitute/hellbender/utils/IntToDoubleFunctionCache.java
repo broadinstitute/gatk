@@ -22,7 +22,7 @@ public abstract class IntToDoubleFunctionCache {
     /**
      * Get the value of the function, expanding the cache as necessary.  The cache only applies to non-negative values.
      * @param i operand
-     * @return log10(n)
+     * @return the value of the cached function at {@code i}
      */
     public double get(final int i) {
         Utils.validateArg(i >= 0, () -> String.format("Cache doesn't apply to negative number %d", i));
