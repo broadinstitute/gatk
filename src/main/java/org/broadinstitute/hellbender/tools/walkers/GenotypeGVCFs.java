@@ -250,7 +250,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCF_BLOCK));
 
-        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(keepCombined));
+        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerLines.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
 
         // add headers for annotations added by this tool
