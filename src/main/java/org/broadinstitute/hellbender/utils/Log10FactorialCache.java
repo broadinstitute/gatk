@@ -5,7 +5,7 @@ import org.apache.commons.math3.special.Gamma;
 /**
  * Wrapper class so that the log10Factorial array is only calculated if it's used
  */
-public class Log10FactorialCache extends IntToDoubleFunctionCache {
+public final class Log10FactorialCache extends IntToDoubleFunctionCache {
     private static final int CACHE_SIZE = 10_000;
 
     @Override

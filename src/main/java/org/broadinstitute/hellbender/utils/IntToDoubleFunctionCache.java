@@ -4,7 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * A helper class to maintain a cache of an int to double function
+ * A helper class to maintain a cache of an int to double function defined on n = 0, 1, 2. . .
  * The cache expands when a number is not available.
  * NOTE: this cache is thread safe and it may be accessed from multiple threads.
  */
@@ -20,7 +20,7 @@ public abstract class IntToDoubleFunctionCache {
     public IntToDoubleFunctionCache() { }
 
     /**
-     * Get the value of log10(n), expanding the cache as necessary
+     * Get the value of the function, expanding the cache as necessary.  The cache only applies to non-negative values.
      * @param i operand
      * @return log10(n)
      */

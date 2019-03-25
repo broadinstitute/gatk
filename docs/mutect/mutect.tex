@@ -133,7 +133,7 @@ We use a version of the somatic likelihoods model, described below, with the fol
 
 Under the first assumption the contribution of ref bases to the sum in Equation \ref{tumor-lod} vanishes -- errorless ref bases contribute no entropy -- so we only need to sum over alt bases.  By the second assumption the likelihood of an alt read is related to its base quality (and associated error rate $\epsilon$) as $\ell_{r,{\rm alt}} = 1 - \epsilon_r$.
 
-We compute Equation \ref{tumor-lod} for two possibilities; first, that an alt allele exists, second that only the ref allele exists.  In the former case, Initializing $\bar{z}_{r,{\rm ref(alt)}} = 1$ for ref (alt) bases a single iteration for $q(\vf)$ gives $\vbeta = (N_{\rm alt} + 1, N_{\rm ref} + 1)$.  For alt reads $r$ we then obtain from Equation \ref{f-tilde}
+We compute Equation \ref{tumor-lod} for two possibilities; first, that an alt allele exists, second that only the ref allele exists.  In the former case, Initializing $\bar{z}_{r,{\rm ref(alt)}} = 1$ for ref (alt) bases a single iteration for $q(\vf)$ gives $\vbeta = (N_{\rm alt} + 1, N_{\rm ref} + 1)$.  For alt reads $r$ we then obtain from Equation \ref{z-bar}
 \begin{equation}
 \bar{z}_{r,{\rm alt}} = \frac{\tilde{f}_{\rm alt} (1 - \epsilon_r)}{\tilde{f}_{\rm alt} (1 - \epsilon_r) + \tilde{f}_{\rm ref} \epsilon_r},
 \end{equation}
@@ -166,7 +166,7 @@ q(\vz_r) \propto& \exp E_{q(\vf)} \left[ \ln P(\mathbb{R}, \vz, \vf | \mathbb{A}
 \end{align}
 where, with $\psi$ denoting the digamma function, the moments
 \begin{align}
-\bar{z}_{ra} =& E_{q(\vz)} \left[ z_{ra} \right] = \frac{\tilde{f}_a \ell_{ra}}{\sum_{a^\prime} \tilde{f}_{a^\prime} \ell_{ra^\prime}} \\
+\bar{z}_{ra} =& E_{q(\vz)} \left[ z_{ra} \right] = \frac{\tilde{f}_a \ell_{ra}}{\sum_{a^\prime} \tilde{f}_{a^\prime} \ell_{ra^\prime}} \label{z-bar} \\
 \ln \tilde{f}_a =& E_{q(\vf)}[\ln f_a] = \psi(\beta_a) - \psi(\sum_{a^\prime} \beta_{a^\prime})
 \label{f-tilde}
 \end{align}
