@@ -157,7 +157,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to
      * their particular driving data source.
      */
-    protected List<SimpleInterval> userIntervals;
+    List<SimpleInterval> userIntervals;
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
@@ -354,6 +354,10 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public String getProgressMeterRecordLabel() { return ProgressMeter.DEFAULT_RECORD_LABEL; }
 
+    protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
+        return getIntervals;
+    }
+
     /**
      * Initialize our source of reference data (or set it to null if no reference argument was provided).
      *
@@ -442,7 +446,7 @@ public abstract class GATKTool extends CommandLineProgram {
                         "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
             }
 
-            userIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
+            userIntervals = transformTraversalIntervals(intervalArgumentCollection.getIntervals(sequenceDictionary), sequenceDictionary);
         }
     }
 

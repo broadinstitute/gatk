@@ -174,21 +174,18 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
 
+    /**
+     * Get the largest interval per contig that contains the intervals specified on the command line.
+     * @param getIntervals intervals to be transformed
+     * @param sequenceDictionary used to validate intervals
+     * @return a list of one interval per contig spanning the input intervals after processing and validation
+     */
     @Override
-    protected void initializeIntervals() {
-        if (intervalArgumentCollection.intervalsSpecified()) {
-            final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-            if (sequenceDictionary == null) {
-                throw new UserException("We require a sequence dictionary from a reference, a source of reads, or a source of variants to process intervals.  " +
-                        "Since reference and reads files generally contain sequence dictionaries, this error most commonly occurs " +
-                        "for VariantWalkers that do not require a reference or reads.  You can fix the problem by passing a reference file with a sequence dictionary " +
-                        "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
-            }
-            if (mergeInputIntervals) {
-                userIntervals = intervalArgumentCollection.getSpanningIntervals(sequenceDictionary);
-            } else {
-                userIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
-            }
+    protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
+        if (mergeInputIntervals) {
+            return IntervalUtils.getSpanningIntervals(getIntervals, sequenceDictionary);
+        } else {
+            return getIntervals;
         }
     }
 
