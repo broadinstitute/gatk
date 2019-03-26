@@ -41,6 +41,9 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String GCS_b37_CHR20_21_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "large/human_g1k_v37.20.21.2bit";
     public static final String GCS_b37_CHR20_21_REFERENCE = GCS_GATK_TEST_RESOURCES + "large/human_g1k_v37.20.21.fasta";
 
+    // environment variable set by the GATK Docker build file
+    private static final String GATK_DOCKER_CONTAINER = "GATK_DOCKER_CONTAINER";
+
     /**
      * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)
      */
@@ -143,5 +146,14 @@ public abstract class GATKBaseTest extends BaseTest {
             locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));
         return Collections.unmodifiableList(locs);
     }
+
+    /**
+     * @return true if we're running on the GATK Docker (which also implies we're running within the GATK conda environment)
+     */
+    protected boolean isGATKDockerContainer() {
+        final String gatkDockerContainer = System.getenv(GATK_DOCKER_CONTAINER);
+        return gatkDockerContainer != null && gatkDockerContainer.equalsIgnoreCase("true");
+    }
+
 }
 

@@ -111,6 +111,15 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
      * @return true if the process is successfully started
      */
     public boolean start(final List<String> pythonProcessArgs, final boolean enableJournaling, final File profileResults) {
+
+        // Since the error reporting mechanism used by this class is dependent on the GATK Python environment
+        // having been properly established, we need to use an out-of-band mechanism to verify the environment
+        // before we start executing commands (otherwise the commands will hang because the error reporting mechanism
+        // isn't in place). So use the non-streaming Python executor, which has no requirements on the environment,
+        // to validate that the "gatktool" package is present. If it is, any subsequent environment errors will
+        // be propagated through the StreamingPythonExecutor's message passing mechanism.
+        PythonScriptExecutor.checkPythonEnvironmentForPackage("gatktool");
+
         this.profileResults = profileResults;
         final List<String> args = new ArrayList<>();
         args.add(externalScriptExecutableName);
