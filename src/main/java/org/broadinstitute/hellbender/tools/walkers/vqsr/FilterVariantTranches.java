@@ -27,6 +27,22 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 /**
  * Apply tranche filtering to VCF based on scores from an annotation in the INFO field.
+ * The annotation can come from the {@link CNNScoreVariants} tool, VQSR,
+ * or any other variant scoring tool which adds numeric annotations in a VCF's INFO field.
+ *
+ * Tranches are specified in percent sensitivity to the variants in the resource files.
+ * For example, if you specify INDEL tranches 98.0 and 99.0 using the CNN_2D score
+ * the filtered VCF will contain 2 filter tranches for INDELS: CNN_2D_INDEL_Tranche_98.00_99.00
+ * and CNN_2D_INDEL_Tranche_99.00_100.00. Variants that scored better than the 98th percentile of variants in the
+ * resources pass through the filter and will have `PASS` in the filter field. We expect variants in the tranche
+ * CNN_2D_INDEL_Tranche_99.00_100.00 to be more sensitive, but less precise than CNN_2D_INDEL_Tranche_98.00_99.00,
+ * because variants in CNN_2D_INDEL_Tranche_99.00_100.00 have lower scores than variants in the tranche
+ * CNN_2D_INDEL_Tranche_98.00_99.00.
+ *
+ * The default tranche filtering threshold for SNPs is 99.95 and for INDELs it is 99.4.
+ * These thresholds maximize the F1 score (the harmonic mean of sensitivity and precision)
+ * for whole genome human data but may need to be tweaked for different datasets.
+ *
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -35,6 +51,9 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *      <li>info-key The key from the INFO field of the VCF which contains the values that will be used to filter.</li>
  *      <li>tranche List of percent sensitivities to the known sites at which we will filter.  Must be between 0 and 100.</li>
  * </ul>
+ *
+ * If you want to remove existing filters from your VCF add the argument `--invalidate-previous-filters`.
+ *
  *
  * <h3>Outputs</h3>
  * <ul>
@@ -51,10 +70,40 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *   --resource hapmap.vcf \
  *   --resource mills.vcf \
  *   --info-key CNN_1D \
- *   --tranche 99.9 --tranche 99.0 --tranche 95 \
+ *   --snp-tranche 99.9 \
+ *   --indel-tranche 99.5 \
  *   -O filtered.vcf
  * </pre>
  *
+ * <h4>Apply tranche filters based on the scores in the info field with key CNN_2D
+ * and remove any existing filters from the VCF.</h4>
+ * <pre>
+ * gatk FilterVariantTranches \
+ *   -V input.vcf.gz \
+ *   --resource hapmap.vcf \
+ *   --resource mills.vcf \
+ *   --info-key CNN_2D \
+ *   --snp-tranche 99.9 \
+ *   --indel-tranche 99.5 \
+ *   --invalidate-previous-filters \
+ *   -O filtered.vcf
+ * </pre>
+ *
+ * <h4>Apply several tranche filters based on the scores in the info field with key CNN_2D.</h4>
+ * This will result in a VCF with filters: CNN_2D_SNP_Tranche_99.90_99.95, CNN_2D_SNP_Tranche_99.95_100.00
+ * CNN_2D_INDEL_Tranche_99.00_99.50, CNN_2D_INDEL_Tranche_99.50_100.00.
+ * The interpretation is that `PASS` variants are the best, variants in the tranche `CNN_2D_INDEL_Tranche_99.00_99.50`
+ * are ok and variants in the tranche `CNN_2D_INDEL_Tranche_99.50_100.00` are the worst.
+ * <pre>
+ * gatk FilterVariantTranches \
+ *   -V input.vcf.gz \
+ *   --resource hapmap.vcf \
+ *   --resource mills.vcf \
+ *   --info-key CNN_2D \
+ *   --snp-tranche 99.9 --snp-tranche 99.95 \
+ *   --indel-tranche 99.0 --indel-tranche 99.5 \
+ *   -O filtered.vcf
+ * </pre>
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
@@ -75,7 +124,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
                     "Higher numbers mean more desired sensitivity and thus less stringent filtering." +
                     "Specified in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent.",
             optional=true)
-    private List<Double> snpTranches = new ArrayList<>(Arrays.asList(99.9, 99.99));
+    private List<Double> snpTranches = new ArrayList<>(Arrays.asList(99.95));
 
     @Argument(fullName="indel-tranche",
             shortName="indel-tranche",
@@ -83,7 +132,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
                     "Higher numbers mean more desired sensitivity and thus less stringent filtering." +
                     "Specified in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent.",
             optional=true)
-    private List<Double> indelTranches = new ArrayList<>(Arrays.asList(99.0, 99.5));
+    private List<Double> indelTranches = new ArrayList<>(Arrays.asList(99.4));
 
     @Argument(fullName="resource",
             shortName = "resource",
@@ -189,6 +238,10 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
                 builder.filter(filterStringFromScore(INDELString, score, indelTranches, indelCutoffs));
                 filteredIndels++;
             }
+        }
+
+        if (builder.getFilters() == null || builder.getFilters().size() == 0){
+            builder.passFilters();
         }
         
         vcfWriter.add(builder.make());
