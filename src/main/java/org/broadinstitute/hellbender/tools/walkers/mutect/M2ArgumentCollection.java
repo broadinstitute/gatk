@@ -44,7 +44,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
-    public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "median-autosomal-coverage";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
     public static final String PCR_SNV_QUAL_LONG_NAME = "pcr-snv-qual";
@@ -229,13 +228,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
     public boolean dontClipITRArtifacts = false;
-
-    /**
-     * Used to model autosomal coverage when calling mitochondria. The median tends to be a more robust center statistic.
-     */
-    @Advanced
-    @Argument(fullName = MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, doc="For mitochondrial calling only; Annotate possible polymorphic NuMT based on Poisson distribution given median autosomal coverage", optional = true)
-    public double autosomalCoverage;
 
     /**
      * When Mutect2 is run in reference confidence mode with banding compression enabled (-ERC GVCF), homozygous-reference

@@ -206,6 +206,7 @@ public class Mutect2FilteringEngine {
         filters.add(new NRatioFilter(MTFAC.nRatio));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
+        filters.add(new MinAlleleFractionFilter(MTFAC.minAf));
 
         if (!MTFAC.readOrientationPriorTarGzs.isEmpty()) {
             final List<File> artifactTables = MTFAC.readOrientationPriorTarGzs.stream().flatMap(tarGz -> {
@@ -219,6 +220,7 @@ public class Mutect2FilteringEngine {
 
         if (MTFAC.mitochondria) {
             filters.add(new ChimericOriginalAlignmentFilter(MTFAC.maxNuMTFraction));
+            filters.add(new PolymorphicNuMTFilter(MTFAC.medianAutosomalCoverage));
         } else {
             filters.add(new ClusteredEventsFilter(MTFAC.maxEventsInRegion));
             filters.add(new MultiallelicFilter(MTFAC.numAltAllelesThreshold));
