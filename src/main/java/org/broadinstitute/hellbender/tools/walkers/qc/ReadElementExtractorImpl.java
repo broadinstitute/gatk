@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.qc;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.FormatUtil;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import picard.sam.markduplicates.MarkDuplicates;
@@ -10,6 +11,9 @@ import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.sam.util.PhysicalLocationInt;
 
 public class ReadElementExtractorImpl {
+
+    static final FormatUtil formatter = new FormatUtil();
+
     static class Tile implements ReadElementExtractor {
         @Override
         public String header() {
@@ -150,7 +154,7 @@ public class ReadElementExtractorImpl {
 
         @Override
         public String extractElement(final GATKRead read, final SAMFileHeader header) {
-            return String.valueOf(extractMeanQual(read));
+            return formatter.format(extractMeanQual(read));
         }
     }
 
