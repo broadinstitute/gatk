@@ -42,8 +42,8 @@ public class FuncotatorTestConstants {
 
     public static final String DUMMY_DATA_SOURCES_TAR_GZ             = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources.tar.gz";
     public static final String DUMMY_DATA_SOURCES_TAR_GZ_SHA256_FILE = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources.sha256";
-    public static final String DUMMY_DATA_SOURCES_FOLDER
-            = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources";
+    public static final String DUMMY_DATA_SOURCES_FOLDER             = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources";
+
     // MT Info:
     public static final String MT_TRANSCRIPT = "ENST00000361567.2";
 
