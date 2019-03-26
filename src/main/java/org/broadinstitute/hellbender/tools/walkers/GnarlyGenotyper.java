@@ -173,6 +173,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         //add header for new filter
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.MONOMORPHIC_FILTER_NAME));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         // add headers for annotations added by this tool
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
