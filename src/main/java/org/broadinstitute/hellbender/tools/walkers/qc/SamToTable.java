@@ -46,11 +46,10 @@ public final class SamToTable extends ReadWalker {
      @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc = "The output table file to create", optional = false)
     private File tableOutput = null;
 
-
-    @Argument()
+    @Argument(shortName="tre", fullName= "tile-reg-ex", doc="A regular expression to filter tiles by.")
     private String tileRegEx = ".*";
 
-    @Argument()
+    @Argument( shortName = "pre",fullName = "pu-reg-ex", doc="A regular expression to filter readgroups (PU field) by.")
     private String readgroupRegEx = ".*";
 
     private PrintStream tableOutputStream;
