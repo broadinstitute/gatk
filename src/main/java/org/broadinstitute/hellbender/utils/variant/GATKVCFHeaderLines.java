@@ -71,6 +71,7 @@ public class GATKVCFHeaderLines {
 
     static {
         addFilterLine(new VCFFilterHeaderLine(LOW_QUAL_FILTER_NAME, "Low quality"));
+        addFilterLine(new VCFFilterHeaderLine(MONOMORPHIC_FILTER_NAME, "Site is monomorphic in all observed samples"));
 
         // M2-related filters
         addFilterLine(new VCFFilterHeaderLine(ALIGNMENT_ARTIFACT_FILTER_NAME, "Alignment artifact"));
