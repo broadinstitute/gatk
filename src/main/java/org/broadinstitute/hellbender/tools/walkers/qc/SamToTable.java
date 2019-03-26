@@ -112,13 +112,14 @@ public final class SamToTable extends ReadWalker {
      */
     @Override
     public void apply(GATKRead read, ReferenceContext ref, FeatureContext featureContext ) {
-        final String collect = extractors.stream().map(e -> e.extractElement(read)).collect(Collectors.joining("\t"));
+        final String collect = extractors.stream().map(e -> e.extractElement(read, getHeaderForReads())).collect(Collectors.joining("\t"));
         tableOutputStream.println(collect);
 
     }
     private List<ReadElementExtractor> getExtractors() {
 
         return Arrays.asList(
+                new ReadElementExtractorImpl.ReadGroup(),
                 new ReadElementExtractorImpl.Tile(),
                 new ReadElementExtractorImpl.XCoord(),
                 new ReadElementExtractorImpl.YCoord(),
@@ -133,7 +134,6 @@ public final class SamToTable extends ReadWalker {
                 new ReadElementExtractorImpl.MappingQ()
         );
     }
-
 
     @Override
     public Object onTraversalSuccess() {
