@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
+import htsjdk.samtools.util.Lazy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -60,6 +61,7 @@ public final class SamToTable extends ReadWalker {
         return false;
     }
 
+
     @Override
     public void onTraversalStart() {
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
@@ -71,7 +73,6 @@ public final class SamToTable extends ReadWalker {
         }
 
         tableOutputStream.println(extractors.stream().map(ReadElementExtractor::header).collect(Collectors.joining("\t")));
-
     }
 
     final private static OpticalDuplicateFinder opticalDuplicateFinder = new OpticalDuplicateFinder();
@@ -80,16 +81,16 @@ public final class SamToTable extends ReadWalker {
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> filters = new ArrayList<>(6);
-        final Pattern readgroupPattern = Pattern.compile(readgroupRegEx);
-        final Pattern tilePattern = Pattern.compile(tileRegEx);
         filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
 
+        final Lazy<Pattern> readgroupPattern = new Lazy<>(()->Pattern.compile(readgroupRegEx));
+        final Lazy<Pattern> tilePattern = new Lazy<>(()->Pattern.compile(tileRegEx));
         filters.add(new ReadFilter() {
             static private final long serialVersionUID = 42L;
             @Override
             public boolean test(final GATKRead read) {
-                return readgroupPattern.matcher(read.getName()).matches();
+                return readgroupPattern.get().matcher(read.getName()).matches();
             }
         });
 
@@ -98,7 +99,7 @@ public final class SamToTable extends ReadWalker {
             @Override
             public boolean test(final GATKRead read) {
                 opticalDuplicateFinder.addLocationInformation(read.getName(), location);
-                return tilePattern.matcher(String.valueOf(location.tile)).matches();
+                return tilePattern.get().matcher(String.valueOf(location.tile)).matches();
             }
         });
 
