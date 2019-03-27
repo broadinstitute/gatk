@@ -410,10 +410,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     private GenotypesContext subsetAlleleSpecificFormatFields(final VCFHeader outputHeader, final GenotypesContext originalGs, final int[] relevantIndices) {
         final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
-        GenotypeBuilder gb;
         for (final Genotype g : originalGs) {
-            gb = new GenotypeBuilder(g);
-            Set<String> keys = g.getExtendedAttributes().keySet();
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
+            final Set<String> keys = g.getExtendedAttributes().keySet();
             for (final String key : keys) {
                 final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
                 final Object attribute;
