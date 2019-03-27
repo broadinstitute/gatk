@@ -214,22 +214,14 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
-        if (hasUserSuppliedIntervals()) {
-            if (mergeInputIntervals) {
-                intervals = intervalArgumentCollection.getSpanningIntervals(getBestAvailableSequenceDictionary());
-            }
-            else {
-                intervals = intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary());
-            }
-        } else {
-            intervals = Collections.emptyList();
-        }
-
         if(onlyOutputCallsStartingInIntervals) {
             if( !hasUserSuppliedIntervals()) {
                 throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
             }
         }
+
+        intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
+                Collections.emptyList();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
 

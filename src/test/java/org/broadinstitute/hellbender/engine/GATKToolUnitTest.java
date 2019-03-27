@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ClippingRankSumTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -957,6 +958,18 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         }
     }
 
+    @CommandLineProgramProperties(programGroup = TestProgramGroup.class, oneLineSummary = "GATKTool Intervals Test Walker", summary = "This is a test walker for GATKTool getTraversalIntervals")
+    private static class TestIntervalTransformingWalker extends TestIntervalWalker {
+        public TestIntervalTransformingWalker() {
+
+        }
+
+        @Override
+        protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
+            return IntervalUtils.getSpanningIntervals(getIntervals, sequenceDictionary);
+        }
+    }
+
     @Test(expectedExceptions = UserException.class)
     public void testSequenceDictionaryRequiredForIntervalQuery() throws Exception {
         //This should have failed because no dictionary is provided
@@ -996,5 +1009,53 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         tool.instanceMain(args.toArray(new String[args.size()]));
 
         Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expected);
+    }
+
+    @DataProvider(name = "TestGetTransformedTraversalIntervalsProvider")
+    public Object[][] getTestGetTransformedTraversalIntervalsProvider() {
+        return new Object[][]{
+                {Arrays.asList("1:21-21"), 1, Arrays.asList("1"), Arrays.asList(21), Arrays.asList(21), hg19MiniReference},
+                {Arrays.asList("1:21-21", "1:23-23", "1:200-300", "1:10000-16000"), 1, Arrays.asList("1"), Arrays.asList(21), Arrays.asList(16000), hg19MiniReference},
+                {Arrays.asList("1:21-21", "2:42-45", "2:10000-12345", "3:33-333"), 3, Arrays.asList("1","2","3"), Arrays.asList(21,42,33), Arrays.asList(21, 12345, 333), hg19MiniReference},
+                {null, 4, Arrays.asList("1","2","3","4"), Arrays.asList(1,1,1,1), Arrays.asList(16000,16000,16000,16000), hg19MiniReference},
+                {null, null, null, null, null, null}
+        };
+    }
+
+    @Test(dataProvider = "TestGetTransformedTraversalIntervalsProvider")
+    public void testGetTransformedTraversalIntervals(@Nullable List<String> intervals, Integer expectedSize, List<String> expectedContig,
+                                                     List<Integer> expectedStart, List<Integer> expectedStop, String ref) {
+        List<String> args = new ArrayList<>(Arrays.asList(
+                "-V", baseVariants
+        ));
+
+        if (ref != null) {
+            args.add("-R");
+            args.add(ref);
+        }
+
+        if (intervals != null) {
+            for (final String interval : intervals) {
+                args.add("-L");
+                args.add(interval);
+            }
+        }
+
+        final TestIntervalWalker tool = new TestIntervalTransformingWalker();
+        tool.instanceMain(args.toArray(new String[args.size()]));
+
+        Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expectedSize);
+        if (tool.getTraversalIntervals() != null) {
+            final List<SimpleInterval> traversalIntervals = tool.getTraversalIntervals();
+            Assert.assertEquals(traversalIntervals.size(), expectedContig.size());
+            Assert.assertEquals(traversalIntervals.size(), expectedStart.size());
+            Assert.assertEquals(traversalIntervals.size(), expectedStop.size());
+
+            for (int i = 0; i < traversalIntervals.size(); i++) {
+                Assert.assertTrue(traversalIntervals.get(i).getContig().equals(expectedContig.get(i)));
+                Assert.assertEquals(traversalIntervals.get(i).getStart(), (int)expectedStart.get(i));
+                Assert.assertEquals(traversalIntervals.get(i).getEnd(), (int)expectedStop.get(i));
+            }
+        }
     }
 }
