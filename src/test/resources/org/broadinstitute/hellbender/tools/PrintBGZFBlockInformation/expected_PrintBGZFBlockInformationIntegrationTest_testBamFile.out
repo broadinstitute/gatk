@@ -1,0 +1,14 @@
+BGZF block information for file: reads_data_source_test1.bam
+
+Block #1 at file offset 0
+	- compressed size: 380
+	- uncompressed size: 1971
+
+Block #2 at file offset 380
+	- compressed size: 28
+	- uncompressed size: 0
+
+***************************************************************************
+Final BGZF 0-byte terminator block FOUND as expected at block number 2
+***************************************************************************
+
