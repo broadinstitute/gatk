@@ -354,7 +354,7 @@ public final class ReblockGVCF extends VariantWalker {
             attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, genotype.getPL()[0]);
             int varDP = QualByDepth.getDepth(result.getGenotypes(), null);
             if (varDP == 0) {  //prevent QD=Infinity case
-                varDP = result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 1); //if there's no VarDP and no DP, just prevent Infs/NaNs and QD will get capped later
+                varDP = originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 1); //if there's no VarDP and no DP, just prevent Infs/NaNs and QD will get capped later
             }
             attrMap.put(GATKVCFConstants.VARIANT_DEPTH_KEY, varDP);
         }
