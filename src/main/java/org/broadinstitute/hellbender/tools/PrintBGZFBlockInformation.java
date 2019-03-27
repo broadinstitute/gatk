@@ -20,8 +20,8 @@ import java.util.List;
 
 /**
  * A diagnostic tool that prints information about the compressed blocks in a BGZF format file,
- * such as a .vcf.gz file. This tool can detect various kinds of BGZF file corruption such as
- * premature BGZF terminator blocks, truncated files, and files that were regular-GZIPPED by
+ * such as a .vcf.gz file or a .bam file. This tool can detect various kinds of BGZF file corruption
+ * such as premature BGZF terminator blocks, truncated files, and files that were regular-GZIPPED by
  * accident.
  * <p>
  * The output looks like this:
@@ -74,7 +74,7 @@ public class PrintBGZFBlockInformation extends CommandLineProgram {
         try {
             // Check that the file is in BGZF format. This catches the "regular GZIP" case as well:
             if ( ! IOUtil.isBlockCompressed(bgzfPath) ) {
-                throw new UserException.CouldNotReadInputFile(bgzfPath, "File is not a valid BGZF file. Could possibly be a regular GZIP file?");
+                throw new UserException.CouldNotReadInputFile(bgzfPath, "File is not a valid BGZF file. Could be a regular GZIP file, or some other non-BGZF format.");
             }
         }
         catch ( IOException e ) {

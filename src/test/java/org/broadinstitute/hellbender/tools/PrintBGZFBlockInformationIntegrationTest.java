@@ -101,6 +101,19 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         runCommandLine(args);
     }
 
+    /* We should get an exception for other non-BGZF formats as well */
+    @Test(expectedExceptions= UserException.CouldNotReadInputFile.class)
+    public void testNonBGZFFile() throws IOException{
+        final File input = new File(dbsnp_138_b37_1_65M_vcf);
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testNonBGZFFile", ".out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--"  + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
+    }
+
     /* Make sure that we can handle a standard BAM file */
     @Test
     public void testBamFile() throws IOException {
