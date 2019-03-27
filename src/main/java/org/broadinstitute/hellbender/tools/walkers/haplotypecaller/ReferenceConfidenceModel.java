@@ -258,7 +258,7 @@ public class ReferenceConfidenceModel {
         final RefVsAnyResult homRefCalc = (RefVsAnyResult)refResult;
         // genotype likelihood calculation
         final GenotypeLikelihoods snpGLs = GenotypeLikelihoods.fromLog10Likelihoods(homRefCalc.getGenotypeLikelihoodsCappedByHomRefLikelihood());
-        final int nIndelInformativeReads = calcNIndelInformativeReads(pileup, refOffset, ref, indelInformativeDepthIndelSize);
+        final int nIndelInformativeReads = calcNReadsWithNoPlausibleIndelsReads(pileup, refOffset, ref, indelInformativeDepthIndelSize);
         final GenotypeLikelihoods indelGLs = getIndelPLs(ploidy,nIndelInformativeReads);
 
         // now that we have the SNP and indel GLs, we take the one with the least confidence,
@@ -483,7 +483,7 @@ public class ReferenceConfidenceModel {
      * end of the read as well. These results are cached in a bitset in the transient attributes for the read. A 1 in
      * the bitset means that this method would return true for that particular readOffset/refOffset combination. Note
      * that if a bitset is found in on the read already, this method defaults to returning the cached value over
-     * computing the indel informativeness.
+     * computing the plausible indels again.
      *
      * Positions <= maxIndelSize from the end of the provided read/ref always return false.
      *
@@ -499,7 +499,7 @@ public class ReferenceConfidenceModel {
      * @param useCachedResults if false, ignore cached results for informative indel sizes (useful for debugging)
      * @return true if read can eliminate the possibility that there's an indel of size <= maxIndelSize segregating at refStart
      */
-    private static boolean readHasNoPlausableIndelsOfSize(final GATKRead read,
+    private static boolean readHasNoPlausibleIdealsOfSize(final GATKRead read,
                                                           final int readStart,
                                                           final byte[] refBases,
                                                           final int refStart,
@@ -613,7 +613,7 @@ public class ReferenceConfidenceModel {
      *
      * It is expected that only the bases between readStart and lastReadBaseToMarkAsIndelRelevant in the bitset will be set to true
      * by this method if they are ambiguous about an indel of the given size. We then flip these values later in the process because
-     * an ambiguous indel positions in the read actually return false in readHasNoPlausableIndelsOfSize.
+     * an ambiguous indel positions in the read actually return false in readHasNoPlausibleIdealsOfSize.
      *
      * NOTE: This method examines overhanging bases to the reference/read if they do not end at the same position.
      *       (eg. if the reference ends 20 bases after the read does and you are looking at a deletion of size 5, the first
@@ -681,16 +681,16 @@ public class ReferenceConfidenceModel {
     }
 
     /**
-     * Calculate the number of indel informative reads at pileup
+     * Calculate the number of reads that have no plausible indels based on alignment at pileup
      *
      * @param pileup a pileup
      * @param pileupOffsetIntoRef index along the reference corresponding to the pileup
      * @param ref the ref bases
-     * @param maxIndelSize maximum indel size to consider in the informativeness calculation
+     * @param maxIndelSize maximum indel size to consider in the as plausible calculation
      * @return an integer >= 0
      */
     @VisibleForTesting
-    int calcNIndelInformativeReads(final ReadPileup pileup, final int pileupOffsetIntoRef, final byte[] ref, final int maxIndelSize) {
+    int calcNReadsWithNoPlausibleIndelsReads(final ReadPileup pileup, final int pileupOffsetIntoRef, final byte[] ref, final int maxIndelSize) {
         int nInformative = 0;
         for ( final PileupElement p : pileup ) {
             // doesn't count as evidence
@@ -700,7 +700,7 @@ public class ReferenceConfidenceModel {
 
             final int offset = getCigarModifiedOffset(p);
 
-            if ( readHasNoPlausableIndelsOfSize(p.getRead(), offset, ref, pileupOffsetIntoRef, maxIndelSize, USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES) ) {
+            if ( readHasNoPlausibleIdealsOfSize(p.getRead(), offset, ref, pileupOffsetIntoRef, maxIndelSize, USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES) ) {
                 nInformative++;
                 if( nInformative > MAX_N_INDEL_INFORMATIVE_READS ) {
                     return MAX_N_INDEL_INFORMATIVE_READS;
