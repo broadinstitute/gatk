@@ -109,10 +109,14 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
     private boolean includeNonVariants = false;
 
+    /**
+     * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
+     * sequencing, especially if GVCF data only exists for specified intervals.  Use with
+     * --only-output-calls-starting-in-intervals if input GVCFs contain calls outside the specified intervals.
+     */
     @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
             shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
-            doc = "Boolean flag to import all data in between intervals.  Improves performance using large lists of " +
-                    "intervals, as in exome sequencing, especially if GVCF data only exists for specified intervals.")
+            doc = "Boolean flag to import all data in between intervals.")
     private boolean mergeInputIntervals = false;
 
     /**
