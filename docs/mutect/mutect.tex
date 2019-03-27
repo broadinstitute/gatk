@@ -99,10 +99,10 @@ gatk Mutect2 -R reference.fasta \
    # For most purposes Mutect2 should be supplied with gnomAD
    [-germline-resource af-only-gnomad.vcf] \
     # Mutect2 may input a panel of normals to help identify technical artifacts
-   [-pon panel_of_normals.vcf . . .]  \
-   # Mutect2 may input parameters learned by CollectF1R2Counts
-   # and LearnReadOrientationModel for one or more tumor samples
-   [--orientation-bias-artifact-priors tumor1-artifact-prior.tsv . . .] \
+   [-pon panel_of_normals.vcf ]  \
+   # Mutect2 may output orientation bias data
+   # for LearnReadOrientationModel
+   [--f1r2-tar-gz f1r2.tar.gz] \
    -O unfiltered.vcf
 \end{lstlisting}
 
@@ -204,6 +204,8 @@ gatk FilterMutectCalls -V unfiltered.vcf \
     #tumor samples from CalculateContamination
    [--contamination-table contamination1.table] \
    [--contamination-table contamination2.table] \
+   # orientation bias priors from LearnReadOrientationModel
+   [--ob-priors priors.tar.gz] \
    -O filtered.vcf
 \end{lstlisting}
 
@@ -349,23 +351,24 @@ P(a | d, {\rm one~contaminant}) = 2f(1-f) {\rm Binom}(a | d, \alpha /2) + f^2 {\
 \end{equation}
 Taking the maximum of these as the likelihood given contamination, we can easily compute the probability of contamination error.
 
+%%%%%%%%%%%%%
+%READ ORIENTATION
+%%%%%%%%%%%%%
 \subsection{Read Orientation Artifact Filter}
-The read orientation model is implemented in the following two tools that produce an input to \code{Mutect2}\footnote{\code{Mutect2} emits annotations that are picked up by \code{FilterMutectCalls}.}
+The read orientation model is implemented in \code{LearnReadOrientationModel}, which produces the  \code{--orientation-bias-artifact-priors} input to \code{FilterMutectCalls}.  The raw counts for code{LearnReadOrientationModel} are generated either by \code{CollectF1R2Counts} or \code{Mutect2} itself.
 
 \begin{lstlisting}[language=bash,caption={LearnReadOrientationModel command}, label={cmd-mutect2}]
-gatk CollectF1R2Counts -R reference.fasta \
+gatk Mutect2 -R reference.fasta \
    -I tumor.bam \
-   -alt-table tumor-alt.tsv \
-   -ref-hist tumor-ref.metrics \
-   -alt-hist tumor-alt.metrics
+   -O unfiltered.vcf \
+   [. . . any other arguments] \
+   --f1r2-tar-gz f1r2.tar.gz
    
 gatk LearnReadOrientationModel \
-   -alt-table tumor-alt.tsv \
-   -ref-hist tumor-ref.metrics \
-   -alt-hist tumor-alt.metrics \
-   -O tumor-artifact-prior.tsv
+   -I f1r2.tar.gz
+   -O tumor-artifact-prior.tar.gz
 \end{lstlisting}
-The output \code{tumor-artifact-prior.tsv} is then passed as the parameter to \code{Mutect2}'s \code{--orientation-bias-artifact-priors} argument, once (optionally) for each tumor sample.
+The output \code{tumor-artifact-prior.tar.gz} is then passed as the parameter to \code{FilterMutectCalls} with the \code{--orientation-bias-artifact-priors} argument.  Note that all tar.gz files shown above contain information for every tumor sample input to \code{Mutect2}.
 
 The read orientation artifact, also known as the orientation bias artifact, arises due to a chemical change in the nucleotide during library prep that results in, for example, G base-paring with A. This kind of artifact has a clear signature (e.g. C to A SNP that occurs predominantly for the middle C in the DNA sequence CCG), and it's single-stranded in nature. Downstream, this artifact manifests as low allele fraction SNPs whose evidence for the alt allele consists almost entirely F1R2 reads or F2R1 reads. A read pair is F1R2 (forward 1st, reverse 2nd) if the sequence of bases in Read 1 maps to the forward strand of the reference (F1), and the sequence of Read 2 to the reverse strand of the reference (R2). F2R1 is defined similarly.
 
