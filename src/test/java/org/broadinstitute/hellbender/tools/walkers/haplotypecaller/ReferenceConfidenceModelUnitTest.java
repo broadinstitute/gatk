@@ -117,52 +117,52 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         }
 
         { // testing that the behavior for references within the indel span behave properly
-            final String repeatingread = "ATCATC";
-            final String repeatingref1 = "AT";
-            final String repeatingref2 = "ATC";
-            final String repeatingref3 = "ATCA";
-            final String repeatingref4 = "ATCAT";
-            final String repeatingref5 = "ATCATC";
-            final String repeatingref6 = "ATCATCA";
-            final String repeatingref7 = "ATCATCAT";
-            final String repeatingref8 = "ATCATCATC";
-            final String repeatingref9 = "ATCATCATCA";
+            final String repeatingRead = "ATCATC";
+            final String repeatingRef1 = "AT";
+            final String repeatingRef2 = "ATC";
+            final String repeatingRef3 = "ATCA";
+            final String repeatingRef4 = "ATCAT";
+            final String repeatingRef5 = "ATCATC";
+            final String repeatingRef6 = "ATCATCA";
+            final String repeatingRef7 = "ATCATCAT";
+            final String repeatingRef8 = "ATCATCATC";
+            final String repeatingRef9 = "ATCATCATCA";
             final String nonRepeatingread = "ATCGAT";
-            final String nonRepeatingref1 = "AT";
-            final String nonRepeatingref2 = "ATC";
-            final String nonRepeatingref3 = "ATCG";
-            final String nonRepeatingref4 = "ATCGA";
-            final String nonRepeatingref5 = "ATCGAT";
-            final String nonRepeatingref6 = "ATCGATA";
-            final String nonRepeatingref7 = "ATCGATAT";
-            final String nonRepeatingref8 = "ATCGATATC";
-            final String nonRepeatingref9 = "ATCGATATCG";
+            final String nonRepeatingRef1 = "AT";
+            final String nonRepeatingRef2 = "ATC";
+            final String nonRepeatingRef3 = "ATCG";
+            final String nonRepeatingRef4 = "ATCGA";
+            final String nonRepeatingRef5 = "ATCGAT";
+            final String nonRepeatingRef6 = "ATCGATA";
+            final String nonRepeatingRef7 = "ATCGATAT";
+            final String nonRepeatingRef8 = "ATCGATATC";
+            final String nonRepeatingRef9 = "ATCGATATCG";
 
-            final String cigar = repeatingread.length() + "M";
+            final String cigar = repeatingRead.length() + "M";
 
             // None of these cases are informative because the reference/reads repeat in units of 3 (which is maxindel size)
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref3, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref4, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref5, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref6, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref7, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref8, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{repeatingread, cigar, null, repeatingref9, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef3, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef4, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef5, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef6, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef7, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef8, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef9, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
 
             // Except for the bases < maxIndelSizeFrom the end of the read, the bases are informative here
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
             // Checking the specific edge case where the reference ends within maxIndelSize of the end of the read (despite not being maxindel size from the end of the reference),
             // making sure that the old behavior of making a zero base comparison to treat the last base as informative is faithfully reproduced
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref3, 3, 0, Arrays.asList(1, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref4, 3, 0, Arrays.asList(1, 1, 0, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref5, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref6, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref7, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref8, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
-            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref9, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef3, 3, 0, Arrays.asList(1, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef4, 3, 0, Arrays.asList(1, 1, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef5, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef6, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef7, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef8, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef9, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
         }
 
 
@@ -180,7 +180,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String cigar4 = read4.length() + "M";
             final String cigar5 = read5.length() + "M";
 
-            // Ensuring that the code is not dependant on equivalent start positions between the ref/read (important case to catch in these tests)
+            // Ensuring that the code is not dependent on equivalent start positions between the ref/read (important case to catch in these tests)
             tests.add(new Object[]{read1, cigar1, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read2, cigar2, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
             tests.add(new Object[]{read3, cigar3, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
@@ -286,7 +286,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             }
         }
 
-        {//test that the behavior is still confusing and wrong in the case where read.length() disagrees with the realigned read length due to indels (caught in a debugger)
+        {//test enforcing old behavior for differences between Read.Length() and realigned readlength. See https://github.com/broadinstitute/gatk/issues/5646 for details (caught in a debugger)
             final String read = "ACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTAAGCAGAT";
             final String ref = "TTGTTTATAAAAGGAAATCTTCACTGTTTTGAACATCAGTTATTTTAAACTTTTAAGTTGTTAGCACAGCAAAAGCAACAAAATTCTAAGTG"+
                     "CAGTAATCACTTTACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTATGCAAAACTAAGCAGAT"+
