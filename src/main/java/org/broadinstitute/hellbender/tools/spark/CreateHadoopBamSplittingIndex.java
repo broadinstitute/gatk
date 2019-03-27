@@ -125,7 +125,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
                 assertBamIsCoordinateSorted(header);
                 final SBIIndexWriter indexer = new SBIIndexWriter(out, granularity);
 
-                final BAMIndexer bamIndexer = new BAMIndexer(IOUtils.replaceExtension(index, BAMIndex.BAMIndexSuffix), header);
+                final BAMIndexer bamIndexer = new BAMIndexer(IOUtils.replaceExtension(index, BAMIndex.BAI_INDEX_SUFFIX), header);
                 BAMFileSpan lastFilePointer = null;
                 for(final SAMRecord read : reader){
                     BAMFileSpan filePointer = (BAMFileSpan) read.getFileSource().getFilePointer();
@@ -149,7 +149,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
 
     private static void assertBamIsCoordinateSorted(final SAMFileHeader header) {
         if( header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
-            throw new UserException.BadInput("Cannot create a " + BAMIndex.BAMIndexSuffix + " index for a file " +
+            throw new UserException.BadInput("Cannot create a " + BAMIndex.BAI_INDEX_SUFFIX + " index for a file " +
                     "that isn't coordinate sorted.");
         }
     }

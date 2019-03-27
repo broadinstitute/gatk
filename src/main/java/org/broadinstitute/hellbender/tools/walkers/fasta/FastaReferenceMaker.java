@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
 import com.google.common.primitives.Bytes;
+import htsjdk.samtools.reference.FastaReferenceWriter;
+import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -13,7 +15,6 @@ import org.broadinstitute.hellbender.engine.ReferenceWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 import java.io.IOException;
@@ -82,7 +83,10 @@ public class FastaReferenceMaker extends ReferenceWalker {
     public void onTraversalStart() {
         final Path path = IOUtils.getPath(output);
         try {
-            writer = new FastaReferenceWriter(path, basesPerLine, true, true);
+            writer = new FastaReferenceWriterBuilder()
+                    .setFastaFile(path)
+                    .setBasesPerLine(basesPerLine)
+                    .build();
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
         }

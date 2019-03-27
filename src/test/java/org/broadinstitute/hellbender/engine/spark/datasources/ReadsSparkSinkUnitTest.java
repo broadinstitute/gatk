@@ -178,7 +178,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
         // check that a bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeBai) {
-            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + BAMIndex.BAMIndexSuffix)));
+            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + BAMIndex.BAI_INDEX_SUFFIX)));
         }
         // check that a splitting bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeSbi) {

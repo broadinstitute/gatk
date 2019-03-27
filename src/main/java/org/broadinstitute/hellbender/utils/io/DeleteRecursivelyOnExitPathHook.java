@@ -54,7 +54,7 @@ class DeleteRecursivelyOnExitPathHook {
         for (Path path : toBeDeleted) {
             try {
                 IOUtils.deleteRecursively(path);
-            } catch (IOException | SecurityException e) {
+            } catch (SecurityException e) {
                 // do nothing if cannot be deleted, because it is a shutdown hook
             }
         }

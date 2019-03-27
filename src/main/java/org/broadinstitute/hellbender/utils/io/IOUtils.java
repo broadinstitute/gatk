@@ -5,6 +5,7 @@ import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -702,7 +703,7 @@ public final class IOUtils {
             final String filename = path.getFileName().toString();
             IOUtils.deleteOnExit(path.resolveSibling(filename + Tribble.STANDARD_INDEX_EXTENSION));
             IOUtils.deleteOnExit(path.resolveSibling(filename + TabixUtils.STANDARD_INDEX_EXTENSION));
-            IOUtils.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAMIndexSuffix));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAI_INDEX_SUFFIX));
             IOUtils.deleteOnExit(path.resolveSibling(filename.replaceAll(extension + "$", ".bai")));
             IOUtils.deleteOnExit(path.resolveSibling(filename + ".md5"));
 
@@ -1021,14 +1022,8 @@ public final class IOUtils {
      * Delete rootPath recursively
      * @param rootPath is the file/directory to be deleted
      */
-    public static void deleteRecursively(final Path rootPath) throws IOException {
-        final List<Path> pathsToDelete = Files.walk(rootPath)
-                        .sorted(Comparator.reverseOrder())
-                        .collect(Collectors.toList());
-
-        for (Path path : pathsToDelete) {
-            Files.deleteIfExists(path);
-        }
+    public static void deleteRecursively(final Path rootPath) {
+        IOUtil.recursiveDelete(rootPath);
     }
 
     /**
