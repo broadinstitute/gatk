@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
-import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
@@ -394,7 +393,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
                     createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
-            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
+            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder,
+                    new GenomicsDBBCFCodec(),
+                    Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }
