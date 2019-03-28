@@ -40,7 +40,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
 
 
     private static VariantAnnotatorEngine getAnnotationEngine() {
-        return new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), null, Collections.emptyList(), false);
+        return new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), null, Collections.emptyList(), false, false);
     }
 
     @Test(dataProvider = "referenceConfidenceMergeData")

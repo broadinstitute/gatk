@@ -37,7 +37,7 @@ public class AS_RMSMappingQualityUnitTest extends ReducibleAnnotationBaseTest {
     public void testFinalizeAnnotations() throws Exception {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false, false);
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele1 = Allele.create("T");
         final Allele altAllele2 = Allele.create("C");

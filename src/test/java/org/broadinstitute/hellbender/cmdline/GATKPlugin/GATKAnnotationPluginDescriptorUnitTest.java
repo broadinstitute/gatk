@@ -331,7 +331,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
                 Collections.emptySet());
 
         clp.parseArguments(nullMessageStream, arguments);
-        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(instantiateAnnotations(clp), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(instantiateAnnotations(clp), null, Collections.emptyList(), false, false);
         VariantContext vc = inbreedingCoefficientVC;
         vc = vae.annotateContext(vc, new FeatureContext(), null, null, a->true);
 
@@ -355,7 +355,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         });
         pluginDescriptor.validateAndResolvePlugins();
 
-        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Arrays.asList(pluginDescriptor.getResolvedInstances().toArray(new Annotation[0])), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Arrays.asList(pluginDescriptor.getResolvedInstances().toArray(new Annotation[0])), null, Collections.emptyList(), false, false);
         VariantContext vc = inbreedingCoefficientVC;
         vc = vae.annotateContext(vc, new FeatureContext(), null, null, a->true);
 
@@ -412,7 +412,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         List<String> args = Stream.of(StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, StandardAnnotation.class.getSimpleName(), "--"+ StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS).collect(Collectors.toList());
 
         clp.parseArguments(nullMessageStream, args.toArray(new String[args.size()]));
-        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(instantiateAnnotations(clp), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(instantiateAnnotations(clp), null, Collections.emptyList(), false, false);
 
         Assert.assertFalse(vae.getInfoAnnotations().isEmpty());
         Assert.assertTrue(vae.getInfoAnnotations().stream().noneMatch(a -> a.getClass().getSimpleName().equals(DepthPerSampleHC.class.getSimpleName())));
@@ -613,7 +613,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         Collection<Annotation> finalAnnotations = pluginDescriptor.getResolvedInstances();
         Assert.assertEquals(finalAnnotations.size(), 1);
 
-        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Arrays.asList(finalAnnotations.toArray(new Annotation[0])), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Arrays.asList(finalAnnotations.toArray(new Annotation[0])), null, Collections.emptyList(), false, false);
         VariantContext vc = inbreedingCoefficientVC;
         vc = vae.annotateContext(vc, new FeatureContext(), null, null, a->true);
 

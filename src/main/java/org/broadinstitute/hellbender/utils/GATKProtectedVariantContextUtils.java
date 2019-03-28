@@ -290,7 +290,7 @@ public class GATKProtectedVariantContextUtils {
             return Arrays.asList((Object[])attribute);
         }
         if (attribute instanceof String) {
-            return Arrays.asList((Object[])((String)attribute).split(","));
+            return new ArrayList<>(Arrays.asList((Object[])((String)attribute).split(",")));
         }
         return Collections.singletonList(attribute);
     }

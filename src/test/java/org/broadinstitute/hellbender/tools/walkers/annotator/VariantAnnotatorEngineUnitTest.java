@@ -35,7 +35,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
     public void testCombineAnnotations() throws Exception {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false, false);
 
         final Allele REF = Allele.create("A", true);
         final Allele ALT = Allele.create("T");
@@ -68,7 +68,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
     public void testFinalizeAnnotations() throws Exception {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false, false);
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("T");
         final Genotype genotype = new  GenotypeBuilder("sample2", Arrays.asList(refAllele, altAllele))
@@ -87,7 +87,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
     public void testEmpty(){
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.emptyList(), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.emptyList(), dbSNPBinding, features, false, false);
         Assert.assertTrue(vae.getGenotypeAnnotations().isEmpty());
         Assert.assertTrue(vae.getInfoAnnotations().isEmpty());
     }
@@ -97,7 +97,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<Annotation> annotationsToUse = Arrays.asList(new Coverage());
         final List<FeatureInput<VariantContext>> features = null;
-        new VariantAnnotatorEngine( annotationsToUse, dbSNPBinding, features, false);
+        new VariantAnnotatorEngine( annotationsToUse, dbSNPBinding, features, false, false);
     }
 
     private VariantContext makeVC(final Allele refAllele, final Allele altAllele) {
@@ -164,7 +164,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
          * */
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations().stream().filter(a -> a.getClass()!=ReferenceBases.class).collect(Collectors.toList()), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations().stream().filter(a -> a.getClass()!=ReferenceBases.class).collect(Collectors.toList()), dbSNPBinding, features, false, false);
         Assert.assertFalse(vae.getVCFAnnotationDescriptions(false).contains(null));
 
         final int alt = 5;
@@ -192,7 +192,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<Annotation> annotationsToUse = Arrays.asList(new Coverage(), new FisherStrand());
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false, false);
 
         final int alt = 5;
         final int ref = 3;
@@ -220,7 +220,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(path, "dbsnp", Collections.emptyMap());
 
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false, false);
 
         final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
         Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
@@ -253,7 +253,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> fredInput = new FeatureInput<>(path, featureSourceName, Collections.emptyMap());//we'll just reuse the DBSnp file under a different name
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false, false);
 
         final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
         Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
@@ -293,7 +293,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> fredInput = new FeatureInput<>(fredFile.getAbsolutePath(), featureSourceName, Collections.emptyMap());
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false, false);
 
         final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
         Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
@@ -338,7 +338,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> fredInput = new FeatureInput<>(fredFile.getAbsolutePath(), VCFConstants.DBSNP_KEY, Collections.emptyMap());
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 
-        new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false);
+        new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false, false);
     }
 
     @Test
@@ -350,7 +350,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
                 new DepthPerAlleleBySample(),
                 new SampleList());
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annotationsToUse, dbSNPBinding, features, false, false);
 
         final int alt = 5;
         final int ref = 3;
@@ -376,7 +376,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
 
-        headerInfo.addAll(new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false).getVCFAnnotationDescriptions(false));
+        headerInfo.addAll(new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false, false).getVCFAnnotationDescriptions(false));
 
         Assert.assertFalse(headerInfo.contains(null));
         new VCFHeader(headerInfo, sampleSet);//make sure this does not blow up: https://github.com/broadinstitute/gatk/issues/1713
@@ -387,7 +387,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
 
-        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false, false);
         for (GenotypeAnnotation ga : variantAnnotatorEngine.getGenotypeAnnotations()) {
             Assert.assertFalse(ga.getDescriptions().contains(null), "getDescriptions contains null:" + ga);
             Assert.assertFalse(ga.getKeyNames().contains(null), "getKeyNames contains null" + ga);

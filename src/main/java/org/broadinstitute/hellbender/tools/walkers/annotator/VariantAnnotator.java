@@ -178,7 +178,7 @@ public class VariantAnnotator extends VariantWalker {
         final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
         variantSamples = new IndexedSampleList(samples);
 
-        annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, comps, false);
+        annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, comps, false, false);
         annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance );
 
         // setup the header fields
