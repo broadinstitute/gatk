@@ -122,6 +122,6 @@ workflow Mutect2_Multi {
 
         Array[File?] oncotated_m2_mafs = Mutect2.oncotated_m2_maf
         Array[File?] m2_bamout = Mutect2.bamout
-        Array[File?] m2_bamout_idx = Mutect2.bamout_idx
+        Array[File?] m2_bamout_index = Mutect2.bamout_index
     }
 }
