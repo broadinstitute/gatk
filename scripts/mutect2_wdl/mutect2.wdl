@@ -22,9 +22,6 @@
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
 ## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
-##         This is the recommended orientation bias filter, particularly for data sequenced on Illumina NovaSeq.
-##         If set to true, artifact_mode will be ignored, as the model learns the artifact modes on its own.
-##         While we offer both options, there's no need to run both the mixture model filter and the one based on D-ToxoG.
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
