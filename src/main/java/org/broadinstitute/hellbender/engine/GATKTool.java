@@ -436,7 +436,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Package-private so that engine classes can access it, but concrete tool child classes cannot.
      * May be overridden by traversals that require custom initialization of intervals.
      */
-    protected void initializeIntervals() {
+    void initializeIntervals() {
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
             if ( sequenceDictionary == null ) {

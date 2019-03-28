@@ -238,7 +238,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     //this only tests single-sample
-    @Test(dataProvider = "getGVCFsForGenomicsDB")
+    @Test(dataProvider = "getGVCFsForGenomicsDB", timeOut = 1000)
     public void assertMatchingGenotypesFromTileDB(File input, File expected, Locatable interval, String reference) throws IOException {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
