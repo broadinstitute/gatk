@@ -98,7 +98,8 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext vcSpanDel = new VariantContextBuilder("test1", "1",2, 2 + refAlleleSpanDel.length() - 1, vcAllelesSpanDel).
                 genotypes(genotypesSpanDel).make();
         final VariantContext vcOut1 = genotypingEngine.calculateGenotypes(vcSpanDel, GenotypeLikelihoodsCalculationModel.INDEL, null);
-        Assert.assertTrue(vcOut1 == null || !vcOut1.getAlleles().contains(Allele.SPAN_DEL));
+        //the site is monomorphic, which becomes null
+        Assert.assertTrue(vcOut1 == null);
 
         final List<Allele> mutliAllelicWithSpanDel = new ArrayList<>(Arrays.asList(refAlleleSpanDel, Allele.SPAN_DEL,
                 Allele.create("T")));
@@ -125,7 +126,8 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext vcMultiWithSpanDel = new VariantContextBuilder("test2", "1",2, 2 + refAlleleSpanDel.length() - 1, mutliAllelicWithSpanDel).
                 genotypes(regressionGenotypes).make();
         final VariantContext vcOut2 = genotypingEngine.calculateGenotypes(vcMultiWithSpanDel, GenotypeLikelihoodsCalculationModel.SNP, null);
-        Assert.assertTrue(vcOut2 == null || vcOut2.isMonomorphicInSamples());
+        //low quality T should get dropped, leaving only star, which shouldn't be output
+        Assert.assertTrue(vcOut2 == null);
     }
 
     @Test //test for https://github.com/broadinstitute/gatk/issues/2530
