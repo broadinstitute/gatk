@@ -2,14 +2,19 @@ package org.broadinstitute.hellbender;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.cmdline.ClassFinder;
+import picard.cmdline.PicardCommandLine;
 
+import java.lang.reflect.Modifier;
 import java.security.Permission;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 public final class MainTest extends CommandLineProgramTest {
 
@@ -106,6 +111,58 @@ public final class MainTest extends CommandLineProgramTest {
             Assert.assertEquals(e.status, Main.PICARD_TOOL_EXCEPTION);
         } finally {
             System.setSecurityManager(backup);
+        }
+    }
+
+    @Test
+    public void testEnsureShortDescriptionsAreShort() {
+        // Test each command line tool to ensure that one line summaries don't exceed the maximum allowable length
+
+        //TODO: replace this constant with the Picard-defined length when its available in GATK
+        //final int MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH = picard.cmdline.CommandLineProgram.MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH;
+        final int MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH = 120;
+
+        // Picard tools are validated independently by a similar test in Picard, and also use a CommandLineProgram
+        // class from a different package, so bypass tools from that package for this test
+        final List<String> packages = (new Main().getPackageList());
+        packages.remove("picard");
+
+        processAllCommandLinePrograms(
+                packages,
+                (Class<?> clazz, CommandLineProgramProperties clProperties) ->
+                    {
+                        if (clProperties != null) { // some test tools have no properties
+                            Assert.assertTrue(
+                                    clProperties.oneLineSummary().length() <= MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH,
+                                    String.format("One line summary for tool '%s' exceeds allowable length of %d",
+                                        clazz.getCanonicalName(),
+                                        MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH)
+                            );
+                        }
+                    });
+    }
+
+    /**
+     * Process each {@code CommandLineProgram}-derived class given a list of packages.
+     * @param packageList list of packages to search
+     * @param clpClassProcessor function to process each CommandLineProgram class found in {@code packageList} (note
+     *                          that the {@code CommandLineProgramProperties} argument may be null)
+     */
+    public static void processAllCommandLinePrograms(
+            final List<String> packageList,
+            final BiConsumer<Class<?>, CommandLineProgramProperties> clpClassProcessor) {
+        final ClassFinder classFinder = new ClassFinder();
+        packageList.forEach(pkg -> classFinder.find(pkg, CommandLineProgram.class));
+
+        for (final Class<?> clazz : classFinder.getClasses()) {
+            // No interfaces, synthetic, primitive, local, or abstract classes.
+            if (!clazz.isInterface() && !clazz.isSynthetic() && !clazz.isPrimitive() && !clazz.isLocalClass()
+                    && !Modifier.isAbstract(clazz.getModifiers())
+                    && !clazz.isAnonymousClass() // skip anonymous (test) classes since they don't have annotations
+                    && clazz != PicardCommandLineProgramExecutor.class) {
+                final CommandLineProgramProperties clpProperties = Main.getProgramProperty(clazz);
+                clpClassProcessor.accept(clazz, clpProperties);
+            }
         }
     }
 
