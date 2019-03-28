@@ -3,10 +3,10 @@
 #  Description of inputs
 #  intervals: genomic intervals
 #  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
-#  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
+#  pon, pon_idx: optional panel of normals and index in vcf format containing known false positves
 #  scatter_count: number of parallel jobs when scattering over intervals
-#  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
-#  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
+#  gnomad, gnomad_idx: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
+#  variants_for_contamination, variants_for_contamination_idx: vcf of common variants with allele frequencies fo calculating contamination
 #  run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  pair_list: a tab-separated table with no header in the following format:
 #   TUMOR_1_BAM</TAB>TUMOR_1_bai</TAB>NORMAL_1_BAM</TAB>NORMAL_1_bai
@@ -28,12 +28,12 @@ workflow Mutect2_Multi {
 	File pair_list
 	Array[Array[String]] pairs = read_tsv(pair_list)
 	File? pon
-	File? pon_index
+	File? pon_idx
 	File? gnomad
-	File? gnomad_index
+	File? gnomad_idx
 	File? variants_for_contamination
-    File? variants_for_contamination_index
-	Boolean? run_orientation_bias_filter
+    File? variants_for_contamination_idx
+	Boolean? run_orientation_bias_mixture_model_filter
 	Int scatter_count
 	String? m2_extra_args
     String? m2_extra_filtering_args
@@ -78,18 +78,18 @@ workflow Mutect2_Multi {
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                tumor_bam = row[0],
-                tumor_bai = row[1],
-                normal_bam = normal_bam,
-                normal_bai = normal_bai,
+                tumor_reads = row[0],
+                tumor_reads_index = row[1],
+                normal_reads = normal_bam,
+                normal_reads_index = normal_bai,
                 pon = pon,
-                pon_index = pon_index,
+                pon_idx = pon_idx,
                 scatter_count = scatter_count,
                 gnomad = gnomad,
-                gnomad_index = gnomad_index,
+                gnomad_idx = gnomad_idx,
                 variants_for_contamination = variants_for_contamination,
-                variants_for_contamination_index = variants_for_contamination_index,
-                run_orientation_bias_filter = run_orientation_bias_filter,
+                variants_for_contamination_idx = variants_for_contamination_idx,
+                run_orientation_bias_mixture_model_filter = run_orientation_bias_mixture_model_filter,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 run_oncotator = run_oncotator,
@@ -117,11 +117,11 @@ workflow Mutect2_Multi {
 
     output {
         Array[File] filtered_vcf = Mutect2.filtered_vcf
-        Array[File] filtered_vcf_idx = Mutect2.filtered_vcf_index
+        Array[File] filtered_vcf_idx = Mutect2.filtered_vcf_idx
         Array[File?] contamination_tables = Mutect2.contamination_table
 
         Array[File?] oncotated_m2_mafs = Mutect2.oncotated_m2_maf
         Array[File?] m2_bamout = Mutect2.bamout
-        Array[File?] m2_bamout_index = Mutect2.bamout_index
+        Array[File?] m2_bamout_idx = Mutect2.bamout_idx
     }
 }
