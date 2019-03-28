@@ -293,7 +293,7 @@ workflow Mutect2 {
     call MergeVCFs {
         input:
             input_vcfs = M2.unfiltered_vcf,
-            input_vcf_indices = M2.unfiltered_vcf_index,
+            input_vcf_indices = M2.unfiltered_vcf_idx,
             output_name = unfiltered_name,
             compress = compress,
             gatk_override = gatk_override,
@@ -433,7 +433,7 @@ workflow Mutect2 {
 
     if (run_funcotator_or_default) {
         File funcotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, Filter.filtered_vcf_index])
+        File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         call Funcotate {
             input:
                 ref_fasta = ref_fasta,
@@ -468,7 +468,7 @@ workflow Mutect2 {
 
     output {
         File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, Filter.filtered_vcf_index])
+        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         File filtering_stats = Filter.filtering_stats
         File mutect_stats = MergeStats.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
@@ -597,7 +597,7 @@ task M2 {
     File? variants_for_contamination_idx
 
     String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
     String output_stats = output_vcf + ".stats"
 
@@ -676,7 +676,7 @@ task M2 {
 
     output {
         File unfiltered_vcf = "${output_vcf}"
-        File unfiltered_vcf_index = "${output_vcf_index}"
+        File unfiltered_vcf_idx = "${output_vcf_idx}"
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
@@ -694,7 +694,7 @@ task MergeVCFs {
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
     File? gatk_override
 
@@ -731,7 +731,7 @@ task MergeVCFs {
 
     output {
         File merged_vcf = "${output_vcf}"
-        File merged_vcf_index = "${output_vcf_index}"
+        File merged_vcf_idx = "${output_vcf_idx}"
     }
 }
 
@@ -978,7 +978,7 @@ task Filter {
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
     File? mutect_stats
     File? artifact_priors_tar_gz
     File? contamination_table
@@ -1028,7 +1028,7 @@ task Filter {
 
     output {
         File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_index = "${output_vcf_index}"
+        File filtered_vcf_idx = "${output_vcf_idx}"
         File filtering_stats = "filtering.stats"
     }
 }
@@ -1043,7 +1043,7 @@ task FilterAlignmentArtifacts {
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
     File realignment_index_bundle
     String? realignment_extra_args
 
@@ -1085,7 +1085,7 @@ task FilterAlignmentArtifacts {
 
     output {
         File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_index = "${output_vcf_index}"
+        File filtered_vcf_idx = "${output_vcf_idx}"
     }
 }
 
@@ -1225,9 +1225,9 @@ task Funcotate {
      String output_maf = output_file_base_name + ".maf"
      String output_maf_index = output_maf + ".idx"
      String output_vcf = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
-     String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
      String output_file = if output_format == "MAF" then output_maf else output_vcf
-     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_index
+     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_idx
      String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
