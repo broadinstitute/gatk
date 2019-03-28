@@ -76,4 +76,4 @@ p2 <- ggplot(counts, aes(x=Name, y=value, color=Filter)) +
   geom_text(aes(label=ifelse(Filter!="PASS", round(value, round_digits), "")), color="darkgrey", size=2.5, hjust=1.6, vjust=0.5) +
   theme(axis.text.x=element_text(angle=30, hjust = 1))
 
-ggsave(plot=multiplot(p1, p2, cols=2), filename = 'metrics.png', width=4, height=3)
+ggsave(plot=multiplot(p1, p2, cols=2), filename = 'metrics.png', width=4, height=3, units="in")

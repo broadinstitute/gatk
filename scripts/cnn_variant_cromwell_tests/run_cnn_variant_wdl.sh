@@ -39,6 +39,6 @@ echo "=================="
 echo "Running CNN Score Variants WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/cnn_variant_wdl/cnn_score_variants.wdl
 cd $WORKING_DIR/gatk/scripts/cnn_variant_wdl/
-java -jar $CROMWELL_JAR run cram2filtered.wdl -i $WORKING_DIR/cram2filtered_travis.json
-java -jar $CROMWELL_JAR run cnn_score_variants.wdl -i $WORKING_DIR/cnn_score_variants_travis.json
 java -jar $CROMWELL_JAR run cnn_score_variants.wdl -i $WORKING_DIR/cnn_score_variants_travis_1d.json
+java -jar $CROMWELL_JAR run cnn_score_variants.wdl -i $WORKING_DIR/cnn_score_variants_travis.json
+java -jar $CROMWELL_JAR run cram2filtered.wdl -i $WORKING_DIR/cram2filtered_travis.json

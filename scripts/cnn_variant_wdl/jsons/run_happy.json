@@ -1,0 +1,17 @@
+{
+  "HappyWorkflow.vcf_files": [
+    "gs://broad-dsde-methods/cromwell-execution-33/Cram2FilteredVcf/1f653862-42d9-470e-acdf-0f00e34263f1/call-FilterVariantTranches/nova_g947y_na12878_filtered.vcf.gz",
+    "gs://broad-dsde-methods/cromwell-execution-33/Cram2FilteredVcf/e8031a29-d788-4901-bb77-4f4ba542a024/call-FilterVariantTranches/nova_g947n_na12878_filtered.vcf.gz"
+  ],
+  "HappyWorkflow.reference_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "HappyWorkflow.reference_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "HappyWorkflow.reference_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "HappyWorkflow.truth_bed": "gs://broad-dsde-methods-sam/cnn-variant/beds/chr20_conf_1m_10m.bed",
+  "HappyWorkflow.truth_vcf": "gs://broad-dsde-methods-sam/cnn-variant/vcfs/nist_na12878_giab_hg38_sd_fix.vcf.gz",
+  "HappyWorkflow.truth_vcf_index": "gs://broad-dsde-methods-sam/cnn-variant/vcfs/nist_na12878_giab_hg38_sd_fix.vcf.gz.tbi",
+  "HappyWorkflow.rscript": "gs://broad-dsde-methods-sam/cnn-variant/scripts/happy_plot.R",
+  "HappyWorkflow.disk_space": "100",
+  "HappyWorkflow.cpu": "2",
+  "HappyWorkflow.mem_gb": "8",
+  "HappyWorkflow.preemptible_attempts": "10"
+}

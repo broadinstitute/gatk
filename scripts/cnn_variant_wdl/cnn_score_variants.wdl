@@ -17,8 +17,8 @@ workflow CNNScoreVariantsWorkflow {
     File reference_fasta
     File reference_dict
     File reference_fasta_index
-    File resource_fofn              # File of VCF file names of resources of known SNPs and INDELs, (e.g. Mills, gnomAD)
-    File resource_fofn_index        # File of VCF index file names for resources
+    Array[File] resources           # List of VCF file names of resources of known SNPs and INDELs, (e.g. mills, gnomAD)
+    Array[File] resources_index     # List of VCF file indices of resources
     File? bam_file                  # Bam (or HaplotypeCaller-generated "bamout") file from which input_vcf was called, required by read-level architectures
     File? bam_file_index
     File? architecture_json         # Neural Net configuration for CNNScoreVariants
@@ -27,6 +27,7 @@ workflow CNNScoreVariantsWorkflow {
     String info_key                 # The score key for the INFO field of the vcf (e.g. CNN_1D, CNN_2D)
     String snp_tranches             # Filtering threshold(s) for SNPs in terms of sensitivity to overlapping known variants in resources
     String indel_tranches           # Filtering threshold(s) for INDELs in terms of sensitivity to overlapping known variants in resources
+    String? filter_tranches_extra   # Additional arguments for filter variant tranches
     String output_prefix            # Identifying string for this run which will be used to name output files (the gzipped VCF and, for the 2D CNN, bamout)
     Int? inference_batch_size       # Batch size for python in CNNScoreVariants
     Int? transfer_batch_size        # Batch size for java transfers to python in CNNScoreVariants
@@ -94,12 +95,13 @@ workflow CNNScoreVariantsWorkflow {
         input:
             input_vcf = MergeVCF_CNN.merged_vcf,
             input_vcf_index = MergeVCF_CNN.merged_vcf_index,
-            resource_fofn = resource_fofn,
-            resource_fofn_index = resource_fofn_index,
+            resources = resources,
+            resources_index = resources_index,
             output_prefix = output_prefix,
             snp_tranches = snp_tranches,
             indel_tranches = indel_tranches,
             info_key = info_key,
+            extra_args = filter_tranches_extra,
             gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
             gatk_docker = gatk_docker

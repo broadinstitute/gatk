@@ -18,8 +18,8 @@ workflow Cram2FilteredVcf {
     File reference_fasta 
     File reference_dict
     File reference_fasta_index
-    File resource_fofn               # File of VCF file names of resources of known SNPs and INDELs, (e.g. mills, gnomAD)
-    File resource_fofn_index         # File of VCF file indices of resources
+    Array[File] resources            # List of VCF file names of resources of known SNPs and INDELs, (e.g. mills, gnomAD)
+    Array[File] resources_index      # List of VCF file indices of resources
     File? architecture_json          # Neural Net configuration for CNNScoreVariants
     File? architecture_hd5           # Pre-Trained weights and architecture for CNNScoreVariants
     Int? inference_batch_size        # Batch size for python in CNNScoreVariants
@@ -133,8 +133,8 @@ workflow Cram2FilteredVcf {
         input:
             input_vcf = MergeVCF_HC4.merged_vcf,
             input_vcf_index = MergeVCF_HC4.merged_vcf_index,
-            resource_fofn = resource_fofn,
-            resource_fofn_index = resource_fofn_index,
+            resources = resources,
+            resources_index = resources_index,
             output_prefix = output_prefix,
             snp_tranches = snp_tranches,
             indel_tranches = indel_tranches,
