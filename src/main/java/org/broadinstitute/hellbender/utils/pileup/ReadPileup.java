@@ -213,16 +213,17 @@ public class ReadPileup implements Iterable<PileupElement> {
         // Profiling has determined that returning a custom unmodifiable iterator is faster than
         // Collections.unmodifiableList(pileupElements).iterator()
         return new Iterator<PileupElement>() {
-            private final Iterator<PileupElement> wrappedIterator = pileupElements.iterator();
+            private final int len = pileupElements.size();
+            private int i = 0;
 
             @Override
             public boolean hasNext() {
-                return wrappedIterator.hasNext();
+                return i < len;
             }
 
             @Override
             public PileupElement next() {
-                return wrappedIterator.next();
+                return pileupElements.get(i++);
             }
 
             @Override

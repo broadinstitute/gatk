@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.IndependentSampleGenotypesModel;
@@ -67,10 +68,10 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String ref  = "ACGT";
             final String read = "ACGT";
             final String cigar = read.length() + "M";
-            tests.add(new Object[]{read, cigar, ref, 1, Arrays.asList(1, 1, 1, 0)});
-            tests.add(new Object[]{read, cigar, ref, 2, Arrays.asList(1, 1, 0, 0)});
-            tests.add(new Object[]{read, cigar, ref, 3, Arrays.asList(1, 0, 0, 0)});
-            tests.add(new Object[]{read, cigar, ref, 4, Arrays.asList(0, 0, 0, 0)});
+            tests.add(new Object[]{read, cigar, null, ref, 1, 0, Arrays.asList(1, 1, 1, 0)});
+            tests.add(new Object[]{read, cigar, null, ref, 2, 0, Arrays.asList(1, 1, 0, 0)});
+            tests.add(new Object[]{read, cigar, null, ref, 3, 0, Arrays.asList(1, 0, 0, 0)});
+            tests.add(new Object[]{read, cigar, null, ref, 4, 0, Arrays.asList(0, 0, 0, 0)});
         }
 
         { // actually interesting case where some sites aren't informative
@@ -86,12 +87,182 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String cigar4 = read4.length() + "M";
             final String cigar5 = read5.length() + "M";
 
-            tests.add(new Object[]{read1, cigar1, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, cigar2, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read3, cigar3, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read4, cigar4, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read5, cigar5, ref, 1, Arrays.asList(1, 1, 1, 1, 1, 1, 0, 0)});
+            // Simple test cases, the repeating A's cause the ending bases to appear uninformative
+            tests.add(new Object[]{read1, cigar1, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read3, cigar3, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read4, cigar4, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read5, cigar5, null, ref, 1, 0, Arrays.asList(1, 1, 1, 1, 1, 1, 0, 0)});
         }
+
+        { // testing that behavior is consistent when the read extends beyond the start of the reference
+            final String ref   = "TTAAA";
+            final String read1 = "TTA";
+            final String read2 = "TTAA";
+            final String read3 = "TTAAA";
+            final String read4 = "TTAAAA";
+            final String read5 = "TTAAAAT";
+            final String cigar1 = read1.length() + "M";
+            final String cigar2 = read2.length() + "M";
+            final String cigar3 = read3.length() + "M";
+            final String cigar4 = read4.length() + "M";
+            final String cigar5 = read5.length() + "M";
+
+            // Testing that for all these cases the third bases still counts as uninformative given that there might be mismatches to the reference beyond its end, (reflects the previous set of cases)
+            tests.add(new Object[]{read1, cigar1, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read3, cigar3, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read4, cigar4, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read5, cigar5, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+        }
+
+        { // testing that the behavior for references within the indel span behave properly
+            final String repeatingRead = "ATCATC";
+            final String repeatingRef1 = "AT";
+            final String repeatingRef2 = "ATC";
+            final String repeatingRef3 = "ATCA";
+            final String repeatingRef4 = "ATCAT";
+            final String repeatingRef5 = "ATCATC";
+            final String repeatingRef6 = "ATCATCA";
+            final String repeatingRef7 = "ATCATCAT";
+            final String repeatingRef8 = "ATCATCATC";
+            final String repeatingRef9 = "ATCATCATCA";
+            final String nonRepeatingread = "ATCGAT";
+            final String nonRepeatingRef1 = "AT";
+            final String nonRepeatingRef2 = "ATC";
+            final String nonRepeatingRef3 = "ATCG";
+            final String nonRepeatingRef4 = "ATCGA";
+            final String nonRepeatingRef5 = "ATCGAT";
+            final String nonRepeatingRef6 = "ATCGATA";
+            final String nonRepeatingRef7 = "ATCGATAT";
+            final String nonRepeatingRef8 = "ATCGATATC";
+            final String nonRepeatingRef9 = "ATCGATATCG";
+
+            final String cigar = repeatingRead.length() + "M";
+
+            // None of these cases are informative because the reference/reads repeat in units of 3 (which is maxindel size)
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef3, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef4, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef5, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef6, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef7, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef8, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingRead, cigar, null, repeatingRef9, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+
+            // Except for the bases < maxIndelSizeFrom the end of the read, the bases are informative here
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            // Checking the specific edge case where the reference ends within maxIndelSize of the end of the read (despite not being maxindel size from the end of the reference),
+            // making sure that the old behavior of making a zero base comparison to treat the last base as informative is faithfully reproduced
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef3, 3, 0, Arrays.asList(1, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef4, 3, 0, Arrays.asList(1, 1, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef5, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef6, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef7, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef8, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingRef9, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+        }
+
+
+
+        { // testing that behavior is consistent when the read starts offset into the reference bases into the reference
+            final String ref   = "GGGGGGGGGGTTAAAATT";
+            final String read1 = "TTA";
+            final String read2 = "TTAA";
+            final String read3 = "TTAAA";
+            final String read4 = "TTAAAA";
+            final String read5 = "TTAAAAT";
+            final String cigar1 = read1.length() + "M";
+            final String cigar2 = read2.length() + "M";
+            final String cigar3 = read3.length() + "M";
+            final String cigar4 = read4.length() + "M";
+            final String cigar5 = read5.length() + "M";
+
+            // Ensuring that the code is not dependent on equivalent start positions between the ref/read (important case to catch in these tests)
+            tests.add(new Object[]{read1, cigar1, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read3, cigar3, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read4, cigar4, null, ref, 1, 10, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read5, cigar5, null, ref, 1, 10, Arrays.asList(1, 1, 1, 1, 1, 1, 0, 0)});
+        }
+
+        { // testing that mismatches are correctly comparing mismatches off the end of the matching read/ref region
+            final String read1 = "AAACCC";
+            final String cigar1 = read1.length() + "M";
+            final byte qual = (byte)10;
+            final byte[] quals1 = Utils.dupBytes(qual, read1.length());
+            quals1[quals1.length-1] = 9;
+
+            // Construct a read where the final T base has a very high mapping quality compared to other mismatching bases, so that for the read
+            // to be counted as uninformative that T base must have been aligned matching to some other T in the read.
+            final String read2 = "ATAAT";
+            final String cigar2 = read1.length() + "M";
+            final byte[] quals2 = Utils.dupBytes(qual, read2.length());
+            quals2[quals2.length-1] = 63;
+
+            final String ref1 = "AAACCT";
+            final String ref2 = "AACCT";
+            final String ref3 = "AACTT";
+            final String ref4 = "AAAACCT";
+            final String ref5 = "AAACCCT";
+
+            // These references have T bases to align to at many offsets to the 5th base
+            // Some of these references have the candidate T beyond the fifth base in order to test that the indel code is indeed
+            // comparing the final bases of the read to bases off the end of the reference
+            final String ref10 = "ATAATAA";
+            final String ref11 = "ATATTAA";
+            final String ref12 = "ATTATAA";
+            final String ref13 = "ATAATTA";
+            final String ref14 = "ATAATAT";
+            final String ref15 = "ATAAATA";
+            final String ref16 = "ATAAAAT";
+            final String ref17 = "ATATTA";
+            final String ref18 = "ATATT";
+            final String ref19 = "ATAT";
+            final String ref20 = "ATA";
+            final String ref21 = "ATTATA";
+            final String ref22 = "ATTAT";
+            final String ref23 = "ATTA";
+            final String ref24 = "ATT";
+
+            tests.add(new Object[]{read1, cigar1, quals1, ref1, 2, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{read1, cigar1, quals1, ref2, 2, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read1, cigar1, quals1, ref3, 2, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read1, cigar1, quals1, ref4, 2, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read1, cigar1, quals1, ref5, 2, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+
+
+            tests.add(new Object[]{read2, cigar2, quals2, ref10, 2, 0, Arrays.asList(1, 1, 1, 0, 0)}); // T has nowhere to align to, all bases informative
+            tests.add(new Object[]{read2, cigar2, quals2, ref11, 2, 0, Arrays.asList(1, 0, 0, 0, 0)}); // T has somewhere to align to other mismatches outweight in position 1
+            tests.add(new Object[]{read2, cigar2, quals2, ref12, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // All bases uninformative as 2 base deletion aligns perfectly
+            tests.add(new Object[]{read2, cigar2, quals2, ref13, 2, 0, Arrays.asList(1, 1, 1, 0, 0)}); // Still uninformative because reads original alignment score was low due to many matches
+            tests.add(new Object[]{read2, cigar2, quals2, ref14, 2, 0, Arrays.asList(1, 1, 1, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref15, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // Uninformative because realigning the T
+            tests.add(new Object[]{read2, cigar2, quals2, ref16, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // Same as above but for indel size of 2
+            tests.add(new Object[]{read2, cigar2, quals2, ref16, 1, 0, Arrays.asList(1, 1, 0, 0, 0)}); // Showing that a smaller indel size causes it to fail to align the final T
+            tests.add(new Object[]{read2, cigar2, quals2, ref17, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // The rest of these cases test shrinking references, mostly they are uninformative
+            tests.add(new Object[]{read2, cigar2, quals2, ref18, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // because the offending T that must be aligned off the edge is being aligned compared
+            tests.add(new Object[]{read2, cigar2, quals2, ref19, 2, 0, Arrays.asList(0, 0, 0, 0, 0)}); // to the reference in such a way that it isn't counted
+            tests.add(new Object[]{read2, cigar2, quals2, ref20, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref21, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref22, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref23, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, quals2, ref24, 2, 0, Arrays.asList(0, 0, 0, 0, 0)});
+
+        }
+
+        { //Testing that an offset can match despite starting within a deletion from the reference and get discounted properly
+            final String read = "TGTATATGTAT";
+            final String cigar = "6M6D5M";
+            final String ref = "TGTATATGTATGTGTATGTACATA";
+            final byte qual = (byte)10;
+            final byte[] quals = Utils.dupBytes(qual, read.length());
+            // Some of these bases would be marked as informative if not for the fact that their comparison offsets correspond to deletion bases (caught in a debugger)
+            tests.add(new Object[]{read, cigar, quals, ref, 7, 0, Arrays.asList(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)});
+        }
+
 
         for ( final String repeatUnit : Arrays.asList("A", "CA", "TAC", "TAGC", "TCAGA")) {
             final String anchor = Strings.repeat("G", repeatUnit.length());
@@ -106,13 +277,32 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                     for ( int i = 0; i < anchor.length(); i++ ) expected.add(1);
                     for ( int i = 0; i < repeat.length(); i++ ) expected.add(readLen == repeat.length() ? 1 : 0);
                     for ( int i = 0; i < anchor.length(); i++ ) expected.add(0);
-                    tests.add(new Object[]{read, readCigar, ref, repeatUnit.length(), expected});
+                    tests.add(new Object[]{read, readCigar, null, ref, repeatUnit.length(), 0, expected});
 
                     final List<Integer> result = new ArrayList<>(Collections.nCopies(ref.length() - anchor.length(), 1));
                     result.addAll(Collections.nCopies(anchor.length(), 0));
-                    tests.add(new Object[]{ref, refCigar, ref, repeatUnit.length(), result});
+                    tests.add(new Object[]{ref, refCigar, null, ref, repeatUnit.length(), 0, result});
                 }
             }
+        }
+
+        {//test enforcing old behavior for differences between Read.Length() and realigned readlength. See https://github.com/broadinstitute/gatk/issues/5646 for details (caught in a debugger)
+            final String read = "ACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTAAGCAGAT";
+            final String ref = "TTGTTTATAAAAGGAAATCTTCACTGTTTTGAACATCAGTTATTTTAAACTTTTAAGTTGTTAGCACAGCAAAAGCAACAAAATTCTAAGTG"+
+                    "CAGTAATCACTTTACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTATGCAAAACTAAGCAGAT"+
+                    "TGTGTCTCTAGAGTATTTCCCATCTCAAGTTTAGTTATTTACTAATTTGGCAACATCTGACCTATCTTTAATTGTGAGAAAATAAACAAACACATAAGCCAACTCTCAGAATATGGTTATACAT";
+            final String cigar = "77M10D24M";
+
+            tests.add(new Object[]{read, cigar, null, ref, 10, 105, Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)});
+
+        }
+
+        {//test for proper behavior when comparison starts in the read after an insertion
+            final String ref = "TACCACAGTTTTGTTTACTACAGCTTTGTAGTAAATTTTG";
+            final String read =  "CCACACTGTTTTGTTTACTACAGCTT";
+            final String cigar1 = "5M2I19M";
+            //real issue is the informativeness for offset zero, but might as well run the rest of the offsets
+            tests.add(new Object[]{read, cigar1, null, ref, 10, 2, Arrays.asList(1,1,1,1,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0)});
         }
 
         {//regression tests for an issue from late Aug 2018
@@ -121,23 +311,32 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             final String cigar1 = read.length() + "M";
             final String cigar2 = "7M3D6M";
             //real issue is the informativeness for offset zero, but might as well run the rest of the offsets
-            tests.add(new Object[]{read, cigar1, ref, 3, Arrays.asList(0,0,0,0,0,0,0,0,0,0,0,0,0)});
-            tests.add(new Object[]{read, cigar2, ref, 3, Arrays.asList(1,1,1,1,1,1,0,0,0,0,0,0,0)});
+            tests.add(new Object[]{read, cigar1, null, ref, 3, 0, Arrays.asList(0,0,0,0,0,0,0,0,0,0,0,0,0)});
+            tests.add(new Object[]{read, cigar2, null, ref, 3, 0, Arrays.asList(1,1,1,1,1,1,0,1,1,1,1,0,0)}); //TODO this test was broken before without adjusting the offsets at all...
         }
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "CalcNIndelInformativeReadsData")
-    public void testCalcNIndelInformativeReads(final String readBases, final String cigar, final String ref, final int maxIndelSize, final List<Integer> expected ) {
+    public void testCalcNIndelInformativeReads(final String readBases, final String cigar, final byte[] readQuals, final String ref, final int maxIndelSize, final int readStartIntoRef, final List<Integer> expected ) {
         final byte qual = (byte)30;
-        final byte[] quals = Utils.dupBytes(qual, readBases.length());
+        final byte[] quals = readQuals != null ? readQuals : Utils.dupBytes(qual, readBases.length());
+        // on the same read after the first site the result will be cached in the transient attributes, assert the results are the same as those calculated non-transiently.
+        final GATKRead readCache = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
 
         for ( int i = 0; i < readBases.getBytes().length; i++ ) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
-            final SimpleInterval loc = new SimpleInterval("20", i + 1, i + 1);
-            final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read), i);
-            final int actual = model.calcNIndelInformativeReads(pileup, i, ref.getBytes(), maxIndelSize);
-            Assert.assertEquals(actual, (int)expected.get(i), "failed at position " + i);
+            final Pair<Integer, Boolean> readCoordinateForReferenceCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(readCache, readCache.getStart() + i, true);
+
+            if (!readCoordinateForReferenceCoordinate.getValue() && readCoordinateForReferenceCoordinate.getKey() != -1) {
+                final GATKRead readNoCache = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
+                final SimpleInterval loc = new SimpleInterval("20", i + 1 + readStartIntoRef, i + 1 + readStartIntoRef);
+                final ReadPileup pileupCache = new ReadPileup(loc, Collections.singletonList(readCache), readCoordinateForReferenceCoordinate.getKey());
+                final ReadPileup pileupNoCache = new ReadPileup(loc, Collections.singletonList(readNoCache), ReadUtils.getReadCoordinateForReferenceCoordinate(readNoCache, readNoCache.getStart() + i).getKey());
+                final int actualCache = model.calcNReadsWithNoPlausibleIndelsReads(pileupCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
+                final int actualNoCache = model.calcNReadsWithNoPlausibleIndelsReads(pileupNoCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
+                Assert.assertEquals(actualCache, (int)expected.get(i), "cached result failed at position " + i);
+                Assert.assertEquals(actualNoCache, (int)expected.get(i), "non-cached result failed at position " + i);
+            }
         }
     }
 
