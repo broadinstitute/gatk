@@ -266,6 +266,21 @@ public final class GenomicsDBImport extends GATKTool {
     @Override
     public boolean requiresIntervals() { return true; }
 
+    /**
+     * Get the largest interval per contig that contains the intervals specified on the command line.
+     * @param getIntervals intervals to be transformed
+     * @param sequenceDictionary used to validate intervals
+     * @return a list of one interval per contig spanning the input intervals after processing and validation
+     */
+    @Override
+    protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
+        if (mergeInputIntervals) {
+            return IntervalUtils.getSpanningIntervals(getIntervals, sequenceDictionary);
+        } else {
+            return getIntervals;
+        }
+    }
+
     @Override
     public int getDefaultCloudPrefetchBufferSize() {
         // Empirical testing has shown that this tool performs best at scale with cloud buffering
@@ -757,7 +772,7 @@ public final class GenomicsDBImport extends GATKTool {
      * dictionary (as returned by {@link #getBestAvailableSequenceDictionary})
      * to parse/verify them. Does nothing if no intervals were specified.
      */
-    private void initializeIntervals() {
+    protected void initializeIntervals() {
         if (intervalArgumentCollection.intervalsSpecified()) {
             final SAMSequenceDictionary intervalDictionary = getBestAvailableSequenceDictionary();
 

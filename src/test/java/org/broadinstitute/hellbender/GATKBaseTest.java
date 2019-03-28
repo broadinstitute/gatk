@@ -100,6 +100,8 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String hg19_chr1_1M_dbSNP_modified = publicTestDir + "HSA19.dbsnp135.chr1_1M.exome_intervals.modified.vcf";
 
     public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
+
+    //contains chromosomes 1,2,3, and 4 using b37/GRCh37 contig names (i.e. no "chr")
     public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
     // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
     public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";

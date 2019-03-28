@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -11,12 +12,15 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -107,6 +111,16 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     private boolean includeNonVariants = false;
 
     /**
+     * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
+     * sequencing, especially if GVCF data only exists for specified intervals.  Use with
+     * --only-output-calls-starting-in-intervals if input GVCFs contain calls outside the specified intervals.
+     */
+    @Argument(fullName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
+            shortName = GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME,
+            doc = "Boolean flag to import all data in between intervals.")
+    private boolean mergeInputIntervals = false;
+
+    /**
      * "Genotype" somatic GVCFs, outputting genotypes according to confidently called alt alleles, which may lead to inconsistent ploidy
      * Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.
      */
@@ -171,6 +185,21 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
 
+    /**
+     * Get the largest interval per contig that contains the intervals specified on the command line.
+     * @param getIntervals intervals to be transformed
+     * @param sequenceDictionary used to validate intervals
+     * @return a list of one interval per contig spanning the input intervals after processing and validation
+     */
+    @Override
+    protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
+        if (mergeInputIntervals) {
+            return IntervalUtils.getSpanningIntervals(getIntervals, sequenceDictionary);
+        } else {
+            return getIntervals;
+        }
+    }
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -201,6 +230,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
             }
         }
+
         intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 

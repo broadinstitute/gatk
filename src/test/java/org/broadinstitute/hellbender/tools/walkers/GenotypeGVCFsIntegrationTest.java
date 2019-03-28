@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -34,10 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -219,6 +217,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     //this is different from the above data provider because we can currently only load a single interval into a genomics db in a sane way
     //so we need to provide a list of intervals and then look at each one
     public Object[][] getGVCFsForGenomicsDB(){
+
+
         return new Object[][]{
                 {getTestFile(BASE_PAIR_GVCF), getTestFile(BASE_PAIR_EXPECTED), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21},
                 {CEUTRIO_20_21_GATK3_4_G_VCF, getTestFile("CEUTrio.20.gatk3.7_30_ga4f720357.expected.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21},
@@ -226,12 +226,51 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @DataProvider
+    public Object[][] getGVCFsForGenomicsDBOverMultipleIntervals() {
+        LinkedList<SimpleInterval> intervals = new LinkedList<SimpleInterval>();
+        //[ 10000117, 10020107 ]
+        int base = 10000117;
+        for (int i = 0; i < 1000; ++i)
+            intervals.add(new SimpleInterval("20", base + 20 * i, base + 20 * i + 10)); //intervals of size 10 separated by 10
+
+        return new Object[][]{
+                {CEUTRIO_20_21_GATK3_4_G_VCF, getTestFile("NA12878.mergedIntervals.vcf"), intervals, b37_reference_20_21}
+        };
+    }
+
     //this only tests single-sample
-    @Test(dataProvider = "getGVCFsForGenomicsDB")
+    @Test(dataProvider = "getGVCFsForGenomicsDB", timeOut = 1000000)
     public void assertMatchingGenotypesFromTileDB(File input, File expected, Locatable interval, String reference) throws IOException {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
         runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+    }
+
+    @Test(dataProvider = "getGVCFsForGenomicsDBOverMultipleIntervals")
+    public void testGenotypeGVCFsMultiIntervalGDBQuery(File input, File expected, List<Locatable> intervals, String reference) throws IOException {
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, intervals, true);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+
+        final File output = createTempFile("genotypegvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(reference))
+                .addArgument("V", genomicsDBUri)
+                .addOutput(output);
+        intervals.forEach(args::addInterval);
+        args.add("--" + GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME);
+        args.add("--only-output-calls-starting-in-intervals");  //note that this will restrict calls to just the specified intervals
+
+        Utils.resetRandomGenerator();
+        runCommandLine(args);
+
+        //Note that if this isn't working it will take *FOREVER*
+        // runs in 0.06 minutes with no input intervals specfied
+        final List<VariantContext> expectedVC = getVariantContexts(expected);
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        assertForEachElementInLists(actualVC, expectedVC, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes);
+
     }
 
     //this tests single-sample with new MQ format

@@ -57,4 +57,30 @@ public final class GenomicsDBTestUtils {
         importer.runCommandLine(args);
         return new File(workspace);
     }
+
+    /**
+     * Create a temporary GenomicsDB containing multiple intervals of data from a set of gvcfs
+     * this database will be deleted on jvm shutdown automatically
+     * @param gvcf, a GVCF to load from
+     * @param intervals the list of intervals to load
+     * @param mergeIntervals if true, import data over the span of all intervals
+     * @return the created workspace folder containing the new GenomicsDB
+     */
+    public static File createTempGenomicsDB(final File gvcf, final List<Locatable> intervals, final boolean mergeIntervals) {
+        final File workspaceDir = BaseTest.createTempDir("genomicsDBWorkspace");
+
+        final CommandLineProgramTester importer = GenomicsDBImport.class::getSimpleName;
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addVCF(gvcf);
+
+        final String workspace = new File(workspaceDir, "workspace").getAbsolutePath();
+        args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+        intervals.forEach(args::addInterval);
+        if (mergeIntervals) {
+            args.addBooleanArgument(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, true);
+        }
+        importer.runCommandLine(args);
+        return new File(workspace);
+    }
 }
