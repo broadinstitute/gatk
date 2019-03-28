@@ -151,7 +151,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1);
     }
 
-    @Test(timeOut = 1000)
+    @Test(timeOut = 1000000)
     public void testGenomicsDBImportWith1000IntervalsToBeMerged() throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
         LinkedList<SimpleInterval> intervals = new LinkedList<SimpleInterval>();
