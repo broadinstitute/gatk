@@ -31,7 +31,9 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
                 {"all.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), ALL_FILTERS},
                 {"all_gnomad.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.emptySet(), ALL_FILTERS},
-                {"ar.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(AutosomalRecessiveConstants.AR_INFO_VALUE)},
+                {"ar_homvar.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(AutosomalRecessiveConstants.AR_INFO_VALUE)},
+                {"ar_hetvar.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER), Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)},
+                {"ar_compound_het.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(AutosomalRecessiveConstants.AR_INFO_VALUE)},
                 {"clinvar.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
                 {"clinvar_gnomad.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
                 {"gnomad_af_failing_cases.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),

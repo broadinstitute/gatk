@@ -1,0 +1,14 @@
+##fileformat=VCFv4.2
+##Funcotator Version=0.0.3 | Gencode 27 ALL | LMMKnown 20180618
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_27_hugoSymbol">
+##buildName=GRCh38
+##contig=<ID=chr1,length=248956422,assembly=Homo_sapiens_assembly38.fasta>
+##reference=file:///cromwell_root/broad-references/hg38/v0/Homo_sapiens_assembly38.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST
+chr1	55039931	.	G	A	.	.	FUNCOTATION=[MUTYH]	GT:DP:GQ:MIN_DP:PL	0/1:80:99:64:0,114,1800
+chr1	55039931	.	G	A	.	.	FUNCOTATION=[ATP7B]	GT:DP:GQ:MIN_DP:PL	0/1:80:99:64:0,114,1800

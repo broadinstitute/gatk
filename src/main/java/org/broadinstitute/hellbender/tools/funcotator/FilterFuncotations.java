@@ -19,19 +19,23 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ArHomvarFilter;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.AutosomalRecessiveConstants;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.FuncotationFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import scala.tools.nsc.interpreter.LoopCommands;
 
 import java.io.File;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -117,10 +121,12 @@ public class FilterFuncotations extends TwoPassVariantWalker {
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
     private final List<FuncotationFilter> funcotationFilters = new ArrayList<>();
+    private final List<VariantContext> arCompoundHetVariants = new ArrayList<>();
+    private final Map<String, List<VariantContext>> arHetVariantsByGene = new HashMap<>();
 
     @Override
     public void onTraversalStart() {
-        registerFilters();
+        registerPassFilters();
         final VCFHeader vcfHeader = getHeaderForVariants();
 
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
@@ -138,7 +144,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
         }
     }
 
-    private void registerFilters() {
+    private void registerPassFilters() {
         funcotationFilters.add(new ClinVarFilter(afDataSource));
         funcotationFilters.add(new LofFilter(reference, afDataSource));
         funcotationFilters.add(new LmmFilter());
@@ -147,19 +153,25 @@ public class FilterFuncotations extends TwoPassVariantWalker {
 
     @Override
     public void firstPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        Set<String> matchingFilters = getMatchingFilters(variant);
-
-        outputVcfWriter.add(applyFilters(variant, matchingFilters));
+        buildArHetByGene(variant);
     }
 
     @Override
     protected void afterFirstPass() {
-
+        arHetVariantsByGene.keySet().forEach(gene -> {
+            if(arHetVariantsByGene.get(gene).size() > 1) {
+                arCompoundHetVariants.addAll(arHetVariantsByGene.get(gene));
+            }
+        });
     }
 
     @Override
     public void secondPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-
+        Set<String> matchingFilters = getMatchingFilters(variant, funcotationFilters);
+        if(arCompoundHetVariants.stream().anyMatch(hetVariant -> variantContextsMatch(hetVariant, variant))) {
+           matchingFilters.add(AutosomalRecessiveConstants.AR_INFO_VALUE);
+        }
+        outputVcfWriter.add(applyFilters(variant, matchingFilters));
     }
 
     /**
@@ -168,7 +180,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
      * The filter will be treated as a match if it matches Funcotations for any of the transcripts in the
      * variant's Funcotation map.
      */
-    private Set<String> getMatchingFilters(final VariantContext variant) {
+    private Set<String> getMatchingFilters(final VariantContext variant, final List<FuncotationFilter> funcotationFilters) {
         final Set<String> matchingFilters = new HashSet<>();
 
 
@@ -176,14 +188,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
                 funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
 
         funcs.values().forEach(funcotationMap -> {
-            final Stream<Set<Map.Entry<String, String>>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
-                    .map(funcotationMap::get)
-                    .map(funcotations -> funcotations.stream()
-                            .flatMap(this::extractFuncotationFields)
-                            .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                            .collect(Collectors.toSet()));
-
-            transcriptFuncotations.forEach(funcotations -> {
+            getTranscriptFuncotations(funcotationMap).forEach(funcotations -> {
                 final Set<String> matches = funcotationFilters.stream()
                         .filter(f -> f.checkFilter(funcotations, variant))
                         .map(FuncotationFilter::getFilterName)
@@ -227,10 +232,56 @@ public class FilterFuncotations extends TwoPassVariantWalker {
         return variantContextBuilder.make();
     }
 
+    private void buildArHetByGene(VariantContext variant) {
+        final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
+
+        funcs.values().forEach(funcotationMap -> {
+            getTranscriptFuncotations(funcotationMap).forEach(funcotations -> {
+                Optional<Map.Entry<String, String>> maybeGeneFuncotation = funcotations.stream().filter(funcotation -> funcotation.getKey().equals("Gencode_27_hugoSymbol")).findFirst();
+                if (maybeGeneFuncotation.isPresent()) {
+                    String gene = maybeGeneFuncotation.get().getValue();
+                    if (AutosomalRecessiveConstants.AUTOSOMAL_RECESSIVE_GENES.contains(gene) && variant.getHetCount() > 0) {
+                        if(arHetVariantsByGene.containsKey(gene)) {
+                            arHetVariantsByGene.get(gene).add(variant);
+                        }
+                        else {
+                            ArrayList<VariantContext> variants = new ArrayList<>();
+                            variants.add(variant);
+                            arHetVariantsByGene.put(gene, variants);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+
+    private Stream<Set<Map.Entry<String, String>>> getTranscriptFuncotations(final FuncotationMap funcotationMap) {
+        return funcotationMap.getTranscriptList().stream()
+                .map(funcotationMap::get)
+                .map(funcotations -> funcotations.stream()
+                        .flatMap(this::extractFuncotationFields)
+                        .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                        .collect(Collectors.toSet()));
+    }
+
     @Override
     public void closeTool() {
         if (outputVcfWriter != null) {
             outputVcfWriter.close();
         }
+    }
+
+    // We know these VariantContexts come from the same list of variants, so we should only need to check these things
+    // instead of these things plus attributes, filters, and qual scores.
+    private boolean variantContextsMatch(VariantContext v1, VariantContext v2) {
+        return v1.getContig().equals(v2.getContig())
+                && v1.getStart() == v2.getStart()
+                && v1.getEnd() == v2.getEnd()
+                && v1.getReference() == v2.getReference()
+                && v1.getReference() == v2.getReference()
+                && v1.getAlternateAlleles().size() == v2.getAlternateAlleles().size()
+                && v1.getAlternateAlleles().containsAll(v2.getAlternateAlleles());
     }
 }
