@@ -663,7 +663,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> args = Arrays.asList("-I", NA12878_MITO_BAM.getAbsolutePath(),
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1000",
-                "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1700", //arbitrary "autosomal" mean coverage used only for testing
                 "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
@@ -681,7 +680,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
 
         Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1671);
-        Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
     }
 
     @Test(dataProvider = "vcfsForFiltering")
@@ -719,7 +717,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1000",
-                "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
                 "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", standardVcf.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -761,7 +758,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1000",
-                "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
                 "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", unthresholded.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -1112,18 +1108,19 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 {NA12878_MITO_VCF.getPath(), Arrays.asList(
                         "[]",
                         "[numt_chimera]",
-                        "[weak_evidence]",
+                        "[low_allele_frac, numt_novel, weak_evidence]",
                         "[]",
                         "[]",
                         "[]"),
-                        new String[0]},
+                        new String[]{"--min-allele-fraction .5 --autosomal-coverage 30"}},
                 {NA12878_MITO_GVCF.getPath(), Arrays.asList(
                         "[]",
                         "[base_qual, weak_evidence]",
-                        "[weak_evidence]",
+                        "[numt_novel, weak_evidence]",
                         "[]",
-                        "[base_qual, contamination, map_qual, position, weak_evidence]"),
-                        new String[]{"-L MT:1 -L MT:37 -L MT:40 -L MT:152 -L MT:157"}}
+                        "[base_qual, contamination, low_allele_frac, map_qual, numt_novel, position, weak_evidence]"),
+                        new String[]{"-L MT:1 -L MT:37 -L MT:40 -L MT:152 -L MT:157 --min-allele-fraction .0009 --autosomal-coverage .5"}
+                }
         };
     }
 

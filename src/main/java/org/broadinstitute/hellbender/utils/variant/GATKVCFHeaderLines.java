@@ -92,9 +92,11 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(BAD_HAPLOTYPE_FILTER_NAME, "Variant near filtered variant on same haplotype."));
         addFilterLine(new VCFFilterHeaderLine(STRICT_STRAND_BIAS_FILTER_NAME, "Evidence for alt allele is not represented in both directions"));
         addFilterLine(new VCFFilterHeaderLine(N_RATIO_FILTER_NAME, "Ratio of N to alt exceeds specified ratio"));
+        addFilterLine(new VCFFilterHeaderLine(ALLELE_FRACTION_FILTER_NAME, "Allele fraction is below specified threshold"));
 
         //Mitochondrial M2-related filters
         addFilterLine(new VCFFilterHeaderLine(CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME, "NuMT variant with too many ALT reads originally from autosome"));
+        addFilterLine(new VCFFilterHeaderLine(POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME, "Alt depth is below expected coverage of NuMT in autosome"));
 
         addFormatLine(new VCFFormatHeaderLine(ALLELE_BALANCE_KEY, 1, VCFHeaderLineType.Float, "Allele balance for each het genotype"));
         addFormatLine(new VCFFormatHeaderLine(MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY, 1, VCFHeaderLineType.Integer, "Number of Mapping Quality Zero Reads per sample"));
@@ -122,7 +124,6 @@ public class GATKVCFHeaderLines {
         addFormatLine(new VCFFormatHeaderLine(ALLELE_FRACTION_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele fractions of alternate alleles in the tumor"));
         addFormatLine(new VCFFormatHeaderLine(F1R2_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting each allele"));
         addFormatLine(new VCFFormatHeaderLine(F2R1_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting each allele"));
-        addFormatLine(new VCFFormatHeaderLine(POTENTIAL_POLYMORPHIC_NUMT_KEY, 1, VCFHeaderLineType.String, "Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant."));
 
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed"));
