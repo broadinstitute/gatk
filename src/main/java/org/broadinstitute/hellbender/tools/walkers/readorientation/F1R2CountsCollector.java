@@ -49,9 +49,9 @@ public class F1R2CountsCollector {
 
     private final File tmpDir = IOUtils.createTempDir("untarred");
 
-    public F1R2CountsCollector(final CollectF1R2CountsArgumentCollection CF1R2Args, final SAMFileHeader header, final File outputTarGzFile) {
+    public F1R2CountsCollector(final CollectF1R2CountsArgumentCollection CF1R2Args, final SAMFileHeader header, final File outputTarGzFile, final Collection<String> samples) {
         this.CF1R2Args = CF1R2Args;
-        samples = ReadUtils.getSamplesFromHeader(header);
+        this.samples = samples.size() == 1 ? Collections.singleton(samples.iterator().next()) : new HashSet<>(samples);
         this.header = header;
         this.outputTarGzFile = outputTarGzFile;
 
@@ -100,9 +100,18 @@ public class F1R2CountsCollector {
             return;
         }
 
-        for (final Map.Entry<String, ReadPileup> entry : pileup.splitBySample(header, null).entrySet()) {
+        // optimize the common case of a single tumor sample
+        final String onlySample = samples.size() == 1 ? samples.iterator().next() : null;
+        final Map<String, ReadPileup> splitPileup = samples.size() == 1 ? Collections.singletonMap(onlySample,
+                        pileup.makeFilteredPileup(pe -> Objects.equals(ReadUtils.getSampleName(pe.getRead(), header), onlySample) && pe.getQual() > CF1R2Args.minBaseQuality))
+                : pileup.splitBySample(header, null);
+
+        for (final Map.Entry<String, ReadPileup> entry : splitPileup.entrySet()) {
             final String sample = entry.getKey();
-            final ReadPileup samplePileup = entry.getValue().makeFilteredPileup(pe -> pe.getQual() > CF1R2Args.minBaseQuality);
+
+            // if size == 1 we filtered by base quality already
+            final ReadPileup samplePileup = samples.size() == 1 ? entry.getValue() :
+                    entry.getValue().makeFilteredPileup(pe -> pe.getQual() > CF1R2Args.minBaseQuality);
             final int[] baseCounts = samplePileup.getBaseCounts();
             final int depth = (int) MathUtils.sum(baseCounts);
 

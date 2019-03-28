@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.LocusWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.util.List;
@@ -58,7 +59,7 @@ public class CollectF1R2Counts extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        f1R2CountsCollector = new F1R2CountsCollector(CF1R2Args, getHeaderForReads(), outputTarGzFile);
+        f1R2CountsCollector = new F1R2CountsCollector(CF1R2Args, getHeaderForReads(), outputTarGzFile, ReadUtils.getSamplesFromHeader(getHeaderForReads()));
     }
 
     @Override

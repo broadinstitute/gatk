@@ -36,9 +36,9 @@
 ## normal_bam, normal_bam_index: BAM and index for the normal sample
 ##
 ## ** Primary resources ** (optional but strongly recommended)
-## pon: optional panel of normals in VCF format containing probable technical artifacts (false positves)
-## gnomad: optional database of known germline variants (see http://gnomad.broadinstitute.org/downloads)
-## variants_for_contamination: VCF of common variants with allele frequencies for calculating contamination
+## pon, pon_idx: optional panel of normals (and its index) in VCF format containing probable technical artifacts (false positves)
+## gnomad, gnomad_idx: optional database of known germline variants (and its index) (see http://gnomad.broadinstitute.org/downloads)
+## variants_for_contamination, variants_for_contamination_idx: VCF of common variants (and its index)with allele frequencies for calculating contamination
 ##
 ## ** Secondary resources ** (for optional tasks)
 ## onco_ds_tar_gz, default_config_file: Oncotator datasources and config file
