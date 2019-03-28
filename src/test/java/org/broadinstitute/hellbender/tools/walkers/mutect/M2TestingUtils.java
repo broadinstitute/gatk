@@ -72,10 +72,14 @@ public class M2TestingUtils {
     }
 
     public static SAMFileHeader createSamHeader(){
+        return createSamHeader(DEFAULT_SAMPLE_NAME);
+    }
+
+    public static SAMFileHeader createSamHeader(final String sampleName){
         final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader(
                 DEFAULT_NUM_CHROMOSOMES, DEFAULT_STARTING_CHROM, DEFAULT_CHROMOSOME_SIZE);
         final SAMReadGroupRecord readGroupRecord = new SAMReadGroupRecord(DEFAULT_READ_GROUP_NAME);
-        readGroupRecord.setSample(DEFAULT_SAMPLE_NAME);
+        readGroupRecord.setSample(sampleName);
         samHeader.addReadGroup(readGroupRecord);
         return samHeader;
     }

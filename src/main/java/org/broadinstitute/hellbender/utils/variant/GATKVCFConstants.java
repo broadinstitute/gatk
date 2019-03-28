@@ -114,6 +114,7 @@ public final class GATKVCFConstants {
     public static final String STRAND_QUAL_VCF_ATTRIBUTE =  "STRANDQ";
     public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
     public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
+    public static final String READ_ORIENTATION_QUAL_ATTRIBUTE =  "ROQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
     public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
@@ -143,9 +144,6 @@ public final class GATKVCFConstants {
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
-    public static final String ROF_POSTERIOR_KEY =                  "P_RO"; // For read orientation filter
-    public static final String ROF_PRIOR_KEY =                      "P_PRIOR_RO";
-    public static final String ROF_TYPE_KEY =                       "ROF_TYPE";
     public static final String POTENTIAL_POLYMORPHIC_NUMT_KEY =     "NUMT";
 
     //FILTERS

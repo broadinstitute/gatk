@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.exception.MaxCountExceededException;
 import org.apache.commons.math3.special.Beta;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -25,7 +26,7 @@ public class PolymeraseSlippageFilter extends Mutect2VariantFilter {
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
 
         final int[] rpa = vc.getAttributeAsList(GATKVCFConstants.REPEATS_PER_ALLELE_KEY).stream()
                 .mapToInt(o -> Integer.parseInt(String.valueOf(o))).toArray();

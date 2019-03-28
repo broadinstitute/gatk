@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.Datum;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClusteringModel;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -16,7 +17,7 @@ public class TumorEvidenceFilter extends Mutect2VariantFilter {
     public ErrorType errorType() { return ErrorType.SEQUENCING; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int[] ADs = filteringEngine.sumADsOverSamples(vc, true, false);
         final int maxIndex = MathUtils.maxElementIndex(tumorLods);

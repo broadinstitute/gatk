@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.Histogram;
 import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -202,12 +204,14 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
     @Test
     public void testReverseComplement() throws IOException {
-        final Path altMatrixOutput = GATKBaseTest.createTempPath("alt-table", ".tsv");
-        final File refHistogramOutput = GATKBaseTest.createTempFile("ref-histogram", "metrics");
+        final File f1r2Dir = createTempDir("f1r2");
+        final String sample = "sample";
+        final File altMatrixOutput = new File(f1r2Dir, sample + F1R2CountsCollector.ALT_TABLE_EXTENSION);
+        final File refHistogramOutput = new File(f1r2Dir, sample + F1R2CountsCollector.REF_HIST_EXTENSION);
 
         final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
 
-        final AltSiteRecord.AltSiteRecordTableWriter altTableWriter = new AltSiteRecord.AltSiteRecordTableWriter(altMatrixOutput, "sample");
+        final AltSiteRecord.AltSiteRecordTableWriter altTableWriter = new AltSiteRecord.AltSiteRecordTableWriter(altMatrixOutput.toPath(), sample);
 
         final double epsilon = 1e-3;
         final int numRefExamples = 10_000;
@@ -246,19 +250,26 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         }
 
         refSiteHistograms.values().forEach(hist -> refMetricsFile.addHistogram(hist));
+        refMetricsFile.addHeader(new StringHeader(sample));
         refMetricsFile.write(refHistogramOutput);
         altTableWriter.writeAllRecords(altDesignMatrix);
         altTableWriter.close();
 
-        final File artifactPriorTable = GATKBaseTest.createTempFile("prior", ".tsv");
+        final File inputTarGz = createTempFile("input", ".tar.gz");
+        IOUtils.writeTarGz(inputTarGz.getAbsolutePath(), f1r2Dir.listFiles());
+
+        final File artifactPriorTarGz = createTempFile("prior", ".tar.gz");
         new Main().instanceMain(makeCommandLineArgs(
                 Arrays.asList(
-                        "-alt-table", altMatrixOutput.toAbsolutePath().toString(),
-                        "-ref-hist", refHistogramOutput.getAbsolutePath(),
-                        "-O", artifactPriorTable.getAbsolutePath()),
+                        "-I", inputTarGz.getAbsolutePath(),
+                        "-O", artifactPriorTarGz.getAbsolutePath()),
                 LearnReadOrientationModel.class.getSimpleName()));
 
-        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(artifactPriorTable);
+        final File extractedDir = createTempDir("extracted");
+        IOUtils.extractTarGz(artifactPriorTarGz.toPath(), extractedDir.toPath());
+
+
+        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(Arrays.stream(extractedDir.listFiles()).findFirst().get());
 
         Assert.assertEquals(artifactPriorCollection.getNumUniqueContexts(), expectedNumUniqueContexts);
 

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public final class OxoGReadCountsUnitTest {
+public final class OrientationBiasReadCountsUnitTest {
     @Test
     public void testUsableRead() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(5, 1, 10000);
@@ -43,8 +43,8 @@ public final class OxoGReadCountsUnitTest {
 
     @Test
     public void testDescriptions() {
-        Assert.assertEquals(new OxoGReadCounts().getKeyNames(), Arrays.asList(GATKVCFConstants.F1R2_KEY, GATKVCFConstants.F2R1_KEY));
-        Assert.assertEquals(new OxoGReadCounts().getDescriptions(),
+        Assert.assertEquals(new OrientationBiasReadCounts().getKeyNames(), Arrays.asList(GATKVCFConstants.F1R2_KEY, GATKVCFConstants.F2R1_KEY));
+        Assert.assertEquals(new OrientationBiasReadCounts().getDescriptions(),
                 Arrays.asList(
                         GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.F1R2_KEY),
                         GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.F2R1_KEY))
@@ -89,11 +89,13 @@ public final class OxoGReadCountsUnitTest {
 
         final List<Allele> alleles = Arrays.asList(refAllele, altAllele);
         final Genotype g = new GenotypeBuilder(sample1, alleles).DP(dpDepth).make();
+
+        // these reads start at 10,000 and end at 10,009
         final Pair<VariantContext, ReadLikelihoods<Allele>> pair = makeReads(altF1R2, altF2R1, refF1R2, refF2R1, refAllele, altAllele, alleles, g);
         final VariantContext vc = pair.getLeft();
         final ReadLikelihoods<Allele> likelihoods = pair.getRight();
         final GenotypeBuilder gb = new GenotypeBuilder(g);
-        new OxoGReadCounts().annotate(null, vc, g, gb, likelihoods);
+        new OrientationBiasReadCounts().annotate(null, vc, g, gb, likelihoods);
 
         Assert.assertEquals(OrientationBiasUtils.getF1R2(gb.make()), new int[] {refF1R2, altF1R2});
 
@@ -101,7 +103,7 @@ public final class OxoGReadCountsUnitTest {
 
         //now test a no-op
         final GenotypeBuilder gb1 = new GenotypeBuilder(g);
-        new OxoGReadCounts().annotate(null, vc, null, gb1, likelihoods);  //null genotype
+        new OrientationBiasReadCounts().annotate(null, vc, null, gb1, likelihoods);  //null genotype
         Assert.assertFalse(gb1.make().hasAD());
     }
 
@@ -116,7 +118,7 @@ public final class OxoGReadCountsUnitTest {
         final ReadLikelihoods<Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(sample1, refReads, altReads, Arrays.asList(badRead), -100.0, -10.0, -1.1, refAllele, altAllele);
 
-        return ImmutablePair.of(new VariantContextBuilder("test", "20", 10, 10, alleles).genotypes(Arrays.asList(g)).make(),
+        return ImmutablePair.of(new VariantContextBuilder("test", "20", 10003, 10003, alleles).genotypes(Arrays.asList(g)).make(),
                 likelihoods);
     }
 

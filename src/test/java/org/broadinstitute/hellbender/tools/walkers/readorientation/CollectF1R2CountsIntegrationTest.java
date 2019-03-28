@@ -6,9 +6,10 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
-import java.nio.file.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2TestingUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.testng.Assert;
@@ -27,32 +28,35 @@ import java.util.Optional;
 public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testOnSyntheticBam() throws IOException {
-        final File refMetrics = createTempFile("ref", ".metrics");
-        final File altMetrics = createTempFile("alt", ".metrics");
-        final Path altTable = createTempPath("alt", ".table");
+        final File outputTarGz = createTempFile("f1r2", ".tar.gz");
+        final String sample = "SAMPLE";
 
         final int numAltReads = 30;
         final int numRefReads = 70;
         final int depth = numAltReads + numRefReads;
-        final File samFile = createSyntheticSam(numRefReads, numAltReads);
+        final File samFile = createSyntheticSam(numRefReads, numAltReads, sample);
 
         final String[] args = {
                 "-R", hg19_chr1_1M_Reference,
                 "-I", samFile.getAbsolutePath(),
-                "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTable.toAbsolutePath().toString(),
-                "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetrics.getAbsolutePath(),
-                "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, altMetrics.getAbsolutePath()
+                "-O", outputTarGz.getAbsolutePath()
         };
 
         runCommandLine(args);
 
+        final File extractedDir = createTempDir("extracted");
+        IOUtils.extractTarGz(outputTarGz.toPath(), extractedDir.toPath());
+
+        final File refHistogramFile = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir).stream().findFirst().get();
+        final File altTableFile = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir).stream().findFirst().get();
+
         final MetricsFile<?, Integer> referenceSiteMetrics = new MetricsFile<>();
-        final Reader in = IOUtil.openFileForBufferedReading(refMetrics);
+        final Reader in = IOUtil.openFileForBufferedReading(refHistogramFile);
         referenceSiteMetrics.read(in);
         CloserUtil.close(in);
 
         List<Histogram<Integer>> histograms = referenceSiteMetrics.getAllHistograms();
-        List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTable).getRight();
+        List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTableFile.toPath()).getRight();
 
         /** Expected result
          *
@@ -148,27 +152,34 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testHistograms() throws IOException {
-        final File refMetrics = createTempFile("ref", ".metrics");
-        final File altMetrics = createTempFile("alt", ".metrics");
-        final File altTable = createTempFile("alt", ".table");
-        final File sam = createSyntheticSam(30, 1);
+        final File outputTarGz = createTempFile("f1r2", ".tar.gz");
+        final String sample = "SAMPLE";
+        final File sam = createSyntheticSam(30, 1, sample);
 
         final String[] args = {
                 "-R", hg19_chr1_1M_Reference,
                 "-I", sam.getAbsolutePath(),
-                "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTable.getAbsolutePath(),
-                "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetrics.getAbsolutePath(),
-                "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, altMetrics.getAbsolutePath()
+                "-O", outputTarGz.getAbsolutePath()
         };
 
         runCommandLine(args);
 
+        final File extractedDir = createTempDir("extracted");
+        IOUtils.extractTarGz(outputTarGz.toPath(), extractedDir.toPath());
+
+        final File altHistogramFile = F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir).stream().findFirst().get();
+
+        final MetricsFile<?, Integer> referenceSiteMetrics = new MetricsFile<>();
+        final Reader in = IOUtil.openFileForBufferedReading(altHistogramFile);
+        referenceSiteMetrics.read(in);
+        CloserUtil.close(in);
+
         final MetricsFile<?, Integer> altSiteMetrics = new MetricsFile<>();
-        final Reader altMetricsReader = IOUtil.openFileForBufferedReading(altMetrics);
+        final Reader altMetricsReader = IOUtil.openFileForBufferedReading(altHistogramFile);
         altSiteMetrics.read(altMetricsReader);
         CloserUtil.close(altMetricsReader);
 
-        List<Histogram<Integer>> histograms = altSiteMetrics.getAllHistograms();
+        final List<Histogram<Integer>> histograms = altSiteMetrics.getAllHistograms();
 
         // TODO: should there be 64*3*2 = 384 histograms or just the non-zero ones?
         final String[] expectedTransitions = new String[]{"CAC_T_F2R1", "TAA_G_F2R1", "AGC_C_F2R1", "ACA_A_F2R1"};
@@ -183,9 +194,53 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    private File createSyntheticSam(final int refDepth, final int altDepth) throws IOException {
+    @Test
+    public void testTwoSamples() throws IOException {
+        final File outputTarGZ1 = createTempFile("f1r21", ".tar.gz");
+        final File outputTarGZ2 = createTempFile("f1r22",".tar.gz");
+        final File outputTarGZ12 = createTempFile("f1r212",".tar.gz");
+        final String sample1 = "SAMPLE1";
+        final String sample2 = "SAMPLE2";
+        final File sam1 = createSyntheticSam(10, 1, "SAMPLE1");
+        final File sam2 = createSyntheticSam(20, 2, "SAMPLE2");
+
+        final String[] args1 = {
+                "-R", hg19_chr1_1M_Reference,
+                "-I", sam1.getAbsolutePath(),
+                "-O", outputTarGZ1.getAbsolutePath()
+        };
+
+        final String[] args2 = {
+                "-R", hg19_chr1_1M_Reference,
+                "-I", sam2.getAbsolutePath(),
+                "-O", outputTarGZ2.getAbsolutePath()
+        };
+
+        final String[] args12 = {
+                "-R", hg19_chr1_1M_Reference,
+                "-I", sam1.getAbsolutePath(),
+                "-O", outputTarGZ12.getAbsolutePath()
+        };
+
+        runCommandLine(args1);
+        runCommandLine(args2);
+        runCommandLine(args12);
+        final File extractedDir1 = createTempDir("extracted1");
+        IOUtils.extractTarGz(outputTarGZ1.toPath(), extractedDir1.toPath());
+
+        final File extractedDir12 = createTempDir("extracted12");
+        IOUtils.extractTarGz(outputTarGZ12.toPath(), extractedDir12.toPath());
+
+
+        for (final String extension : new String[] {F1R2CountsCollector.REF_HIST_EXTENSION, F1R2CountsCollector.ALT_HIST_EXTENSION, F1R2CountsCollector.ALT_TABLE_EXTENSION}) {
+            IntegrationTestSpec.assertEqualTextFiles(new File(extractedDir1, sample1 + extension),
+                    new File(extractedDir12, sample1 + extension));
+        }
+    }
+
+    static File createSyntheticSam(final int refDepth, final int altDepth, final String sampleName) throws IOException {
         final File samFile = File.createTempFile("synthetic", ".bam");
-        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader(sampleName);
         final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
         //            Ref Sequence: "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();
         //          SNPs positions:            *  * *  *

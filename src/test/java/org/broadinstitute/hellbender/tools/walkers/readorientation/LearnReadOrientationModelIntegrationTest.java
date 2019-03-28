@@ -10,11 +10,10 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -25,9 +24,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
-public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest {
+public class LearnReadOrientationModelIntegrationTest extends CommandLineProgramTest {
     public static final String testDir = toolsTestDir + "read_orientation_filter/";
     public static final String hapmapBamSnippet = testDir + "hapmap-20-plex-chr-20-21-read-orientation.bam";
     public static final String intervalList = testDir + "hapmap-20-plex-chr-20-21-read-orientation.interval_list";
@@ -42,9 +43,7 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
      */
     @Test(dataProvider = "scatterCounts")
     public void testOnRealBam(final int scatterCount) throws IOException {
-        final File refMetricsDir = createTempDir("rh");
-        final File altMetricsDir = createTempDir("ah");
-        final File altTableDir = createTempDir("at");
+        final File scatteredDir = createTempDir("scattered");
 
         // Step 1: SplitIntervals
         final File intervalDir = createTempDir("intervals");
@@ -58,37 +57,40 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
 
         // Step 2: CollectF1R2Counts
         final File[] intervals = intervalDir.listFiles();
+        final List<File> extractedDirs = IntStream.range(0, intervals.length).mapToObj(i -> createTempDir("extracted_" + i)).collect(Collectors.toList());
+        final List<File> scatteredTarGzs = IntStream.range(0, intervals.length).mapToObj(i -> new File(scatteredDir, "scatter_" + i + ".tar.gz")).collect(Collectors.toList());
         for (int i = 0; i < intervals.length; i++){
+
             runCommandLine(Arrays.asList(
                     "-R", b37_reference_20_21,
                     "-I", hapmapBamSnippet,
                     "-L", intervals[i].getAbsolutePath(),
-                    "--" + CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, altTableDir.getAbsolutePath() + "/" + i + ".tsv",
-                    "--" + CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, refMetricsDir.getAbsolutePath() + "/" + i + ".metrics",
-                    "--" + CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, altMetricsDir.getAbsolutePath() + "/" + i + ".metrics"),
+                    "-O", scatteredTarGzs.get(i).getAbsolutePath()),
                     CollectF1R2Counts.class.getSimpleName());
 
+            IOUtils.extractTarGz(scatteredTarGzs.get(i).toPath(), extractedDirs.get(i).toPath());
+
+            final int iFinal = i;
+            final File refHist = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDirs.get(i)).get(0);
+
             // Ensure that we print every bin, even when the count is 0
-            final int lineCount = (int) Files.lines(Paths.get(refMetricsDir.getAbsolutePath() + "/" + i + ".metrics")).filter(l -> l.matches("^[0-9].+")).count();
+            final int lineCount = (int) Files.lines(Paths.get(refHist.getAbsolutePath())).filter(l -> l.matches("^[0-9].+")).count();
             Assert.assertEquals(lineCount, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
         }
 
         // Step 3: LearnReadOrientationModel
-        final File priorTable = createTempFile("prior", ".tsv");
+        final File priorTarGz = createTempFile("prior", ".tar.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorTable.getAbsolutePath());
-        final File[] refMetricsFiles = refMetricsDir.listFiles();
-        Arrays.stream(refMetricsFiles).forEach(f ->
-                args.addArgument(CollectF1R2Counts.REF_SITE_METRICS_LONG_NAME, f.getAbsolutePath()));
-        final File[] altMetricsFiles = altMetricsDir.listFiles();
-        Arrays.stream(altMetricsFiles).forEach(f ->
-                args.addArgument(CollectF1R2Counts.ALT_DEPTH1_HISTOGRAM_LONG_NAME, f.getAbsolutePath()));
-        final File[] altTableFiles = altTableDir.listFiles();
-        Arrays.stream(altTableFiles).forEach(f ->
-                args.addArgument(CollectF1R2Counts.ALT_DATA_TABLE_LONG_NAME, f.getAbsolutePath()));
+        args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorTarGz.getAbsolutePath());
+        IntStream.range(0, intervals.length).forEach(n -> args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, scatteredTarGzs.get(n).getAbsolutePath()));
+
         runCommandLine(args.getArgsList(), LearnReadOrientationModel.class.getSimpleName());
 
-        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(priorTable);
+        final File extractedPriorDir = createTempDir("extracted_priors");
+        IOUtils.extractTarGz(priorTarGz.toPath(), extractedPriorDir.toPath());
+
+
+        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(extractedPriorDir.listFiles()[0]);
 
         // Step 4: Mutect 2
         final File unfilteredVcf = GATKBaseTest.createTempFile("unfiltered", ".vcf");
@@ -99,7 +101,6 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
                 Arrays.asList(
                     "-I", hapmapBamSnippet,
                     "-R", b37_reference_20_21,
-                    "--" + M2ArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTable.getAbsolutePath(),
                     "-O", unfilteredVcf.getAbsolutePath(),
                     "-bamout", bamout.getAbsolutePath()),
                 Mutect2.class.getSimpleName()));
@@ -108,6 +109,7 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
                 Arrays.asList(
                         "-V", unfilteredVcf.getAbsolutePath(),
                         "-R", b37_reference_20_21,
+                        "--" + M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTarGz.getAbsolutePath(),
                         "-O", filteredVcf.getAbsolutePath()),
                 FilterMutectCalls.class.getSimpleName()));
 
@@ -122,25 +124,40 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
 
         for (final Triple<Integer, ReadOrientation, ArtifactState> artifact : knownArtifacts) {
             final int position = artifact.getLeft();
-            final ReadOrientation expectedReadOrientaiton = artifact.getMiddle();
-            final ArtifactState expectedSourceOfPrior = artifact.getRight();
 
             Optional<VariantContext> variant = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
                     .filter(vc -> vc.getStart() == position).findFirst();
             Assert.assertTrue(variant.isPresent());
 
-            // Check that the correct prior was added to the format field by Mutect
-            final double prior = GATKProtectedVariantContextUtils.getAttributeAsDouble(variant.get().getGenotype(0), GATKVCFConstants.ROF_PRIOR_KEY, -1.0);
-            final String refBases = variant.get().getAttributeAsString(ReferenceBases.REFERENCE_BASES_KEY, "");
-            final String refContext = ReferenceBases.getNMiddleBases(refBases, F1R2FilterConstants.REFERENCE_CONTEXT_SIZE);
-            final ArtifactPrior ap = artifactPriorCollection.get(refContext).get();
-
-            Assert.assertEquals(prior, ap.getPi(expectedSourceOfPrior), 1e-3);
-
             // Check that the expected filters were applied
             Assert.assertTrue(variant.get().getFilters().contains(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME));
-            Assert.assertEquals(GATKProtectedVariantContextUtils.getAttributeAsString(variant.get().getGenotype(0),
-                    GATKVCFConstants.ROF_TYPE_KEY, null), expectedReadOrientaiton.toString());
         }
+    }
+
+    @Test
+    public void testTwoSamples() throws Exception {
+        final File countsTarGz = createTempFile("counts", ".tar.gz");
+        final File priorsTarGz = createTempFile("priors", ".tar.gz");
+        final String sample1 = "SAMPLE1";
+        final String sample2 = "SAMPLE2";
+        final File sam1 = CollectF1R2CountsIntegrationTest.createSyntheticSam(10, 1, sample1);
+        final File sam2 = CollectF1R2CountsIntegrationTest.createSyntheticSam(20, 2, sample2);
+
+
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-R", hg19_chr1_1M_Reference, "-I", sam1.getAbsolutePath(), "-I", sam2.getAbsolutePath(), "-O", countsTarGz.getAbsolutePath()),
+                CollectF1R2Counts.class.getSimpleName()));
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, countsTarGz.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorsTarGz.getAbsolutePath());
+
+        runCommandLine(args.getArgsList(), LearnReadOrientationModel.class.getSimpleName());
+
+        final File extractedPriorsDir = createTempDir("extracted");
+        IOUtils.extractTarGz(priorsTarGz.toPath(), extractedPriorsDir.toPath());
+
+        Assert.assertTrue(new File(extractedPriorsDir, sample1 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
+        Assert.assertTrue(new File(extractedPriorsDir, sample2 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
     }
 }

@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyMo
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2CountsCollector;
 import org.broadinstitute.hellbender.transformers.PalindromeArtifactClipReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -63,7 +64,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE,
             GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE,
             GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE, GATKVCFConstants.SEQUENCING_QUAL_VCF_ATTRIBUTE,
-            GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE,
+            GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.READ_ORIENTATION_QUAL_ATTRIBUTE,
             GATKVCFConstants.STRAND_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY);
     private static final String MUTECT_VERSION = "2.2";
 
@@ -106,6 +107,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private final MutableInt callableSites = new MutableInt(0);
 
+    private final Optional<F1R2CountsCollector> f1R2CountsCollector;
+
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
      * and a reference file
@@ -144,6 +147,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer.initialize(MTAC.assemblerArgs, header.getSequenceDictionary(), forceCallingAllelesPresent, emitReferenceConfidence());
         referenceConfidenceModel = new SomaticReferenceConfidenceModel(samplesList, header, 0, genotypingEngine);  //TODO: do something classier with the indel size arg
+        final List<String> tumorSamples = ReadUtils.getSamplesFromHeader(header).stream().filter(this::isTumorSample).collect(Collectors.toList());
+        f1R2CountsCollector = MTAC.f1r2TarGz == null ? Optional.empty() : Optional.of(new F1R2CountsCollector(MTAC.f1r2Args, header, MTAC.f1r2TarGz, tumorSamples));
     }
 
     //default M2 read filters.  Cheap ones come first in order to fail fast.
@@ -338,9 +343,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, header, reads);
     }
 
-    public void writeMutectStats(final File statsTable) {
+    public void writeExtraOutputs(final File statsTable) {
         final List<MutectStats> stats = Arrays.asList(new MutectStats(CALLABLE_SITES_NAME, callableSites.getValue()));
         MutectStats.writeToFile(stats, statsTable);
+        f1R2CountsCollector.ifPresent(collector -> {
+            collector.writeHistograms();
+            collector.closeAndArchiveFiles();
+        });
     }
 
     public void shutdown() {
@@ -372,6 +381,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             callableSites.increment();
         }
         final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
+        f1R2CountsCollector.ifPresent(collector -> collector.process(tumorPileup, ref));
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
 

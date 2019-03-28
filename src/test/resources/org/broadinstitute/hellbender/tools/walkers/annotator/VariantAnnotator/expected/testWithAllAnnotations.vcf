@@ -9,9 +9,6 @@
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##FORMAT=<ID=NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
-##FORMAT=<ID=P_PRIOR_RO,Number=1,Type=Float,Description="prior probability of read orientation-based artifacts under the present referene context">
-##FORMAT=<ID=P_RO,Number=1,Type=Float,Description="posterior probability of read orientation-based artifacts">
-##FORMAT=<ID=ROF_TYPE,Number=1,Type=String,Description="type of read orientation artifact (F1R2 or F2R1)">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">

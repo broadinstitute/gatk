@@ -9,7 +9,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import java.nio.file.Path;
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.math3.util.MathArrays;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.MutectStats;
@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
@@ -126,13 +127,13 @@ public class Mutect2FilteringEngine {
     /**
      * record data from a potential variant in a non-final pass of {@link FilterMutectCalls}
      */
-    public void accumulateData(final VariantContext vc) {
+    public void accumulateData(final VariantContext vc, final ReferenceContext referenceContext) {
         // ignore GVCF mode sites where the only alt is NON-REF
         if (vc.getAlleles().stream().noneMatch(a -> a.isNonReference() && !a.isNonRefAllele())) {
             return;
         }
 
-        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this);
+        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
         filters.forEach(f -> f.accumulateDataForLearning(vc, errorProbabilities, this));
         final int[] tumorADs = sumADsOverSamples(vc, true, false);
         final double[] tumorLog10Odds = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
@@ -157,10 +158,10 @@ public class Mutect2FilteringEngine {
     /**
      * Create a filtered variant and record statistics for the final pass of {@link FilterMutectCalls}
      */
-    public VariantContext applyFiltersAndAccumulateOutputStats(final VariantContext vc) {
+    public VariantContext applyFiltersAndAccumulateOutputStats(final VariantContext vc, final ReferenceContext referenceContext) {
         final VariantContextBuilder vcb = new VariantContextBuilder(vc).filters(new HashSet<>());
 
-        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this);
+        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
         filteringOutputStats.recordCall(errorProbabilities, getThreshold() - EPSILON);
 
         for (final Map.Entry<Mutect2VariantFilter, Double> entry : errorProbabilities.getProbabilitiesByFilter().entrySet()) {
@@ -202,10 +203,19 @@ public class Mutect2FilteringEngine {
         filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
         filters.add(new PanelOfNormalsFilter());
         filters.add(new NormalArtifactFilter());
-        filters.add(new ReadOrientationFilter());
         filters.add(new NRatioFilter(MTFAC.nRatio));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
+
+        if (!MTFAC.readOrientationPriorTarGzs.isEmpty()) {
+            final List<File> artifactTables = MTFAC.readOrientationPriorTarGzs.stream().flatMap(tarGz -> {
+                final File extractDir = IOUtils.createTempDir("extract");
+                IOUtils.extractTarGz(tarGz.toPath(), extractDir.toPath());
+                return Arrays.stream(extractDir.listFiles());
+            }).collect(Collectors.toList());
+
+            filters.add(new ReadOrientationFilter(artifactTables));
+        }
 
         if (MTFAC.mitochondria) {
             filters.add(new ChimericOriginalAlignmentFilter(MTFAC.maxNuMTFraction));

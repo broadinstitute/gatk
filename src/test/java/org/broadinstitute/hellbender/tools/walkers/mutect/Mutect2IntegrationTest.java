@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnReadOrientationModel;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -120,6 +121,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
+        final File f1r2Counts = createTempFile("f1r2", ".tar.gz");
+        final File orientationModel = createTempFile("orientation", ".tar.gz");
 
         final List<String> args = Arrays.asList(
                 "-I", tumorBam.getAbsolutePath(),
@@ -128,6 +131,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath(),
+                "--" + M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts.getAbsolutePath(),
                 "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
                 "--max-reads-per-alignment-start", "4",
                 "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());
@@ -137,12 +141,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final String normal = getSampleName(normalBam);
             args.addAll(Arrays.asList("-I", normalBam.getAbsolutePath(), "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal));
         }
-        ;
 
         runCommandLine(args);
-
-        // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
         // also check that alleles have been properly clipped after dropping any non-called alleles, i.e. if we had AAA AA A
@@ -159,20 +159,35 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                     }
                 });
 
-        // run Concordance
-        final Path concordanceSummary = createTempPath("concordance", ".txt");
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-truth", truthVcf.getAbsolutePath(), "-eval", filteredVcf.getAbsolutePath(), "-L", "20", "-XL", mask.getAbsolutePath(), "-summary", concordanceSummary.toAbsolutePath().toString()), "Concordance"));
+        // learn orientation bias model
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", f1r2Counts.getAbsolutePath(), "-O", orientationModel.getAbsolutePath()), LearnReadOrientationModel.class.getSimpleName()));
 
-        final List<ConcordanceSummaryRecord> summaryRecords = new ConcordanceSummaryRecord.Reader(concordanceSummary).toList();
-        summaryRecords.forEach(rec -> {
-            if (rec.getTruePositives() + rec.getFalseNegatives() > 0) {
-                Assert.assertTrue(rec.getSensitivity() > requiredSensitivity);
-                // tumor-only will have germline variants sneak in
-                if (!tumorOnly) {
-                    Assert.assertTrue(rec.getPrecision() > 0.5);
-                }
+        for (final boolean runOrientationFilter : new boolean[] { true, false}) {
+            // run FilterMutectCalls
+            final List<String> filterArgs = new ArrayList<>();
+            filterArgs.addAll(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()));
+            if (runOrientationFilter) {
+                filterArgs.addAll(Arrays.asList("--" + M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, orientationModel.getAbsolutePath()));
             }
-        });
+
+            new Main().instanceMain(makeCommandLineArgs(filterArgs, FilterMutectCalls.class.getSimpleName()));
+
+
+            // run Concordance
+            final Path concordanceSummary = createTempPath("concordance", ".txt");
+            new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-truth", truthVcf.getAbsolutePath(), "-eval", filteredVcf.getAbsolutePath(), "-L", "20", "-XL", mask.getAbsolutePath(), "-summary", concordanceSummary.toAbsolutePath().toString()), "Concordance"));
+
+            final List<ConcordanceSummaryRecord> summaryRecords = new ConcordanceSummaryRecord.Reader(concordanceSummary).toList();
+            summaryRecords.forEach(rec -> {
+                if (rec.getTruePositives() + rec.getFalseNegatives() > 0) {
+                    Assert.assertTrue(rec.getSensitivity() > requiredSensitivity);
+                    // tumor-only will have germline variants sneak in
+                    if (!tumorOnly) {
+                        Assert.assertTrue(rec.getPrecision() > 0.5);
+                    }
+                }
+            });
+        }
     }
 
     @Test
@@ -187,6 +202,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // run FilterMutectCalls
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-R", b37Reference,
                 "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath(),
                 "--" + M2FiltersArgumentCollection.TUMOR_SEGMENTATION_LONG_NAME, segments.getAbsolutePath(),
                 "--" + M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination.getAbsolutePath(),
@@ -240,7 +256,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
         // run Concordance
         final Path concordanceSummary = createTempPath("concordance", ".txt");
@@ -292,7 +308,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(callWithPonArgs);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
         final long numVariants = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
@@ -327,7 +343,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", outputVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", outputVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
         VariantContextTestUtils.streamVcf(outputVcf).flatMap(vc -> vc.getGenotypes().stream()).forEach(g -> Assert.assertTrue(g.hasAD()));
         final long numVariants = VariantContextTestUtils.streamVcf(outputVcf).count();
@@ -349,7 +365,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
 
         final long numVariantsBeforeFiltering = VariantContextTestUtils.streamVcf(unfilteredVcf).count();
 
@@ -498,9 +514,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfNoContamination.getAbsolutePath(), "--contamination-table", NO_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfFivePctContamination.getAbsolutePath(), "--contamination-table", FIVE_PCT_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfTenPctContamination.getAbsolutePath(), "--contamination-table", TEN_PCT_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfNoContamination.getAbsolutePath(), "--contamination-table", NO_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfFivePctContamination.getAbsolutePath(), "--contamination-table", FIVE_PCT_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-R", b37Reference, "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfTenPctContamination.getAbsolutePath(), "--contamination-table", TEN_PCT_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
 
         final Set<VariantContext> variantsFilteredAtZeroPct =
@@ -673,9 +689,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("R", MITO_REF.getAbsolutePath());
         args.addArgument("V", unfiltered);
         args.addArgument("O", filteredVcf.getPath());
         args.addBooleanArgument(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true);
+        args.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);   // vcf sequence dicts don't match ref
         Arrays.stream(extraArgs).forEach(args::add);
 
         new Main().instanceMain(makeCommandLineArgs(args.getArgsList(), FilterMutectCalls.class.getSimpleName()));
@@ -909,6 +927,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final File filteredVcf = File.createTempFile("filtered", ".vcf");
         final String[] filteringArgs = makeCommandLineArgs(Arrays.asList(
+                "-R", hg19_chr1_1M_Reference,
                 "-V", unfilteredVcf.getAbsolutePath(),
                 "-O", filteredVcf.getAbsolutePath()),
                 FilterMutectCalls.class.getSimpleName());
@@ -964,7 +983,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-I", samFileWithOverlappingReads.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--bamout", bamout.getAbsolutePath(),
-                "--" + M2ArgumentCollection.ANNOTATE_BASED_ON_READS_LONG_NAME, "true",
                 "--annotation", StrandBiasBySample.class.getSimpleName(),
                 "--" + AssemblyRegionWalker.MAX_STARTS_LONG_NAME, String.valueOf(depth)), Mutect2.class.getSimpleName());
         new Main().instanceMain(args);

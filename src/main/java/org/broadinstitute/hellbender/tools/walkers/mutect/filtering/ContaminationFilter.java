@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -29,7 +30,7 @@ public class ContaminationFilter extends Mutect2VariantFilter {
     public ErrorType errorType() { return ErrorType.NON_SOMATIC; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         final List<ImmutablePair<Integer, Double>> depthsAndPosteriors = new ArrayList<>();
 
         for (final Genotype tumorGenotype : vc.getGenotypes()) {

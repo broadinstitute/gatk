@@ -10,7 +10,9 @@ import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -541,6 +543,39 @@ public final class IOUtils {
                     throw new UserException("Cannot extract file from tar.gz (unknown type): " + entry.toString());
                 }
             }
+        }
+    }
+
+    public static void writeTarGz(String name, File... files) throws IOException {
+        try (TarArchiveOutputStream taos = new TarArchiveOutputStream(new GzipCompressorOutputStream(new FileOutputStream(name)))){
+            // TAR has an 8 gig file limit by default, this gets around that
+            taos.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_STAR);
+            // TAR originally didn't support long file names, so enable the support for it
+            taos.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
+            taos.setAddPaxHeadersForNonAsciiNames(true);
+            for (File file : files){
+                addToTar(taos, file, ".");
+            }
+        }
+    }
+
+    private static void addToTar(TarArchiveOutputStream out, File file, String dir) throws IOException {
+        String entry = dir + File.separator + file.getName();
+        if (file.isFile()){
+            out.putArchiveEntry(new TarArchiveEntry(file, entry));
+            try (FileInputStream in = new FileInputStream(file)){
+                org.apache.commons.compress.utils.IOUtils.copy(in, out);
+            }
+            out.closeArchiveEntry();
+        } else if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null){
+                for (File child : children){
+                    addToTar(out, child, entry);
+                }
+            }
+        } else {
+            System.out.println(file.getName() + " is not supported");
         }
     }
 

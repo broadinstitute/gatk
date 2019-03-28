@@ -39,9 +39,11 @@ import java.util.stream.Collectors;
  *  by Costello et al, doi: 10.1093/nar/gks1443</a></p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Count of read pairs in the F1R2 and F2R1 configurations supporting REF and ALT alleles (F1R2, F2R1)")
-public final class OxoGReadCounts extends GenotypeAnnotation implements StandardMutectAnnotation {
+public final class OrientationBiasReadCounts extends GenotypeAnnotation implements StandardMutectAnnotation {
 
-    private static final Logger logger = LogManager.getLogger(OxoGReadCounts.class);
+    private static final Logger logger = LogManager.getLogger(OrientationBiasReadCounts.class);
+
+    private static final int MINIMUM_BASE_QUALITY = 20;
 
     @Override
     public List<String> getKeyNames() {
@@ -75,7 +77,7 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
                 .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
 
         Utils.stream(likelihoods.bestAllelesBreakingTies(g.getSampleName()))
-                .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
+                .filter(ba -> ba.isInformative() && isUsableRead(ba.read) && getReadBaseQuality(ba.read, vc.getStart()).orElse(0) >= MINIMUM_BASE_QUALITY)
                 .forEach(ba -> (ReadUtils.isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 
         final int[] f1r2 = vc.getAlleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
@@ -165,5 +167,11 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
     protected static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
+    }
+
+    private static OptionalDouble getReadBaseQuality(final GATKRead read, final int refLoc) {
+        Utils.nonNull(read);
+        final int readCoord = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
+        return readCoord < 0 || readCoord >= read.getLength() ? OptionalDouble.empty() : OptionalDouble.of(read.getBaseQuality(readCoord));
     }
 }

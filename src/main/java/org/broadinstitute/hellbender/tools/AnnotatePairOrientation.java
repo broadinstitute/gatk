@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.tools.walkers.annotator.OxoGReadCounts;
+import org.broadinstitute.hellbender.tools.walkers.annotator.OrientationBiasReadCounts;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -83,7 +83,7 @@ public class AnnotatePairOrientation extends VariantWalker {
         for (Genotype g : variant.getGenotypes()) {
             final ReadPileup genotypeSamplePileup = sampleToReadPileup.get(g.getSampleName());
             final GenotypeBuilder gb = new GenotypeBuilder(g);
-            OxoGReadCounts.annotateSingleVariant(variant, gb, genotypeSamplePileup, minBaseQualityCutoff);
+            OrientationBiasReadCounts.annotateSingleVariant(variant, gb, genotypeSamplePileup, minBaseQualityCutoff);
             updatedGenotypes.add(gb.make());
         }
 

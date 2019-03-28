@@ -23,16 +23,9 @@
 ## ** Workflow options **
 ## intervals: genomic intervals (will be used for scatter)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
-## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## run_orientation_bias_filter: (optional) if true, run the orientation bias filter, which is the GATK implementation of
-##         D-ToxoG with modifications to allow multiple artifact modes.
-##         For more information on D-ToxoG, see https://software.broadinstitute.org/cancer/cga/dtoxog
 ## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
-##         This is the recommended orientation bias filter, particularly for data sequenced on Illumina NovaSeq.
-##         If set to true, artifact_mode will be ignored, as the model learns the artifact modes on its own.
-##         While we offer both options, there's no need to run both the mixture model filter and the one based on D-ToxoG.
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
@@ -98,13 +91,8 @@ workflow Mutect2 {
     File? variants_for_contamination
     File? realignment_index_bundle
     String? realignment_extra_args
-    Boolean? run_orientation_bias_filter
-    Array[String]? artifact_modes
-    Boolean run_ob_filter = select_first([run_orientation_bias_filter, true]) && (length(select_first([artifact_modes, ["G/T", "C/T"]])) > 0)
     Boolean? run_orientation_bias_mixture_model_filter
-    Boolean run_ob_mm_filter = select_first([run_orientation_bias_mixture_model_filter, false])
-    File? ob_mm_filter_training_intervals
-    File? tumor_sequencing_artifact_metrics
+    Boolean run_ob_filter = select_first([run_orientation_bias_mixture_model_filter, false])
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? split_intervals_extra_args
@@ -247,36 +235,6 @@ workflow Mutect2 {
             disk_space = ref_size + ceil(size(intervals, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
-    if (run_ob_mm_filter) {
-        scatter (subintervals in SplitIntervals.interval_files ) {
-            call CollectF1R2Counts {
-                input:
-                    gatk_docker = gatk_docker,
-                    ref_fasta = ref_fasta,
-                    ref_fai = ref_fai,
-                    ref_dict = ref_dict,
-                    preemptible_attempts = preemptible_attempts,
-                    tumor_bam = tumor_bam,
-                    gatk_override = gatk_override,
-                    disk_space = tumor_bam_size + ref_size + disk_pad,
-                    intervals = subintervals,
-                    extra_intervals = ob_mm_filter_training_intervals,
-                    max_retries = max_retries
-            }
-        }
-
-        call LearnReadOrientationModel {
-            input:
-                alt_tables = CollectF1R2Counts.alt_table,
-                ref_histograms = CollectF1R2Counts.ref_histograms,
-                alt_histograms = CollectF1R2Counts.alt_histograms,
-                gatk_override = gatk_override,
-                gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts,
-                max_retries = max_retries
-        }
-    }
-
     scatter (subintervals in SplitIntervals.interval_files ) {
         call M2 {
             input:
@@ -289,9 +247,9 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
-                artifact_prior_table = LearnReadOrientationModel.artifact_prior_table,
                 variants_for_contamination = variants_for_contamination,
                 make_bamout = make_bamout_or_default,
+                run_ob_filter = run_ob_filter,
                 compress = compress,
                 gga_vcf = gga_vcf,
                 gatk_override = gatk_override,
@@ -310,10 +268,21 @@ workflow Mutect2 {
             max_retries = max_retries
     }
 
+    if (run_ob_filter) {
+        call LearnReadOrientationModel {
+            input:
+                f1r2_tar_gz = M2.f1r2_counts,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries
+        }
+    }
+
     call MergeVCFs {
         input:
             input_vcfs = M2.unfiltered_vcf,
-            input_vcf_indices = M2.unfiltered_vcf_index,
+            input_vcf_indices = M2.unfiltered_vcf_idx,
             output_name = unfiltered_name,
             compress = compress,
             gatk_override = gatk_override,
@@ -350,21 +319,6 @@ workflow Mutect2 {
              stats = M2.stats,
              gatk_override = gatk_override,
              gatk_docker = gatk_docker
-    }
-
-    if (run_ob_filter && !defined(tumor_sequencing_artifact_metrics)) {
-        call CollectSequencingArtifactMetrics {
-            input:
-                gatk_docker = gatk_docker,
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                preemptible_attempts = preemptible_attempts,
-                max_retries = max_retries,
-                tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
-                gatk_override = gatk_override,
-                disk_space = tumor_bam_size + ref_size + disk_pad
-        }
     }
 
     if (defined(variants_for_contamination)) {
@@ -408,6 +362,7 @@ workflow Mutect2 {
 
     call Filter {
         input:
+            ref_fasta = ref_fasta,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             intervals = intervals,
@@ -419,31 +374,13 @@ workflow Mutect2 {
             max_retries = max_retries,
             contamination_table = CalculateContamination.contamination_table,
             maf_segments = CalculateContamination.maf_segments,
+            artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
             m2_extra_filtering_args = m2_extra_filtering_args,
             disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
-    if (run_ob_filter) {
-        # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
-        File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
-
-        call FilterByOrientationBias {
-            input:
-                gatk_override = gatk_override,
-                input_vcf = Filter.filtered_vcf,
-                output_name = filtered_name,
-                compress = compress,
-                gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts,
-                max_retries = max_retries,
-                pre_adapter_metrics = input_artifact_metrics,
-                artifact_modes = artifact_modes,
-                disk_space = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_multiplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
-        }
-    }
-
     if (defined(realignment_index_bundle)) {
-        File realignment_filter_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File realignment_filter_input = Filter.filtered_vcf
         call FilterAlignmentArtifacts {
             input:
                 gatk_override = gatk_override,
@@ -459,7 +396,7 @@ workflow Mutect2 {
     }
 
     if (run_oncotator_or_default) {
-        File oncotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File oncotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
                 m2_vcf = oncotate_vcf_input,
@@ -480,8 +417,8 @@ workflow Mutect2 {
     }
 
     if (run_funcotator_or_default) {
-        File funcotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File funcotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+        File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         call Funcotate {
             input:
                 ref_fasta = ref_fasta,
@@ -513,8 +450,8 @@ workflow Mutect2 {
     }
 
     output {
-        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         File filtering_stats = Filter.filtering_stats
         File mutect_stats = MergeStats.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
@@ -522,7 +459,6 @@ workflow Mutect2 {
         File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
         File? funcotated_file = Funcotate.funcotated_output_file
         File? funcotated_file_index = Funcotate.funcotated_output_file_index
-        File? preadapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
@@ -630,14 +566,16 @@ task M2 {
     String? gnomad
     String? m2_extra_args
     Boolean? make_bamout
+    Boolean? run_ob_filter
     Boolean compress
     String? gga_vcf
     String? gga_vcf_idx
-    File? artifact_prior_table
     String? variants_for_contamination
 
     String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
+
+    String output_stats = output_vcf + ".stats"
 
     File? gatk_override
 
@@ -662,6 +600,7 @@ task M2 {
 
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
+        touch f1r2.tar.gz
         echo "" > normal_name.txt
 
         gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${tumor_bam} -O tumor_name.txt -encode
@@ -682,8 +621,7 @@ task M2 {
             ${"--alleles " + gga_vcf} \
             -O "${output_vcf}" \
             ${true='--bam-output bamout.bam' false='' make_bamout} \
-            ${"--orientation-bias-artifact-priors " + artifact_prior_table} \
-            --stats mutect2.stats \
+            ${true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
             ${m2_extra_args}
 
         ### GetPileupSummaries
@@ -714,11 +652,12 @@ task M2 {
 
     output {
         File unfiltered_vcf = "${output_vcf}"
-        File unfiltered_vcf_index = "${output_vcf_index}"
+        File unfiltered_vcf_idx = "${output_vcf_idx}"
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
-        File stats = "mutect2.stats"
+        File stats = "${output_stats}"
+        File f1r2_counts = "f1r2.tar.gz"
         File tumor_pileups = "tumor-pileups.table"
         File normal_pileups = "normal-pileups.table"
     }
@@ -731,7 +670,7 @@ task MergeVCFs {
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
     File? gatk_override
 
@@ -768,7 +707,7 @@ task MergeVCFs {
 
     output {
         File merged_vcf = "${output_vcf}"
-        File merged_vcf_index = "${output_vcf_index}"
+        File merged_vcf_idx = "${output_vcf_idx}"
     }
 }
 
@@ -918,120 +857,9 @@ task MergePileupSummaries {
     }    
 }
 
-
-task CollectSequencingArtifactMetrics {
-    # inputs
-    File ref_fasta
-    File ref_fai
-    File tumor_bam
-    File tumor_bai
-
-    File? gatk_override
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
-
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1000
-
-    command {
-        set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}m" CollectSequencingArtifactMetrics \
-            -I ${tumor_bam} -O "gatk" -R ${ref_fasta} -VALIDATION_STRINGENCY LENIENT
-    }
-
-    runtime {
-        docker: gatk_docker
-        bootDiskSizeGb: 12
-        memory: machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 0])
-        cpu: select_first([cpu, 1])
-    }
-
-    output {
-        File pre_adapter_metrics = "gatk.pre_adapter_detail_metrics"
-    }
-}
-
-
-# Data collection step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
-task CollectF1R2Counts {
-    # input
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    String tumor_bam
-
-    File? gatk_override
-    File? intervals
-    File? extra_intervals
-
-    # runtime
-    Int? max_retries
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
-
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1000
-
-    command {
-        set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-
-        # Get the sample name. The task M2 retrieves this information too, but it must be done separately here
-        # to avoid a cyclic dependency
-        gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${tumor_bam} -O tumor_name.txt -encode
-        tumor_name=$(head -n 1 tumor_name.txt)
-
-        gatk --java-options "-Xmx${command_mem}m" CollectF1R2Counts \
-        -I ${tumor_bam} -R ${ref_fasta} \
-        ${"-L " + intervals} \
-        ${"-isr INTERSECTION -L " + extra_intervals} \
-        --alt-table "$tumor_name-alt.tsv" \
-        --ref-hist "$tumor_name-ref.metrics" \
-        --alt-hist "$tumor_name-alt-depth1.metrics"
-    }
-
-    runtime {
-        docker: gatk_docker
-        bootDiskSizeGb: 12
-        memory: machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
-        cpu: select_first([cpu, 1])
-    }
-
-    output {
-        File alt_table = glob("*-alt.tsv")[0]
-        File ref_histograms = glob("*-ref.metrics")[0]
-        File alt_histograms = glob("*-alt-depth1.metrics")[0]
-        String tumor_sample = read_string("tumor_name.txt")
-    }
-}
-
 # Learning step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task LearnReadOrientationModel {
-    Array[File] alt_tables
-    Array[File] ref_histograms
-    Array[File?] alt_histograms
-    Int alt_hist_length = length(alt_histograms)
-
+    Array[File] f1r2_tar_gz
     File? gatk_override
 
     # runtime
@@ -1051,15 +879,9 @@ task LearnReadOrientationModel {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        if [[ "${alt_hist_length}" > 0 ]]; then
-            ah_flag="--alt-hist"
-        fi
-
         gatk --java-options "-Xmx${command_mem}m" LearnReadOrientationModel \
-        --alt-table ${sep=" --alt-table " alt_tables} \
-        --ref-hist ${sep=" --ref-hist " ref_histograms} \
-        $ah_flag ${sep=" --alt-hist " alt_histograms} \
-        -O "artifact-prior-table.tsv"
+            -I ${sep=" -I " f1r2_tar_gz} \
+            -O "artifact-priors.tar.gz"
     }
 
     runtime {
@@ -1073,7 +895,7 @@ task LearnReadOrientationModel {
     }
 
     output {
-        File artifact_prior_table = "artifact-prior-table.tsv"
+        File artifact_prior_table = "artifact-priors.tar.gz"
     }
 
 }
@@ -1124,12 +946,14 @@ task CalculateContamination {
 task Filter {
     # inputs
     String? intervals
+    String ref_fasta
     String unfiltered_vcf
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
     File? mutect_stats
+    File? artifact_priors_tar_gz
     File? contamination_table
     File? maf_segments
     String? m2_extra_filtering_args
@@ -1155,9 +979,11 @@ task Filter {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf} \
+            -R ${ref_fasta} \
       	    -O ${output_vcf} \
       	    ${"--contamination-table " + contamination_table} \
       	    ${"--tumor-segmentation " + maf_segments} \
+      	    ${"--ob-priors " + artifact_priors_tar_gz} \
       	    ${"-stats " + mutect_stats} \
       	    --filtering-stats filtering.stats \
       	    ${m2_extra_filtering_args}
@@ -1175,63 +1001,8 @@ task Filter {
 
     output {
         File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_index = "${output_vcf_index}"
+        File filtered_vcf_idx = "${output_vcf_idx}"
         File filtering_stats = "filtering.stats"
-    }
-}
-
-task FilterByOrientationBias {
-    # input
-    File? gatk_override
-    String input_vcf
-    String output_name
-    Boolean compress
-    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
-    File pre_adapter_metrics
-    Array[String]? artifact_modes
-
-    # If artifact modes is passed in to the task as [], this task will fail.
-    Array[String] final_artifact_modes = select_first([artifact_modes, ["G/T", "C/T"]])
-
-    # runtime
-    Int? preemptible_attempts
-    Int? max_retries
-    String gatk_docker
-    Int? disk_space
-    Int? mem
-    Int? cpu
-    Boolean use_ssd = false
-
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 500
-
-    command {
-        set -e
-
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-
-        gatk --java-options "-Xmx${command_mem}m" FilterByOrientationBias \
-            -V ${input_vcf} \
-            -AM ${sep=" -AM " final_artifact_modes} \
-            -P ${pre_adapter_metrics} \
-            -O ${output_vcf}
-    }
-
-    runtime {
-        docker: gatk_docker
-        bootDiskSizeGb: 12
-        memory: command_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 0])
-        cpu: select_first([cpu, 1])
-    }
-
-    output {
-        File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_index = "${output_vcf_index}"
     }
 }
 
@@ -1243,7 +1014,7 @@ task FilterAlignmentArtifacts {
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+    String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
     File realignment_index_bundle
     String? realignment_extra_args
 
@@ -1285,7 +1056,7 @@ task FilterAlignmentArtifacts {
 
     output {
         File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_index = "${output_vcf_index}"
+        File filtered_vcf_idx = "${output_vcf_idx}"
     }
 }
 
@@ -1423,9 +1194,9 @@ task Funcotate {
      String output_maf = output_file_base_name + ".maf"
      String output_maf_index = output_maf + ".idx"
      String output_vcf = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
-     String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
      String output_file = if output_format == "MAF" then output_maf else output_vcf
-     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_index
+     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_idx
      String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""

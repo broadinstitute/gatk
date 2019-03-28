@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -83,6 +84,11 @@ import java.util.List;
  *     -O somatic.vcf.gz
  * </pre>
  *
+ * <p>
+ *     Mutect2 also generates a stats file names [output vcf].stats.  That is, in the above example the stats file would be named somatic.vcf.gz.stats
+ *     and would be in the same folder as somatic.vcf.gz.  As of GATK 4.1.1 this file is a required input to FilterMutectCalls.
+ * </p>
+ *
  * <p> As of v4.1 Mutect2 supports joint calling of multiple tumor and normal samples from the same individual. The
  * only difference is that -I and <nobr>-normal</nobr> must be specified for the extra samples.</p>
  *
@@ -154,17 +160,30 @@ import java.util.List;
  *   -R reference.fa \
  *   -I sample.bam \
  *   -alleles force-call-alleles.vcf
- *   -tumor sample_name \
  *   -O single_sample.vcf.gz
  * </pre>
  *
+ * <p>
+ *     If the sample is suspected to exhibit orientation bias artifacts (such as in the case of FFPE tumor samples) one should also
+ *     collect F1R2 metrics by adding an --f1r2-tar-gz argument as shown below.  This file contains information that can then be passed
+ *     to LearnReadOrientationModel, which generate an artifact prior table for each tumor sample for FilterMutectCalls to use.
+ *
+ * </p>
+ *
+ * <pre>
+ * gatk Mutect2 \
+ *  -R reference.fa \
+ *  -I sample.bam \
+ *  --f1r2-tar-gz f1r2.tar.gz \
+ *  -O single_sample.vcf.gz
+ *  </pre>
+ *
  * <h3>Notes</h3>
  * <ol>
- *     <li>Mutect2 does not require a germline resource nor a panel of normals (PoN) to run. The tool prefilters sites
- * for the matched normal and the PoN.
- *     <li>For the germline resource, the tool prefilters on the allele. If a variant is absent from a given germline
- *     resource, then the value for --af-of-alleles-not-in-resource applies such that an allele's absence from the
- *     germline resource becomes evidence that it is not a germline variant. Below is an excerpt of a known variants
+ *     <li>Mutect2 does not require a germline resource nor a panel of normals (PoN) to run, although both are recommended. The tool prefilters sites
+ *     for the matched normal and the PoN.
+ *     <li>If a variant is absent from a given germline
+ *     resource, then the value for --af-of-alleles-not-in-resource is used as an imputed allele frequency. Below is an excerpt of a known variants
  *     resource with population allele frequencies.
  *
  *     <pre>
@@ -181,15 +200,13 @@ import java.util.List;
  *     </pre>
  *     </li>
  *
- * <li>Additional parameters that factor towards filtering, including normal-artifact-lod (default threshold 0.0) and
- * tumor-lod (default threshold 5.3), are available in
+ * <li>Additional parameters that factor towards filtering are available in
  * <a href="https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_mutect_FilterMutectCalls.php">FilterMutectCalls</a>.
  * While the tool calculates normal-lod assuming a diploid genotype, it calculates
  * normal-artifact-lod with the same approach it uses for tumor-lod, i.e. with a variable ploidy assumption.
  *
  * <ul>
- *     <li>If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter.
- *     For matched normal samples with tumor contamination, consider increasing the normal-artifact-lod threshold.</li>
+ *     <li>If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter..</li>
  *     <li>The tumor log odds, which is calculated independently of any matched normal, determines whether to filter a tumor
  *     variant. Variants with tumor LODs exceeding the threshold pass filtering.</li>
  * </ul></p>
@@ -211,9 +228,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
     public File outputVCF;
-
-    @Argument(shortName = MUTECT_STATS_SHORT_NAME, doc = "Output statistics table", optional = true)
-    public String statsTable = null;
 
     private VariantContextWriter vcfWriter;
 
@@ -281,6 +295,10 @@ public final class Mutect2 extends AssemblyRegionWalker {
                 }
             }
         }
+
+        if (MTAC.f1r2TarGz != null && !MTAC.f1r2TarGz.getAbsolutePath().endsWith(".tar.gz")) {
+            throw new UserException.CouldNotCreateOutputFile(MTAC.f1r2TarGz, M2ArgumentCollection.F1R2_TAR_GZ_NAME + " file must end in .tar.gz");
+        }
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());
     }
 
@@ -288,11 +306,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public Collection<Annotation> makeVariantAnnotations(){
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
 
-        if (!MTAC.artifactPriorTables.isEmpty()){
-            // Enable the annotations associated with the read orientation model
-            annotations.add(new ReadOrientationArtifact(MTAC.artifactPriorTables));
-            annotations.add(new ReferenceBases());
-        }
         if (MTAC.autosomalCoverage > 0) {
             annotations.add(new PolymorphicNuMT(MTAC.autosomalCoverage));
         }
@@ -304,7 +317,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        m2Engine.writeMutectStats(new File(statsTable == null ? outputVCF + DEFAULT_STATS_EXTENSION : statsTable));
+        m2Engine.writeExtraOutputs(new File(outputVCF + DEFAULT_STATS_EXTENSION));
 
         return "SUCCESS";
     }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.util.Comparator;
 import java.util.List;
@@ -10,12 +11,12 @@ import java.util.Optional;
 public abstract class Mutect2VariantFilter {
     public Mutect2VariantFilter() { }
 
-    public double errorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        final double result = requiredAnnotations().stream().allMatch(vc::hasAttribute) ? calculateErrorProbability(vc, filteringEngine) : 0;
+    public double errorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        final double result = requiredAnnotations().stream().allMatch(vc::hasAttribute) ? calculateErrorProbability(vc, filteringEngine, referenceContext) : 0;
         return Mutect2FilteringEngine.roundFinitePrecisionErrors(result);
     }
 
-    protected abstract double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine);
+    protected abstract double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
 
     // by default do nothing, but we may override to allow some filters to learn their parameters in the first pass of {@link FilterMutectCalls}
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) { }
