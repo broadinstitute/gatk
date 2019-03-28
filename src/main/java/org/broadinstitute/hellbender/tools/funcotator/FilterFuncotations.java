@@ -26,7 +26,6 @@ import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
-import scala.tools.nsc.interpreter.LoopCommands;
 
 import java.io.File;
 import java.util.AbstractMap;
@@ -126,7 +125,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        registerPassFilters();
+        registerFilters();
         final VCFHeader vcfHeader = getHeaderForVariants();
 
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
@@ -144,7 +143,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
         }
     }
 
-    private void registerPassFilters() {
+    private void registerFilters() {
         funcotationFilters.add(new ClinVarFilter(afDataSource));
         funcotationFilters.add(new LofFilter(reference, afDataSource));
         funcotationFilters.add(new LmmFilter());
