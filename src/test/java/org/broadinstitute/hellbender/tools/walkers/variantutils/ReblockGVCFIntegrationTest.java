@@ -40,6 +40,11 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .addArgument("V", largeFileTestDir + "NA12878.prod.chr20snippet.g.vcf.gz")
                 .addArgument("rgq-threshold", "20")
                 .addArgument("L", "20:60001-1000000")
+                .addArgument("A", "Coverage")
+                .addArgument("A", "RMSMappingQuality")
+                .addArgument("A", "ReadPosRankSumTest")
+                .addArgument("A", "MappingQualityRankSumTest")
+                .addBooleanArgument("disable-tool-default-annotations", true)
                 .addOutput(output);
         runCommandLine(args);
 
@@ -59,12 +64,13 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
+    @Test  //absolute minimal output
     public void testOneSampleAsForGnomAD() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-drop-low-quals -do-qual-approx -L chr20:69485-69791 -O %s -R " + hg38_reference_20_21 +
                         " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf" +
-                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false" +
+                        " -A Coverage -A RMSMappingQuality -A ReadPosRankSumTest -A MappingQualityRankSumTest --disable-tool-default-annotations true",
                 Arrays.asList(getToolTestDataDir() + "testOneSampleAsForGnomAD.expected.g.vcf"));
         spec.executeTest("testOneSampleDropLows", this);
     }
@@ -86,6 +92,25 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                         " -V " + getToolTestDataDir() + "prod.chr20snippet.withRawMQ.g.vcf" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "prod.chr20snippet.withRawMQ.expected.g.vcf"));
-        spec.executeTest("testNonRefADCorrection", this);
+        spec.executeTest("testRawMQInput", this);
+    }
+
+    @Test
+    public void testASAnnotationsAndSubsetting() throws Exception {
+        //some subsetting, but never dropping the first alt
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-O %s -R " + b37_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12878.AS.chr20snippet.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "expected.NA12878.AS.chr20snippet.reblocked.g.vcf"));
+        spec.executeTest("testASAnnotationsAndSubsetting", this);
+
+        //one case where first alt is dropped
+        final IntegrationTestSpec spec2 = new IntegrationTestSpec(
+                "-O %s -R " + b37_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12892.AS.chr20snippet.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "expected.NA12892.AS.chr20snippet.reblocked.g.vcf"));
+        spec2.executeTest("testASAnnotationsAndSubsetting2", this);
     }
 }
