@@ -2,7 +2,7 @@
 
 by Soo Hee Lee
 
-_20190330-6PM draft_ 
+_20190331-9PM draft_ 
 
 **Document is in `BETA`. It may be incomplete and/or inaccurate. Post suggestions and read about updates in the _Comments_ section.**
 
@@ -13,13 +13,13 @@ The tutorial outlines steps in detecting _germline_ copy number variants (gCNVs)
 
 For the _cohort mode_, the general recommendation is at least a hundred samples to start. Researchers should expect to tune workflow parameters from the provided defaults. In particular, GermlineCNVCaller's default inference parameters are conservatively set for efficient run times. 
 
-The figure diagrams the workflow tools. **Section 1** creates an intervals list and counts read alignments overlapping the intervals. **Section 2** shows optional but recommended _cohort mode_ steps to annotate intervals with covariates for use in filtering intervals as well as for use in explicit modeling. The section also removes outlier counts intervals. **Section 3** generates global baseline observations for the data and models and calls the ploidy of each contig. **Section 4** is at the heart of the workflow and models per-interval copy number. Because of the high intensity of compute model fitting requires, the section shows how to analyze data in parts. **Section 5** calls per-sample copy number events per interval and per segment. Results are in VCF format. Finally, **Section 6** visualizes the results in IGV.
+The figure diagrams the workflow tools. **Section 1** creates an intervals list and counts read alignments overlapping the intervals. **Section 2** shows optional but recommended _cohort mode_ steps to annotate intervals with covariates for use in filtering intervals as well as for use in explicit modeling. The section also removes outlier counts intervals. **Section 3** generates global baseline observations for the data and models and calls the ploidy of each contig. **Section 4** is at the heart of the workflow and models per-interval copy number. Because of the high intensity of compute model fitting requires, the section shows how to analyze data in parts. Finally, **Section 5** calls per-sample copy number events per interval and per segment. Results are in VCF format.  
 
 ► A highly recommended [whitepaper detailing the methods](https://github.com/broadinstitute/gatk/blob/master/docs/CNV/germline-cnv-caller-model.pdf) is in the gatk GitHub repository's [docs/CNV](https://github.com/broadinstitute/gatk/tree/master/docs/CNV) directory. 
 ► For pipelined workflows, see the [gatk GitHub](https://github.com/broadinstitute/gatk) repository's [scripts/cnv_wdl](https://github.com/broadinstitute/gatk/tree/master/scripts/cnv_wdl) directory. Be sure to obtain a tagged version of the script, e.g. [v4.1.0.0](https://github.com/broadinstitute/gatk/tree/4.1.0.0/scripts/cnv_wdl/germline), following instructions in [Section 4 of Article#23405](https://software.broadinstitute.org/gatk/documentation/article?id=23405#4).
 ► This workflow is not appropriate for bulk tumor samples, as it infers absolute copy numbers. For somatic copy number alteration calling, see [Tutorial#11682](https://software.broadinstitute.org/gatk/documentation/article?id=11682).
 
-[Blog#XXX]() provides followup discussion. Towards data exploration, here are two illustrative _Jupyter Notebook_ reports that dissect the results. 
+[Blog#XXX]() visualizes the results in IGV and provides followup discussion. Towards data exploration, here are two illustrative _Jupyter Notebook_ reports that dissect the results. 
 
 - [Notebook#11685](https://gatkforums.broadinstitute.org/gatk/discussion/11685/) shows an approach to measuring concordance of sample NA19017 gCNV calls to _1000 Genomes Project_ truth set calls using tutorial `chr20sub` small data.
 - [Notebook#11686](https://gatkforums.broadinstitute.org/gatk/discussion/11686/) examines gCNV callset annotations using larger data, namely chr20 gCNV results from the tutorial's 24-sample cohort.  
@@ -39,9 +39,6 @@ The figure diagrams the workflow tools. **Section 1** creates an intervals list 
     ☞ [4.2 How do I make interval lists for scattering?](#4.2)
     
 5. [Call copy number segments and consolidate sample results with PostprocessGermlineCNVCalls](#5)
-6. [Visualize results in IGV and compare to truth set calls](#6)
-
-    ☞ [6.1 How do I make SEG format files from gCNV results?](#6.1)
 
 <a name="tools"></a>
  
@@ -61,7 +58,7 @@ Download **tutorial_XXX.tar.gz** either from the [GoogleDrive](https://drive.goo
 
 ----
 ## 1. Collect raw counts data with PreprocessIntervals and CollectReadCounts
-[PreprocessIntervals]() pads exome targets and bins WGS intervals. Binning refers to creating equally sized intervals across the reference. For example, 1000 base binning would define chr1:1-1000 as the first bin. Because counts of reads on [reference `N` bases](https://gatkforums.broadinstitute.org/gatk/discussion/7857) are not meaningful, the tool automatically excludes bins with all `N`s. For GRCh38 chr1, non-N sequences start at base 10,001, so the first few bin become: 
+[PreprocessIntervals](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_PreprocessIntervals.php) pads exome targets and bins WGS intervals. Binning refers to creating equally sized intervals across the reference. For example, 1000 base binning would define chr1:1-1000 as the first bin. Because counts of reads on [reference `N` bases](https://gatkforums.broadinstitute.org/gatk/discussion/7857) are not meaningful, the tool automatically excludes bins with all `N`s. For GRCh38 chr1, non-N sequences start at base 10,001, so the first few bin become: 
 
 [<img src="images-gcnv/gcnv_terminal_nonN_intervals_2019-03-30_sooheelee.png" align="" width="580" />](images-gcnv/gcnv_terminal_nonN_intervals_2019-03-30_sooheelee.png) 
 
@@ -87,7 +84,6 @@ gatk PreprocessIntervals \
 -O targets.preprocessed.interval_list
 ```
 This produces a Picard-style intervals list of exome target regions padded by 250 bases on either side.
-
 
 **For the tutorial, bins three contigs.**
 
@@ -309,7 +305,7 @@ Checking the ploidy calls for each of the 24 samples against metadata confirms e
 
 [<img src="images-gcnv/gcnv_cohort24_sex_2019-03-30_sooheelee.png" align="" width="180" />](images-gcnv/gcnv_cohort24_sex_2019-03-30_sooheelee.png)
 
-> It should be noted, the tutorial's default parameter run gives XY samples CN1 for the majority of chrX, _including for PAR regions_, where coverage is actually on par with the CN2 of XX samples. See [section 6](#6) for further discussion. 
+> It should be noted, the tutorial's default parameter run gives XY samples CN1 for the majority of chrX, _including for PAR regions_, where coverage is actually on par with the CN2 of XX samples. See [Blog#XXX]() for further discussion. 
 
 <a name="4"></a>
 [back to top](#top)
@@ -415,7 +411,7 @@ At this point, the workflow has done its most heavy lifting to produce data towa
 
 The tutorial uses default GermlineCNVCaller modeling parameters. However, researchers should expect to tune parameters for data, e.g. from different sequencing technologies. For tuning, first consider the [_coherence length_](http://singlephoton.wikidot.com/laser-light) parameters, _p-alt_, _p-active_ and the _psi-scale_ parameters. These hyperparameters are just a few of the plethora of adjustable parameters GermlineCNVCaller offers. Refer to the [GermlineCNVCaller tool documentation](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_GermlineCNVCaller.php) for detailed explanations, and ask on the [GATK Forum](https://gatkforums.broadinstitute.org/gatk/discussions) for further guidance. 
 
-The tutorial illustrates one set of parameter changes for WGS data provided by [@markw](https://gatkforums.broadinstitute.org/gatk/profile/markw) of the GATK SV (_Structural Variants_) team that dramatically increase the sensitivity of calling on the tutorial data. [Section 6](#6) and [Notebook#11686](https://gatkforums.broadinstitute.org/gatk/discussion/11686/) compare the results of using default vs. the increased-sensitivity parameters. Given the absence of off-the-shelf filtering solutions for CNV calls, when tuning parameters to increase sensitivity, researchers should expect to perform additional due diligence, especially for analyses requiring high precision calls. 
+The tutorial illustrates one set of parameter changes for WGS data provided by [@markw](https://gatkforums.broadinstitute.org/gatk/profile/markw) of the GATK SV (_Structural Variants_) team that dramatically increase the sensitivity of calling on the tutorial data. [Blog#XXX]() and [Notebook#11686](https://gatkforums.broadinstitute.org/gatk/discussion/11686/) compare the results of using default vs. the increased-sensitivity parameters. Given the absence of off-the-shelf filtering solutions for CNV calls, when tuning parameters to increase sensitivity, researchers should expect to perform additional due diligence, especially for analyses requiring high precision calls. 
 
 **WGS parameters that increase the sensitivity of calling from [@markw](https://gatkforums.broadinstitute.org/gatk/profile/markw)**
 
@@ -460,7 +456,7 @@ This produces three intervals lists with ~5K intervals each. For the tutorial's 
 ---
 ## 5. Call copy number segments and consolidate sample results with PostprocessGermlineCNVCalls 
 
-PostprocessGermlineCNVCalls consolidates the scattered GermlineCNVCaller results, performs segmentation and calls copy number states. The tool generates per-interval and per-segment sample calls in VCF format and runs on a single sample at a time.
+[PostprocessGermlineCNVCalls](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_PostprocessGermlineCNVCalls.php) consolidates the scattered GermlineCNVCaller results, performs segmentation and calls copy number states. The tool generates per-interval and per-segment sample calls in VCF format and runs on a single sample at a time.
 
 [<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**PostprocessGermlineCNVCalls COHORT MODE**
 
@@ -520,77 +516,7 @@ Here is the result. The header section with lines starting with `##` gives infor
 
 In the body of the data, as with any VCF, the first two columns give the contig and genomic start position for the variant. The third `ID` column concatenates together `CNV_contig_start_stop`, e.g. `CNV_chr20_1606001_1609000`. The `REF` column is always _N_ and the `ALT` column gives the two types of CNV events of interest in symbolic allele notation--`<DEL>` for deletion and `<DUP>` for duplication or amplification. Again, the `INFO` field gives the `END` position of the variant. The `FORMAT` field lists sample-level annotations `GT:CN:NP:QA:QS:QSE:QSS`. `GT` of 0 indicates normal ploidy, 1 indicates deletion and 2 denotes duplication. The `CN` annotation indicates the copy number state. For the tutorial small data, `CN` ranges from 0 to 3.
 
-<a name="6"></a>
-[back to top](#top)
-
----
-## 6. Visualize results in IGV and compare to truth set calls
-The _1000 Genomes Project_ Phase 3 SV callset published in 2015 and titled _An integrated map of structural variation in 2,504 human genomes_ was a landmark effort ([doi.org/10.1038/nature15394](https://www.nature.com/articles/nature15394)). The tutorial uses calls subset from the corresponding GRCh38 callset as a truth set. Some other SV resources are:
-
-- As of 2019/3/14, gnomAD provides population SV calls, which include CNVs. _Data is on the GRCh37/hg19 human reference assembly._ The biorxiv paper is at [here](https://www.biorxiv.org/content/biorxiv/early/2019/03/14/578674.full.pdf). It is possible to browse population SV calls in the [gnomAD browser](https://gnomad.broadinstitute.org/) . Toggle the upper-right corner button to display SV data instead of short variant data. 
-- Another resource that [@cwhelan](https://gatkforums.broadinstitute.org/gatk/profile/cwhelan) shares is NCBI's  dbvar at [https://www.ncbi.nlm.nih.gov/dbvar/](https://www.ncbi.nlm.nih.gov/dbvar/). It is a database of human genomic structural variation. Data are available for human assembly versions GRCh37 and GRCh38.
-
-Although IGV ([Integrative Genomics Viewer](http://software.broadinstitute.org/software/igv/)) visualizes VCF calls just fine, it is useful to heatmap color copy number states using [SEG format](http://software.broadinstitute.org/software/igv/SEG) data (`.seg` or `.seg.gz`). For large data, e.g. WGS genotyped intervals, for fast access, the indexed binary [BigWig format](http://software.broadinstitute.org/software/igv/bigwig) is best. 
-
-[<img src="images-gcnv/gcnv_igv_three_modes_twelve_regions_20190321_sooheelee.png" align="center" width="" />](images-gcnv/gcnv_igv_three_modes_twelve_regions_20190321_sooheelee.png)
-
-The twelve regions show regions of truth set events larger than 1Kbp. Tracks are as follows. 
-
-1. NA19017 BAM coverage histogram
-2. _1000 Genomes Project_ integrated truth set CN calls for NA19017, which happen to only contain deletion calls 
-3. Case-mode NA19017 segments using default parameters and small regions
-4. Cohort-mode NA19017 segments using default parameters and small regions
-5. Cohort-mode NA19017 segments using sensitive parameters ([section 4.1](#4.1)) and small regions
-6. RefSeq Genes
-7. Regions where all 24 samples in the cohort were diploid from a different analysis. Breaks indicate regions where at least one sample gives a copy number event.
-
-Here, SEG track deletions range from light blue to blue (CN1-CN0) and amplifications from salmon to red (CN3-CN5). Normal CN2 ploidy is in white. The case and cohort mode results are highly concordant. Against the truth set, by eye, it appears they are missing three of the calls in the regions. Turning the sensitivity knob up gives better concordance with truth set, as gCNV then additionally calls two of the three missing calls. Both the default and sensitive parameter runs pickup additional events absent from the truth set.
-
-<center>[<img src="images-gcnv/gcnv_igv_three_modes_SIRPB1_20190321_sooheelee.png" align="center" width="700" />](images-gcnv/gcnv_igv_three_modes_SIRPB1_20190321_sooheelee.png)</center>
-
-If we focus on the first region, we see the default and sensitive parameter runs give differently sized events such that the functional impact on SIRPB1 expression is likely different. The _1000 Genomes Project_ truth set is an _integrated_ callset. The truth set also gives two differently sized deletion events for the locus. Each of these calls originates from a different caller; the larger deletion is from CNVnator and the smaller deletion is from [GenomeStrip](https://gatkforums.broadinstitute.org/gatk/categories/genomestrip-documentation). 
-
-It should be noted, the tutorial's default parameter run gives male XY samples CN1 for the majority of chrX, _including for PAR regions_, where coverage is actually on par with the CN2 of female XX samples. The sensitive parameter run of [section 4.1](#4.1) in turn correctly gives male XY samples CN2 for chrX PAR regions and CN1 for the majority of the remaining regions. The figure below illustrates with HG00096 (male) and NA19017 (female) samples.
-
-[<img src="images-gcnv/gcnv_determinegermlinecontigploidy_par_2019-03-31_sooheelee.png" align="" width="" />](images-gcnv/gcnv_determinegermlinecontigploidy_par_2019-03-31_sooheelee.png)
-
----
-<a name="6.1"></a>
-### ☞ 6.1 How do I make SEG format files from gCNV results?
-
-Here is one approach to convert gCNV VCF results to SEG format data.
-
-**[1] VariantsToTable to subset and columnize annotations**
-
-```
-gatk VariantsToTable \
--V genotyped-segments-case-twelve-vs-cohort23.vcf.gz \
--F CHROM -F POS -F END -GF NP -GF CN \
--O genotyped-segments-case-twelve-vs-cohort23.table.txt
-```
-
-**[2] Unix shell commands to convert to SEG format data**
-
-This involves adding a first column with the sample name.
-
-```
-sampleName=$(gzcat genotyped-segments-case-twelve-vs-cohort23.vcf.gz | grep -v '##' | head -n1 | cut -f10)
-awk -v sampleName=$sampleName 'BEGIN {FS=OFS="\t"} {print sampleName, $0}' genotyped-segments-case-twelve-vs-cohort23.table.txt > ${i}.seg; head ${i}.seg
-```
-
-**Combine [1] and [2] into a for-loop to process multiple gCNV VCFs into SEGs**
-
-```
-for i in `ls genotyped-segments*.vcf.gz`; 
-do sampleName=$(gzcat $i | grep -v '##' | head -n1 | cut -f10); 
-gatk4100 VariantsToTable -V ${i} -F CHROM -F POS -F END -GF NP -GF CN -verbosity ERROR -O ${i}.table.txt; 
-awk -v sampleName=$sampleName 'BEGIN {FS=OFS="\t"} {print sampleName, $0}' ${i}.table.txt > ${i}.seg; head ${i}.seg; 
-done
-```
-
----
-
-For additional discussion, see [Blog#XXX]().
+For discussion of results, see [Blog#XXX]().
 
 ---
 [back to top](#top)
