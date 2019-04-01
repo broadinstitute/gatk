@@ -37,7 +37,7 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     final List<String> sparkProperties = new ArrayList<>();
 
     @Argument(
-            doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE). Overrides --" + StandardArgumentDefinitions.VERBOSITY_NAME,
+            doc="Spark verbosity. Overrides --" + StandardArgumentDefinitions.VERBOSITY_NAME + " for Spark-generated logs only. Possible values: {ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE}",
             fullName = SPARK_VERBOSITY_LONG_NAME,
             optional = true)
     private String sparkVerbosity = null;
