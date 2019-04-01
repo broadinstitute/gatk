@@ -419,7 +419,7 @@ task M2 {
   }
   output {
       File raw_vcf = "${output_vcf}"
-      File faw_vcf_idx = "${output_vcf_index}"
+      File raw_vcf_idx = "${output_vcf_index}"
       File stats = "${output_vcf}.stats"
       File output_bamOut = "bamout.bam"
   }
@@ -452,7 +452,8 @@ task Filter {
 
   # runtime
   Int? preemptible_tries
-  Int disk_size = 50
+  Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
+  Int disk_size = ceil(size(raw_vcf, "GB") + ref_size) + 20
 
   meta {
     description: "Mutect2 Filtering for calling Snps and Indels"

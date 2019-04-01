@@ -11,8 +11,10 @@ workflow MitochondriaPipeline {
     out_vcf: "Final VCF of mitochondrial SNPs and INDELs"
     vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
     f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
+    contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
   }
   File wgs_aligned_input_bam_or_cram
+  String contig_name = "chrM"
   Float? autosomal_coverage
 
   # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
@@ -62,9 +64,10 @@ workflow MitochondriaPipeline {
   #Optional runtime arguments
   Int? preemptible_tries
 
-  call SubsetBam {
+  call SubsetBamToChrM {
     input:
       input_bam = wgs_aligned_input_bam_or_cram,
+      contig_name = contig_name,
       ref_fasta = ref_fasta,
       ref_fasta_index = ref_fasta_index,
       ref_dict = ref_dict,
@@ -74,7 +77,7 @@ workflow MitochondriaPipeline {
 
   call RevertSam {
     input:
-      input_bam = SubsetBam.output_bam,
+      input_bam = SubsetBamToChrM.output_bam,
       preemptible_tries = preemptible_tries
   }
 
@@ -132,8 +135,8 @@ workflow MitochondriaPipeline {
   }
 
   output {
-    File subset_bam = SubsetBam.output_bam
-    File subset_bai = SubsetBam.output_bai
+    File subset_bam = SubsetBamToChrM.output_bam
+    File subset_bai = SubsetBamToChrM.output_bai
     File mt_aligned_bam = AlignAndCall.mt_aligned_bam
     File mt_aligned_bai = AlignAndCall.mt_aligned_bai
     File out_vcf = AlignAndCall.out_vcf
@@ -149,10 +152,10 @@ workflow MitochondriaPipeline {
   }
 }
 
-task SubsetBam {
+task SubsetBamToChrM {
   String input_bam
-  String cram_basename = basename(input_bam, ".cram")
-  String basename = basename(cram_basename, ".bam")
+  String contig_name
+  String basename = basename(basename(input_bam, ".cram"), ".bam")
   File? ref_fasta
   File? ref_fasta_index
   File? ref_dict
@@ -176,7 +179,7 @@ task SubsetBam {
 
     gatk PrintReads \
       ${"-R " + ref_fasta} \
-      -L chrM \
+      -L ${contig_name} \
       --read-filter MateOnSameContigOrNoMappedMateReadFilter \
       --read-filter MateUnmappedAndUnmappedReadFilter \
       -I ${input_bam} \
