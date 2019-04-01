@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 public class ContaminationFilter extends Mutect2VariantFilter {
     private final Map<String, Double> contaminationBySample;
     private final double defaultContamination;
+    private final double EPSILON = 1.0e-10;
 
     public ContaminationFilter(final List<File> contaminationTables, final double contaminationEstimate) {
         contaminationBySample = contaminationTables.stream()
@@ -38,8 +39,8 @@ public class ContaminationFilter extends Mutect2VariantFilter {
                 continue;
             }
 
-            final double contamination = contaminationBySample.getOrDefault(tumorGenotype.getSampleName(), defaultContamination);
-
+            final double contaminationFromFile = contaminationBySample.getOrDefault(tumorGenotype.getSampleName(), defaultContamination);
+            final double contamination = Math.max(0, Math.min(contaminationFromFile, 1 - EPSILON)); // handle file with contamination == 1
             final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                     () -> new double[] {1.0}, 1.0);
             final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
