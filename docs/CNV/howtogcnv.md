@@ -1,13 +1,7 @@
-# (How to) Call common and rare germline copy number variants
-
-by Soo Hee Lee
-
-_20190331-9PM draft_ 
-
 **Document is in `BETA`. It may be incomplete and/or inaccurate. Post suggestions and read about updates in the _Comments_ section.**
 
 ---
-[<img src="images-gcnv/gcnv_workflow_diagram_20190321_sooheelee.png" align="right" width="560" />](images-gcnv/gcnv_workflow_diagram_20190321_sooheelee.png) 
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/7e/m3bkpygtwb5p.png" align="right" width="560" />](https://us.v-cdn.net/5019796/uploads/editor/7e/m3bkpygtwb5p.png) 
 
 The tutorial outlines steps in detecting _germline_ copy number variants (gCNVs) and illustrates two workflow modes--**cohort mode** and **case mode**. The _cohort mode_ simultaneously generates a cohort model and calls CNVs for the cohort samples. The _case mode_ analyzes a single sample against an already constructed cohort model. The same workflow steps apply to both targeted exome and whole genome sequencing (WGS) data. The workflow is able to call both _rare_ and _common_ events and intelligently handles allosomal ploidies, i.e. cohorts of mixed male and female samples. 
 
@@ -19,7 +13,7 @@ The figure diagrams the workflow tools. **Section 1** creates an intervals list 
 ► For pipelined workflows, see the [gatk GitHub](https://github.com/broadinstitute/gatk) repository's [scripts/cnv_wdl](https://github.com/broadinstitute/gatk/tree/master/scripts/cnv_wdl) directory. Be sure to obtain a tagged version of the script, e.g. [v4.1.0.0](https://github.com/broadinstitute/gatk/tree/4.1.0.0/scripts/cnv_wdl/germline), following instructions in [Section 4 of Article#23405](https://software.broadinstitute.org/gatk/documentation/article?id=23405#4).
 ► This workflow is not appropriate for bulk tumor samples, as it infers absolute copy numbers. For somatic copy number alteration calling, see [Tutorial#11682](https://software.broadinstitute.org/gatk/documentation/article?id=11682).
 
-[Blog#XXX]() visualizes the results in IGV and provides followup discussion. Towards data exploration, here are two illustrative _Jupyter Notebook_ reports that dissect the results. 
+[Article#11687](https://gatkforums.broadinstitute.org/gatk/discussion/11687) visualizes the results in IGV and provides followup discussion. Towards data exploration, here are two illustrative _Jupyter Notebook_ reports that dissect the results. 
 
 - [Notebook#11685](https://gatkforums.broadinstitute.org/gatk/discussion/11685/) shows an approach to measuring concordance of sample NA19017 gCNV calls to _1000 Genomes Project_ truth set calls using tutorial `chr20sub` small data.
 - [Notebook#11686](https://gatkforums.broadinstitute.org/gatk/discussion/11686/) examines gCNV callset annotations using larger data, namely chr20 gCNV results from the tutorial's 24-sample cohort.  
@@ -45,7 +39,7 @@ The figure diagrams the workflow tools. **Section 1** creates an intervals list 
 ---
 ### Tools involved
 - GATK 4.1.0.0 
-- [<img src="images-gcnv/wikimedia_commons_python_logo_green.svg" align="right" width="100" />](images-gcnv/wikimedia_commons_python_logo_green.svg.png) Workflow tools DetermineGermlineContigPloidy, GermlineCNVCaller and PostprocessGermlineCNVCalls require a Python environment with specific packages, e.g. the gCNV computational python module _gcnvkernel_. See [Article#12836](https://software.broadinstitute.org/gatk/documentation/article?id=12836) for instructions on setting up and managing the environment with the user-friendly _conda_. Once the _conda_ environment is set up, e.g. with `conda env create -f gatkcondaenv.yml`, activate it with `source activate gatk` or `conda activate gatk` before running the tool. 
+- [<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="right" width="100" />](https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png) Workflow tools DetermineGermlineContigPloidy, GermlineCNVCaller and PostprocessGermlineCNVCalls require a Python environment with specific packages, e.g. the gCNV computational python module _gcnvkernel_. See [Article#12836](https://software.broadinstitute.org/gatk/documentation/article?id=12836) for instructions on setting up and managing the environment with the user-friendly _conda_. Once the _conda_ environment is set up, e.g. with `conda env create -f gatkcondaenv.yml`, activate it with `source activate gatk` or `conda activate gatk` before running the tool. 
 
     Alternatively, use the [broadinstitute/gatk Docker](https://hub.docker.com/r/broadinstitute/gatk/), which activates the Python environment by default. Allocation of at least 8GB memory to Docker is recommended for the tutorial commands. See [Article#11090](https://gatkforums.broadinstitute.org/gatk/discussion/11090) for instructions to launch a Docker container.
 
@@ -60,7 +54,7 @@ Download **tutorial_XXX.tar.gz** either from the [GoogleDrive](https://drive.goo
 ## 1. Collect raw counts data with PreprocessIntervals and CollectReadCounts
 [PreprocessIntervals](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_PreprocessIntervals.php) pads exome targets and bins WGS intervals. Binning refers to creating equally sized intervals across the reference. For example, 1000 base binning would define chr1:1-1000 as the first bin. Because counts of reads on [reference `N` bases](https://gatkforums.broadinstitute.org/gatk/discussion/7857) are not meaningful, the tool automatically excludes bins with all `N`s. For GRCh38 chr1, non-N sequences start at base 10,001, so the first few bin become: 
 
-[<img src="images-gcnv/gcnv_terminal_nonN_intervals_2019-03-30_sooheelee.png" align="" width="580" />](images-gcnv/gcnv_terminal_nonN_intervals_2019-03-30_sooheelee.png) 
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/dj/zglrh2vocg1t.png" align="" width="580" />](https://us.v-cdn.net/5019796/uploads/editor/dj/zglrh2vocg1t.png) 
 
 **For WGS data, bin entirety of reference, e.g. with 1000 base intervals.**
 
@@ -93,7 +87,7 @@ The contigs in `gcnv.list` subset the reference to chr20, chrX and chrY.
 gatk PreprocessIntervals \
 -R ref/Homo_sapiens_assembly38.fasta \
 --padding 0 \
--L gcnv.list \
+-L gcnv-tutorial11684-contig.list \
 -imr OVERLAPPING_ONLY \
 -O chr20XY.interval_list
 ```
@@ -102,8 +96,8 @@ This generates a Picard-style intervals list with 242,549 intervals. The file ha
 
 **Comments on select parameters**
 
-- For WGS, the default 1000 `--bin-length` is the recommended starting point for typical 30x data. Be sure to set `--interval-padding 0` to disable padding into N-regions. Bin size should correlate with depth of coverage, e.g. lower coverage data should use larger bin size while higher coverage data can support smaller bin size. The size of the bin defines the resolution of CNV calls. The factors to consider in sizing include how noisy the data is, average coverage depth and how even coverage is across the reference.  
-- For targeted exomes, provide the exome capture kit's target intervals with `-L`, set `--bin-length 0` to disable binning and pad the intervals with `--interval-padding 250` or other desired length. 
+- For WGS, the default 1000 `--bin-length` is the recommended starting point for typical 30x data. Be sure to set `--padding 0` to disable padding outside of given genomic regions. Bin size should correlate with depth of coverage, e.g. lower coverage data should use larger bin size while higher coverage data can support smaller bin size. The size of the bin defines the resolution of CNV calls. The factors to consider in sizing include how noisy the data is, average coverage depth and how even coverage is across the reference.  
+- For targeted exomes, provide the exome capture kit's target intervals with `-L`, set `--bin-length 0` to disable binning and pad the intervals with `--padding 250` or other desired length. 
 - Provide intervals to exclude from analysis with `--exclude-intervals` or `-XL`, e.g. centromeric regions. Consider using this option especially if data is aligned to a reference other than GRCh38. The workflow enables excluding regions later again using `-XL`. A frugal strategy is to collect read counts using the entirety of intervals and then to exclude undesirable regions later at the FilterIntervals step ([section 2](#2)), the DetermineGermlineContigPloidy step ([section 3](#3)), at the GermlineCNVCaller step ([section 5](#5)) and/or post-calling.
 
 ---
@@ -129,9 +123,9 @@ This generates a TSV format table of read counts.
 - Here and elsewhere in the workflow, set `--interval-merging-rule` (`-imr`) to `OVERLAPPING_ONLY`, to prevent the tool from merging abutting intervals. 
 - The tool employs a number of engine-level read filters. Of note are [NotDuplicateReadFilter](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_engine_filters_ReadFilterLibrary$NotDuplicateReadFilter.php) and [MappingQualityReadFilter](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_engine_filters_MappingQualityReadFilter.php). This means the tool excludes reads marked as duplicate and excludes reads with mapping quality less than 10. Change the mapping quality threshold with the `--minimum-mapping-quality` option. 
 
-After the header section, denoted by lines starting with `@`, the body of the data has a column header line followed by read counts for every interval.
+After the SAM format header section, denoted by lines starting with `@`, the body of the data has a column header line followed by read counts for every interval.
 
-[<img src="images-gcnv/gcnv_terminal_collectreadcounts_2019-03-30_sooheelee.png" align="" width="580" />](images-gcnv/gcnv_terminal_collectreadcounts_2019-03-30_sooheelee.png) 
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/39/po2w3tw124dt.png" align="" width="580" />](https://us.v-cdn.net/5019796/uploads/editor/39/po2w3tw124dt.png) 
 
 <a name="1.1"></a>
 ### ☞ 1.1 How do I view HDF5 format data?
@@ -148,7 +142,7 @@ Researchers may desire to subset the intervals that GermlineCNVCaller will analy
 
 Towards deciding which regions to exclude, [AnnotateIntervals](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_AnnotateIntervals.php) labels the given intervals with GC content and additionally with mappability and segmental duplication content if given the respective optional resource files. [FilterIntervals](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_FilterIntervals.php) then subsets the intervals list based on the annotations and other tunable thresholds. Later, GermlineCNVCaller also takes in the annotated intervals to use as covariates towards analysis.
 
-_Explicit GC-correction, although optional, is recommended._ The default v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline script omits explicit gc-correction and we activate it in the pipeline by setting `do_explicit_gc_correction":"True"`. The tutorial illustrates the optional AnnotateIntervals step by performing the recommended explicit GC-content-based filtering.
+_Explicit GC-correction, although optional, is recommended._ The default v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline workflow omits explicit gc-correction and we activate it in the pipeline by setting `do_explicit_gc_correction":"True"`. The tutorial illustrates the optional AnnotateIntervals step by performing the recommended explicit GC-content-based filtering.
 
 **AnnotateIntervals with GC content**
 
@@ -162,7 +156,7 @@ gatk AnnotateIntervals \
 
 This produces a four-column table where the fourth column gives the fraction of GC content.
 
-[<img src="images-gcnv/gcnv_terminal_annotateintervals_2019-03-30_sooheelee.png" align="" width="580" />](images-gcnv/gcnv_terminal_annotateintervals_2019-03-30_sooheelee.png) 
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/2c/9uwfcxhqbwxw.png" align="" width="580" />](https://us.v-cdn.net/5019796/uploads/editor/2c/9uwfcxhqbwxw.png) 
 
 **Comments on select parameters**
 
@@ -176,7 +170,7 @@ This produces a four-column table where the fourth column gives the fraction of 
 
 ---
 
-[FilterIntervals](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_FilterIntervals.php) requires preprocessed intervals and will optionally and additionally take three other resources towards filtering: (i) intervals to exclude, (ii) annotated intervals to activate annotation-based filters and (iii) read counts to activate count-based filters. When given both annotated intervals and read counts, the tool retains the intervals that intersect from filtering on each data type. The v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline script requires read counts files, and so by default the pipeline script always performs the FilterIntervals step on read counts.
+[FilterIntervals](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_FilterIntervals.php) requires preprocessed intervals and will optionally and additionally take three other resources towards filtering: (i) intervals to exclude, (ii) annotated intervals to activate annotation-based filters and (iii) read counts to activate count-based filters. When given both annotated intervals and read counts, the tool retains the intervals that intersect from filtering on each data type. The v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline workflow requires read counts files, and so by default the pipeline workflow always performs the FilterIntervals step on read counts.
 
 **FilterIntervals based on GC-content and cohort extreme counts**
 
@@ -194,7 +188,7 @@ gatk FilterIntervals \
 -O chr20XY.cohort.gc.filtered.interval_list
 ```
 
-This produces a [Picard-style intervals list](https://software.broadinstitute.org/gatk/documentation/article?id=11009) containing a subset of the starting intervals (230,126 of 242,549). Of the filtered intervals, low GC-content filters 42 intervals, and extreme coverage counts from the 24-sample cohort remove an additional 12,381 intervals for a total of 12,423 removed filtered intervals (5.122% of starting). 
+This produces a [Picard-style intervals list](https://software.broadinstitute.org/gatk/documentation/article?id=11009) containing a subset of the starting intervals (230,126 of 242,549). Of the filtered intervals, GC-content filters 42 intervals, and extreme coverage counts from the 24-sample cohort remove an additional 12,381 intervals for a total of 12,423 removed filtered intervals (5.122% of starting). 
 
 **Comments on select parameters**    
   
@@ -233,7 +227,7 @@ This produces a [Picard-style intervals list](https://software.broadinstitute.or
 
 _The tool determines baseline contig ploidies using the total read count per contig_. Researchers should consider the impact of this for their data. For example, for the tutorial WGS data, the contribution of the PAR regions to total coverage counts on chrX is small and the tool correctly calls allosomal ploidies. However, consider blacklisting PAR regions for data where the contribution is disporportionate, e.g. targeted panels. 
 
-[<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**DetermineGermlineContigPloidy in COHORT MODE**
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="left" width="24" />](#tools)&nbsp;**DetermineGermlineContigPloidy in COHORT MODE**
 
 The _cohort_ mode requires a `--contig-ploidy-priors` table and produces a ploidy model. 
 
@@ -274,7 +268,7 @@ The `ploidy-model` directory contains aggregated model data for the cohort. This
 The _theano_ model automatically generates `mu_` and `std_` files and may append transformations it performs to the file name, e.g. `log` or `lowerbound` as we see above. These are likely of interest only to advanced users.
 
 ---
-[<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**DetermineGermlineContigPloidy in CASE MODE**
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="left" width="24" />](#tools)&nbsp;**DetermineGermlineContigPloidy in CASE MODE**
 
 The _case_ mode calls contig ploidies for each sample against the ploidy model given by `--model`. The following command runs sample NA19017 against a 23-sample cohort model.
 
@@ -295,17 +289,17 @@ This produces a `ploidy-case-calls` directory, which in turn contains a director
 - Provide a `--contig-ploidy-priors` table containing the per-contig prior probabilities for integer ploidy state. Again, the _case mode_ does not require an explicit priors file as the ploidy model provides them. [Tool documentation](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_DetermineGermlineContigPloidy.php) describes this resource in detail. The tutorial uses the following contig ploidy priors.  
 - Optionally provide intervals to exclude from analysis with `--exclude-intervals` or `-XL`, e.g. [pseudoautosomal (PAR) regions](https://gatkforums.broadinstitute.org/gatk/discussion/7857/reference-genome-components), which can skew results for certain data. 
 
-    [<img src="images-gcnv/gcnv_terminal_determinegermlinecontigploidy_2019-03-30_sooheelee.png" align="" width="580" />](images-gcnv/gcnv_terminal_determinegermlinecontigploidy_2019-03-30_sooheelee.png)
+    [<img src="https://us.v-cdn.net/5019796/uploads/editor/bp/xivhw30di55p.png" align="" width="580" />](https://us.v-cdn.net/5019796/uploads/editor/bp/xivhw30di55p.png)
 
 The results for NA19017, from either the _cohort mode_ or the case mode, show ploidy 2 for chr20 and chrX and ploidy 0 for chrY. The PLOIDY_GQ quality metrics differ slightly for the modes. The entirety of NA19017's `contig_ploidy.tsv` is shown.
 
-[<img src="images-gcnv/gcnv_terminal_determinegermlinecontigploidy_calls_2019-03-30_sooheelee.png" align="" width="580" />](images-gcnv/gcnv_terminal_determinegermlinecontigploidy_calls_2019-03-30_sooheelee.png)
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/jk/g07iyb1wvs0h.png" align="" width="580" />](https://us.v-cdn.net/5019796/uploads/editor/jk/g07iyb1wvs0h.png)
 
 Checking the ploidy calls for each of the 24 samples against metadata confirms expectations. The following table summarizes results for the 24 samples. The data was collated from DetermineGermlineContigPloidy results using a [bashscript](scripts/gcnvTabulateSex.sh). 
 
-[<img src="images-gcnv/gcnv_cohort24_sex_2019-03-30_sooheelee.png" align="" width="180" />](images-gcnv/gcnv_cohort24_sex_2019-03-30_sooheelee.png)
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/7o/2q3otdvn5xtu.png" align="" width="180" />](https://us.v-cdn.net/5019796/uploads/editor/7o/2q3otdvn5xtu.png)
 
-> It should be noted, the tutorial's default parameter run gives XY samples CN1 for the majority of chrX, _including for PAR regions_, where coverage is actually on par with the CN2 of XX samples. See [Blog#XXX]() for further discussion. 
+> It should be noted, the tutorial's default parameter run gives XY samples CN1 for the majority of chrX, _including for PAR regions_, where coverage is actually on par with the CN2 of XX samples. See [Article#11687](https://gatkforums.broadinstitute.org/gatk/discussion/11687) for further discussion.  
 
 <a name="4"></a>
 [back to top](#top)
@@ -320,7 +314,7 @@ For expediency, the tutorial commands below analyze small data, specifically the
 
 > The tutorial coverage data are sufficient to analyze the ~15Mb in  `chr20sub.cohort.gc.filtered.interval_list` as well as the entirety of chr20, chrX and chrY using the ~230Mb of `chr20XY.cohort.gc.filtered.interval_list`. The former, at 5K bins per shard, give three shards. When running the default parameters in a GATKv4.1.0.0 Docker locally on a MacBook Pro, each cohort-mode shard analysis takes ~20 minutes. The latter gives 46 shards at 5K bins per shard. When running the default parameters of the v4.1.0.0 WDL cohort-mode workflow on the cloud, the majority of the shard analyses complete in half an hour.     
 
-[<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**GermlineCNVCaller in COHORT MODE**
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="left" width="24" />](#tools)&nbsp;**GermlineCNVCaller in COHORT MODE**
 
 Call gCNVs on the 24-sample cohort in _two_ scatters. Notice the different `-L` intervals and `--output-prefix` basenames. 
 
@@ -363,7 +357,7 @@ gatk GermlineCNVCaller \
 This produces per-interval gCNV calls for each of the cohort samples and a gCNV model for the cohort. Each command produces three directories within `cohort24-twelve`: a `cohort24-twelve_1of2-calls` folder of per sample gCNV call results, a `cohort24-twelve_1of2-model` folder of cohort model data and a `cohort24-twelve_1of2-tracking` folder of data that tracks model fitting. The table below lists the _cohort mode_ data files alongside _case mode_ files.
 
 ---
-[<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**GermlineCNVCaller in CASE MODE**
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="left" width="24" />](#tools)&nbsp;**GermlineCNVCaller in CASE MODE**
 
 Call gCNVs on a sample against a cohort model. The case analysis must use the same scatter approach as the model generation. So, as above, we run two shard analyses. Here, `--model` and `--output-prefix` differ between the scatter the commands.  
 
@@ -390,7 +384,7 @@ gatk GermlineCNVCaller \
 
 This produces both `calls` and `tracking` folders with, e.g. the `case-twelve-vs-cohort23_1of2` basename. The `case-twelve-vs-cohort23_1of2-calls` folder contains case sample gCNV call results and the `case-twelve-vs-cohort23_1of2-tracking` folder contains model fitting results. The _case mode_ results files are listed in the table below alongside _cohort mode_ data files.
 
-[<img src="images-gcnv/gcnv_germlinecnvcaller_30_files_2019-03-30_sooheelee.png" align="" width="720" />](images-gcnv/gcnv_germlinecnvcaller_30_files_2019-03-30_sooheelee.png) 
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/zr/w5276465p4nd.png" align="" width="720" />](https://us.v-cdn.net/5019796/uploads/editor/zr/w5276465p4nd.png) 
 
 **Comments on select parameters**    
 
@@ -411,16 +405,27 @@ At this point, the workflow has done its most heavy lifting to produce data towa
 
 The tutorial uses default GermlineCNVCaller modeling parameters. However, researchers should expect to tune parameters for data, e.g. from different sequencing technologies. For tuning, first consider the [_coherence length_](http://singlephoton.wikidot.com/laser-light) parameters, _p-alt_, _p-active_ and the _psi-scale_ parameters. These hyperparameters are just a few of the plethora of adjustable parameters GermlineCNVCaller offers. Refer to the [GermlineCNVCaller tool documentation](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_GermlineCNVCaller.php) for detailed explanations, and ask on the [GATK Forum](https://gatkforums.broadinstitute.org/gatk/discussions) for further guidance. 
 
-The tutorial illustrates one set of parameter changes for WGS data provided by [@markw](https://gatkforums.broadinstitute.org/gatk/profile/markw) of the GATK SV (_Structural Variants_) team that dramatically increase the sensitivity of calling on the tutorial data. [Blog#XXX]() and [Notebook#11686](https://gatkforums.broadinstitute.org/gatk/discussion/11686/) compare the results of using default vs. the increased-sensitivity parameters. Given the absence of off-the-shelf filtering solutions for CNV calls, when tuning parameters to increase sensitivity, researchers should expect to perform additional due diligence, especially for analyses requiring high precision calls. 
+The tutorial illustrates one set of parameter changes for WGS data provided by [@markw](https://gatkforums.broadinstitute.org/gatk/profile/markw) of the GATK SV (_Structural Variants_) team that dramatically increase the sensitivity of calling on the tutorial data. [Article#11687](https://gatkforums.broadinstitute.org/gatk/discussion/11687) and [Notebook#11686](https://gatkforums.broadinstitute.org/gatk/discussion/11686/) compare the results of using default vs. the increased-sensitivity parameters. Given the absence of off-the-shelf filtering solutions for CNV calls, when tuning parameters to increase sensitivity, researchers should expect to perform additional due diligence, especially for analyses requiring high precision calls. 
 
 **WGS parameters that increase the sensitivity of calling from [@markw](https://gatkforums.broadinstitute.org/gatk/profile/markw)**
 
-```--class-coherence-length 1000.0 \--cnv-coherence-length 1000.0 \--enable-bias-factors false \--interval-psi-scale 1.0E-6 \--log-mean-bias-standard-deviation 0.01 \--sample-psi-scale 1.0E-6 \
+```
+--class-coherence-length 1000.0 \
+--cnv-coherence-length 1000.0 \
+--enable-bias-factors false \
+--interval-psi-scale 1.0E-6 \
+--log-mean-bias-standard-deviation 0.01 \
+--sample-psi-scale 1.0E-6 \
 ```
     
 **Comments on select sensitivity parameters**  
 
-- Decreasing `--class-coherence-length` from its default of 10,000bp to 1000bp decreases the expected length of contiguous segments. Factor for bin size when tuning. - Decreasing `--cnv-coherence-length` from its default 10,000bp to 1000bp decreases the expected length of CNV events. Factor for bin size when tuning. - Turning off `--enable-bias-factors` from the default `true` state to `false` turns off active discovery of learnable bias factors. This should always be on for targeted exome data and in general can be turned off for WGS data.    - Decreasing `--interval-psi-scale` from its default of 0.001 to 1.0E-6 reduces the scale the tool considers normal in per-interval noise.- Decreasing `--log-mean-bias-standard-deviation` from its default of 0.1 to 0.01 reduces what is considered normal noise in bias factors.- Decreasing `--sample-psi-scale` from its default of 0.0001 to 1.0E-6 reduces the scale that is considered normal in sample-to-sample variance. 
+- Decreasing `--class-coherence-length` from its default of 10,000bp to 1000bp decreases the expected length of contiguous segments. Factor for bin size when tuning. 
+- Decreasing `--cnv-coherence-length` from its default 10,000bp to 1000bp decreases the expected length of CNV events. Factor for bin size when tuning. 
+- Turning off `--enable-bias-factors` from the default `true` state to `false` turns off active discovery of learnable bias factors. This should always be on for targeted exome data and in general can be turned off for WGS data.    
+- Decreasing `--interval-psi-scale` from its default of 0.001 to 1.0E-6 reduces the scale the tool considers normal in per-interval noise.
+- Decreasing `--log-mean-bias-standard-deviation` from its default of 0.1 to 0.01 reduces what is considered normal noise in bias factors.
+- Decreasing `--sample-psi-scale` from its default of 0.0001 to 1.0E-6 reduces the scale that is considered normal in sample-to-sample variance. 
 
 Additional parameters to consider include `--depth-correction-tau`, `--p-active` and `--p-alt`.
 
@@ -433,7 +438,7 @@ Additional parameters to consider include `--depth-correction-tau`, `--p-active`
 ### ☞ 4.2 How do I make interval lists for scattering?
 This step applies to the _cohort mode_. It is unnecessary for _case mode_ analyses as the model implies the scatter intervals.
 
-The v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline script scatters the GermlineCNVCaller step. Each scattered analysis is on genomic intervals subset from intervals produced either from PreprocessIntervals ([section 1](#1)) or from FilterIntervals ([section 2](#)). The script uses [Picard IntervalListTools](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_util_IntervalListTools.php) to break up the intervals list into _roughly balanced_ lists. 
+The v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline workflow scatters the GermlineCNVCaller step. Each scattered analysis is on genomic intervals subset from intervals produced either from PreprocessIntervals ([section 1](#1)) or from FilterIntervals ([section 2](#)). The workflow uses [Picard IntervalListTools](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_util_IntervalListTools.php) to break up the intervals list into _roughly balanced_ lists. 
 
 ```
 gatk IntervalListTools \
@@ -458,7 +463,7 @@ This produces three intervals lists with ~5K intervals each. For the tutorial's 
 
 [PostprocessGermlineCNVCalls](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_copynumber_PostprocessGermlineCNVCalls.php) consolidates the scattered GermlineCNVCaller results, performs segmentation and calls copy number states. The tool generates per-interval and per-segment sample calls in VCF format and runs on a single sample at a time.
 
-[<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**PostprocessGermlineCNVCalls COHORT MODE**
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="left" width="24" />](#tools)&nbsp;**PostprocessGermlineCNVCalls COHORT MODE**
 
 Process a single sample from the 24-sample cohort using the sample index. For NA19017, the sample index is 19. 
 
@@ -476,7 +481,7 @@ gatk PostprocessGermlineCNVCalls \
 --sequence-dictionary ref/Homo_sapiens_assembly38.dict
 ```
 
-[<img src="images-gcnv/wikimedia_commons_python_logo_green.svg.png" align="left" width="24" />](#tools)&nbsp;**PostprocessGermlineCNVCalls CASE MODE**
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/os/6nliut12c4ko.png" align="left" width="24" />](#tools)&nbsp;**PostprocessGermlineCNVCalls CASE MODE**
 
 NA19017 is the singular sample with index 0.
 
@@ -496,7 +501,7 @@ gatk PostprocessGermlineCNVCalls \
 
 Each command generates two VCFs with indices. The `genotyped-intervals` VCF contains variant records for each analysis bin and therefore data covers only the interval regions. For the tutorial's small data, this gives 1400 records. The `genotyped-segments` VCF contains records for each contiguous copy number state segment. For the tutorial's small data, this is 30 and 31 records for _cohort_ and _case mode_ analyses, respectively. 
 
-> _The two modes give highly concordant but slightly different results for sample NA19017. The factor that explains the difference is the contribution of the sample itself to the model._
+> _The two modes--cohort and case--give highly concordant but slightly different results for sample NA19017. The factor that explains the difference is the contribution of the sample itself to the model._
  
 **Comments on select parameters**
 
@@ -506,17 +511,17 @@ Each command generates two VCFs with indices. The `genotyped-intervals` VCF cont
 - By default `--autosomal-ref-copy-number` is set to 2.
 - Define allosomal contigs with the `--allosomal-contig` parameter.
 - The tool requires specifying the `--output-genotyped-intervals` VCF. 
-- Optionally generate segmented VCF results with `--output-genotyped-segments`. The tool segments the regions between the starting bin and the ending bin on a contig. The implication of this is that even if there is a large gap between two analysis bins on the same contig, if the copy number state is equal for the bins, then the bins and the entire region between become a part of the same segment. 
+- Optionally generate segmented VCF results with `--output-genotyped-segments`. The tool segments the regions between the starting bin and the ending bin on a contig. The implication of this is that even if there is a gap between two analysis bins on the same contig, if the copy number state is equal for the bins, then the bins and the entire region between can end up a part of the same segment. The extent of this smoothing over gaps depends on the `--cnv-coherence-length` parameter.
 - The `--sample-index` refers to the index number given to a sample by GermlineCNVCaller. In a _case mode_ analysis of a single sample, the index will always be zero.
-- The `--sequence-dictionary` is optional. Without it, the tool generates unindexed VCF results. Alternatively, to produce the VCF indices, provide the `-R` reference FASTA or use [IndexFeatureFile](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_IndexFeatureFile.php) afterward. The v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline script omits index generation.
+- The `--sequence-dictionary` is optional. Without it, the tool generates unindexed VCF results. Alternatively, to produce the VCF indices, provide the `-R` reference FASTA or use [IndexFeatureFile](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_IndexFeatureFile.php) afterward. The v4.1.0.0 `cnv_germline_cohort_workflow.wdl` pipeline workflow omits index generation.
 
 Here is the result. The header section with lines starting with `##` gives information on the analysis and define the annotations. Notice the singular `END` annotation in the `INFO` column that denotes the end position of the event. This use of the `END` notation is reminiscent of [GVCF format](https://software.broadinstitute.org/gatk/documentation/article.php?id=4017) GVCF blocks. 
 
-[<img src="images-gcnv/gcnv_terminal_segments_2019-03-30_sooheelee.png" align="" width="" />](images-gcnv/gcnv_terminal_segments_2019-03-30_sooheelee.png)
+[<img src="https://us.v-cdn.net/5019796/uploads/editor/bn/4nj7763ufynj.png" align="" width="" />](https://us.v-cdn.net/5019796/uploads/editor/bn/4nj7763ufynj.png)
 
 In the body of the data, as with any VCF, the first two columns give the contig and genomic start position for the variant. The third `ID` column concatenates together `CNV_contig_start_stop`, e.g. `CNV_chr20_1606001_1609000`. The `REF` column is always _N_ and the `ALT` column gives the two types of CNV events of interest in symbolic allele notation--`<DEL>` for deletion and `<DUP>` for duplication or amplification. Again, the `INFO` field gives the `END` position of the variant. The `FORMAT` field lists sample-level annotations `GT:CN:NP:QA:QS:QSE:QSS`. `GT` of 0 indicates normal ploidy, 1 indicates deletion and 2 denotes duplication. The `CN` annotation indicates the copy number state. For the tutorial small data, `CN` ranges from 0 to 3.
 
-For discussion of results, see [Blog#XXX]().
+Developer [@asmirnov](https://gatkforums.broadinstitute.org/gatk/profile/asmirnov) notes filtering on QS can increase specificity. For a discussion of results, see [Article#11687](https://gatkforums.broadinstitute.org/gatk/discussion/11687).
 
 ---
 [back to top](#top)
