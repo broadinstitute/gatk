@@ -60,6 +60,7 @@ workflow MitochondriaPipeline {
   String? m2_filter_extra_args
   Float? vaf_filter_threshold
   Float? f_score_beta
+  Boolean compress_output_vcf = false
 
   #Optional runtime arguments
   Int? preemptible_tries
@@ -111,6 +112,7 @@ workflow MitochondriaPipeline {
       m2_filter_extra_args = m2_filter_extra_args,
       vaf_filter_threshold = vaf_filter_threshold,
       f_score_beta = f_score_beta,
+      compress_output_vcf = compress_output_vcf,
       max_read_length = max_read_length,
       preemptible_tries = preemptible_tries
   }

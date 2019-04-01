@@ -42,6 +42,7 @@ workflow AlignAndCall {
   String? m2_filter_extra_args
   Float? vaf_filter_threshold
   Float? f_score_beta
+  Boolean compress_output_vcf
 
   # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
   # affected by this number. Default is 151.
@@ -107,7 +108,7 @@ workflow AlignAndCall {
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
-      compress = false,
+      compress = compress_output_vcf,
       gatk_override = gatk_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:576-16024 ",
@@ -122,7 +123,7 @@ workflow AlignAndCall {
       ref_fasta = mt_shifted_fasta,
       ref_fai = mt_shifted_fasta_index,
       ref_dict = mt_shifted_dict,
-      compress = false,
+      compress = compress_output_vcf,
       gatk_override = gatk_override,
       # Everything is called except the control region.
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:8025-9144 ",
@@ -150,14 +151,14 @@ workflow AlignAndCall {
   }
 
   call Filter {
-  	input:
+    input:
       raw_vcf = LiftoverAndCombineVcfs.final_vcf,
       raw_vcf_index = LiftoverAndCombineVcfs.final_vcf_index,
       raw_vcf_stats = MergeStats.stats,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
-      compress = false,
+      compress = compress_output_vcf,
       gatk_override = gatk_override,
       m2_extra_filtering_args = m2_filter_extra_args,
       max_alt_allele_count = 4,
