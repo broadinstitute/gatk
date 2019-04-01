@@ -14,6 +14,7 @@ workflow MitochondriaPipeline {
     contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
   }
   File wgs_aligned_input_bam_or_cram
+  File wgs_aligned_input_bam_or_cram_index
   String contig_name = "chrM"
   Float? autosomal_coverage
 
@@ -68,6 +69,7 @@ workflow MitochondriaPipeline {
   call SubsetBamToChrM {
     input:
       input_bam = wgs_aligned_input_bam_or_cram,
+      input_bai = wgs_aligned_input_bam_or_cram_index,
       contig_name = contig_name,
       ref_fasta = ref_fasta,
       ref_fasta_index = ref_fasta_index,
@@ -156,6 +158,7 @@ workflow MitochondriaPipeline {
 
 task SubsetBamToChrM {
   File input_bam
+  File input_bai
   String contig_name
   String basename = basename(basename(input_bam, ".cram"), ".bam")
   File? ref_fasta
