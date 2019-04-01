@@ -104,8 +104,6 @@ public final class QualityUtils {
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.
      *
-     * Because the input is a double value, this function must call Math.pow so can be quite expensive
-     *
      * WARNING -- because this function takes a byte for maxQual, you must be careful in converting
      * integers to byte.  The appropriate way to do this is ((byte)(myInt & 0xFF))
      *

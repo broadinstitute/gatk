@@ -74,7 +74,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "log1mexpData")
     public void testLog1mexp(final double x, final double expected) {
-        final double actual = MathUtils.log1mexp(x);
+        final double actual = NaturalLogUtils.log1mexp(x);
         if (Double.isNaN(expected))
             Assert.assertTrue(Double.isNaN(actual));
         else
@@ -1076,7 +1076,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         final double[] logSpaceValues= Arrays.stream(realSpaceValues).map(Math::log).toArray();
 
         final double expected = Math.log(Arrays.stream(realSpaceValues).sum());
-        final double actual = MathUtils.logSumExp(logSpaceValues);
+        final double actual = NaturalLogUtils.logSumExp(logSpaceValues);
         Assert.assertEquals(actual, expected, 1e-10);
     }
 
@@ -1387,22 +1387,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(MathUtils.maxElementIndex(array2), expected2);
         Assert.assertEquals(MathUtils.maxElementIndex(array3), expected3);
         Assert.assertEquals(MathUtils.maxElementIndex(array4), expected4);
-    }
-
-    @DataProvider(name = "log10BetaBinomialData")
-    public Object[][] getLog10BetaBinomialData() {
-        return new Object[][] {
-                { 2, 20, 3.0, 7.0, -1.09347}, // log10[PDF[BetaBinomialDistribution[3, 7, 20], 2]] in Wolfram alpha
-                { 1, 3, 8.7, 9.5, -0.433171}, // log10[PDF[BetaBinomialDistribution[8.7, 9.5, 3], 1]]
-                { 0, 30, 5, 15, -2.21482} // log10[PDF[BetaBinomialDistribution[5, 15, 30], 0]]
-        };
-    }
-
-    @Test(dataProvider = "log10BetaBinomialData")
-    public void testLog10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta,
-                                             final double expected){
-        final double EPSILON = 1e-3;
-        Assert.assertEquals(MathUtils.log10BetaBinomialProbability(k, n, alpha, beta), expected, EPSILON);
     }
 
     @DataProvider

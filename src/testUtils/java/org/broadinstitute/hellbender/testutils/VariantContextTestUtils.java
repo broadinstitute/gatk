@@ -593,7 +593,7 @@ public final class VariantContextTestUtils {
         final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
         gb.DP(10);
         gb.AD(new int[]{1, 2});
-        gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, lod);
+        gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, lod);
         return gb.make();
     }
 

@@ -158,7 +158,7 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
 
     @Override
     public Optional<String> phredScaledPosteriorAnnotationName() {
-        return Optional.of(GATKVCFConstants.STRAND_QUAL_VCF_ATTRIBUTE);
+        return Optional.of(GATKVCFConstants.STRAND_QUAL_KEY);
     }
 
     public static final class EStep {

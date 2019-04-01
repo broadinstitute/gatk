@@ -94,7 +94,7 @@ public final class ReadLikelihoodsUnitTest {
                 final int readIndex = original.readIndex(s,bestAllele.read);
                 if (readIndex == -1) continue;
                 final double refLikelihood = refIndex >= 0 ? sampleMatrix.get(refIndex, readIndex) : Double.NEGATIVE_INFINITY;
-                final boolean refOverride = refIndex >= 0 && refIndex !=bestIndexArray[readIndex] && bestLkArray[readIndex] - refLikelihood < ReadLikelihoods.BestAllele.INFORMATIVE_THRESHOLD;
+                final boolean refOverride = refIndex >= 0 && refIndex !=bestIndexArray[readIndex] && bestLkArray[readIndex] - refLikelihood < ReadLikelihoods.LOG_10_INFORMATIVE_THRESHOLD;
                 Assert.assertEquals(refOverride ? refLikelihood : bestLkArray[readIndex], bestAllele.likelihood);
                 Assert.assertEquals(bestAllele.allele, refOverride ? refAllele : alleles[bestIndexArray[readIndex]]);
                 Assert.assertEquals(bestAllele.confidence, refOverride ? refLikelihood - bestLkArray[readIndex] : confidenceArray[readIndex], EPSILON);
@@ -128,7 +128,7 @@ public final class ReadLikelihoodsUnitTest {
                         secondBestAlleleLk = lk;
                     }
                 }
-                if ((bestAlleleLk - secondBestAlleleLk) > ReadLikelihoods.BestAllele.INFORMATIVE_THRESHOLD)
+                if ((bestAlleleLk - secondBestAlleleLk) > ReadLikelihoods.LOG_10_INFORMATIVE_THRESHOLD)
                     expected.get(alleles[bestindexOfAllele]).add(sampleMatrix.getRead(r));
             }
         }

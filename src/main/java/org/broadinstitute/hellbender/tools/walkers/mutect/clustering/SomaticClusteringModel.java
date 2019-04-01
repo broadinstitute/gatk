@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArg
 import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -24,8 +25,8 @@ import java.util.stream.IntStream;
 public class SomaticClusteringModel {
 
     private static final int MAX_INDEL_SIZE_IN_PRIOR_MAP = 10;
-    private final Map<Integer, Double> log10VariantPriors = new Int2DoubleArrayMap();
-    private double log10VariantVsArtifactPrior;
+    private final Map<Integer, Double> logVariantPriors = new Int2DoubleArrayMap();
+    private double logVariantVsArtifactPrior;
     private final OptionalDouble callableSites;
 
     private static final double INITIAL_HIGH_AF_WEIGHT = 0.01;
@@ -33,9 +34,10 @@ public class SomaticClusteringModel {
 
     private double REGULARIZING_PSEUDOCOUNT = 1;
 
-    private double log10HighAFWeight = Math.log10(INITIAL_HIGH_AF_WEIGHT);
-    private double log10BackgroundWeight = Math.log10(INITIAL_BACKGROUND_WEIGHT);
-    private double log10SparseClustersWeight = MathUtils.log10OneMinusPow10(MathUtils.log10SumLog10(log10HighAFWeight, log10BackgroundWeight));
+    private double logHighAFWeight = Math.log(INITIAL_HIGH_AF_WEIGHT);
+    private double logBackgroundWeight = Math.log(INITIAL_BACKGROUND_WEIGHT);
+
+    private double logSparseClustersWeight = NaturalLogUtils.log1mexp(NaturalLogUtils.logSumExp(logHighAFWeight, logBackgroundWeight));
 
     private static final double CONCENTRATION = 0.5;
     private static final int NUM_ITERATIONS = 5;
@@ -62,10 +64,10 @@ public class SomaticClusteringModel {
     private boolean firstPass = true;
 
     public SomaticClusteringModel(final M2FiltersArgumentCollection MTFAC, final List<MutectStats> mutectStats) {
-        IntStream.range(-MAX_INDEL_SIZE_IN_PRIOR_MAP, MAX_INDEL_SIZE_IN_PRIOR_MAP + 1).forEach(n -> log10VariantPriors.put(n, MTFAC.getLog10PriorOfIndel()));
-        log10VariantPriors.put(0, MTFAC.getLog10PriorOfSnv());
+        IntStream.range(-MAX_INDEL_SIZE_IN_PRIOR_MAP, MAX_INDEL_SIZE_IN_PRIOR_MAP + 1).forEach(n -> logVariantPriors.put(n, MTFAC.getLogIndelPrior()));
+        logVariantPriors.put(0, MTFAC.getLogSnvPrior());
 
-        log10VariantVsArtifactPrior = MTFAC.initialLog10PriorOfVariantVersusArtifact;
+        logVariantVsArtifactPrior = MTFAC.initialLogPriorOfVariantVersusArtifact;
         callableSites = mutectStats.stream().filter(stat -> stat.getStatistic().equals(Mutect2Engine.CALLABLE_SITES_NAME))
                 .mapToDouble(MutectStats::getValue).findFirst();
 
@@ -75,30 +77,30 @@ public class SomaticClusteringModel {
         clusters.add(BACKGROUND_INDEX, new BetaBinomialCluster(INITIAL_BACKGROUND_BETA));
     }
 
-    public double getLog10PriorOfSomaticVariant(final VariantContext vc, final int altIndex) {
+    public double getLogPriorOfSomaticVariant(final VariantContext vc, final int altIndex) {
         final int indelLength = indelLength(vc, altIndex);
-        return getLog10PriorOfSomaticVariant(indelLength);
+        return getLogPriorOfSomaticVariant(indelLength);
     }
 
-    private double getLog10PriorOfSomaticVariant(final int indelLength) {
-        if (!log10VariantPriors.containsKey(indelLength)) {
-            log10VariantPriors.put(indelLength, log10VariantPriors.values().stream().mapToDouble(d -> d).min().getAsDouble());
+    private double getLogPriorOfSomaticVariant(final int indelLength) {
+        if (!logVariantPriors.containsKey(indelLength)) {
+            logVariantPriors.put(indelLength, logVariantPriors.values().stream().mapToDouble(d -> d).min().getAsDouble());
         }
 
-        return log10VariantPriors.get(indelLength) + (indelLength == 0 ? MathUtils.LOG10_ONE_THIRD : 0);
+        return logVariantPriors.get(indelLength) + (indelLength == 0 ? MathUtils.LOG_ONE_THIRD : 0);
     }
 
-    public double getLog10PriorProbOfVariantVersusArtifact() { return log10VariantVsArtifactPrior; }
+    public double getLogPriorOfVariantVersusArtifact() { return logVariantVsArtifactPrior; }
 
     public double probabilityOfSequencingError(final Datum datum) {
         return clusterProbabilities(datum)[SEQUENCING_ERROR_INDEX];
     }
 
-    public void record(final int[] tumorADs, final double[] tumorLog10Odds, final double artifactProbability, final double nonSomaticProbability, final VariantContext vc) {
+    public void record(final int[] tumorADs, final double[] tumorLogOdds, final double artifactProbability, final double nonSomaticProbability, final VariantContext vc) {
         final int totalAD = (int) MathUtils.sum(tumorADs);
         // split into one-vs-all biallelics for clustering
-        for (int i = 0; i < tumorLog10Odds.length; i++) {
-            data.add(new Datum(tumorLog10Odds[i], artifactProbability, nonSomaticProbability, tumorADs[i+1], totalAD, indelLength(vc, i)));
+        for (int i = 0; i < tumorLogOdds.length; i++) {
+            data.add(new Datum(tumorLogOdds[i], artifactProbability, nonSomaticProbability, tumorADs[i+1], totalAD, indelLength(vc, i)));
         }
     }
 
@@ -160,52 +162,52 @@ public class SomaticClusteringModel {
     }
 
     // emission likelihood of given alt count given that a variant is somatic
-    public double log10LikelihoodGivenSomatic(final int totalCount, final int altCount) {
-        final double[] log10ClusterLikelihoods = IntStream.range(0, clusters.size())
+    public double logLikelihoodGivenSomatic(final int totalCount, final int altCount) {
+        final double[] logClusterLikelihoods = IntStream.range(0, clusters.size())
                 .filter(c -> c != SEQUENCING_ERROR_INDEX)
                 .mapToDouble(c -> {
-                    final double log10Likelihood = clusters.get(c).log10Likelihood(totalCount, altCount);
+                    final double logLikelihood = clusters.get(c).logLikelihood(totalCount, altCount);
                     if (c == HIGH_AF_INDEX) {
-                        return log10HighAFWeight + log10Likelihood;
+                        return logHighAFWeight + logLikelihood;
                     } else if (c == BACKGROUND_INDEX) {
-                        return log10BackgroundWeight + log10Likelihood;
+                        return logBackgroundWeight + logLikelihood;
                     } else {   // sparse cluster
-                        return log10SparseClustersWeight + log10CRPWeight(c) + log10Likelihood;
+                        return logSparseClustersWeight + logCRPWeight(c) + logLikelihood;
                     }
                 }).toArray();
-        return MathUtils.log10SumLog10(log10ClusterLikelihoods);
+        return NaturalLogUtils.logSumExp(logClusterLikelihoods);
     }
 
     private double[] clusterProbabilities(final Datum datum) {
-        final double log10VariantPrior = getLog10PriorOfSomaticVariant(datum.getIndelLength());
-        final double log10NoVariantPrior = MathUtils.log10OneMinusPow10(log10VariantPrior);
+        final double logVariantPrior = getLogPriorOfSomaticVariant(datum.getIndelLength());
+        final double logNoVariantPrior = NaturalLogUtils.log1mexp(logVariantPrior);
 
-        final double[] log10ClusterPosteriors = new IndexRange(0, clusters.size() + 1).mapToDouble(c -> {
-            final double log10Likelihood = c < clusters.size() ? clusters.get(c).log10Likelihood(datum) :
-                    NEW_CLUSTER.log10Likelihood(datum);
+        final double[] logClusterPosteriors = new IndexRange(0, clusters.size() + 1).mapToDouble(c -> {
+            final double logLikelihood = c < clusters.size() ? clusters.get(c).logLikelihood(datum) :
+                    NEW_CLUSTER.logLikelihood(datum);
             if (c == SEQUENCING_ERROR_INDEX) {
-                return log10NoVariantPrior + log10Likelihood;
+                return logNoVariantPrior + logLikelihood;
             } else if (c == HIGH_AF_INDEX) {
-                return log10VariantPrior + log10HighAFWeight + log10Likelihood;
+                return logVariantPrior + logHighAFWeight + logLikelihood;
             } else if (c == BACKGROUND_INDEX) {
-                return log10VariantPrior + log10BackgroundWeight + log10Likelihood;
+                return logVariantPrior + logBackgroundWeight + logLikelihood;
             } else if (c < clusters.size()) {   // existing sparse cluster
-                return log10VariantPrior + log10SparseClustersWeight + log10CRPWeight(c)
-                        + log10Likelihood;
+                return logVariantPrior + logSparseClustersWeight + logCRPWeight(c)
+                        + logLikelihood;
             } else {    // new sparse cluster
-                return log10VariantPrior + log10SparseClustersWeight + log10CRPWeight(c)
-                        + log10Likelihood;
+                return logVariantPrior + logSparseClustersWeight + logCRPWeight(c)
+                        + logLikelihood;
             }
         });
 
-        return MathUtils.normalizeLog10(log10ClusterPosteriors, false, false);
+        return NaturalLogUtils.normalizeLog(logClusterPosteriors, false, false);
     }
 
-    private double log10CRPWeight(final int clusterIndex) {
+    private double logCRPWeight(final int clusterIndex) {
         Utils.validate(clusterIndex >= OFFSET, "Chinese restaurant process does not apply to error, high-AF, and backgorund clusters");
         final double numerator = clusterIndex == clusters.size() ? CONCENTRATION : clusterCounts.get(clusterIndex).getValue();
         final double denominator = totalSparseClusterCount.getValue() + CONCENTRATION;
-        return Math.log10(numerator / denominator);
+        return Math.log(numerator / denominator);
 
     }
 
@@ -243,15 +245,15 @@ public class SomaticClusteringModel {
         final double totalVariants = clusterCounts.get(HIGH_AF_INDEX).getValue() + clusterCounts.get(BACKGROUND_INDEX).getValue()
                 + totalSparseClusterCount.getValue() + REGULARIZING_PSEUDOCOUNT * 3; // high-AF, background, and sparse each get pseudocounts
 
-        log10HighAFWeight = Math.log10((REGULARIZING_PSEUDOCOUNT + clusterCounts.get(HIGH_AF_INDEX).getValue()) / totalVariants);
-        log10BackgroundWeight = Math.log10((REGULARIZING_PSEUDOCOUNT + clusterCounts.get(BACKGROUND_INDEX).getValue()) / totalVariants);
-        log10SparseClustersWeight = Math.log10((REGULARIZING_PSEUDOCOUNT + totalSparseClusterCount.getValue()) /totalVariants);
+        logHighAFWeight = Math.log((REGULARIZING_PSEUDOCOUNT + clusterCounts.get(HIGH_AF_INDEX).getValue()) / totalVariants);
+        logBackgroundWeight = Math.log((REGULARIZING_PSEUDOCOUNT + clusterCounts.get(BACKGROUND_INDEX).getValue()) / totalVariants);
+        logSparseClustersWeight = Math.log((REGULARIZING_PSEUDOCOUNT + totalSparseClusterCount.getValue()) /totalVariants);
 
         final Map<Integer, Long> variantCountsByIndelLength = IntStream.range(0, data.size())
                 .filter( n -> clusterAssignments.get(n).orElse(SEQUENCING_ERROR_INDEX) != SEQUENCING_ERROR_INDEX)
                 .map(n -> data.get(n).getIndelLength())
                 .boxed()
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting() ));//TODO: put in something that counts total appearances of each indel length
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting() ));
 
 
         final double technicalArtifactCount = data.stream().mapToDouble(Datum::getArtifactProb).sum();
@@ -259,32 +261,32 @@ public class SomaticClusteringModel {
         if (callableSites.isPresent()) {
             IntStream.range(-MAX_INDEL_SIZE_IN_PRIOR_MAP, MAX_INDEL_SIZE_IN_PRIOR_MAP + 1).forEach(n -> {
                 final double empiricalRatio = variantCountsByIndelLength.getOrDefault(n, 0L) / callableSites.getAsDouble();
-                log10VariantPriors.put(n, Math.log10(Math.max(empiricalRatio, n == 0 ? 1.0e-8 : 1.0e-9)));
+                logVariantPriors.put(n, Math.log(Math.max(empiricalRatio, n == 0 ? 1.0e-8 : 1.0e-9)));
             });
         }
         final long variantCount = variantCountsByIndelLength.values().stream().mapToLong(n -> n).sum();
-        log10VariantVsArtifactPrior = Math.log10((variantCount + REGULARIZING_PSEUDOCOUNT) / (variantCount + technicalArtifactCount + REGULARIZING_PSEUDOCOUNT * 2));
+        logVariantVsArtifactPrior = Math.log((variantCount + REGULARIZING_PSEUDOCOUNT) / (variantCount + technicalArtifactCount + REGULARIZING_PSEUDOCOUNT * 2));
     }
 
     public List<Pair<String, String>> clusteringMetadata() {
         final List<Pair<String, String>> result = new ArrayList<>();
         IntStream.range(-MAX_INDEL_SIZE_IN_PRIOR_MAP, MAX_INDEL_SIZE_IN_PRIOR_MAP + 1).forEach(n -> {
-            final double log10Prior = log10VariantPriors.get(n);
+            final double logPrior = logVariantPriors.get(n);
             final String type = n == 0 ? "SNV" :
                     (n < 0 ? "deletion" : "insertion") + " of length " + Math.abs(n);
-            result.add(ImmutablePair.of("Log10 prior of " + type, Double.toString(log10Prior)));
+            result.add(ImmutablePair.of("Ln prior of " + type, Double.toString(logPrior)));
         });
 
         result.add(ImmutablePair.of("High-AF beta-binomial cluster",
-                String.format("weight = %.4f, %s", Math.pow(10, log10HighAFWeight), clusters.get(HIGH_AF_INDEX).toString())));
+                String.format("weight = %.4f, %s", Math.exp(logHighAFWeight), clusters.get(HIGH_AF_INDEX).toString())));
         result.add(ImmutablePair.of("Background beta-binomial cluster",
-                String.format("weight = %.4f, %s", Math.pow(10, log10BackgroundWeight), clusters.get(BACKGROUND_INDEX).toString())));
+                String.format("weight = %.4f, %s", Math.exp(logBackgroundWeight), clusters.get(BACKGROUND_INDEX).toString())));
 
         final MutableInt clusterIndex = new MutableInt(1);
         IntStream.range(OFFSET, clusters.size()).boxed()
-                .sorted(Comparator.comparingDouble(c -> -log10CRPWeight(c)))
+                .sorted(Comparator.comparingDouble(c -> -logCRPWeight(c)))
                 .forEach(c -> result.add(ImmutablePair.of("Binomial cluster " + clusterIndex.toString(),
-                        String.format("weight = %.4f, %s", Math.pow(10, log10CRPWeight(c)), clusters.get(c).toString()))));
+                        String.format("weight = %.4f, %s", Math.exp(logCRPWeight(c)), clusters.get(c).toString()))));
         return result;
     }
 

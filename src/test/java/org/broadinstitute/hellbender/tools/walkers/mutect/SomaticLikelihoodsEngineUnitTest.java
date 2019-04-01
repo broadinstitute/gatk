@@ -7,6 +7,7 @@ import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -22,7 +23,7 @@ public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
         final double[] prior1 = new double[] {1, 1};
         final RealMatrix mat1 = new Array2DRowRealMatrix(2, 4);
         mat1.setRow(0, new double[] {0, 0, 0, 0});
-        mat1.setRow(1, new double[] {-10, -10, -10, -10});
+        mat1.setRow(1, new double[] {-30, -30, -30, -30});
         final double[] posterior1 = SomaticLikelihoodsEngine.alleleFractionsPosterior(mat1, prior1);
         final double[] expectedCounts1 = new double[] {4, 0};
 
@@ -43,8 +44,8 @@ public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
         //prior is extremely weak and likelihoods speak for themselves
         final double[] prior3 = new double[] {1e-6, 1e-6};
         final RealMatrix mat3 = new Array2DRowRealMatrix(2, 4);
-        mat3.setRow(0, new double[] {0, 0, 0, -10});
-        mat3.setRow(1, new double[] {-10, -10, -10, 0});
+        mat3.setRow(0, new double[] {0, 0, 0, -30});
+        mat3.setRow(1, new double[] {-30, -30, -30, 0});
         final double[] posterior3 = SomaticLikelihoodsEngine.alleleFractionsPosterior(mat3, prior3);
         final double[] expectedCounts3 = new double[] {3, 1};
 
@@ -67,7 +68,7 @@ public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
         final double a = 11;
         final double b = 36;
         final double[] params1 = new double[] {a, b};
-        final double normalization = Math.pow(10, SomaticLikelihoodsEngine.log10DirichletNormalization(params1));
+        final double normalization = Math.exp(SomaticLikelihoodsEngine.logDirichletNormalization(params1));
         final BetaDistribution bd = new BetaDistribution(a,b);
         for (final double x : new double[] {0.1, 0.3, 0.6}) {
             Assert.assertEquals(bd.density(x), normalization * Math.pow(x, a - 1) * Math.pow(1-x, b-1), 1e-6);
@@ -77,7 +78,7 @@ public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
         // which is d! where d is the dimension
 
         final double[] params2 = new double[] {1, 1, 1, 1};
-        final double normalization2 = Math.pow(10, SomaticLikelihoodsEngine.log10DirichletNormalization(params2));
+        final double normalization2 = Math.exp(SomaticLikelihoodsEngine.logDirichletNormalization(params2));
         Assert.assertEquals(normalization2, 6, 1e-6);
     }
 
@@ -89,34 +90,31 @@ public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
         // and thus the evidence reduces to exactly integrating out the Dirichlet allele fractions
 
         final double[] prior = new double[] {1, 2};
-        final RealMatrix log10Likelihoods = new Array2DRowRealMatrix(2, 4);
-        log10Likelihoods.setRow(0, new double[] {0.1, 4.0, 3.0, -10});
-        log10Likelihoods.setRow(1, new double[] {-12, -9, -5.0, 0.5});
-        final double calculatedLog10Evidence = SomaticLikelihoodsEngine.log10Evidence(log10Likelihoods, prior);
+        final RealMatrix logLikelihoods = new Array2DRowRealMatrix(2, 4);
+        logLikelihoods.setRow(0, MathUtils.applyToArray(new double[] {0.1, 4.0, 3.0, -10}, MathUtils::log10ToLog));
+        logLikelihoods.setRow(1, MathUtils.applyToArray(new double[] {-12, -9, -5.0, 0.5}, MathUtils::log10ToLog));
+        final double calculatedLogEvidence = SomaticLikelihoodsEngine.logEvidence(logLikelihoods, prior);
         final double[] maxLikelihoodCounts = new double[] {3, 1};
-        final double expectedLog10Evidence = SomaticLikelihoodsEngine.log10DirichletNormalization(prior)
-                - SomaticLikelihoodsEngine.log10DirichletNormalization(MathArrays.ebeAdd(prior, maxLikelihoodCounts))
-                + new IndexRange(0,log10Likelihoods.getColumnDimension()).sum(read -> log10Likelihoods.getColumnVector(read).getMaxValue());
-        Assert.assertEquals(calculatedLog10Evidence, expectedLog10Evidence, 1e-5);
+        final double expectedLogEvidence = SomaticLikelihoodsEngine.logDirichletNormalization(prior)
+                - SomaticLikelihoodsEngine.logDirichletNormalization(MathArrays.ebeAdd(prior, maxLikelihoodCounts))
+                + new IndexRange(0,logLikelihoods.getColumnDimension()).sum(read -> logLikelihoods.getColumnVector(read).getMaxValue());
+        Assert.assertEquals(calculatedLogEvidence, expectedLogEvidence, 1e-5);
 
         // when there's just one read we can calculate the likelihood exactly
 
-        final double[] prior2 = new double[] {1, 2};
+        final double[] prior2 = MathUtils.applyToArray(new double[] {1, 2}, MathUtils::log10ToLog);
         final RealMatrix log10Likelihoods2 = new Array2DRowRealMatrix(2, 1);
-        log10Likelihoods2.setRow(0, new double[] {0.1});
-        log10Likelihoods2.setRow(1, new double[] {0.5});
-        final double calculatedLog10Evidence2 = SomaticLikelihoodsEngine.log10Evidence(log10Likelihoods2, prior2);
+        log10Likelihoods2.setRow(0, MathUtils.applyToArray(new double[] {0.1}, MathUtils::log10ToLog));
+        log10Likelihoods2.setRow(1, MathUtils.applyToArray(new double[] {0.5}, MathUtils::log10ToLog));
+        final double calculatedLogEvidence2 = SomaticLikelihoodsEngine.logEvidence(log10Likelihoods2, prior2);
         final double[] delta0 = new double[] {1, 0};
         final double[] delta1 = new double[] {0, 1};
-        final double expectedLog10Evidence2 = MathUtils.log10SumLog10(log10Likelihoods2.getEntry(0,0) +
-                SomaticLikelihoodsEngine.log10DirichletNormalization(prior2)
-                - SomaticLikelihoodsEngine.log10DirichletNormalization(MathArrays.ebeAdd(prior2, delta0)),
+        final double expectedLogEvidence2 = NaturalLogUtils.logSumExp(log10Likelihoods2.getEntry(0,0) +
+                SomaticLikelihoodsEngine.logDirichletNormalization(prior2)
+                - SomaticLikelihoodsEngine.logDirichletNormalization(MathArrays.ebeAdd(prior2, delta0)),
                 + log10Likelihoods2.getEntry(1,0) +
-                SomaticLikelihoodsEngine.log10DirichletNormalization(prior2)
-                        - SomaticLikelihoodsEngine.log10DirichletNormalization(MathArrays.ebeAdd(prior2, delta1)));
-        Assert.assertEquals(calculatedLog10Evidence2, expectedLog10Evidence2, 0.05);
-
-
+                SomaticLikelihoodsEngine.logDirichletNormalization(prior2)
+                        - SomaticLikelihoodsEngine.logDirichletNormalization(MathArrays.ebeAdd(prior2, delta1)));
+        Assert.assertEquals(calculatedLogEvidence2, expectedLogEvidence2, 0.05);
     }
-
 }

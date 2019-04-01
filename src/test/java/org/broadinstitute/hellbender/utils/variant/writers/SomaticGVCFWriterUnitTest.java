@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.variant.writers;
 
 import com.google.common.collect.ImmutableList;
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -11,7 +10,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.broadinstitute.hellbender.testutils.VariantContextTestUtils.makeSomaticRef;
-import static org.broadinstitute.hellbender.testutils.VariantContextTestUtils.makeSomaticRefGenotype;
 
 public class SomaticGVCFWriterUnitTest {
     private static final List<Number> standardPartition = ImmutableList.of(-4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0, 0.5);
@@ -54,33 +52,33 @@ public class SomaticGVCFWriterUnitTest {
         int pos = 1;
         final VariantContextBuilder vcb = new VariantContextBuilder("source", "contig", pos, pos, ALLELES);
 
-        Genotype g = gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, -3.4).make();
+        Genotype g = gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, -3.4).make();
         Assert.assertFalse(writer.gvcfBlockCombiner.genotypeCanBeMergedInCurrentBlock(g));  //should be false if there's no current block
         writer.add(vcb.genotypes(gb.make()).make());
 
         vcb.start(++pos).stop(pos);
-        g = gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, -3.2).make();
+        g = gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, -3.2).make();
         Assert.assertTrue(writer.gvcfBlockCombiner.genotypeCanBeMergedInCurrentBlock(g));
         writer.add(vcb.genotypes(gb.make()).make());
 
         //test that inclusive lower bounds function properly
         vcb.start(++pos).stop(pos);
-        g = gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, -3.0).make();
+        g = gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, -3.0).make();
         Assert.assertFalse(writer.gvcfBlockCombiner.genotypeCanBeMergedInCurrentBlock(g));
         writer.add(vcb.genotypes(gb.make()).make());
 
         vcb.start(++pos).stop(pos);
-        g = gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, -2.7).make();
+        g = gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, -2.7).make();
         Assert.assertTrue(writer.gvcfBlockCombiner.genotypeCanBeMergedInCurrentBlock(g));
         writer.add(vcb.genotypes(gb.make()).make());
 
         vcb.start(++pos).stop(pos);
-        g = gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, 600.0).make();
+        g = gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 600.0).make();
         Assert.assertFalse(writer.gvcfBlockCombiner.genotypeCanBeMergedInCurrentBlock(g));
         writer.add(vcb.genotypes(gb.make()).make());
 
         vcb.start(++pos).stop(pos);
-        g = gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, 601.1).make();
+        g = gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 601.1).make();
         Assert.assertTrue(writer.gvcfBlockCombiner.genotypeCanBeMergedInCurrentBlock(g));
         writer.add(vcb.genotypes(gb.make()).make());
 
@@ -101,6 +99,6 @@ public class SomaticGVCFWriterUnitTest {
         writer.close();
         VariantContext vc = mockWriter.emitted.get(0);
         //partitionPrecision does not affect the precision of the minLOD for the block
-        Assert.assertEquals(vc.getGenotype(0).getExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY), -0.500005);
+        Assert.assertEquals(vc.getGenotype(0).getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY), -0.500005);
     }
 }

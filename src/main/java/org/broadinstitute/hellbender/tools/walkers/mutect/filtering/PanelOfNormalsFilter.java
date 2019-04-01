@@ -12,7 +12,7 @@ public class PanelOfNormalsFilter extends HardFilter {
 
     @Override
     public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        return vc.hasAttribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE);
+        return vc.hasAttribute(GATKVCFConstants.IN_PON_KEY);
     }
 
     @Override

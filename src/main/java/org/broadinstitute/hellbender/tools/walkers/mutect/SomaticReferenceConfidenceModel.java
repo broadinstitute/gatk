@@ -2,11 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.RefVsAnyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceResult;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -73,27 +72,27 @@ public class SomaticReferenceConfidenceModel extends ReferenceConfidenceModel {
             final double nonRefLikelihood;
             final double refLikelihood;
             if (isAlt) {
-                nonRefLikelihood = QualityUtils.qualToProbLog10(element.getQual());
-                refLikelihood = QualityUtils.qualToErrorProbLog10(element.getQual()) + MathUtils.LOG10_ONE_THIRD;
+                nonRefLikelihood = NaturalLogUtils.qualToLogProb(element.getQual());
+                refLikelihood = NaturalLogUtils.qualToLogErrorProb(element.getQual()) + NaturalLogUtils.LOG_ONE_THIRD;
                 result.nonRefDepth++;
             } else {
-                nonRefLikelihood = QualityUtils.qualToErrorProbLog10(element.getQual()) + MathUtils.LOG10_ONE_THIRD;
-                refLikelihood = QualityUtils.qualToProbLog10(element.getQual());
+                nonRefLikelihood = NaturalLogUtils.qualToLogErrorProb(element.getQual()) + NaturalLogUtils.LOG_ONE_THIRD;
+                refLikelihood = NaturalLogUtils.qualToLogProb(element.getQual());
                 result.refDepth++;
             }
             readLikelihoods.sampleMatrix(0).set(0, i, nonRefLikelihood);
             readLikelihoods2.sampleMatrix(0).set(0, i, refLikelihood);
             readLikelihoods2.sampleMatrix(0).set(1, i, nonRefLikelihood);
         }
-        result.lods = genotypingEngine.somaticLog10Odds(readLikelihoods.sampleMatrix(0));
-        PerAlleleCollection<Double> lods2 = genotypingEngine.somaticLog10Odds(readLikelihoods2.sampleMatrix(0));
+        result.lods = genotypingEngine.somaticLogOdds(readLikelihoods.sampleMatrix(0));
+        PerAlleleCollection<Double> lods2 = genotypingEngine.somaticLogOdds(readLikelihoods2.sampleMatrix(0));
         result.lods = lods2;
         return result;
     }
 
     @Override
     public void addGenotypeData(final ReferenceConfidenceResult result, final GenotypeBuilder gb) {
-        gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, ((SomaticRefVsAnyResult)result).lods.get(Allele.NON_REF_ALLELE));
+        gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, MathUtils.logToLog10(((SomaticRefVsAnyResult)result).lods.get(Allele.NON_REF_ALLELE)));
     }
 
     @Override

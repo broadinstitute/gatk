@@ -33,7 +33,7 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
     @Override
     boolean genotypeCanBeMergedInCurrentBlock(final Genotype g) {
         final TLODBlock currentTLODBlock = (TLODBlock)currentBlock;
-        final double TLOD = Double.parseDouble(g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY).toString());
+        final double TLOD = Double.parseDouble(g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY).toString());
         return currentTLODBlock != null
                 && currentTLODBlock.withinBounds(convertLODtoInt(TLOD, partitionPrecision));
     }
@@ -48,7 +48,7 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
     @Override
     GVCFBlock createNewBlock(final VariantContext vc, final Genotype g) {
         // figure out the GQ limits to use based on the LOD of g
-        final double lod = Double.parseDouble(g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY).toString());
+        final double lod = Double.parseDouble(g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY).toString());
         final Range<Integer> partition = gqPartitions.get(convertLODtoInt(lod, partitionPrecision));
 
         if( partition == null) {

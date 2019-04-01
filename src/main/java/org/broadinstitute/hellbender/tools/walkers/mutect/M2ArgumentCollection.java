@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.CollectF1R2CountsArgumentCollection;
+import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.io.File;
 import java.io.Serializable;
@@ -33,14 +34,14 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
     public static final String EMISSION_LOD_LONG_NAME = "tumor-lod-to-emit";
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
-    public static final String INITIAL_TUMOR_LOD_LONG_NAME = "initial-tumor-lod";
-    public static final String INITIAL_TUMOR_LOD_SHORT_NAME = "init-lod";
+    public static final String INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME = "initial-tumor-lod";
+    public static final String INITIAL_TUMOR_LOG_10_ODDS_SHORT_NAME = "init-lod";
     public static final String MAX_POPULATION_AF_LONG_NAME = "max-population-af";
     public static final String MAX_POPULATION_AF_SHORT_NAME = "max-af";
     public static final String DOWNSAMPLING_STRIDE_LONG_NAME = "downsampling-stride";
     public static final String DOWNSAMPLING_STRIDE_SHORT_NAME = "stride";
     public static final String MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME = "max-suspicious-reads-per-alignment-start";
-    public static final String NORMAL_LOD_LONG_NAME = "normal-lod";
+    public static final String NORMAL_LOG_10_ODDS_LONG_NAME = "normal-lod";
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
@@ -53,14 +54,15 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
     public static final double DEFAULT_AF_FOR_MITO_CALLING = 4e-3;
-    public static final double DEFAULT_EMISSION_LOD = 3.0;
+    public static final double DEFAULT_EMISSION_LOG_10_ODDS = 3.0;
     public static final double DEFAULT_MITO_EMISSION_LOD = 0;
-    public static final double DEFAULT_INITIAL_LOD = 2.0;
-    public static final double DEFAULT_MITO_INITIAL_LOD = 0;
-    public static final double DEFAULT_GVCF_LOD = Double.NEGATIVE_INFINITY;
+    public static final double DEFAULT_INITIAL_LOG_10_ODDS = 2.0;
+    public static final double DEFAULT_NORMAL_LOG_10_ODDS = 2.2;
+    public static final double DEFAULT_MITO_INITIAL_LOG_10_ODDS = 0;
+    public static final double DEFAULT_GVCF_LOG_10_ODDS = Double.NEGATIVE_INFINITY;
     public static final int DEFAULT_CALLABLE_DEPTH = 10;
 
-    public static final double DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD = -4;
+    public static final double DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(-4);
 
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection(){
         return new MutectReadThreadingAssemblerArgumentCollection();
@@ -70,8 +72,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public ReadThreadingAssembler createReadThreadingAssembler(){
         if(mitochondria ) {
             assemblerArgs.recoverAllDanglingBranches = true;
-            if (assemblerArgs.pruningLog10OddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
-                assemblerArgs.pruningLog10OddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
+            if (assemblerArgs.pruningLogOddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
+                assemblerArgs.pruningLogOddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
             }
         }
 
@@ -152,27 +154,27 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Default setting of 3 is permissive and will emit some amount of negative training data that 
      * {@link FilterMutectCalls} should then filter.
      */
-    @Argument(fullName = EMISSION_LOD_LONG_NAME, shortName = EMISSION_LOG_SHORT_NAME, optional = true, doc = "LOD threshold to emit variant to VCF.")
-    private double emissionLodArg = DEFAULT_EMISSION_LOD;
+    @Argument(fullName = EMISSION_LOD_LONG_NAME, shortName = EMISSION_LOG_SHORT_NAME, optional = true, doc = "Log 10 odds threshold to emit variant to VCF.")
+    private double emissionLog10Odds = DEFAULT_EMISSION_LOG_10_ODDS;
 
-    public double getEmissionLod() {
+    public double getEmissionLogOdds() {
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {
-            return DEFAULT_GVCF_LOD;
+            return MathUtils.log10ToLog(DEFAULT_GVCF_LOG_10_ODDS);
         }
-        return mitochondria && emissionLodArg == DEFAULT_EMISSION_LOD ? DEFAULT_MITO_EMISSION_LOD : emissionLodArg;
+        return MathUtils.log10ToLog(mitochondria && emissionLog10Odds == DEFAULT_EMISSION_LOG_10_ODDS ? DEFAULT_MITO_EMISSION_LOD : emissionLog10Odds);
     }
 
     /**
      * Only variants with estimated tumor LODs exceeding this threshold will be considered active.
      */
-    @Argument(fullName = INITIAL_TUMOR_LOD_LONG_NAME, shortName = INITIAL_TUMOR_LOD_SHORT_NAME, optional = true, doc = "LOD threshold to consider pileup active.")
-    private double initialLod = DEFAULT_INITIAL_LOD;
+    @Argument(fullName = INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME, shortName = INITIAL_TUMOR_LOG_10_ODDS_SHORT_NAME, optional = true, doc = "Log 10 odds threshold to consider pileup active.")
+    private double initialLog10Odds = DEFAULT_INITIAL_LOG_10_ODDS;
 
-    public double getInitialLod() {
+    public double getInitialLogOdds() {
         if (emitReferenceConfidence != ReferenceConfidenceMode.NONE) {
-            return DEFAULT_GVCF_LOD;
+            return MathUtils.log10ToLog(DEFAULT_GVCF_LOG_10_ODDS);
         }
-        return mitochondria && initialLod == DEFAULT_INITIAL_LOD ? DEFAULT_MITO_INITIAL_LOD : initialLod;
+        return MathUtils.log10ToLog(mitochondria && initialLog10Odds == DEFAULT_INITIAL_LOG_10_ODDS ? DEFAULT_MITO_INITIAL_LOG_10_ODDS : initialLog10Odds);
     }
 
 
@@ -210,8 +212,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * It is unlikely such analyses will require changing the default value. Increasing the parameter may increase the sensitivity of somatic calling,
      * but may also increase calling false positive, i.e. germline, variants.
      */
-    @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
-    public double normalLod = 2.2;
+    @Argument(fullName = NORMAL_LOG_10_ODDS_LONG_NAME, optional = true, doc = "Log 10 odds threshold for calling normal variant non-germline.")
+    public double normalLog10Odds = DEFAULT_NORMAL_LOG_10_ODDS;
 
     /**
      * Two or more phased substitutions separated by this distance or less are merged into MNPs.

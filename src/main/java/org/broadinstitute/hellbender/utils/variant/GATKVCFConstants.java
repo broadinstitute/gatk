@@ -103,18 +103,18 @@ public final class GATKVCFConstants {
     public static final String F2R1_KEY =                           "F2R1";
 
     // Mutect2-specific INFO keys
-    public static final String TUMOR_LOD_KEY =                      "TLOD";
-    public static final String NORMAL_LOD_KEY =                     "NLOD";
-    public static final String IN_PON_VCF_ATTRIBUTE =               "PON";
-    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "NALOD";
-    public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POPAF";
-    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =  "GERMQ";
-    public static final String SEQUENCING_QUAL_VCF_ATTRIBUTE =  "SEQQ";
-    public static final String POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE =  "STRQ";
-    public static final String STRAND_QUAL_VCF_ATTRIBUTE =  "STRANDQ";
-    public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
-    public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
-    public static final String READ_ORIENTATION_QUAL_ATTRIBUTE =  "ROQ";
+    public static final String TUMOR_LOG_10_ODDS_KEY =                      "TLOD";
+    public static final String NORMAL_LOG_10_ODDS_KEY =                     "NLOD";
+    public static final String IN_PON_KEY =               "PON";
+    public static final String NORMAL_ARTIFACT_LOG_10_ODDS_KEY =      "NALOD";
+    public static final String POPULATION_AF_KEY =        "POPAF";
+    public static final String GERMLINE_QUAL_KEY =  "GERMQ";
+    public static final String SEQUENCING_QUAL_KEY =  "SEQQ";
+    public static final String POLYMERASE_SLIPPAGE_QUAL_KEY =  "STRQ";
+    public static final String STRAND_QUAL_KEY =  "STRANDQ";
+    public static final String REALIGNMENT_COUNTS_KEY =   "RCNTS";
+    public static final String CONTAMINATION_QUAL_KEY =  "CONTQ";
+    public static final String READ_ORIENTATION_QUAL_KEY =  "ROQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
     public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";

@@ -3,14 +3,11 @@ package org.broadinstitute.hellbender.utils.variant.writers;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
-
-import static org.testng.Assert.*;
 
 public class TLODBlockUnitTest {
     private static final String SAMPLE_NAME = "foo";
@@ -50,7 +47,7 @@ public class TLODBlockUnitTest {
 
         int pos = band.getStart();
         for (int i = 0; i < DPs.length; i++) {
-            band.add(pos++, gb.DP(DPs[i]).attribute(GATKVCFConstants.TUMOR_LOD_KEY, TLODs[i]).make());
+            band.add(pos++, gb.DP(DPs[i]).attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, TLODs[i]).make());
             Assert.assertEquals(band.getEnd(), pos - 1);
             Assert.assertEquals(band.getMinDP(), expectedMinDPs[i]);
             Assert.assertEquals(band.getMedianDP(), expectedMedianDPs[i]);
@@ -60,7 +57,7 @@ public class TLODBlockUnitTest {
         final Genotype g = band.createHomRefGenotype("TUMOR");
         Assert.assertTrue(g.hasDP() && g.getDP() == expectedMedianDPs[DPs.length-1]);
         Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY) && ((int) g.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) == expectedMinDPs[DPs.length-1]);
-        Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY) && ((double) g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) == expectedTLODs[DPs.length-1]);
+        Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY) && ((double) g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)) == expectedTLODs[DPs.length-1]);
     }
 
 

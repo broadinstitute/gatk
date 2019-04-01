@@ -17,13 +17,13 @@ public class BinomialCluster implements AlleleFractionCluster {
     }
 
     @Override
-    public double log10Likelihood(final Datum datum) {
-        return BetaBinomialCluster.log10Likelihood(datum, betaDistributionShape);
+    public double logLikelihood(final Datum datum) {
+        return BetaBinomialCluster.logLikelihood(datum, betaDistributionShape);
     }
 
     @Override
-    public double log10Likelihood(final int totalCount, final int altCount) {
-        return MathUtils.LOG10_OF_E * new BetaBinomialDistribution(null, betaDistributionShape.getAlpha(), betaDistributionShape.getBeta(), totalCount).logProbability(altCount);
+    public double logLikelihood(final int totalCount, final int altCount) {
+        return new BetaBinomialDistribution(null, betaDistributionShape.getAlpha(), betaDistributionShape.getBeta(), totalCount).logProbability(altCount);
     }
 
     @Override

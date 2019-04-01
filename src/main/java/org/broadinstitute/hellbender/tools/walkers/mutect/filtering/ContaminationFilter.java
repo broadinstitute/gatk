@@ -48,17 +48,17 @@ public class ContaminationFilter extends Mutect2VariantFilter {
             final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
             final int depth = (int) MathUtils.sum(ADs);
             final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
-                    GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
+                    GATKVCFConstants.POPULATION_AF_KEY, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
             final double alleleFrequency = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x))[maxFractionIndex];
 
-            final double log10SomaticLikelihood = filteringEngine.getSomaticClusteringModel().log10LikelihoodGivenSomatic(depth, altCount);
+            final double logSomaticLikelihood = filteringEngine.getSomaticClusteringModel().logLikelihoodGivenSomatic(depth, altCount);
 
             final double singleContaminantLikelihood = 2 * alleleFrequency * (1 - alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination /2)
                     + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
             final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
-            final double log10ContaminantLikelihood = Math.log10(Math.max(singleContaminantLikelihood, manyContaminantLikelihood));
-            final double log10OddsOfRealVsContamination = log10SomaticLikelihood - log10ContaminantLikelihood;
-            final double posteriorProbOfContamination = filteringEngine.posteriorProbabilityOfError(vc, log10OddsOfRealVsContamination, maxFractionIndex);
+            final double logContaminantLikelihood = Math.log(Math.max(singleContaminantLikelihood, manyContaminantLikelihood));
+            final double logOddsOfRealVsContamination = logSomaticLikelihood - logContaminantLikelihood;
+            final double posteriorProbOfContamination = filteringEngine.posteriorProbabilityOfError(vc, logOddsOfRealVsContamination, maxFractionIndex);
 
             depthsAndPosteriors.add(ImmutablePair.of(altCount, posteriorProbOfContamination));
         }
@@ -73,9 +73,9 @@ public class ContaminationFilter extends Mutect2VariantFilter {
 
     @Override
     public Optional<String> phredScaledPosteriorAnnotationName() {
-        return Optional.of(GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE);
+        return Optional.of(GATKVCFConstants.CONTAMINATION_QUAL_KEY);
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE); }
+    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.POPULATION_AF_KEY); }
 }

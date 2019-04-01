@@ -21,7 +21,7 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
 
     @Override
     public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         final int[] tumorAlleleDepths = filteringEngine.sumADsOverSamples(vc, true, false);
@@ -40,8 +40,8 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
             return 0.0;
         }
 
-        final double[] normalArtifactLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
-        final double normalArtifactProbability = filteringEngine.posteriorProbabilityOfNormalArtifact(normalArtifactLods[indexOfMaxTumorLod]);
+        final double[] normalArtifactNegativeLogOdds = MathUtils.applyToArrayInPlace(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY), MathUtils::log10ToLog);
+        final double normalArtifactProbability = filteringEngine.posteriorProbabilityOfNormalArtifact(normalArtifactNegativeLogOdds[indexOfMaxTumorLod]);
 
         // the normal artifact log odds misses artifacts whose support in the normal consists entirely of low base quality reads
         // Since a lot of low-BQ reads is itself evidence of an artifact, we filter these by hand via an estimated LOD
@@ -65,6 +65,6 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
 
     @Override
     protected List<String> requiredAnnotations() {
-        return Arrays.asList(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE, GATKVCFConstants.TUMOR_LOD_KEY);
+        return Arrays.asList(GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
     }
 }

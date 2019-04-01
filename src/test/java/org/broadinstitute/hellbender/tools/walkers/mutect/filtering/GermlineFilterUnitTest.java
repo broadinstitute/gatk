@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,8 +12,8 @@ public class GermlineFilterUnitTest {
                                         final double log10OddsOfGermlineHomAltVsSomatic,
                                         final double populationAF, final double log10SomaticPrior,
                                         final double expectedLog10Posterior, final double tolerance) {
-        final double actual = Math.log10(GermlineFilter.germlineProbability(normalLog10Odds, log10OddsOfGermlineHetVsSomatic,
-                log10OddsOfGermlineHomAltVsSomatic, populationAF, log10SomaticPrior));
+        final double actual = Math.log10(GermlineFilter.germlineProbability(MathUtils.log10ToLog(normalLog10Odds), MathUtils.log10ToLog(log10OddsOfGermlineHetVsSomatic),
+                MathUtils.log10ToLog(log10OddsOfGermlineHomAltVsSomatic), populationAF, MathUtils.log10ToLog(log10SomaticPrior)));
         Assert.assertEquals(actual, expectedLog10Posterior, tolerance);
     }
 

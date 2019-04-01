@@ -57,7 +57,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
 
     @Override
     public Optional<String> phredScaledPosteriorAnnotationName() {
-        return Optional.of(GATKVCFConstants.READ_ORIENTATION_QUAL_ATTRIBUTE);
+        return Optional.of(GATKVCFConstants.READ_ORIENTATION_QUAL_KEY);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
             return 0;
         }
 
-        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, -1);
+        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, -1);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
         final Allele altAllele = vc.getAlternateAllele(indexOfMaxTumorLod);
         final Nucleotide altBase = Nucleotide.valueOf(altAllele.toString());

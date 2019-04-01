@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -45,7 +46,7 @@ public class OriginalAlignment extends InfoFieldAnnotation {
         Utils.nonNull(vc);
         Utils.nonNull(likelihoods);
 
-        final double[] lods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final double[] lods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         if (lods==null) {
             warning.warn(String.format("One or more variant contexts is missing the 'TLOD' annotation, %s will not be computed for these VariantContexts", GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY));
             return Collections.emptyMap();

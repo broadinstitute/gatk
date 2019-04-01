@@ -21,7 +21,7 @@ public class BaseQualityFilter extends HardFilter {
     @Override
     public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
         final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, 0);
-        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         return baseQualityByAllele.get(indexOfMaxTumorLod + 1) < minMedianBaseQuality;

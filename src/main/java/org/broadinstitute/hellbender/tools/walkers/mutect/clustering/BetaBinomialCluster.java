@@ -4,7 +4,6 @@ import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticLikelihoodsEngine;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
-import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.List;
 
@@ -21,19 +20,19 @@ public class BetaBinomialCluster implements AlleleFractionCluster {
     }
 
     @Override
-    public double log10Likelihood(final Datum datum) {
-        return log10Likelihood(datum, betaDistributionShape);
+    public double logLikelihood(final Datum datum) {
+        return logLikelihood(datum, betaDistributionShape);
     }
 
     @Override
-    public double log10Likelihood(final int totalCount, final int altCount) {
-        return MathUtils.LOG10_OF_E * new BetaBinomialDistribution(null, betaDistributionShape.getAlpha(), betaDistributionShape.getBeta(), totalCount).logProbability(altCount);
+    public double logLikelihood(final int totalCount, final int altCount) {
+        return new BetaBinomialDistribution(null, betaDistributionShape.getAlpha(), betaDistributionShape.getBeta(), totalCount).logProbability(altCount);
     }
 
-    public static double log10Likelihood(final Datum datum, final BetaDistributionShape betaDistributionShape) {
+    public static double logLikelihood(final Datum datum, final BetaDistributionShape betaDistributionShape) {
         final int altCount = datum.getAltCount();
         final int refCount = datum.getTotalCount() - altCount;
-        return datum.getTumorLog10Odds() + log10OddsCorrection(BetaDistributionShape.FLAT_BETA, betaDistributionShape, altCount, refCount);
+        return datum.getTumorLogOdds() + logOddsCorrection(BetaDistributionShape.FLAT_BETA, betaDistributionShape, altCount, refCount);
     }
 
     @Override
@@ -60,13 +59,13 @@ public class BetaBinomialCluster implements AlleleFractionCluster {
 
     }
 
-    private static double log10OddsCorrection(final BetaDistributionShape originalBeta, final BetaDistributionShape newBeta, final int altCount, final int refCount) {
+    private static double logOddsCorrection(final BetaDistributionShape originalBeta, final BetaDistributionShape newBeta, final int altCount, final int refCount) {
         return g(newBeta.getAlpha(), newBeta.getBeta()) - g(newBeta.getAlpha() + altCount, newBeta.getBeta() + refCount)
                 - g(originalBeta.getAlpha(), originalBeta.getBeta()) + g(originalBeta.getAlpha() + altCount, originalBeta.getBeta() + refCount);
     }
 
     private static double g(final double... omega) {
-        return SomaticLikelihoodsEngine.log10DirichletNormalization(omega);
+        return SomaticLikelihoodsEngine.logDirichletNormalization(omega);
     }
 
     @Override

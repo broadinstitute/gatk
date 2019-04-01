@@ -14,10 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.MutectStats;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClusteringModel;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -72,23 +69,23 @@ public class Mutect2FilteringEngine {
 
     public SomaticClusteringModel getSomaticClusteringModel() { return somaticClusteringModel; }
 
-    public double posteriorProbabilityOfError(final VariantContext vc, final double log10OddsOfRealVersusError, final int altIndex) {
-        return posteriorProbabilityOfError(log10OddsOfRealVersusError, getLog10PriorOfSomaticVariant(vc, altIndex));
+    public double posteriorProbabilityOfError(final VariantContext vc, final double logOddsOfRealVersusError, final int altIndex) {
+        return posteriorProbabilityOfError(logOddsOfRealVersusError, getLogSomaticPrior(vc, altIndex));
     }
 
-    public double posteriorProbabilityOfNormalArtifact(final double negativeLog10OddsOfNormalArtifact) {
-        return posteriorProbabilityOfError(negativeLog10OddsOfNormalArtifact, somaticClusteringModel.getLog10PriorProbOfVariantVersusArtifact());
+    public double posteriorProbabilityOfNormalArtifact(final double negativeLogOddsOfNormalArtifact) {
+        return posteriorProbabilityOfError(negativeLogOddsOfNormalArtifact, somaticClusteringModel.getLogPriorOfVariantVersusArtifact());
     }
 
-    public double getLog10PriorOfSomaticVariant(final VariantContext vc, final int altIndex) {
-        return somaticClusteringModel.getLog10PriorOfSomaticVariant(vc, altIndex);
+    public double getLogSomaticPrior(final VariantContext vc, final int altIndex) {
+        return somaticClusteringModel.getLogPriorOfSomaticVariant(vc, altIndex);
     }
 
-    private static double posteriorProbabilityOfError(final double log10OddsOfRealVersusError, final double log10PriorOfReal) {
-        final double[] unweightedPosteriorOfRealAndError = new double[] {log10OddsOfRealVersusError + log10PriorOfReal,
-                MathUtils.log10OneMinusPow10(log10PriorOfReal)};
+    private static double posteriorProbabilityOfError(final double logOddsOfRealVersusError, final double logPriorOfReal) {
+        final double[] unweightedPosteriorOfRealAndError = new double[] {logOddsOfRealVersusError + logPriorOfReal,
+                NaturalLogUtils.log1mexp(logPriorOfReal)};
 
-        final double[] posteriorOfRealAndError = MathUtils.normalizeFromLog10ToLinearSpace(unweightedPosteriorOfRealAndError);
+        final double[] posteriorOfRealAndError = NaturalLogUtils.normalizeFromLogToLinearSpace(unweightedPosteriorOfRealAndError);
 
         return posteriorOfRealAndError[1];
     }
@@ -122,6 +119,14 @@ public class Mutect2FilteringEngine {
         MathArrays.scaleInPlace(1/totalWeight.getValue(), AFs);
         return AFs;
     }
+
+    /**
+     * Get the (Natural) log odds of variants from the log-10 odds in a VariantContext object
+     */
+    public static double[] getTumorLogOdds(final VariantContext vc) {
+        final double[] tumorLog10Odds = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
+        return tumorLog10Odds == null ? null : MathUtils.applyToArrayInPlace(tumorLog10Odds, MathUtils::log10ToLog);
+    }
     // END HELPER METHODS
 
     /**
@@ -136,10 +141,9 @@ public class Mutect2FilteringEngine {
         final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
         filters.forEach(f -> f.accumulateDataForLearning(vc, errorProbabilities, this));
         final int[] tumorADs = sumADsOverSamples(vc, true, false);
-        final double[] tumorLog10Odds = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final double[] tumorLogOdds = Mutect2FilteringEngine.getTumorLogOdds(vc);
 
-        // TODO: this needs to get both technical and non-somatic error probabilities
-        somaticClusteringModel.record(tumorADs, tumorLog10Odds, errorProbabilities.getTechnicalArtifactProbability(),
+        somaticClusteringModel.record(tumorADs, tumorLogOdds, errorProbabilities.getTechnicalArtifactProbability(),
                 errorProbabilities.getNonSomaticProbability(), vc);
         thresholdCalculator.addArtifactProbability(errorProbabilities.getErrorProbability());
     }

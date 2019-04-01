@@ -207,19 +207,19 @@ public class GATKVCFHeaderLines {
 
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
-        addInfoLine(new VCFInfoHeaderLine(NORMAL_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Normal LOD score"));
-        addInfoLine(new VCFInfoHeaderLine(REALIGNMENT_COUNTS_VCF_ATTRIBUTE, 2, VCFHeaderLineType.Integer, "Number of reads passing and failing realignment."));
-        addInfoLine(new VCFInfoHeaderLine(TUMOR_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log odds ratio score for variant"));
-        addFormatLine(new VCFFormatHeaderLine(TUMOR_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log odds ratio score for variant"));
-        addInfoLine(new VCFInfoHeaderLine(IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
-        addInfoLine(new VCFInfoHeaderLine(POPULATION_AF_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "negative-log-10 population allele frequencies of alt alleles"));
-        addInfoLine(new VCFInfoHeaderLine(GERMLINE_QUAL_VCF_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Phred-scaled quality that alt alleles are not germline variants"));
-        addInfoLine(new VCFInfoHeaderLine(SEQUENCING_QUAL_VCF_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Phred-scaled quality that alt alleles are not sequencing errors"));
-        addInfoLine(new VCFInfoHeaderLine(POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Phred-scaled quality that alt alleles in STRs are not polymerase slippage errors"));
-        addInfoLine(new VCFInfoHeaderLine(STRAND_QUAL_VCF_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Phred-scaled quality of strand bias artifact"));
-        addInfoLine(new VCFInfoHeaderLine(CONTAMINATION_QUAL_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Phred-scaled qualities that alt allele are not due to contamination"));
-        addInfoLine(new VCFInfoHeaderLine(READ_ORIENTATION_QUAL_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Phred-scaled qualities that alt allele are not due to read orientation artifact"));
-        addInfoLine(new VCFInfoHeaderLine(NORMAL_ARTIFACT_LOD_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Negative log odds of artifact in normal with same allele fraction as tumor"));
+        addInfoLine(new VCFInfoHeaderLine(NORMAL_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Normal log 10 likelihood ratio of diploid het or hom alt genotypes"));
+        addInfoLine(new VCFInfoHeaderLine(REALIGNMENT_COUNTS_KEY, 2, VCFHeaderLineType.Integer, "Number of reads passing and failing realignment."));
+        addInfoLine(new VCFInfoHeaderLine(TUMOR_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log 10 likelihood ratio score of variant existing versus not existing"));
+        addFormatLine(new VCFFormatHeaderLine(TUMOR_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log 10 likelihood ratio score of variant existing versus not existing"));
+        addInfoLine(new VCFInfoHeaderLine(IN_PON_KEY, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
+        addInfoLine(new VCFInfoHeaderLine(POPULATION_AF_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "negative log 10 population allele frequencies of alt alleles"));
+        addInfoLine(new VCFInfoHeaderLine(GERMLINE_QUAL_KEY, 1, VCFHeaderLineType.Integer, "Phred-scaled quality that alt alleles are not germline variants"));
+        addInfoLine(new VCFInfoHeaderLine(SEQUENCING_QUAL_KEY, 1, VCFHeaderLineType.Integer, "Phred-scaled quality that alt alleles are not sequencing errors"));
+        addInfoLine(new VCFInfoHeaderLine(POLYMERASE_SLIPPAGE_QUAL_KEY, 1, VCFHeaderLineType.Integer, "Phred-scaled quality that alt alleles in STRs are not polymerase slippage errors"));
+        addInfoLine(new VCFInfoHeaderLine(STRAND_QUAL_KEY, 1, VCFHeaderLineType.Integer, "Phred-scaled quality of strand bias artifact"));
+        addInfoLine(new VCFInfoHeaderLine(CONTAMINATION_QUAL_KEY, 1, VCFHeaderLineType.Float, "Phred-scaled qualities that alt allele are not due to contamination"));
+        addInfoLine(new VCFInfoHeaderLine(READ_ORIENTATION_QUAL_KEY, 1, VCFHeaderLineType.Float, "Phred-scaled qualities that alt allele are not due to read orientation artifact"));
+        addInfoLine(new VCFInfoHeaderLine(NORMAL_ARTIFACT_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Negative log 10 odds of artifact in normal with same allele fraction as tumor"));
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_CONTIG_MISMATCH_KEY, 1, VCFHeaderLineType.Integer, "Number of alt reads whose original alignment doesn't match the current contig."));
         addInfoLine(new VCFInfoHeaderLine(N_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Count of N bases in the pileup"));
         addInfoLine(new VCFInfoHeaderLine(UNIQUE_ALT_READ_SET_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of ALT reads with unique start and mate end positions at a variant site"));

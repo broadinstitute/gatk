@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -369,7 +369,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logTransitionProbability(states.get(previousStateIndex),
                                         previousPosition, thisState, thisPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = MathUtils.logSumExp(logSumBuffer)
+                result[thisPositionIndex][thisStateIndex] = NaturalLogUtils.logSumExp(logSumBuffer)
                         + model.logEmissionProbability(data.get(thisPositionIndex), thisState, thisPosition);
             }
         }
@@ -430,7 +430,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logEmissionProbability(dataList.get(nextPositionIndex),
                                                 states.get(nextStateIndex), nextPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = MathUtils.logSumExp(logSumBuffer);
+                result[thisPositionIndex][thisStateIndex] = NaturalLogUtils.logSumExp(logSumBuffer);
             }
         }
         return result;
@@ -497,7 +497,7 @@ public final class ForwardBackwardAlgorithm {
                                     .mapToDouble(j -> logBackwardProbabilities[i][j]
                                                     + logForwardProbabilities[i][j])
                                     .toArray())
-                    .mapToDouble(MathUtils::logSumExp)
+                    .mapToDouble(NaturalLogUtils::logSumExp)
                     .toArray();
         }
 
@@ -645,7 +645,7 @@ public final class ForwardBackwardAlgorithm {
                     // by the emission probability of the current datum.
                     currentLikelihoods = currentStates.stream()
                             .mapToDouble(thisState ->
-                                    MathUtils.logSumExp(IntStream.range(0, previousStates.size())
+                                    NaturalLogUtils.logSumExp(IntStream.range(0, previousStates.size())
                                             .mapToDouble(previousStateIndex -> {
                                                 final S previousState = previousStates.get(previousStateIndex);
                                                 return previousLikelihoods[previousStateIndex]
@@ -661,7 +661,7 @@ public final class ForwardBackwardAlgorithm {
                 for (int i = 0; i < currentLikelihoods.length; i++) {
                     currentLikelihoods[i] += logBackwardProbabilities[lastIndex][stateIndex.getInt(lastStates.get(i))];
                 }
-                return MathUtils.logSumExp(currentLikelihoods) - logDataLikelihood[lastIndex];
+                return NaturalLogUtils.logSumExp(currentLikelihoods) - logDataLikelihood[lastIndex];
             }
         }
 

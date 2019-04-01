@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.List;
 public abstract class ReadThreadingAssemblerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = 1.0;
+    public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(1.0);
 
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
 
@@ -141,8 +142,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
      */
     @Advanced
-    @Argument(fullName="pruning-lod-threshold", doc = "Log-10 likelihood ratio threshold for adaptive pruning algorithm", optional = true)
-    public double pruningLog10OddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
+    @Argument(fullName="pruning-lod-threshold", doc = "Ln likelihood ratio threshold for adaptive pruning algorithm", optional = true)
+    public double pruningLogOddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
 
     /**
      * The maximum number of variants in graph the adaptive pruner will allow

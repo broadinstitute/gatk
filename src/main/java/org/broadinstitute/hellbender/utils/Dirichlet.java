@@ -56,6 +56,11 @@ public class Dirichlet {
         return MathUtils.applyToArray(alpha, a -> (Gamma.digamma(a) - digammaOfSum) * MathUtils.LOG10_OF_E);
     }
 
+    public double[] effectiveLogMultinomialWeights() {
+        final double digammaOfSum = Gamma.digamma(MathUtils.sum(alpha));
+        return MathUtils.applyToArray(alpha, a -> (Gamma.digamma(a) - digammaOfSum));
+    }
+
     public double[] meanWeights() {
         final double sum = MathUtils.sum(alpha);
         return MathUtils.applyToArray(alpha, x -> x / sum);
