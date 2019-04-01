@@ -41,7 +41,7 @@ public abstract class FuncotationFilter {
      *
      * @return true if the Funcotations match all of this filter's rules, and false otherwise
      */
-    public Boolean checkFilter(final Set<Map.Entry<String, String>> prunedTranscriptFuncotations, VariantContext variant) {
+    public Boolean checkFilter(final Set<Map.Entry<String, String>> prunedTranscriptFuncotations, final VariantContext variant) {
         Utils.nonNull(prunedTranscriptFuncotations);
 
         return getRules().stream()

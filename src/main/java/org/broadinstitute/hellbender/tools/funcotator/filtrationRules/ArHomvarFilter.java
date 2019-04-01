@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations.Reference;
 
 import java.util.Collections;
 import java.util.List;
@@ -8,8 +9,16 @@ import java.util.Map;
 import java.util.Set;
 
 public class ArHomvarFilter extends FuncotationFilter {
-    public ArHomvarFilter() {
+    /**
+     * Funcotation which will contain the gene on which this variant lives, determined by Funcotator.
+     *
+     * Varies based on gencode version.
+     */
+    private final String gene;
+
+    public ArHomvarFilter(Reference reference) {
         super(AutosomalRecessiveConstants.AR_INFO_VALUE);
+        this.gene = "Gencode_" + reference.getGencodeVersion() + "_hugoSymbol";
     }
 
     @Override
@@ -21,7 +30,7 @@ public class ArHomvarFilter extends FuncotationFilter {
         // Is this gene part of the list of genes we care about?
         boolean isInterestingGene = funcotations.stream()
                 .anyMatch(funcotation ->
-                        funcotation.getKey().equals("Gencode_27_hugoSymbol")
+                        funcotation.getKey().equals(gene)
                         && AutosomalRecessiveConstants.AUTOSOMAL_RECESSIVE_GENES.contains(funcotation.getValue())
                 );
         // If so, is this a homvar?

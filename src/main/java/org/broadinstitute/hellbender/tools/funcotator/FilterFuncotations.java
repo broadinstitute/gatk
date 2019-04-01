@@ -147,7 +147,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
         funcotationFilters.add(new ClinVarFilter(afDataSource));
         funcotationFilters.add(new LofFilter(reference, afDataSource));
         funcotationFilters.add(new LmmFilter());
-        funcotationFilters.add(new ArHomvarFilter());
+        funcotationFilters.add(new ArHomvarFilter(reference));
     }
 
     @Override
@@ -166,7 +166,7 @@ public class FilterFuncotations extends TwoPassVariantWalker {
 
     @Override
     public void secondPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        Set<String> matchingFilters = getMatchingFilters(variant, funcotationFilters);
+        final Set<String> matchingFilters = getMatchingFilters(variant, funcotationFilters);
         if(arCompoundHetVariants.stream().anyMatch(hetVariant -> variantContextsMatch(hetVariant, variant))) {
            matchingFilters.add(AutosomalRecessiveConstants.AR_INFO_VALUE);
         }
@@ -231,13 +231,13 @@ public class FilterFuncotations extends TwoPassVariantWalker {
         return variantContextBuilder.make();
     }
 
-    private void buildArHetByGene(VariantContext variant) {
+    private void buildArHetByGene(final VariantContext variant) {
         final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
                 funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
 
         funcs.values().forEach(funcotationMap -> {
             getTranscriptFuncotations(funcotationMap).forEach(funcotations -> {
-                Optional<Map.Entry<String, String>> maybeGeneFuncotation = funcotations.stream().filter(funcotation -> funcotation.getKey().equals("Gencode_27_hugoSymbol")).findFirst();
+                Optional<Map.Entry<String, String>> maybeGeneFuncotation = funcotations.stream().filter(funcotation -> funcotation.getKey().equals("Gencode_" + reference.gencodeVersion + "_hugoSymbol")).findFirst();
                 if (maybeGeneFuncotation.isPresent()) {
                     String gene = maybeGeneFuncotation.get().getValue();
                     if (AutosomalRecessiveConstants.AUTOSOMAL_RECESSIVE_GENES.contains(gene) && variant.getHetCount() > 0) {
