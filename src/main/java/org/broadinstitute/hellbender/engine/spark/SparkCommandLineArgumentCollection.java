@@ -39,7 +39,7 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
             doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE)",
             fullName = SPARK_VERBOSITY_LONG_NAME,
             optional = true)
-    private String sparkVerbosity = Level.WARN.name(); // Default INFO is too verbose
+    private String sparkVerbosity = Level.INFO.name(); // Default INFO is too verbose
 
     public Map<String,String> getSparkProperties(){
         final Map<String, String> propertyMap = new LinkedHashMap<>();
