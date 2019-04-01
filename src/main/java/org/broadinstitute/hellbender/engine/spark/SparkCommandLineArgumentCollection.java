@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 
+import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -36,10 +37,10 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     final List<String> sparkProperties = new ArrayList<>();
 
     @Argument(
-            doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE)",
+            doc="Spark verbosity (ALL, DEBUG, INFO, WARN, ERROR, FATAL, OFF, TRACE). Overrides --" + StandardArgumentDefinitions.VERBOSITY_NAME,
             fullName = SPARK_VERBOSITY_LONG_NAME,
             optional = true)
-    private String sparkVerbosity = Level.INFO.name();
+    private String sparkVerbosity = null;
 
     public Map<String,String> getSparkProperties(){
         final Map<String, String> propertyMap = new LinkedHashMap<>();
@@ -57,7 +58,25 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     public String getSparkMaster() {
         return sparkMaster;
     }
-    public String getSparkVerbosity() {
-        return sparkVerbosity;
+
+    public String getSparkVerbosity(final Log.LogLevel toolVerbosity) {
+        if (sparkVerbosity != null) return sparkVerbosity;
+        if (toolVerbosity.equals(Log.LogLevel.DEBUG)) {
+            return Level.DEBUG.name();
+        }
+        if (toolVerbosity.equals(Log.LogLevel.INFO)) {
+            return Level.INFO.name();
+        }
+        if (toolVerbosity.equals(Log.LogLevel.WARNING)) {
+            return Level.WARN.name();
+        }
+        if (toolVerbosity.equals(Log.LogLevel.ERROR)) {
+            return Level.ERROR.name();
+        }
+        throw new IllegalStateException("Unknown tool verbosity: " + toolVerbosity.name());
+    }
+
+    public void setSparkVerbosity(String level) {
+        sparkVerbosity = level;
     }
 }

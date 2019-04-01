@@ -36,8 +36,9 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     }
 
     private final void setSparkVerbosity(final JavaSparkContext ctx) {
-        logger.info("Spark verbosity set to " + sparkArgs.getSparkVerbosity() + " (see --" + SparkCommandLineArgumentCollection.SPARK_VERBOSITY_LONG_NAME + " argument)");
-        ctx.setLogLevel(sparkArgs.getSparkVerbosity());
+        final String sparkVerbosity = sparkArgs.getSparkVerbosity(VERBOSITY);
+        logger.info("Spark verbosity set to " + sparkVerbosity + " (see --" + SparkCommandLineArgumentCollection.SPARK_VERBOSITY_LONG_NAME + " argument)");
+        ctx.setLogLevel(sparkVerbosity);
     }
 
     // ---------------------------------------------------
