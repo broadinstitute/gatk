@@ -155,7 +155,7 @@ workflow MitochondriaPipeline {
 }
 
 task SubsetBamToChrM {
-  String input_bam
+  File input_bam
   String contig_name
   String basename = basename(basename(input_bam, ".cram"), ".bam")
   File? ref_fasta
