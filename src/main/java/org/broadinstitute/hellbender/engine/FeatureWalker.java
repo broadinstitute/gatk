@@ -20,7 +20,7 @@ import java.io.File;
  *
  * @param <F> the driving feature type.
  */
-public abstract class FeatureWalker<F extends Feature> extends Walker {
+public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
 
     private FeatureDataSource<F> drivingFeatures;
 
@@ -76,9 +76,14 @@ public abstract class FeatureWalker<F extends Feature> extends Walker {
     /**
      * Implementation of Feature-based traversal.
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class.
+     *
+     * It is not meant to be overridden by tools outside of the engine package.
      */
     @Override
-    public final void traverse() {
+    public void traverse() {
         CountingReadFilter readFilter = makeReadFilter();
         // Process each feature in the input stream.
         Utils.stream(drivingFeatures).forEach(feature -> {

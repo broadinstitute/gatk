@@ -108,7 +108,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
     }
 
     @Override
-    public final void traverse() {
+    public void traverse() {
         beforeTraverse();
         super.traverse();
         afterTraverse();

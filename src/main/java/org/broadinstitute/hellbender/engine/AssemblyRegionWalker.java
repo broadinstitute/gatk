@@ -39,7 +39,7 @@ import java.util.List;
  * Internally, the reads are loaded in chunks called read shards, which are then subdivided into active/inactive regions
  * for processing by the tool implementation. One read shard is created per contig.
  */
-public abstract class AssemblyRegionWalker extends Walker {
+public abstract class AssemblyRegionWalker extends WalkerBase {
 
     //NOTE: these argument names are referenced by HaplotypeCallerSpark
     public static final String MIN_ASSEMBLY_LONG_NAME = "min-assembly-region-size";
@@ -252,8 +252,18 @@ public abstract class AssemblyRegionWalker extends Walker {
         return maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class.
+     *
+     * It is not meant to be overridden by tools outside of the engine package.
+     */
     @Override
-    public final void traverse() {
+    public void traverse() {
 
         CountingReadFilter countedFilter = makeReadFilter();
 

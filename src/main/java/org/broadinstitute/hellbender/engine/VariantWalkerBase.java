@@ -3,13 +3,11 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.IndexUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Spliterator;
 import java.util.stream.Stream;
@@ -26,7 +24,7 @@ import java.util.stream.StreamSupport;
  * {@link #getSpliteratorForDrivingVariants}, and may optionally implement {@link #onTraversalStart},
  * {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
-public abstract class VariantWalkerBase extends Walker {
+public abstract class VariantWalkerBase extends WalkerBase {
 
     /**
      * Default value to control the size of the cache for our driving variants input(s)

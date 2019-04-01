@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
  *
  *  See the {@link ExampleReferenceWalker} walker for an example.
  */
-public abstract class ReferenceWalker extends GATKTool {
+public abstract class ReferenceWalker extends WalkerBase {
 
     @Override
     public String getProgressMeterRecordLabel() { return "bases"; }
@@ -38,7 +38,12 @@ public abstract class ReferenceWalker extends GATKTool {
 
     /**
      * Implementation of reference-locus-based traversal.
-     * Subclasses can override to provide own behavior but default implementation should be suitable for most uses.
+     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class.
+     *
+     * It is not meant to be overridden by tools outside of the engine package.
      */
     @Override
     public void traverse() {

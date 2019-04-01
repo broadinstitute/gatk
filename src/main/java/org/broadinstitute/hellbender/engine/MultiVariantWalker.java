@@ -100,10 +100,6 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
         return drivingVariants.getHeader();
     }
 
-    /**
-     * Implementation of variant-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
-     */
     @Override
     public void traverse() {
         final CountingReadFilter readFilter = makeReadFilter();

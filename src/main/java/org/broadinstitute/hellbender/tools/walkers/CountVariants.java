@@ -30,7 +30,7 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
         oneLineSummary = CountVariants.USAGE_ONE_LINE_SUMMARY,
         programGroup = VariantEvaluationProgramGroup.class
 )
-public final class CountVariants extends VariantWalker{
+public final class CountVariants extends VariantWalker {
     private long count = 0;
 
     static final String USAGE_ONE_LINE_SUMMARY = "Counts variant records in a VCF file, regardless of filter status.";
@@ -39,7 +39,7 @@ public final class CountVariants extends VariantWalker{
             "alleles. The count is returned at the end of the standard out.";
 
     @Override
-    public void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext ) {
+    public void apply( final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
         count++;
     }
 

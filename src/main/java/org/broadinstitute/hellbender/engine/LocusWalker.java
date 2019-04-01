@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
@@ -38,7 +37,7 @@ import java.util.stream.Collectors;
  *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public abstract class LocusWalker extends Walker {
+public abstract class LocusWalker extends WalkerBase {
     public static final String MAX_DEPTH_PER_SAMPLE_NAME = "max-depth-per-sample";
 
     @Argument(fullName = MAX_DEPTH_PER_SAMPLE_NAME, shortName = MAX_DEPTH_PER_SAMPLE_NAME, doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
@@ -141,15 +140,21 @@ public abstract class LocusWalker extends Walker {
     }
 
     /**
-     * Implementation of locus-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     * {@inheritDoc}
      *
      * The default implementation iterates over all positions in the reference covered by reads (filtered and transformed)
      * for all samples in the read groups, using the downsampling method provided by {@link #getDownsamplingInfo()}
      * and including deletions only if {@link #includeDeletions()} returns {@code true}.
+     *
+     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class.
+     *
+     * It is not meant to be overridden by tools outside of the engine package.
      */
     @Override
-    public final void traverse() {
+    public void traverse() {
         final SAMFileHeader header = getHeaderForReads();
         // get the samples from the read groups
         final Set<String> samples = header.getReadGroups().stream()

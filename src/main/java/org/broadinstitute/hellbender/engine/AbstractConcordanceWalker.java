@@ -33,7 +33,7 @@ import java.util.stream.StreamSupport;
  * Created by Takuto Sato 1/30/17, abstractified by David Benjamin on 2/22/17.
  * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
-public abstract class AbstractConcordanceWalker extends Walker {
+public abstract class AbstractConcordanceWalker extends WalkerBase {
 
     public static final String TRUTH_VARIANTS_LONG_NAME = "truth";
     public static final String EVAL_VARIANTS_SHORT_NAME = "eval";
@@ -117,7 +117,7 @@ public abstract class AbstractConcordanceWalker extends Walker {
     protected abstract void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext);
 
     @Override
-    public final void traverse() {
+    public void traverse() {
         // Process each variant in the input stream.
         StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
                 .forEach(truthVersusEval -> {

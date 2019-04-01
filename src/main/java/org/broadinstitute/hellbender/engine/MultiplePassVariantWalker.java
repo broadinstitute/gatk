@@ -18,7 +18,9 @@ public abstract class MultiplePassVariantWalker extends VariantWalker {
     protected abstract int numberOfPasses();
 
     /**
-     * Overrides the default, single-pass traversal framework of {@link VariantWalkerBase}
+     * {@inheritDoc}
+     *
+     * Overrides the default, single-pass traversal framework of {@link VariantWalkerBase} allowing for multiple passes.
      */
     @Override
     public void traverse(){

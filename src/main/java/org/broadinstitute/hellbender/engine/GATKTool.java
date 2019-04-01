@@ -168,9 +168,15 @@ public abstract class GATKTool extends CommandLineProgram {
      * Get the {@link ReferenceDataSource} for this {@link GATKTool}.
      * Will throw a {@link GATKException} if the reference is null.
      * Clients are expected to call the {@link #hasReference()} method prior to calling this.
+     *
+     * Should only be called by walker base classes in the engine (such as {@link ReadWalker}), or by "free-form" tools that
+     * extend the {@link GATKTool} class directly rather than one of the built-in walker types.
+     * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
+     * the engine datasources.
+     *
      * @return the {@link ReferenceDataSource} for this {@link GATKTool}.  Never {@code null}.
      */
-    protected ReferenceDataSource getReferenceDataSource() {
+    protected ReferenceDataSource directlyAccessEngineReferenceDataSource() {
         if ( reference == null ) {
             throw new GATKException("Attempted to retrieve null reference!");
         }
@@ -181,9 +187,15 @@ public abstract class GATKTool extends CommandLineProgram {
      * Get the {@link ReadsDataSource} for this {@link GATKTool}.
      * Will throw a {@link GATKException} if the reads are null.
      * Clients are expected to call the {@link #hasReads()} method prior to calling this.
+     *
+     * Should only be called by walker base classes in the engine (such as {@link ReadWalker}), or by "free-form" tools that
+     * extend the {@link GATKTool} class directly rather than one of the built-in walker types.
+     * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
+     * the engine datasources.
+     *
      * @return the {@link ReadsDataSource} for this {@link GATKTool}.  Never {@code null}.
      */
-    protected ReadsDataSource getReadsDataSource() {
+    protected ReadsDataSource directlyAccessEngineReadsDataSource() {
         if ( reads == null ) {
             throw new GATKException("Attempted to retrieve null reads!");
         }
@@ -194,9 +206,15 @@ public abstract class GATKTool extends CommandLineProgram {
      * Get the {@link FeatureManager} for this {@link GATKTool}.
      * Will throw a {@link GATKException} if the features are null.
      * Clients are expected to call the {@link #hasFeatures()} method prior to calling this.
+     *
+     * Should only be called by walker base classes in the engine (such as {@link ReadWalker}), or by "free-form" tools that
+     * extend the {@link GATKTool} class directly rather than one of the built-in walker types.
+     * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
+     * the engine datasources.
+     *
      * @return the {@link FeatureManager} for this {@link GATKTool}.  Never {@code null}.
      */
-    protected FeatureManager getFeatureManager() {
+    protected FeatureManager directlyAccessEngineFeatureManager() {
         if ( features == null ) {
             throw new GATKException("Attempted to retrieve null features!");
         }
