@@ -1,5 +1,5 @@
 {
-  "MitochondriaPipeline.wgs_aligned_input_bam_or_cram": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/NA12878.alignedHg38.duplicateMarked.baseRealigned.bam",
+  "MitochondriaPipeline.wgs_aligned_input_bam_or_cram": "gs://hellbender/test/resources/large/NA12878.alignedHg38.duplicateMarked.baseRealigned.bam",
   "MitochondriaPipeline.autosomal_coverage": 30,
   "MitochondriaPipeline.mt_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.dict",
   "MitochondriaPipeline.mt_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.fasta",
