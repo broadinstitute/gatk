@@ -23,10 +23,10 @@ public abstract class AlleleFrequencyUtils {
     public static FuncotationFiltrationRule buildMaxMafRule(final double maxMaf, final AlleleFrequencyDataSource afDataSource) {
         ParamUtils.inRange(maxMaf, 0, 1, "MAF must be between 0 and 1");
         if (afDataSource.equals(AlleleFrequencyDataSource.exac)) {
-            return funcotations -> AlleleFrequencyExacUtils.getMaxMinorAlleleFreq(funcotations) <= maxMaf;
+            return (funcotations, variant) -> AlleleFrequencyExacUtils.getMaxMinorAlleleFreq(funcotations) <= maxMaf;
         }
         else {
-            return funcotations -> {
+            return (funcotations, variant) -> {
                 final Map<String, String> condensedFuncotations = funcotations.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                 return (!AlleleFrequencyGnomadUtils.allFrequenciesFiltered(condensedFuncotations)
                         && AlleleFrequencyGnomadUtils.getMaxMinorAlleleFreq(condensedFuncotations) <= maxMaf);

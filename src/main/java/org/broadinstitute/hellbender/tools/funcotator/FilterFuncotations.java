@@ -16,24 +16,25 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ArHetvarFilter;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ArHomvarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.FuncotationFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.TwoPassFuncotationFilter;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Filter variants based on clinically-significant Funcotations.
@@ -57,7 +58,7 @@ import java.util.stream.Stream;
 )
 @DocumentedFeature
 @ExperimentalFeature
-public class FilterFuncotations extends VariantWalker {
+public class FilterFuncotations extends TwoPassVariantWalker {
 
     static final String ONE_LINE_SUMMARY = "Filter variants based on clinically-significant Funcotations.";
     static final String SUMMARY = ONE_LINE_SUMMARY +
@@ -115,11 +116,11 @@ public class FilterFuncotations extends VariantWalker {
 
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
-    private final List<FuncotationFilter> funcotationFilters = new ArrayList<>();
+    private final List<TwoPassFuncotationFilter> firstPassFilters = new ArrayList<>();
+    private final List<FuncotationFilter> secondPassFilters = new ArrayList<>();
 
     @Override
     public void onTraversalStart() {
-        registerFilters();
         final VCFHeader vcfHeader = getHeaderForVariants();
 
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
@@ -135,17 +136,43 @@ public class FilterFuncotations extends VariantWalker {
             throw new UserException.BadInput("Could not extract Funcotation keys from " +
                     VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME + " field in input VCF header.");
         }
+
+        registerFilters();
     }
 
     private void registerFilters() {
-        funcotationFilters.add(new ClinVarFilter(afDataSource));
-        funcotationFilters.add(new LofFilter(reference, afDataSource));
-        funcotationFilters.add(new LmmFilter());
+        FuncotationFilter clinVarFilter = new ClinVarFilter(afDataSource);
+        FuncotationFilter lofFilter = new LofFilter(reference, afDataSource);
+        FuncotationFilter lmmFilter = new LmmFilter();
+        FuncotationFilter homvarFilter = new ArHomvarFilter(reference);
+        TwoPassFuncotationFilter hetvarFilter = new ArHetvarFilter(reference, funcotationKeys);
+        firstPassFilters.add(hetvarFilter);
+        secondPassFilters.add(clinVarFilter);
+        secondPassFilters.add(lofFilter);
+        secondPassFilters.add(lmmFilter);
+        secondPassFilters.add(homvarFilter);
+        secondPassFilters.add(hetvarFilter);
+
     }
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        outputVcfWriter.add(applyFilters(variant, getMatchingFilters(variant)));
+    public void firstPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        for (TwoPassFuncotationFilter filter: firstPassFilters) {
+            filter.firstPassApply(variant);
+        }
+    }
+
+    @Override
+    protected void afterFirstPass() {
+        for (TwoPassFuncotationFilter filter: firstPassFilters) {
+            filter.afterFirstPass();
+        }
+    }
+
+    @Override
+    public void secondPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        final Set<String> matchingFilters = getMatchingFilters(variant, secondPassFilters);
+        outputVcfWriter.add(applyFilters(variant, matchingFilters));
     }
 
     /**
@@ -154,7 +181,7 @@ public class FilterFuncotations extends VariantWalker {
      * The filter will be treated as a match if it matches Funcotations for any of the transcripts in the
      * variant's Funcotation map.
      */
-    private Set<String> getMatchingFilters(final VariantContext variant) {
+    private Set<String> getMatchingFilters(final VariantContext variant, final List<FuncotationFilter> funcotationFilters) {
         final Set<String> matchingFilters = new HashSet<>();
 
 
@@ -162,16 +189,9 @@ public class FilterFuncotations extends VariantWalker {
                 funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
 
         funcs.values().forEach(funcotationMap -> {
-            final Stream<Set<Map.Entry<String, String>>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
-                    .map(funcotationMap::get)
-                    .map(funcotations -> funcotations.stream()
-                            .flatMap(this::extractFuncotationFields)
-                            .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                            .collect(Collectors.toSet()));
-
-            transcriptFuncotations.forEach(funcotations -> {
+            FilterFuncotationsUtils.getTranscriptFuncotations(funcotationMap).forEach(funcotations -> {
                 final Set<String> matches = funcotationFilters.stream()
-                        .filter(f -> f.checkFilter(funcotations))
+                        .filter(f -> f.checkFilter(funcotations, variant))
                         .map(FuncotationFilter::getFilterName)
                         .collect(Collectors.toSet());
                 matchingFilters.addAll(matches);
@@ -179,14 +199,6 @@ public class FilterFuncotations extends VariantWalker {
         });
 
         return matchingFilters;
-    }
-
-    /**
-     * Parse the entries in a Funcotation into a stream of map entries.
-     */
-    private Stream<Map.Entry<String, String>> extractFuncotationFields(final Funcotation funcotation) {
-        return funcotation.getFieldNames().stream()
-                .map(name -> new AbstractMap.SimpleEntry<>(name, funcotation.getField(name)));
     }
 
     /**

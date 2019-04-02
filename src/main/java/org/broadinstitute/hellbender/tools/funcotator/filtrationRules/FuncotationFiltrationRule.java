@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
+import htsjdk.variant.variantcontext.VariantContext;
+
 import java.util.Map;
 import java.util.Set;
 
@@ -11,5 +13,5 @@ interface FuncotationFiltrationRule {
     /**
      * Check if a set of Funcotations matches this rule.
      */
-    boolean checkRule(final Set<Map.Entry<String, String>> funcotations);
+    boolean checkRule(final Set<Map.Entry<String, String>> funcotations, VariantContext variant);
 }

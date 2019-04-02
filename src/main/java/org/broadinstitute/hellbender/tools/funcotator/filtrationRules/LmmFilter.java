@@ -28,7 +28,7 @@ public class LmmFilter extends FuncotationFilter {
 
     @Override
     List<FuncotationFiltrationRule> getRules() {
-        return Collections.singletonList(funcotations ->
+        return Collections.singletonList((funcotations, variant) ->
                 getMatchesOrDefault(funcotations, entry -> entry.getKey().equals(LMM_FLAGGED), "false")
                         .map(Boolean::valueOf)
                         .reduce(Boolean::logicalOr)

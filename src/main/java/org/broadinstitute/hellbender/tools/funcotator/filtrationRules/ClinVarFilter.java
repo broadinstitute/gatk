@@ -64,8 +64,8 @@ public class ClinVarFilter extends FuncotationFilter {
     @Override
     List<FuncotationFiltrationRule> getRules() {
         return Arrays.asList(
-                funcotations -> containsKey(funcotations, ACMG_DISEASE_FUNCOTATION),
-                funcotations -> {
+                (funcotations, variant) -> containsKey(funcotations, ACMG_DISEASE_FUNCOTATION),
+                (funcotations, variant) -> {
                     final Set<String> significance = matchOnKeyOrDefault(funcotations, CLINVAR_SIGNIFICANCE_FUNCOTATION, "")
                             .filter(value -> !value.isEmpty())
                             .collect(Collectors.toSet());

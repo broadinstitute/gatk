@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.AutosomalRecessiveConstants;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
@@ -23,16 +24,20 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
     private static final Path TEST_DATA_DIR = getTestDataDir().toPath().resolve("FilterFuncotations");
 
     private static final Set<String> ALL_FILTERS = new HashSet<>(Arrays.asList(
-            ClinVarFilter.CLINSIG_INFO_VALUE, LofFilter.CLINSIG_INFO_VALUE, LmmFilter.CLINSIG_INFO_VALUE));
+            ClinVarFilter.CLINSIG_INFO_VALUE, LofFilter.CLINSIG_INFO_VALUE, LmmFilter.CLINSIG_INFO_VALUE, AutosomalRecessiveConstants.AR_INFO_VALUE));
 
     @DataProvider(name = "uniformVcfProvider")
     public Object[][] uniformVcfProvider() {
         return new Object[][]{
                 {"all.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), ALL_FILTERS},
                 {"all_gnomad.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.emptySet(), ALL_FILTERS},
+                {"ar_homvar.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(AutosomalRecessiveConstants.AR_INFO_VALUE)},
+                {"ar_hetvar.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER), Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)},
+                {"ar_compound_het.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(AutosomalRecessiveConstants.AR_INFO_VALUE)},
                 {"clinvar.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
                 {"clinvar_gnomad.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
-                {"gnomad_af_failing_cases.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER), Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)},
+                {"gnomad_af_failing_cases.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
+                        Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)},
                 {"gnomad_af_passing_cases.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},
                 {"lmm.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(LmmFilter.CLINSIG_INFO_VALUE)},
                 {"lof.vcf", FilterFuncotations.Reference.b37, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},

@@ -73,8 +73,8 @@ public class LofFilter extends FuncotationFilter {
     @Override
     List<FuncotationFiltrationRule> getRules() {
         return Arrays.asList(
-                funcotations -> matchOnKeyOrDefault(funcotations, classificationFuncotation, "").anyMatch(CONSTANT_LOF_CLASSIFICATIONS::contains),
-                funcotations -> matchOnKeyOrDefault(funcotations, LOF_GENE_FUNCOTATION, "").anyMatch("YES"::equals),
+                (funcotations, variant) -> matchOnKeyOrDefault(funcotations, classificationFuncotation, "").anyMatch(CONSTANT_LOF_CLASSIFICATIONS::contains),
+                (funcotations, variant) -> matchOnKeyOrDefault(funcotations, LOF_GENE_FUNCOTATION, "").anyMatch("YES"::equals),
                 AlleleFrequencyUtils.buildMaxMafRule(LOF_MAX_MAF, afDataSource));
     }
 }
