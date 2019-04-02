@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotationsUtils;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotationMap;
@@ -27,6 +28,8 @@ public class ArHetvarFilter extends TwoPassFuncotationFilter {
     private final List<VariantContext> arCompoundHetVariants = new ArrayList<>();
     private final Map<String, List<VariantContext>> arHetVariantsByGene = new HashMap<>();
     private final String[] funcotationKeys;
+    private boolean firstPassApplied;
+    private boolean afterFirstPassApplied;
 
 
     @Override
@@ -43,11 +46,16 @@ public class ArHetvarFilter extends TwoPassFuncotationFilter {
 
     @Override
     public void firstPassApply(final VariantContext variant) {
+        firstPassApplied = true;
         buildArHetByGene(variant);
     }
 
     @Override
     public void afterFirstPass() {
+        if (!firstPassApplied) {
+            throw new GATKException("firstPassApply should be called before afterFirstPass");
+        }
+        afterFirstPassApplied = true;
         arHetVariantsByGene.keySet().forEach(gene -> {
             if(arHetVariantsByGene.get(gene).size() > 1) {
                 arCompoundHetVariants.addAll(arHetVariantsByGene.get(gene));
@@ -56,6 +64,12 @@ public class ArHetvarFilter extends TwoPassFuncotationFilter {
     }
 
     private boolean arHetvarRule(Set<Map.Entry<String, String>> funcotations, VariantContext variant) {
+        if (!firstPassApplied) {
+            throw new GATKException("firstPassApply should be called before this rule is applied");
+        }
+        else if (!afterFirstPassApplied) {
+            throw new GATKException("afterFirstPassApplied should be called before this rule is applied");
+        }
         return arCompoundHetVariants.stream().anyMatch(hetVariant -> variantContextsMatch(hetVariant, variant));
     }
 
@@ -89,7 +103,6 @@ public class ArHetvarFilter extends TwoPassFuncotationFilter {
         return v1.getContig().equals(v2.getContig())
                 && v1.getStart() == v2.getStart()
                 && v1.getEnd() == v2.getEnd()
-                && v1.getReference() == v2.getReference()
                 && v1.getReference() == v2.getReference()
                 && v1.getAlternateAlleles().size() == v2.getAlternateAlleles().size()
                 && v1.getAlternateAlleles().containsAll(v2.getAlternateAlleles());

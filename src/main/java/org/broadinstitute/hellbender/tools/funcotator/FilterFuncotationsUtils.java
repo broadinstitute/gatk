@@ -7,6 +7,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class FilterFuncotationsUtils {
+    /**
+     * Munge a FuncotationMap into a stream of sets of pairs of funcotation name / funcotation value.
+     */
     public static Stream<Set<Map.Entry<String, String>>> getTranscriptFuncotations(final FuncotationMap funcotationMap) {
         return funcotationMap.getTranscriptList().stream()
                 .map(funcotationMap::get)
