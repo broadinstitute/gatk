@@ -1,11 +1,9 @@
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##GATKCommandLine=<ID=MethylationTypeCaller,CommandLine="MethylationTypeCaller  --output /Users/bcarlin/Test/gatk_test/chr14.CEMBA.filtered.duplicates.unique_reads.vcf --input /Users/bcarlin/Test/gatk_test/chr14.CEMBA.filtered.duplicates.unique_reads.bam --reference /Users/bcarlin/Test/gatk_test/chr14.GRCm38.primary_assembly.genome.fa.gz  --maxDepthPerSample 0 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version=4.1.0.0-55-g536018c-SNAPSHOT,Date="April 1, 2019 4:42:00 PM EDT">
 ##INFO=<ID=CONVERTED_BASE_COV,Number=1,Type=Integer,Description="Count of reads supporting methylation that are converted ">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=REFERENCE_CONTEXT,Number=1,Type=String,Description="Forward Strand Reference context">
 ##INFO=<ID=UNCONVERTED_BASE_COV,Number=1,Type=Integer,Description="Count of reads supporting methylation that are unconverted ">
-##source=MethylationTypeCaller
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	CEMBA
 chr14	3005640	.	C	T	.	.	CONVERTED_BASE_COV=0;DP=1;REFERENCE_CONTEXT=CAA;UNCONVERTED_BASE_COV=1	GT	./.
 chr14	3005643	.	C	T	.	.	CONVERTED_BASE_COV=0;DP=1;REFERENCE_CONTEXT=CCC;UNCONVERTED_BASE_COV=1	GT	./.
