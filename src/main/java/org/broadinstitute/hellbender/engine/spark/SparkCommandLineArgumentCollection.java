@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -31,7 +33,6 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     @Argument(
             doc = "Spark properties to set on the Spark context in the format <property>=<value>",
             fullName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
-            shortName = StandardArgumentDefinitions.SPARK_PROPERTY_NAME,
             optional = true
     )
     final List<String> sparkProperties = new ArrayList<>();
@@ -59,7 +60,16 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
         return sparkMaster;
     }
 
+    /**
+     * Returns the Spark log level for the argument set. This is simply sparkVerbosity
+     * if it was specified. Otherwise, it returns the log level corresponding to the
+     * provided tool (htsjdk) verbosity.
+     *
+     * @param  toolVerbosity  Current tool's htsjdk log level
+     * @return      Spark log level String
+     */
     public String getSparkVerbosity(final Log.LogLevel toolVerbosity) {
+        Utils.nonNull(toolVerbosity, "Tool verbosity cannot be null");
         if (sparkVerbosity != null) return sparkVerbosity;
         if (toolVerbosity.equals(Log.LogLevel.DEBUG)) {
             return Level.DEBUG.name();
@@ -76,6 +86,7 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
         throw new IllegalStateException("Unknown tool verbosity: " + toolVerbosity.name());
     }
 
+    @VisibleForTesting
     public void setSparkVerbosity(String level) {
         sparkVerbosity = level;
     }
