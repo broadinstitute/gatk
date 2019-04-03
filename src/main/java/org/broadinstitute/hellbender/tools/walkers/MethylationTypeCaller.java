@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.stream.Collectors;
 /**
- * Outputs Methylation-based coverage in VCF format
  *
  * <p>Identifies methylated bases from bisulfite sequencing data. Given a bisulfite BAM
  * and a reference, it outputs methylation-site coverage to a specified output vcf file.</p>
