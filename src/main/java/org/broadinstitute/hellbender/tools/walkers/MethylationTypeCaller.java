@@ -21,20 +21,11 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
-
 /**
  * Outputs Methylation-based coverage in VCF format
  *
  * <p>This tool identifies methylated bases from bisulfite sequencing data. Given a bisulfite BAM
  * and a reference, it outputs methylation-site coverage to a specified output vcf file.
- * </p>
- *
- * <p>
- * Tool that prints methylation-based coverage from supplied bisulfite BAM to the specified output vcf file
- * </p>
- *
- * <p>
- * The walker that prints methylation-based coverage with contextual data
  * </p>
  *
  * <h>Usage example</h>
@@ -106,7 +97,7 @@ public class MethylationTypeCaller extends LocusWalker {
         byte[] context = null;
 
         // check the forward strand for methylated coverage
-        if(referenceBase == (byte)'C') {
+        if (referenceBase == (byte)'C') {
             alt = (byte)'T';
             final ReadPileup forwardBasePileup = alignmentContext.stratify(AlignmentContext.ReadOrientation.FORWARD).getBasePileup();
             // unconverted: C, index=1; converted: T, index=3
@@ -120,7 +111,7 @@ public class MethylationTypeCaller extends LocusWalker {
             }
         }
         // check the reverse strand for methylated coverage
-        else if(referenceBase == (byte)'G') {
+        else if (referenceBase == (byte)'G') {
             alt = (byte)'A';
             final ReadPileup reverseBasePileup = alignmentContext.stratify(AlignmentContext.ReadOrientation.REVERSE).getBasePileup();
             // unconverted: G, index=2; converted: A, index=0
