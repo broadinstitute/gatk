@@ -24,14 +24,13 @@ import java.util.stream.Collectors;
 /**
  * Outputs Methylation-based coverage in VCF format
  *
- * <p>This tool identifies methylated bases from bisulfite sequencing data. Given a bisulfite BAM
- * and a reference, it outputs methylation-site coverage to a specified output vcf file.
- * </p>
+ * <p>Identifies methylated bases from bisulfite sequencing data. Given a bisulfite BAM
+ * and a reference, it outputs methylation-site coverage to a specified output vcf file.</p>
  *
  * <h>Usage example</h>
  * <pre>
  *     gatk MethylationTypeCaller \
- *     -R Homo_sapiens_assembly38.fasta \
+ *     -R "GRCm38_primary_assembly_genome.fa \
  *     -I bisulfite_input.bam \
  *     -O output.vcf
  * </pre>
