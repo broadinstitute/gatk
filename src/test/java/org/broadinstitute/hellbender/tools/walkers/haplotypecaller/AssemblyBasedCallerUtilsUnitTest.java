@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -966,5 +967,82 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             Assert.assertEquals(actual.size(), 1);
             Assert.assertEquals(actual.iterator().next(), expected);
         }
+    }
+
+    @Test
+    public void testAddGivenHaplotypes() {
+        final int assemblyRegionStart = 1;
+        final int maxMnpDistance = 0;
+        final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.FASTEST_AVAILABLE);
+        final AssemblyResultSet assemblyResultSet = new AssemblyResultSet();
+
+        final Haplotype refHaplotype = new Haplotype("AAAACCCCGGGGTTTT".getBytes(), true);
+        final byte[] fullReferenceWithPadding = ("A" + refHaplotype.getBaseString()).getBytes();
+        refHaplotype.setAlignmentStartHapwrtRef(assemblyRegionStart);
+        refHaplotype.setCigar(new Cigar(Collections.singletonList(new CigarElement(refHaplotype.length(), CigarOperator.M))));
+        refHaplotype.setGenomeLocation(new SimpleInterval("chr", assemblyRegionStart, assemblyRegionStart + refHaplotype.length()));
+        assemblyResultSet.setPaddedReferenceLoc(new SimpleInterval("chr", 1, assemblyRegionStart + refHaplotype.length()));
+        assemblyResultSet.add(refHaplotype);
+        assemblyResultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
+
+        // add a SNP
+        final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
+                Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false))).make();
+
+        AssemblyBasedCallerUtils.addGivenHaplotypes(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
+
+
+        // adding the same VC should have no effect
+        AssemblyBasedCallerUtils.addGivenHaplotypes(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
+
+        // add another SNP
+        final VariantContext givenVC2 = new VariantContextBuilder("test", "chr", 5, 5,
+                Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'G', false))).make();
+        AssemblyBasedCallerUtils.addGivenHaplotypes(assemblyRegionStart, Collections.singletonList(givenVC2), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        // SNP is not found in existing variation, so it's added to the ref and the first SNP
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 4);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(2).getBaseString(), "AAAAGCCCGGGGTTTT");
+        Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(3).getBaseString(), "ACAAGCCCGGGGTTTT");
+
+        // add a deletion that overlaps the second SNP.  This variant gets added to the ref and first SNP haplotypes but not either
+        // haplotype that contains the overlapping 2nd SNP
+        final VariantContext givenVC3 = new VariantContextBuilder("test", "chr", 5, 7,
+                Arrays.asList(Allele.create("CCC".getBytes(), true), Allele.create((byte) 'C', false))).make();
+        AssemblyBasedCallerUtils.addGivenHaplotypes(assemblyRegionStart, Collections.singletonList(givenVC3), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(4).getBaseString(), "AAAACCGGGGTTTT");
+        Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(5).getBaseString(), "ACAACCGGGGTTTT");
+
+        // adding an equivalent deletion should do nothing
+        final VariantContext givenVC4 = new VariantContextBuilder("test", "chr", 5, 8,
+                Arrays.asList(Allele.create("CCCC".getBytes(), true), Allele.create("CC".getBytes(), false))).make();
+        AssemblyBasedCallerUtils.addGivenHaplotypes(assemblyRegionStart, Collections.singletonList(givenVC4), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
+
+        // finally, add a haplotype with two new phased SNPs, after which adding an allele with one of these SNPs does nothing
+        final Haplotype phasedHaplotype = new Haplotype("AAAACCTCGAGGTTTT".getBytes(), false);
+        phasedHaplotype.setAlignmentStartHapwrtRef(assemblyRegionStart);
+        phasedHaplotype.setCigar(new Cigar(Collections.singletonList(new CigarElement(refHaplotype.length(), CigarOperator.M))));
+        phasedHaplotype.setGenomeLocation(new SimpleInterval("chr", assemblyRegionStart, assemblyRegionStart + refHaplotype.length()));
+        assemblyResultSet.add(phasedHaplotype);
+        assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
+
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 7);
+
+
+        final VariantContext givenVC5 = new VariantContextBuilder("test", "chr", 8, 8,
+                Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'T', false))).make();
+        AssemblyBasedCallerUtils.addGivenHaplotypes(assemblyRegionStart, Collections.singletonList(givenVC5), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 7);
+
     }
 }

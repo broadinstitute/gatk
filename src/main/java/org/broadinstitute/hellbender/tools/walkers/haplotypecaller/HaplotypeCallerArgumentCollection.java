@@ -21,8 +21,6 @@ import java.util.List;
 public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
 
-    public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
-    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
     public static final String CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "correct-overlapping-quality";
@@ -30,6 +28,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
 
     @ArgumentCollection
     public StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
+
+    @Override
+    protected int getDefaultMaxMnpDistance() { return 0; }
 
     @Override
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
@@ -132,15 +133,6 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Hidden
     @Argument(fullName = "dont-genotype", doc = "Perform assembly but do not genotype variants", optional = true)
     public boolean dontGenotype = false;
-
-    /**
-     * Two or more phased substitutions separated by this distance or less are merged into MNPs.
-     */
-    @Advanced
-    @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
-            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs. " +
-            "WARNING: When used in GVCF mode, resulting GVCFs cannot be joint-genotyped.", optional = true)
-    public int maxMnpDistance = 0;
 
     /**
      * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.

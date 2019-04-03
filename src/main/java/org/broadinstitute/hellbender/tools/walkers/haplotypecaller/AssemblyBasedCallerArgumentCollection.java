@@ -20,6 +20,8 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String BAM_WRITER_TYPE_LONG_NAME = "bam-writer-type";
     public static final String DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME = "dont-use-soft-clipped-bases";
     public static final String DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME = "do-not-run-physical-phasing";
+    public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
+    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
 
     public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
     public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
@@ -111,4 +113,14 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Advanced
     @Argument(fullName="emit-ref-confidence", shortName="ERC", doc="(BETA feature) Mode for emitting reference confidence scores", optional = true)
     public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
+
+    protected abstract int getDefaultMaxMnpDistance();
+
+    /**
+     * Two or more phased substitutions separated by this distance or less are merged into MNPs.
+     */
+    @Advanced
+    @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
+            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
+    public int maxMnpDistance = getDefaultMaxMnpDistance();
 }

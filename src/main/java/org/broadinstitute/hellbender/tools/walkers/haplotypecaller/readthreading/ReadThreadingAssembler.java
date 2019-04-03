@@ -32,7 +32,6 @@ public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
 
     private static final int DEFAULT_NUM_PATHS_PER_GRAPH = 128;
-    private static final int GGA_MODE_ARTIFICIAL_COUNTS = 1000;
     private static final int KMER_SIZE_ITERATION_INCREASE = 10;
     private static final int MAX_KMER_ITERATIONS_TO_ATTEMPT = 6;
 
@@ -94,20 +93,18 @@ public final class ReadThreadingAssembler {
 
     /**
      * Main entry point into the assembly engine. Build a set of deBruijn graphs out of the provided reference sequence and list of reads
-     * @param aligner
      * @param assemblyRegion              AssemblyRegion object holding the reads which are to be used during assembly
      * @param refHaplotype              reference haplotype object
      * @param fullReferenceWithPadding  byte array holding the reference sequence with padding
      * @param refLoc                    GenomeLoc object corresponding to the reference sequence with padding
-     * @param givenAlleles   the alleles to inject into the haplotypes during GGA mode
      * @param readErrorCorrector        a ReadErrorCorrector object, if read are to be corrected before assembly. Can be null if no error corrector is to be used.
+     * @param aligner
      * @return                          the resulting assembly-result-set
      */
     public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion,
                                               final Haplotype refHaplotype,
                                               final byte[] fullReferenceWithPadding,
                                               final SimpleInterval refLoc,
-                                              final List<VariantContext> givenAlleles,
                                               final ReadErrorCorrector readErrorCorrector,
                                               final SAMFileHeader header,
                                               final SmithWatermanAligner aligner) {
@@ -119,9 +116,6 @@ public final class ReadThreadingAssembler {
         Utils.nonNull(aligner, "aligner");
         Utils.validateArg( fullReferenceWithPadding.length == refLoc.size(), "Reference bases and reference loc must be the same size.");
         ParamUtils.isPositiveOrZero(pruneFactor, "Pruning factor cannot be negative");
-
-        // create the list of artificial haplotypes that should be added to the graph for GGA mode
-        final List<Haplotype> givenHaplotypes = composeGivenHaplotypes(refHaplotype, givenAlleles, assemblyRegion.getExtendedSpan());
 
         // error-correct reads before clipping low-quality tails: some low quality bases might be good and we want to recover them
         final List<GATKRead> correctedReads;
@@ -145,7 +139,7 @@ public final class ReadThreadingAssembler {
         resultSet.add(refHaplotype);
         final Map<SeqGraph,AssemblyResult> assemblyResultByGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
-        for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, givenHaplotypes, header, aligner) ) {
+        for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
             if ( result.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION ) {
                 // do some QC on the graph
                 sanityCheckGraph(result.getGraph(), refHaplotype);
@@ -155,43 +149,13 @@ public final class ReadThreadingAssembler {
             }
         }
 
+        // add assembled alt haplotypes to the {@code resultSet}
         findBestPaths(nonRefGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByGraph, resultSet, aligner);
 
         // print the graphs if the appropriate debug option has been turned on
         if ( graphOutputPath != null ) { printGraphs(nonRefGraphs); }
 
         return resultSet;
-    }
-
-    /**
-     * Create the list of artificial GGA-mode haplotypes by injecting each of the provided alternate alleles into the reference haplotype
-     *
-     * @param refHaplotype the reference haplotype
-     * @param givenHaplotypes the list of alternate alleles in VariantContexts
-     * @param activeRegionWindow the window containing the reference haplotype
-     *
-     * @return a non-null list of haplotypes
-     */
-    private static List<Haplotype> composeGivenHaplotypes(final Haplotype refHaplotype, final List<VariantContext> givenHaplotypes, final SimpleInterval activeRegionWindow) {
-        Utils.nonNull(refHaplotype, "the reference haplotype cannot be null");
-        Utils.nonNull(givenHaplotypes, "given haplotypes cannot be null");
-        Utils.nonNull(activeRegionWindow, "active region window cannot be null");
-        Utils.validateArg(activeRegionWindow.size() == refHaplotype.length(), "inconsistent reference haplotype and active region window");
-
-        final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
-        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-
-        for( final VariantContext compVC : givenHaplotypes ) {
-            Utils.validateArg(compVC.overlaps(activeRegionWindow), " some variant provided does not overlap with active region window");
-            for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
-                final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
-                if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype
-                    returnHaplotypes.add(insertedRefHaplotype);
-                }
-            }
-        }
-
-        return new ArrayList<>(returnHaplotypes);
     }
 
     private List<Haplotype> findBestPaths(final Collection<SeqGraph> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
@@ -370,18 +334,18 @@ public final class ReadThreadingAssembler {
      * Given reads and a reference haplotype give us graphs to use for constructing
      * non-reference haplotypes.
      *
-     * @param aligner
      * @param reads the reads we're going to assemble
      * @param refHaplotype the reference haplotype
+     * @param aligner
      * @return a non-null list of reads
      */
     @VisibleForTesting
-    List<AssemblyResult> assemble(final List<GATKRead> reads, final Haplotype refHaplotype, final List<Haplotype> givenHaplotypes, final SAMFileHeader header, final SmithWatermanAligner aligner) {
+    List<AssemblyResult> assemble(final List<GATKRead> reads, final Haplotype refHaplotype, final SAMFileHeader header, final SmithWatermanAligner aligner) {
         final List<AssemblyResult> results = new LinkedList<>();
 
         // first, try using the requested kmer sizes
         for ( final int kmerSize : kmerSizes ) {
-            addResult(results, createGraph(reads, refHaplotype, kmerSize, givenHaplotypes, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
+            addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
         }
 
         // if none of those worked, iterate over larger sizes if allowed to do so
@@ -391,7 +355,7 @@ public final class ReadThreadingAssembler {
             while ( results.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
                 // on the last attempt we will allow low complexity graphs
                 final boolean lastAttempt = numIterations == MAX_KMER_ITERATIONS_TO_ATTEMPT;
-                addResult(results, createGraph(reads, refHaplotype, kmerSize, givenHaplotypes, lastAttempt, lastAttempt, header, aligner));
+                addResult(results, createGraph(reads, refHaplotype, kmerSize, lastAttempt, lastAttempt, header, aligner));
                 kmerSize += KMER_SIZE_ITERATION_INCREASE;
                 numIterations++;
             }
@@ -407,19 +371,17 @@ public final class ReadThreadingAssembler {
     /**
      * Creates the sequence graph for the given kmerSize
      *
-     * @param aligner
      * @param reads            reads to use
      * @param refHaplotype     reference haplotype
      * @param kmerSize         kmer size
-     * @param activeAlleleHaplotypes the GGA haplotypes to inject into the graph
      * @param allowLowComplexityGraphs if true, do not check for low-complexity graphs
      * @param allowNonUniqueKmersInRef if true, do not fail if the reference has non-unique kmers
+     * @param aligner
      * @return sequence graph or null if one could not be created (e.g. because it contains cycles or too many paths or is low complexity)
      */
     private AssemblyResult createGraph(final Iterable<GATKRead> reads,
                                        final Haplotype refHaplotype,
                                        final int kmerSize,
-                                       final Iterable<Haplotype> activeAlleleHaplotypes,
                                        final boolean allowLowComplexityGraphs,
                                        final boolean allowNonUniqueKmersInRef,
                                        final SAMFileHeader header,
@@ -442,12 +404,6 @@ public final class ReadThreadingAssembler {
 
         // add the reference sequence to the graph
         rtgraph.addSequence("ref", refHaplotype.getBases(), true);
-
-        // add the artificial GGA haplotypes to the graph
-        int hapCount = 0;
-        for ( final Haplotype h : activeAlleleHaplotypes ) {
-            rtgraph.addSequence("activeAllele" + hapCount++, h.getBases(), GGA_MODE_ARTIFICIAL_COUNTS, false);
-        }
 
         // Next pull kmers out of every read and throw them on the graph
         for( final GATKRead read : reads ) {

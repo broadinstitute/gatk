@@ -177,7 +177,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         final AssemblyRegion activeRegion = new AssemblyRegion(loc, null, true, 0, header);
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
-        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), null, header,
+        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, null, header,
                                                                                 SmithWatermanJavaAligner.getInstance());
         return assemblyResultSet.getHaplotypeList();
     }
@@ -259,7 +259,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
             assembler.setRecoverDanglingBranches(false); // needed to pass some of the tests
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
-            final SeqGraph graph = assembler.assemble(reads, refHaplotype, Collections.emptyList(), header, SmithWatermanJavaAligner
+            final SeqGraph graph = assembler.assemble(reads, refHaplotype, header, SmithWatermanJavaAligner
                     .getInstance()).get(0).getGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;

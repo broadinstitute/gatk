@@ -61,7 +61,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
     /**
      *
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
-     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
      *                       are merged until a substitution is separated from the previous one by a greater distance.
      *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.

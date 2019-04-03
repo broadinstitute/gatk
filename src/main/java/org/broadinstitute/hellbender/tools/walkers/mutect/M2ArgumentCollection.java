@@ -42,8 +42,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String DOWNSAMPLING_STRIDE_SHORT_NAME = "stride";
     public static final String MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME = "max-suspicious-reads-per-alignment-start";
     public static final String NORMAL_LOG_10_ODDS_LONG_NAME = "normal-lod";
-    public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
-    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
@@ -64,6 +62,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     public static final double DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(-4);
 
+    @Override
+    protected int getDefaultMaxMnpDistance() { return 1; }
+
+    @Override
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection(){
         return new MutectReadThreadingAssemblerArgumentCollection();
     }
@@ -214,14 +216,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = NORMAL_LOG_10_ODDS_LONG_NAME, optional = true, doc = "Log 10 odds threshold for calling normal variant non-germline.")
     public double normalLog10Odds = DEFAULT_NORMAL_LOG_10_ODDS;
-
-    /**
-     * Two or more phased substitutions separated by this distance or less are merged into MNPs.
-     */
-    @Advanced
-    @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
-            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
-    public int maxMnpDistance = 1;
 
     /**
      * When opposite ends of a fragment are inverted tandem repeats of each other, the sequence past one end may be copied onto the other
