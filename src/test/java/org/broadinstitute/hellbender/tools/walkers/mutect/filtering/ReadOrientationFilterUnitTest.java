@@ -65,7 +65,7 @@ public class ReadOrientationFilterUnitTest extends GATKBaseTest {
         final Allele altAllele = Allele.create(altBase.toString(), false); // C -> A transition
         final List<Allele> alleles = Arrays.asList(refAllele, altAllele);
         final VariantContext vc  = new VariantContextBuilder("source", Integer.toString(chromosomeIndex), variantPosition, variantPosition, alleles)
-                .attribute(GATKVCFConstants.TUMOR_LOD_KEY, new double[]{ 7.0 })
+                .attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, new double[]{ 7.0 })
                 .make();
 
         /**

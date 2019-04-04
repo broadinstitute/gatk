@@ -12,8 +12,6 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.math3.special.Beta;
-import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,10 +29,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutect
 import org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2CountsCollector;
 import org.broadinstitute.hellbender.transformers.PalindromeArtifactClipReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -61,11 +56,11 @@ import java.util.stream.Collectors;
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
-    private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE,
-            GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE, GATKVCFConstants.SEQUENCING_QUAL_VCF_ATTRIBUTE,
-            GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.READ_ORIENTATION_QUAL_ATTRIBUTE,
-            GATKVCFConstants.STRAND_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY);
+    private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY,
+            GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_KEY, GATKVCFConstants.POPULATION_AF_KEY,
+            GATKVCFConstants.GERMLINE_QUAL_KEY, GATKVCFConstants.CONTAMINATION_QUAL_KEY, GATKVCFConstants.SEQUENCING_QUAL_KEY,
+            GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_KEY, GATKVCFConstants.READ_ORIENTATION_QUAL_KEY,
+            GATKVCFConstants.STRAND_QUAL_KEY, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY);
     private static final String MUTECT_VERSION = "2.2";
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
@@ -204,7 +199,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         normalSamples.forEach(sample -> headerInfo.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, sample)));
         if (emitReferenceConfidence()) {
             headerInfo.addAll(referenceConfidenceModel.getVCFHeaderLines());
-            headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.TUMOR_LOD_KEY));
+            headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY));
         }
 
         final VCFHeader vcfHeader = new VCFHeader(headerInfo, samplesList.asListOfSamples());
@@ -248,7 +243,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
-        final ReadLikelihoods<Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
+        final ReadLikelihoods<Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads).copy(true);
         final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
         readLikelihoods.changeReads(readRealignments);
 
@@ -383,9 +378,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
         f1R2CountsCollector.ifPresent(collector -> collector.process(tumorPileup, ref));
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
-        final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
+        final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals);
 
-        if (tumorLog10Odds < MTAC.getInitialLod()) {
+        if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
@@ -485,38 +480,38 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return result;
     }
 
-    private static double lnLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
-        return lnLikelihoodRatio(refCount, altQuals, 1);
+    private static double logLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
+        return logLikelihoodRatio(refCount, altQuals, 1);
     }
 
     // this implements the isActive() algorithm described in docs/mutect/mutect.pdf
     // the multiplicative factor is for the special case where we pass a singleton list
     // of alt quals and want to duplicate that alt qual over multiple reads
     @VisibleForTesting
-    static double lnLikelihoodRatio(final int nRef, final List<Byte> altQuals, final int repeatFactor) {
+    static double logLikelihoodRatio(final int nRef, final List<Byte> altQuals, final int repeatFactor) {
         final int nAlt = repeatFactor * altQuals.size();
         final int n = nRef + nAlt;
 
         final double fTildeRatio = FastMath.exp(MathUtils.digamma(nRef + 1) - MathUtils.digamma(nAlt + 1));
-        final double betaEntropy = -MathUtils.log10Factorial(n+1) + MathUtils.log10Factorial(nAlt) + MathUtils.log10Factorial(nRef);
+        final double betaEntropy = MathUtils.log10ToLog(-MathUtils.log10Factorial(n+1) + MathUtils.log10Factorial(nAlt) + MathUtils.log10Factorial(nRef));
 
         double readSum = 0;
         for (final byte qual : altQuals) {
             final double epsilon = QualityUtils.qualToErrorProb(qual);
             final double zBarAlt = (1 - epsilon) / (1 - epsilon + epsilon * fTildeRatio);
-            final double log10Epsilon = QualityUtils.qualToErrorProbLog10(qual);
-            final double log10OneMinusEpsilon = QualityUtils.qualToProbLog10(qual);
-            readSum += zBarAlt * (log10OneMinusEpsilon - log10Epsilon) + MathUtils.logToLog10(MathUtils.fastBernoulliEntropy(zBarAlt));
+            final double logEpsilon = NaturalLogUtils.qualToLogErrorProb(qual);
+            final double logOneMinusEpsilon = NaturalLogUtils.qualToLogProb(qual);
+            readSum += zBarAlt * (logOneMinusEpsilon - logEpsilon) + MathUtils.fastBernoulliEntropy(zBarAlt);
         }
 
-        return MathUtils.log10ToLog(betaEntropy + readSum * repeatFactor);
+        return betaEntropy + readSum * repeatFactor;
 
     }
 
     // same as above but with a constant error probability for several alts
-    public static double lnLikelihoodRatio(final int refCount, final int altCount, final double errorProbability) {
+    public static double logLikelihoodRatio(final int refCount, final int altCount, final double errorProbability) {
         final byte qual = QualityUtils.errorProbToQual(errorProbability);
-        return lnLikelihoodRatio(refCount, Collections.singletonList(qual), altCount);
+        return logLikelihoodRatio(refCount, Collections.singletonList(qual), altCount);
     }
 
     // check that we're next to a soft clip that is not due to a read that got out of sync and ended in a bunch of BQ2's

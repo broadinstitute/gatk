@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
@@ -30,6 +31,15 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList<A> {
+
+    public static final double LOG_10_INFORMATIVE_THRESHOLD = 0.2;
+    public static final double NATURAL_LOG_INFORMATIVE_THRESHOLD = MathUtils.log10ToLog(LOG_10_INFORMATIVE_THRESHOLD);
+
+    private boolean isNaturalLog = false;
+
+    private double getInformativeThreshold() {
+        return isNaturalLog ? NATURAL_LOG_INFORMATIVE_THRESHOLD : LOG_10_INFORMATIVE_THRESHOLD;
+    }
 
     /**
      * Index indicaintg that the reference allele is missing.
@@ -189,6 +199,16 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      */
     @VisibleForTesting
     ReadLikelihoods<A> copy() {
+        return copy(false);
+    }
+
+    /**
+     * Create an independent copy of this read-likelihoods collection
+     */
+    @VisibleForTesting
+    public ReadLikelihoods<A> copy(final boolean switchToNaturalLog) {
+
+        final double conversionFactor = switchToNaturalLog ? Math.log(10) : 1;
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();
@@ -202,17 +222,20 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         for (int s = 0; s < sampleCount; s++) {
             newReadsBySampleIndex[s] = readsBySampleIndex[s].clone();
             for (int a = 0; a < alleleCount; a++) {
-                newLikelihoodValues[s][a] = valuesBySampleIndex[s][a].clone();
+                newLikelihoodValues[s][a] = MathUtils.applyToArrayInPlace(valuesBySampleIndex[s][a].clone(), x -> x * conversionFactor);
             }
         }
 
         // Finally we create the new read-likelihood
-        return new ReadLikelihoods<>(
+        final ReadLikelihoods<A> result = new ReadLikelihoods<A>(
                 alleles,
                 samples,
                 newReadsBySampleIndex,
                 newReadIndexBySampleIndex,
                 newLikelihoodValues);
+
+        result.isNaturalLog = true;
+        return result;
     }
 
 
@@ -456,12 +479,12 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
             }
         }
 
-        if (priorities.isPresent() && bestLikelihood - secondBestLikelihood < BestAllele.INFORMATIVE_THRESHOLD) {
+        if (priorities.isPresent() && bestLikelihood - secondBestLikelihood < getInformativeThreshold()) {
             double bestPriority = priorities.get()[bestAlleleIndex];
             double secondBestPriority = priorities.get()[secondBestIndex];
             for (int a = 0; a < alleleCount; a++) {
                 final double candidateLikelihood = sampleValues[a][readIndex];
-                if (a == bestAlleleIndex || (!canBeReference && a == referenceAlleleIndex) || bestLikelihood - candidateLikelihood > BestAllele.INFORMATIVE_THRESHOLD) {
+                if (a == bestAlleleIndex || (!canBeReference && a == referenceAlleleIndex) || bestLikelihood - candidateLikelihood > getInformativeThreshold()) {
                     continue;
                 }
                 final double candidatePriority = priorities.get()[a];
@@ -607,11 +630,13 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         // Finally we create the new read-likelihood
-        return new ReadLikelihoods<>(
+        final ReadLikelihoods<B> result = new ReadLikelihoods<>(
                 new IndexedAlleleList(newAlleles),
                 samples,
                 newReadsBySampleIndex,
                 newReadIndexBySampleIndex, newLikelihoodValues);
+        result.isNaturalLog = isNaturalLog;
+        return result;
     }
 
 
@@ -673,9 +698,11 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         // Finally we create the new read-likelihood
-        return new ReadLikelihoods<>(new IndexedAlleleList<>(newAlleles), samples,
+        final ReadLikelihoods<B> result = new ReadLikelihoods<>(new IndexedAlleleList<>(newAlleles), samples,
                 newReadsBySampleIndex,
                 newReadIndexBySampleIndex, newLikelihoodValues);
+        result.isNaturalLog = isNaturalLog;
+        return result;
     }
 
     private int[][] overlappingReadIndicesBySampleIndex(final Locatable overlap) {
@@ -984,7 +1011,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
 
     /**
      * Returns the collection of best allele estimates for the reads based on the read-likelihoods.
-     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.INFORMATIVE_THRESHOLD} of the greatest likelihood
+     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.LOG_10_INFORMATIVE_THRESHOLD} of the greatest likelihood
      * are broken by the {@code tieBreakingPriority} function.
      *
      * @throws IllegalStateException if there is no alleles.
@@ -1004,7 +1031,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
 
     /**
      * Returns the collection of best allele estimates for one sample's reads based on the read-likelihoods.
-     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.INFORMATIVE_THRESHOLD} of the greatest likelihood
+     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.LOG_10_INFORMATIVE_THRESHOLD} of the greatest likelihood
      * are broken by the {@code tieBreakingPriority} function.
      *
      * @throws IllegalStateException if there is no alleles.
@@ -1026,7 +1053,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
 
     /**
      * Returns the collection of best allele estimates for one sample's reads reads based on the read-likelihoods.
-     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.INFORMATIVE_THRESHOLD} of the greatest likelihood
+     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.LOG_10_INFORMATIVE_THRESHOLD} of the greatest likelihood
      * are broken by the {@code tieBreakingPriority} function.
      *
      * @throws IllegalStateException if there is no alleles.
@@ -1178,7 +1205,6 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * Contains information about the best allele for a read search result.
      */
     public final class BestAllele {
-        public static final double INFORMATIVE_THRESHOLD = 0.2;
 
         /**
          * Null if there is no possible match (no allele?).
@@ -1216,7 +1242,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         public boolean isInformative() {
-            return confidence > INFORMATIVE_THRESHOLD;
+            return confidence > LOG_10_INFORMATIVE_THRESHOLD;
         }
     }
 

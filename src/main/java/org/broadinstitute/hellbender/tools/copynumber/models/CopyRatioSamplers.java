@@ -5,7 +5,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.mcmc.MinibatchSliceSampler;
 import org.broadinstitute.hellbender.utils.mcmc.ParameterSampler;
 
@@ -176,7 +176,7 @@ final class CopyRatioSamplers {
                                     - normalTerm(indexedCopyRatio.getLog2CopyRatioValue(), state.segmentMean(segmentIndex), state.variance());
                     final double conditionalProbability =
                             FastMath.exp(outlierUnnormalizedLogProbability -
-                                    MathUtils.logSumLog(outlierUnnormalizedLogProbability, notOutlierUnnormalizedLogProbability));
+                                    NaturalLogUtils.logSumLog(outlierUnnormalizedLogProbability, notOutlierUnnormalizedLogProbability));
                     indicators.add(rng.nextDouble() < conditionalProbability);
                 }
             }

@@ -9,12 +9,12 @@ public class SequencingError implements AlleleFractionCluster {
     public SequencingError() { }
 
     @Override
-    public double log10Likelihood(final Datum datum) {
+    public double logLikelihood(final Datum datum) {
         return 0;
     }
 
     @Override
-    public double log10Likelihood(final int totalCount, final int altCount) {
+    public double logLikelihood(final int totalCount, final int altCount) {
         throw new GATKException.ShouldNeverReachHereException("This method should never be called on the sequencing error cluster.");
     }
 

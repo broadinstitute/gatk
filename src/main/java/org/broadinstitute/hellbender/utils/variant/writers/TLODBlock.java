@@ -68,7 +68,7 @@ final class TLODBlock extends GVCFBlock {
         final GenotypeBuilder gb = new GenotypeBuilder(sampleName, Collections.nCopies(2, getRef()));  //FIXME: for somatic stuff we output the genotype as diploid because that's familiar for human
         gb.noAD().noPL().noAttributes(); // clear all attributes
 
-        gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, minBlockLOD);
+        gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, minBlockLOD);
         gb.DP(getMedianDP());
         gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
 
@@ -86,7 +86,7 @@ final class TLODBlock extends GVCFBlock {
         Utils.nonNull(genotype, "genotype cannot be null");
         Utils.validateArg( pos == end + 1,"adding genotype at pos " + pos + " isn't contiguous with previous end " + end);
         // Make sure the LOD is within the bounds of this band
-        final double currentLOD = Double.parseDouble(genotype.getExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY).toString());
+        final double currentLOD = Double.parseDouble(genotype.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY).toString());
         if ( !withinBounds(currentLOD)) {
             throw new IllegalArgumentException("cannot add a genotype with LOD=" + currentLOD + " because it's not within bounds ["
                     + this.getLODLowerBound() + ',' + this.getLODUpperBound() + ')');

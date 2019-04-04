@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
@@ -493,7 +492,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         for(final Genotype g : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(g);
-            final double[] tlodArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
+            final double[] tlodArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
             final double[] variantAFArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
             double variantAFtotal = 0;
             final List<Allele> calledAlleles = new ArrayList<>();

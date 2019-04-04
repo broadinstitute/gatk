@@ -416,9 +416,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             //MT:302 has an alphabet soup of alleles in the GVCF -- make sure the ones we keep are good
             if (vc.getStart() == 302) {
                 Assert.assertEquals(vc.getNAlleles(), 6);
-                double[] sample0LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
-                double[] sample1LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(1), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
-                double[] sample2LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(2), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
+                double[] sample0LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+                double[] sample1LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(1), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+                double[] sample2LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(2), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
                 for (int i = 0; i < vc.getNAlleles() - 1; i++) {
                     Assert.assertTrue(sample0LODs[i] > TLOD_THRESHOLD || sample1LODs[i] > TLOD_THRESHOLD || sample2LODs[i] > TLOD_THRESHOLD);
                 }

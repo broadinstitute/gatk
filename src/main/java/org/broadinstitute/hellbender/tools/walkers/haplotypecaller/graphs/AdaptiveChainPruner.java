@@ -71,9 +71,9 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         final int rightMultiplicity = chain.getLastEdge().getMultiplicity();
 
         final double leftLogOdds = graph.isSource(chain.getFirstVertex()) ? 0.0 :
-                Mutect2Engine.lnLikelihoodRatio(leftTotalMultiplicity - leftMultiplicity, leftMultiplicity, errorRate);
+                Mutect2Engine.logLikelihoodRatio(leftTotalMultiplicity - leftMultiplicity, leftMultiplicity, errorRate);
         final double rightLogOdds = graph.isSink(chain.getLastVertex()) ? 0.0 :
-                Mutect2Engine.lnLikelihoodRatio(rightTotalMultiplicity - rightMultiplicity, rightMultiplicity, errorRate);
+                Mutect2Engine.logLikelihoodRatio(rightTotalMultiplicity - rightMultiplicity, rightMultiplicity, errorRate);
 
         return FastMath.max(leftLogOdds, rightLogOdds);
     }

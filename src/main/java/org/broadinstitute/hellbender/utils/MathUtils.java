@@ -6,7 +6,6 @@ import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -35,15 +34,12 @@ public final class MathUtils {
 
     public static final double LOG10_ONE_HALF = Math.log10(0.5);
 
-    public static final double LOG_ONE_HALF = FastMath.log(0.5);
-
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
+    public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
     public static final double INV_LOG_10 = 1.0 / Math.log(10);
 
     private static final double LN_10 = Math.log(10);
-
-    private static final double LOG1MEXP_THRESHOLD = Math.log(0.5);
 
     public static final double INV_SQRT_2_PI = 1.0 / Math.sqrt(2.0 * Math.PI);
 
@@ -70,38 +66,6 @@ public final class MathUtils {
      * Private constructor.  No instantiating this class!
      */
     private MathUtils() { }
-
-    /**
-     * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
-     *
-     * <p>
-     * This trick consists of shifting all the log values by the maximum so that exponent values are
-     * much larger (close to 1) before they are summed. Then the result is shifted back down by
-     * the same amount in order to obtain the correct value.
-     * </p>
-     * @return any double value.
-     */
-    public static double logSumExp(final double ... values) {
-        double max = arrayMax(Utils.nonNull(values));
-        double sum = 0.0;
-        for (int i = 0; i < values.length; ++i) {
-            if (values[i] != Double.NEGATIVE_INFINITY) {
-                sum += Math.exp(values[i] - max);
-            }
-        }
-        return max + Math.log(sum);
-    }
-
-    public static double logSumExp(final Collection<Double> values) {
-        double max = Collections.max(Utils.nonNull(values));
-        double sum = 0.0;
-        for (final double val : values) {
-            if (val != Double.NEGATIVE_INFINITY) {
-                sum += Math.exp(val - max);
-            }
-        }
-        return max + Math.log(sum);
-    }
 
     public static double mean(final double ... values) {
         Utils.nonNull(values);
@@ -355,10 +319,6 @@ public final class MathUtils {
         return IntStream.range(0, array1.size()).mapToDouble(n -> Math.abs(array1.get(n) - array2.get(n))).max().getAsDouble();
     }
 
-    public static double[] posteriors(double[] log10Priors, double[] log10Likelihoods) {
-        return normalizeFromLog10ToLinearSpace(MathArrays.ebeAdd(log10Priors, log10Likelihoods));
-    }
-
     public static int[] normalizePLs(int[] PLs) {
         final int[] newPLs = new int[PLs.length];
         final int smallest = arrayMin(PLs);
@@ -606,29 +566,7 @@ public final class MathUtils {
         if (a > 0) return Double.NaN;
         if (a == 0) return Double.NEGATIVE_INFINITY;
         final double b = a * LN_10;
-        return log1mexp(b) / LN_10;
-    }
-
-    /**
-     * Calculates {@code log(1-exp(a))} without losing precision.
-     *
-     * <p>
-     *     This is based on the approach described in:
-     *
-     * </p>
-     * <p>
-     *     Maechler M, Accurately Computing log(1-exp(-|a|)) Assessed by the Rmpfr package, 2012 <br/>
-     *     <a ref="http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf">Online document</a>.
-     *
-     * </p>
-     *
-     * @param a the input exponent.
-     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
-     */
-    public static double log1mexp(final double a) {
-        if (a > 0) return Double.NaN;
-        if (a == 0) return Double.NEGATIVE_INFINITY;
-        return (a < LOG1MEXP_THRESHOLD) ? Math.log1p(-Math.exp(a)) : Math.log(-Math.expm1(a));
+        return NaturalLogUtils.log1mexp(b) / LN_10;
     }
 
     /**
@@ -1027,10 +965,6 @@ public final class MathUtils {
 
     public static double log10SumLog10(final double a, final double b) {
         return a > b ? a + Math.log10(1 + Math.pow(10.0, b - a)) : b + Math.log10(1 + Math.pow(10.0, a - b));
-    }
-
-    public static double logSumLog(final double a, final double b) {
-        return a > b ? a + FastMath.log(1 + FastMath.exp(b - a)) : b + FastMath.log(1 + FastMath.exp(a - b));
     }
 
     /**
@@ -1443,22 +1377,6 @@ public final class MathUtils {
             }
         }
         return maxIndex;
-    }
-
-    /**
-     *
-     * Computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
-     *
-     * @param alpha pseudocount of number of heads
-     * @param beta pseudocount of number of tails
-     * @param k value to evaluate
-     * @param n number of coin flips
-     * @return probability density function evaluated at k
-     */
-    public static double log10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta){
-        Utils.validateArg(k <= n, String.format("k must be less than or equal to n but got k = %d, n = %d", k, n));
-        return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
-                Beta.logBeta(alpha, beta) * LOG10_OF_E;
     }
 
     public static boolean isAProbability(final double p){

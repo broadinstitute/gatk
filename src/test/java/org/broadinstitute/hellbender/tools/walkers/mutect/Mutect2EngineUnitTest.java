@@ -7,11 +7,8 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static org.testng.Assert.*;
 
 public class Mutect2EngineUnitTest extends GATKBaseTest {
 
@@ -34,7 +31,7 @@ public class Mutect2EngineUnitTest extends GATKBaseTest {
         final byte qual = QualityUtils.errorProbToQual(errorRate);
         final List<Byte> altQuals = Collections.nCopies(numAlt, qual);
 
-        final double calculated = Mutect2Engine.lnLikelihoodRatio(numRef, altQuals, 1);
+        final double calculated = Mutect2Engine.logLikelihoodRatio(numRef, altQuals, 1);
         final double expected = Beta.logBeta(numRef + 1, numAlt + 1) - numAlt * Math.log(errorRate);
         Assert.assertEquals(calculated, expected, 0.07);
 
@@ -47,8 +44,8 @@ public class Mutect2EngineUnitTest extends GATKBaseTest {
         for (final int numRepeats : new int[] {2, 5}) {
             final List<Byte> altQuals = Collections.nCopies(numAlt, qual);
             final List<Byte> repeatedAltQuals = Collections.nCopies(numRepeats * numAlt, qual);
-            final double calculated = Mutect2Engine.lnLikelihoodRatio(numRef, altQuals, numRepeats);
-            final double explicit = Mutect2Engine.lnLikelihoodRatio(numRef, repeatedAltQuals, 1);
+            final double calculated = Mutect2Engine.logLikelihoodRatio(numRef, altQuals, numRepeats);
+            final double explicit = Mutect2Engine.logLikelihoodRatio(numRef, repeatedAltQuals, 1);
             Assert.assertEquals(calculated, explicit, 0.000001);
         }
     }

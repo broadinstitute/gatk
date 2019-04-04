@@ -43,7 +43,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger AS_Warning = new OneShotLogger(this.getClass());
-    List<String> SOMATIC_INFO_ANNOTATIONS_TO_MOVE = Arrays.asList(GATKVCFConstants.TUMOR_LOD_KEY);
+    List<String> SOMATIC_INFO_ANNOTATIONS_TO_MOVE = Arrays.asList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
 
     private static final List<String> SOMATIC_FORMAT_ANNOTATIONS_TO_KEEP = Arrays.asList(
             GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY,
@@ -51,7 +51,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY,
             VCFConstants.PHASE_SET_KEY);
     private static final List<String> SOMATIC_INFO_ANNOTATIONS_TO_DROP = Arrays.asList(
-            GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+            GATKVCFConstants.POPULATION_AF_KEY);
 
     public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader) {
         this(engine, inputHeader, false, false);

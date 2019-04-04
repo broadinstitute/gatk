@@ -323,6 +323,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public void testTumorNormal() throws Exception {
         Utils.resetRandomGenerator();
         final File outputVcf = createTempFile("output", ".vcf");
+
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final File tumorBam = new File(DREAM_BAMS_DIR, "tumor.bam");
@@ -727,7 +728,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         //check ref conf-specific headers are output
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(standardVcf.getAbsolutePath());
-        Assert.assertTrue(result.getLeft().hasFormatLine(GATKVCFConstants.TUMOR_LOD_KEY));
+        Assert.assertTrue(result.getLeft().hasFormatLine(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY));
         Assert.assertTrue(result.getLeft().getMetaDataLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG) != null);
 
         final List<VariantContext> variants = result.getRight();
@@ -817,11 +818,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final double[] tlods2;
         //ref blocks have TLOD in format field
         if (v1.getGenotype(0).isHomRef()) {
-            tlods1 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, 0)};
-            tlods2 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, 0)};
+            tlods1 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
+            tlods2 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
         } else {
-            tlods1 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOD_KEY);
-            tlods2 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOD_KEY);
+            tlods1 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
+            tlods2 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
 
         }
         for (int i = 0; i < v1.getAlternateAlleles().size(); i++) {

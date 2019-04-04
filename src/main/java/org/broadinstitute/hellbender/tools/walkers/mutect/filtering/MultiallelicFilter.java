@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Arrays;
@@ -21,8 +20,7 @@ public class MultiallelicFilter extends HardFilter {
 
     @Override
     public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
-
+        final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final long numPassingAltAlleles = Arrays.stream(tumorLods)
                 .filter(lod -> lod > MULTIALLELIC_LOD_THRESHOLD)
                 .count();
@@ -34,5 +32,5 @@ public class MultiallelicFilter extends HardFilter {
         return GATKVCFConstants.MULTIALLELIC_FILTER_NAME;
     }
 
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOD_KEY); }
+    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
 }

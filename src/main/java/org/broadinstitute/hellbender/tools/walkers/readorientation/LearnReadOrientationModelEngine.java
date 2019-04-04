@@ -11,7 +11,9 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -252,34 +254,34 @@ public class LearnReadOrientationModelEngine {
     public static double[] computeResponsibilities(final Nucleotide refAllele, final Nucleotide altAllele,
                                                    final int altDepth, final int f1r2AltCount, final int depth,
                                                    final double[] artifactPrior, final boolean givenNotHomRef) {
-        final double[] log10UnnormalizedResponsibilities = new double[F1R2FilterConstants.NUM_STATES];
+        final double[] logUnnormalizedResponsibilities = new double[F1R2FilterConstants.NUM_STATES];
         final List<ArtifactState> refToRefArtifacts = ArtifactState.getRefToRefArtifacts(refAllele);
 
         for (ArtifactState state : ArtifactState.values()){
             final int stateIndex = state.ordinal();
             if (refToRefArtifacts.contains(state)) {
                 // This state is really just hom ref so give it zero probability and skip
-                log10UnnormalizedResponsibilities[stateIndex] = Double.NEGATIVE_INFINITY;
+                logUnnormalizedResponsibilities[stateIndex] = Double.NEGATIVE_INFINITY;
                 continue;
             }
 
             if (ArtifactState.artifactStates.contains(state) && state.getAltAlleleOfArtifact() != altAllele) {
                 // The indicator function is 0
-                log10UnnormalizedResponsibilities[stateIndex] = Double.NEGATIVE_INFINITY;
+                logUnnormalizedResponsibilities[stateIndex] = Double.NEGATIVE_INFINITY;
                 continue;
             }
 
             // If we get here, we have a non-artifact state i.e. { germline het, hom ref, hom var, somatic het }
             // or an artifact state whose transitions match the observed alt allele (e.g. alt allele = A, z = F1R2_A, F2R1_A)
-            log10UnnormalizedResponsibilities[stateIndex] = computePosterior(altDepth, f1r2AltCount, depth, artifactPrior[stateIndex],
+            logUnnormalizedResponsibilities[stateIndex] = computeLogPosterior(altDepth, f1r2AltCount, depth, artifactPrior[stateIndex],
                     alleleFractionPseudoCounts.get(state), altF1R2FractionPseudoCounts.get(state));
         }
 
         if (givenNotHomRef){
-            log10UnnormalizedResponsibilities[ArtifactState.HOM_REF.ordinal()] = Double.NEGATIVE_INFINITY;
+            logUnnormalizedResponsibilities[ArtifactState.HOM_REF.ordinal()] = Double.NEGATIVE_INFINITY;
         }
 
-        return MathUtils.normalizeFromLog10ToLinearSpace(log10UnnormalizedResponsibilities);
+        return NaturalLogUtils.normalizeFromLogToLinearSpace(logUnnormalizedResponsibilities);
     }
 
 
@@ -287,14 +289,14 @@ public class LearnReadOrientationModelEngine {
      * Compute the posterior probability of the state z given data. The caller is responsible for not calling
      * this method on inconsistent states e.g. z = F1R2_C where the reference context is ACT
      */
-    private static double computePosterior(final int altDepth, final int altF1R2Depth, final int depth,
-                                           final double statePrior, final BetaDistributionShape afPseudoCounts,
-                                           final BetaDistributionShape f1r2PseudoCounts){
+    private static double computeLogPosterior(final int altDepth, final int altF1R2Depth, final int depth,
+                                              final double statePrior, final BetaDistributionShape afPseudoCounts,
+                                              final BetaDistributionShape f1r2PseudoCounts){
         Utils.validateArg(MathUtils.isAProbability(statePrior), String.format("statePrior must be a probability but got %f", statePrior));
 
-        return Math.log10(statePrior) +
-                MathUtils.log10BetaBinomialProbability(altDepth, depth, afPseudoCounts.getAlpha(), afPseudoCounts.getBeta()) +
-                MathUtils.log10BetaBinomialProbability(altF1R2Depth, altDepth, f1r2PseudoCounts.getAlpha(), f1r2PseudoCounts.getBeta());
+        return Math.log(statePrior)
+                + new BetaBinomialDistribution(null, afPseudoCounts.getAlpha(), afPseudoCounts.getBeta(), depth).logProbability(altDepth)
+                + new BetaBinomialDistribution(null, f1r2PseudoCounts.getAlpha(), f1r2PseudoCounts.getBeta(), altDepth).logProbability(altF1R2Depth);
     }
 
     /**

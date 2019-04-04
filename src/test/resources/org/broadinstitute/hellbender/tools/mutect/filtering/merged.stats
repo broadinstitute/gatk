@@ -1,33 +1,34 @@
-#<METADATA>Log10 prior of deletion of length 10=-9.0
-#<METADATA>Log10 prior of deletion of length 9=-9.0
-#<METADATA>Log10 prior of deletion of length 8=-9.0
-#<METADATA>Log10 prior of deletion of length 7=-9.0
-#<METADATA>Log10 prior of deletion of length 6=-9.0
-#<METADATA>Log10 prior of deletion of length 5=-9.0
-#<METADATA>Log10 prior of deletion of length 4=-9.0
-#<METADATA>Log10 prior of deletion of length 3=-9.0
-#<METADATA>Log10 prior of deletion of length 2=-9.0
-#<METADATA>Log10 prior of deletion of length 1=-9.0
-#<METADATA>Log10 prior of SNV=-7.066946789630613
-#<METADATA>Log10 prior of insertion of length 1=-9.0
-#<METADATA>Log10 prior of insertion of length 2=-9.0
-#<METADATA>Log10 prior of insertion of length 3=-9.0
-#<METADATA>Log10 prior of insertion of length 4=-9.0
-#<METADATA>Log10 prior of insertion of length 5=-9.0
-#<METADATA>Log10 prior of insertion of length 6=-9.0
-#<METADATA>Log10 prior of insertion of length 7=-9.0
-#<METADATA>Log10 prior of insertion of length 8=-9.0
-#<METADATA>Log10 prior of insertion of length 9=-9.0
-#<METADATA>Log10 prior of insertion of length 10=-9.0
+#<METADATA>Ln prior of deletion of length 10=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 9=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 8=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 7=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 6=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 5=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 4=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 3=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 2=-20.72326583694641
+#<METADATA>Ln prior of deletion of length 1=-20.72326583694641
+#<METADATA>Ln prior of SNV=-16.272246330785578
+#<METADATA>Ln prior of insertion of length 1=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 2=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 3=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 4=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 5=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 6=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 7=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 8=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 9=-20.72326583694641
+#<METADATA>Ln prior of insertion of length 10=-20.72326583694641
 #<METADATA>High-AF beta-binomial cluster=weight = 0.1667, alpha = 10.00, beta = 1.00
-#<METADATA>Background beta-binomial cluster=weight = 0.1667, alpha = 0.76, beta = 1.15
-#<METADATA>Binomial cluster 1=weight = 0.8571, mean = 0.070
-#<METADATA>threshold=0.316
-#<METADATA>fdr=0.051
-#<METADATA>sensitivity=0.879
+#<METADATA>Background beta-binomial cluster=weight = 0.1667, alpha = 0.77, beta = 1.20
+#<METADATA>Binomial cluster 1=weight = 0.5714, mean = 0.072
+#<METADATA>Binomial cluster 1=weight = 0.2857, mean = 0.067
+#<METADATA>threshold=0.291
+#<METADATA>fdr=0.052
+#<METADATA>sensitivity=0.882
 filter	FP	FDR	FN	FNR
-weak_evidence	0.06	0.02	0.26	0.08
-contamination	0.1	0.03	0.29	0.09
+weak_evidence	0.06	0.02	0.25	0.08
+contamination	0.1	0.03	0.28	0.09
 normal_artifact	0.0	0.0	0.0	0.0
 slippage	0.0	0.0	0.0	0.0
 haplotype	0.0	0.0	0.01	0.0

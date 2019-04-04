@@ -520,8 +520,8 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> actualVCs = getVariantContexts(output);
         for (final VariantContext vc : actualVCs) {
-            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE));
-            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.POPULATION_AF_KEY));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY));
             Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY));
             Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY));
             Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_READ_POSITON_KEY));
@@ -531,7 +531,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY));
                 Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_READ_POSITON_KEY));
                 Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY));
-                Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY));
+                Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY));
             }
 
         }

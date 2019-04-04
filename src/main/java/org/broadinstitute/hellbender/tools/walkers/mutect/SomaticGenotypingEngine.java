@@ -17,10 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -28,7 +25,6 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -56,14 +52,14 @@ public class SomaticGenotypingEngine {
      * genotype likelihoods and assemble into a list of variant contexts and genomic events ready for calling
      *
      * The list of samples we're working with is obtained from the readLikelihoods
-     * @param log10ReadLikelihoods                       Map from reads->(haplotypes,likelihoods)
+     * @param logReadLikelihoods                       Map from reads->(haplotypes,likelihoods)
      * @param activeRegionWindow                     Active window
      * @param withBamOut                            whether to annotate reads in readLikelihoods for future writing to bamout
      * @param emitRefConf                           generate reference confidence (GVCF) data?
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      */
     public CalledHaplotypes callMutations(
-            final ReadLikelihoods<Haplotype> log10ReadLikelihoods,
+            final ReadLikelihoods<Haplotype> logReadLikelihoods,
             final AssemblyResultSet assemblyResultSet,
             final ReferenceContext referenceContext,
             final SimpleInterval activeRegionWindow,
@@ -72,11 +68,11 @@ public class SomaticGenotypingEngine {
             final SAMFileHeader header,
             final boolean withBamOut,
             final boolean emitRefConf) {
-        Utils.nonNull(log10ReadLikelihoods);
-        Utils.validateArg(log10ReadLikelihoods.numberOfSamples() > 0, "likelihoods have no samples");
+        Utils.nonNull(logReadLikelihoods);
+        Utils.validateArg(logReadLikelihoods.numberOfSamples() > 0, "likelihoods have no samples");
         Utils.nonNull(activeRegionWindow);
 
-        final List<Haplotype> haplotypes = log10ReadLikelihoods.alleles();
+        final List<Haplotype> haplotypes = logReadLikelihoods.alleles();
 
         final List<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, assemblyResultSet.getFullReferenceWithPadding(),
                 assemblyResultSet.getPaddedReferenceLoc(), MTAC.assemblerArgs.debugAssembly, MTAC.maxMnpDistance).stream()
@@ -88,7 +84,7 @@ public class SomaticGenotypingEngine {
 
         if(withBamOut){
             //add annotations to reads for alignment regions and calling regions
-            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(log10ReadLikelihoods, activeRegionWindow);
+            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(logReadLikelihoods, activeRegionWindow);
         }
 
         for( final int loc : startPosKeySet ) {
@@ -100,37 +96,37 @@ public class SomaticGenotypingEngine {
 
             // converting ReadLikelihoods<Haplotype> to ReadLikelihoods<Allele>
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, null);
-            final ReadLikelihoods<Allele> log10Likelihoods = log10ReadLikelihoods.marginalize(alleleMapper,
+            final ReadLikelihoods<Allele> logLikelihoods = logReadLikelihoods.marginalize(alleleMapper,
                     new SimpleInterval(mergedVC).expandWithinContig(HaplotypeCallerGenotypingEngine.ALLELE_EXTENSION, header.getSequenceDictionary()));
 
             if (emitRefConf) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
-                log10Likelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
+                logLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
-            final List<LikelihoodMatrix<Allele>> tumorMatrices = IntStream.range(0, log10Likelihoods.numberOfSamples())
-                    .filter(n -> !normalSamples.contains(log10Likelihoods.getSample(n)))
-                    .mapToObj(log10Likelihoods::sampleMatrix)
+            final List<LikelihoodMatrix<Allele>> tumorMatrices = IntStream.range(0, logLikelihoods.numberOfSamples())
+                    .filter(n -> !normalSamples.contains(logLikelihoods.getSample(n)))
+                    .mapToObj(logLikelihoods::sampleMatrix)
                     .collect(Collectors.toList());
             final AlleleList<Allele> alleleList = tumorMatrices.get(0);
-            final LikelihoodMatrix<Allele> log10TumorMatrix = combinedLikelihoodMatrix(tumorMatrices, alleleList);
-            final PerAlleleCollection<Double> tumorLog10Odds = somaticLog10Odds(log10TumorMatrix);
+            final LikelihoodMatrix<Allele> logTumorMatrix = combinedLikelihoodMatrix(tumorMatrices, alleleList);
+            final PerAlleleCollection<Double> tumorLogOdds = somaticLogOdds(logTumorMatrix);
 
-            final List<LikelihoodMatrix<Allele>> normalMatrices = IntStream.range(0, log10Likelihoods.numberOfSamples())
-                    .filter(n -> normalSamples.contains(log10Likelihoods.getSample(n)))
-                    .mapToObj(log10Likelihoods::sampleMatrix)
+            final List<LikelihoodMatrix<Allele>> normalMatrices = IntStream.range(0, logLikelihoods.numberOfSamples())
+                    .filter(n -> normalSamples.contains(logLikelihoods.getSample(n)))
+                    .mapToObj(logLikelihoods::sampleMatrix)
                     .collect(Collectors.toList());
-            final LikelihoodMatrix<Allele> log10NormalMatrix = combinedLikelihoodMatrix(normalMatrices, alleleList);
-            final PerAlleleCollection<Double> normalLog10Odds = diploidAltLog10Odds(log10NormalMatrix);
-            final PerAlleleCollection<Double> normalArtifactLog10Odds = somaticLog10Odds(log10NormalMatrix);
+            final LikelihoodMatrix<Allele> logNormalMatrix = combinedLikelihoodMatrix(normalMatrices, alleleList);
+            final PerAlleleCollection<Double> normalLogOdds = diploidAltLogOdds(logNormalMatrix);
+            final PerAlleleCollection<Double> normalArtifactLogOdds = somaticLogOdds(logNormalMatrix);
 
 
             final Set<Allele> forcedAlleles = getAllelesConsistentWithGivenAlleles(givenAlleles, loc, mergedVC);
             final List<Allele> tumorAltAlleles = mergedVC.getAlternateAlleles().stream()
-                    .filter(allele -> forcedAlleles.contains(allele) || tumorLog10Odds.getAlt(allele) > MTAC.getEmissionLod())
+                    .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
 
             final long somaticAltCount = tumorAltAlleles.stream()
-                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLog10Odds.getAlt(allele) > MTAC.normalLod)
+                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
                     .count();
 
             // if every alt allele is germline, skip this variant.  However, if some alt alleles are germline and others
@@ -142,32 +138,32 @@ public class SomaticGenotypingEngine {
             final List<Allele> allAllelesToEmit = ListUtils.union(Arrays.asList(mergedVC.getReference()), tumorAltAlleles);
 
 
-            final Map<String, Object> negativeLog10PopulationAFAnnotation = getNegativeLog10PopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
+            final Map<String, Object> negativeLogPopulationAFAnnotation = getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
-                    .attributes(negativeLog10PopulationAFAnnotation)
-                    .attribute(GATKVCFConstants.TUMOR_LOD_KEY, tumorAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
+                    .attributes(negativeLogPopulationAFAnnotation)
+                    .attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, tumorAltAlleles.stream().mapToDouble(a -> MathUtils.logToLog10(tumorLogOdds.getAlt(a))).toArray());
 
             if (hasNormal) {
-                callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-                        Arrays.stream(normalArtifactLog10Odds.asDoubleArray(tumorAltAlleles)).map(x->-x).toArray());
-                callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY,
-                        Arrays.stream(normalLog10Odds.asDoubleArray(tumorAltAlleles)).map(x->x).toArray());
+                callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY,
+                        Arrays.stream(normalArtifactLogOdds.asDoubleArray(tumorAltAlleles)).map(x->-MathUtils.logToLog10(x)).toArray());
+                callVcb.attribute(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY,
+                        Arrays.stream(normalLogOdds.asDoubleArray(tumorAltAlleles)).map(MathUtils::logToLog10).toArray());
             }
 
             if (!featureContext.getValues(MTAC.pon, mergedVC.getStart()).isEmpty()) {
-                callVcb.attribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, true);
+                callVcb.attribute(GATKVCFConstants.IN_PON_KEY, true);
             }
 
-            addGenotypes(log10Likelihoods, allAllelesToEmit, callVcb);
+            addGenotypes(logLikelihoods, allAllelesToEmit, callVcb);
             final VariantContext call = callVcb.make();
             final VariantContext trimmedCall = GATKVariantContextUtils.trimAlleles(call, true, true);
             final List<Allele> trimmedAlleles = trimmedCall.getAlleles();
             final List<Allele> untrimmedAlleles = call.getAlleles();
             final Map<Allele, List<Allele>> trimmedToUntrimmedAlleleMap = IntStream.range(0, trimmedCall.getNAlleles()).boxed()
                     .collect(Collectors.toMap(n -> trimmedAlleles.get(n), n -> Arrays.asList(untrimmedAlleles.get(n))));
-            final ReadLikelihoods<Allele> trimmedLikelihoods = log10Likelihoods.marginalize(trimmedToUntrimmedAlleleMap);
+            final ReadLikelihoods<Allele> trimmedLikelihoods = logLikelihoods.marginalize(trimmedToUntrimmedAlleleMap);
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
             if(withBamOut) {
@@ -214,43 +210,43 @@ public class SomaticGenotypingEngine {
     }
 
     // compute the likelihoods that each allele is contained at some allele fraction in the sample
-    protected PerAlleleCollection<Double> somaticLog10Odds(final LikelihoodMatrix<Allele> log10Matrix) {
-        int alleleListEnd = log10Matrix.alleles().size()-1;
-        final int nonRefIndex = log10Matrix.alleles().contains(Allele.NON_REF_ALLELE)
-            && log10Matrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE) ? alleleListEnd : -1;
-        if (log10Matrix.alleles().contains(Allele.NON_REF_ALLELE) && !(log10Matrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE))) {
+    protected PerAlleleCollection<Double> somaticLogOdds(final LikelihoodMatrix<Allele> logMatrix) {
+        int alleleListEnd = logMatrix.alleles().size()-1;
+        final int nonRefIndex = logMatrix.alleles().contains(Allele.NON_REF_ALLELE)
+            && logMatrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE) ? alleleListEnd : -1;
+        if (logMatrix.alleles().contains(Allele.NON_REF_ALLELE) && !(logMatrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE))) {
             throw new IllegalStateException("<NON_REF> must be last in the allele list.");
         }
-        final double log10EvidenceWithAllAlleles = log10Matrix.numberOfReads() == 0 ? 0 :
-                SomaticLikelihoodsEngine.log10Evidence(getAsRealMatrix(log10Matrix), MTAC.minAF, nonRefIndex);
+        final double logEvidenceWithAllAlleles = logMatrix.numberOfReads() == 0 ? 0 :
+                SomaticLikelihoodsEngine.logEvidence(getAsRealMatrix(logMatrix), MTAC.minAF, nonRefIndex);
 
         final PerAlleleCollection<Double> lods = new PerAlleleCollection<>(PerAlleleCollection.Type.ALT_ONLY);
-        final int refIndex = getRefIndex(log10Matrix);
-        IntStream.range(0, log10Matrix.numberOfAlleles()).filter(a -> a != refIndex).forEach( a -> {
-            final Allele allele = log10Matrix.getAllele(a);
-            final LikelihoodMatrix<Allele> log10MatrixWithoutThisAllele = SubsettedLikelihoodMatrix.excludingAllele(log10Matrix, allele);
-            final double log10EvidenceWithoutThisAllele = log10MatrixWithoutThisAllele.numberOfReads() == 0 ? 0 :
-                    SomaticLikelihoodsEngine.log10Evidence(getAsRealMatrix(log10MatrixWithoutThisAllele), MTAC.minAF, log10MatrixWithoutThisAllele.numberOfAlleles() > 1 ? nonRefIndex-1 : -1);  //nonRefIndex-1 because we're evaluating without one allele; if th
-            lods.setAlt(allele, log10EvidenceWithAllAlleles - log10EvidenceWithoutThisAllele);
+        final int refIndex = getRefIndex(logMatrix);
+        IntStream.range(0, logMatrix.numberOfAlleles()).filter(a -> a != refIndex).forEach( a -> {
+            final Allele allele = logMatrix.getAllele(a);
+            final LikelihoodMatrix<Allele> logMatrixWithoutThisAllele = SubsettedLikelihoodMatrix.excludingAllele(logMatrix, allele);
+            final double logEvidenceWithoutThisAllele = logMatrixWithoutThisAllele.numberOfReads() == 0 ? 0 :
+                    SomaticLikelihoodsEngine.logEvidence(getAsRealMatrix(logMatrixWithoutThisAllele), MTAC.minAF, logMatrixWithoutThisAllele.numberOfAlleles() > 1 ? nonRefIndex-1 : -1);  //nonRefIndex-1 because we're evaluating without one allele; if th
+            lods.setAlt(allele, logEvidenceWithAllAlleles - logEvidenceWithoutThisAllele);
         });
         return lods;
     }
 
-    private void addGenotypes(final ReadLikelihoods<Allele> log10Likelihoods,
+    private void addGenotypes(final ReadLikelihoods<Allele> logLikelihoods,
                               final List<Allele> allelesToEmit,
                               final VariantContextBuilder callVcb) {
-        final List<Genotype> genotypes = IntStream.range(0, log10Likelihoods.numberOfSamples()).mapToObj(n -> {
-            final String sample = log10Likelihoods.getSample(n);
-            final LikelihoodMatrix<Allele> log10Matrix = new SubsettedLikelihoodMatrix<>(log10Likelihoods.sampleMatrix(n), allelesToEmit);
-            final double[] alleleCounts = getEffectiveCounts(log10Matrix);
-            final double[] flatPriorPseudocounts = new IndexRange(0, log10Matrix.numberOfAlleles()).mapToDouble(a -> 1);
-            final double[] alleleFractionsPosterior = log10Matrix.numberOfReads() == 0 ? flatPriorPseudocounts :
-                    SomaticLikelihoodsEngine.alleleFractionsPosterior(getAsRealMatrix(log10Matrix), flatPriorPseudocounts);
+        final List<Genotype> genotypes = IntStream.range(0, logLikelihoods.numberOfSamples()).mapToObj(n -> {
+            final String sample = logLikelihoods.getSample(n);
+            final LikelihoodMatrix<Allele> logMatrix = new SubsettedLikelihoodMatrix<>(logLikelihoods.sampleMatrix(n), allelesToEmit);
+            final double[] alleleCounts = getEffectiveCounts(logMatrix);
+            final double[] flatPriorPseudocounts = new IndexRange(0, logMatrix.numberOfAlleles()).mapToDouble(a -> 1);
+            final double[] alleleFractionsPosterior = logMatrix.numberOfReads() == 0 ? flatPriorPseudocounts :
+                    SomaticLikelihoodsEngine.alleleFractionsPosterior(getAsRealMatrix(logMatrix), flatPriorPseudocounts);
             final double[] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
 
             // TODO: We shouldn't always assume that the genotype in the normal is hom ref
-            final Allele ref = log10Matrix.getAllele(getRefIndex(log10Matrix));
-            return new GenotypeBuilder(sample, normalSamples.contains(sample) ? Collections.nCopies(2, ref) : log10Matrix.alleles())
+            final Allele ref = logMatrix.getAllele(getRefIndex(logMatrix));
+            return new GenotypeBuilder(sample, normalSamples.contains(sample) ? Collections.nCopies(2, ref) : logMatrix.alleles())
                     .AD(Arrays.stream(alleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
                     .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length))
                     .make();
@@ -259,33 +255,33 @@ public class SomaticGenotypingEngine {
         callVcb.genotypes(genotypes);
     }
 
-    private static double[] getEffectiveCounts(final LikelihoodMatrix<Allele> log10LikelihoodMatrix) {
-        if (log10LikelihoodMatrix.numberOfReads() == 0) {
-            return new double[log10LikelihoodMatrix.numberOfAlleles()]; // zero counts for each allele
+    private static double[] getEffectiveCounts(final LikelihoodMatrix<Allele> logLikelihoodMatrix) {
+        if (logLikelihoodMatrix.numberOfReads() == 0) {
+            return new double[logLikelihoodMatrix.numberOfAlleles()]; // zero counts for each allele
         }
-        final RealMatrix log10Likelihoods = getAsRealMatrix(log10LikelihoodMatrix);
-        return MathUtils.sumArrayFunction(0, log10Likelihoods.getColumnDimension(),
-                read -> MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods.getColumn(read)));
+        final RealMatrix logLikelihoods = getAsRealMatrix(logLikelihoodMatrix);
+        return MathUtils.sumArrayFunction(0, logLikelihoods.getColumnDimension(),
+                read -> NaturalLogUtils.normalizeFromLogToLinearSpace(logLikelihoods.getColumn(read)));
     }
 
     /**
-     * Calculate the log10 likelihoods of the ref/alt het genotype for each alt allele, then subtracts
-     * these from the hom ref log10 likelihood to get the log-odds.
+     * Calculate the log likelihoods of the ref/alt het genotype for each alt allele, then subtracts
+     * these from the hom ref log likelihood to get the log-odds.
      *
-     * @param matrix a matrix of log10 likelihoods
+     * @param matrix a matrix of log likelihoods
      */
-    private PerAlleleCollection<Double> diploidAltLog10Odds(final LikelihoodMatrix<Allele> matrix) {
+    private PerAlleleCollection<Double> diploidAltLogOdds(final LikelihoodMatrix<Allele> matrix) {
         final int refIndex = getRefIndex(matrix);
         final int numReads = matrix.numberOfReads();
-        final double homRefLog10Likelihood = new IndexRange(0, numReads).sum(r -> matrix.get(refIndex,r));
+        final double homRefLogLikelihood = new IndexRange(0, numReads).sum(r -> matrix.get(refIndex,r));
 
         final PerAlleleCollection<Double> result = new PerAlleleCollection<>(PerAlleleCollection.Type.ALT_ONLY);
         // hom ref likelihood for the ref allele, het likelihood for alt alleles
         IntStream.range(0, matrix.numberOfAlleles()).filter(a -> a != refIndex)
                 .forEach( a -> {
-                    final double hetLog10Likelihood = new IndexRange(0, numReads)
-                            .sum(r -> MathUtils.log10SumLog10(matrix.get(refIndex, r), matrix.get(a,r)) + MathUtils.LOG10_ONE_HALF);
-                    result.setAlt(matrix.getAllele(a), homRefLog10Likelihood - hetLog10Likelihood);
+                    final double hetLogLikelihood = new IndexRange(0, numReads)
+                            .sum(r -> NaturalLogUtils.logSumExp(matrix.get(refIndex, r), matrix.get(a,r)) + NaturalLogUtils.LOG_ONE_HALF);
+                    result.setAlt(matrix.getAllele(a), homRefLogLikelihood - hetLogLikelihood);
                 });
         return result;
     }
@@ -331,14 +327,14 @@ public class SomaticGenotypingEngine {
         return hasNormal ? Optional.of(supplier.get()) : Optional.empty();
     }
 
-    private static Map<String, Object> getNegativeLog10PopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
-                                                                             final List<Allele> altAlleles,
-                                                                             final double afOfAllelesNotInGermlineResource) {
+    private static Map<String, Object> getNegativeLogPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
+                                                                            final List<Allele> altAlleles,
+                                                                            final double afOfAllelesNotInGermlineResource) {
         final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
                 : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
         final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);
 
-        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
+        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_KEY, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
     }
 
     @VisibleForTesting

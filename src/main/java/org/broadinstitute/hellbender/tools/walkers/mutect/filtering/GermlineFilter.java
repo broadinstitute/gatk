@@ -4,10 +4,12 @@ import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFractionRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
@@ -16,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class GermlineFilter extends Mutect2VariantFilter {
     private static final double MIN_ALLELE_FRACTION_FOR_GERMLINE_HOM_ALT = 0.9;
-    // numerical precision safeguard in case of bad JVMs inverting the negative log-10 population allele frequency
+    // numerical precision safeguard in case of bad JVMs inverting the negative log population allele frequency
     private static final double EPSILON = 1.0e-10;
 
     private final Map<String, OverlapDetector<MinorAlleleFractionRecord>> tumorSegments;
@@ -32,12 +34,12 @@ public class GermlineFilter extends Mutect2VariantFilter {
 
     @Override
     public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        final double[] somaticLog10Odds = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
-        final int maxLodIndex = MathUtils.maxElementIndex(somaticLog10Odds);
+        final double[] somaticLogOdds = Mutect2FilteringEngine.getTumorLogOdds(vc);
+        final int maxLodIndex = MathUtils.maxElementIndex(somaticLogOdds);
 
-        final Optional<double[]> normalLog10Odds = vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY) ?
-                Optional.of(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOD_KEY)) : Optional.empty();
-        final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+        final Optional<double[]> normalLogOdds = vc.hasAttribute(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY) ?
+                Optional.of(MathUtils.applyToArrayInPlace(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY), MathUtils::log10ToLog)) : Optional.empty();
+        final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY);
         final double populationAF = Math.pow(10, -negativeLog10AlleleFrequencies[maxLodIndex]);
 
         if (populationAF < EPSILON) {
@@ -59,53 +61,52 @@ public class GermlineFilter extends Mutect2VariantFilter {
         final double maf = computeMinorAlleleFraction(vc, filteringEngine, alleleCounts);
 
         // sum of alt minor and alt major possibilities
-        final double log10GermlineLikelihood = MathUtils.LOG10_ONE_HALF + MathUtils.log10SumLog10(
-                MathUtils.log10BinomialProbability(totalCount, altCount, Math.log10(maf)),
-                MathUtils.log10BinomialProbability(totalCount, altCount, Math.log10(1 - maf)));
+        final double logGermlineLikelihood = NaturalLogUtils.LOG_ONE_HALF + NaturalLogUtils.logSumExp(
+                new BinomialDistribution(null, totalCount, maf).logProbability(altCount),
+                new BinomialDistribution(null, totalCount, 1 - maf).logProbability(altCount));
 
-        final double log10SomaticLikelihood = filteringEngine.getSomaticClusteringModel().log10LikelihoodGivenSomatic(totalCount, altCount);
+        final double logSomaticLikelihood = filteringEngine.getSomaticClusteringModel().logLikelihoodGivenSomatic(totalCount, altCount);
         // this is \chi in the docs, the correction factor for tumor likelihoods if forced to have maf or 1 - maf
         // as the allele fraction
-        final double log10OddsOfGermlineHetVsSomatic = log10GermlineLikelihood - log10SomaticLikelihood;
+        final double logOddsOfGermlineHetVsSomatic = logGermlineLikelihood - logSomaticLikelihood;
 
         // see docs -- basically the tumor likelihood for a germline hom alt is approximately equal to the somatic likelihood
         // as long as the allele fraction is high
-        final double log10OddsOfGermlineHomAltVsSomatic = altAlleleFraction < MIN_ALLELE_FRACTION_FOR_GERMLINE_HOM_ALT ? Double.NEGATIVE_INFINITY : 0;
+        final double logOddsOfGermlineHomAltVsSomatic = altAlleleFraction < MIN_ALLELE_FRACTION_FOR_GERMLINE_HOM_ALT ? Double.NEGATIVE_INFINITY : 0;
 
-        final double normalLod = normalLog10Odds.isPresent() ? normalLog10Odds.get()[maxLodIndex] : 0;
+        final double normalLod = normalLogOdds.isPresent() ? normalLogOdds.get()[maxLodIndex] : 0;
         // note the minus sign required because Mutect has the convention that this is log odds of allele *NOT* being in the normal
-        return germlineProbability(-normalLod, log10OddsOfGermlineHetVsSomatic, log10OddsOfGermlineHomAltVsSomatic,
-                populationAF, filteringEngine.getLog10PriorOfSomaticVariant(vc, maxLodIndex));
+        return germlineProbability(-normalLod, logOddsOfGermlineHetVsSomatic, logOddsOfGermlineHomAltVsSomatic,
+                populationAF, filteringEngine.getLogSomaticPrior(vc, maxLodIndex));
     }
 
     /**
      *
-     * @param normalLog10Odds log10 odds of allele in normal as a diploid het or hom var versus not being present in normal.
-     * @param log10OddsOfGermlineHetVsSomatic  log10 odds of allele being present in tumor as a germline het versus
+     * @param normalLogOdds log odds of allele in normal as a diploid het or hom var versus not being present in normal.
+     * @param logOddsOfGermlineHetVsSomatic  log odds of allele being present in tumor as a germline het versus
      *                                         being present as a somatic variant
      * @param populationAF      frequency of this allele in the population
-     * @param log10PriorSomatic log10 prior probability for this allele to be a somatic mutation
+     * @param logPriorSomatic log prior probability for this allele to be a somatic mutation
      * @return                  probability that this allele exists in the normal sample
      */
-    public static double germlineProbability(final double normalLog10Odds,
-                                             final double log10OddsOfGermlineHetVsSomatic,
-                                             final double log10OddsOfGermlineHomAltVsSomatic,
+    public static double germlineProbability(final double normalLogOdds,
+                                             final double logOddsOfGermlineHetVsSomatic,
+                                             final double logOddsOfGermlineHomAltVsSomatic,
                                              final double populationAF,
-                                             final double log10PriorSomatic) {
+                                             final double logPriorSomatic) {
 
-        final double log10PriorNotSomatic = MathUtils.log10OneMinusPow10(log10PriorSomatic);
-
-        final double log10PriorGermlineHet = Math.log10(2*populationAF*(1-populationAF));
-        final double log10PriorGermlineHomAlt = Math.log10( MathUtils.square(populationAF));
-        final double log10PriorNotGermline = Math.log10(MathUtils.square(1 - populationAF));
+        final double logPriorNotSomatic = NaturalLogUtils.log1mexp(logPriorSomatic);
+        final double logPriorGermlineHet = Math.log(2*populationAF*(1-populationAF));
+        final double logPriorGermlineHomAlt = Math.log( MathUtils.square(populationAF));
+        final double logPriorNotGermline = Math.log(MathUtils.square(1 - populationAF));
 
         // the following are unnormalized probabilities
-        final double log10ProbGermlineHet = log10PriorGermlineHet + log10OddsOfGermlineHetVsSomatic + normalLog10Odds + log10PriorNotSomatic;
-        final double log10ProbGermlineHomAlt = log10PriorGermlineHomAlt + log10OddsOfGermlineHomAltVsSomatic + normalLog10Odds + log10PriorNotSomatic;
-        final double log10ProbGermline = MathUtils.log10SumLog10(log10ProbGermlineHet, log10ProbGermlineHomAlt);
-        final double log10ProbSomatic = log10PriorNotGermline + log10PriorSomatic;
+        final double logProbGermlineHet = logPriorGermlineHet + logOddsOfGermlineHetVsSomatic + normalLogOdds + logPriorNotSomatic;
+        final double logProbGermlineHomAlt = logPriorGermlineHomAlt + logOddsOfGermlineHomAltVsSomatic + normalLogOdds + logPriorNotSomatic;
+        final double logProbGermline = NaturalLogUtils.logSumExp(logProbGermlineHet, logProbGermlineHomAlt);
+        final double logProbSomatic = logPriorNotGermline + logPriorSomatic;
 
-        return MathUtils.normalizeLog10(new double[] {log10ProbGermline, log10ProbSomatic}, false, true)[0];
+        return NaturalLogUtils.normalizeLog(new double[] {logProbGermline, logProbSomatic}, false, true)[0];
     }
 
     private double computeMinorAlleleFraction(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, final int[] alleleCounts) {
@@ -133,12 +134,12 @@ public class GermlineFilter extends Mutect2VariantFilter {
 
     @Override
     public Optional<String> phredScaledPosteriorAnnotationName() {
-        return Optional.of(GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE);
+        return Optional.of(GATKVCFConstants.GERMLINE_QUAL_KEY);
     }
 
     @Override
     protected List<String> requiredAnnotations() {
-        return Arrays.asList(GATKVCFConstants.TUMOR_LOD_KEY, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+        return Arrays.asList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, GATKVCFConstants.POPULATION_AF_KEY);
     }
 
 }
