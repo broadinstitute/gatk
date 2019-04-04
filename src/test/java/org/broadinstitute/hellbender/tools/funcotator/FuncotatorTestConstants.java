@@ -127,9 +127,10 @@ public class FuncotatorTestConstants {
     public static final String VARIANT_FILE_HG19_CHR3  = FUNCOTATOR_TEST_DIR + "snpTest_chr3_hg19.vcf";
     public static final String VARIANT_FILE_HG19_CHR19 = FUNCOTATOR_TEST_DIR + "snpTest_chr19_hg19.vcf";
 
+    public static final String BAD_DATA_ONLY_ONE_AD_FIELD_VALUE = FUNCOTATOR_TEST_DIR + "badDataOneAlleleDepthValue_hg38.vcf";
+
     // ----------------------------------------------------------------------
     // Integration Test Variables:
-
     public static final String MUC16_MNP_FILE_BASE_NAME    = FUNCOTATOR_TEST_DIR + "MUC16_MNP";
     public static final String PIK3CA_SNP_FILE_BASE_NAME   = FUNCOTATOR_TEST_DIR + "PIK3CA_SNPS";
     public static final String PIK3CA_INDEL_FILE_BASE_NAME = FUNCOTATOR_TEST_DIR + "PIK3CA_INDELS";

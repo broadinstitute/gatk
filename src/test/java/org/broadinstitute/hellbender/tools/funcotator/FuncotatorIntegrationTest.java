@@ -41,8 +41,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription;
-
 /**
  * An integration test for the {@link Funcotator} tool.
  * Created by jonn on 8/29/17.
@@ -1120,7 +1118,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // ===========================================
 
         // Get the annotation fields:
-        final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+        final String[] funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
         final Map<String, Pair<Pair<String, String>, Pair<String, String>>> unequalFieldValuesMap = new HashMap<>();
 
@@ -1260,7 +1258,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(variantContexts.size() > 0);
         final VCFHeader vcfHeader = vcfInfo.getLeft();
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
-        final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+        final String[] funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
         // The first variant context should have clinvar annotations, since it hit on the alt allele.  None of the rest.
         // This test assumes that each test variant context has only one alt allele.
@@ -1304,7 +1302,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(variantContexts.size() > 0);
         final VCFHeader vcfHeader = vcfInfo.getLeft();
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
-        final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+        final String[] funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
         final int NUM_VARIANTS = 10;
         Assert.assertEquals(variantContexts.size(), NUM_VARIANTS);
@@ -1454,7 +1452,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final VCFInfoHeaderLine funcotationHeaderLine = vcf.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
 
         // Make sure that none of the input fields appear in the funcotation header.
-        final Set<String> funcotationKeys = new HashSet<>(Arrays.asList(extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription())));
+        final Set<String> funcotationKeys = new HashSet<>(Arrays.asList(FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription())));
         Assert.assertEquals(Sets.intersection(funcotationKeys, PIK3CA_VCF_HG19_INPUT_FIELDS).size(), 0);
     }
 
@@ -1731,6 +1729,23 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(funcotations.get(0).getField("HGNC_Locus_Group"), "protein-coding_%20_gene");
         Assert.assertEquals(funcotations.get(0).getField("HGNC_Previous_Name"), "\"pleckstrin_%20_homology_%20_domain_%20_containing_%2C__%20_family_%20_N_%20_member_%20_1\"");
         Assert.assertEquals(funcotations.get(0).getField("HGNC_Synonyms"), "DKFZP434H2010");
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testUserExceptionOnAlleleDepthFieldSizeOneForMafOutput() {
+        final File outputFile = createTempFile(tmpOutDir + File.separator + SYMBOLLIC_ALLELE_FUNCOTATED_INPUT_VCF + ".funcotator", ".vcf");
+
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                FuncotatorTestConstants.BAD_DATA_ONLY_ONE_AD_FIELD_VALUE,
+                outputFile,
+                hg38Reference,
+                FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                FuncotatorArgumentDefinitions.OutputFormatType.MAF,
+                true);
+
+        // Run the tool with our args:
+        runCommandLine(arguments);
     }
 
     @Test
