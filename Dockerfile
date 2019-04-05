@@ -25,7 +25,7 @@ WORKDIR /gatk
 
 # Create a simple unit test runner
 ENV CI true
-RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
+RUN echo "conda activate gatk" > /root/run_unit_tests.sh && \
     echo "export GATK_DOCKER_CONTAINER=true" >> /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
@@ -47,8 +47,8 @@ RUN cp -r install_R_packages.R /gatk
 # Start GATK Python environment
 
 ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.continuum.io/miniconda/Miniconda3-4.3.30-Linux-x86_64.sh
-ENV CONDA_MD5 = "0b80a152332a4ce5250f3c09589c7a81"
+ENV CONDA_URL https://repo.continuum.io/miniconda/Miniconda3-4.5.12-Linux-x86_64.sh
+ENV CONDA_MD5 = "56c90370226fd410c9b0086bd693d9c0"
 ENV CONDA_PATH /opt/miniconda
 RUN mkdir $DOWNLOAD_DIR && \
     wget -nv -O $DOWNLOAD_DIR/miniconda.sh $CONDA_URL && \
@@ -58,7 +58,7 @@ RUN mkdir $DOWNLOAD_DIR && \
 WORKDIR /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
-    echo "source activate gatk" >> /gatk/gatkenv.rc && \
+    echo "conda activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -y -all && \
     rm -rf /root/.cache/pip

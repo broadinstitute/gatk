@@ -73,8 +73,8 @@ releases of the toolkit.
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 * Python Dependencies:<a name="python"></a>
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      Python environment and dependencies required by GATK tools that have a Python dependency. The ```gatk``` environment, 
-      requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
+      Python environment and dependencies required by GATK tools that have a Python dependency. The ```gatk``` environment 
+      requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariants). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
     * To establish the  environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
@@ -87,7 +87,7 @@ releases of the toolkit.
               the local  ```gatk``` conda environment.
         * To "activate" the conda environment (the conda environment must be activated within the same shell from which
           GATK is run):
-             * Execute the shell command ```source activate gatk``` to activate the ```gatk``` environment.
+             * Execute the shell command ```conda activate gatk``` to activate the ```gatk``` environment.
         * See the [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
           additional information about using and managing Conda environments.
 
