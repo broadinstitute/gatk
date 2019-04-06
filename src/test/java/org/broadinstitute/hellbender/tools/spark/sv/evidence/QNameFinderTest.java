@@ -59,4 +59,36 @@ public class QNameFinderTest extends GATKBaseTest {
 
     }
 
+    @Test
+    public void testReadWithNegativeUnclippedStart() throws Exception {
+        final StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection params =
+                new StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection();
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(3, 1, 10000000, 1);
+        final Set<Integer> crossContigIgnoreSet = new HashSet<>();
+        final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, LIBRARY_STATISTICS, null, 2L, 2L, 1);
+        final ArrayList<SVInterval> intervals = new ArrayList<>(2);
+        SVInterval interval1 = new SVInterval(0, 25, 125);
+        intervals.add(interval1);
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                ArtificialReadUtils.createRandomReadBases(151, false),
+                ArtificialReadUtils.createRandomReadQuals(151),
+                "50S101M");
+        read1.setIsReverseStrand(true);
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "read2", 0, 130,
+                ArtificialReadUtils.createRandomReadBases(151, false),
+                ArtificialReadUtils.createRandomReadQuals(151),
+                "40S111M");
+
+        final SVIntervalTree<SVInterval> highDepthIntervals = new SVIntervalTree<>();
+
+        final QNameFinder qNameFinder = new QNameFinder(readMetadata, intervals, new SVReadFilter(params), highDepthIntervals);
+
+        Iterator<QNameAndInterval> read1Result = qNameFinder.apply(read1);
+        Assert.assertTrue( read1Result.hasNext());
+
+        Iterator<QNameAndInterval> read2Result = qNameFinder.apply(read2);
+        Assert.assertFalse( read2Result.hasNext());
+
+    }
+
 }
