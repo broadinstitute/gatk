@@ -15,6 +15,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -61,7 +62,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
     @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "Temp directory to use.")
-    public String tmpDir;
+    public GATKPathSpecifier tmpDir;
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -144,9 +145,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
-        // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
-        if (tmpDir == null || tmpDir.isEmpty()) {
-            tmpDir = IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(System.getProperty("java.io.tmpdir")));
+        if (tmpDir == null) {
+            tmpDir = new GATKPathSpecifier(System.getProperty("java.io.tmpdir"));
         }
 
         // Build the default headers
@@ -157,7 +157,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
         // set the temp directory as a java property, checking for existence and read/write access
-        final Path p = IOUtils.getPath(tmpDir);
+        final Path p = tmpDir.toPath();
         try {
             p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
             System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
