@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Chimera",
@@ -35,6 +36,8 @@ public class CollectChimeraMap extends ReadWalker {
 
     SAMSequenceDictionary dictionary;
 
+    List<SAMSequenceRecord> contigs;
+
     final Map<SAMSequenceRecord, Integer> contigToIndexMap = new HashMap<>();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -46,9 +49,9 @@ public class CollectChimeraMap extends ReadWalker {
     public void onTraversalStart(){
         dictionary = getBestAvailableSequenceDictionary();
         final AtomicInteger index = new AtomicInteger();
-        dictionary.getSequences().stream().filter(s -> isRegularContig(s))
-                .forEach(s -> contigToIndexMap.put(s, index.getAndIncrement()));
-        chimeraMap = new Array2DRowRealMatrix(contigToIndexMap.size(), contigToIndexMap.size());
+        contigs = dictionary.getSequences().stream().filter(s -> isRegularContig(s)).collect(Collectors.toList());
+        contigs.forEach(s -> contigToIndexMap.put(s, index.getAndIncrement()));
+        chimeraMap = new Array2DRowRealMatrix(contigs.size(), contigs.size());
     }
 
     @Override
@@ -69,6 +72,7 @@ public class CollectChimeraMap extends ReadWalker {
     @Override
     public Object onTraversalSuccess(){
         try (PrintWriter writer = new PrintWriter(output.getAbsolutePath())){
+            writer.println(Arrays.toString(contigs.stream().map(s -> s.getSequenceName()).toArray()).replace("]", "").replace("[", ""));
             for (int i = 0; i < chimeraMap.getRowDimension(); i++){
                 writer.println(Arrays.toString(chimeraMap.getRow(i).clone()).replace("[","").replace("]", ""));
             }
