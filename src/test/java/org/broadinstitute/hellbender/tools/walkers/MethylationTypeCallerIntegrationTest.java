@@ -10,7 +10,6 @@ import java.io.File;
 
 public class MethylationTypeCallerIntegrationTest extends CommandLineProgramTest {
 
-    // Can be used with "./gradlew test -Dtest.single=MethylationTypeCallerUnitTest"
     public static final String TEST_FILES_INPUT_REFERENCE_GRCM38_DIR = largeFileTestDir + "GRCm38_primary_assembly_genome/";
 
     @Test(dataProvider="getMethylationTypeCallerTestInput")
@@ -30,14 +29,12 @@ public class MethylationTypeCallerIntegrationTest extends CommandLineProgramTest
 
         // Test for an exact match against past results
         IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
-
-        System.out.println(getToolTestDataDir());
     }
 
     @DataProvider
     public Object[][] getMethylationTypeCallerTestInput() {
         final String inputFileName = getToolTestDataDir() + "chr14_subset.methylC_seq.bam";
-        final String referenceFileName = TEST_FILES_INPUT_REFERENCE_GRCM38_DIR + "chr14.GRCm38.primary_assembly.genome.fa.gz";
+        final String referenceFileName = largeFileTestDir + "GRCm38_primary_assembly_genome/chr14.GRCm38.primary_assembly.genome.fa.gz";
         return new Object[][] {
                 {inputFileName, referenceFileName}
         };
