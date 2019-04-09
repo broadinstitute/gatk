@@ -23,8 +23,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 /**
  *
- * <p>Identifies methylated bases from bisulfite sequencing data. Given a bisulfite BAM
- * and a reference, it outputs methylation-site coverage to a specified output vcf file.</p>
+ * <p>Identifies methylated bases from bisulfite sequencing data. Given a bisulfite sequenced, methylation-aware
+ * aligned BAM and a reference, it outputs methylation-site coverage to a specified output vcf file.</p>
  *
  * <h>Usage example</h>
  * <pre>
@@ -37,8 +37,8 @@ import java.util.stream.Collectors;
  * @author Benjamin Carlin
  */
 @CommandLineProgramProperties(
-        summary = "Tool that prints methylation-based coverage from supplied bisulfite BAM to the specified output vcf file",
-        oneLineSummary = "Identify methylated bases from bisulfite BAMs",
+        summary = "Tool that prints methylation-based coverage from supplied bisulfite sequenced, methylation-aware aligned BAM to the specified output vcf file",
+        oneLineSummary = "Identify methylated bases from bisulfite sequenced, methylation-aware BAMs",
         programGroup = MethylationProgramGroup.class
 )
 @DocumentedFeature
