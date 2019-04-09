@@ -9,9 +9,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public class MethylationTypeCallerIntegrationTest extends CommandLineProgramTest {
-
-    public static final String TEST_FILES_INPUT_REFERENCE_GRCM38_DIR = largeFileTestDir + "GRCm38_primary_assembly_genome/";
-
+    
     @Test(dataProvider="getMethylationTypeCallerTestInput")
     public void testBasicMethylationCoverage(final String inputFileName, final String referenceFileName) throws Exception {
 
