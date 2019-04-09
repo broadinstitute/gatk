@@ -1,0 +1,17 @@
+{
+  "GenotypeConcordance.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+
+  "GenotypeConcordance.truth_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf",
+  "GenotypeConcordance.truth_index": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf.idx",
+  "GenotypeConcordance.truth_sample": "NA12878",
+
+  "GenotypeConcordance.call_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.copy.vcf",
+  "GenotypeConcordance.call_index": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.copy.vcf.idx",
+  "GenotypeConcordance.call_sample": "NA12878",
+
+  "GenotypeConcordance.output_base_name": "sanity_check",
+
+  "GenotypeConcordance.disk_space_gb": "512",
+  "GenotypeConcordance.mem_gb": "16",
+  "GenotypeConcordance.boot_disk_size_gb": "64"
+}

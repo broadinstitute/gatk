@@ -1,0 +1,4 @@
+{
+  "CompareTiming.call_timing_file": "gs://haplotypecallerspark-evaluation/groundTruth/NexPond-359781.HC.g.vcf.timingInformation.txt",
+  "CompareTiming.truth_timing_file": "gs://haplotypecallerspark-evaluation/groundTruth/NexPond-359781.HC.vcf.timingInformation.txt",
+}

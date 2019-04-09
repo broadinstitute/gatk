@@ -1,0 +1,71 @@
+################################################################################
+ _____ _ _        ____                                                
+|  ___(_) | ___  |  _ \ _ __ _____   _____ _ __   __ _ _ __   ___ ___ 
+| |_  | | |/ _ \ | |_) | '__/ _ \ \ / / _ \ '_ \ / _` | '_ \ / __/ _ \
+|  _| | | |  __/ |  __/| | | (_) \ V /  __/ | | | (_| | | | | (_|  __/
+|_|   |_|_|\___| |_|   |_|  \___/ \_/ \___|_| |_|\__,_|_| |_|\___\___|
+                                                                      
+################################################################################
+
+All test files for the Broad DSP Regression Test Suite have their origins on the
+Broad internal file system.
+
+The following table details the original path to all files included in the test
+suite and the MD5 checksum for the files.
+
+Any future files added to the test suite should be added to this document and 
+this message should be updated to reflect any changes in file provenance.
+
+################################################################################
+
+Variant Context Files
+
+All VCFs were produced by HaplotypeCaller 3 
+(version: nightly-2015-07-31-g3c929b0)
+
+################################################################################
+
++----------------------------------+---------------------------------------------------------------------------+
+| MD5Sum                           | File Path                                                                 |
++----------------------------------+---------------------------------------------------------------------------+
+| 7bb97f2a2c6ac23a52ab71d0175d897e | /seq/picard_aggregation/G96830/NA12878/v1/NA12878.bam                     |
+| 9cb49ac1335443baa381e777dd9f485a | /seq/picard_aggregation/G96830/NA12878/v1/NA12878.bai                     |
+| ee32e9a04311032539e16c3ad41a4ea1 | /seq/dax/G96830/WGS/v1/G96830.vcf.gz                                      |
+| f3bb1d7aa99b9dfa7d82cfd7c3cf39be | /seq/dax/G96830/WGS/v1/G96830.vcf.gz.tbi                                  |
+| dcec297c7bcd6f3f84566960a27c8b39 | /seq/dax/D5227.NexPond-359781/Exome/v1/D5227.NexPond-359781.vcf.gz        |
+| d78c8b92abb674356f24e20949dfeba8 | /seq/dax/D5227.NexPond-359781/Exome/v1/D5227.NexPond-359781.vcf.gz.tbi    |
+| 2736eb455d31ede2591aae8216fb6eda | /seq/picard_aggregation/D5227/NexPond-359781/v1/NexPond-359781.bam        |
+| 66fb4afaeb9bcf1fb6ba0c47e302925b | /seq/picard_aggregation/D5227/NexPond-359781/v1/NexPond-359781.bai        |
+| 880223730fa30dcb60801440bb6a226a | /seq/dax/D5227.NexPond-445394/Exome/v1/D5227.NexPond-445394.vcf.gz        |
+| 0440125418ac9e3f601b65ad674f0727 | /seq/dax/D5227.NexPond-445394/Exome/v1/D5227.NexPond-445394.vcf.gz.tbi    |
+| 583aa5f341992912221ed3091ff1daf6 | /seq/picard_aggregation/D5227/NexPond-445394/v1/NexPond-445394.bam        |
+| e4e3336d659b215a91cb81a1a18f4bf9 | /seq/picard_aggregation/D5227/NexPond-445394/v1/NexPond-445394.bai        |
+| d3e640c0c89a34ac7c984ea1772a5b9d | /seq/dax/D5227.NexPond-359877/Exome/v1/D5227.NexPond-359877.vcf.gz        |
+| 40dc97fe61be9d63b6b7cd9634e451bf | /seq/dax/D5227.NexPond-359877/Exome/v1/D5227.NexPond-359877.vcf.gz.tbi    |
+| 19109d326717b2f16ba4f426483b9a05 | /seq/picard_aggregation/D5227/NexPond-359877/v1/NexPond-359877.bai        |
+| c9308aed697ef83cb8bfae623cf129f4 | /seq/picard_aggregation/D5227/NexPond-359877/v1/NexPond-359877.bam        |
+| 9c048ce896f1d80923cc1513ce29b137 | /seq/dax/D5227.NexPond-360361/Exome/v1/D5227.NexPond-360361.vcf.gz        |
+| 5e2190bf1c9bdbf8ffafcf31da99ea20 | /seq/dax/D5227.NexPond-360361/Exome/v1/D5227.NexPond-360361.vcf.gz.tbi    |
+| 0ac2525ec8f721e41a07517531b43162 | /seq/picard_aggregation/D5227/NexPond-360361/v1/NexPond-360361.bai        |
+| 34e3ac44bbf74b4012b5c9dc6ac1870d | /seq/picard_aggregation/D5227/NexPond-360361/v1/NexPond-360361.bam        |
+| 5882c66818f7d5fe09104c485621775b | /seq/dax/D5227.NexPond-360457/Exome/v1/D5227.NexPond-360457.vcf.gz        |
+| 221fdceeebfa5edaefac873d8cc1905c | /seq/dax/D5227.NexPond-360457/Exome/v1/D5227.NexPond-360457.vcf.gz.tbi    |
+| 36e3ff23b02f2e308ebf90dcdeb902d9 | /seq/picard_aggregation/D5227/NexPond-360457/v1/NexPond-360457.bai        |
+| 3646f9c52ab317ee2bc909e28f273f9b | /seq/picard_aggregation/D5227/NexPond-360457/v1/NexPond-360457.bam        |
+| 7e5f03272f76f9b18f64b6609506bc76 | /seq/dax/D5227.NexPond-361337/Exome/v1/D5227.NexPond-361337.vcf.gz        |
+| 395408a6c770d20255cb5b11d4ab35e7 | /seq/dax/D5227.NexPond-361337/Exome/v1/D5227.NexPond-361337.vcf.gz.tbi    |
+| 5d8d45855f73b8d066706fa1f211b2b6 | /seq/picard_aggregation/D5227/NexPond-361337/v1/NexPond-361337.bai        |
+| 077d370374b2821defc1fb5d3f85966d | /seq/picard_aggregation/D5227/NexPond-361337/v1/NexPond-361337.bam        |
+| 658583c40648a89a527fe161f5341e7b | /seq/dax/D5227.NexPond-361433/Exome/v1/D5227.NexPond-361433.vcf.gz        |
+| ec7a13fea727be1636d38e1af8149d94 | /seq/dax/D5227.NexPond-361433/Exome/v1/D5227.NexPond-361433.vcf.gz.tbi    |
+| 20f2438239dffa9673d35dff58b1381d | /seq/picard_aggregation/D5227/NexPond-361433/v1/NexPond-361433.bai        |
+| cc022a43a5454ab956a65a164bc047e4 | /seq/picard_aggregation/D5227/NexPond-361433/v1/NexPond-361433.bam        |
+| 8f0afe2ec90d038271e41d543b34ee7a | /seq/dax/D5227.NexPond-362428/Exome/v1/D5227.NexPond-362428.vcf.gz        |
+| 40649c2f4baba87710901f1f112fc985 | /seq/dax/D5227.NexPond-362428/Exome/v1/D5227.NexPond-362428.vcf.gz.tbi    |
+| 53e700aafd1bc7bddd9a7bc4d4f937e7 | /seq/picard_aggregation/D5227/NexPond-362428/v1/NexPond-362428.bai        |
+| 5a6efabedc3a808ef487429031c8786c | /seq/picard_aggregation/D5227/NexPond-362428/v1/NexPond-362428.bam        |
+| c93f8294c25d1965a810a16bd500be95 | /seq/dax/D5227.NexPond-363907/Exome/v1/D5227.NexPond-363907.vcf.gz        |
+| 7edba1f10be111e128ac726c04dd2ff7 | /seq/dax/D5227.NexPond-363907/Exome/v1/D5227.NexPond-363907.vcf.gz.tbi    |
+| 70578295ea56edd1ce2a62ba41959e6d | /seq/picard_aggregation/D5227/NexPond-363907/v1/NexPond-363907.bai        |
+| bb4c81559e3002fcdd09ac48325aecbb | /seq/picard_aggregation/D5227/NexPond-363907/v1/NexPond-363907.bam        |
++----------------------------------+---------------------------------------------------------------------------+

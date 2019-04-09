@@ -1,0 +1,14 @@
+{
+  "ToolComparisonWdl.gatk_docker": "broadinstitute/gatk:4.0.0.0",
+  "ToolComparisonWdl.analysis_docker": "broadinstitute/gatk-nightly:2019-02-26-4.1.0.0-31-g23bd0a2f8-SNAPSHOT",
+
+  "ToolComparisonWdl.input_bams": [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam", "NexPond-412726.chr15.bam"],
+
+  "ToolComparisonWdl.contamination": 0.0,
+  "ToolComparisonWdl.interval_padding": 0,
+  "ToolComparisonWdl.gvcf_mode": "false",
+
+  "ToolComparisonWdl.disk_space_gb": 512,
+  "ToolComparisonWdl.boot_disk_size_gb": 64,
+  "ToolComparisonWdl.mem_gb": 32
+}

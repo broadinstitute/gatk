@@ -1,0 +1,20 @@
+{
+  "HaplotypeCaller.gatk_docker": "broadinstitute/gatk-nightly:2018-12-07-4.0.11.0-88-g2ae01efda-SNAPSHOT",
+
+  "HaplotypeCaller.input_bam": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-412726.chr15.bam",
+  "HaplotypeCaller.input_bam_index": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-412726.chr15.bai",
+  "HaplotypeCaller.interval_list": "gs://haplotypecallerspark-evaluation/inputData/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list",
+  "HaplotypeCaller.out_vcf_name": "NexPond-412726.chr15.vcf",
+
+  "HaplotypeCaller.ref_fasta": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta",
+  "HaplotypeCaller.ref_fasta_index": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai",
+  "HaplotypeCaller.ref_fasta_dict": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict",
+
+  "HaplotypeCaller.gvcf_mode": "false",
+
+  "HaplotypeCaller.disk_space_gb": "512",
+  "HaplotypeCaller.boot_disk_size_gb": "64",
+  "HaplotypeCaller.mem_gb": "32"
+}
+
+
