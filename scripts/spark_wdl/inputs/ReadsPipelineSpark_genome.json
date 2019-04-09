@@ -1,0 +1,13 @@
+{
+  "ReadsPipelineSparkWorkflow.ref_fasta": "gs://broad-spark-eval-test-data/genome/human_g1k_v37.fasta.gz",
+  "ReadsPipelineSparkWorkflow.input_bam": "gs://broad-spark-eval-test-data/genome/WGS-G94982-NA12878-no-NC_007605.bam",
+  "ReadsPipelineSparkWorkflow.output_vcf": "gs://broad-spark-eval-test-data/genome/out/WGS-G94982-NA12878.vcf",
+  "ReadsPipelineSparkWorkflow.known_sites": "gs://broad-spark-eval-test-data/genome/dbsnp_138.b37.vcf.gz",
+  "ReadsPipelineSparkWorkflow.gatk": "../../gatk",
+  "ReadsPipelineSparkWorkflow.gatk_spark_jar": "../../build/libs/gatk-spark.jar",
+  "ReadsPipelineSparkWorkflow.gcloud_project": "broad-gatk-collab",
+  "ReadsPipelineSparkWorkflow.num_workers": "20",
+  "ReadsPipelineSparkWorkflow.executor_cores": "7",
+  "ReadsPipelineSparkWorkflow.executor_memory": "20g",
+  "ReadsPipelineSparkWorkflow.driver_memory": "8g"
+}
