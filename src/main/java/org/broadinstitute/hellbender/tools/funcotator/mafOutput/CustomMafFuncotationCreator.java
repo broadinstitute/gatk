@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
@@ -73,6 +74,16 @@ public class CustomMafFuncotationCreator {
             final Genotype tumorGenotype = variant.getGenotype(tumorSampleName);
             final boolean hasTumorAD = (tumorGenotype != null) && (tumorGenotype.hasAD());
             final boolean hasTumorAF = (tumorGenotype != null) && (tumorGenotype.hasAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
+
+            // Just make a quick check that the tumor genotype has allelic depth for both a ref and alt
+            // This is REQUIRED, but can be missing and our validations seem to miss it:
+            if ( hasTumorAD && tumorGenotype.getAD().length < 2 ) {
+                throw new UserException("Allelic Depth (AD field) for Variant[" +
+                        variant.getContig() + ":" + variant.getStart() + "_" +
+                        variant.getReference().toString() + "->" + variant.getAlternateAlleles().get(0).toString() + ']' +
+                        " Does not contain both a REF and an ALT value (only one value is present)!");
+            }
+
             final String tAltCount = hasTumorAD ? Integer.toString(tumorGenotype.getAD()[i + 1]) : "";
             final String tRefCount = hasTumorAD ? Integer.toString(tumorGenotype.getAD()[0]) : "";
             final String tumorFAllAlleles = hasTumorAF ? tumorGenotype.getAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY).toString() : "";
