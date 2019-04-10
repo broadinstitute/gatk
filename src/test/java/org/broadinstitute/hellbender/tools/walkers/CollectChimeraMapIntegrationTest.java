@@ -18,7 +18,9 @@ public class CollectChimeraMapIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-R", sequenceRef,
                 "-I", file,
-                "-O", "counts.tsv"
+                "-O", "counts.tsv",
+                "-bam", "chimera.bam",
+                "-normalize"
         };
 
         runCommandLine(args);
