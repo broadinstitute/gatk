@@ -45,6 +45,11 @@ public class ExampleBigQueryReader extends GATKTool {
      */
     public static final String NUM_RECORDS_TO_RETRIEVE_ARG_LONG_NAME = "num-records";
 
+    public static final String DEFAULT_PROJECT_ID          = "bigquery-public-data";
+    public static final String DEFAULT_FQ_TABLE_ID         = "bigquery-public-data:noaa_lightning.lightning_1987";
+    public static final String DEFAULT_BUCKET              = "bigquery-public-data";
+    public static final int    DEFAULT_RECORDS_TO_RETRIEVE = 10;
+
     //==================================================================================================================
     // Private Static Members:
 
@@ -57,23 +62,23 @@ public class ExampleBigQueryReader extends GATKTool {
 
     @Argument(
             fullName = PROJECT_ID_ARG_LONG_NAME,
-            doc = "The project ID of the BigQuery instance")
-    private String projectId;
+            doc = "The project ID of the BigQuery instance.  Defaults to " + DEFAULT_PROJECT_ID)
+    private String projectId = DEFAULT_PROJECT_ID;
 
     @Argument(
             fullName = FQ_TABLE_ID_ARG_LONG_NAME,
-            doc = "The fully-qualified table ID of the table containing data from which to query in the BigQuery instance")
-    private String fqTableId;
+            doc = "The fully-qualified table ID of the table containing data from which to query in the BigQuery instance.  Defaults to " + DEFAULT_FQ_TABLE_ID)
+    private String fqTableId = DEFAULT_FQ_TABLE_ID;
 
     @Argument(
             fullName = BUCKET_ARG_LONG_NAME,
-            doc = "The bucket containing the BigQuery instance")
-    private String bucket;
+            doc = "The bucket containing the BigQuery instance.  Defaults to " + DEFAULT_BUCKET)
+    private String bucket = DEFAULT_BUCKET;
 
     @Argument(
             fullName = NUM_RECORDS_TO_RETRIEVE_ARG_LONG_NAME,
-            doc = "The number of records to retrieve from the BigQuery table")
-    private String numRecordsToRetrieve;
+            doc = "The number of records to retrieve from the BigQuery table.  Defaults to " + DEFAULT_RECORDS_TO_RETRIEVE)
+    private int numRecordsToRetrieve = DEFAULT_RECORDS_TO_RETRIEVE;
 
 
     //==================================================================================================================
@@ -88,6 +93,9 @@ public class ExampleBigQueryReader extends GATKTool {
         try {
             logger.debug("About to create client service for Big Query table.");
             final Bigquery bigQuery = createAuthorizedClient();
+
+            // Print out available datasets in the "publicdata" project to the console
+            listDatasets(bigQuery, "publicdata");
 
             // Start a Query Job
             final String querySql = "SELECT * FROM " + fqTableId + " LIMIT " + numRecordsToRetrieve;
