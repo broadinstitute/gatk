@@ -5,7 +5,10 @@ import org.apache.commons.lang.mutable.MutableDouble;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.optim.univariate.UnivariatePointValuePair;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.util.*;
@@ -27,8 +30,13 @@ import java.util.stream.IntStream;
  * distinguishing correctly is not trivial.
  */
 public class ContaminationModel {
-    public static final double INITIAL_MAF_THRESHOLD = 0.45;
-    public static final double MAF_STEP_SIZE = 0.02;
+    public static final double INITIAL_MAF_THRESHOLD = 0.40;
+    public static final double MAF_TO_SWITCH_TO_HOM_REF = 0.25;
+    public static final double MAF_TO_SWITCH_TO_UNSCRUPULOUS_HOM_REF = 0.20;
+    public static final double UNSCRUPULOUS_HOM_REF_ALLELE_FRACTION = 0.15;
+    public static final double UNSCRUPULOUS_HOM_REF_FRACTION_TO_REMOVE_FOR_POSSIBLE_LOH = 0.1;
+    public static final double UNSCRUPULOUS_HOM_REF_PERCENTILE = 100 * ( 1 - UNSCRUPULOUS_HOM_REF_FRACTION_TO_REMOVE_FOR_POSSIBLE_LOH);
+    public static final double MAF_STEP_SIZE = 0.04;
     private final double contamination;
     private final double errorRate;
     private final List<Double> minorAlleleFractions;
@@ -82,27 +90,53 @@ public class ContaminationModel {
      * @return
      */
     public Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites) {
-        for (double minMaf = INITIAL_MAF_THRESHOLD; minMaf > 0; minMaf -= MAF_STEP_SIZE) {
-            final Pair<Double, Double> result = calculateContaminationFromHoms(tumorSites, minMaf);
+        for (double minMaf = INITIAL_MAF_THRESHOLD; minMaf >= 0; minMaf -= MAF_STEP_SIZE) {
+
+            final Pair<Double, Double> result;
+            if (minMaf > MAF_TO_SWITCH_TO_HOM_REF) {
+                result = calculateContamination(Strategy.HOM_ALT, tumorSites, minMaf);
+            } else if (minMaf > MAF_TO_SWITCH_TO_UNSCRUPULOUS_HOM_REF) {
+                result = calculateContamination(Strategy.HOM_REF, tumorSites, minMaf);
+            } else {
+                result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, minMaf);
+            }
             if (result.getRight() < result.getLeft() * MIN_RELATIVE_ERROR) {
                 return result;
             }
         }
-        return calculateContaminationFromHoms(tumorSites, 0);
+
+        return calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, 0);
     }
 
-    private Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites, final double minMaf) {
-        final Pair<Double, Double> homAltResult = calculateContamination(true, tumorSites, minMaf);
-        final Pair<Double, Double> homRefResult = calculateContamination(false, tumorSites, minMaf);
-
-        // if hom alt estimate has too much uncertainty, use hom ref estimate
-        final boolean useHomRef = homAltResult.getLeft().isNaN() || (homAltResult.getRight() > homAltResult.getLeft() / 2 && homAltResult.getRight() > homRefResult.getRight());
-        return useHomRef ? homRefResult : homAltResult;
+    /**
+     * Depending on how many sites we have found for use in our estimate, we are more or less strict as to which calculation
+     * to use.  In ideal cases (exomes and genomes) we have enough hom alt sites to base the calculation on ref contamination
+     * in hom alt sites.  If this fails -- that is, if the hom alt calculation has too much uncertainty -- we calculate based
+     * on the alt in hom ref signal, which is less reliable because it is more subject to error (or population-dependence) in
+     * the population allele frequencies.  Finally, we may resort to a hom ref calculation that uses a heuristic instead of
+     * principled genotyping based on the minor allele fraction segmentation.  This brings in additionally hom ref sites that
+     * fall outside the span of the het segmentation and ought to be necessary only for very small gene panels.
+     */
+    private enum Strategy {
+        HOM_ALT, HOM_REF, UNSCRUPULOUS_HOM_REF
     }
 
 
-    private Pair<Double, Double> calculateContamination(final boolean useHomAlt, final List<PileupSummary> tumorSites, final double minMaf) {
-        final List<PileupSummary> homs = subsetSites(tumorSites, useHomAlt ? homAlts(minMaf) : homRefs(minMaf));
+    private Pair<Double, Double> calculateContamination(final Strategy strategy, final List<PileupSummary> tumorSites, final double minMaf) {
+        final boolean useHomAlt = strategy == Strategy.HOM_ALT;
+        final List<PileupSummary> genotypingHoms;
+        if (strategy == Strategy.HOM_ALT) {
+            genotypingHoms = homAlts(minMaf);
+        } else if (strategy == Strategy.HOM_REF) {
+            genotypingHoms = homRefs(minMaf);
+        } else {
+            final List<PileupSummary> candidateHomRefs = tumorSites.stream()
+                    .filter(site -> site.getAltFraction() < UNSCRUPULOUS_HOM_REF_ALLELE_FRACTION)
+                    .collect(Collectors.toList());
+            final double threshold = new Percentile(UNSCRUPULOUS_HOM_REF_PERCENTILE).evaluate(candidateHomRefs.stream().mapToDouble(PileupSummary::getAltFraction).toArray());
+            genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() < threshold).collect(Collectors.toList());
+        }
+        final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
         final double tumorErrorRate = calculateErrorRate(tumorSites);
 
         // depth of ref in hom alt or alt in hom ref

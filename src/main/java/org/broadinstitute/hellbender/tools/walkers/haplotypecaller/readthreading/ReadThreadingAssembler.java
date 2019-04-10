@@ -153,7 +153,6 @@ public final class ReadThreadingAssembler {
                 assemblyResultByGraph.put(result.getGraph(),result);
                 nonRefGraphs.add(result.getGraph());
             }
-
         }
 
         findBestPaths(nonRefGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByGraph, resultSet, aligner);
