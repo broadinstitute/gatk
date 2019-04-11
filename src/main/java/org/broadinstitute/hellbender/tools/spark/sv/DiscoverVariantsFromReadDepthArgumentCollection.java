@@ -12,7 +12,7 @@ public class DiscoverVariantsFromReadDepthArgumentCollection implements Serializ
     public static final int DEFAULT_INSERT_SIZE = 350;
     public static final int DEFAULT_PLOIDY = 2;
     public static final int DEFAULT_MIN_GRAPH_EVIDENCE_READ_PAIRS = 2;
-    public static final double DEFAULT_GRAPH_PARTITION_RECIPROCAL_OVERLAP = 0.9;
+    public static final double DEFAULT_GRAPH_PARTITION_RECIPROCAL_OVERLAP = 0.01;
     public static final int DEFAULT_MAX_GRAPH_BRANCHES = 500;
     public static final double DEFAULT_MIN_EVENT_PROBABILITY = 0.95;
     public static final double DEFAULT_MAX_GRAPH_PATH_LENGTH_FACTOR = 10.0;

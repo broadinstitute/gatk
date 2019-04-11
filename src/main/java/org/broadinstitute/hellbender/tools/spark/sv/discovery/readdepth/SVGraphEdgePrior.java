@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
-import org.apache.commons.math3.distribution.NormalDistribution;
-
 public class SVGraphEdgePrior {
 
     double[] logPrior;
@@ -32,7 +30,7 @@ public class SVGraphEdgePrior {
             for (int i = 0; i <= maxVisits; i++) {
                 final double std = EVIDENCE_COUNT_STD_FACTOR * meanDepth;
                 final double mean = i * meanDepth;
-                logPrior[i] = (new NormalDistribution(mean,std)).logDensity(evidenceCount);
+                logPrior[i] = 1; //TODO (new NormalDistribution(mean,std)).logDensity(evidenceCount);
                 //final double lambda = i > 0 ? i * meanDepth / 2.0 : 1;
                 //logPrior[i] = (new PoissonDistribution(lambda)).logProbability(evidenceCount);
             }

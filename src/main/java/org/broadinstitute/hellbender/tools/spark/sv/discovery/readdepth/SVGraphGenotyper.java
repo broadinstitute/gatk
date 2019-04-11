@@ -18,7 +18,7 @@ public final class SVGraphGenotyper {
     /**
      * Edge visit for graph traversal
      */
-    private static final void visitEdge(final IndexedSVGraphEdge edge, final SVGraphPathState path, final Queue<SVGraphPathState> queue, final int nodeIndex, final int maxEdgeVisits) {
+    private static final void visitEdge(final IndexedSVGraphEdge edge, final SVGraphPathState path, final Queue<SVGraphPathState> queue, final int nodeIndex, final int maxEdgeVisits, final int maxBreakpointsPerPath) {
         final IndexedSVGraphEdge augmentingEdge;
         if (edge.causesStrandSwitch()) {
             augmentingEdge = path.isCurrentlyInverted() ? edge.invertedCopy().copyWithUpstreamNodeAs(nodeIndex) : edge.copyWithUpstreamNodeAs(nodeIndex);
@@ -26,7 +26,7 @@ public final class SVGraphGenotyper {
             augmentingEdge = path.isCurrentlyInverted() ? edge.invertedCopy() : edge.nonInvertedCopy();
         }
         final SVGraphPathState augmentedPath = path.copy();
-        if (augmentedPath.addEdge(augmentingEdge, maxEdgeVisits)) {
+        if (augmentedPath.addEdge(augmentingEdge, maxEdgeVisits, maxBreakpointsPerPath)) {
             if (augmentingEdge.causesStrandSwitch()) {
                 augmentedPath.invert();
             }
@@ -38,7 +38,7 @@ public final class SVGraphGenotyper {
     /**
      * Enumerates genotypes with breadth-first search
      */
-    public Collection<IndexedSVGraphPath> enumerate(final double maxPathLengthFactor, final int maxEdgeVisits, final int maxQueueSize) {
+    public Collection<IndexedSVGraphPath> enumerate(final double maxPathLengthFactor, final int maxEdgeVisits, final int maxQueueSize, final int maxBreakpointsPerPath) {
 
         final List<SVGraphNode> nodes = graph.generateNodes();
         final Set<Integer> startingNodes = graph.getStartingNodes();
@@ -52,7 +52,9 @@ public final class SVGraphGenotyper {
             queue.add(new SVGraphPathState(startingNode, graph.getEdges().size()));
         }
         while (!queue.isEmpty()) {
-            if (queue.size() > maxQueueSize) return null;
+            if (queue.size() > maxQueueSize) {
+                return null;
+            }
             final SVGraphPathState path = queue.poll();
             final Integer nodeIndex = path.getCurrentNode();
 
@@ -71,7 +73,7 @@ public final class SVGraphGenotyper {
             for (final IndexedSVGraphEdge edge : neighborEdges) {
                 //Breakpoint double-jumps are invalid
                 if (edge.isReference() || lastEdgeWasReference) {
-                    visitEdge(edge, path, queue, nodeIndex, maxEdgeVisits);
+                    visitEdge(edge, path, queue, nodeIndex, maxEdgeVisits, maxBreakpointsPerPath);
                 }
             }
         }
@@ -85,23 +87,27 @@ public final class SVGraphGenotyper {
         private final List<IndexedSVGraphEdge> path;
         private final int[] edgeCopyNumberStates;
         private int currentNode;
+        private int numBreakpointsVisited;
         boolean currentlyInverted;
 
         public SVGraphPathState(final int initialNode, final int numEdges) {
             this.path = new ArrayList<>();
             this.edgeCopyNumberStates = new int[numEdges];
             this.currentNode = initialNode;
-            currentlyInverted = false;
+            this.currentlyInverted = false;
+            this.numBreakpointsVisited = 0;
         }
 
         private SVGraphPathState(final int currentNode,
                                  final int[] edgeCopyNumberStates,
                                  final boolean currentlyInverted,
+                                 final int numBreakpointsVisited,
                                  final List<IndexedSVGraphEdge> path) {
             this.currentNode = currentNode;
             this.path = path;
             this.edgeCopyNumberStates = Arrays.copyOf(edgeCopyNumberStates, edgeCopyNumberStates.length);
             this.currentlyInverted = currentlyInverted;
+            this.numBreakpointsVisited = numBreakpointsVisited;
         }
 
         public boolean isCurrentlyInverted() {
@@ -120,11 +126,16 @@ public final class SVGraphGenotyper {
             return currentNode;
         }
 
-        public boolean addEdge(final IndexedSVGraphEdge edge, final double maxState) {
+        public boolean addEdge(final IndexedSVGraphEdge edge, final double maxState, final int maxBreakpointsPerPath) {
             getPath().add(edge);
             if (edge.isReference()) {
                 edgeCopyNumberStates[edge.getIndex()] += 1;
                 if (edgeCopyNumberStates[edge.getIndex()] > maxState) return false;
+            } else {
+                numBreakpointsVisited++;
+                if (numBreakpointsVisited > maxBreakpointsPerPath) {
+                    return false;
+                }
             }
             currentNode = edge.getDownstreamNodeIndex();
             if (currentNode == -1) {
@@ -133,12 +144,12 @@ public final class SVGraphGenotyper {
             return true;
         }
 
-        public SVGraphPathState copy() {
+        public SVGraphPathState copy() { //TODO copy numBreakpointsVisited
             final List<IndexedSVGraphEdge> pathCopy = new ArrayList<>(path.size());
             for (final IndexedSVGraphEdge edge : path) {
                 pathCopy.add(edge);
             }
-            return new SVGraphPathState(currentNode, edgeCopyNumberStates, currentlyInverted, pathCopy);
+            return new SVGraphPathState(currentNode, edgeCopyNumberStates, currentlyInverted, numBreakpointsVisited, pathCopy);
         }
     }
 }
