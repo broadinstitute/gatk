@@ -1,24 +1,41 @@
 package org.broadinstitute.hellbender.tools.examples;
 
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.store.DataStoreFactory;
+import com.google.api.client.util.store.MemoryDataStoreFactory;
 import com.google.api.services.bigquery.Bigquery;
+import com.google.api.services.bigquery.BigqueryScopes;
 import com.google.api.services.bigquery.model.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.io.IOException;
+import java.io.*;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * An example of a class that communicates with BigQuery using the BigQuery Connector with Spark.
+ * An example class that communicates with BigQuery using the google bigquery library.
  * Created by jonn on 4/9/19.
  */
+@CommandLineProgramProperties(
+        summary = "Example tool that communicates with BigQuery using the google bigquery library.  Will print the first several rows from the given BigQuery table.",
+        oneLineSummary = "Example tool that prints the first few rows of a given BigQuery table.",
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = false
+)
 public class ExampleBigQueryReader extends GATKTool {
     private static final Logger logger = LogManager.getLogger(ExampleBigQueryReader.class);
 
@@ -53,9 +70,36 @@ public class ExampleBigQueryReader extends GATKTool {
     //==================================================================================================================
     // Private Static Members:
 
-    /** Global instances of HTTP transport and JSON factory objects. */
+    /**
+     * Global instance of the {@link com.google.api.client.util.store.DataStoreFactory}.
+     * The best practice is to make it a single globally shared instance across your application.
+     */
+    private static DataStoreFactory dataStoreFactory;
+
+    // TODO: make this a cmdline parameter.
+    /** Location of client secrets json file. */
+    private static final String CLIENTSECRETS_LOCATION = "/path/to/your/client_secret.json";
+
+    /** Client secrets to use for authentication. */
+    private static GoogleClientSecrets clientSecrets = loadClientSecrets();
+
+    /** Static variable for API scope. */
+    private static final List<String> SCOPES = Collections.singletonList(BigqueryScopes.BIGQUERY);
+
+    /** Static variable for callback URI. */
+    private static final String REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
+
+    /** Global instances of HTTP transport object. */
     private static final HttpTransport TRANSPORT    = new NetHttpTransport();
+
+    /** Global instances of JSON factory object. */
     private static final JsonFactory   JSON_FACTORY = new JacksonFactory();
+
+    /** Authorization flow for credentials. */
+    private static GoogleAuthorizationCodeFlow flow = null;
+
+    /** Directory to store user credentials. */
+    private static final java.io.File DATA_STORE_DIR = new java.io.File(System.getProperty("user.home"), ".store/bq_sample");
 
     //==================================================================================================================
     // Private Members:
@@ -134,11 +178,32 @@ public class ExampleBigQueryReader extends GATKTool {
      * @throws IOException
      */
     public static Bigquery createAuthorizedClient() throws IOException {
-        return new Bigquery(TRANSPORT, JSON_FACTORY, null);
+        final Credential credential = authorize();
+        return new Bigquery(TRANSPORT, JSON_FACTORY, credential);
     }
 
-    //==================================================================================================================
-    // Instance Methods:
+    /**
+     * Authorizes the installed application to access user's protected data.
+     *
+     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
+     *
+     * @return A valid {@link Credential} with which to use to connect to google's services.
+     *
+     */
+    private static Credential authorize() throws IOException {
+
+        dataStoreFactory = MemoryDataStoreFactory.getDefaultInstance();
+
+        // set up authorization code flow
+        final GoogleAuthorizationCodeFlow flow =
+                new GoogleAuthorizationCodeFlow
+                        .Builder(TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+                        .setDataStoreFactory(dataStoreFactory)
+                        .build();
+
+        // authorize
+        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
+    }
 
     /**
      * Display all BigQuery datasets associated with a project
@@ -150,8 +215,8 @@ public class ExampleBigQueryReader extends GATKTool {
      *
      * @throws IOException
      */
-    public static void listDatasets(final Bigquery bigQuery,
-                                    final String projectId) throws IOException {
+    private static void listDatasets(final Bigquery bigQuery,
+                                     final String projectId) throws IOException {
 
         final Bigquery.Datasets.List datasetRequest = bigQuery.datasets().list(projectId);
         final DatasetList            datasetList    = datasetRequest.execute();
@@ -182,9 +247,9 @@ public class ExampleBigQueryReader extends GATKTool {
      *
      * @throws IOException
      */
-    public static JobReference startQuery(final Bigquery bigQuery,
-                                          final String projectId,
-                                          final String querySql) throws IOException {
+    private static JobReference startQuery(final Bigquery bigQuery,
+                                           final String projectId,
+                                           final String querySql) throws IOException {
         logger.info("Inserting Query Job: " + querySql);
 
         final Job                   job         = new Job();
@@ -279,8 +344,32 @@ public class ExampleBigQueryReader extends GATKTool {
         }
     }
 
+    /**
+     * Helper to load client ID/Secret from file.
+     *
+     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
+     *
+     * @return a {@link GoogleClientSecrets} object based on a clientsecrets.json
+     */
+    private static GoogleClientSecrets loadClientSecrets() {
+        try {
+            final InputStream inputStream = new FileInputStream(CLIENTSECRETS_LOCATION);
+            final Reader      reader      = new InputStreamReader(inputStream);
+
+            return GoogleClientSecrets.load(new JacksonFactory(), reader);
+        } catch (final Exception e) {
+            logger.error("Could not load client secrets file " + CLIENTSECRETS_LOCATION);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
     //==================================================================================================================
-    // Helper Data Types:
+    // Instance Methods:
+
+    //==================================================================================================================
+    // Helpers:
 
 }
 
