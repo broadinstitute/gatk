@@ -1,0 +1,31 @@
+[
+  {
+    "mode": "REQUIRED", 
+    "name": "sample_id", 
+    "type": "INTEGER"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "FieldID", 
+    "type": "INTEGER"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "instance", 
+    "type": "INTEGER"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "array_idx", 
+    "type": "INTEGER"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "value", 
+    "type": "STRING"
+  }, 
+  {
+    "name": "coding_file_id", 
+    "type": "INTEGER"
+  }
+]
