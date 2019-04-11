@@ -3,20 +3,7 @@ package org.broadinstitute.hellbender.tools.examples;
 // NOTE:
 // Adapted from: https://github.com/googlearchive/bigquery-samples-java/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
 
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.client.util.store.DataStoreFactory;
-import com.google.api.client.util.store.MemoryDataStoreFactory;
-import com.google.api.services.bigquery.Bigquery;
-import com.google.api.services.bigquery.BigqueryScopes;
-import com.google.api.services.bigquery.model.*;
+import com.google.cloud.bigquery.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -24,13 +11,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
+import java.util.UUID;
 
 /**
  * An example class that communicates with BigQuery using the google bigquery library.
@@ -51,63 +33,36 @@ public class ExampleBigQueryReader extends GATKTool {
     /**
      * The name of the argument for the project ID of the BigQuery instance.
      */
-    public static final String PROJECT_ID_ARG_LONG_NAME = "project-id";
+    private static final String PROJECT_ID_ARG_LONG_NAME = "project-id";
 
     /**
      * The name of the argument for the fully qualified input table ID of the BigQuery instance.
      */
-    public static final String FQ_TABLE_ID_ARG_LONG_NAME = "fq-table-id";
+    private static final String FQ_TABLE_ID_ARG_LONG_NAME = "fq-table-id";
 
     /**
      * The name of the argument for the bucket of the BigQuery instance.
      */
-    public static final String BUCKET_ARG_LONG_NAME = "bucket";
+    private static final String BUCKET_ARG_LONG_NAME = "bucket";
 
     /**
      * The name of the argument for the bucket of the BigQuery instance.
      */
-    public static final String NUM_RECORDS_TO_RETRIEVE_ARG_LONG_NAME = "num-records";
+    private static final String NUM_RECORDS_TO_RETRIEVE_ARG_LONG_NAME = "num-records";
 
     /**
      * The name of the argument for the client secrets file to use for authentication with google servers.
      */
-    public static final String CLIENT_SECRETS_LOCATION_ARG_NAME = "client-secrets";
+    private static final String CLIENT_SECRETS_LOCATION_ARG_NAME = "client-secrets";
 
-    public static final String DEFAULT_PROJECT_ID          = "bigquery-public-data";
-    public static final String DEFAULT_FQ_TABLE_ID         = "bigquery-public-data:noaa_lightning.lightning_1987";
-    public static final String DEFAULT_BUCKET              = "bigquery-public-data";
-    public static final int    DEFAULT_RECORDS_TO_RETRIEVE = 10;
-    public static final String DEFAULT_CLIENT_SECRETS_PATH = "~/client_secret.json";
+    private static final String DEFAULT_PROJECT_ID          = "bigquery-public-data";
+    private static final String DEFAULT_FQ_TABLE_ID         = "bigquery-public-data:noaa_lightning.lightning_1987";
+    private static final String DEFAULT_BUCKET              = "bigquery-public-data";
+    private static final int    DEFAULT_RECORDS_TO_RETRIEVE = 10;
+    private static final String DEFAULT_CLIENT_SECRETS_PATH = "~/client_secret.json";
 
     //==================================================================================================================
     // Private Static Members:
-
-    /**
-     * Global instance of the {@link com.google.api.client.util.store.DataStoreFactory}.
-     * The best practice is to make it a single globally shared instance across your application.
-     */
-    private static DataStoreFactory dataStoreFactory;
-
-    /** Client secrets to use for authentication. */
-    private static GoogleClientSecrets clientSecrets = null;
-
-    /** Static variable for API scope. */
-    private static final List<String> SCOPES = Collections.singletonList(BigqueryScopes.BIGQUERY);
-
-    /** Static variable for callback URI. */
-    private static final String REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
-
-    /** Global instances of HTTP transport object. */
-    private static final HttpTransport TRANSPORT    = new NetHttpTransport();
-
-    /** Global instances of JSON factory object. */
-    private static final JsonFactory   JSON_FACTORY = new JacksonFactory();
-
-    /** Authorization flow for credentials. */
-    private static GoogleAuthorizationCodeFlow flow = null;
-
-    /** Directory to store user credentials. */
-    private static final java.io.File DATA_STORE_DIR = new java.io.File(System.getProperty("user.home"), ".store/bq_sample");
 
     //==================================================================================================================
     // Private Members:
@@ -148,245 +103,64 @@ public class ExampleBigQueryReader extends GATKTool {
     // Override Methods:
 
     @Override
-    protected void onStartup() {
-        super.onStartup();
-
-        // Load client secrets:
-        clientSecrets = loadClientSecrets();
-    }
-
-
-    @Override
     public void traverse() {
 
+        final BigQuery bigQuery = BigQueryOptions.getDefaultInstance().getService();
+
+        final QueryJobConfiguration queryConfig =
+                QueryJobConfiguration.newBuilder(
+                        "SELECT "
+                                + "CONCAT('https://stackoverflow.com/questions/', CAST(id as STRING)) as url, "
+                                + "view_count "
+                                + "FROM `bigquery-public-data.stackoverflow.posts_questions` "
+                                + "WHERE tags like '%google-bigquery%' "
+                                + "ORDER BY favorite_count DESC LIMIT 10")
+                        // Use standard SQL syntax for queries.
+                        // See: https://cloud.google.com/bigquery/sql-reference/
+                        .setUseLegacySql(false)
+                        .build();
+
+        // Create a job ID so that we can safely retry.
+        final JobId jobId    = JobId.of(UUID.randomUUID().toString());
+        Job   queryJob = bigQuery.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build());
+
+        // Wait for the query to complete.
         try {
-            logger.debug("About to create client service for Big Query table.");
-            final Bigquery bigQuery = createAuthorizedClient();
-
-            // Print out available datasets in the "publicdata" project to the console
-            listDatasets(bigQuery, "publicdata");
-
-            // Start a Query Job
-            final String querySql = "SELECT * FROM " + fqTableId + " LIMIT " + numRecordsToRetrieve;
-            final JobReference jobId = startQuery(bigQuery, projectId, querySql);
-
-            // Poll for Query Results, return result output
-            final Job completedJob = checkQueryResults(bigQuery, projectId, jobId);
-
-            // Return and display the results of the Query Job
-            displayQueryResults(bigQuery, projectId, completedJob);
-
-        }
-        catch (final IOException ex) {
-            throw new GATKException("Error in the connection with BigQuery!", ex);
+            queryJob = queryJob.waitFor();
         }
         catch (final InterruptedException ex) {
-            throw new GATKException("Interrupted while wating for results from BigQuery!", ex);
+            throw new GATKException("Interrupted while waiting for query job to complete", ex);
+        }
+
+        // Check for errors
+        if (queryJob == null) {
+            throw new GATKException("Query job no longer exists");
+        } else if (queryJob.getStatus().getError() != null) {
+            // You can also look at queryJob.getStatus().getExecutionErrors() for all
+            // errors, not just the latest one.
+            throw new RuntimeException(queryJob.getStatus().getError().toString());
+        }
+
+        // Get the results.
+        final QueryResponse response = bigQuery.getQueryResults(jobId);
+        final TableResult result;
+        try {
+            result = queryJob.getQueryResults();
+        }
+        catch (final InterruptedException ex) {
+            throw new GATKException("Interrupted while waiting for query job to complete", ex);
+        }
+
+        // Log all pages of the results.
+        for ( final FieldValueList row : result.iterateAll()) {
+            final String url       = row.get("url").getStringValue();
+            final long   viewCount = row.get("view_count").getLongValue();
+            logger.info("url: %s views: %d", url, viewCount);
         }
     }
 
     //==================================================================================================================
     // Static Methods:
-
-    /**
-     * Creates an authorized BigQuery client service using the OAuth 2.0 protocol
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * This method first creates a BigQuery authorization URL, then prompts the
-     * user to visit this URL in a web browser to authorize access. The
-     * application will wait for the user to paste the resulting authorization
-     * code at the command line prompt.
-     *
-     * @return an authorized {@link Bigquery} client object
-     *
-     * @throws IOException
-     */
-    public static Bigquery createAuthorizedClient() throws IOException {
-        final Credential credential = authorize();
-        return new Bigquery(TRANSPORT, JSON_FACTORY, credential);
-    }
-
-    /**
-     * Authorizes the installed application to access user's protected data.
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * @return A valid {@link Credential} with which to use to connect to google's services.
-     *
-     */
-    private static Credential authorize() throws IOException {
-
-        dataStoreFactory = MemoryDataStoreFactory.getDefaultInstance();
-
-        // set up authorization code flow
-        final GoogleAuthorizationCodeFlow flow =
-                new GoogleAuthorizationCodeFlow
-                        .Builder(TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                        .setDataStoreFactory(dataStoreFactory)
-                        .build();
-
-        // authorize
-        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
-    }
-
-    /**
-     * Display all BigQuery datasets associated with a project
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * @param bigQuery  an authorized {@link Bigquery} client object
-     * @param projectId a string containing the current project ID
-     *
-     * @throws IOException
-     */
-    private static void listDatasets(final Bigquery bigQuery,
-                                     final String projectId) throws IOException {
-
-        final Bigquery.Datasets.List datasetRequest = bigQuery.datasets().list(projectId);
-        final DatasetList            datasetList    = datasetRequest.execute();
-
-        if (datasetList.getDatasets() != null) {
-            final List<DatasetList.Datasets> datasets = datasetList.getDatasets();
-
-            logger.info("Available datasets");
-            logger.info("----------------");
-            logger.info(datasets.toString());
-
-            for (final DatasetList.Datasets dataset : datasets) {
-                logger.info(dataset.getDatasetReference().getDatasetId());
-            }
-        }
-    }
-
-    /**
-     * Creates a Query {@link JobReference} for a particular query on a dataset.
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * @param bigQuery  an authorized {@link Bigquery} client object
-     * @param projectId a {@link String} containing the current project ID
-     * @param querySql  the actual query string
-     *
-     * @return a reference to the inserted query job
-     *
-     * @throws IOException
-     */
-    private static JobReference startQuery(final Bigquery bigQuery,
-                                           final String projectId,
-                                           final String querySql) throws IOException {
-        logger.info("Inserting Query Job: " + querySql);
-
-        final Job                   job         = new Job();
-        final JobConfiguration      config      = new JobConfiguration();
-        final JobConfigurationQuery queryConfig = new JobConfigurationQuery();
-        config.setQuery(queryConfig);
-
-        job.setConfiguration(config);
-        queryConfig.setQuery(querySql);
-
-        final Bigquery.Jobs.Insert insert = bigQuery.jobs().insert(projectId, job);
-        insert.setProjectId(projectId);
-
-        final JobReference jobId = insert.execute().getJobReference();
-
-        logger.info("Job ID of Query Job is: " + jobId.getJobId());
-
-        return jobId;
-    }
-
-    /**
-     * Waits for the status of a BigQuery job to be "DONE", then returns the completed {@link Job}.
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * @param bigQuery  an authorized {@link Bigquery} client object
-     * @param projectId a {@link String} containing the current project ID
-     * @param jobId     a {@link JobReference} to an inserted query Job
-     *
-     * @return a reference to the completed {@link Job}.
-     *
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private static Job checkQueryResults(final Bigquery bigQuery,
-                                         final String projectId,
-                                         final JobReference jobId) throws IOException, InterruptedException {
-
-        // Variables to keep track of total query time
-        final long startTime = System.currentTimeMillis();
-        long elapsedTime;
-
-        while (true) {
-            final Job pollJob = bigQuery.jobs().get(projectId, jobId.getJobId()).execute();
-
-            elapsedTime = System.currentTimeMillis() - startTime;
-            logger.info("Job status (% 8dms) % 5s: %s", elapsedTime, jobId.getJobId(), pollJob.getStatus().getState());
-
-            if (pollJob.getStatus().getState().equals("DONE")) {
-                return pollJob;
-            }
-
-            // Pause execution for one second before polling job status again, to
-            // reduce unnecessary calls to the BigQUery API and lower overall
-            // application bandwidth.
-            Thread.sleep(1000);
-        }
-    }
-
-    /**
-     * Displays the results of the given completed query {@link Job} in the given {@link Bigquery} client object
-     * with the given {@code projectId}.
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * @param bigQuery  an authorized {@link Bigquery} client object
-     * @param projectId a {@link String} containing the current project ID
-     * @param completedJob a query {@link Job} that has already completed
-     *
-     * @throws IOException
-     */
-    private static void displayQueryResults(final Bigquery bigQuery,
-                                            final String projectId,
-                                            final Job completedJob) throws IOException {
-
-        final GetQueryResultsResponse queryResult = bigQuery.jobs()
-                .getQueryResults(
-                        projectId, completedJob
-                                .getJobReference()
-                                .getJobId()
-                ).execute();
-
-        final List<TableRow> rows = queryResult.getRows();
-
-        logger.info("Query Results:");
-        logger.info("------------");
-        for (final TableRow row : rows) {
-            for (final TableCell field : row.getF()) {
-                logger.info("%-50s", field.getV());
-            }
-            logger.info("");
-        }
-    }
-
-    /**
-     * Helper to load client ID/Secret from file.
-     *
-     * Note: Adapted from https://github.com/googlearchive/bigquery-samples-java/blob/master/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
-     *
-     * @return a {@link GoogleClientSecrets} object based on a clientsecrets.json
-     */
-    private GoogleClientSecrets loadClientSecrets() {
-        try {
-            final Path clientSecretPath = IOUtils.getPath(clientSecretsLocation);
-            return GoogleClientSecrets.load(new JacksonFactory(), Files.newBufferedReader(clientSecretPath));
-        } catch (final Exception e) {
-            logger.error("Could not load client secrets file " + clientSecretsLocation);
-            e.printStackTrace();
-        }
-        return null;
-    }
-
 
     //==================================================================================================================
     // Instance Methods:
