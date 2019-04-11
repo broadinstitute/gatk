@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.examples;
 
+// NOTE:
+// Adapted from: https://github.com/googlearchive/bigquery-samples-java/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
+
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -21,8 +24,11 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,10 +68,16 @@ public class ExampleBigQueryReader extends GATKTool {
      */
     public static final String NUM_RECORDS_TO_RETRIEVE_ARG_LONG_NAME = "num-records";
 
+    /**
+     * The name of the argument for the client secrets file to use for authentication with google servers.
+     */
+    public static final String CLIENT_SECRETS_LOCATION_ARG_NAME = "client-secrets";
+
     public static final String DEFAULT_PROJECT_ID          = "bigquery-public-data";
     public static final String DEFAULT_FQ_TABLE_ID         = "bigquery-public-data:noaa_lightning.lightning_1987";
     public static final String DEFAULT_BUCKET              = "bigquery-public-data";
     public static final int    DEFAULT_RECORDS_TO_RETRIEVE = 10;
+    public static final String DEFAULT_CLIENT_SECRETS_PATH = "~/client_secret.json";
 
     //==================================================================================================================
     // Private Static Members:
@@ -76,12 +88,8 @@ public class ExampleBigQueryReader extends GATKTool {
      */
     private static DataStoreFactory dataStoreFactory;
 
-    // TODO: make this a cmdline parameter.
-    /** Location of client secrets json file. */
-    private static final String CLIENTSECRETS_LOCATION = "/path/to/your/client_secret.json";
-
     /** Client secrets to use for authentication. */
-    private static GoogleClientSecrets clientSecrets = loadClientSecrets();
+    private static GoogleClientSecrets clientSecrets = null;
 
     /** Static variable for API scope. */
     private static final List<String> SCOPES = Collections.singletonList(BigqueryScopes.BIGQUERY);
@@ -124,12 +132,29 @@ public class ExampleBigQueryReader extends GATKTool {
             doc = "The number of records to retrieve from the BigQuery table.  Defaults to " + DEFAULT_RECORDS_TO_RETRIEVE)
     private int numRecordsToRetrieve = DEFAULT_RECORDS_TO_RETRIEVE;
 
+    @Argument(
+            fullName = CLIENT_SECRETS_LOCATION_ARG_NAME,
+            doc = "The location of the client secrets json file used for authentication with google servers.  " +
+                    "For more information on how to create a client_secret.json file, see the \"Download credentials for API access\" section here:" +
+                    "https://cloud.google.com/genomics/docs/how-tos/getting-started ." +
+                    "Defaults to " + DEFAULT_CLIENT_SECRETS_PATH
+    )
+    private String clientSecretsLocation = DEFAULT_CLIENT_SECRETS_PATH;
 
     //==================================================================================================================
     // Constructors:
 
     //==================================================================================================================
     // Override Methods:
+
+    @Override
+    protected void onStartup() {
+        super.onStartup();
+
+        // Load client secrets:
+        clientSecrets = loadClientSecrets();
+    }
+
 
     @Override
     public void traverse() {
@@ -351,14 +376,12 @@ public class ExampleBigQueryReader extends GATKTool {
      *
      * @return a {@link GoogleClientSecrets} object based on a clientsecrets.json
      */
-    private static GoogleClientSecrets loadClientSecrets() {
+    private GoogleClientSecrets loadClientSecrets() {
         try {
-            final InputStream inputStream = new FileInputStream(CLIENTSECRETS_LOCATION);
-            final Reader      reader      = new InputStreamReader(inputStream);
-
-            return GoogleClientSecrets.load(new JacksonFactory(), reader);
+            final Path clientSecretPath = IOUtils.getPath(clientSecretsLocation);
+            return GoogleClientSecrets.load(new JacksonFactory(), Files.newBufferedReader(clientSecretPath));
         } catch (final Exception e) {
-            logger.error("Could not load client secrets file " + CLIENTSECRETS_LOCATION);
+            logger.error("Could not load client secrets file " + clientSecretsLocation);
             e.printStackTrace();
         }
         return null;
