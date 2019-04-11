@@ -379,6 +379,29 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                                 }
                         )
                 },
+                // Map contains a DELETION of size 3 with associated fields:
+                {
+                        MapUtils.putAll(new LinkedHashMap<String, String>(),
+                                new Object[][] {
+                                        { MafOutputRendererConstants.FieldName_Variant_Type,      GencodeFuncotation.VariantType.DEL.toString() },
+                                        { MafOutputRendererConstants.FieldName_Reference_Allele,  "CAGG" },
+                                        { MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, "CAGG" },
+                                        { MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, "C" },
+                                        { MafOutputRendererConstants.FieldName_Start_Position,    "2222103" },
+                                        { MafOutputRendererConstants.FieldName_End_Position,      "2222103" },
+                                }
+                        ),
+                        MapUtils.putAll(new LinkedHashMap<String, String>(),
+                                new Object[][] {
+                                        { MafOutputRendererConstants.FieldName_Variant_Type,      GencodeFuncotation.VariantType.DEL.toString() },
+                                        { MafOutputRendererConstants.FieldName_Reference_Allele,  "AGG" },
+                                        { MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, "AGG" },
+                                        { MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, "-" },
+                                        { MafOutputRendererConstants.FieldName_Start_Position,    "2222104" },
+                                        { MafOutputRendererConstants.FieldName_End_Position,      "2222106" },
+                                }
+                        )
+                },
         };
     }
 

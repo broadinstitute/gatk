@@ -480,12 +480,17 @@ public class MafOutputRenderer extends OutputRenderer {
                 //    Remove the first N bases from the Tumor_Seq_Allele1
                 //    Replace the alt_allele with "-"
                 //    Increment the Start_Position by 1 (start position should be inclusive of the first base deleted)
-                //    Increment the End_Position by M-1 where M = length(ref_allele) (end position should be inclusive of the last base deleted)
+                //    Set the End_Position to Start_Position + M - 2, where M = length(ref_allele) (end position should be inclusive of the last base deleted, explanation below)
                 outputMap.put(MafOutputRendererConstants.FieldName_Reference_Allele,  outputMap.get(MafOutputRendererConstants.FieldName_Reference_Allele).substring(altAlleleLength));
                 outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, outputMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1).substring(altAlleleLength));
                 outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.EmptyAllele);
                 outputMap.put(MafOutputRendererConstants.FieldName_Start_Position, String.valueOf(Integer.valueOf(outputMap.get(MafOutputRendererConstants.FieldName_Start_Position)) + 1));
-                outputMap.put(MafOutputRendererConstants.FieldName_End_Position, String.valueOf(Integer.valueOf(outputMap.get(MafOutputRendererConstants.FieldName_End_Position)) + refAlleleLength - 1));
+
+                // Use the new start position we just calculated for this end position.
+                // Then subtract 2 from ref allele length:
+                //    -1 for the removed first base
+                //    -1 for the inclusive nature of positions
+                outputMap.put(MafOutputRendererConstants.FieldName_End_Position, String.valueOf(Integer.valueOf(outputMap.get(MafOutputRendererConstants.FieldName_Start_Position)) + refAlleleLength - 2));
             }
         }
     }
