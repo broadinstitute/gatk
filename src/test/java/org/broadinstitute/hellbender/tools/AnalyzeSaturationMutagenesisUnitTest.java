@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.AnalyzeSaturationMutagenesis.*;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
@@ -28,7 +27,7 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     final private static byte QUAL_30 = (byte)30;
     final private static byte[] refSeq = "ACATGCGTCTAGTACGT".getBytes();
     final private static String orfCoords = "3-6,8-12";
-    final private static CodonTracker codonTracker = new CodonTracker(orfCoords, refSeq, null);
+    final private static CodonTracker localCodonTracker = new CodonTracker(orfCoords, refSeq, logger);
 
     @Test
     public void testInterval() {
@@ -169,37 +168,37 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     @Test
     public void testEncodingModifications() {
         // no SNVs implies no codon variations
-        Assert.assertTrue(codonTracker.encodeSNVsAsCodons(Collections.emptyList()).isEmpty());
+        Assert.assertTrue(localCodonTracker.encodeSNVsAsCodons(Collections.emptyList()).isEmpty());
 
         // changes outside the ORF shouldn't produce codon variations
-        Assert.assertTrue(codonTracker
+        Assert.assertTrue(localCodonTracker
                 .encodeSNVsAsCodons(Collections.singletonList(new SNV(1, CALL_C, CALL_G, QUAL_30)))
                 .isEmpty());
-        Assert.assertTrue(codonTracker
+        Assert.assertTrue(localCodonTracker
                 .encodeSNVsAsCodons(Collections.singletonList(new SNV(6, CALL_G, CALL_A, QUAL_30)))
                 .isEmpty());
-        Assert.assertTrue(codonTracker
+        Assert.assertTrue(localCodonTracker
                 .encodeSNVsAsCodons(Collections.singletonList(new SNV(12, CALL_T, CALL_C, QUAL_30)))
                 .isEmpty());
 
         // changes to a single codon should produce a single-codon variations
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(2, CALL_A, CALL_C, QUAL_30))),
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(2, CALL_A, CALL_C, QUAL_30))),
                 Collections.singletonList(CodonVariation.createModification(0, 30)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(5, CALL_C, CALL_G, QUAL_30))),
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(5, CALL_C, CALL_G, QUAL_30))),
                 Collections.singletonList(CodonVariation.createModification(1, 45)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(7, CALL_T, CALL_G, QUAL_30))),
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(7, CALL_T, CALL_G, QUAL_30))),
                 Collections.singletonList(CodonVariation.createModification(1, 25)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(8, CALL_C, CALL_A, QUAL_30))),
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(8, CALL_C, CALL_A, QUAL_30))),
                 Collections.singletonList(CodonVariation.createModification(1, 28)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(11, CALL_G, CALL_A, QUAL_30))),
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(11, CALL_G, CALL_A, QUAL_30))),
                 Collections.singletonList(CodonVariation.createModification(2, 48)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(5, CALL_C, CALL_G, QUAL_30),
                         new SNV(7, CALL_T, CALL_G, QUAL_30),
                         new SNV(8, CALL_C, CALL_A, QUAL_30))),
@@ -207,7 +206,7 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
 
         // even if the change produces a nonsense codon
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(5, CALL_C, CALL_T, QUAL_30),
                         new SNV(7, CALL_T, CALL_A, QUAL_30),
                         new SNV(8, CALL_C, CALL_A, QUAL_30))),
@@ -217,27 +216,27 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     @Test
     public void testEncodingDeletions() {
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(2, CALL_A, NO_CALL, QUAL_30))),
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(new SNV(2, CALL_A, NO_CALL, QUAL_30))),
                 Arrays.asList(
                         CodonVariation.createFrameshift(0),
                         CodonVariation.createModification(0, 57),
                         CodonVariation.createModification(1, 55),
                         CodonVariation.createModification(2, 11)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(10, CALL_A, NO_CALL, QUAL_30),
                         new SNV(12, CALL_T, NO_CALL, QUAL_30))),
                 Arrays.asList(
                         CodonVariation.createFrameshift(2),
                         CodonVariation.createModification(2, 56)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(5, CALL_C, NO_CALL, QUAL_30),
                         new SNV(7, CALL_T, NO_CALL, QUAL_30),
                         new SNV(8, CALL_C, NO_CALL, QUAL_30))),
                 Collections.singletonList(CodonVariation.createDeletion(1)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(3, CALL_T, NO_CALL, QUAL_30),
                         new SNV(5, CALL_C, NO_CALL, QUAL_30),
                         new SNV(8, CALL_C, NO_CALL, QUAL_30))),
@@ -250,14 +249,14 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     @Test
     public void testEncodingInsertions() {
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Collections.singletonList(
+                localCodonTracker.encodeSNVsAsCodons(Collections.singletonList(
                         new SNV(5, NO_CALL, CALL_T, QUAL_30))),
                 Arrays.asList(
                         CodonVariation.createFrameshift(1),
                         CodonVariation.createModification(1, 55),
                         CodonVariation.createModification(2, 28)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(2, NO_CALL, CALL_T, QUAL_30),
                         new SNV(2, NO_CALL, CALL_T, QUAL_30),
                         new SNV(2, NO_CALL, CALL_T, QUAL_30))),
@@ -268,14 +267,14 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     @Test
     public void testFrameRecoveringIndels() {
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(3, CALL_T, NO_CALL, QUAL_30),
                         new SNV(7, NO_CALL, CALL_A, QUAL_30))),
                 Arrays.asList(
                         CodonVariation.createModification(0, 9),
                         CodonVariation.createModification(1, 13)));
         Assert.assertEquals(
-                codonTracker.encodeSNVsAsCodons(Arrays.asList(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
                         new SNV(3, NO_CALL, CALL_T, QUAL_30),
                         new SNV(7, CALL_T, NO_CALL, QUAL_30))),
                 Arrays.asList(
@@ -285,7 +284,7 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
 
     @Test
     public void testWildTypeCodonCounts() {
-        final CodonTracker codonTracker = new CodonTracker(orfCoords, refSeq, null);
+        final CodonTracker codonTracker = new CodonTracker(orfCoords, refSeq, logger);
         codonTracker.reportWildCodonCounts(new Interval(0, 17));
         codonTracker.reportWildCodonCounts(new Interval(0, 17));
         final int[] wildTypeCodonValues = codonTracker.getRefCodonValues();
@@ -333,22 +332,22 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     @Test
     public void testFindFrameShift() {
         Assert.assertEquals(
-                codonTracker.findFrameShift(Collections.singletonList(new SNV(1, CALL_A, NO_CALL, QUAL_30))),
+                localCodonTracker.findFrameShift(Collections.singletonList(new SNV(1, CALL_A, NO_CALL, QUAL_30))),
                 NO_FRAME_SHIFT_CODON);
         Assert.assertEquals(
-                codonTracker.findFrameShift(Collections.singletonList(new SNV(2, CALL_A, NO_CALL, QUAL_30))),
+                localCodonTracker.findFrameShift(Collections.singletonList(new SNV(2, CALL_A, NO_CALL, QUAL_30))),
                 0);
         Assert.assertEquals(
-                codonTracker.findFrameShift(Collections.singletonList(new SNV(4, NO_CALL, CALL_C, QUAL_30))),
+                localCodonTracker.findFrameShift(Collections.singletonList(new SNV(4, NO_CALL, CALL_C, QUAL_30))),
                 0);
         Assert.assertEquals(
-                codonTracker.findFrameShift(Collections.singletonList(new SNV(6, CALL_G, NO_CALL, QUAL_30))),
+                localCodonTracker.findFrameShift(Collections.singletonList(new SNV(6, CALL_G, NO_CALL, QUAL_30))),
                 NO_FRAME_SHIFT_CODON);
         Assert.assertEquals(
-                codonTracker.findFrameShift(Collections.singletonList(new SNV(12, NO_CALL, CALL_C, QUAL_30))),
+                localCodonTracker.findFrameShift(Collections.singletonList(new SNV(12, NO_CALL, CALL_C, QUAL_30))),
                 NO_FRAME_SHIFT_CODON);
         Assert.assertEquals(
-                codonTracker.findFrameShift(Arrays.asList(
+                localCodonTracker.findFrameShift(Arrays.asList(
                         new SNV(5, CALL_C, NO_CALL, QUAL_30),
                         new SNV(6, CALL_G, NO_CALL, QUAL_30),
                         new SNV(7, CALL_T, NO_CALL, QUAL_30),
@@ -370,41 +369,41 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
 
     @Test
     public void testIsExonic() {
-        Assert.assertFalse(codonTracker.isExonic(-1));
-        Assert.assertFalse(codonTracker.isExonic(0));
-        Assert.assertFalse(codonTracker.isExonic(1));
-        Assert.assertTrue(codonTracker.isExonic(2));
-        Assert.assertTrue(codonTracker.isExonic(3));
-        Assert.assertTrue(codonTracker.isExonic(4));
-        Assert.assertTrue(codonTracker.isExonic(5));
-        Assert.assertFalse(codonTracker.isExonic(6));
-        Assert.assertTrue(codonTracker.isExonic(7));
-        Assert.assertTrue(codonTracker.isExonic(8));
-        Assert.assertTrue(codonTracker.isExonic(9));
-        Assert.assertTrue(codonTracker.isExonic(10));
-        Assert.assertTrue(codonTracker.isExonic(11));
-        Assert.assertFalse(codonTracker.isExonic(12));
-        Assert.assertFalse(codonTracker.isExonic(99));
+        Assert.assertFalse(localCodonTracker.isExonic(-1));
+        Assert.assertFalse(localCodonTracker.isExonic(0));
+        Assert.assertFalse(localCodonTracker.isExonic(1));
+        Assert.assertTrue(localCodonTracker.isExonic(2));
+        Assert.assertTrue(localCodonTracker.isExonic(3));
+        Assert.assertTrue(localCodonTracker.isExonic(4));
+        Assert.assertTrue(localCodonTracker.isExonic(5));
+        Assert.assertFalse(localCodonTracker.isExonic(6));
+        Assert.assertTrue(localCodonTracker.isExonic(7));
+        Assert.assertTrue(localCodonTracker.isExonic(8));
+        Assert.assertTrue(localCodonTracker.isExonic(9));
+        Assert.assertTrue(localCodonTracker.isExonic(10));
+        Assert.assertTrue(localCodonTracker.isExonic(11));
+        Assert.assertFalse(localCodonTracker.isExonic(12));
+        Assert.assertFalse(localCodonTracker.isExonic(99));
     }
 
     @Test
     public void testExonicBaseCount() {
-        Assert.assertEquals(codonTracker.exonicBaseIndex(-1), 0);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(0), 0);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(1), 0);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(2), 0);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(3), 1);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(4), 2);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(5), 3);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(6), 4);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(7), 4);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(8), 5);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(9), 6);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(10), 7);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(11), 8);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(12), 9);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(13), 9);
-        Assert.assertEquals(codonTracker.exonicBaseIndex(99), 9);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(-1), 0);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(0), 0);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(1), 0);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(2), 0);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(3), 1);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(4), 2);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(5), 3);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(6), 4);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(7), 4);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(8), 5);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(9), 6);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(10), 7);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(11), 8);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(12), 9);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(13), 9);
+        Assert.assertEquals(localCodonTracker.exonicBaseIndex(99), 9);
     }
 
     @Test
@@ -432,7 +431,7 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         final ReadReport report2 = new ReadReport(Arrays.asList(
                 new Interval(17, 21), new Interval(22, 27), new Interval(38, 50), new Interval(58, 60), new Interval(70, 72)),
                 Collections.emptyList());
-        Assert.assertEquals(new PairedReadReport(report1, report2).getRefCoverage(),
+        Assert.assertEquals(new ReadReport(report1, report2).getRefCoverage(),
                 Arrays.asList(new Interval(0, 9), new Interval(17, 50), new Interval(58, 72), new Interval(100, 120)));
     }
 
@@ -450,33 +449,34 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         final ReadReport report2 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
         final List<SNV> combinedList = new ArrayList<>(list1);
         combinedList.addAll(list2);
-        Assert.assertEquals(new PairedReadReport(report1, report2).getVariations(), combinedList);
+        Assert.assertEquals(new ReadReport(report1, report2).getVariations(), combinedList);
 
         // region of overlap has no conflicting SNVs
         final ReadReport report3 = new ReadReport(Collections.singletonList(new Interval(0, 35)), list1);
         final ReadReport report4 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
-        Assert.assertEquals(new PairedReadReport(report3, report4).getVariations(), combinedList);
+        Assert.assertEquals(new ReadReport(report3, report4).getVariations(), combinedList);
 
         // region of overlap has conflicting SNV: SNV at 35 is missing from report5
         final ReadReport report5 = new ReadReport(Collections.singletonList(new Interval(0, 36)), list1);
         final ReadReport report6 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
-        Assert.assertNull(new PairedReadReport(report5, report6).getVariations());
+        Assert.assertNull(new ReadReport(report5, report6).getVariations());
 
         // repair flaw above
         final List<SNV> list1Plus = new ArrayList<>(list1);
         list1Plus.add(new SNV(35, CALL_T, CALL_C, QUAL_10));
         final ReadReport report7 = new ReadReport(Collections.singletonList(new Interval(0, 36)), list1Plus);
-        Assert.assertEquals(new PairedReadReport(report7, report6).getVariations(), combinedList);
+        Assert.assertEquals(new ReadReport(report7, report6).getVariations(), combinedList);
 
         // now mess it up again by making the SNVs unequal
         list1Plus.set(3, new SNV(35, CALL_T, CALL_A, QUAL_30));
-        Assert.assertNull(new PairedReadReport(report7, report6).getVariations());
+        Assert.assertNull(new ReadReport(report7, report6).getVariations());
     }
 
     @Test
     public void testPairedApplication() {
-        final HopscotchMap<SNVCollectionCount, Long, SNVCollectionCount> variationCounts =
-                new HopscotchMap<>(10);
+        final byte[] longRefSeq = "TTTTTTTTTTAAAAAAAAAACCCCCCCCCCCCCCCTTTTTTTTTTGGGGGGGGGGCCCCCCCCCC".getBytes();
+        reference = new Reference(longRefSeq);
+        codonTracker = new CodonTracker("5-25", longRefSeq, logger);
 
         final List<SNV> list1 = Arrays.asList(
                 new SNV(10, CALL_A, CALL_C, QUAL_30),
@@ -489,20 +489,16 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
 
         final ReadReport report1 = new ReadReport(Collections.singletonList(new Interval(0, 32)), list1);
         final ReadReport report2 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
-        final PairedReadReport pair1 = new PairedReadReport(report1, report2);
-        final byte[] longRefSeq = "TTTTTTTTTTAAAAAAAAAACCCCCCCCCCCCCCCTTTTTTTTTTGGGGGGGGGGCCCCCCCCCC".getBytes();
-        final Reference reference = new Reference(longRefSeq);
-        final MoleculeCounts moleculeCounts = new MoleculeCounts();
+        updateCountsForPair(report1, report2);
 
         // shouldn't be applied -- fails flanking bases test
-        pair1.updateCounts(moleculeCounts, codonTracker, variationCounts, reference);
         Assert.assertEquals(reference.countSpanners(0, 32), 0);
         Assert.assertEquals(reference.countSpanners(32, 33), 0);
         Assert.assertEquals(reference.countSpanners(33, 60), 0);
 
         // should be applied separately
         minFlankingLength = 1;
-        pair1.updateCounts(moleculeCounts, codonTracker, variationCounts, reference);
+        updateCountsForPair(report1, report2);
         Assert.assertEquals(reference.countSpanners(0, 32), 1);
         Assert.assertEquals(reference.countSpanners(32, 33), 0);
         Assert.assertEquals(reference.countSpanners(33, 60), 1);
@@ -510,8 +506,7 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         // should be applied as one
         final ReadReport report3 = new ReadReport(Collections.singletonList(new Interval(0, 35)), list1);
         final ReadReport report4 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
-        final PairedReadReport pair2 = new PairedReadReport(report3, report4);
-        pair2.updateCounts(moleculeCounts, codonTracker, variationCounts, reference);
+        updateCountsForPair(report3, report4);
         Assert.assertEquals(reference.countSpanners(0, 32), 2);
         Assert.assertEquals(reference.countSpanners(32, 33), 1);
         Assert.assertEquals(reference.countSpanners(33, 60), 2);
@@ -521,28 +516,26 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
     public void testCalculateTrim() {
         final byte BAD_Q = (byte)(minQ - 1);
         final byte GOOD_Q = (byte)minQ;
-        final ReadCounts readCounts = new ReadCounts();
         final byte[] quals = new byte[100];
         Arrays.fill(quals, BAD_Q);
-        Assert.assertEquals(calculateTrim(quals, readCounts).size(), 0);
+        Assert.assertEquals(calculateTrim(quals).size(), 0);
         Arrays.fill(quals, GOOD_Q);
-        Assert.assertEquals(calculateTrim(quals, readCounts), new Interval(0, 100));
+        Assert.assertEquals(calculateTrim(quals), new Interval(0, 100));
         quals[minLength] = BAD_Q;
-        Assert.assertEquals(calculateTrim(quals, readCounts), new Interval(0, 100));
+        Assert.assertEquals(calculateTrim(quals), new Interval(0, 100));
         quals[minLength - 1] = BAD_Q;
-        Assert.assertEquals(calculateTrim(quals, readCounts), new Interval(minLength + 1, 100));
+        Assert.assertEquals(calculateTrim(quals), new Interval(minLength + 1, 100));
         quals[quals.length - minLength] = BAD_Q;
-        Assert.assertEquals(calculateTrim(quals, readCounts), new Interval(minLength + 1, quals.length - minLength));
+        Assert.assertEquals(calculateTrim(quals), new Interval(minLength + 1, quals.length - minLength));
         Arrays.fill(quals, GOOD_Q);
         for ( int idx = minLength - 1; idx < quals.length; idx += minLength ) {
             quals[idx] = BAD_Q;
         }
-        Assert.assertEquals(calculateTrim(quals, readCounts).size(), 0);
+        Assert.assertEquals(calculateTrim(quals).size(), 0);
     }
 
     @Test
     public void testGetReadReport() {
-        final ReadCounts readCounts = new ReadCounts();
         final SAMFileHeader header =
                 ArtificialReadUtils.createArtificialSamHeader(1, 0, 17);
         final byte[] bases = Arrays.copyOf(refSeq, refSeq.length);
@@ -550,13 +543,13 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         Arrays.fill(quals, QUAL_30);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
                                                                           bases, quals, "17M");
-        final Reference reference = new Reference(refSeq);
-        ReadReport readReport = getReadReport(read, refSeq, readCounts, reference);
+        reference = new Reference(refSeq);
+        final ReadReport readReport = getReadReport(read);
         Assert.assertEquals(readReport.getRefCoverage(), Collections.singletonList(new Interval(0, 17)));
         Assert.assertEquals(readReport.getVariations().size(), 0);
         read.getBasesNoCopy()[3] = CALL_A;
-        readReport = getReadReport(read, refSeq, readCounts, reference);
-        Assert.assertEquals(readReport.getVariations(),
+        final ReadReport readReport2 = getReadReport(read);
+        Assert.assertEquals(readReport2.getVariations(),
                 Collections.singletonList(new SNV(3, CALL_T, CALL_A, QUAL_30)));
     }
 }
