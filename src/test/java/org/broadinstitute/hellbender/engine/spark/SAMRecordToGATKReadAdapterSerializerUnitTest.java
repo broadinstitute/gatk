@@ -43,4 +43,23 @@ public class SAMRecordToGATKReadAdapterSerializerUnitTest {
         final GATKRead roundTrippedRead2 = SparkTestUtils.roundTripInKryo(read, GATKRead.class, conf);
         Assert.assertEquals(roundTrippedRead2, read);
     }
+
+    @Test
+    public void testTransientAttributeSerializationClearing(){
+        final SparkConf conf = new SparkConf().set("spark.kryo.registrator",
+                "org.broadinstitute.hellbender.engine.spark.SAMRecordToGATKReadAdapterSerializerUnitTest$TestGATKRegistrator");
+        final GATKRead read = ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50);
+        read.setTransientAttribute("test",1);
+        read.setTransientAttribute("removed",2);
+        read.clearTransientAttribute("removed");
+
+        Assert.assertEquals(read.getTransientAttribute("test"), 1);
+        Assert.assertNull(read.getTransientAttribute("removed"));
+
+        // Round tripping the read should cause it to be serialized and consequently not bring the transient attributes with it
+        final GATKRead roundTrippedRead = SparkTestUtils.roundTripInKryo(read, GATKRead.class, conf);
+        
+        Assert.assertNull(roundTrippedRead.getTransientAttribute("test"));
+        Assert.assertNull(roundTrippedRead.getTransientAttribute("removed"));
+    }
 }

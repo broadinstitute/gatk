@@ -668,10 +668,10 @@ public interface GATKRead extends Locatable {
     byte[] getAttributeAsByteArray( final String attributeName );
 
     /**
-     * This is used to access the transient attribute store in the underlying SAMRecord.
+     * This is used to access a transient attribute store provided by the underlying implementation. Transient attributes should not be serialized or written out with a record.
      *
      * NOTE: This is an advanced use case for GATKRead and you should probably use setAttribute() instead
-     * @param key key whose value is to be retrived
+     * @param key key whose value is to be stored
      */
     Object getTransientAttribute(final Object key);
 
@@ -724,6 +724,14 @@ public interface GATKRead extends Locatable {
      * Clear all attributes on the read.
      */
     void clearAttributes();
+
+    /**
+     * Clear an individual transient attribute on the read.
+     *
+     * @param attributeName Name of the attribute to clear. Must be legal according to {@link ReadUtils#assertAttributeNameIsLegal}
+     * @throws IllegalArgumentException if the attribute name is illegal according to {@link ReadUtils#assertAttributeNameIsLegal}
+     */
+    void clearTransientAttribute( final String attributeName );
 
     /**
      * Return a copy of this read.
