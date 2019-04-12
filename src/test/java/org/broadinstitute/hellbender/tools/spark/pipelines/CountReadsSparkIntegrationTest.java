@@ -73,7 +73,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
                 new Object[]{"-XL chr7:2-404", 3l},
                 new Object[]{"-L chr7:1-30 -L chr7:10-15 --" + IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME + " INTERSECTION", 3l},
                 new Object[]{"-L chr7:1 --" + IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME + " 19", 4l },
-                new Object[]{"-L " + getTestDataDir() + "/chr7_1_20.interval_list", 4l},
+                new Object[]{"-L " + getTestDataDir() + "/chr7_1_20_interval.list", 4l},
                 new Object[]{"-L chr7:1-100 -XL chr7:2-100", 3l},
                 new Object[]{"-L chr7:1-10 -L chr7:5-10 --"
                         +IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME  + " 10 --"
