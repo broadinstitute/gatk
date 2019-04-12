@@ -116,6 +116,15 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     // the primary work of the walker.  Must be overridden in implementing classes.
     protected abstract void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext);
 
+    /**
+     * {@inheritDoc}
+     *
+     * Implementation of concordance traversal.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the
+     * engine package.
+     */
     @Override
     public void traverse() {
         // Process each variant in the input stream.

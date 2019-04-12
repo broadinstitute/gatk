@@ -142,16 +142,15 @@ public abstract class LocusWalker extends WalkerBase {
     /**
      * {@inheritDoc}
      *
+     * Implementation of locus-based traversal.
+     *
      * The default implementation iterates over all positions in the reference covered by reads (filtered and transformed)
      * for all samples in the read groups, using the downsampling method provided by {@link #getDownsamplingInfo()}
      * and including deletions only if {@link #includeDeletions()} returns {@code true}.
      *
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
-     *
      * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
-     * engine package that extends this class.
-     *
-     * It is not meant to be overridden by tools outside of the engine package.
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the engine
+     * package.
      */
     @Override
     public void traverse() {

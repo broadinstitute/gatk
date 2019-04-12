@@ -33,6 +33,16 @@ import java.util.stream.StreamSupport;
  */
 public abstract class TwoPassReadWalker extends ReadWalker {
 
+
+    /**
+     * {@inheritDoc}
+     *
+     * Implementation of two-pass read-based traversal.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the engine
+     * package.
+     */
     @Override
     public void traverse() {
         // Process each read in the input stream.

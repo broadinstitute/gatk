@@ -37,13 +37,13 @@ public abstract class ReferenceWalker extends WalkerBase {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Implementation of reference-locus-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      *
      * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
-     * engine package that extends this class.
-     *
-     * It is not meant to be overridden by tools outside of the engine package.
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the engine
+     * package.
      */
     @Override
     public void traverse() {
