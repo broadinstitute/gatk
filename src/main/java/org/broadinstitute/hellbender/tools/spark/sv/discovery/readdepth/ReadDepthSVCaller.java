@@ -10,6 +10,7 @@ import scala.Tuple2;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Uses an SV graph and copy number posteriors to call SVs
@@ -60,12 +61,7 @@ public final class ReadDepthSVCaller {
         System.out.println("\tEnumerating genotypes from " + paths.size() + " haplotypes");
         final List<SVGraphGenotype> genotypes = enumerateGenotypes(paths, graph, copyNumberPosteriorsTree, groupId, baselineCopyNumber);
         if (genotypes == null) return null;
-        //System.out.println("\tSetting probabilities of " + genotypes.size() + " genotypes");
-        //setDepthProbabilities(genotypes);
-        //setGenotypeEvidenceProbabilities(genotypes, graph);
-        //setProbabilities(genotypes);
         System.out.println("\tGetting ref genotype of " + genotypes.size() + " genotypes");
-        //final Collection<Tuple2<CalledSVGraphEvent, Double>> integratedEvents = integrateEdgeEvents(genotypes, graph);
 
         SVGraphGenotype refGenotype = null;
         for (final SVGraphGenotype genotype : genotypes) {
@@ -105,6 +101,7 @@ public final class ReadDepthSVCaller {
 
         System.out.println("\tGetting events of " + maxGenotypes.size() + " maximal genotypes");
         final Collection<CalledSVGraphEvent> events = new ArrayList(maxGenotypes.size());
+        final double MIN_DEPTH_SUPPORT = 0.5;
         for (final SVGraphGenotype genotype : maxGenotypes) {
             final List<Collection<SVGraphEvent>> eventsList = getHaplotypeEvents(genotype, graph, new IndexedSVGraphPath(graph.getReferenceEdges()));
             for (final Collection<SVGraphEvent> haplotypeEvents : eventsList) {
@@ -112,7 +109,18 @@ public final class ReadDepthSVCaller {
                         .map(event -> new CalledSVGraphEvent(event.getType(), event.getInterval(), event.getGroupId(), event.getPathId(), true, quality))
                         .collect(Collectors.toList());
                 final Collection<CalledSVGraphEvent> mergedEvents = mergeAdjacentEvents(calledEvents);
-                events.addAll(filterEventsBySize(mergedEvents, minSize));
+                final Collection<CalledSVGraphEvent> sizeFilteredEvents = filterEventsBySize(mergedEvents, minSize);
+                for (final CalledSVGraphEvent event : sizeFilteredEvents) {
+                    Iterator<SVIntervalTree.Entry<SVCopyNumberInterval>> overlapIter = copyNumberPosteriorsTree.overlappers(event.getInterval());
+                    int overlapLen = 0;
+                    while (overlapIter.hasNext()) {
+                        overlapLen += overlapIter.next().getInterval().getLength();
+                    }
+                    final double overlapFraction = overlapLen / (double) event.getInterval().getLength();
+                    if (overlapFraction >= MIN_DEPTH_SUPPORT) {
+                        events.add(event);
+                    }
+                }
             }
         }
 
@@ -120,8 +128,6 @@ public final class ReadDepthSVCaller {
             int x = 0;
         }
 
-        //final Collection<CalledSVGraphEvent> probabilityFilteredEvents = filterEventsByProbability(integratedEvents, minEventProb);
-        //final Collection<CalledSVGraphGenotype> haplotypes = convertToCalledHaplotypes(filterHaplotypesByProbability(genotypes, minHaplotypeProb), graph);
         final Collection<CalledSVGraphGenotype> haplotypes = convertToCalledHaplotypes(maxGenotypes, graph);
         System.out.println("\tReturning " + haplotypes.size() + " haplotypes and " + events.size() + " events");
         return new Tuple2<>(haplotypes, events);
@@ -603,19 +609,24 @@ public final class ReadDepthSVCaller {
      * Calls events over graph partitions
      */
     public Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> callEvents() {
-
-        final SVGraphPartitioner graphPartitioner = new SVGraphPartitioner(graph);
         final BiFunction<SVInterval, SVInterval, Boolean> partitionFunction = (a, b) -> graphPartitioningFunction(a, b, arguments.paritionReciprocalOverlap);
-        final List<SVGraph> graphPartitions = graphPartitioner.getIndependentSubgraphs(partitionFunction);
-        final List<List<Integer>> partitionDependenceGraph = getPartitionDependenceGraph(graphPartitions);
+        final SVGraphPartitioner graphPartitioner = new SVGraphPartitioner(graph);
 
-        final Collection<CalledSVGraphEvent> events = new ArrayList<>();
-        final Collection<CalledSVGraphGenotype> haplotypes = new ArrayList<>();
+        // Partition the graph
+        final List<SVGraph> graphPartitions = graphPartitioner.getIndependentSubgraphs(partitionFunction);
+
+        // Determine partition hierarchy (partitions that contain others)
+        final List<List<Integer>> partitionDependenceGraph = getPartitionDependenceGraph(graphPartitions);
+        final Set<Integer> childPartitions = partitionDependenceGraph.stream().flatMap(List::stream).collect(Collectors.toSet());
+        final List<Integer> rootPartitions = IntStream.range(0, graphPartitions.size()).filter(i -> childPartitions.contains(i)).boxed().collect(Collectors.toList());
+
+        // Traverse the graph starting at each root
         final int numPartitions = graphPartitions.size();
         final boolean[] processedPartitions = new boolean[numPartitions];
-        for (int i = 0; i < graphPartitions.size(); i++) {
-            if (processedPartitions[i]) continue;
-            final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> result = callEventsHelper(i, graphPartitions, partitionDependenceGraph, Collections.emptyList(), 2, processedPartitions);
+        final Collection<CalledSVGraphGenotype> haplotypes = new ArrayList<>();
+        final Collection<CalledSVGraphEvent> events = new ArrayList<>();
+        for (final Integer root : rootPartitions) {
+            final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> result = callEventsHelper(root, graphPartitions, processedPartitions, Collections.emptyList(), 2, partitionDependenceGraph);
             haplotypes.addAll(result._1);
             events.addAll(result._2);
         }
@@ -624,18 +635,67 @@ public final class ReadDepthSVCaller {
 
     //TODO : does not process inter-chromosomal partitions properly
     private Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> callEventsHelper(final int partitionIndex,
-                                                                                                       final List<SVGraph> graphPartitions,
-                                                                                                       final List<List<Integer>> partitionDependenceGraph,
-                                                                                                       final List<CalledSVGraphGenotype> parentHaplotypes,
+                                                                                                       final List<SVGraph> partitions,
+                                                                                                       final boolean[] processedPartitions,
+                                                                                                       final Collection<CalledSVGraphGenotype> parentHaplotypes,
                                                                                                        final int defaultCopyNumber,
-                                                                                                       final boolean[] processedPartitions) {
+                                                                                                       final List<List<Integer>> partitionDependenceGraph) {
         if (processedPartitions[partitionIndex]) {
             return new Tuple2<>(Collections.emptyList(), Collections.emptyList());
         }
         processedPartitions[partitionIndex] = true;
 
+        final Collection<CalledSVGraphGenotype> haplotypes = new ArrayList<>();
+        final Collection<CalledSVGraphEvent> events = new ArrayList<>();
         final int baselineCopyNumber = defaultCopyNumber;
-        final SVInterval partitionInterval = graphPartitions.get(partitionIndex).getContigIntervals().iterator().next();
+        final List<CalledSVGraphGenotype> partitionHaplotypes = new ArrayList<>();
+        final SVGraph partition = partitions.get(partitionIndex);
+
+        final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> result = generateEvents(partition, partitionIndex,
+                arguments.minEventProb, arguments.maxPathLengthFactor, arguments.maxEdgeVisits, copyNumberPosteriorsTree,
+                arguments.maxBranches, baselineCopyNumber, arguments.minEventSize, arguments.minHaplotypeProb, Integer.MAX_VALUE);
+        if (result == null) {
+            final BiFunction<SVInterval, SVInterval, Boolean> repartitionFunction = (a, b) -> graphRepartitioningFunction(a, b, 0.1);
+            final SVGraphPartitioner repartitioner = new SVGraphPartitioner(partition);
+            final List<SVGraph> repartitions = repartitioner.getIndependentSubgraphs(repartitionFunction);
+            for (final SVGraph repartition : repartitions) {
+                final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> retryResult = generateEvents(repartition, partitionIndex,
+                        arguments.minEventProb, arguments.maxPathLengthFactor, arguments.maxEdgeVisits, copyNumberPosteriorsTree,
+                        arguments.maxBranches, baselineCopyNumber, arguments.minEventSize, arguments.minHaplotypeProb, Integer.MAX_VALUE);
+                if (retryResult == null) {
+                    for (final IndexedSVGraphEdge edge : repartition.getEdges()) {
+                        if (!edge.isReference()) {
+                            events.add(getUnresolvedEvent(edge.getInterval(), partitionIndex));
+                        }
+                    }
+                } else {
+                    partitionHaplotypes.addAll(retryResult._1);
+                    haplotypes.addAll(retryResult._1);
+                    events.addAll(retryResult._2);
+                }
+            }
+        } else {
+            partitionHaplotypes.addAll(result._1);
+            haplotypes.addAll(result._1);
+            events.addAll(result._2);
+        }
+
+        for (final Integer childIndex : partitionDependenceGraph.get(partitionIndex)) {
+            //TODO find correct baseline copy state
+            final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> childResult = callEventsHelper(childIndex, partitions, processedPartitions, partitionHaplotypes, baselineCopyNumber, partitionDependenceGraph);
+            haplotypes.addAll(childResult._1);
+            events.addAll(childResult._2);
+        }
+        return new Tuple2<>(haplotypes, events);
+
+            /*System.out.println("\tSecond attempt failed on " + partitionInterval + " (N = " + partition.getNodes().size() + ", E = " + partition.getEdges().size() + ", E_ref = " + partition.getReferenceEdges().size() + ")");
+            for (final IndexedSVGraphEdge edge : partition.getEdges()) {
+                if (!edge.isReference()) {
+                    events.add(getUnresolvedEvent(edge.getInterval(), partitionIndex));
+                }
+            }*/
+
+
         /*
         if (!parentHaplotypes.isEmpty()) {
             int maxProbHaplotypeIndex = -1;
@@ -655,58 +715,6 @@ public final class ReadDepthSVCaller {
             baselineCopyNumber = defaultCopyNumber;
         }
         */
-
-        final List<CalledSVGraphGenotype> partitionHaplotypes = new ArrayList<>();
-        final Collection<CalledSVGraphGenotype> haplotypes = new ArrayList<>();
-        final Collection<CalledSVGraphEvent> events = new ArrayList<>();
-        final SVGraph partition = graphPartitions.get(partitionIndex);
-        final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> result = generateEvents(partition, partitionIndex,
-                arguments.minEventProb,arguments.maxPathLengthFactor, arguments.maxEdgeVisits, copyNumberPosteriorsTree,
-                arguments.maxBranches, baselineCopyNumber, arguments.minEventSize, arguments.minHaplotypeProb, Integer.MAX_VALUE);
-        if (result == null) {
-            // This repartitioning code causes problems with the child baseline copy states
-            //System.out.println("First attempt failed on partition " + partitionIndex + " on " + partitionInterval + " (N = " + partition.getNodes().size() + ", E = " + partition.getEdges().size() + ", E_ref = " + partition.getReferenceEdges().size() + ")");
-            final SVGraphPartitioner graphPartitioner = new SVGraphPartitioner(partition);
-            final BiFunction<SVInterval, SVInterval, Boolean> partitionFunction = (a, b) -> graphRepartitioningFunction(a, b, 0.1);
-            final List<SVGraph> graphRepartition = graphPartitioner.getIndependentSubgraphs(partitionFunction);
-            //System.out.println("\tRepartitioning has " + graphRepartition.size() + " subgraphs");
-            for (final SVGraph repartition : graphRepartition) {
-                final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> result2 = generateEvents(repartition, partitionIndex,
-                        arguments.minEventProb,arguments.maxPathLengthFactor, arguments.maxEdgeVisits, copyNumberPosteriorsTree,
-                        arguments.maxBranches, baselineCopyNumber, arguments.minEventSize, arguments.minHaplotypeProb, Integer.MAX_VALUE);
-                if (result2 == null) {
-                    System.out.println("\tSecond attempt failed on " + partitionInterval + " (N = " + repartition.getNodes().size() + ", E = " + repartition.getEdges().size() + ", E_ref = " + repartition.getReferenceEdges().size() + ")");
-                    for (final IndexedSVGraphEdge edge : repartition.getEdges()) {
-                        if (!edge.isReference()) {
-                            events.add(getUnresolvedEvent(edge.getInterval(), partitionIndex));
-                        }
-                    }
-                } else {
-                    haplotypes.addAll(result2._1);
-                    events.addAll(result2._2);
-                    for (final CalledSVGraphEvent event : result2._2) {
-                        System.out.println("\tRepartitioning yielded event: " + event.getType() + " " + event.getInterval());
-                    }
-                    partitionHaplotypes.addAll(result2._1);
-                }
-            }
-            /*System.out.println("\tSecond attempt failed on " + partitionInterval + " (N = " + partition.getNodes().size() + ", E = " + partition.getEdges().size() + ", E_ref = " + partition.getReferenceEdges().size() + ")");
-            for (final IndexedSVGraphEdge edge : partition.getEdges()) {
-                if (!edge.isReference()) {
-                    events.add(getUnresolvedEvent(edge.getInterval(), partitionIndex));
-                }
-            }*/
-        } else {
-            haplotypes.addAll(result._1);
-            events.addAll(result._2);
-            partitionHaplotypes.addAll(result._1);
-        }
-        for (final Integer childIndex : partitionDependenceGraph.get(partitionIndex)) {
-            final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> childResult = callEventsHelper(childIndex, graphPartitions, partitionDependenceGraph, partitionHaplotypes, baselineCopyNumber, processedPartitions);
-            haplotypes.addAll(childResult._1);
-            events.addAll(childResult._2);
-        }
-        return new Tuple2<>(haplotypes, events);
     }
 
     /**
