@@ -279,21 +279,25 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		CASE 
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN NULL
-		  -- Exclusion occurred after enrollment and prior to disease onset; we will censor:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN 0
+		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
+		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after disease onset; we'll allow it:
 		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.has_disease 
-		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
+			-- Met exclusion but no inclusion
+			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN NULL
+			-- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN 0
 		  ELSE io.has_disease
 		END has_disease, 
 		CASE 
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN NULL
-		  -- Exclusion occurred after enrollment and prior to disease onset; we will censor:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN 0
+		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
+		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after disease onset; we'll allow it:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.incident_disease
+			WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.incident_disease
+			-- Met exclusion but no inclusion
+			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN NULL
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN 0
 		  ELSE io.incident_disease
@@ -301,10 +305,12 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		CASE 
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN NULL
-		  -- Exclusion occurred after enrollment and prior to disease onset; we will censor:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN 0
+		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
+		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after disease onset; we'll allow it:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.prevalent_disease
+			WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.prevalent_disease
+			-- Met exclusion but no inclusion
+			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN NULL
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN 0
 		  ELSE io.prevalent_disease
@@ -312,10 +318,12 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		CASE 
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN eo.date_censor
-		  -- Exclusion occurred after enrollment and prior to disease onset; we will censor:
+		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
 		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN eo.date_censor
 		  -- Exclusion occurred after disease onset; we'll allow it:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.date_censor
+			WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.date_censor
+			-- Met exclusion but no inclusion
+			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN eo.date_censor
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN c.phenotype_censor_date
 		  ELSE io.date_censor
@@ -323,10 +331,12 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		CASE
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN DATE_DIFF(eo.date_censor,c.birthdate, DAY)/365.0
-		  -- Exclusion occurred after enrollment and prior to disease onset; we will censor:
+		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
 		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN DATE_DIFF(eo.date_censor,c.birthdate, DAY)/365.0
 		  -- Exclusion occurred after disease onset; we'll allow it:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0 
+			WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0 
+			-- Met exclusion but no inclusion
+			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN DATE_DIFF(eo.date_censor,c.birthdate, DAY)/365.0
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN c.phenotype_censor_age
 		  ELSE DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0 
