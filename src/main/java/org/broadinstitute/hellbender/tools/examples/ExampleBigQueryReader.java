@@ -9,8 +9,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.ArrayList;
@@ -38,7 +39,8 @@ import java.util.stream.IntStream;
         programGroup = ExampleProgramGroup.class,
         omitFromCommandLine = false
 )
-public class ExampleBigQueryReader extends GATKTool {
+@DocumentedFeature
+public class ExampleBigQueryReader extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(ExampleBigQueryReader.class);
 
     //==================================================================================================================
@@ -102,7 +104,7 @@ public class ExampleBigQueryReader extends GATKTool {
     // Override Methods:
 
     @Override
-    public void traverse() {
+    public Object doWork() {
 
         final BigQuery bigQuery = BigQueryOptions.getDefaultInstance().getService();
 
@@ -154,6 +156,9 @@ public class ExampleBigQueryReader extends GATKTool {
 
         // Log all pages of the results;
         prettyLogResultData(result);
+
+        // No-op return value:
+        return null;
     }
 
     //==================================================================================================================
