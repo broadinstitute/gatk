@@ -162,14 +162,24 @@ public class ExampleBigQueryReader extends GATKTool {
     //==================================================================================================================
     // Instance Methods:
 
+    /**
+     * @return The fully-qualified table name from which to query data.
+     */
     private String createFQTN() {
         return projectId + "." + dataset + "." + tableId;
     }
 
+    /**
+     * @return A valid BigTable query string (similar to SQL in syntax) to use to retrieve data.
+     */
     private String createQueryString() {
         return "SELECT * FROM `" + createFQTN() + "` LIMIT " + numRecordsToRetrieve;
     }
 
+    /**
+     * Logs the given results in a pretty table.
+     * @param result A {@link TableResult} object containing the results of a query that generated some data.
+     */
     private void prettyLogResultData( final TableResult result ){
         final Schema schema = result.getSchema();
 
