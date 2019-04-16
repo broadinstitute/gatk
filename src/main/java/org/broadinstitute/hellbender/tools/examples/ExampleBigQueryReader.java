@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
  * records to pull.  For example, the following are all valid invocations of this tool:
  *
  * `gatk ExampleBigQueryReader`
- * `gatk ExampleBigQueryReader`
+ * `gatk ExampleBigQueryReader --project-id broad-dsp-spec-ops --dataset gcp_joint_genotyping --table-id chr2_sample_100_new_way`
  *
  * Created by jonn on 4/9/19.
  */
