@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender;
 
-import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -218,9 +217,9 @@ public class Main {
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
-        } catch (final StorageException e) {
-            handleStorageException(e);
-            System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
+//        } catch (final StorageException e) {
+//            handleStorageException(e);
+//            System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         } catch (final Exception e){
             handleNonUserException(e);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
@@ -268,23 +267,23 @@ public class Main {
         exception.printStackTrace();
     }
 
-    /**
-     * Handle any exception that does not come from the user. Default implementation prints the stack trace.
-     * @param exception the exception to handle (never an {@link UserException}).
-     */
-    protected void handleStorageException(final StorageException exception) {
-        // HTTP error code
-        System.err.println("code:      " + exception.getCode());
-        // user-friendly message
-        System.err.println("message:   " + exception.getMessage());
-        // short reason code, eg. "invalidArgument"
-        System.err.println("reason:    " + exception.getReason());
-        // eg. the name of the argument that was invalid
-        System.err.println("location:  " + exception.getLocation());
-        // true indicates the server thinks the same request may succeed later
-        System.err.println("retryable: " + exception.isRetryable());
-        exception.printStackTrace();
-    }
+//    /**
+//     * Handle any exception that does not come from the user. Default implementation prints the stack trace.
+//     * @param exception the exception to handle (never an {@link UserException}).
+//     */
+//    protected void handleStorageException(final StorageException exception) {
+//        // HTTP error code
+//        System.err.println("code:      " + exception.getCode());
+//        // user-friendly message
+//        System.err.println("message:   " + exception.getMessage());
+//        // short reason code, eg. "invalidArgument"
+//        System.err.println("reason:    " + exception.getReason());
+//        // eg. the name of the argument that was invalid
+//        System.err.println("location:  " + exception.getLocation());
+//        // true indicates the server thinks the same request may succeed later
+//        System.err.println("retryable: " + exception.isRetryable());
+//        exception.printStackTrace();
+//    }
 
     /** The entry point to GATK from commandline. It calls {@link #mainEntry(String[])} from this instance. */
     public static void main(final String[] args) {

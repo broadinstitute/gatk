@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.io;
 
-import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
@@ -35,12 +34,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
@@ -785,9 +781,9 @@ public final class IOUtils {
         }
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
-            if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
-                return BucketUtils.getPathOnGcs(uriString);
-            }
+//            if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
+//                return BucketUtils.getPathOnGcs(uriString);
+//            }
             // Paths.get(String) assumes the default file system
             // Paths.get(URI) uses the scheme
             return uri.getScheme() == null ? Paths.get(uriString) : Paths.get(uri);
@@ -849,7 +845,7 @@ public final class IOUtils {
     public static void assertFileIsReadable(final Path path) {
         Utils.nonNull(path);
 
-        try {
+//        try {
             if ( ! Files.exists(path) ) {
                 throw new UserException.CouldNotReadInputFile(path, "It doesn't exist.");
             }
@@ -859,19 +855,19 @@ public final class IOUtils {
             if ( ! Files.isReadable(path) ) {
                 throw new UserException.CouldNotReadInputFile(path, "It is not readable, check the file permissions");
             }
-        } catch (com.google.cloud.storage.StorageException cloudBoom) {
-            // probably a permissions problem, or perhaps a disabled account.
-            // Looks like this for a disabled bucket error:
-            //   A USER ERROR has occurred: Couldn't read file gs://foo/bar. Error was:
-            //   403: The account for bucket "foo" has been disabled.
-            // For no access, it looks like this:
-            // (use `gcloud auth application-default revoke` to forget the default credentials)
-            //   A USER ERROR has occurred: Couldn't read file gs://(...). Error was:
-            //   401: Anonymous users does not have storage.objects.get access to object (...).
-            // The user can see the underlying exception by passing
-            // -DGATK_STACKTRACE_ON_USER_EXCEPTION=true
-            throw new UserException.CouldNotReadInputFile(path, cloudBoom.getCode() + ": " + cloudBoom.getMessage(), cloudBoom);
-        }
+//        } catch (com.google.cloud.storage.StorageException cloudBoom) {
+//            // probably a permissions problem, or perhaps a disabled account.
+//            // Looks like this for a disabled bucket error:
+//            //   A USER ERROR has occurred: Couldn't read file gs://foo/bar. Error was:
+//            //   403: The account for bucket "foo" has been disabled.
+//            // For no access, it looks like this:
+//            // (use `gcloud auth application-default revoke` to forget the default credentials)
+//            //   A USER ERROR has occurred: Couldn't read file gs://(...). Error was:
+//            //   401: Anonymous users does not have storage.objects.get access to object (...).
+//            // The user can see the underlying exception by passing
+//            // -DGATK_STACKTRACE_ON_USER_EXCEPTION=true
+//            throw new UserException.CouldNotReadInputFile(path, cloudBoom.getCode() + ": " + cloudBoom.getMessage(), cloudBoom);
+//        }
     }
 
     /**
