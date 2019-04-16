@@ -439,35 +439,127 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertFalse(f.test(read), read.toString());//fail
     }
 
-    @Test
-    public void testMaxInsertSizeFilter() {
+    @DataProvider
+    public Object[][] getTestFragmentLengthFilterData() {
         final SAMFileHeader header = createHeaderWithReadGroups();
-        final GATKRead pairedRead = simpleGoodRead(header);
+        final GATKRead pairedRead150 = simpleGoodRead(header);
+        final GATKRead pairedReadNegative150 = simpleGoodRead(header);
         final GATKRead unpairedRead = simpleGoodRead(header);
-        pairedRead.setIsPaired(true);
 
-        final FragmentLengthReadFilter f = new FragmentLengthReadFilter();
-
-        pairedRead.setFragmentLength(150);
+        pairedRead150.setIsPaired(true);
+        pairedRead150.setFragmentLength(150);
+        pairedReadNegative150.setIsPaired(true);
+        pairedReadNegative150.setFragmentLength(-150);
         unpairedRead.setFragmentLength(150);
 
-        f.maxFragmentLength = 180;
-        Assert.assertTrue(f.test(pairedRead), pairedRead.toString());//pass
-        Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
+        return new Object[][] {
+                // Test cases with only maxFragmentLength set
+                { null, 180, pairedRead150, true },
+                { null, 180, pairedReadNegative150, true },
+                { null, 180, unpairedRead, true },
+                { null, 151, pairedRead150, true },
+                { null, 151, pairedReadNegative150, true },
+                { null, 151, unpairedRead, true },
+                { null, 150, pairedRead150, true },
+                { null, 150, pairedReadNegative150, true },
+                { null, 150, unpairedRead, true },
+                { null, 149, pairedRead150, false },
+                { null, 149, pairedReadNegative150, false },
+                { null, 149, unpairedRead, true },
+                { null, 1, pairedRead150, false },
+                { null, 1, pairedReadNegative150, false },
+                { null, 1, unpairedRead, true },
+                { null, 0, pairedRead150, false },
+                { null, 0, pairedReadNegative150, false },
+                { null, 0, unpairedRead, true },
 
-        f.maxFragmentLength = 90;
-        Assert.assertFalse(f.test(pairedRead), pairedRead.toString());//fail
-        Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
+                // Test cases with only minFragmentLength set
+                { 180, null, pairedRead150, false },
+                { 180, null, pairedReadNegative150, false },
+                { 180, null, unpairedRead, true },
+                { 151, null, pairedRead150, false },
+                { 151, null, pairedReadNegative150, false },
+                { 151, null, unpairedRead, true },
+                { 150, null, pairedRead150, true },
+                { 150, null, pairedReadNegative150, true },
+                { 150, null, unpairedRead, true },
+                { 149, null, pairedRead150, true },
+                { 149, null, pairedReadNegative150, true },
+                { 149, null, unpairedRead, true },
+                { 1, null, pairedRead150, true },
+                { 1, null, pairedReadNegative150, true },
+                { 1, null, unpairedRead, true },
+                { 0, null, pairedRead150, true },
+                { 0, null, pairedReadNegative150, true },
+                { 0, null, unpairedRead, true },
 
-        pairedRead.setFragmentLength(-150);
+                // Test cases with both minFragmentLength and maxFragmentLength set
+                { 170, 180, pairedRead150, false },
+                { 170, 180, pairedReadNegative150, false },
+                { 170, 180, unpairedRead, true },
+                { 151, 180, pairedRead150, false },
+                { 151, 180, pairedReadNegative150, false },
+                { 151, 180, unpairedRead, true },
+                { 151, 151, pairedRead150, false },
+                { 151, 151, pairedReadNegative150, false },
+                { 151, 151, unpairedRead, true },
+                { 150, 180, pairedRead150, true },
+                { 150, 180, pairedReadNegative150, true },
+                { 150, 180, unpairedRead, true },
+                { 150, 150, pairedRead150, true },
+                { 150, 150, pairedReadNegative150, true },
+                { 150, 150, unpairedRead, true },
+                { 150, 149, pairedRead150, false },
+                { 150, 149, pairedReadNegative150, false },
+                { 150, 149, unpairedRead, true },
+                { 149, 150, pairedRead150, true },
+                { 149, 150, pairedReadNegative150, true },
+                { 149, 150, unpairedRead, true },
+                { 140, 150, pairedRead150, true },
+                { 140, 150, pairedReadNegative150, true },
+                { 140, 150, unpairedRead, true },
+                { 140, 160, pairedRead150, true },
+                { 140, 160, pairedReadNegative150, true },
+                { 140, 160, unpairedRead, true },
+                { 140, 149, pairedRead150, false },
+                { 140, 149, pairedReadNegative150, false },
+                { 140, 149, unpairedRead, true },
+                { 130, 140, pairedRead150, false },
+                { 130, 140, pairedReadNegative150, false },
+                { 130, 140, unpairedRead, true },
+                { 1, 140, pairedRead150, false },
+                { 1, 140, pairedReadNegative150, false },
+                { 1, 140, unpairedRead, true },
+                { 0, 180, pairedRead150, true },
+                { 0, 180, pairedReadNegative150, true },
+                { 0, 180, unpairedRead, true },
+                { 0, 150, pairedRead150, true },
+                { 0, 150, pairedReadNegative150, true },
+                { 0, 150, unpairedRead, true },
+                { 0, 149, pairedRead150, false },
+                { 0, 149, pairedReadNegative150, false },
+                { 0, 149, unpairedRead, true },
+                { 0, 0, pairedRead150, false },
+                { 0, 0, pairedReadNegative150, false },
+                { 0, 0, unpairedRead, true }
+        };
+    }
 
-        f.maxFragmentLength = 180;
-        Assert.assertTrue(f.test(pairedRead), pairedRead.toString());//pass
-        Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
+    @Test(dataProvider = "getTestFragmentLengthFilterData")
+    public void testFragmentLengthFilter(final Integer minFragmentLength,
+                                         final Integer maxFragmentLength,
+                                         final GATKRead read,
+                                         final boolean expectedFilterResult) {
 
-        f.maxFragmentLength = 90;
-        Assert.assertFalse(f.test(pairedRead), pairedRead.toString());//fail
-        Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
+        final FragmentLengthReadFilter filter = new FragmentLengthReadFilter();
+        if ( minFragmentLength != null ) {
+            filter.minFragmentLength = minFragmentLength;
+        }
+        if ( maxFragmentLength != null ) {
+            filter.maxFragmentLength = maxFragmentLength;
+        }
+
+        Assert.assertEquals(filter.test(read), expectedFilterResult, "Wrong filter result for read " + read);
     }
 
     @Test
