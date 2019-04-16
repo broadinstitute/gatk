@@ -1115,6 +1115,9 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         merged = IntervalUtils.mergeIntervalLocations(locs, IntervalMergingRule.ALL);
         Assert.assertEquals(merged.size(), 1);
 
+        merged = IntervalUtils.mergeIntervalLocations(locs, IntervalMergingRule.NONE);
+        Assert.assertEquals(merged.size(), 2);
+
         // Test that null means the same as ALL
         merged = IntervalUtils.mergeIntervalLocations(locs, null);
         Assert.assertEquals(merged.size(), 1);
