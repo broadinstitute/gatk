@@ -9,6 +9,11 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -37,12 +42,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -151,13 +150,69 @@ public abstract class GATKTool extends CommandLineProgram {
     public FeatureManager features;
 
     /**
-     *
      * Intervals to be used for traversal (null if no intervals were provided).
      *
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to
      * their particular driving data source.
      */
     List<SimpleInterval> userIntervals;
+
+    /**
+     * Get the {@link ReferenceDataSource} for this {@link GATKTool}.
+     * Will throw a {@link GATKException} if the reference is null.
+     * Clients are expected to call the {@link #hasReference()} method prior to calling this.
+     *
+     * Should only be called by walker base classes in the engine (such as {@link ReadWalker}), or by "free-form" tools that
+     * extend the {@link GATKTool} class directly rather than one of the built-in walker types.
+     * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
+     * the engine datasources.
+     *
+     * @return the {@link ReferenceDataSource} for this {@link GATKTool}.  Never {@code null}.
+     */
+    protected ReferenceDataSource directlyAccessEngineReferenceDataSource() {
+        if ( reference == null ) {
+            throw new GATKException("Attempted to retrieve null reference!");
+        }
+        return reference;
+    }
+
+    /**
+     * Get the {@link ReadsDataSource} for this {@link GATKTool}.
+     * Will throw a {@link GATKException} if the reads are null.
+     * Clients are expected to call the {@link #hasReads()} method prior to calling this.
+     *
+     * Should only be called by walker base classes in the engine (such as {@link ReadWalker}), or by "free-form" tools that
+     * extend the {@link GATKTool} class directly rather than one of the built-in walker types.
+     * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
+     * the engine datasources.
+     *
+     * @return the {@link ReadsDataSource} for this {@link GATKTool}.  Never {@code null}.
+     */
+    protected ReadsDataSource directlyAccessEngineReadsDataSource() {
+        if ( reads == null ) {
+            throw new GATKException("Attempted to retrieve null reads!");
+        }
+        return reads;
+    }
+
+    /**
+     * Get the {@link FeatureManager} for this {@link GATKTool}.
+     * Will throw a {@link GATKException} if the features are null.
+     * Clients are expected to call the {@link #hasFeatures()} method prior to calling this.
+     *
+     * Should only be called by walker base classes in the engine (such as {@link ReadWalker}), or by "free-form" tools that
+     * extend the {@link GATKTool} class directly rather than one of the built-in walker types.
+     * Tools that extend a walker type should get their data via {@code apply()} rather than directly accessing
+     * the engine datasources.
+     *
+     * @return the {@link FeatureManager} for this {@link GATKTool}.  Never {@code null}.
+     */
+    protected FeatureManager directlyAccessEngineFeatureManager() {
+        if ( features == null ) {
+            throw new GATKException("Attempted to retrieve null features!");
+        }
+        return features;
+    }
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke

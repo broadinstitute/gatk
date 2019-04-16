@@ -24,7 +24,7 @@ import java.util.List;
  * ReadWalker authors must implement the apply() method to process each read, and may optionally implement
  * onTraversalStart() and/or onTraversalSuccess(). See the PrintReadsWithReference walker for an example.
  */
-public abstract class ReadWalker extends GATKTool {
+public abstract class ReadWalker extends WalkerBase {
 
     @Override
     public boolean requiresReads() {
@@ -72,13 +72,18 @@ public abstract class ReadWalker extends GATKTool {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Implementation of read-based traversal.
-     * Subclasses can override to provide own behavior but default implementation should be suitable for most uses.
      *
      * The default implementation creates filters using {@link #makeReadFilter} and transformers using
      * {@link #makePreReadFilterTransformer()} {@link #makePostReadFilterTransformer()} and then iterates over all reads, applies
      * the pre-filter transformer, the filter, then the post-filter transformer and hands the resulting reads to the {@link #apply}
      * function of the walker (along with additional contextual information, if present, such as reference bases).
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the engine
+     * package.
      */
     @Override
     public void traverse() {

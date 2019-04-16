@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
  * onTraversalStart() and/or onTraversalSuccess(). See the {@link org.broadinstitute.hellbender.tools.examples.ExampleIntervalWalker}
  * tool for an example.
  */
-public abstract class IntervalWalker extends GATKTool {
+public abstract class IntervalWalker extends WalkerBase {
 
     @Override
     public boolean requiresIntervals() {
@@ -53,6 +53,15 @@ public abstract class IntervalWalker extends GATKTool {
         super.onStartup();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Implementation of interval-based traversal.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the
+     * engine package.
+     */
     @Override
     public void traverse() {
         final ReadFilter readFilter = makeReadFilter();

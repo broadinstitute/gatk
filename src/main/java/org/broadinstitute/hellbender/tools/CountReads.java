@@ -33,7 +33,7 @@ public final class CountReads extends ReadWalker {
 
     private long count = 0;
     @Override
-    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+    public void apply( final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
         ++count;
     }
 

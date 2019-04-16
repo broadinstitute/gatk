@@ -101,8 +101,13 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     }
 
     /**
-     * Implementation of variant-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     * {@inheritDoc}
+     *
+     * Implementation of multi-variant traversal.
+     *
+     * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
+     * engine package that extends this class. It is not meant to be overridden by tools outside of the
+     * engine package.
      */
     @Override
     public void traverse() {

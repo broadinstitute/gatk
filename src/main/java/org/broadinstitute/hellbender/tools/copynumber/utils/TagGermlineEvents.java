@@ -19,7 +19,7 @@ import java.util.List;
         summary = "A tool for tagging possible germline events in a tumor segment file.  The algorithm used is very simplistic.  Segments called as amplified or deleted in the normal are matched by breakpoints (+/- some padding) or reciprocal overlap.",
         programGroup = CopyNumberProgramGroup.class)
 @ExperimentalFeature
-public class TagGermlineEvents extends GATKTool{
+public class TagGermlineEvents extends GATKTool {
 
     final static public String MATCHED_NORMAL_SEGMENT_FILE_LONG_NAME = "called-matched-normal-seg-file";
     final static public int DEFAULT_GERMLINE_TAG_PADDING_IN_BP = 1000;
