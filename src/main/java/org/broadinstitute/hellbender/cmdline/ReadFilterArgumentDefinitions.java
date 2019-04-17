@@ -20,6 +20,7 @@ public final class ReadFilterArgumentDefinitions {
     public static final String AMBIGUOUS_FILTER_BASES_NAME = "ambig-filter-bases";
 
     public static final String MAX_FRAGMENT_LENGTH_NAME = "max-fragment-length";
+    public static final String MIN_FRAGMENT_LENGTH_NAME = "min-fragment-length";
 
     public static final String LIBRARY_NAME = "library";
 

@@ -9,7 +9,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.Serializable;
 
 /**
- * Keep only read pairs (0x1) with absolute insert length less than or equal to the given value.
+ * Keep only read pairs (0x1) with absolute insert length less than or equal to the specified maximum,
+ * and/or greater than or equal to the specified minimum.
  *
  * <p>Taking absolute values allows inclusion of pairs where the mate of the read being considered is at a smaller genomic coordinate.
  * Insert length is the difference between the 5' outer ends of mates, akin to a SAM record's TLEN (column 9).
@@ -24,12 +25,18 @@ public final class FragmentLengthReadFilter extends ReadFilter implements Serial
             optional = true)
     public int maxFragmentLength = 1000000;
 
+    @Argument(fullName = ReadFilterArgumentDefinitions.MIN_FRAGMENT_LENGTH_NAME,
+            doc = "Minimum length of fragment (insert size)",
+            optional = true)
+    public int minFragmentLength = 0;
+
     @Override
     public boolean test( final GATKRead read ) {
         if ( ! read.isPaired() ) {
             return true;
         }
-        //Note fragment length is negative if mate maps to lower position than read so we take absolute value.
-        return Math.abs(read.getFragmentLength()) <= maxFragmentLength;
+        // Note fragment length is negative if mate maps to lower position than read so we take absolute value.
+        return Math.abs(read.getFragmentLength()) <= maxFragmentLength &&
+               Math.abs(read.getFragmentLength()) >= minFragmentLength;
     }
 }
