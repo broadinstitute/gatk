@@ -175,6 +175,12 @@ func BuildQuery(BQ *WrappedBigQuery, tabs *TabFile, displayQuery bool) (*bigquer
 	return bqQuery, nil
 }
 
+// TODO: create a `has_died` field and apply the censor table's
+// death_censor_date properly. Rename death_date to death_censor_date. Rename
+// death_age to death_censor_age.
+//
+// TODO: Resolve age_censor vs enroll_age. Choose one or the other (likely the
+// latter, so you end up with enroll_age, censor_age, death_censor_age).
 func rawQuery(BQ *WrappedBigQuery) string {
 	return fmt.Sprintf(`
 	WITH undated_fields AS (
