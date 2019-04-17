@@ -3,11 +3,7 @@ package org.broadinstitute.hellbender.tools.examples;
 // NOTE:
 // Adapted from: https://github.com/googlearchive/bigquery-samples-java/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
 
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableResult;
-import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -15,12 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
-import org.broadinstitute.hellbender.utils.Bigquery.BigQueryUtils;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 /**
  * An example class that communicates with BigQuery using the google bigquery library.
@@ -117,7 +108,7 @@ public class ExampleBigQueryReader extends CommandLineProgram {
         final TableResult result = BigQueryUtils.executeQuery( queryString );
 
         // Log all pages of the results;
-        prettyLogResultData(result);
+        BigQueryUtils.logResultDataPretty( result, logger );
 
         // No-op return value:
         return null;
@@ -141,54 +132,6 @@ public class ExampleBigQueryReader extends CommandLineProgram {
      */
     private String createQueryString() {
         return "SELECT * FROM `" + createFQTN() + "` LIMIT " + numRecordsToRetrieve;
-    }
-
-    /**
-     * Logs the given results in a pretty table.
-     * @param result A {@link TableResult} object containing the results of a query that generated some data.
-     */
-    private void prettyLogResultData( final TableResult result ){
-        final Schema schema = result.getSchema();
-
-        // Go through all rows and get the length of each column:
-        final List<Integer> columnLengths = new ArrayList<>(schema.getFields().size());
-
-        // Start with schema names:
-        for ( final Field field : schema.getFields() ) {
-            columnLengths.add( field.getName().length() );
-        }
-
-        // Check each row:
-        for ( final FieldValueList row : result.iterateAll() ) {
-            for ( int i = 0; i < row.size() ; ++i ) {
-                if ( columnLengths.get(i) < row.get(i).getStringValue().length() ) {
-                    columnLengths.set(i, row.get(i).getStringValue().length());
-                }
-            }
-        }
-
-        // Create a separator string for each column:
-        final String headerFooter = "+" + columnLengths.stream().map(
-                l -> StringUtils.repeat("-", l+2) + "+"
-        ).collect(Collectors.joining(""));
-
-        // Now we can log our schema header and rows:
-        logger.info( headerFooter );
-        logger.info( "|" +
-                IntStream.range(0, columnLengths.size()).boxed().map(
-                        i -> String.format(" %-"+ columnLengths.get(i) +"s |", schema.getFields().get(i).getName())
-                ).collect(Collectors.joining()) );
-        logger.info( headerFooter );
-
-        // Log our data:
-        for ( final FieldValueList row : result.iterateAll() ) {
-            logger.info( "|" +
-                    IntStream.range(0, row.size()).boxed().map(
-                            i -> String.format(" %-"+ columnLengths.get(i) +"s |", row.get(i).getStringValue())
-                    ).collect(Collectors.joining()) );
-        }
-
-        logger.info( headerFooter );
     }
 
     //==================================================================================================================

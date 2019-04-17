@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.Bigquery;
+package org.broadinstitute.hellbender.utils.bigquery;
 
 // NOTE:
 // File adapted from: https://github.com/google/google-api-java-client-samples/bigquery-appengine-sample/src/main/java/com/google/api/client/sample/bigquery/appengine/dashboard
