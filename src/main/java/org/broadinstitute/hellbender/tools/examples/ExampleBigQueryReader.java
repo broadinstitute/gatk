@@ -3,7 +3,10 @@ package org.broadinstitute.hellbender.tools.examples;
 // NOTE:
 // Adapted from: https://github.com/googlearchive/bigquery-samples-java/src/main/java/com/google/cloud/bigquery/samples/BigQueryJavaGettingStarted.java
 
-import com.google.cloud.bigquery.*;
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.FieldValueList;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.TableResult;
 import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,11 +15,10 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Bigquery.BigQueryUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -84,17 +86,17 @@ public class ExampleBigQueryReader extends CommandLineProgram {
 
     @Argument(
             fullName = TABLE_ID_ARG_LONG_NAME,
-            doc = "The table ID of the table containing data from which to query in the BigQuery instance.  Defaults to " + DEFAULT_TABLE_ID)
+            doc = "The table ID of the table containing data from which to query in the BigQuery instance.")
     private String tableId = DEFAULT_TABLE_ID;
 
     @Argument(
             fullName = DATASET_ARG_LONG_NAME,
-            doc = "The dataset containing the table and data from which to query in the BigQuery instance.  Defaults to " + DEFAULT_DATASET)
+            doc = "The dataset containing the table and data from which to query in the BigQuery instance.")
     private String dataset = DEFAULT_DATASET;
 
     @Argument(
             fullName = NUM_RECORDS_TO_RETRIEVE_ARG_LONG_NAME,
-            doc = "The number of records to retrieve from the BigQuery table.  Defaults to " + DEFAULT_RECORDS_TO_RETRIEVE)
+            doc = "The number of records to retrieve from the BigQuery table.")
     private int numRecordsToRetrieve = DEFAULT_RECORDS_TO_RETRIEVE;
 
     //==================================================================================================================
@@ -106,53 +108,13 @@ public class ExampleBigQueryReader extends CommandLineProgram {
     @Override
     public Object doWork() {
 
-        final BigQuery bigQuery = BigQueryOptions.getDefaultInstance().getService();
-
         logger.info( "Constructing query for the first " + numRecordsToRetrieve + " entries in: " + createFQTN() );
 
+        final String queryString = createQueryString();
         logger.debug( "Query: " + createQueryString() );
 
-        final QueryJobConfiguration queryConfig =
-                QueryJobConfiguration.newBuilder( createQueryString() )
-                        // Use standard SQL syntax for queries.
-                        // See: https://cloud.google.com/bigquery/sql-reference/
-                        .setUseLegacySql(false)
-                        .build();
-
-        // Create a job ID so that we can safely retry.
-        final JobId jobId    = JobId.of(UUID.randomUUID().toString());
-
-        logger.info("Sending query to server...");
-        Job   queryJob       = bigQuery.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build());
-
-        // Wait for the query to complete.
-        try {
-            logger.info("Waiting for query to complete...");
-            queryJob = queryJob.waitFor();
-        }
-        catch (final InterruptedException ex) {
-            throw new GATKException("Interrupted while waiting for query job to complete", ex);
-        }
-
-        // Check for errors
-        if (queryJob == null) {
-            throw new GATKException("Query job no longer exists");
-        } else if (queryJob.getStatus().getError() != null) {
-            // You can also look at queryJob.getStatus().getExecutionErrors() for all
-            // errors, not just the latest one.
-            throw new RuntimeException(queryJob.getStatus().getError().toString());
-        }
-
-        // Get the results.
-        logger.info("Retrieving query results...");
-        final QueryResponse response = bigQuery.getQueryResults(jobId);
-        final TableResult result;
-        try {
-            result = queryJob.getQueryResults();
-        }
-        catch (final InterruptedException ex) {
-            throw new GATKException("Interrupted while waiting for query job to complete", ex);
-        }
+        // Execute the query against BigQuery using the default BigQuery connection information:
+        final TableResult result = BigQueryUtils.executeQuery( queryString );
 
         // Log all pages of the results;
         prettyLogResultData(result);
