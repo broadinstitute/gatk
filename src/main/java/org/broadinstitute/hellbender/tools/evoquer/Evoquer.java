@@ -1,12 +1,16 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.util.List;
 
@@ -43,6 +47,15 @@ public class Evoquer extends GATKTool {
     //==================================================================================================================
     // Private Members:
 
+    @Argument(
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc = "Output VCF file to which annotated variants should be written.",
+            optional = true
+    )
+    private String outputVcfPathString;
+
+    private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
 
     //==================================================================================================================
@@ -81,12 +94,30 @@ public class Evoquer extends GATKTool {
     }
 
     @Override
+    protected void onShutdown() {
+        super.onShutdown();
+
+        // Close up our writer if we have to:
+        if ( vcfWriter != null ) {
+            vcfWriter.close();
+        }
+    }
+
+    @Override
     public void traverse() {
+        // Get our variants from BigQuery:
         final List<VariantContext> variants = evoquerEngine.evokeIntervals(getTraversalIntervals());
 
-        logger.info( "Created the following variants:" );
-        for ( final VariantContext variantContext : variants ) {
-            logger.info( variantContext.toString() );
+        // Now we can write out the VariantContexts:
+        if ( outputVcfPathString != null ) {
+            vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString) );
+            vcfWriter.writeHeader( evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines()) );
+
+            logger.info( "Created the following variants:" );
+            for ( final VariantContext variantContext : variants ) {
+                logger.info( variantContext.toString() );
+                vcfWriter.add( variantContext );
+            }
         }
     }
 
