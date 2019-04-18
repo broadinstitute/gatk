@@ -139,38 +139,34 @@ public class EvoquerEngine {
 
     private String getVariantQueryString( final SimpleInterval interval ) {
 
-        final String lim1 = "LIMIT 5";
-        final String lim2 = "LIMIT 10";
+        final String limit = "LIMIT 10";
 
         return "WITH variant_samples AS (" + "\n" +
                 "  SELECT sample_id, position FROM `" + getFQContigTable(interval) + "` " + "\n" +
                 "  WHERE " + "\n" +
                 "    (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
                 "    category = 'v' " + "\n" +
-                "  " + lim1 + "\n" +
                 ")" + "\n" +
-                "" + "\n" +
+                "" + "\n" + "\n" +
                 "SELECT " + "\n" +
-                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, " + "\n" +
-                "  filter, call, BaseQRankSum, ClippingRankSum, variants.DP, ExcessHet, MQ, MQRankSum, MQ_DP, " + "\n" +
-                "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP" + "\n" +
-                "FROM" + "\n" +
-                "  `" + getFQTableName(VARIANT_DATA_TABLE) + "` as variants" + "\n" +
-                "CROSS JOIN UNNEST(variants.call) AS sample " + "\n" +
-                "CROSS JOIN UNNEST(alternate_bases) AS alt_allele " + "\n" +
-                "WHERE" + "\n" +
-                "  reference_name = '" + interval.getContig() + "' AND" + "\n" +
-                "  alt_allele.alt != '<NON_REF>' AND " + "\n" +
-                "  sample.name IN (SELECT sample_id FROM variant_samples) AND" + "\n" +
-                "  (start_position IN (SELECT position FROM variant_samples) OR" + "\n" +
-                "   end_position   IN (SELECT position FROM variant_samples)) " + "\n" +
-                "  " + lim2;
+                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, QUALapprox, RAW_MQ, ReadPosRankSum, VarDP " + "\n" +
+                "FROM " + "\n" +
+                "  `broad-dsp-spec-ops.gcp_joint_genotyping.variant_transforms_uuid_10` AS variants, " + "\n" +
+                "UNNEST(variants.call) AS samples," + "\n" +
+                "UNNEST(variants.alternate_bases) as alt_bases" + "\n" +
+                "INNER JOIN variant_samples on (variants.end_position = variant_samples.position OR variants.start_position = variant_samples.position)" + "\n" +
+                "WHERE " + "\n" +
+                "  reference_name = 'chr2' AND" + "\n" +
+                "  samples.name = variant_samples.sample_id AND" + "\n" +
+                "  alt_bases.alt != '<NON_REF>'" + "\n" +
+                "ORDER BY reference_name, start_position, end_position" + "\n" +
+                limit;
     }
 
     //==================================================================================================================
     // Helper Data Types:
 
-    // Example query: select count(*) from `broad-dsp-spec-ops`.gcp_joint_genotyping.variant_transforms_uuid_10 as variants, UNNEST(variants.call) as samples samples.name = "0131-01" limit 1;
+    // Example query: select count(*) from `broad-dsp-spec-ops`.gcp_joint_genotyping.variant_transforms_uuid_10 as variants, UNNEST(variants.call) as samples WHERE samples.name = "0131-01" limit 1;
     // SELECT UNNEST(call).name FROM `broad-dsp-spec-ops.gcp_joint_genotyping.variant_transforms_uuid_100`
 
 }
