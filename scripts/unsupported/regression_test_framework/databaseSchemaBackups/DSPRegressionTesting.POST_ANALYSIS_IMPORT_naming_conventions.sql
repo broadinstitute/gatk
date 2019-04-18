@@ -80,14 +80,14 @@ DROP TABLE IF EXISTS `analysis_runs`;
 CREATE TABLE `analysis_runs` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `analysis_info_id` int(11) unsigned NOT NULL,
-  `scenarioOutputForComparison` int(11) unsigned DEFAULT NULL,
+  `scenario_output` int(11) unsigned DEFAULT NULL,
   `configuration` json DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idAnalysis_UNIQUE` (`id`),
-  KEY `Analysis_scenarioOutputForComparison_idx` (`scenarioOutputForComparison`),
+  UNIQUE KEY `id_UNIQUE` (`id`),
+  KEY `analysis_scenario_output_idx` (`scenario_output`),
   KEY `analysis_runs_analysis_info_id_idx` (`analysis_info_id`),
   CONSTRAINT `analysis_runs_analysis_info_id` FOREIGN KEY (`analysis_info_id`) REFERENCES `analysis_info` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  CONSTRAINT `analysis_runs_scenarioOutputForComparison` FOREIGN KEY (`scenarioOutputForComparison`) REFERENCES `output_file` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  CONSTRAINT `analysis_runs_scenario_output` FOREIGN KEY (`scenario_output`) REFERENCES `output_file` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=298 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -111,13 +111,13 @@ DROP TABLE IF EXISTS `baseline_input_file`;
 CREATE TABLE `baseline_input_file` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Unique ID of each file.',
   `path` varchar(2048) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Path to the file.',
-  `type` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Type of each file.',
+  `file_type` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Type of each file.',
   `md5sum` char(32) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idInputFiles_UNIQUE` (`id`),
-  UNIQUE KEY `baseline_input_file_md5sum_UNIQUE` (`md5sum`),
-  KEY `baseline_input_file_fileType_idx` (`type`),
-  CONSTRAINT `InputFiles_fileType` FOREIGN KEY (`type`) REFERENCES `file_type` (`type`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  UNIQUE KEY `id_UNIQUE` (`id`),
+  UNIQUE KEY `md5sum_UNIQUE` (`md5sum`),
+  KEY `baseline_input_file_file_type_idx` (`file_type`),
+  CONSTRAINT `baseline_input_file_file_type` FOREIGN KEY (`file_type`) REFERENCES `file_type` (`file_type`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -140,10 +140,10 @@ DROP TABLE IF EXISTS `file_type`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `file_type` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `type` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'The type of the file.',
-  PRIMARY KEY (`id`,`type`),
-  UNIQUE KEY `idfile_type_UNIQUE` (`id`),
-  UNIQUE KEY `file_type_type_UNIQUE` (`type`)
+  `file_type` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'The type of the file.',
+  PRIMARY KEY (`id`,`file_type`),
+  UNIQUE KEY `id_UNIQUE` (`id`),
+  UNIQUE KEY `file_type_UNIQUE` (`file_type`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -169,10 +169,10 @@ CREATE TABLE `metric_concordance_filter_analysis` (
   `filter` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tn` int(11) DEFAULT NULL,
   `fn` int(11) DEFAULT NULL,
-  `uniqueTn` int(11) DEFAULT NULL,
-  `uniqueFn` int(11) DEFAULT NULL,
+  `unique_tn` int(11) DEFAULT NULL,
+  `unique_fn` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idConcordance_FilterAnalysis_UNIQUE` (`id`)
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -195,14 +195,14 @@ DROP TABLE IF EXISTS `metric_concordance_summary`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `metric_concordance_summary` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `variantType` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `truePositive` int(11) DEFAULT NULL,
-  `falsePositive` int(11) DEFAULT NULL,
-  `falseNegative` int(11) DEFAULT NULL,
-  `concordanceSensitivity` double DEFAULT NULL,
-  `concordancePrecision` double DEFAULT NULL,
+  `variant_type` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `true_positive` int(11) DEFAULT NULL,
+  `false_positive` int(11) DEFAULT NULL,
+  `false_negative` int(11) DEFAULT NULL,
+  `concordance_sensitivity` double DEFAULT NULL,
+  `concordance_precision` double DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idConcordance_Summary_UNIQUE` (`id`)
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=199 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -225,16 +225,16 @@ DROP TABLE IF EXISTS `metric_genotype_concordance_contingency_metrics`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `metric_genotype_concordance_contingency_metrics` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `variantType` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `truthSample` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `callSample` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tpCount` int(11) DEFAULT NULL,
-  `tnCount` int(11) DEFAULT NULL,
-  `fpCount` int(11) DEFAULT NULL,
-  `fnCount` int(11) DEFAULT NULL,
-  `emptyCount` int(11) DEFAULT NULL,
+  `variant_type` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `truth_sample` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `call_sample` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tp_count` int(11) DEFAULT NULL,
+  `tn_count` int(11) DEFAULT NULL,
+  `fp_count` int(11) DEFAULT NULL,
+  `fn_count` int(11) DEFAULT NULL,
+  `empty_count` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_metric_genotype_concordance_contingency_metrics_UNIQUE` (`id`)
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=199 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -257,15 +257,15 @@ DROP TABLE IF EXISTS `metric_genotype_concordance_detail_metrics`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `metric_genotype_concordance_detail_metrics` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `variantType` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `truthSample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `callSample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `truthState` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `callState` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `variant_type` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `truth_sample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `call_sample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `truth_state` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `call_state` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `count` int(11) DEFAULT NULL,
-  `contingencyValues` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contingency_values` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_genotype_concordance_detail_metrics_UNIQUE` (`id`)
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3403 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -288,22 +288,22 @@ DROP TABLE IF EXISTS `metric_genotype_concordance_summary_metrics`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `metric_genotype_concordance_summary_metrics` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `variantType` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `truthSample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `callSample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `hetSensitivity` double DEFAULT NULL,
-  `hetPPV` double DEFAULT NULL,
-  `hetSpecificity` double DEFAULT NULL,
-  `homvarSensitivity` double DEFAULT NULL,
-  `homvarPPV` double DEFAULT NULL,
-  `homvarSpecificity` double DEFAULT NULL,
-  `varSensitivity` double DEFAULT NULL,
-  `varPPV` double DEFAULT NULL,
-  `varSpecificity` double DEFAULT NULL,
-  `genotypeConcordance` double DEFAULT NULL,
-  `nonRefGenotypeConcordance` double DEFAULT NULL,
+  `variant_type` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `truth_sample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `call_sample` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `het_sensitivity` double DEFAULT NULL,
+  `het_ppv` double DEFAULT NULL,
+  `het_specificity` double DEFAULT NULL,
+  `homvar_sensitivity` double DEFAULT NULL,
+  `homvar_ppv` double DEFAULT NULL,
+  `homvar_specificity` double DEFAULT NULL,
+  `var_sensitivity` double DEFAULT NULL,
+  `var_ppv` double DEFAULT NULL,
+  `var_specificity` double DEFAULT NULL,
+  `genotype_concordance` double DEFAULT NULL,
+  `non_ref_genotype_concordance` double DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_genotype_concordance_summary_metrics_UNIQUE` (`id`)
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=199 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -452,7 +452,7 @@ CREATE TABLE `output_file` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `idoutput_file_UNIQUE` (`id`),
   KEY `output_file_fileType_idx` (`fileType`),
-  CONSTRAINT `output_file_fileType` FOREIGN KEY (`fileType`) REFERENCES `file_type` (`type`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  CONSTRAINT `output_file_fileType` FOREIGN KEY (`fileType`) REFERENCES `file_type` (`file_type`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=1684 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
