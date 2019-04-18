@@ -147,16 +147,15 @@ public class EvoquerEngine {
                 "    (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
                 "    category = 'v' " + "\n" +
                 ")" + "\n" +
-                "" + "\n" + "\n" +
                 "SELECT " + "\n" +
                 "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, QUALapprox, RAW_MQ, ReadPosRankSum, VarDP " + "\n" +
                 "FROM " + "\n" +
-                "  `broad-dsp-spec-ops.gcp_joint_genotyping.variant_transforms_uuid_10` AS variants, " + "\n" +
+                "  `" + getFQTableName(VARIANT_DATA_TABLE) + "` AS variants, " + "\n" +
                 "UNNEST(variants.call) AS samples," + "\n" +
                 "UNNEST(variants.alternate_bases) as alt_bases" + "\n" +
                 "INNER JOIN variant_samples on (variants.end_position = variant_samples.position OR variants.start_position = variant_samples.position)" + "\n" +
                 "WHERE " + "\n" +
-                "  reference_name = 'chr2' AND" + "\n" +
+                "  reference_name = '" + interval.getContig() + "' AND" + "\n" +
                 "  samples.name = variant_samples.sample_id AND" + "\n" +
                 "  alt_bases.alt != '<NON_REF>'" + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
