@@ -542,9 +542,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
         
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
-        // TODO - line bellow might be unnecessary : it might be that assemblyResult will always have those alleles anyway
-        // TODO - so check and remove if that is the case:
-        allVariationEvents.addAll(givenAlleles);
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents);
 

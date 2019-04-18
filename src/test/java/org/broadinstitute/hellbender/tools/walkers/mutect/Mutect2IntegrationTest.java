@@ -394,7 +394,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                     "-L", "20:10019000-10022000",
                     "-O", outputVcf.getAbsolutePath(),
                     "-" + M2ArgumentCollection.EMISSION_LOG_SHORT_NAME, "15",
-                    "-" + M2ArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance));
+                    "-" + AssemblyBasedCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance));
             runCommandLine(args);
 
             checkMnpOutput(maxMnpDistance, outputVcf);
@@ -455,6 +455,33 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--alleles", givenAllelesVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(unfilteredVcf)
+                .collect(Collectors.toMap(vc -> vc.getStart(), vc -> vc.getAlternateAlleles()));
+        for (final VariantContext vc : new FeatureDataSource<VariantContext>(givenAllelesVcf)) {
+            final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
+            vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
+        }
+    }
+
+    /**
+     * Here we give Mutect2 ridiculous kmer settings in order to force assembly to fail.
+     * @throws Exception
+     */
+    @Test
+    public void testGivenAllelesModeWithCycles() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        final File givenAllelesVcf = new File(toolsTestDir, "mutect/gga_mode.vcf");
+        final List<String> args = Arrays.asList("-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:9998500-10010000",
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--alleles", givenAllelesVcf.getAbsolutePath(),
+                "--kmer-size", "1",
+                "--dont-increase-kmer-sizes-for-cycles");
         runCommandLine(args);
 
         final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(unfilteredVcf)
