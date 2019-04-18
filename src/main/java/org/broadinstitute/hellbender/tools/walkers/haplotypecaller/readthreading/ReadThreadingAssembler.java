@@ -98,7 +98,7 @@ public final class ReadThreadingAssembler {
      * @param fullReferenceWithPadding  byte array holding the reference sequence with padding
      * @param refLoc                    GenomeLoc object corresponding to the reference sequence with padding
      * @param readErrorCorrector        a ReadErrorCorrector object, if read are to be corrected before assembly. Can be null if no error corrector is to be used.
-     * @param aligner
+     * @param aligner                   {@link SmithWatermanAligner} used to align dangling ends in assembly graphs to the reference sequence
      * @return                          the resulting assembly-result-set
      */
     public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion,
@@ -336,7 +336,7 @@ public final class ReadThreadingAssembler {
      *
      * @param reads the reads we're going to assemble
      * @param refHaplotype the reference haplotype
-     * @param aligner
+     * @param aligner {@link SmithWatermanAligner} used to align dangling ends in assembly graphs to the reference sequence
      * @return a non-null list of reads
      */
     @VisibleForTesting
@@ -376,7 +376,7 @@ public final class ReadThreadingAssembler {
      * @param kmerSize         kmer size
      * @param allowLowComplexityGraphs if true, do not check for low-complexity graphs
      * @param allowNonUniqueKmersInRef if true, do not fail if the reference has non-unique kmers
-     * @param aligner
+     * @param aligner {@link SmithWatermanAligner} used to align dangling ends to the reference sequence
      * @return sequence graph or null if one could not be created (e.g. because it contains cycles or too many paths or is low complexity)
      */
     private AssemblyResult createGraph(final Iterable<GATKRead> reads,
