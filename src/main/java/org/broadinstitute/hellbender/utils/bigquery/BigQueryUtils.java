@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 /**
  * Utility class for dealing with BigQuery connections / tables / queries /etc.
@@ -55,7 +56,9 @@ public class BigQueryUtils {
                         .setUseLegacySql(false)
                         .build();
 
-        return submitQueryAndWaitForResults( bigQuery, queryConfig );
+        final TableResult result = submitQueryAndWaitForResults( bigQuery, queryConfig );
+        logger.info( "Query returned " + result.getTotalRows() + " results." );
+        return result;
     }
 
     /**
@@ -88,46 +91,16 @@ public class BigQueryUtils {
      * @param result A {@link TableResult} object containing the results of a query that generated some data.
      * @return A {@link String} containing the contents of the given query result pretty-printed in an ascii-art table.
      */
-    public static String getResultDataPrettyString(final TableResult result ){
+    public static String getResultDataPrettyString(final TableResult result){
         final Schema schema = result.getSchema();
 
-        // Go through all rows and get the length of each column:
-        final List<Integer> columnWidths = new ArrayList<>(schema.getFields().size());
+        final List<Integer> columnWidths = calculateColumnWidths( result );
+        final boolean rowsAllPrimitive =
+                StreamSupport.stream(result.iterateAll().spliterator(), false)
+                        .flatMap( row -> row.stream().map(v -> v.getAttribute() == FieldValue.Attribute.PRIMITIVE) )
+                        .allMatch( b -> b );
 
-        // Start with schema names:
-        for ( final Field field : schema.getFields() ) {
-            columnWidths.add( field.getName().length() );
-        }
-
-        // Keep track of whether the rows are primitive or not so we can print them properly later.
-        boolean rowsAllPrimitive = true;
-
-        // Check each row and each row's array values (if applicable):
-        for ( final FieldValueList row : result.iterateAll() ) {
-            for ( int i = 0; i < row.size() ; ++i ) {
-                // Only get the row size if it's not null:
-                if ( !row.get(i).isNull() ) {
-                    if ( row.get(i).getAttribute() == FieldValue.Attribute.PRIMITIVE ) {
-                        if ( columnWidths.get(i) < row.get(i).getStringValue().length() ) {
-                            columnWidths.set(i, row.get(i).getStringValue().length());
-                        }
-                    }
-                    else {
-                        rowsAllPrimitive = false;
-                        for ( int j = 0; j < row.get(i).getRepeatedValue().size(); ++j ) {
-                            final String stringValue = row.get(i).getRepeatedValue().get(j).getRecordValue().get(0).getStringValue();
-                            if ( columnWidths.get(i) < stringValue.length() ) {
-                                columnWidths.set(i, stringValue.length());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        final StringBuilder sb = new StringBuilder();
-
-        // Create a separator string for each column:
+        // Create a separator string for the header and boarders:
         final String headerFooter = "+" + columnWidths.stream().map(
                 l -> StringUtils.repeat("=", l+2) + "+"
         ).collect(Collectors.joining(""));
@@ -135,7 +108,33 @@ public class BigQueryUtils {
         // Create a Row Separator:
         final String rowSeparator = headerFooter.replace('=', '-');
 
+        // Create a string builder to keep the pretty table:
+        final StringBuilder sb = new StringBuilder();
+
         // Now we can write our schema header and rows:
+        addHeaderToStringBuilder(schema, columnWidths, headerFooter, sb);
+
+        // Write our data to the string builder:
+        for ( final FieldValueList row : result.iterateAll() ) {
+
+            // If the row fields are all simple, then we can do the simple thing:
+            if ( rowsAllPrimitive ) {
+                addPrimitiveRowToStringBuilder(row, columnWidths, sb);
+            }
+            else {
+                addComplexRowToStringBuilder(row, schema, columnWidths, sb);
+                sb.append(rowSeparator);
+            }
+            sb.append("\n");
+        }
+
+        sb.append( headerFooter );
+        sb.append("\n");
+
+        return sb.toString();
+    }
+
+    private static void addHeaderToStringBuilder(final Schema schema, final List<Integer> columnWidths, final String headerFooter, final StringBuilder sb) {
         sb.append( headerFooter );
         sb.append("\n");
         sb.append("|");
@@ -146,75 +145,67 @@ public class BigQueryUtils {
         sb.append("\n");
         sb.append( headerFooter );
         sb.append("\n");
+    }
 
-        // Write our data:
-        for ( final FieldValueList row : result.iterateAll() ) {
+    private static void addComplexRowToStringBuilder(final FieldValueList row, final Schema schema, final List<Integer> columnWidths, final StringBuilder sb) {
 
-            // If the row fields are all 1, then we can do the simple thing:
-            if ( rowsAllPrimitive ) {
-                sb.append("|");
-                sb.append(IntStream.range(0, row.size()).boxed().map(
-                        i -> String.format(" %-" + columnWidths.get(i) + "s |", row.get(i).getStringValue())
-                ).collect(Collectors.joining()));
-                sb.append("\n");
-            }
-            else {
-
-                // For fields that have multiple values, we need to do something special.
-                // In fact, we need to go through each value of each row and track how many fields it has.
-                int maxNumValuesInRow = 1;
-                for ( int i = 0; i < row.size(); ++i ) {
-                    final FieldValue value = row.get(schema.getFields().get(i).getName());
-                    if ( !value.isNull() && (value.getAttribute() != FieldValue.Attribute.PRIMITIVE) ) {
-                        if (maxNumValuesInRow <= value.getRecordValue().size()) {
-                            maxNumValuesInRow = value.getRecordValue().size();
-                        }
-                    }
-                }
-
-                for ( int currentFieldNum = 0; currentFieldNum < maxNumValuesInRow ; ++currentFieldNum ) {
-                    sb.append("|");
-                    for ( int i = 0; i < row.size(); ++i ) {
-                        final FieldValue value = row.get(i);
-                        if ( value.isNull() ) {
-                            sb.append( String.format(" %-" + columnWidths.get(i) + "s |", "") );
-                        }
-                        else if (value.getAttribute() == FieldValue.Attribute.PRIMITIVE ) {
-                            if ( currentFieldNum == 0 ) {
-                                sb.append( String.format(" %-" + columnWidths.get(i) + "s |", value.getStringValue()) );
-                            }
-                            else {
-                                sb.append( String.format(" %-" + columnWidths.get(i) + "s |", "") );
-                            }
-                        }
-                        else {
-                            if ( value.getRepeatedValue().size() == 0 ) {
-                                sb.append( String.format(" %-" + columnWidths.get(i) + "s |", "") );
-                            }
-                            else if ( currentFieldNum < value.getRepeatedValue().size() ) {
-                                // This is kind of gross, but it seems to be the only way to get a particular
-                                // value of a field that is in an array:
-                                sb.append(String.format(" %-" + columnWidths.get(i) + "s |",
-                                        value.getRepeatedValue().get(currentFieldNum).getRecordValue().get(0).getStringValue())
-                                );
-                            }
-                            else {
-                                sb.append( String.format(" %-" + columnWidths.get(i) + "s |", "") );
-                            }
-                        }
-                    }
-                    sb.append("\n");
+        // For fields that have multiple values, we need to do something special.
+        // In fact, we need to go through each value of each row and track how many fields it has.
+        int maxNumValuesInRow = 1;
+        for ( int i = 0; i < row.size(); ++i ) {
+            final FieldValue value = row.get(schema.getFields().get(i).getName());
+            if ( !value.isNull() && (value.getAttribute() != FieldValue.Attribute.PRIMITIVE) ) {
+                if (maxNumValuesInRow <= value.getRecordValue().size()) {
+                    maxNumValuesInRow = value.getRecordValue().size();
                 }
             }
-
-            sb.append(rowSeparator);
-            sb.append("\n");
         }
 
-        sb.append( headerFooter );
-        sb.append("\n");
+        for ( int currentFieldNum = 0; currentFieldNum < maxNumValuesInRow ; ++currentFieldNum ) {
+            sb.append("|");
+            for ( int i = 0; i < row.size(); ++i ) {
+                final FieldValue value = row.get(i);
+                if ( value.isNull() ) {
+                    sb.append(getEmptyColumnString(columnWidths, i));
+                }
+                else if (value.getAttribute() == FieldValue.Attribute.PRIMITIVE ) {
+                    if ( currentFieldNum == 0 ) {
+                        sb.append( String.format(" %-" + columnWidths.get(i) + "s |", value.getStringValue()) );
+                    }
+                    else {
+                        sb.append(getEmptyColumnString(columnWidths, i));
+                    }
+                }
+                else {
+                    if ( value.getRepeatedValue().size() == 0 ) {
+                        sb.append(getEmptyColumnString(columnWidths, i));
+                    }
+                    else if ( currentFieldNum < value.getRepeatedValue().size() ) {
+                        // This is kind of gross, but it seems to be the only way to get a particular
+                        // value of a field that is in an array:
+                        sb.append(String.format(" %-" + columnWidths.get(i) + "s |",
+                                value.getRepeatedValue().get(currentFieldNum).getRecordValue().get(0).getStringValue())
+                        );
+                    }
+                    else {
+                        sb.append(getEmptyColumnString(columnWidths, i));
+                    }
+                }
+            }
+            sb.append("\n");
+        }
+    }
 
-        return sb.toString();
+    private static String getEmptyColumnString(final List<Integer> columnWidths, final int i) {
+        return String.format(" %-" + columnWidths.get(i) + "s |", "");
+    }
+
+    private static void addPrimitiveRowToStringBuilder(final FieldValueList row, final List<Integer> columnWidths, final StringBuilder sb) {
+        sb.append("|");
+        sb.append(IntStream.range(0, row.size()).boxed().map(
+                i -> String.format(" %-" + columnWidths.get(i) + "s |", row.get(i).getStringValue())
+        ).collect(Collectors.joining()));
+        sb.append("\n");
     }
 
     /**
@@ -230,6 +221,40 @@ public class BigQueryUtils {
 
     //==================================================================================================================
     // Helper Methods:
+
+    private static List<Integer> calculateColumnWidths( final TableResult result ) {
+        // Go through all rows and get the length of each column:
+        final List<Integer> columnWidths = new ArrayList<>(result.getSchema().getFields().size());
+
+        // Start with schema names:
+        for ( final Field field : result.getSchema().getFields() ) {
+            columnWidths.add( field.getName().length() );
+        }
+
+        // Check each row and each row's array values (if applicable):
+        for ( final FieldValueList row : result.iterateAll() ) {
+            for ( int i = 0; i < row.size() ; ++i ) {
+                // Only get the row size if it's not null:
+                if ( !row.get(i).isNull() ) {
+                    if ( row.get(i).getAttribute() == FieldValue.Attribute.PRIMITIVE ) {
+                        if ( columnWidths.get(i) < row.get(i).getStringValue().length() ) {
+                            columnWidths.set(i, row.get(i).getStringValue().length());
+                        }
+                    }
+                    else {
+                        for ( int j = 0; j < row.get(i).getRepeatedValue().size(); ++j ) {
+                            final String stringValue = row.get(i).getRepeatedValue().get(j).getRecordValue().get(0).getStringValue();
+                            if ( columnWidths.get(i) < stringValue.length() ) {
+                                columnWidths.set(i, stringValue.length());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return columnWidths;
+    }
 
     /**
      * Executes the given {@code queryJobConfiguration} on the given {@code bigQuery} instance.

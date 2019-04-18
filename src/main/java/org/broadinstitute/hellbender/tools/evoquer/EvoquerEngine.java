@@ -150,43 +150,59 @@ public class EvoquerEngine {
             // TODO: add the info fields / genotypes / sample information!
 
             // Fill in trivial stuff:
-            variantContextBuilder
-                    .chr( row.get("reference_name").getStringValue() )
-                    .start( row.get("start_position").getLongValue() )
-                    .stop( row.get("end_position").getLongValue() );
+            addBasicFieldsToVariantBuilder(row, variantContextBuilder);
 
-            // Get the filter(s):
-            if ( !row.get("filter").isNull() ) {
-                variantContextBuilder.filters(
-                        row.get("filter").getRepeatedValue().stream()
-                            .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
-                            .collect(Collectors.toSet())
-                );
-            }
-
-            // Qual:
-            if ( !row.get("quality").isNull() ) {
-                variantContextBuilder.log10PError( row.get("quality").getDoubleValue() / -10.0 );
-            }
-
-            // Fill in alleles:
-            final List<String> alleles = new ArrayList<>(5);
-            alleles.add( row.get("reference_bases").getStringValue() );
-
-            alleles.addAll(
-                    row.get("alternate_bases").getRepeatedValue().stream()
-                        .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
-                        .collect(Collectors.toList())
-            );
-
-            // Add the alleles:
-            variantContextBuilder.alleles( alleles );
+            // Fill in complex stuff:
+            addInfoAndSampleFieldsToVariantBuilder( row, variantContextBuilder );
 
             // Add our variant context to the list:
             variantContextList.add( variantContextBuilder.make() );
         }
 
         return variantContextList;
+    }
+
+    private void addBasicFieldsToVariantBuilder(final FieldValueList row,
+                                                final VariantContextBuilder variantContextBuilder) {
+        variantContextBuilder
+                .chr( row.get("reference_name").getStringValue() )
+                .start( row.get("start_position").getLongValue() )
+                .stop( row.get("end_position").getLongValue() );
+
+        // Get the filter(s):
+        if ( !row.get("filter").isNull() ) {
+            variantContextBuilder.filters(
+                    row.get("filter").getRepeatedValue().stream()
+                        .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
+                        .collect(Collectors.toSet())
+            );
+        }
+
+        // Qual:
+        if ( !row.get("quality").isNull() ) {
+            variantContextBuilder.log10PError( row.get("quality").getDoubleValue() / -10.0 );
+        }
+
+        // Fill in alleles:
+        final List<String> alleles = new ArrayList<>(5);
+        alleles.add( row.get("reference_bases").getStringValue() );
+
+        alleles.addAll(
+                row.get("alternate_bases").getRepeatedValue().stream()
+                    .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
+                    .collect(Collectors.toList())
+        );
+
+        // Add the alleles:
+        variantContextBuilder.alleles( alleles );
+    }
+
+    private void addInfoAndSampleFieldsToVariantBuilder( final FieldValueList row,
+                                                         final VariantContextBuilder variantContextBuilder) {
+
+        // Start by adding in the END to the INFO field:
+//        variantContextBuilder
+
     }
 
     private String getVariantQueryString( final SimpleInterval interval ) {
