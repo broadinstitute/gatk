@@ -16,6 +16,7 @@
 #   Optional:
 #     Boolean warn_on_missing_contig                    -  Whether to create a warning message when a contig is missing.
 #     Boolean write_original_position                   -  Whether to write the original position as an annotation in the resulting lifted over VCF.
+#     Boolean write_original_alleles                    -  Whether to write the original alleles as an annotation in the resulting lifted over VCF.
 #
 #     File gatk4_jar_override                           -  Override Jar file containing GATK 4.  Use this when overriding the docker JAR or when using a backend without docker.
 #     Int  mem_gb                                       -  Amount of memory to give to the machine running each task in this workflow (in gb).
@@ -44,6 +45,7 @@ workflow LiftoverVcf {
 
     Boolean? warn_on_missing_contig
     Boolean? write_original_position
+    Boolean? write_original_alleles
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -73,6 +75,7 @@ workflow LiftoverVcf {
 
               warn_on_missing_contig                      = warn_on_missing_contig,
               write_original_position                     = write_original_position,
+              write_original_alleles                      = write_original_alleles,
 
               gatk_docker                                 = gatk_docker,
               gatk_override                               = gatk4_jar_override,
@@ -154,6 +157,7 @@ task LiftoverVcfTask {
 
      Boolean? warn_on_missing_contig
      Boolean? write_original_position
+     Boolean? write_original_alleles
 
      # Runtime Options:
      String gatk_docker
@@ -168,6 +172,7 @@ task LiftoverVcfTask {
      # Process input args:
      String warn_on_missing_contig_arg = if defined(warn_on_missing_contig) then " --WARN_ON_MISSING_CONTIG " else ""
      String write_original_position_arg = if defined(write_original_position) then " --WRITE_ORIGINAL_POSITION " else ""
+     String write_original_alleles_arg = if defined(write_original_alleles) then " --WRITE_ORIGINAL_ALLELES " else ""
 
      String timing_output_file = basename(input_vcf_file) + ".timingInformation.txt"
 
