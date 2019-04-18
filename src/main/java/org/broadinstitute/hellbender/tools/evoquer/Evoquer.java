@@ -83,6 +83,11 @@ public class Evoquer extends GATKTool {
     @Override
     public void traverse() {
         final List<VariantContext> variants = evoquerEngine.evokeIntervals(getTraversalIntervals());
+
+        logger.info( "Created the following variants:" );
+        for ( final VariantContext variantContext : variants ) {
+            logger.info( variantContext.toString() );
+        }
     }
 
     //==================================================================================================================

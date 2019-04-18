@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -105,6 +104,9 @@ public class EvoquerEngine {
             logger.info("Pretty Query Results:");
             final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
             logger.info( "\n" + prettyQueryResults );
+
+            // Convert results into variant context objects:
+            return createVariantsFromTableResult( result );
         }
         else {
             logger.warn("Contig missing from contigTableMap, ignoring interval: " + interval.toString());
@@ -137,6 +139,56 @@ public class EvoquerEngine {
         return getFQTableName(getTableForContig( interval.getContig() ));
     }
 
+    private List<VariantContext> createVariantsFromTableResult(final TableResult result) {
+        // Have to convert to int here.
+        // Sloppy, but if we ever go larger than MAXINT, we have bigger problems.
+        final List<VariantContext> variantContextList = new ArrayList<>((int)result.getTotalRows());
+
+        for ( final FieldValueList row : result.iterateAll() ) {
+            final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
+
+            // TODO: add the info fields / genotypes / sample information!
+
+            // Fill in trivial stuff:
+            variantContextBuilder
+                    .chr( row.get("reference_name").getStringValue() )
+                    .start( row.get("start_position").getLongValue() )
+                    .stop( row.get("end_position").getLongValue() );
+
+            // Get the filter(s):
+            if ( !row.get("filter").isNull() ) {
+                variantContextBuilder.filters(
+                        row.get("filter").getRepeatedValue().stream()
+                            .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
+                            .collect(Collectors.toSet())
+                );
+            }
+
+            // Qual:
+            if ( !row.get("quality").isNull() ) {
+                variantContextBuilder.log10PError( row.get("quality").getDoubleValue() / -10.0 );
+            }
+
+            // Fill in alleles:
+            final List<String> alleles = new ArrayList<>(5);
+            alleles.add( row.get("reference_bases").getStringValue() );
+
+            alleles.addAll(
+                    row.get("alternate_bases").getRepeatedValue().stream()
+                        .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
+                        .collect(Collectors.toList())
+            );
+
+            // Add the alleles:
+            variantContextBuilder.alleles( alleles );
+
+            // Add our variant context to the list:
+            variantContextList.add( variantContextBuilder.make() );
+        }
+
+        return variantContextList;
+    }
+
     private String getVariantQueryString( final SimpleInterval interval ) {
 
         final String limit = "LIMIT 10";
@@ -148,7 +200,9 @@ public class EvoquerEngine {
                 "    category = 'v' " + "\n" +
                 ")" + "\n" +
                 "SELECT " + "\n" +
-                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, QUALapprox, RAW_MQ, ReadPosRankSum, VarDP " + "\n" +
+                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality," +
+                "  filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP," +
+                "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP " + "\n" +
                 "FROM " + "\n" +
                 "  `" + getFQTableName(VARIANT_DATA_TABLE) + "` AS variants, " + "\n" +
                 "UNNEST(variants.call) AS samples," + "\n" +
