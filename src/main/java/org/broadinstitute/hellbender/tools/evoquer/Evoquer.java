@@ -111,7 +111,7 @@ public class Evoquer extends GATKTool {
         // Now we can write out the VariantContexts:
         if ( outputVcfPathString != null ) {
             vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString) );
-            vcfWriter.writeHeader( evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines()) );
+            vcfWriter.writeHeader( evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()) );
 
             logger.info( "Created the following variants:" );
             for ( final VariantContext variantContext : variants ) {

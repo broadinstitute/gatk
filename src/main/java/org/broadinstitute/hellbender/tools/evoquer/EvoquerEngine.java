@@ -4,16 +4,21 @@ import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableResult;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -93,9 +98,11 @@ public class EvoquerEngine {
      * Generates a {@link VCFHeader} object based on the VariantContext objects queried from the BigQuery backend.
      * If no objects have been queried, this will return a default {@link VCFHeader}.
      * @param defaultHeaderLines The default header lines to be added to the top of the VCF header.
+     * @param sequenceDictionary The SequenceDictionary of the reference on which the variants are based.
      * @return A {@link VCFHeader} object representing the header for all variants that have been queried from the BigQuery backend.
      */
-    public VCFHeader generateVcfHeader(final Set<VCFHeaderLine> defaultHeaderLines ) {
+    public VCFHeader generateVcfHeader(final Set<VCFHeaderLine> defaultHeaderLines,
+                                       final SAMSequenceDictionary sequenceDictionary) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
         headerLines.addAll( getEvoquerVcfHeaderLines() );
@@ -106,15 +113,47 @@ public class EvoquerEngine {
             logger.info(line);
         }
 
-        return new VCFHeader(headerLines, sampleNames);
+        final VCFHeader header = new VCFHeader(headerLines, sampleNames);
+        header.setSequenceDictionary(sequenceDictionary);
+        return header;
     }
 
     //==================================================================================================================
     // Private Instance Methods:
 
-    private List<VCFHeaderLine> getEvoquerVcfHeaderLines() {
+    private Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
         // TODO: FINISHME!
-        return Collections.emptyList();
+        final Set<VCFHeaderLine> headerLines = new HashSet<>();
+
+        // Add standard VCF fields first:
+        VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
+                VCFConstants.STRAND_BIAS_KEY,
+                VCFConstants.DEPTH_KEY,
+                VCFConstants.STRAND_BIAS_KEY
+        );
+
+        VCFStandardHeaderLines.addStandardFormatLines(headerLines, true,
+                VCFConstants.GENOTYPE_KEY,
+                VCFConstants.GENOTYPE_QUALITY_KEY,
+                VCFConstants.DEPTH_KEY,
+                VCFConstants.GENOTYPE_PL_KEY,
+                VCFConstants.GENOTYPE_ALLELE_DEPTHS
+        );
+
+        // Now add GATK VCF fields:
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.READ_POS_RANK_SUM_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+
+        return headerLines;
     }
 
     /**
@@ -181,8 +220,6 @@ public class EvoquerEngine {
         for ( final FieldValueList row : result.iterateAll() ) {
             final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
 
-            // TODO: add the info fields / genotypes / sample information!
-
             // Fill in trivial stuff:
             addBasicFieldsToVariantBuilder(row, variantContextBuilder);
 
@@ -205,7 +242,8 @@ public class EvoquerEngine {
                                                 final VariantContextBuilder variantContextBuilder) {
         variantContextBuilder
                 .chr( row.get("reference_name").getStringValue() )
-                .start( row.get("start_position").getLongValue() )
+                // Add 1 because in the DB right now starts are exclusive:
+                .start( row.get("start_position").getLongValue() +1 )
                 .stop( row.get("end_position").getLongValue() );
 
         // Get the filter(s):
@@ -239,7 +277,6 @@ public class EvoquerEngine {
     private void addInfoFieldsToVariantBuilder(final FieldValueList row,
                                                final VariantContextBuilder variantContextBuilder) {
 
-        // Start by adding in the END to the INFO field:
         addInfoFieldToVariantContextBuilder( row, "DP", "DP", variantContextBuilder );
         addInfoFieldToVariantContextBuilder( row, "MQ", "MQ", variantContextBuilder );
         addInfoFieldToVariantContextBuilder( row, "MQRankSum", "MQRankSum", variantContextBuilder );
@@ -394,6 +431,23 @@ public class EvoquerEngine {
                 "  alt_bases.alt != '<NON_REF>'" + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
                 limit;
+    }
+    
+    private String getVariantQueryString2( final SimpleInterval interval ) {
+        return "SELECT " +
+                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, QUALapprox, RAW_MQ, ReadPosRankSum, VarDP, variant_samples.category" +
+                "FROM `broad-dsp-spec-ops.gcp_joint_genotyping.chr2_sample_100_new_way` AS variant_samples " +
+                "INNER JOIN " +
+                " `broad-dsp-spec-ops.gcp_joint_genotyping.variant_transforms_uuid_100` AS variants ON variants.end_position = variant_samples.position, " +
+                "UNNEST(variants.call) AS samples," +
+                "UNNEST(variants.alternate_bases) AS alt_bases" +
+                "WHERE " +
+                "  reference_name = 'chr2' AND" +
+                "  samples.name = variant_samples.sample_id AND" +
+                "  alt_bases.alt != '<NON_REF>' AND" +
+                "  (position >= 10000 AND position <= 1741634) AND " +
+                "  variant_samples.category = 'v' " +
+                "ORDER BY reference_name, start_position, end_position;";
     }
 
     //==================================================================================================================
