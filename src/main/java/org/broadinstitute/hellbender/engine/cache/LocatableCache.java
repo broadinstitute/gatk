@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -206,6 +207,16 @@ public class LocatableCache<T extends Locatable> {
         }
         else {
             ++numCacheMisses;
+            if (cachedInterval != null &&
+                    interval.getContig().equals(cachedInterval.getContig()) &&
+                    interval.getStart() < cachedInterval.getStart()) {
+                throw new GATKException(String.format(
+                        "Locatable cache miss while attempting to retrieve a previous interval from the locatable cache. New interval: %s Previous: %s",
+                        interval.toString(),
+                        cachedInterval.toString()
+                )
+                );
+            }
         }
 
         return cacheHit;
