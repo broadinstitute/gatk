@@ -108,13 +108,9 @@ public class EvoquerEngine {
         headerLines.addAll( getEvoquerVcfHeaderLines() );
         headerLines.addAll( defaultHeaderLines );
 
-        logger.info( "VCF Header Lines:" );
-        for ( final VCFHeaderLine line : headerLines ) {
-            logger.info(line);
-        }
-
         final VCFHeader header = new VCFHeader(headerLines, sampleNames);
         header.setSequenceDictionary(sequenceDictionary);
+
         return header;
     }
 
@@ -122,7 +118,6 @@ public class EvoquerEngine {
     // Private Instance Methods:
 
     private Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
-        // TODO: FINISHME!
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
         // Add standard VCF fields first:
@@ -405,49 +400,30 @@ public class EvoquerEngine {
             variantContextBuilder.attribute(infoFieldName, row.get(columnName).getStringValue());
         }
     }
-
+    
     private String getVariantQueryString( final SimpleInterval interval ) {
 
-        final String limit = "LIMIT 10";
+        final String limit_string = "LIMIT 10";
 
-        return "WITH variant_samples AS (" + "\n" +
-                "  SELECT sample_id, position FROM `" + getFQContigTable(interval) + "` " + "\n" +
-                "  WHERE " + "\n" +
-                "    (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
-                "    category = 'v' " + "\n" +
-                ")" + "\n" +
-                "SELECT " + "\n" +
-                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality," +
-                "  filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP," +
-                "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP " + "\n" +
-                "FROM " + "\n" +
-                "  `" + getFQTableName(VARIANT_DATA_TABLE) + "` AS variants, " + "\n" +
+        return "SELECT " + "\n" +
+                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, " + "\n" +
+                "  filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, " + "\n" +
+                "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP, variant_samples.category" + "\n" +
+                "FROM " +  "\n" +
+                "  `" + getFQContigTable(interval) + "` AS variant_samples " + "\n" +
+                "INNER JOIN " + "\n" +
+                " `" + getFQTableName(VARIANT_DATA_TABLE) + "` AS variants ON variants.end_position = variant_samples.position, " + "\n" +
                 "UNNEST(variants.call) AS samples," + "\n" +
-                "UNNEST(variants.alternate_bases) as alt_bases" + "\n" +
-                "INNER JOIN variant_samples on (variants.end_position = variant_samples.position OR variants.start_position = variant_samples.position)" + "\n" +
+                "UNNEST(variants.alternate_bases) AS alt_bases" + "\n" +
                 "WHERE " + "\n" +
                 "  reference_name = '" + interval.getContig() + "' AND" + "\n" +
                 "  samples.name = variant_samples.sample_id AND" + "\n" +
-                "  alt_bases.alt != '<NON_REF>'" + "\n" +
+                "  alt_bases.alt != '<NON_REF>' AND" + "\n" +
+                // Since position corresponds to end_position, we don't need to subtract 1 from thbe start here: "\n" +
+                "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
+                "  variant_samples.category = 'v' " + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
-                limit;
-    }
-    
-    private String getVariantQueryString2( final SimpleInterval interval ) {
-        return "SELECT " +
-                "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, QUALapprox, RAW_MQ, ReadPosRankSum, VarDP, variant_samples.category" +
-                "FROM `broad-dsp-spec-ops.gcp_joint_genotyping.chr2_sample_100_new_way` AS variant_samples " +
-                "INNER JOIN " +
-                " `broad-dsp-spec-ops.gcp_joint_genotyping.variant_transforms_uuid_100` AS variants ON variants.end_position = variant_samples.position, " +
-                "UNNEST(variants.call) AS samples," +
-                "UNNEST(variants.alternate_bases) AS alt_bases" +
-                "WHERE " +
-                "  reference_name = 'chr2' AND" +
-                "  samples.name = variant_samples.sample_id AND" +
-                "  alt_bases.alt != '<NON_REF>' AND" +
-                "  (position >= 10000 AND position <= 1741634) AND " +
-                "  variant_samples.category = 'v' " +
-                "ORDER BY reference_name, start_position, end_position;";
+                limit_string;
     }
 
     //==================================================================================================================

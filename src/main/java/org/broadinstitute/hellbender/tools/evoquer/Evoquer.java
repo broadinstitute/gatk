@@ -23,9 +23,10 @@ import java.util.List;
  * The BigQuery database is assumed to have a schema and data that supports creation of {@link htsjdk.variant.variantcontext.VariantContext}
  * objects, and all data in this database are assumed to be based on the HG38 reference.
  *
- * An example invocation is:
+ * Example invocations are:
  *
  *   ./gatk Evoquer --intervals chr2:10000-1741634 -R ~/references/Homo_sapiens_assembly38.fasta
+ *   ./gatk Evoquer --intervals chr2:10000-1741634 -R ~/references/Homo_sapiens_assembly38.fasta -O evoquer.g.vcf
  *
  * Created by jonn on 4/16/19.
  */
