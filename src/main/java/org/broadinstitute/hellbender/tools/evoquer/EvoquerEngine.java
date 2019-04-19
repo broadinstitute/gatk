@@ -428,8 +428,4 @@ public class EvoquerEngine {
 
     //==================================================================================================================
     // Helper Data Types:
-
-    // Example query: select count(*) from `broad-dsp-spec-ops`.gcp_joint_genotyping.variant_transforms_uuid_10 as variants, UNNEST(variants.call) as samples WHERE samples.name = "0131-01" limit 1;
-    // SELECT UNNEST(call).name FROM `broad-dsp-spec-ops.gcp_joint_genotyping.variant_transforms_uuid_100`
-
 }
