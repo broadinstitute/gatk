@@ -27,6 +27,7 @@ public final class CalledSVGraphEvent {
     public static String TYPE_COLUMN_STRING = "TYPE";
     public static String SIZE_COLUMN_STRING = "SIZE";
     public static String PROBABILITY_COLUMN_STRING = "P";
+    public static String HOMOZYGOUS_COLUMN_STRING = "HOM";
     
     private final int groupId;
     private final int pathId;
@@ -34,10 +35,12 @@ public final class CalledSVGraphEvent {
     private final SVInterval interval;
     private final boolean resolved; //False if solution not found
     private final double probability;
+    private final boolean homozygous;
 
     public CalledSVGraphEvent(final Type type, final SVInterval interval,
                               final int groupId, final int pathId,
-                              final boolean resolved, final double probability) {
+                              final boolean resolved, final double probability,
+                              final boolean homozygous) {
         Utils.nonNull(type, "Type cannot be null");
         Utils.nonNull(interval, "Interval cannot be null");
         this.type = type;
@@ -46,6 +49,7 @@ public final class CalledSVGraphEvent {
         this.pathId = pathId;
         this.resolved = resolved;
         this.probability = probability;
+        this.homozygous = homozygous;
     }
 
     public boolean isResolved() {
@@ -72,15 +76,17 @@ public final class CalledSVGraphEvent {
         return probability;
     }
 
+    public boolean isHomozygous() { return homozygous; }
+
     public static String bedHeader() {
-        return String.join("\t", Arrays.asList(CONTIG_COLUMN_STRING, START_COLUMN_STRING, END_COLUMN_STRING, TYPE_COLUMN_STRING, PROBABILITY_COLUMN_STRING, SIZE_COLUMN_STRING, CalledSVGraphGenotype.GRAPH_ID_COLUMN, CalledSVGraphGenotype.GENOTYPE_ID_COLUMN));
+        return String.join("\t", Arrays.asList(CONTIG_COLUMN_STRING, START_COLUMN_STRING, END_COLUMN_STRING, TYPE_COLUMN_STRING, PROBABILITY_COLUMN_STRING, HOMOZYGOUS_COLUMN_STRING, SIZE_COLUMN_STRING, CalledSVGraphGenotype.GRAPH_ID_COLUMN, CalledSVGraphGenotype.GENOTYPE_ID_COLUMN));
     }
 
     public String bedString(final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary, "Dictionary cannot be null");
         final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(interval, dictionary);
         return simpleInterval.getContig() + "\t" + simpleInterval.getStart() + "\t" + simpleInterval.getEnd() + "\t" +
-                getType().toString() + "\t" + getProbability() + "\t" + getInterval().getLength() + "\t" +
-                getGroupId() + "\t" + getPathId();
+                getType().toString() + "\t" + getProbability() + "\t" + (homozygous ? "1" : "0") + "\t" +
+                getInterval().getLength() + "\t" + getGroupId() + "\t" + getPathId();
     }
 }

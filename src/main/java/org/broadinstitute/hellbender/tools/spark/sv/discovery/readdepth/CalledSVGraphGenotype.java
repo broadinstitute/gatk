@@ -22,7 +22,7 @@ public final class CalledSVGraphGenotype extends SVGraphGenotype {
     public final static String PATHS_COLUMN = "PATHS";
 
     public CalledSVGraphGenotype(final SVGraphGenotype genotype, final SVGraph graph) {
-        super(genotype.getGroupId(), genotype.getGenotypeId());
+        super(genotype.getGroupId(), genotype.getGenotypeId(), genotype.getHaplotypes());
         this.probability = genotype.getProbability();
         this.depthLikelihood = genotype.getDepthLikelihood();
         this.depthProbability = genotype.getDepthProbability();
