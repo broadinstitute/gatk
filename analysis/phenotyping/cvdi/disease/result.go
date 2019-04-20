@@ -52,7 +52,7 @@ func (r Result) PhenotypeAgeCensor() (bigquery.NullFloat64, error) {
 
 	floatYears, err := strconv.ParseFloat(stringYears, 64)
 	if err != nil {
-		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing duration from BirthDate '%s' and PhenotypeDateCensor '%s' : %s. Setting phenotype onset date to birthdate (age 0)", r.BirthDate, r.PhenotypeDateCensor, err.Error())
+		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing duration from BirthDate '%s' and PhenotypeDateCensor '%s' : %s", r.BirthDate, r.PhenotypeDateCensor, err.Error())
 	}
 
 	return bigquery.NullFloat64{Float64: floatYears, Valid: true}, nil
@@ -80,7 +80,7 @@ func (r Result) DeathAgeCensor() (bigquery.NullFloat64, error) {
 
 	floatYears, err := strconv.ParseFloat(stringYears, 64)
 	if err != nil {
-		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing duration from BirthDate '%s' and DeathDate '%s' : %s. Setting death onset date to birthdate (age 0)", r.BirthDate, r.DeathDate, err.Error())
+		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing duration from BirthDate '%s' and DeathDate '%s' : %s", r.BirthDate, r.DeathDate, err.Error())
 	}
 
 	return bigquery.NullFloat64{Float64: floatYears, Valid: true}, nil
@@ -106,28 +106,28 @@ func ExecuteQuery(BQ *WrappedBigQuery, query *bigquery.Query, diseaseName string
 
 		censoredPhenoAge, err := r.PhenotypeAgeCensor()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: setting age_censor to null for %d (birthdate %s phenotype date %s) because of error: %s\n", diseaseName, r.SampleID, r.BirthDate, r.PhenotypeDateCensor, err.Error())
+			fmt.Fprintf(os.Stderr, "%s: setting censor_age to enroll_age for %d (birthdate %s phenotype date %s) because of error: %s\n", diseaseName, r.SampleID, r.BirthDate, r.PhenotypeDateCensor, err.Error())
 
 			// UK Biobank uses impossible values (e.g., 1900-01-01) to indicate that
 			// the date is not known. See, e.g., FieldID 42000. This does not mean
 			// that the value is illegal, so it shouldn't be null. Instead, it should
 			// be some legal value. Here, we set the age of incidence to be 0 years,
 			// and we set the date of incidence to be the birthdate.
-			censoredPhenoAge = bigquery.NullFloat64{Float64: 0, Valid: true}
-			r.PhenotypeDateCensor = r.BirthDate
+			censoredPhenoAge = r.EnrollAge
+			r.PhenotypeDateCensor = r.EnrollDate
 		}
 
 		censoredDeathAge, err := r.DeathAgeCensor()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: setting age_censor to null for %d (birthdate %s deat date %s) because of error: %s\n", diseaseName, r.SampleID, r.BirthDate, r.DeathDate, err.Error())
+			fmt.Fprintf(os.Stderr, "%s: setting death_censor_age to enroll_age for %d (birthdate %s death date %s) because of error: %s\n", diseaseName, r.SampleID, r.BirthDate, r.DeathDate, err.Error())
 
 			// UK Biobank uses impossible values (e.g., 1900-01-01) to indicate that
 			// the date is not known. See, e.g., FieldID 42000. This does not mean
 			// that the value is illegal, so it shouldn't be null. Instead, it should
 			// be some legal value. Here, we set the age of incidence to be 0 years,
 			// and we set the date of incidence to be the birthdate.
-			censoredDeathAge = bigquery.NullFloat64{Float64: 0, Valid: true}
-			r.DeathDate = r.BirthDate
+			censoredDeathAge = r.EnrollAge
+			r.DeathDate = r.EnrollDate
 		}
 
 		fmt.Fprintf(STDOUT, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
