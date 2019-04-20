@@ -37,8 +37,8 @@ func main() {
 	var override bool
 	var diseaseName string
 
-	flag.StringVar(&BQ.Project, "project", "", "Name of the Google Cloud project that hosts your BigQuery database instance")
-	flag.StringVar(&BQ.Database, "database", "", "BigQuery source database name")
+	flag.StringVar(&BQ.Project, "project", "", "Google Cloud project you want to use for billing purposes only")
+	flag.StringVar(&BQ.Database, "database", "", "BigQuery source database name (note: must be formatted as project.database, e.g., broad-ml4cvd.ukbb7089_201904)")
 	flag.StringVar(&tabfile, "tabfile", "", "Tabfile-formatted phenotype definition")
 	flag.StringVar(&materializedDB, "materialized", "ukbb-analyses.jpp_201903", "project.database storing materialized view tables")
 	flag.BoolVar(&displayQuery, "display-query", false, "Display the constructed query and exit?")

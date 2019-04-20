@@ -232,8 +232,8 @@ func rawQuery(BQ *WrappedBigQuery) string {
 	return fmt.Sprintf(`
 	WITH undated_fields AS (
 		SELECT p.sample_id, p.FieldID, p.value, MIN(SAFE.PARSE_DATE("%%%%E4Y-%%%%m-%%%%d", denroll.value)) first_date
-		FROM `+"`%s.%s`"+`.phenotype p
-		JOIN `+"`%s.%s`"+`.phenotype denroll ON denroll.FieldID=53 AND denroll.sample_id=p.sample_id AND denroll.instance = 0 AND denroll.array_idx = 0
+		FROM `+"`%s`"+`.phenotype p
+		JOIN `+"`%s`"+`.phenotype denroll ON denroll.FieldID=53 AND denroll.sample_id=p.sample_id AND denroll.instance = 0 AND denroll.array_idx = 0
 		WHERE TRUE
 		  %%s
 		GROUP BY p.FieldID, p.sample_id, p.value
@@ -267,7 +267,7 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  MIN(c.death_age) death_age,
 		  MIN(c.computed_date) computed_date,
 		  MIN(c.missing_fields) missing_fields
-		FROM `+"`%s.%s.censor`"+` c
+		FROM `+"`%s.censor`"+` c
 		LEFT OUTER JOIN (
 			SELECT * FROM `+"`%s.materialized_hesin_dates`"+`
 			UNION DISTINCT
@@ -312,7 +312,7 @@ func rawQuery(BQ *WrappedBigQuery) string {
 			MIN(c.death_age) death_age,
 			MIN(c.computed_date) computed_date,
 			MIN(c.missing_fields) missing_fields
-		  FROM `+"`%s.%s.censor`"+` c
+		  FROM `+"`%s.censor`"+` c
 		  LEFT OUTER JOIN (
 			  SELECT * FROM `+"`%s.materialized_hesin_dates`"+`
 			  UNION DISTINCT
@@ -402,10 +402,10 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		CASE WHEN c.death_date IS NULL THEN c.death_censor_age ELSE c.death_age END death_age, 
 		c.computed_date, 
 		c.missing_fields
-	  FROM `+"`%s.%s.censor`"+` c
+	  FROM `+"`%s.censor`"+` c
 	  LEFT JOIN included_only io ON io.sample_id=c.sample_id
 	  LEFT JOIN excluded_only eo ON eo.sample_id=c.sample_id
 	  ORDER BY has_disease DESC, incident_disease DESC, age_censor ASC
 	  `,
-		BQ.Project, BQ.Database, BQ.Project, BQ.Database, BQ.Project, BQ.Database, materializedDB, materializedDB, BQ.Project, BQ.Database, materializedDB, materializedDB, BQ.Project, BQ.Database)
+		BQ.Database, BQ.Database, BQ.Database, materializedDB, materializedDB, BQ.Database, materializedDB, materializedDB, BQ.Database)
 }
