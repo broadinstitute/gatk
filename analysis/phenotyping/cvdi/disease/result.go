@@ -23,12 +23,16 @@ type Result struct {
 	BirthDate               bigquery.NullDate    `bigquery:"birthdate"`
 	EnrollDate              bigquery.NullDate    `bigquery:"enroll_date"`
 	EnrollAge               bigquery.NullFloat64 `bigquery:"enroll_age"`
+	HasDied                 bigquery.NullInt64   `bigquery:"has_died"`
 	DeathDate               bigquery.NullDate    `bigquery:"death_date"`
 	DeathAge                bigquery.NullFloat64 `bigquery:"death_age"`
 	ComputedDate            bigquery.NullDate    `bigquery:"computed_date"`
 	MissingFields           bigquery.NullString  `bigquery:"missing_fields"`
 }
 
+// PhenotypeAgeCensor computes a proper (leap-year aware) age at phenotype onset
+// (or censoring), rather than the heuristic age extracted from the database
+// which assumes each year to be the same length.
 func (r Result) PhenotypeAgeCensor() (bigquery.NullFloat64, error) {
 	if !r.BirthDate.Valid || !r.PhenotypeDateCensor.Valid {
 		return bigquery.NullFloat64{}, nil
@@ -54,6 +58,34 @@ func (r Result) PhenotypeAgeCensor() (bigquery.NullFloat64, error) {
 	return bigquery.NullFloat64{Float64: floatYears, Valid: true}, nil
 }
 
+// DeathAgeCensor computes a proper (leap-year aware) age at death (or death
+// censoring), rather than the heuristic age extracted from the database which
+// assumes each year to be the same length.
+func (r Result) DeathAgeCensor() (bigquery.NullFloat64, error) {
+	if !r.BirthDate.Valid || !r.DeathDate.Valid {
+		return bigquery.NullFloat64{}, nil
+	}
+
+	birthTime, err := time.Parse("2006-01-02", r.BirthDate.Date.String())
+	if err != nil {
+		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing BirthDate '%s': %s", r.BirthDate, err.Error())
+	}
+
+	deathTime, err := time.Parse("2006-01-02", r.DeathDate.Date.String())
+	if err != nil {
+		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing DeathDate '%s': %s", r.DeathDate, err.Error())
+	}
+
+	stringYears := TimesToFractionalYears(birthTime, deathTime)
+
+	floatYears, err := strconv.ParseFloat(stringYears, 64)
+	if err != nil {
+		return bigquery.NullFloat64{}, fmt.Errorf("Error parsing duration from BirthDate '%s' and DeathDate '%s' : %s. Setting death onset date to birthdate (age 0)", r.BirthDate, r.DeathDate, err.Error())
+	}
+
+	return bigquery.NullFloat64{Float64: floatYears, Valid: true}, nil
+}
+
 func ExecuteQuery(BQ *WrappedBigQuery, query *bigquery.Query, diseaseName string, missingFields []string) error {
 	itr, err := query.Read(BQ.Context)
 	if err != nil {
@@ -61,7 +93,7 @@ func ExecuteQuery(BQ *WrappedBigQuery, query *bigquery.Query, diseaseName string
 	}
 	todayDate := time.Now().Format("2006-01-02")
 	missing := strings.Join(missingFields, ",")
-	fmt.Fprintf(STDOUT, "disease\tsample_id\thas_disease\tincident_disease\tprevalent_disease\tdate_censor\tage_censor\tbirthdate\tenroll_date\tenroll_age\tdeath_date\tdeath_age\tcensor_computed_date\tcensor_missing_fields\tcomputed_date\tmissing_fields\n")
+	fmt.Fprintf(STDOUT, "disease\tsample_id\thas_disease\tincident_disease\tprevalent_disease\tcensor_date\tcensor_age\tbirthdate\tenroll_date\tenroll_age\thas_died\tdeath_censor_date\tdeath_censor_age\tcensor_computed_date\tcensor_missing_fields\tcomputed_date\tmissing_fields\n")
 	for {
 		var r Result
 		err := itr.Next(&r)
@@ -72,7 +104,7 @@ func ExecuteQuery(BQ *WrappedBigQuery, query *bigquery.Query, diseaseName string
 			return pfx.Err(err)
 		}
 
-		flt, err := r.PhenotypeAgeCensor()
+		censoredPhenoAge, err := r.PhenotypeAgeCensor()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: setting age_censor to null for %d (birthdate %s phenotype date %s) because of error: %s\n", diseaseName, r.SampleID, r.BirthDate, r.PhenotypeDateCensor, err.Error())
 
@@ -81,17 +113,32 @@ func ExecuteQuery(BQ *WrappedBigQuery, query *bigquery.Query, diseaseName string
 			// that the value is illegal, so it shouldn't be null. Instead, it should
 			// be some legal value. Here, we set the age of incidence to be 0 years,
 			// and we set the date of incidence to be the birthdate.
-			flt = bigquery.NullFloat64{Float64: 0, Valid: true}
+			censoredPhenoAge = bigquery.NullFloat64{Float64: 0, Valid: true}
 			r.PhenotypeDateCensor = r.BirthDate
 		}
-		fmt.Fprintf(STDOUT, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			diseaseName, r.SampleID, NA(r.HasDisease), NA(r.IncidentDisease), NA(r.PrevalentDisease), NA(r.PhenotypeDateCensor), NA(flt), NA(r.BirthDate), NA(r.EnrollDate), NA(r.EnrollAge), NA(r.DeathDate), NA(r.DeathAge), NA(r.ComputedDate), NA(r.MissingFields), todayDate, missing)
+
+		censoredDeathAge, err := r.DeathAgeCensor()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: setting age_censor to null for %d (birthdate %s deat date %s) because of error: %s\n", diseaseName, r.SampleID, r.BirthDate, r.DeathDate, err.Error())
+
+			// UK Biobank uses impossible values (e.g., 1900-01-01) to indicate that
+			// the date is not known. See, e.g., FieldID 42000. This does not mean
+			// that the value is illegal, so it shouldn't be null. Instead, it should
+			// be some legal value. Here, we set the age of incidence to be 0 years,
+			// and we set the date of incidence to be the birthdate.
+			censoredDeathAge = bigquery.NullFloat64{Float64: 0, Valid: true}
+			r.DeathDate = r.BirthDate
+		}
+
+		fmt.Fprintf(STDOUT, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			diseaseName, r.SampleID, NA(r.HasDisease), NA(r.IncidentDisease), NA(r.PrevalentDisease), NA(r.PhenotypeDateCensor), NA(censoredPhenoAge), NA(r.BirthDate), NA(r.EnrollDate), NA(r.EnrollAge), NA(r.HasDied), NA(r.DeathDate), NA(censoredDeathAge), NA(r.ComputedDate), NA(r.MissingFields), todayDate, missing)
 	}
 
 	return nil
 }
 
-// Emit empty string instead of "NULL" since this plays better with BigQuery
+// NA emits an empty string instead of "NULL" since this plays better with
+// BigQuery
 func NA(input interface{}) interface{} {
 	invalid := ""
 
@@ -347,7 +394,14 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  WHEN io.has_disease IS NULL THEN c.phenotype_censor_age
 		  ELSE DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0 
 		END age_censor, 
-		c.birthdate, c.enroll_date, c.enroll_age, c.death_date, c.death_age, c.computed_date, c.missing_fields
+		c.birthdate, 
+		c.enroll_date, 
+		c.enroll_age, 
+		CASE WHEN c.death_date IS NULL THEN 0 ELSE 1 END has_died,
+		CASE WHEN c.death_date IS NULL THEN c.death_censor_date ELSE c.death_date END death_date, 
+		CASE WHEN c.death_date IS NULL THEN c.death_censor_age ELSE c.death_age END death_age, 
+		c.computed_date, 
+		c.missing_fields
 	  FROM `+"`%s.%s.censor`"+` c
 	  LEFT JOIN included_only io ON io.sample_id=c.sample_id
 	  LEFT JOIN excluded_only eo ON eo.sample_id=c.sample_id
