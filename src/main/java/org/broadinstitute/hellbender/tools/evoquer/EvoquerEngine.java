@@ -40,6 +40,9 @@ class EvoquerEngine {
     /** ID of the project containing the dataset and tables from which to pull variant data. */
     private static final String PROJECT_ID = "broad-dsp-spec-ops";
 
+    /** ID of the table containing the names of all samples in the variant table. */
+    private static final String SAMPLE_TABLE = "gvcf_test.sample_list_subsetted_100";
+
     /**
      * Map between contig name and the BigQuery table containing position data from that contig.
      */
@@ -52,13 +55,11 @@ class EvoquerEngine {
 
     static {
         final Map<String, String> tmpContigTableMap = new HashMap<>();
-        tmpContigTableMap.put("chr2", "gcp_joint_genotyping.chr2_sample_100_new_way");
         tmpContigTableMap.put("chr20", "gvcf_test.pet_subsetted_100");
 
         contigPositionExpandedTableMap = Collections.unmodifiableMap(tmpContigTableMap);
 
         final Map<String, String> tmpVariantTableMap = new HashMap<>();
-        tmpVariantTableMap.put("chr2", "gcp_joint_genotyping.variant_transforms_uuid_10");
         tmpVariantTableMap.put("chr20", "gvcf_test.vet_subsetted_100");
 
         contigVariantTableMap = Collections.unmodifiableMap(tmpVariantTableMap);
@@ -72,7 +73,6 @@ class EvoquerEngine {
 
     //==================================================================================================================
     // Constructors:
-
     EvoquerEngine() {}
 
     //==================================================================================================================
@@ -91,6 +91,9 @@ class EvoquerEngine {
      * @return A {@link List<VariantContext>} containing variants in the given {@code interval} in the BigQuery table.
      */
     List<VariantContext> evokeIntervals(final List<SimpleInterval> intervalList) {
+
+        // Get the samples used in the dataset:
+        populateSampleNames();
 
         return intervalList.stream()
                 .flatMap( interval -> evokeInterval(interval).stream() )
@@ -123,6 +126,8 @@ class EvoquerEngine {
     private Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
+        // TODO: Get a list of all possible values here so that we can make sure they're in the VCF Header!
+
         // Add standard VCF fields first:
         VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
                 VCFConstants.STRAND_BIAS_KEY,
@@ -150,6 +155,8 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         return headerLines;
     }
@@ -267,7 +274,7 @@ class EvoquerEngine {
         if ( !row.get("filter").isNull() ) {
             variantContextBuilder.filters(
                     row.get("filter").getRepeatedValue().stream()
-                        .map( fieldValue -> fieldValue.getRecordValue().get(0).getStringValue() )
+                        .map( FieldValue::getStringValue )
                         .collect(Collectors.toSet())
             );
         }
@@ -407,9 +414,6 @@ class EvoquerEngine {
         }
 
         variantContextBuilder.genotypes( genotypeBuilder.make() );
-
-        // Before we leave, let's add the sample name to sampleNames:
-        sampleNames.add( sampleName );
     }
 
     private void addScalarAttributeToGenotypeBuilder(final FieldValueList row,
@@ -430,7 +434,27 @@ class EvoquerEngine {
             variantContextBuilder.attribute(infoFieldName, row.get(columnName).getStringValue());
         }
     }
-    
+
+    private void populateSampleNames() {
+        // Get the query string:
+        final String sampleListQueryString = getSampleListQueryString();
+
+        logger.info("Created Query: \n" + sampleListQueryString);
+
+        // Execute the query:
+        final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
+
+        // Show our pretty results:
+        logger.info("Pretty Query Results:");
+        final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
+        logger.info( "\n" + prettyQueryResults );
+
+        // Add our samples to our map:
+        for ( final FieldValueList row : result.iterateAll() ) {
+            sampleNames.add( row.get(0).getStringValue() );
+        }
+    }
+
     private String getVariantQueryString( final SimpleInterval interval ) {
 
         // TODO: When finalized, remove this variable:
@@ -439,7 +463,7 @@ class EvoquerEngine {
         return "SELECT " + "\n" +
                 "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, " + "\n" +
                 "  filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, " + "\n" +
-                "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP, variant_samples.category" + "\n" +
+                "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP, variant_samples.state" + "\n" +
                 "FROM " +  "\n" +
                 "  `" + getFQPositionTable(interval) + "` AS variant_samples " + "\n" +
                 "INNER JOIN " + "\n" +
@@ -448,13 +472,17 @@ class EvoquerEngine {
                 "UNNEST(variants.alternate_bases) AS alt_bases" + "\n" +
                 "WHERE " + "\n" +
                 "  reference_name = '" + interval.getContig() + "' AND" + "\n" +
-                "  samples.name = variant_samples.sample_id AND" + "\n" +
+                "  samples.name = variant_samples.sample AND" + "\n" +
                 "  alt_bases.alt != '<NON_REF>' AND" + "\n" +
                 // Since position corresponds to end_position, we don't need to subtract 1 from thbe start here: "\n" +
                 "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
-                "  variant_samples.category = 'v' " + "\n" +
+                "  variant_samples.state = 1 " + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
                 limit_string;
+    }
+
+    private static String getSampleListQueryString() {
+        return "SELECT * FROM `" + getFQTableName(SAMPLE_TABLE)+ "`";
     }
 
     //==================================================================================================================

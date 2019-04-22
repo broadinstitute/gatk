@@ -6,7 +6,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -149,6 +151,9 @@ public class BigQueryUtils {
 
     private static void addComplexRowToStringBuilder(final FieldValueList row, final Schema schema, final List<Integer> columnWidths, final StringBuilder sb) {
 
+        // TODO: Clean this up... Probably make a getStringValue(FIELD) method to use here, addPrimitiveRowToStringBuilder, and calculateColumnWidths
+
+
         // For fields that have multiple values, we need to do something special.
         // In fact, we need to go through each value of each row and track how many fields it has.
         int maxNumValuesInRow = 1;
@@ -181,11 +186,18 @@ public class BigQueryUtils {
                         sb.append(getEmptyColumnString(columnWidths, i));
                     }
                     else if ( currentFieldNum < value.getRepeatedValue().size() ) {
-                        // This is kind of gross, but it seems to be the only way to get a particular
-                        // value of a field that is in an array:
-                        sb.append(String.format(" %-" + columnWidths.get(i) + "s |",
-                                value.getRepeatedValue().get(currentFieldNum).getRecordValue().get(0).getStringValue())
-                        );
+                        if ( value.getRepeatedValue().get(currentFieldNum).getAttribute() == FieldValue.Attribute.PRIMITIVE ) {
+                            sb.append(String.format(" %-" + columnWidths.get(i) + "s |",
+                                    value.getRepeatedValue().get(currentFieldNum).getStringValue())
+                            );
+                        }
+                        else {
+                            // This is kind of gross, but it seems to be the only way to get a particular
+                            // value of a field that is in an array:
+                            sb.append(String.format(" %-" + columnWidths.get(i) + "s |",
+                                    value.getRepeatedValue().get(currentFieldNum).getRecordValue().get(0).getStringValue())
+                            );
+                        }
                     }
                     else {
                         sb.append(getEmptyColumnString(columnWidths, i));
@@ -243,7 +255,13 @@ public class BigQueryUtils {
                     }
                     else {
                         for ( int j = 0; j < row.get(i).getRepeatedValue().size(); ++j ) {
-                            final String stringValue = row.get(i).getRepeatedValue().get(j).getRecordValue().get(0).getStringValue();
+                            final String stringValue;
+                            if ( row.get(i).getRepeatedValue().get(j).getAttribute() == FieldValue.Attribute.PRIMITIVE ) {
+                                stringValue = row.get(i).getRepeatedValue().get(j).getStringValue();
+                            }
+                            else {
+                                stringValue = row.get(i).getRepeatedValue().get(j).getRecordValue().get(0).getStringValue();
+                            }
                             if ( columnWidths.get(i) < stringValue.length() ) {
                                 columnWidths.set(i, stringValue.length());
                             }
