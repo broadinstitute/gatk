@@ -19,7 +19,7 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq and sorts output
+ * Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq
  *
  * <h3>Input</h3>
  * <ul>
@@ -33,7 +33,7 @@ import java.util.List;
  * </ul>
  *
  * <h3>Usage Example</h3>
- * <h4>Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq and sorts output</h4>
+ * <h4>Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq</h4>
  * <pre>
  *   gatk RepairPacBioBam \
  *     -I unaligned.bam \
@@ -43,8 +43,8 @@ import java.util.List;
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq and sorts output",
-        oneLineSummary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq and sorts output",
+        summary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq",
+        oneLineSummary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq",
         programGroup = ReadDataManipulationProgramGroup.class
 )
 public final class RepairPacBioBam extends ReadWalker {
@@ -64,6 +64,12 @@ public final class RepairPacBioBam extends ReadWalker {
             optional = true)
     public String sample_name;
 
+    @Argument(fullName = "sort",
+            shortName = "s",
+            doc="Sort output",
+            optional = true)
+    public boolean sort = false;
+
     private SAMFileWriter writer;
     private SAMRecordIterator it;
     private SAMRecord currentAlignedRead;
@@ -77,23 +83,9 @@ public final class RepairPacBioBam extends ReadWalker {
         SamReaderFactory srf = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
         SamReader srs = srf.open(IOUtils.getPath(aligned));
 
-        if (getHeaderForReads().getReadGroups().size() != 1) {
-            throw new UserException("Only one read group per aligned/unaligned BAM file permitted");
+        if (getHeaderForReads() != null && getHeaderForReads().getReadGroups() != null && getHeaderForReads().getReadGroups().size() != 1) {
+            throw new UserException("One (and only one) read group per aligned/unaligned BAM file required");
         }
-
-        /*
-        if (!srs.getFileHeader().getReadGroups().get(0).getId().equals(getHeaderForReads().getReadGroups().get(0).getId())) {
-            throw new UserException("Read groups between unaligned and aligned BAM files are not identical ('" +
-                    srs.getFileHeader().getReadGroups().get(0).getId() +
-                    "' vs '" +
-                    getHeaderForReads().getReadGroups().get(0).getId() +
-                    "')");
-        }
-
-        if (srs.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.queryname) {
-            throw new UserException("Aligned data must be unsorted");
-        }
-        */
 
         it = srs.iterator();
         if (!it.hasNext()) {
@@ -102,7 +94,7 @@ public final class RepairPacBioBam extends ReadWalker {
 
         currentAlignedRead = it.next();
 
-        writer = createWriter(output, getHeaderForReads(), srs.getFileHeader().getSequenceDictionary());
+        writer = createWriter(output, getHeaderForReads(), srs.getFileHeader().getSequenceDictionary(), sort);
     }
 
     @Override
@@ -146,7 +138,7 @@ public final class RepairPacBioBam extends ReadWalker {
      * Creates SAMFileWriter
      * @return A SAMFileWriter.
      */
-    private SAMFileWriter createWriter(String out, SAMFileHeader sfh, SAMSequenceDictionary ssd) {
+    private SAMFileWriter createWriter(String out, SAMFileHeader sfh, SAMSequenceDictionary ssd, boolean sortOutput) {
         sfh.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         sfh.setSequenceDictionary(ssd);
 
@@ -156,6 +148,6 @@ public final class RepairPacBioBam extends ReadWalker {
             }
         }
 
-        return new SAMFileWriterFactory().makeSAMOrBAMWriter(sfh, false, new File(out));
+        return new SAMFileWriterFactory().makeSAMOrBAMWriter(sfh, !sortOutput, new File(out));
     }
 }
