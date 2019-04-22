@@ -42,7 +42,14 @@ import java.io.*;
  * <pre>
  *     gatk CreateHadoopBamSplittingIndex \
  *         -I input_reads.bam \
- *         -O input_reads.bam.splitting-bai
+ *         -O input_reads.bam.sbi
+ * </pre>
+ * or if one wants to generate bai as well
+ * <pre>
+ *     gatk CreateHadoopBamSplittingIndex \
+ *         -I input_reads.bam \
+ *         -O input_reads.bam.sbi \
+ *         --create-bai
  * </pre>
  */
 @CommandLineProgramProperties(summary = "Create a Hadoop BAM splitting index and optionally a BAM index from a BAM file",
