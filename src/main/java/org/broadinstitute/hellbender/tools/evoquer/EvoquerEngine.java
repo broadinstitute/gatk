@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
-import com.google.cloud.bigquery.FieldValue;
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.Schema;
-import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.bigquery.*;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -31,7 +28,7 @@ import java.util.stream.Collectors;
  *
  * Created by jonn on 4/17/19.
  */
-public class EvoquerEngine {
+class EvoquerEngine {
     private static final Logger logger = LogManager.getLogger(EvoquerEngine.class);
 
     //==================================================================================================================
@@ -43,34 +40,40 @@ public class EvoquerEngine {
     /** ID of the project containing the dataset and tables from which to pull variant data. */
     private static final String PROJECT_ID = "broad-dsp-spec-ops";
 
-    /** ID dataset and tables from which to pull variant data. */
-    private static final String DATASET_ID = "gcp_joint_genotyping";
-
-    /** ID dataset and tables from which to pull variant data. */
-    private static final String VARIANT_DATA_TABLE = "variant_transforms_uuid_10";
+    /**
+     * Map between contig name and the BigQuery table containing position data from that contig.
+     */
+    private static final Map<String, String> contigPositionExpandedTableMap;
 
     /**
-     * Map between contig name and the BigQuery table containing data from that contig.
+     * Map between contig name and the BigQuery table containing variant data from that contig.
      */
-    private static final Map<String, String> contigTableMap;
+    private static final Map<String, String> contigVariantTableMap;
 
     static {
         final Map<String, String> tmpContigTableMap = new HashMap<>();
-        tmpContigTableMap.put("chr2", "chr2_sample_100_new_way");
+        tmpContigTableMap.put("chr2", "gcp_joint_genotyping.chr2_sample_100_new_way");
+        tmpContigTableMap.put("chr20", "gvcf_test.pet_subsetted_100");
 
-        contigTableMap = Collections.unmodifiableMap(tmpContigTableMap);
+        contigPositionExpandedTableMap = Collections.unmodifiableMap(tmpContigTableMap);
+
+        final Map<String, String> tmpVariantTableMap = new HashMap<>();
+        tmpVariantTableMap.put("chr2", "gcp_joint_genotyping.variant_transforms_uuid_10");
+        tmpVariantTableMap.put("chr20", "gvcf_test.vet_subsetted_100");
+
+        contigVariantTableMap = Collections.unmodifiableMap(tmpVariantTableMap);
     }
 
     //==================================================================================================================
     // Private Members:
 
     /** Set of sample names seen in the variant data from BigQuery. */
-    private Set<String> sampleNames = new HashSet<>();
+    private final Set<String> sampleNames = new HashSet<>();
 
     //==================================================================================================================
     // Constructors:
 
-    public EvoquerEngine() {}
+    EvoquerEngine() {}
 
     //==================================================================================================================
     // Override Methods:
@@ -87,7 +90,7 @@ public class EvoquerEngine {
      * @param intervalList {@link List<SimpleInterval>} over which to query the BigQuery table.
      * @return A {@link List<VariantContext>} containing variants in the given {@code interval} in the BigQuery table.
      */
-    public List<VariantContext> evokeIntervals(final List<SimpleInterval> intervalList) {
+    List<VariantContext> evokeIntervals(final List<SimpleInterval> intervalList) {
 
         return intervalList.stream()
                 .flatMap( interval -> evokeInterval(interval).stream() )
@@ -101,7 +104,7 @@ public class EvoquerEngine {
      * @param sequenceDictionary The SequenceDictionary of the reference on which the variants are based.
      * @return A {@link VCFHeader} object representing the header for all variants that have been queried from the BigQuery backend.
      */
-    public VCFHeader generateVcfHeader(final Set<VCFHeaderLine> defaultHeaderLines,
+    VCFHeader generateVcfHeader(final Set<VCFHeaderLine> defaultHeaderLines,
                                        final SAMSequenceDictionary sequenceDictionary) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
@@ -159,7 +162,7 @@ public class EvoquerEngine {
      */
     private List<VariantContext> evokeInterval(final SimpleInterval interval) {
 
-        if ( contigTableMap.containsKey(interval.getContig()) ) {
+        if ( contigPositionExpandedTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
             final String variantQueryString = getVariantQueryString(interval);
 
@@ -177,17 +180,21 @@ public class EvoquerEngine {
             return createVariantsFromTableResult( result );
         }
         else {
-            logger.warn("Contig missing from contigTableMap, ignoring interval: " + interval.toString());
+            logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
         }
         return Collections.emptyList();
     }
 
-    private static String getTableForContig( final String contig ) {
-        return contigTableMap.get(contig);
+    private static String getPositionTableForContig(final String contig ) {
+        return contigPositionExpandedTableMap.get(contig);
+    }
+
+    private static String getVariantTableForContig(final String contig ) {
+        return contigVariantTableMap.get(contig);
     }
 
     private static String getTableQualifier() {
-        return PROJECT_ID + "." + DATASET_ID;
+        return PROJECT_ID;
     }
 
     private static String getFQTableName( final String tableName ) {
@@ -195,16 +202,31 @@ public class EvoquerEngine {
     }
 
     /**
-     * Get the fully-qualified table name corresponding to the table in BigQuery that contains the data specified
-     * in the given {@code interval}.
+     * Get the fully-qualified table name corresponding to the table in BigQuery that contains the position
+     * data specified in the given {@code interval}.
      *
-     * Uses {@link #PROJECT_ID} and {@link #DATASET_ID} for the project and dataset of the BigQuery table.
+     * Uses {@link #PROJECT_ID} for the project of the BigQuery table.
+     * Assumes the tables have dataset information in them.
      *
      * @param interval The {@link SimpleInterval} for which to get the corresponding table in BigQuery.
      * @return The name of the table corresponding to the given {@code interval}, or {@code null} if no such table exists.
      */
-    private static String getFQContigTable(final SimpleInterval interval) {
-        return getFQTableName(getTableForContig( interval.getContig() ));
+    private static String getFQPositionTable(final SimpleInterval interval) {
+        return getFQTableName(getPositionTableForContig( interval.getContig() ));
+    }
+
+    /**
+     * Get the fully-qualified table name corresponding to the table in BigQuery that contains the variant
+     * data specified in the given {@code interval}.
+     *
+     * Uses {@link #PROJECT_ID} for the project of the BigQuery table.
+     * Assumes the tables have dataset information in them.
+     *
+     * @param interval The {@link SimpleInterval} for which to get the corresponding table in BigQuery.
+     * @return The name of the table corresponding to the given {@code interval}, or {@code null} if no such table exists.
+     */
+    private static String getFQVariantTable(final SimpleInterval interval) {
+        return getFQTableName(getVariantTableForContig( interval.getContig() ));
     }
 
     private List<VariantContext> createVariantsFromTableResult(final TableResult result) {
@@ -327,27 +349,39 @@ public class EvoquerEngine {
         // Get the array fields:
 
         // Add the alleles:
+        final FieldList alternateBasesSchema = schema.getFields().get("alternate_bases").getSubFields();
+
         final List<Allele> alleleList = new ArrayList<>();
         callData.get("genotype").getRepeatedValue().stream()
                 .map( f -> (int)f.getLongValue() )
-                .map( gtIndex ->
+                .forEach( gtIndex ->
                     {
                         if ( gtIndex == 0 ) {
                             alleleList.add(refAllele);
                         }
                         else {
+
+                            // Account for the ref allele's position in the list:
+                            gtIndex--;
+
+//                            logger.info( "gtIndex = " + gtIndex );
+//                            logger.info( "row.get(\"alternate_bases\") = " + row.get("alternate_bases").getRecordValue().get(gtIndex).getRecordValue().toString() );
+//                            logger.info( "alternateBasesSchema = " + alternateBasesSchema.toString() );
+
+                            final FieldValueList altAlleleFields = FieldValueList.of(
+                                    // Get the correct alternate allele based on the index:
+                                    row.get("alternate_bases").getRecordValue().get(gtIndex).getRecordValue(),
+                                    alternateBasesSchema
+                            );
+
                             alleleList.add(
                                     Allele.create(
-                                            row.get("alternate_bases")
-                                                    .getRecordValue()
-                                                    .get("alt")
-                                                    .getRepeatedValue()
-                                                    .get(gtIndex)
-                                                    .getStringValue()
+                                            altAlleleFields
+                                                .get("alt")
+                                                .getStringValue()
                                     )
                             );
                         }
-                        return true;
                     }
                 );
         genotypeBuilder.alleles( alleleList );
@@ -403,6 +437,7 @@ public class EvoquerEngine {
     
     private String getVariantQueryString( final SimpleInterval interval ) {
 
+        // TODO: When finalized, remove this variable:
         final String limit_string = "LIMIT 10";
 
         return "SELECT " + "\n" +
@@ -410,9 +445,9 @@ public class EvoquerEngine {
                 "  filter, call, BaseQRankSum, ClippingRankSum, variants.DP AS DP, ExcessHet, MQ, MQRankSum, MQ_DP, " + "\n" +
                 "  QUALapprox, RAW_MQ, ReadPosRankSum, VarDP, variant_samples.category" + "\n" +
                 "FROM " +  "\n" +
-                "  `" + getFQContigTable(interval) + "` AS variant_samples " + "\n" +
+                "  `" + getFQPositionTable(interval) + "` AS variant_samples " + "\n" +
                 "INNER JOIN " + "\n" +
-                " `" + getFQTableName(VARIANT_DATA_TABLE) + "` AS variants ON variants.end_position = variant_samples.position, " + "\n" +
+                " `" + getFQVariantTable(interval) + "` AS variants ON variants.end_position = variant_samples.position, " + "\n" +
                 "UNNEST(variants.call) AS samples," + "\n" +
                 "UNNEST(variants.alternate_bases) AS alt_bases" + "\n" +
                 "WHERE " + "\n" +
