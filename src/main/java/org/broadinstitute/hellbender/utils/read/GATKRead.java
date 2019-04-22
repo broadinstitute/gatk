@@ -668,9 +668,9 @@ public interface GATKRead extends Locatable {
     byte[] getAttributeAsByteArray( final String attributeName );
 
     /**
-     * This is used to access a transient attribute store provided by the underlying implementation. Transient attributes should not be serialized or written out with a record.
+     * This is used to access a transient attribute store provided by the underlying implementation. Transient attributes will not be serialized or written out with a record.
      *
-     * NOTE: This is an advanced use case for GATKRead and you should probably use setAttribute() instead
+     * NOTE: This is an advanced use case for GATKRead and you should probably use getAttribute() instead
      * @param key key whose value is to be stored
      */
     Object getTransientAttribute(final Object key);
@@ -708,7 +708,7 @@ public interface GATKRead extends Locatable {
      *
      * NOTE: This is an advanced use case for GATKRead and you should probably use setAttribute() instead
      * @param key key under which the value will be stored
-     * @param value value to be keyed upon
+     * @param value value to store
      */
     public void setTransientAttribute(final Object key, final Object value);
 

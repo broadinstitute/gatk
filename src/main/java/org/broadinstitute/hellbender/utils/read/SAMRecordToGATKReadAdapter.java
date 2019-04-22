@@ -701,7 +701,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public void clearTransientAttribute( final String attributeName ) {
         clearCachedValues();
-        samRecord.setTransientAttribute(attributeName, null);
+        samRecord.removeTransientAttribute(attributeName);
     }
 
     @Override
