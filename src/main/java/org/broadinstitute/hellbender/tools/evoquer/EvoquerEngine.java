@@ -364,10 +364,6 @@ class EvoquerEngine {
                             // Account for the ref allele's position in the list:
                             gtIndex--;
 
-//                            logger.info( "gtIndex = " + gtIndex );
-//                            logger.info( "row.get(\"alternate_bases\") = " + row.get("alternate_bases").getRecordValue().get(gtIndex).getRecordValue().toString() );
-//                            logger.info( "alternateBasesSchema = " + alternateBasesSchema.toString() );
-
                             final FieldValueList altAlleleFields = FieldValueList.of(
                                     // Get the correct alternate allele based on the index:
                                     row.get("alternate_bases").getRecordValue().get(gtIndex).getRecordValue(),
