@@ -699,6 +699,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public void clearTransientAttribute( final String attributeName ) {
+        clearCachedValues();
+        samRecord.removeTransientAttribute(attributeName);
+    }
+
+    @Override
     public GATKRead copy() {
         // Produces a shallow but "safe to use" copy.
         return new SAMRecordToGATKReadAdapter(ReadUtils.cloneSAMRecord(samRecord));
