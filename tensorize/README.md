@@ -1,4 +1,7 @@
 # Run Dataflow
+The following steps will run a Dataflow pipeline remotely, which in turn will, read the table `lubitz.coding`, 
+calculate counts of `coding_file_id` and write them onto a GCS bucket.
+
 * Clone the repo and cd into it:
 ```
     git clone git@github.com:broadinstitute/ml.git
