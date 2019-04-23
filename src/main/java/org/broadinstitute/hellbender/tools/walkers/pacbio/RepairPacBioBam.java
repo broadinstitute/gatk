@@ -139,7 +139,7 @@ public final class RepairPacBioBam extends ReadWalker {
      * @return A SAMFileWriter.
      */
     private SAMFileWriter createWriter(String out, SAMFileHeader sfh, SAMSequenceDictionary ssd, boolean sortOutput) {
-        sfh.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        sfh.setSortOrder(sortOutput ? SAMFileHeader.SortOrder.coordinate : SAMFileHeader.SortOrder.queryname);
         sfh.setSequenceDictionary(ssd);
 
         if (sample_name != null) {
