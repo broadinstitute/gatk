@@ -7,15 +7,9 @@ from apache_beam.options.pipeline_options import StandardOptions
 
 from apache_beam.io.gcp.internal.clients import bigquery
 
-REQUIREMENTS_FILE = '/Users/kyuksel/ml4cvd/dataflow/requirements_ml4cvd_py35.txt'
+from tensorize.tensorize.defines import DATAFLOW_RUNNER, GCS_OUTPUT_FILE, REQUIREMENTS_FILE, SETUP_FILE
+from tensorize.tensorize.utils import count_ones
 
-RUN_NAME = 'ky-test'
-
-FS_OUTPUT_FILE = '/Users/kyuksel/ml4cvd/dataflow/output/%s' % RUN_NAME
-GCS_OUTPUT_FILE = 'gs://ml4cvd/dataflow_experiment/output/%s' % RUN_NAME
-
-DIRECT_RUNNER = 'DirectRunner'
-DATAFLOW_RUNNER = 'DataflowRunner'
 
 RUNNER = DATAFLOW_RUNNER
 OUTPUT_FILE = GCS_OUTPUT_FILE
@@ -35,15 +29,6 @@ def run(argv=None):
     pipeline_options.view_as(StandardOptions).runner = RUNNER
 
     p = beam.Pipeline(options=pipeline_options)
-
-    def count_ones(word_ones):
-        (word, ones) = word_ones
-        return (word, sum(ones))
-
-    bigquery_source = beam.io.BigQuerySource(
-        query='select * from `lubitz.coding`',
-        use_standard_sql=True
-    )
 
     # Query table in BQ
     table_data = (
@@ -82,20 +67,19 @@ def run(argv=None):
     meaning_field.type = 'STRING'
     table_schema.fields.append(meaning_field)
 
-
-    write_table_spec = bigquery.TableReference(
-        projectId='broad-ml4cvd',
-        datasetId='pb_working',
-        tableId=RUN_NAME
-    )
-
+    # write_table_spec = bigquery.TableReference(
+    #     projectId='broad-ml4cvd',
+    #     datasetId='pb_working',
+    #     tableId=RUN_NAME
+    # )
+    #
     # write transformed to new table
-    #table_data | 'Writing to BigQuery' >> beam.io.WriteToBigQuery(
+    # table_data | 'Writing to BigQuery' >> beam.io.WriteToBigQuery(
     #    write_table_spec,
     #    schema=table_schema,
     #    write_disposition=beam.io.BigQueryDisposition.WRITE_TRUNCATE,
     #    create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED
-    #)
+    # )
 
     #write to file
 
@@ -108,4 +92,4 @@ def run(argv=None):
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.DEBUG)
 
-    run(['--requirements_file={}'.format(REQUIREMENTS_FILE)])
+    run(['--requirements_file={}'.format(REQUIREMENTS_FILE), '--setup_file={}'.format(SETUP_FILE)])
