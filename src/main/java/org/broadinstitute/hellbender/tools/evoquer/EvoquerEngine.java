@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.tools.evoquer;
 
 import com.google.cloud.bigquery.*;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -44,6 +41,13 @@ class EvoquerEngine {
 
     /** ID of the table containing the names of all samples in the variant table. */
     private static final String SAMPLE_TABLE = "gvcf_test.sample_list_subsetted_100";
+
+    /**
+     * The conf threshold above which variants are not included in the position tables.
+     * This value is used to construct the genotype information of those missing samples
+     * when they are merged together into a {@link VariantContext} object in {@link #addHighConfRefSampleInfoToVcBuilder(String, int, Allele, int, VariantContextBuilder)}.
+     */
+    private static final int MISSING_CONF_THRESHOLD = 60;
 
     /**
      * Map between contig name and the BigQuery table containing position data from that contig.
@@ -247,11 +251,12 @@ class EvoquerEngine {
         // Have to convert to int here.
         // Sloppy, but if we ever go larger than MAXINT, we have bigger problems.
         final List<VariantContext> variantContextList = new ArrayList<>((int)result.getTotalRows());
+        final List<VariantContext> mergedVariantContextList = new ArrayList<>((int)result.getTotalRows());
 
         // Position / alleles are the key here.
-        String currentContig;
-        int currentPos;
-        List<Allele> currentAlleleList;
+        String currentContig = "";
+        long currentPos = 0;
+        List<Allele> currentAlleleList = new ArrayList<>( 3 );
 
         // Details of the variants to store:
         List<VariantDetailData> currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
@@ -264,6 +269,22 @@ class EvoquerEngine {
             // Fill in trivial stuff:
             addBasicFieldsToVariantBuilder(row, variantContextBuilder, variantDetailData);
 
+//            // Do we have a new position / new alleles?
+//            // If so we merge the accumulated variants and setup the new stores:
+//            if ( (!variantContextBuilder.getContig().equals(currentContig)) ||
+//                    (variantContextBuilder.getStart() != currentPos)  ||
+//                    (!variantContextBuilder.getAlleles().equals(currentAlleleList)) ) {
+//                mergedVariantContextList.add(
+//                        mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
+//                );
+//
+//                // Setup new values:
+//                currentContig = variantContextBuilder.getContig();
+//                currentPos = variantContextBuilder.getStart();
+//                currentAlleleList = new ArrayList<>( 3 );
+//                currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
+//            }
+
             // Fill in info field stuff:
             addInfoFieldsToVariantBuilder( row, variantContextBuilder, variantDetailData );
 
@@ -274,7 +295,17 @@ class EvoquerEngine {
 
             // Add our variant context to the list:
             variantContextList.add( variantContextBuilder.make() );
+
+            // Add our variant data to the accumulated list:
+            currentVariantDetails.add( variantDetailData );
         }
+
+//        // We must merge the remaining variant details together if any are left:
+//        if ( !currentVariantDetails.isEmpty() ) {
+//            mergedVariantContextList.add(
+//                    mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
+//            );
+//        }
 
         return variantContextList;
     }
@@ -288,17 +319,24 @@ class EvoquerEngine {
      * It's also missing a new operation, which is the combined histograms (given the same double precision, combine the counts of things with the same value)
      *
      * What it lists for GATK is:
-     * BaseQRankSum, ClippingRankSum, MQRankSum, ReadPosRankSum, MQ, MQ0, ExcessHet: median
-     * RAW_MQ: sum
      *
-     * QUAL field: set to missing
+     * BaseQRankSum:    median
+     * ClippingRankSum: median
+     * MQRankSum:       median
+     * ReadPosRankSum:  median
+     * MQ:              median
+     * MQ0:             median
+     * ExcessHet:       median
+     * RAW_MQ:          sum
+     *
+     * QUAL:            set to missing
+     *
+     * INFO DP:         sum
+     * QUALapprox:      sum
      *
      * The GVCFs will have a FORMAT annotation for a read strand contingency table with the key "SB".
      * We combine those together across samples as element-by-element adds and move the sum to the INFO field.
      * (This gets used to calculate FS and SOR.)
-     *
-     * INFO DP should be sum
-     * My example files will have QUALapprox, which combines with sum
      *
      * Allele-specific annotations have the same data as the traditional annotations, but the data for each
      * alternate allele is separated by a pipe as a delimiter.
@@ -316,10 +354,96 @@ class EvoquerEngine {
      * @return A {@link VariantContext} that combines all the information in the given {@code variantDetails}.
      */
     private VariantContext mergeVariantDetails(final String contig,
-                                               final int position,
+                                               final long position,
                                                final List<Allele> alleles,
                                                final List<VariantDetailData> variantDetails) {
-        return null;
+
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
+
+        // Populate trivial fields in variant context builder:
+        variantContextBuilder.chr(contig)
+                            .start(position)
+                            .alleles(alleles);
+
+        // no need to populate ID
+        // no need to populate FILTER
+        // no need to populate QUAL as per rules
+
+        final Set<String>    samplesMissing  = new HashSet<>( sampleNames );
+        final List<Genotype> sampleGenotypes = new ArrayList<>( sampleNames.size() );
+
+        // Now go over each sample and aggregate the data as per the rules:
+        for ( final VariantDetailData sampleData : variantDetails ) {
+            // INFO fields:
+            // DP=7
+            // MQ=34.15
+            // MQRankSum=1.300
+            // MQ_DP=7
+            // QUALapprox=20
+            // RAW_MQandDP=239.05,7
+            // ReadPosRankSum=1.754
+            // VarDP=7
+
+            // Genotype fields:
+
+            // Account for this sample in our sample set:
+            samplesMissing.remove( sampleData.sampleName );
+        }
+
+        // Now add in empty values for each sample that was not in our variant details.
+        // We assume these samples have high confidence reference regions at this allele
+        for ( final String sample : samplesMissing ) {
+            sampleGenotypes.add( createHighConfRefSampleGenotype(sample, 20, alleles.get(0), alleles.size() ) );
+        }
+
+        // Set our genotypes:
+        variantContextBuilder.genotypes( sampleGenotypes );
+
+        // Return the VC:
+        return variantContextBuilder.make();
+    }
+
+    /**
+     * Creates a {@link Genotype} object containing default "high-confidence" field values for the given
+     * {@code sampleId}.
+     *
+     * These values are placeholders used only so the resuling {@link VariantContext} will contain information from the
+     * given {@code sampleId} to enable genotyping.  These data are not necessarily reflective of the actual sample
+     * information.
+     *
+     * @param sampleId The ID of a sample for which to generate default information in the given {@link VariantContextBuilder}.
+     * @param depth The depth to use for the sample.
+     * @param refAllele The reference {@link Allele} in this variant.
+     * @param numAlleles Total number of alleles in this variant, including the reference allele.
+     * @return The {@link Genotype} object with default "high-confidence" field values for the given {@code sampleId}.
+     */
+    private Genotype createHighConfRefSampleGenotype(final String sampleId,
+                                                     final int depth,
+                                                     final Allele refAllele,
+                                                     final int numAlleles ) {
+
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+
+        genotypeBuilder.name(sampleId);
+
+        // GT:AD:DP:GQ:PL:SB
+        genotypeBuilder.alleles( Collections.nCopies( numAlleles, refAllele ) );
+        genotypeBuilder.AD( Collections.nCopies( numAlleles, depth ).stream().mapToInt( i -> i).toArray() );
+        genotypeBuilder.DP(depth);
+        genotypeBuilder.GQ(MISSING_CONF_THRESHOLD);
+
+        final List<Integer> pls = Collections.singletonList( 0 );
+        pls.addAll( Collections.nCopies( (numAlleles-1)*3, MISSING_CONF_THRESHOLD ) );
+        genotypeBuilder.PL( pls.stream().mapToInt(i -> i).toArray() );
+
+        final List<Integer> sbs = Arrays.asList( 50, 50 );
+        sbs.addAll( Collections.nCopies( (numAlleles-1)*2, 0 ) );
+        genotypeBuilder.attribute(
+                VCFConstants.STRAND_BIAS_KEY,
+                sbs.stream().map( Object::toString ).collect(Collectors.joining(","))
+        );
+
+        return genotypeBuilder.make();
     }
 
     private void addBasicFieldsToVariantBuilder(final FieldValueList row,
@@ -432,14 +556,7 @@ class EvoquerEngine {
         final int dp = (int)callData.get(VCFConstants.DEPTH_KEY).getLongValue();
         final int gq = (int)callData.get(VCFConstants.GENOTYPE_QUALITY_KEY).getLongValue();
 
-        // Handle the ref allele genotype first:
-        final GenotypeBuilder refGenotypeBuilder = new GenotypeBuilder();
-        refGenotypeBuilder.name(sampleName);
-        refGenotypeBuilder.DP(dp);
-        refGenotypeBuilder.GQ(gq);
-
-        // Now handle the alt allele genotypes:
-
+        // Create the genotype builder and get to work:
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
         // Get the scalar fields first:
