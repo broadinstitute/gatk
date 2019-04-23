@@ -37,6 +37,8 @@ class EvoquerEngine {
     //==================================================================================================================
     // Private Static Members:
 
+    private static String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR = ",";
+
     /** ID of the project containing the dataset and tables from which to pull variant data. */
     private static final String PROJECT_ID = "broad-dsp-spec-ops";
 
@@ -55,6 +57,13 @@ class EvoquerEngine {
      * the database.
      */
     private static final int HIGH_CONF_REFERENCE_STRAND_BIAS = 50;
+
+
+    /**
+     * Value to insert for MQ, ReadPosRankSum, and MQRankSum for the reference in high-confidence variant sample data which is missing from
+     * the database.
+     */
+    private static final int MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE = 20;
 
     /**
      * Map between contig name and the BigQuery table containing position data from that contig.
@@ -202,7 +211,10 @@ class EvoquerEngine {
             logger.info( "\n" + prettyQueryResults );
 
             // Convert results into variant context objects:
-            return createVariantsFromTableResult( result );
+            return createVariantsFromTableResult( result ).stream()
+//                    .map(GnarlyGenotyperEngine::finalizeGenotype)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
         }
         else {
             logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
@@ -392,6 +404,9 @@ class EvoquerEngine {
                             .start(position)
                             .alleles(alleles);
 
+        // Get the alleles we actually care about here:
+        final List<Allele> genotypeAlleles = alleles.stream().filter( a -> !a.equals(Allele.NON_REF_ALLELE) ).collect(Collectors.toList());
+
         // no need to populate ID
         // no need to populate FILTER
         // no need to populate QUAL as per rules
@@ -402,7 +417,7 @@ class EvoquerEngine {
         int depth = 0;
         int variantDepth = 0;
         int mapQualityDepth = 0;
-        double rawMq = 0;
+        long rawMq = 0;
         double qualApprox = 0;
 
         final List<Double> mq             = new ArrayList<>(variantDetails.size());
@@ -449,7 +464,7 @@ class EvoquerEngine {
             }
 
             // Genotype fields should just be added as-is:
-            sampleGenotypes.add( createGenotypeFromVariantDetails(sampleData, alleles) );
+            sampleGenotypes.add( createGenotypeFromVariantDetails(sampleData, genotypeAlleles) );
 
             // Account for this sample in our sample set:
             samplesMissing.remove( sampleData.sampleName );
@@ -462,16 +477,16 @@ class EvoquerEngine {
 
         // Ensure no NaN values:
         // TODO: Make sure these values are good:
-        mqMedian             = Double.isNaN(mqMedian) ? 20 : mqMedian;
-        mqRankSumMedian      = Double.isNaN(mqRankSumMedian) ? 20 : mqRankSumMedian;
-        readPosRankSumMedian = Double.isNaN(readPosRankSumMedian) ? 20 : readPosRankSumMedian;
+        mqMedian             = Double.isNaN(mqMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : mqMedian;
+        mqRankSumMedian      = Double.isNaN(mqRankSumMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : mqRankSumMedian;
+        readPosRankSumMedian = Double.isNaN(readPosRankSumMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : readPosRankSumMedian;
 
         // Add the aggregate values to our builder:
         variantContextBuilder.attribute(VCFConstants.DEPTH_KEY, depth);
         variantContextBuilder.attribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY, qualApprox);
         variantContextBuilder.attribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH, mapQualityDepth);
         variantContextBuilder.attribute(GATKVCFConstants.VARIANT_DEPTH_KEY, variantDepth);
-        variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%.02f_%d", rawMq, depth));
+        variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%d%s%d", rawMq, RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR, depth));
 
         variantContextBuilder.attribute(VCFConstants.RMS_MAPPING_QUALITY_KEY, mqMedian);
         variantContextBuilder.attribute(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, mqRankSumMedian);
@@ -480,7 +495,7 @@ class EvoquerEngine {
         // Now add in empty values for each sample that was not in our variant details.
         // We assume these samples have high confidence reference regions at this allele
         for ( final String sample : samplesMissing ) {
-            sampleGenotypes.add( createHighConfRefSampleGenotype(sample, depth, alleles.get(0), alleles.size() ) );
+            sampleGenotypes.add( createHighConfRefSampleGenotype(sample, depth, genotypeAlleles.get(0), genotypeAlleles.size() ) );
         }
 
         // Set our genotypes:
@@ -618,8 +633,8 @@ class EvoquerEngine {
              !row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).isNull() ) {
 
             final Integer dp     = (int) row.get(VCFConstants.DEPTH_KEY).getLongValue();
-            final Double  raw_mq = row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).getDoubleValue();
-            variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%.02f_%d", raw_mq, dp));
+            final long  raw_mq = Math.round(row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).getDoubleValue());
+            variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%d%s%d", raw_mq, RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR, dp));
         }
 
         // ======
@@ -647,7 +662,7 @@ class EvoquerEngine {
             variantDetailData.infoVarDp = (int) row.get(GATKVCFConstants.VARIANT_DEPTH_KEY).getLongValue();
         }
         if ( !row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).isNull() ) {
-            variantDetailData.infoRawMq = row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).getDoubleValue();
+            variantDetailData.infoRawMq = Math.round(row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).getDoubleValue());
         }
     }
 
@@ -858,7 +873,7 @@ class EvoquerEngine {
         Double infoMqRankSum;
         Integer infoMqDp;
         Integer infoQualApprox;
-        Double infoRawMq;
+        Long infoRawMq;
         Double infoReadPosRankSum;
         Integer infoVarDp;
 

@@ -18,6 +18,8 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String SUPPORTING_CALLSET_SHORT_NAME = "population";
     public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
 
+    public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
+
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
      */
@@ -121,7 +123,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * Note that the default was changed from 10.0 to 30.0 in version 4.1.0.0 to accompany the switch to use the the new quality score by default.
      */
     @Argument(fullName = "standard-min-confidence-threshold-for-calling", shortName = "stand-call-conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
+    public double STANDARD_CONFIDENCE_FOR_CALLING = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),

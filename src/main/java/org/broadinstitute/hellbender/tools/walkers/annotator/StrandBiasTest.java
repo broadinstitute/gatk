@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticGenotypingEngine;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -238,7 +237,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
      * @param array the array used by the per-sample Strand Bias annotation
      * @return the table used by the StrandBiasTest annotation
      */
-    private static int[][] decodeSBBS( final int[] array ) {
+    public static int[][] decodeSBBS( final int[] array ) {
         if(array.length != ARRAY_SIZE) {
             return null;
         }

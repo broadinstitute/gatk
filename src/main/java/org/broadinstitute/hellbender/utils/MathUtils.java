@@ -361,6 +361,18 @@ public final class MathUtils {
         }
     }
 
+    /**
+     * Add two int arrays, modifying the first
+     * @param array the array to store the result
+     * @param summand   the array to be added
+     */
+    public static void addToArrayInPlace(final int[] array, final int[] summand) {
+        Utils.validateArg(array.length == summand.length, "Arrays must have same length");
+        for (int n = 0; n < array.length; n++) {
+            array[n] += summand[n];
+        }
+    }
+
     public static int median(final int[] values) {
         Utils.nonNull(values);
         return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
