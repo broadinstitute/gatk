@@ -159,7 +159,10 @@ class EvoquerEngine {
         VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
                 VCFConstants.STRAND_BIAS_KEY,
                 VCFConstants.DEPTH_KEY,
-                VCFConstants.RMS_MAPPING_QUALITY_KEY
+                VCFConstants.RMS_MAPPING_QUALITY_KEY,
+                VCFConstants.ALLELE_COUNT_KEY,
+                VCFConstants.ALLELE_FREQUENCY_KEY,
+                VCFConstants.ALLELE_NUMBER_KEY
         );
 
         VCFStandardHeaderLines.addStandardFormatLines(headerLines, true,
@@ -177,6 +180,10 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.READ_POS_RANK_SUM_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.STRAND_ODDS_RATIO_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.FISHER_STRAND_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
@@ -212,7 +219,7 @@ class EvoquerEngine {
 
             // Convert results into variant context objects:
             return createVariantsFromTableResult( result ).stream()
-//                    .map(GnarlyGenotyperEngine::finalizeGenotype)
+                    .map(GnarlyGenotyperEngine::finalizeGenotype)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
         }
@@ -277,7 +284,8 @@ class EvoquerEngine {
 
         // Position / alleles are the key here.
         String currentContig = "";
-        long currentPos = 0;
+        long currentStartPos = 0;
+        long currentStopPos = 0;
         List<Allele> currentAlleleList = new ArrayList<>(3);
 
         // Initialize with values from the first result:
@@ -286,7 +294,8 @@ class EvoquerEngine {
 
             currentContig = row.get("reference_name").getStringValue();
             // Add 1 because in the DB right now starts are exclusive:
-            currentPos = row.get("start_position").getLongValue() + 1;
+            currentStartPos = row.get("start_position").getLongValue() + 1;
+            currentStopPos = row.get("end_position").getLongValue();
 
             // Fill in alleles:
             currentAlleleList.add( Allele.create(row.get("reference_bases").getStringValue(), true) );
@@ -309,16 +318,17 @@ class EvoquerEngine {
             // Do we have a new position / new alleles?
             // If so we merge the accumulated variants and setup the new stores:
             if ( (!variantContextBuilder.getContig().equals(currentContig)) ||
-                    (variantContextBuilder.getStart() != currentPos)  ||
+                    (variantContextBuilder.getStart() != currentStartPos)  ||
                     (!variantContextBuilder.getAlleles().equals(currentAlleleList)) ) {
 
                 mergedVariantContextList.add(
-                        mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
+                        mergeVariantDetails( currentContig, currentStartPos, currentStopPos, currentAlleleList, currentVariantDetails )
                 );
 
                 // Setup new values:
                 currentContig = variantContextBuilder.getContig();
-                currentPos = variantContextBuilder.getStart();
+                currentStartPos = variantContextBuilder.getStart();
+                currentStopPos = variantContextBuilder.getStop();
                 currentAlleleList = variantContextBuilder.getAlleles();
                 currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
             }
@@ -341,7 +351,7 @@ class EvoquerEngine {
         // We must merge the remaining variant details together if any are left:
         if ( !currentVariantDetails.isEmpty() ) {
             mergedVariantContextList.add(
-                    mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
+                    mergeVariantDetails( currentContig, currentStartPos, currentStopPos, currentAlleleList, currentVariantDetails )
             );
         }
 
@@ -387,13 +397,15 @@ class EvoquerEngine {
      * AS_QD we can ignore for now.
      *
      * @param contig The contig for the given {@code variantDetails}.
-     * @param position The position for the given {@code variantDetails}.
+     * @param startPosition The start position for the given {@code variantDetails}.
+     * @param stopPosition The stop position for the given {@code variantDetails}.
      * @param alleles The alleles for the given {@code variantDetails}.
      * @param variantDetails {@link VariantDetailData} for each sample occuring at the given locus to be merged.
      * @return A {@link VariantContext} that combines all the information in the given {@code variantDetails}.
      */
     private VariantContext mergeVariantDetails(final String contig,
-                                               final long position,
+                                               final long startPosition,
+                                               final long stopPosition,
                                                final List<Allele> alleles,
                                                final List<VariantDetailData> variantDetails) {
 
@@ -401,7 +413,8 @@ class EvoquerEngine {
 
         // Populate trivial fields in variant context builder:
         variantContextBuilder.chr(contig)
-                            .start(position)
+                            .start(startPosition)
+                            .stop(stopPosition)
                             .alleles(alleles);
 
         // Get the alleles we actually care about here:

@@ -107,6 +107,7 @@ final class GnarlyGenotyperEngine {
 
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
         //builder gets the finalized annotations and builder2 gets the raw annotations for the database
+
         final VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
 
         final int    variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
@@ -167,6 +168,7 @@ final class GnarlyGenotyperEngine {
         builder.genotypes(calledGenotypes);
         builder.alleles(targetAlleles);
 
+        // TODO: Remove reflection from this code.
         for (final Class c : allASAnnotations) {
             try {
                 final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
@@ -186,6 +188,9 @@ final class GnarlyGenotyperEngine {
             }
             catch (final InstantiationException e) {
                 throw new GATKException("Encountered a problem creating InfoFieldAnnotation", e);
+            }
+            catch (final ClassCastException e) {
+                logger.trace( "Ignoring flimsy cast failure: " + c.toString() + " -> ReducibleAnnotation" );
             }
         }
 
