@@ -7,6 +7,8 @@ from apache_beam.options.pipeline_options import StandardOptions
 
 from apache_beam.io.gcp.internal.clients import bigquery
 
+REQUIREMENTS_FILE = '/Users/kyuksel/ml4cvd/dataflow/requirements_ml4cvd_py35.txt'
+
 RUN_NAME = 'ky-test'
 
 FS_OUTPUT_FILE = '/Users/kyuksel/ml4cvd/dataflow/output/%s' % RUN_NAME
@@ -105,4 +107,5 @@ def run(argv=None):
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.DEBUG)
-    run()
+
+    run(['--requirements_file={}'.format(REQUIREMENTS_FILE)])
