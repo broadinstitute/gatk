@@ -153,7 +153,6 @@ public class BigQueryUtils {
 
         // TODO: Clean this up... Probably make a getStringValue(FIELD) method to use here, addPrimitiveRowToStringBuilder, and calculateColumnWidths
 
-
         // For fields that have multiple values, we need to do something special.
         // In fact, we need to go through each value of each row and track how many fields it has.
         int maxNumValuesInRow = 1;
@@ -217,7 +216,6 @@ public class BigQueryUtils {
         sb.append(IntStream.range(0, row.size()).boxed().map(
                 i -> String.format(" %-" + columnWidths.get(i) + "s |", row.get(i).getStringValue())
         ).collect(Collectors.joining()));
-        sb.append("\n");
     }
 
     /**
