@@ -91,6 +91,14 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
                                     .put("Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L))
                                     .put("Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L))
                                     .put("Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L)).build()},
+            // Testing that that multiple input file behavior still functions when both files are mixed between queryname and querygroup sorting
+            {new File[]{new File(TEST_DATA_DIR, "optical_dupes.queryname.bam"), new File(TEST_DATA_DIR, "example.chr1.1-1K.markedDups.querygrouped.bam")}, 94, 8,
+                ImmutableMap.builder().put("mylib", ImmutableList.of(0L, 2L, 0L, 0L, 1L, 1L, 0.5, 0L))
+                        .put("Solexa-16419", ImmutableList.of(4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L))
+                        .put("Solexa-16416", ImmutableList.of(2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L))
+                        .put("Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L))
+                        .put("Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L))
+                        .put("Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L)).build()},
         };
     }
 

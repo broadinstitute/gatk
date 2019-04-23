@@ -47,6 +47,7 @@ import java.util.*;
  *  <li>Due to MarkDuplicatesSpark queryname-sorting coordinate-sorted inputs internally at the start, the tool produces identical results regardless of the input sort-order. That is, it will flag duplicates sets that include secondary, and supplementary and unmapped mate records no matter the sort-order of the input. This differs from how Picard MarkDuplicates behaves given the differently sorted inputs. </li>
  *  <li>Collecting duplicate metrics slows down performance and thus the metrics collection is optional and must be specified for the Spark version of the tool with '-M'. It is possible to collect the metrics with the standalone Picard tool <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_EstimateLibraryComplexity.php'>EstimateLibraryComplexity</a>.</li>
  *  <li>MarkDuplicatesSpark is optimized to run locally on a single machine by leveraging core parallelism that MarkDuplicates and SortSam cannot. It will typically run faster than MarkDuplicates and SortSam by a factor of 15% over the same data at 2 cores and will scale linearly to upwards of 16 cores. This means MarkDuplicatesSpark, even without access to a Spark cluster, is faster than MarkDuplicates.</li>
+ *  <li>MarkDuplicatesSpark can be run with multiple input bams. If this is the case all of the inputs must be querygroup ordered or queryname sorted.</li>
  * </ul>
  *
  * <p>For a typical 30x coverage WGS BAM, we recommend running on a machine with at least 16 GB. Memory usage scales with library complexity and the tool will need more memory for larger or more complex data. If the tool is running slowly it is possible Spark is running out of memory and is spilling data to disk excessively. If this is the case then increasing the memory available to the tool should yield speedup to a threshold; otherwise, increasing memory should have no effect beyond that threshold. </p>
@@ -288,12 +289,15 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering
+        final SAMFileHeader header = getHeaderForReads();
+
+        // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
         Map<String, SAMFileHeader> headerMap = getReadSouceHeaderMap();
         if (headerMap.size() > 1) {
             headerMap.entrySet().stream().forEach(h -> {if(!ReadUtils.isReadNameGroupedBam(h.getValue())) {
-                throw new UserException("Multiple inputs to MarkDuplicatesSpark detected but input "+h.getKey()+" was sorted in "+h.getValue().getSortOrder()+" order");
+                throw new UserException("Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs be queryname sorted or querygrouped for multi-input processing but input "+h.getKey()+" was sorted in "+h.getValue().getSortOrder()+" order");
                     }});
+            header.setGroupOrder(SAMFileHeader.GroupOrder.query);
         }
 
         JavaRDD<GATKRead> reads = getReads();
@@ -304,7 +308,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             markDuplicatesSparkArgumentCollection.taggingPolicy = MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly;
         }
 
-        final SAMFileHeader header = getHeaderForReads();
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, finder, markDuplicatesSparkArgumentCollection, getRecommendedNumReducers());
 
         if (metricsFile != null) {
