@@ -1,0 +1,8 @@
+name: ml4cvd_py35
+channels:
+  - defaults
+  - anaconda
+dependencies:
+  - python==3.5.0
+  - pip:
+    - apache-beam[gcp]

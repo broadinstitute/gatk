@@ -1,1 +1,3 @@
 .idea/*
+tensorize/tensorize/__pycache__/*
+tensorize/ml_tensorize.egg-info/
