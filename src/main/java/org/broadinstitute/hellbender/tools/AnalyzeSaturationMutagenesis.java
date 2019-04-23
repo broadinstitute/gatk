@@ -118,6 +118,10 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
     @Argument(doc = "paired mode evaluation of variants (combine mates, when possible)", fullName = "paired-mode")
     private static boolean pairedMode = true;
 
+    @Argument(doc = "evaluate overlapping pairs for inconsistency, but always report reads separately",
+            fullName = "report-separately")
+    private static boolean reportSeparately = false;
+
     @VisibleForTesting static Reference reference;
     @VisibleForTesting static CodonTracker codonTracker; // device for turning SNVs into CodonVariations
 
@@ -506,11 +510,13 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             writer.newLine();
             writeMoleculeCounts(moleculeCountsDisjointPair, df, writer);
 
-            final long nOverlappingReads = 2 * moleculeCountsOverlappingPair.getTotal();
-            writer.write(">>Reads in overlapping pairs evaluated together:\t" + nOverlappingReads + "\t" +
-                    df.format(100. * nOverlappingReads / nEvaluableReads) + "%");
-            writer.newLine();
-            writeMoleculeCounts(moleculeCountsOverlappingPair, df, writer);
+            if ( !reportSeparately ) {
+                final long nOverlappingReads = 2 * moleculeCountsOverlappingPair.getTotal();
+                writer.write(">>Reads in overlapping pairs evaluated together:\t" + nOverlappingReads + "\t" +
+                        df.format(100. * nOverlappingReads / nEvaluableReads) + "%");
+                writer.newLine();
+                writeMoleculeCounts(moleculeCountsOverlappingPair, df, writer);
+            }
 
             final long totalBases = readCounts.getNTotalBaseCalls();
             writer.write("Total base calls:\t" + totalBases + "\t100.000%");
@@ -683,6 +689,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         public void bumpNWildType() { nWildType += 1; }
         public long getNWildType() { return nWildType; }
         public void bumpInconsistentPairs() { nInconsistentPairs += 1; }
+        public void bumpInconsistentPairs( final int nReads ) { nInconsistentPairs += nReads; }
         public long getNInconsistentPairs() { return nInconsistentPairs; }
         public void bumpInsufficientFlank() { nInsufficientFlank += 1; }
         public long getNInsufficientFlank() { return nInsufficientFlank; }
@@ -1493,7 +1500,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         // if the reports have overlapping coverage, check that the SNVs agree in the overlapping part,
         // and if they don't, return a null snvList.
         // if there's no overlap, just glue the two lists together
-        private static List<SNV> combineVariations( final ReadReport report1, final ReadReport report2 ) {
+        public static List<SNV> combineVariations( final ReadReport report1, final ReadReport report2 ) {
             if ( report1.getVariations().isEmpty() ) return report2.getVariations();
             if ( report2.getVariations().isEmpty() ) return report1.getVariations();
 
@@ -1623,8 +1630,17 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             final int overlapStart = Math.max(report1.getFirstRefIndex(), report2.getFirstRefIndex());
             final int overlapEnd = Math.min(report1.getLastRefIndex(), report2.getLastRefIndex());
             if ( overlapStart <= overlapEnd ) { // if mates overlap, or are adjacent
-                final ReadReport combinedReport = new ReadReport(report1, report2);
-                combinedReport.updateCounts(moleculeCountsOverlappingPair, codonTracker, variationCounts, reference);
+                if ( reportSeparately ) {
+                    if ( ReadReport.combineVariations(report1, report2) == null ) {
+                        moleculeCountsDisjointPair.bumpInconsistentPairs(2);
+                    } else {
+                        report1.updateCounts(moleculeCountsDisjointPair, codonTracker, variationCounts, reference);
+                        report2.updateCounts(moleculeCountsDisjointPair, codonTracker, variationCounts, reference);
+                    }
+                } else {
+                    final ReadReport combinedReport = new ReadReport(report1, report2);
+                    combinedReport.updateCounts(moleculeCountsOverlappingPair, codonTracker, variationCounts, reference);
+                }
             } else {
                 report1.updateCounts(moleculeCountsDisjointPair, codonTracker, variationCounts, reference);
                 report2.updateCounts(moleculeCountsDisjointPair, codonTracker, variationCounts, reference);
