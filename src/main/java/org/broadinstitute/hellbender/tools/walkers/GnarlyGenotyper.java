@@ -166,11 +166,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     }
 
     @Override
-    protected boolean doGenotypeCalling() { return true; }
-
-    @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
-        if (genomicsDBOptions != null) {
+        if (genomicsDBOptions == null) {
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), true, PIPELINE_MAX_ALT_COUNT);
         }
         return genomicsDBOptions;
