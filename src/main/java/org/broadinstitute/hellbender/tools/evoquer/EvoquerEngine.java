@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
@@ -45,7 +46,7 @@ class EvoquerEngine {
     /**
      * The conf threshold above which variants are not included in the position tables.
      * This value is used to construct the genotype information of those missing samples
-     * when they are merged together into a {@link VariantContext} object in {@link #addHighConfRefSampleInfoToVcBuilder(String, int, Allele, int, VariantContextBuilder)}.
+     * when they are merged together into a {@link VariantContext} object in {@link #createHighConfRefSampleGenotype(String, int, Allele, int)}.
      */
     private static final int MISSING_CONF_THRESHOLD = 60;
 
@@ -143,7 +144,7 @@ class EvoquerEngine {
         VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
                 VCFConstants.STRAND_BIAS_KEY,
                 VCFConstants.DEPTH_KEY,
-                VCFConstants.STRAND_BIAS_KEY
+                VCFConstants.RMS_MAPPING_QUALITY_KEY
         );
 
         VCFStandardHeaderLines.addStandardFormatLines(headerLines, true,
@@ -253,13 +254,31 @@ class EvoquerEngine {
         final List<VariantContext> variantContextList = new ArrayList<>((int)result.getTotalRows());
         final List<VariantContext> mergedVariantContextList = new ArrayList<>((int)result.getTotalRows());
 
+        // Details of the variants to store:
+        List<VariantDetailData> currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
+
         // Position / alleles are the key here.
         String currentContig = "";
         long currentPos = 0;
-        List<Allele> currentAlleleList = new ArrayList<>( 3 );
+        List<Allele> currentAlleleList = new ArrayList<>(3);
 
-        // Details of the variants to store:
-        List<VariantDetailData> currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
+        // Initialize with values from the first result:
+        if ( result.getTotalRows() != 0 ) {
+            final FieldValueList row = result.iterateAll().iterator().next();
+
+            currentContig = row.get("reference_name").getStringValue();
+            // Add 1 because in the DB right now starts are exclusive:
+            currentPos = row.get("start_position").getLongValue() + 1;
+
+            // Fill in alleles:
+            currentAlleleList.add( Allele.create(row.get("reference_bases").getStringValue(), true) );
+
+            currentAlleleList.addAll(
+                    row.get("alternate_bases").getRepeatedValue().stream()
+                    .map( fieldValue -> Allele.create(fieldValue.getRecordValue().get(0).getStringValue()) )
+                    .collect(Collectors.toList())
+            );
+        }
 
         for ( final FieldValueList row : result.iterateAll() ) {
             final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
@@ -269,21 +288,22 @@ class EvoquerEngine {
             // Fill in trivial stuff:
             addBasicFieldsToVariantBuilder(row, variantContextBuilder, variantDetailData);
 
-//            // Do we have a new position / new alleles?
-//            // If so we merge the accumulated variants and setup the new stores:
-//            if ( (!variantContextBuilder.getContig().equals(currentContig)) ||
-//                    (variantContextBuilder.getStart() != currentPos)  ||
-//                    (!variantContextBuilder.getAlleles().equals(currentAlleleList)) ) {
-//                mergedVariantContextList.add(
-//                        mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
-//                );
-//
-//                // Setup new values:
-//                currentContig = variantContextBuilder.getContig();
-//                currentPos = variantContextBuilder.getStart();
-//                currentAlleleList = new ArrayList<>( 3 );
-//                currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
-//            }
+            // Do we have a new position / new alleles?
+            // If so we merge the accumulated variants and setup the new stores:
+            if ( (!variantContextBuilder.getContig().equals(currentContig)) ||
+                    (variantContextBuilder.getStart() != currentPos)  ||
+                    (!variantContextBuilder.getAlleles().equals(currentAlleleList)) ) {
+
+                mergedVariantContextList.add(
+                        mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
+                );
+
+                // Setup new values:
+                currentContig = variantContextBuilder.getContig();
+                currentPos = variantContextBuilder.getStart();
+                currentAlleleList = variantContextBuilder.getAlleles();
+                currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
+            }
 
             // Fill in info field stuff:
             addInfoFieldsToVariantBuilder( row, variantContextBuilder, variantDetailData );
@@ -300,14 +320,14 @@ class EvoquerEngine {
             currentVariantDetails.add( variantDetailData );
         }
 
-//        // We must merge the remaining variant details together if any are left:
-//        if ( !currentVariantDetails.isEmpty() ) {
-//            mergedVariantContextList.add(
-//                    mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
-//            );
-//        }
+        // We must merge the remaining variant details together if any are left:
+        if ( !currentVariantDetails.isEmpty() ) {
+            mergedVariantContextList.add(
+                    mergeVariantDetails( currentContig, currentPos, currentAlleleList, currentVariantDetails )
+            );
+        }
 
-        return variantContextList;
+        return mergedVariantContextList;
     }
 
     /**
@@ -320,19 +340,20 @@ class EvoquerEngine {
      *
      * What it lists for GATK is:
      *
-     * BaseQRankSum:    median
-     * ClippingRankSum: median
-     * MQRankSum:       median
-     * ReadPosRankSum:  median
-     * MQ:              median
-     * MQ0:             median
-     * ExcessHet:       median
-     * RAW_MQ:          sum
-     *
      * QUAL:            set to missing
      *
      * INFO DP:         sum
+     *
+     * MQ:              median
+     * MQRankSum:       median
+     * RAW_MQ:          sum
      * QUALapprox:      sum
+     * ReadPosRankSum:  median
+     *
+     * BaseQRankSum:    median
+     * ClippingRankSum: median
+     * MQ0:             median
+     * ExcessHet:       median
      *
      * The GVCFs will have a FORMAT annotation for a read strand contingency table with the key "SB".
      * We combine those together across samples as element-by-element adds and move the sum to the INFO field.
@@ -372,28 +393,88 @@ class EvoquerEngine {
         final Set<String>    samplesMissing  = new HashSet<>( sampleNames );
         final List<Genotype> sampleGenotypes = new ArrayList<>( sampleNames.size() );
 
-        // Now go over each sample and aggregate the data as per the rules:
-        for ( final VariantDetailData sampleData : variantDetails ) {
-            // INFO fields:
-            // DP=7
-            // MQ=34.15
-            // MQRankSum=1.300
-            // MQ_DP=7
-            // QUALapprox=20
-            // RAW_MQandDP=239.05,7
-            // ReadPosRankSum=1.754
-            // VarDP=7
+        int depth = 0;
+        int variantDepth = 0;
+        int mapQualityDepth = 0;
+        double rawMq = 0;
+        double qualApprox = 0;
 
-            // Genotype fields:
+        final List<Double> mq             = new ArrayList<>(variantDetails.size());
+        final List<Double> mqRankSum      = new ArrayList<>(variantDetails.size());
+        final List<Double> readPosRankSum = new ArrayList<>(variantDetails.size());
+
+        // Now go over each sample and aggregate the data as per the rules:
+        for ( final VariantDetailData sampleData : variantDetails  ) {
+
+            // ------------------------------------------------------------------
+            // INFO fields:
+
+            // Simple aggregations on:
+            //   DP, MQ_DP, QUALapprox, RAW_MQ, VAR_DP
+            if ( sampleData.infoDp != null ) {
+                depth += sampleData.infoDp;
+            }
+            if ( sampleData.infoQualApprox != null ) {
+                qualApprox += sampleData.infoQualApprox;
+            }
+            if ( sampleData.infoRawMq != null ) {
+                rawMq += sampleData.infoRawMq;
+            }
+            if ( sampleData.infoMqDp != null ) {
+                // TODO: This may not be right!
+                mapQualityDepth += sampleData.infoMqDp;
+            }
+            if ( sampleData.infoVarDp != null ) {
+                // TODO: This may not be right!
+                variantDepth += sampleData.infoVarDp;
+            }
+
+            // Median calculations on:
+            //   MQ, MQRankSum, readPosRankSum
+
+            if ( sampleData.infoMq != null ) {
+                mq.add(sampleData.infoMq);
+            }
+            if ( sampleData.infoMqRankSum != null ) {
+                mqRankSum.add(sampleData.infoMqRankSum);
+            }
+            if ( sampleData.infoReadPosRankSum != null ) {
+                readPosRankSum.add(sampleData.infoReadPosRankSum);
+            }
+
+            // Genotype fields should just be added as-is:
+            sampleGenotypes.add( createGenotypeFromVariantDetails(sampleData, alleles) );
 
             // Account for this sample in our sample set:
             samplesMissing.remove( sampleData.sampleName );
         }
 
+        // Calculate the median values:
+        double mqMedian             = new Median().evaluate(mq.stream().mapToDouble(Double::doubleValue).toArray());
+        double mqRankSumMedian      = new Median().evaluate(mqRankSum.stream().mapToDouble(Double::doubleValue).toArray());
+        double readPosRankSumMedian = new Median().evaluate(readPosRankSum.stream().mapToDouble(Double::doubleValue).toArray());
+
+        // Ensure no NaN values:
+        // TODO: Make sure these values are good:
+        mqMedian             = Double.isNaN(mqMedian) ? 20 : mqMedian;
+        mqRankSumMedian      = Double.isNaN(mqRankSumMedian) ? 20 : mqRankSumMedian;
+        readPosRankSumMedian = Double.isNaN(readPosRankSumMedian) ? 20 : readPosRankSumMedian;
+
+        // Add the aggregate values to our builder:
+        variantContextBuilder.attribute(VCFConstants.DEPTH_KEY, depth);
+        variantContextBuilder.attribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY, qualApprox);
+        variantContextBuilder.attribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH, mapQualityDepth);
+        variantContextBuilder.attribute(GATKVCFConstants.VARIANT_DEPTH_KEY, variantDepth);
+        variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%.02f_%d", rawMq, depth));
+
+        variantContextBuilder.attribute(VCFConstants.RMS_MAPPING_QUALITY_KEY, mqMedian);
+        variantContextBuilder.attribute(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, mqRankSumMedian);
+        variantContextBuilder.attribute(GATKVCFConstants.READ_POS_RANK_SUM_KEY, readPosRankSumMedian);
+
         // Now add in empty values for each sample that was not in our variant details.
         // We assume these samples have high confidence reference regions at this allele
         for ( final String sample : samplesMissing ) {
-            sampleGenotypes.add( createHighConfRefSampleGenotype(sample, 20, alleles.get(0), alleles.size() ) );
+            sampleGenotypes.add( createHighConfRefSampleGenotype(sample, depth, alleles.get(0), alleles.size() ) );
         }
 
         // Set our genotypes:
@@ -401,6 +482,29 @@ class EvoquerEngine {
 
         // Return the VC:
         return variantContextBuilder.make();
+    }
+
+    /**
+     * Create a {@link Genotype} from the given {@link VariantDetailData} and {@code alleles.}
+     * @param sampleData {@link VariantDetailData} containing sample information from which to create a {@link Genotype}.
+     * @param alleles {@link Allele} objects from which to create the {@link Genotype}.
+     * @return A {@link Genotype} object containing the information in the given {@code sampleData}.
+     */
+    private Genotype createGenotypeFromVariantDetails(final VariantDetailData sampleData, final List<Allele> alleles) {
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+        genotypeBuilder.name(sampleData.sampleName);
+
+        // GT:AD:DP:GQ:PL:SB
+        genotypeBuilder.alleles( alleles );
+        genotypeBuilder.AD( sampleData.gtAd );
+        genotypeBuilder.DP( sampleData.gtDp );
+        genotypeBuilder.GQ( sampleData.gtGq );
+        genotypeBuilder.PL( sampleData.gtPl );
+        genotypeBuilder.attribute(
+                VCFConstants.STRAND_BIAS_KEY,
+                Arrays.stream(sampleData.gtSb).map(i -> Integer.toString(i)).collect(Collectors.joining(","))
+        );
+        return genotypeBuilder.make();
     }
 
     /**
@@ -432,12 +536,17 @@ class EvoquerEngine {
         genotypeBuilder.DP(depth);
         genotypeBuilder.GQ(MISSING_CONF_THRESHOLD);
 
-        final List<Integer> pls = Collections.singletonList( 0 );
-        pls.addAll( Collections.nCopies( (numAlleles-1)*3, MISSING_CONF_THRESHOLD ) );
+        // Setup our PLs:
+        final List<Integer> pls = new ArrayList<>((numAlleles-1)*3);
+        pls.add(0);
+        for ( int i = 0 ; i < ((numAlleles-1)*3)-1 ; i++) { pls.add(MISSING_CONF_THRESHOLD); }
         genotypeBuilder.PL( pls.stream().mapToInt(i -> i).toArray() );
 
-        final List<Integer> sbs = Arrays.asList( 50, 50 );
-        sbs.addAll( Collections.nCopies( (numAlleles-1)*2, 0 ) );
+        // Setup our SBs:
+        final List<Integer> sbs = new ArrayList<>(numAlleles * 2);
+        sbs.add(50);
+        sbs.add(50);
+        for ( int i = 0 ; i < (numAlleles-1)*2 ; i++) { sbs.add(0); }
         genotypeBuilder.attribute(
                 VCFConstants.STRAND_BIAS_KEY,
                 sbs.stream().map( Object::toString ).collect(Collectors.joining(","))
@@ -732,27 +841,27 @@ class EvoquerEngine {
     private class VariantDetailData {
 
         // High-level fields:
-        public String sampleName;
-        public Double qual;
+        String sampleName;
+        Double qual;
 
         // Info Fields:
         //DP=7;MQ=34.15;MQRankSum=1.300;MQ_DP=7;QUALapprox=10;RAW_MQandDP=239.05,7;ReadPosRankSum=1.754;VarDP=7
-        public Integer infoDp;
-        public Double infoMq;
-        public Double infoMqRankSum;
-        public Integer infoMqDp;
-        public Integer infoQualApprox;
-        public Double infoRawMq;
-        public Double infoReadPosRankSum;
-        public Integer infoVarDp;
+        Integer infoDp;
+        Double infoMq;
+        Double infoMqRankSum;
+        Integer infoMqDp;
+        Integer infoQualApprox;
+        Double infoRawMq;
+        Double infoReadPosRankSum;
+        Integer infoVarDp;
 
         // Genotype fields:
         // GT:AD:DP:GQ:PL:SB 0/1:   4,3,0:  7: 10:  10,0,119,101,128,229:0,4,0,3
-        public int gtGenotype[];
-        public int gtAd[];
-        public Integer gtDp;
-        public Integer gtGq;
-        public int gtPl[];
-        public Integer gtSb[];
+        int gtGenotype[];
+        int gtAd[];
+        Integer gtDp;
+        Integer gtGq;
+        int gtPl[];
+        Integer gtSb[];
     }
 }

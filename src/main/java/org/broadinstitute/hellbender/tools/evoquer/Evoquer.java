@@ -116,7 +116,7 @@ public class Evoquer extends GATKTool {
 
             logger.info( "Created the following variants:" );
             for ( final VariantContext variantContext : variants ) {
-                logger.info( variantContext.toString() );
+                logger.info( variantContext.toStringWithoutGenotypes() );
                 vcfWriter.add( variantContext );
             }
         }
