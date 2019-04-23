@@ -86,5 +86,9 @@ func (s CensorResult) PhenoCensored() time.Time {
 }
 
 func (s CensorResult) MissingToString() string {
-	return strings.Join(s.Missing, "|")
+	if res := strings.Join(s.Missing, "|"); len(res) > 0 {
+		return res
+	}
+
+	return "NA"
 }
