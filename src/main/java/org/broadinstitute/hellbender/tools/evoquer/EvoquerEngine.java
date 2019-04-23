@@ -51,6 +51,12 @@ class EvoquerEngine {
     private static final int MISSING_CONF_THRESHOLD = 60;
 
     /**
+     * Value to insert for strand bias for the reference in high-confidence variant sample data which is missing from
+     * the database.
+     */
+    private static final int HIGH_CONF_REFERENCE_STRAND_BIAS = 50;
+
+    /**
      * Map between contig name and the BigQuery table containing position data from that contig.
      */
     private static final Map<String, String> contigPositionExpandedTableMap;
@@ -531,6 +537,7 @@ class EvoquerEngine {
         genotypeBuilder.name(sampleId);
 
         // GT:AD:DP:GQ:PL:SB
+        // TODO: this is probably wrong - need to remove one copy for the <NON_REF> allele so we can ignore it.
         genotypeBuilder.alleles( Collections.nCopies( numAlleles, refAllele ) );
         genotypeBuilder.AD( Collections.nCopies( numAlleles, depth ).stream().mapToInt( i -> i).toArray() );
         genotypeBuilder.DP(depth);
@@ -544,8 +551,8 @@ class EvoquerEngine {
 
         // Setup our SBs:
         final List<Integer> sbs = new ArrayList<>(numAlleles * 2);
-        sbs.add(50);
-        sbs.add(50);
+        sbs.add(HIGH_CONF_REFERENCE_STRAND_BIAS);
+        sbs.add(HIGH_CONF_REFERENCE_STRAND_BIAS);
         for ( int i = 0 ; i < (numAlleles-1)*2 ; i++) { sbs.add(0); }
         genotypeBuilder.attribute(
                 VCFConstants.STRAND_BIAS_KEY,
