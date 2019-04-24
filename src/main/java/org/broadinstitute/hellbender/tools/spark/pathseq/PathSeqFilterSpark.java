@@ -97,7 +97,7 @@ import scala.Tuple2;
  *   --executor-memory 32G \
  *   --num-executors 4 \
  *   --executor-cores 15 \
- *   --conf spark.yarn.executor.memoryOverhead=32000
+ *   --conf spark.executor.memoryOverhead=32000
  * </pre>
  *
  * <p>Note that the host BWA image must be copied to the same path on every worker node. The host k-mer file

@@ -39,4 +39,4 @@ ALTS_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.alts/')
     --num-executors 20 \
     --driver-memory 30G \
     --executor-memory 30G \
-    --conf spark.yarn.executor.memoryOverhead=5000
+    --conf spark.executor.memoryOverhead=5000
