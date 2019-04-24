@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * EvoquerEngine ("EvokerEngine"):
  * Extract Variants Out of big QUERy Engine.
  *
- * Performs the work for {@link Evoquer} in a manner that is extensible.
+ * Performs the work for {@link Evoquer} in a manner that is compartmentalized and reusable.
  *
  * Created by jonn on 4/17/19.
  */
@@ -37,7 +37,7 @@ class EvoquerEngine {
     //==================================================================================================================
     // Private Static Members:
 
-    private static String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR = ",";
+    private static final String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR = ",";
 
     /** ID of the project containing the dataset and tables from which to pull variant data. */
     private static final String PROJECT_ID = "broad-dsp-spec-ops";
