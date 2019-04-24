@@ -74,8 +74,8 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
     p = beam.Pipeline(options=pipeline_options)
 
     bigquery_source = beam.io.BigQuerySource(
-        # query='select * from `ukbb_dev.phenotype` limit %s' % limit,
-        query='select * from `ukbb_dev.phenotype`',
+        # query='select * from `ukbb7089_r10data.phenotype` limit %s' % limit,
+        query='select * from `ukbb7089_r10data.phenotype`',
         use_standard_sql=True
     )
 
@@ -83,14 +83,14 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
     table_data = (
             p
             | 'QueryTable' >> beam.io.Read(bigquery_source)
+
             # Each row is a dictionary where the keys are the BigQuery columns
-
             | 'CreateKey' >> beam.Map(lambda row: (row['sample_id'], row))
-            # group by key
 
+            # Group by key
             | 'GroupByKey' >> beam.GroupByKey()
-            # count entries per key
 
+            # Create dict of sample_id -> list(row dicts)
             | 'ProcessSamples' >> beam.Map(process_entries)
     )
 
