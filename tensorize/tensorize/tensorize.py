@@ -74,7 +74,8 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
     p = beam.Pipeline(options=pipeline_options)
 
     bigquery_source = beam.io.BigQuerySource(
-        query='select * from `ukbb_dev.phenotype` limit %s' % limit,
+        # query='select * from `ukbb_dev.phenotype` limit %s' % limit,
+        query='select * from `ukbb_dev.phenotype`',
         use_standard_sql=True
     )
 
