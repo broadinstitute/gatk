@@ -117,6 +117,7 @@ class EvoquerEngine {
         // Get the samples used in the dataset:
         populateSampleNames();
 
+        // TODO: GET RID OF THIS!  WE DON'T NEED TO MERGE THEM TOGETHER!
         // Merge and sort our interval list so we don't end up with edge cases:
         final List<SimpleInterval> sortedMergedIntervals =
                 IntervalUtils.sortAndMergeIntervals(intervalList, IntervalMergingRule.ALL);

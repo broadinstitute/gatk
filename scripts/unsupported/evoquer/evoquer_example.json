@@ -1,0 +1,10 @@
+{
+  "Evoquer.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+
+  "Evoquer.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "Evoquer.ref_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "Evoquer.ref_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+
+  "Evoquer.intervals": [ "chr20:60000-65000" ],
+  "Evoquer.output_file_base_name": "evoked_variants"
+}
