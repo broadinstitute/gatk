@@ -69,19 +69,12 @@ def run(pipeline_options: PipelineOptions, output_file: str):
 
 
 def run2(pipeline_options: PipelineOptions, output_file: str):
-    LIMIT=500
-    DATASET = 'ukbb_dev'
-
-    OUTPUT_DIRECTORY = os.path.join(os.getcwd(), 'outputs')
-    if not os.path.exists(OUTPUT_DIRECTORY):
-        os.makedirs(OUTPUT_DIRECTORY)
-    timestr = time.strftime("%Y%m%d_%H%M%S")
-    OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, 'test_%s' % timestr)
+    limit = 500
 
     p = beam.Pipeline(options=pipeline_options)
 
     bigquery_source = beam.io.BigQuerySource(
-        query='select * from `ukbb_dev.phenotype` limit %s' % LIMIT,
+        query='select * from `ukbb_dev.phenotype` limit %s' % limit,
         use_standard_sql=True
     )
 
@@ -101,7 +94,7 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
     )
 
     # Write to file
-    table_data | 'WriteToFile' >> beam.io.WriteToText(OUTPUT_FILE)
+    table_data | 'WriteToFile' >> beam.io.WriteToText(output_file)
 
     result = p.run()
     result.wait_until_finish()
