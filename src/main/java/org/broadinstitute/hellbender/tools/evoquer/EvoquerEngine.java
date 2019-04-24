@@ -850,12 +850,10 @@ class EvoquerEngine {
                 "  `" + getFQPositionTable(interval) + "` AS variant_samples " + "\n" +
                 "INNER JOIN " + "\n" +
                 " `" + getFQVariantTable(interval) + "` AS variants ON variants.end_position = variant_samples.position, " + "\n" +
-                "UNNEST(variants.call) AS samples," + "\n" +
-                "UNNEST(variants.alternate_bases) AS alt_bases" + "\n" +
+                "UNNEST(variants.call) AS samples" + "\n" +
                 "WHERE " + "\n" +
                 "  reference_name = '" + interval.getContig() + "' AND" + "\n" +
                 "  samples.name = variant_samples.sample AND" + "\n" +
-                "  alt_bases.alt != '<NON_REF>' AND" + "\n" +
                 // Since position corresponds to end_position, we don't need to subtract 1 from thbe start here: "\n" +
                 "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
                 "  variant_samples.state = 1 " + "\n" +
