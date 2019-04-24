@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.reflections.Reflections;
 
@@ -259,20 +260,21 @@ public final class GnarlyGenotyper extends VariantWalker {
             warning.warn("Variant will not be output because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY + "key assigned by the ReblockGVCFs tool -- if the input did come from ReblockGVCFs, check the GenomicsDB vidmap.json annotation info");
         }
         final double QUALapprox = variant.getAttributeAsDouble(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0.0);
+        //TODO: do we want to apply the indel prior to mixed sites?
         final boolean isIndel = variant.getReference().length() > 1 || variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
+        final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
             return;
         }
 
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
-        //builder gets the finalized annotations and builder2 gets the raw annotations for the database
-        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
-        VariantContextBuilder builder2 = new VariantContextBuilder(variant);
+        //vcfBuilder gets the finalized annotations and annotationDBBuilder gets the raw annotations for the database
+        VariantContextBuilder vcfBuilder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
+        VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
 
         final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
         double QD = QUALapprox / (double)variantDP;
-        builder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0);
-        builder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY); //this is redundant now that it's in the QUAL field
+        vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = reflections.getSubTypesOf(InfoFieldAnnotation.class);
@@ -314,29 +316,29 @@ public final class GnarlyGenotyper extends VariantWalker {
                     targetAlleleFreqs.add((double) alleleCountMap.get(a) / numCalledAlleles);
                 }
             }
-            builder.attribute(VCFConstants.ALLELE_COUNT_KEY, targetAlleleCounts.size() == 1 ? targetAlleleCounts.get(0) : targetAlleleCounts);
-            builder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
-            builder.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
+            vcfBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, targetAlleleCounts.size() == 1 ? targetAlleleCounts.get(0) : targetAlleleCounts);
+            vcfBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
+            vcfBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
 
-            builder2.attribute(VCFConstants.ALLELE_COUNT_KEY, targetAlleleCounts.size() == 1 ? targetAlleleCounts.get(0) : targetAlleleCounts);
-            builder2.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
-            builder2.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, targetAlleleCounts.size() == 1 ? targetAlleleCounts.get(0) : targetAlleleCounts);
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
         } else {
             if (variant.hasAttribute(GATKVCFConstants.SB_TABLE_KEY)) {
                 SBsum = GATKProtectedVariantContextUtils.getAttributeAsIntArray(variant, GATKVCFConstants.SB_TABLE_KEY, () -> null, 0);
             }
-            builder2.attribute(VCFConstants.ALLELE_COUNT_KEY, variant.getAttribute(VCFConstants.ALLELE_COUNT_KEY));
-            builder2.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, variant.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
-            builder2.attribute(VCFConstants.ALLELE_NUMBER_KEY, variant.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, variant.getAttribute(VCFConstants.ALLELE_COUNT_KEY));
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, variant.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, variant.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
         }
-        builder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
-        builder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
-        builder2.attribute(GATKVCFConstants.SB_TABLE_KEY, SBsum);
-        //TODO: builder2 add all the raw AS annotations
+        vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
+        vcfBuilder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
+        annotationDBBuilder.attribute(GATKVCFConstants.SB_TABLE_KEY, SBsum);
+        //TODO: annotationDBBuilder add all the raw AS annotations
 
-        builder.genotypes(calledGenotypes);
-        builder2.noGenotypes();
-        builder.alleles(targetAlleles);
+        vcfBuilder.genotypes(calledGenotypes);
+        annotationDBBuilder.noGenotypes();
+        vcfBuilder.alleles(targetAlleles);
 
         for (final Class c : allASAnnotations) {
             try {
@@ -344,10 +346,10 @@ public final class GnarlyGenotyper extends VariantWalker {
                 if (annotation instanceof AS_StandardAnnotation) {
                     ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
                     if (variant.hasAttribute(ann.getRawKeyName())) {
-                        builder.rmAttribute(ann.getRawKeyName());
+                        vcfBuilder.rmAttribute(ann.getRawKeyName());
                         if (!stripASAnnotations) {
-                            final Map<String, Object> finalValue = ann.finalizeRawData(builder.make(), variant);
-                            finalValue.forEach((key, value) -> builder.attribute(key, value));
+                            final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
+                            finalValue.forEach((key, value) -> vcfBuilder.attribute(key, value));
                         }
                     }
                 }
@@ -356,13 +358,13 @@ public final class GnarlyGenotyper extends VariantWalker {
             catch (Exception e) {}
         }
 
-        builder2.alleles(targetAlleles);
+        annotationDBBuilder.alleles(targetAlleles);
 
 
 
-        VariantContext result = builder.make();
+        VariantContext result = vcfBuilder.make();
         if (annotationDBwriter != null) {
-            annotationDBwriter.add(builder2.make());  //we don't seem to have a sites-only option anymore, so do it manually
+            annotationDBwriter.add(annotationDBBuilder.make());  //we don't seem to have a sites-only option anymore, so do it manually
         }
 
         SimpleInterval variantStart = new SimpleInterval(result.getContig(), result.getStart(), result.getStart());
