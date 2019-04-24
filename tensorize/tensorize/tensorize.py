@@ -1,7 +1,10 @@
+import os
+import time
+
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 
-from .utils import count_ones
+from .utils import count_ones, process_entries
 
 
 def run(pipeline_options: PipelineOptions, output_file: str):
@@ -59,17 +62,26 @@ def run(pipeline_options: PipelineOptions, output_file: str):
     # )
 
     # Write to file
-    table_data | 'WritingToFile' >> beam.io.WriteToText(output_file)
+    table_data | 'WriteToFile' >> beam.io.WriteToText(output_file)
 
     result = p.run()
     result.wait_until_finish()
 
 
 def run2(pipeline_options: PipelineOptions, output_file: str):
+    LIMIT=500
+    DATASET = 'ukbb_dev'
+
+    OUTPUT_DIRECTORY = os.path.join(os.getcwd(), 'outputs')
+    if not os.path.exists(OUTPUT_DIRECTORY):
+        os.makedirs(OUTPUT_DIRECTORY)
+    timestr = time.strftime("%Y%m%d_%H%M%S")
+    OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, 'test_%s' % timestr)
+
     p = beam.Pipeline(options=pipeline_options)
 
     bigquery_source = beam.io.BigQuerySource(
-        query='select * from `lubitz.coding`',
+        query='select * from `ukbb_dev.phenotype` limit %s' % LIMIT,
         use_standard_sql=True
     )
 
@@ -79,17 +91,17 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
             | 'QueryTable' >> beam.io.Read(bigquery_source)
             # Each row is a dictionary where the keys are the BigQuery columns
 
-            | 'CreateKey' >> beam.Map(lambda elem: (elem['coding_file_id'], 1))
+            | 'CreateKey' >> beam.Map(lambda row: (row['sample_id'], row))
             # group by key
 
             | 'GroupByKey' >> beam.GroupByKey()
             # count entries per key
 
-            | 'Count' >> beam.Map(count_ones)
+            | 'ProcessSamples' >> beam.Map(process_entries)
     )
 
     # Write to file
-    table_data | 'WritingToFile' >> beam.io.WriteToText(output_file)
+    table_data | 'WriteToFile' >> beam.io.WriteToText(OUTPUT_FILE)
 
     result = p.run()
     result.wait_until_finish()
