@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.util.List;
@@ -78,17 +79,24 @@ public class Evoquer extends GATKTool {
     /**
      * {@inheritDoc}
      *
-     * {@link Evoquer} only requires a reference because the intervals need a sequence dictionary.
-     * TODO: This should be fixed so that intervals can exist without a sequence dictionary.
+     * {@link Evoquer} doesn't require a reference, but DOES require a sequence dictionary.
      */
     @Override
     public boolean requiresReference() {
-        return true;
+        return false;
     }
 
     @Override
     protected void onStartup() {
         super.onStartup();
+
+        // Validate that somehow we have a dictionary:
+        if ( getBestAvailableSequenceDictionary() == null ) {
+            throw new UserException("Error: You must provide either a reference file or a sequence dictionary using:\n" +
+                    "`-R REFERENCE_FILE`\n" +
+                    "OR\n" +
+                    "--sequence-dictionary SEQUENCE_DICTIONARY");
+        }
 
         // Set up our EvoquerEngine:
         evoquerEngine = new EvoquerEngine();

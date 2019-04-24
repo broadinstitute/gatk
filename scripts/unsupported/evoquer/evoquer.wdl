@@ -134,7 +134,7 @@ task EvoquerTask {
         # Run Evoquer:
         gatk --java-options "-Xmx${command_mem}m" \
             Evoquer \
-                ${default="" sep=" -L " intervals}
+                ${default="" sep=" --intervals " intervals}
                 -R ${ref_fasta} \
                 -O ${output_file}
 

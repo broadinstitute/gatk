@@ -1,5 +1,6 @@
 {
   "Evoquer.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+  "Evoquer.gatk4_jar_override": "gs://broad-dsde-methods-jonn/gatk_builds/gatk-package-4.1.1.0-43-gc02046f-SNAPSHOT-local.jar",
 
   "Evoquer.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
   "Evoquer.ref_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",

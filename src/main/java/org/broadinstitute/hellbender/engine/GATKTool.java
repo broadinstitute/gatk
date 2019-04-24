@@ -63,7 +63,7 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
-    private String masterSequenceDictionaryFilename = null;
+    protected String masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
