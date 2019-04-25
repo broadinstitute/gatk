@@ -43,7 +43,7 @@ class EvoquerEngine {
     private static final String PROJECT_ID = "broad-dsp-spec-ops";
 
     /** ID of the table containing the names of all samples in the variant table. */
-    private static final String SAMPLE_TABLE = "gvcf_test.sample_list_subsetted_100";
+    private static final String SAMPLE_TABLE = "joint_genotyping_chr20_3_samples.sample_list";
 
     /**
      * The conf threshold above which variants are not included in the position tables.
@@ -77,12 +77,12 @@ class EvoquerEngine {
 
     static {
         final Map<String, String> tmpContigTableMap = new HashMap<>();
-        tmpContigTableMap.put("chr20", "gvcf_test.pet_subsetted_100");
+        tmpContigTableMap.put("chr20", "joint_genotyping_chr20_3_samples.pet");
 
         contigPositionExpandedTableMap = Collections.unmodifiableMap(tmpContigTableMap);
 
         final Map<String, String> tmpVariantTableMap = new HashMap<>();
-        tmpVariantTableMap.put("chr20", "gvcf_test.vet_subsetted_100");
+        tmpVariantTableMap.put("chr20", "joint_genotyping_chr20_3_samples.vet");
 
         contigVariantTableMap = Collections.unmodifiableMap(tmpVariantTableMap);
     }
@@ -295,7 +295,7 @@ class EvoquerEngine {
 
             currentContig = row.get("reference_name").getStringValue();
             // Add 1 because in the DB right now starts are exclusive:
-            currentStartPos = row.get("start_position").getLongValue() + 1;
+            currentStartPos = row.get("start_position").getLongValue();
             currentStopPos = row.get("end_position").getLongValue();
 
             // Fill in alleles:
@@ -597,7 +597,7 @@ class EvoquerEngine {
         variantContextBuilder
                 .chr( row.get("reference_name").getStringValue() )
                 // Add 1 because in the DB right now starts are exclusive:
-                .start( row.get("start_position").getLongValue() + 1 )
+                .start( row.get("start_position").getLongValue() )
                 .stop( row.get("end_position").getLongValue() );
 
         // Get the filter(s):
@@ -857,13 +857,13 @@ class EvoquerEngine {
                 "  samples.name = variant_samples.sample AND" + "\n" +
                 // Since position corresponds to end_position, we don't need to subtract 1 from thbe start here: "\n" +
                 "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
-                "  variant_samples.state = 1 " + "\n" +
+                "  variant_samples.state = 'v' " + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
                 limit_string;
     }
 
     private static String getSampleListQueryString() {
-        return "SELECT * FROM `" + getFQTableName(SAMPLE_TABLE)+ "`";
+        return "SELECT sample FROM `" + getFQTableName(SAMPLE_TABLE)+ "`";
     }
 
     //==================================================================================================================
