@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -36,7 +38,11 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
                 // Simple Test, spanning deletions
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                        getTestFile("fiveSampleTest.vcf"), "chr20:250865-348163", Arrays.asList("-stand-call-conf 10"), b38_reference_20_21}
+                        getTestFile("fiveSampleTest.vcf"), "chr20:250865-348163", Arrays.asList("-stand-call-conf 10"), b38_reference_20_21},
+                {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
+                        new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf")},
+                        getTestFile("twoSampleAS.vcf"),
+                }
         };
     }
 
@@ -70,4 +76,30 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         return output;
     }
 
+    @Test
+    public void testOnHailOutput() {
+        final String input = getToolTestDataDir() + "hailTest.chr20snippet.sites_only.vcf";
+        final File output = createTempFile("GnarlyGenotyper", ".vcf");
+        final File expected = new File(getToolTestDataDir() + "expected.hailTest.chr20snippet.sites_only.vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .addArgument("V", input)
+                .addArgument("L", "chr20:10000000-11000000")
+                .addBooleanArgument("only-output-calls-starting-in-intervals", true)
+                .addOutput(output);
+        runCommandLine(args);
+
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
+             final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
+            GATKBaseTest.assertCondition(actualVcs, expectedVcs,
+                    (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
+                            Collections.emptyList()));
+        }
+    }
+
+    @Test
+    public void testASAnnotations() {
+        //in output vcf and in annotationDB
+    }
 }

@@ -242,7 +242,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
      * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
-     * @param reference                 the reference genome corresponding to the data to be read
+     * @param reference                Path to a reference. May be null. Needed only for reading from GenomicsDB.
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {

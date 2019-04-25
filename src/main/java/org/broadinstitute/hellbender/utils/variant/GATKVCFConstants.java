@@ -162,6 +162,7 @@ public final class GATKVCFConstants {
     public static final String GERMLINE_RISK_FILTER_NAME =                    "germline"; //M2
     public static final String LOW_QUAL_FILTER_NAME =                         "LowQual";
     public static final String ALIGNMENT_ARTIFACT_FILTER_NAME =               "alignment";
+    public static final String MONOMORPHIC_FILTER_NAME =                      "monomorphic"; //GnarlyGenotyper
     public static final String PON_FILTER_NAME =                              "panel_of_normals"; //M2
     public static final String POLYMERASE_SLIPPAGE =                          "slippage"; //M2
     public static final String TUMOR_EVIDENCE_FILTER_NAME =                   "weak_evidence"; //M2

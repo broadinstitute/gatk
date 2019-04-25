@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
@@ -26,6 +27,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -100,6 +102,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     private final int[] likelihoodSizeCache = new int[PIPELINE_MAX_ALT_COUNT + 1];
     private final static ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
 
+    private final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = new HashSet<>();
+
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -111,6 +115,10 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
+
+    @Argument(fullName = "keep-all-sites", shortName = "keep-all",
+            doc="Retain low quality and non-variant sites, applying appropriate filters", optional=true)
+    private boolean keepAllSites = false;
 
     /**
      * This option can only be activated if intervals are specified.
@@ -204,6 +212,14 @@ public final class GnarlyGenotyper extends VariantWalker {
             }
         }
 
+        if(IOUtils.isGenomicsDBPath(getDrivingVariantsFeatureInput().getFeaturePath())) {
+
+        }
+
+        Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
+        allASAnnotations.addAll(reflections.getSubTypesOf(InfoFieldAnnotation.class));
+        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
+        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
     }
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
@@ -212,6 +228,10 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCFWriter.GVCF_BLOCK));
+
+        //add header for new filter
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.MONOMORPHIC_FILTER_NAME));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         // add headers for annotations added by this tool
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
@@ -250,8 +270,19 @@ public final class GnarlyGenotyper extends VariantWalker {
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+        //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
+        //builder gets the finalized annotations and dbBuilder gets the raw annotations for the database
+        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
+
+        SimpleInterval variantStart = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
-        if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant) || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0) {
+        if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant)
+                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
+                || (onlyOutputCallsStartingInIntervals && intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
+            if (keepAllSites) {
+                builder.filter(GATKVCFConstants.MONOMORPHIC_FILTER_NAME);
+                vcfWriter.add(builder.make());
+            }
             return;
         }
 
@@ -264,6 +295,10 @@ public final class GnarlyGenotyper extends VariantWalker {
         final boolean isIndel = variant.getReference().length() > 1 || variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
+            if (keepAllSites) {
+                builder.filter(GATKVCFConstants.MONOMORPHIC_FILTER_NAME);
+                vcfWriter.add(builder.make());
+            }
             return;
         }
 
@@ -275,11 +310,6 @@ public final class GnarlyGenotyper extends VariantWalker {
         final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
         double QD = QUALapprox / (double)variantDP;
         vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
-
-        Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
-        final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = reflections.getSubTypesOf(InfoFieldAnnotation.class);
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
 
         int[] SBsum = {0,0,0,0};
 
@@ -350,10 +380,10 @@ public final class GnarlyGenotyper extends VariantWalker {
                         if (!stripASAnnotations) {
                             final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
                             finalValue.forEach((key, value) -> vcfBuilder.attribute(key, value));
+                            annotationDBBuilder.attribute(ann.getRawKeyName(), variant.getAttribute(ann.getRawKeyName()));
                         }
                     }
                 }
-
             }
             catch (Exception e) {}
         }
@@ -367,7 +397,7 @@ public final class GnarlyGenotyper extends VariantWalker {
             annotationDBwriter.add(annotationDBBuilder.make());  //we don't seem to have a sites-only option anymore, so do it manually
         }
 
-        SimpleInterval variantStart = new SimpleInterval(result.getContig(), result.getStart(), result.getStart());
+        //variantStart = new SimpleInterval(result.getContig(), result.getStart(), result.getStart());
         if (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains(variantStart))) {
             vcfWriter.add(result);
         }
