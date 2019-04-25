@@ -2,10 +2,12 @@ import logging
 import os
 import tempfile
 import time
+from typing import List
 
 import apache_beam as beam
 import h5py
 from apache_beam.options.pipeline_options import PipelineOptions
+from tensorize.defines import JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, TENSOR_EXT
 
 from .utils import count_ones, process_entries
 
@@ -109,7 +111,7 @@ def write_tensor_from_sql(sampleid_to_rows):
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            tensor_file = '{}.hd5'.format(sample_id)
+            tensor_file = '{}.{}'.format(sample_id, TENSOR_EXT)
             tensor_path = '{}/{}'.format(temp_dir, tensor_file)
             logging.info("Writing tensor {} ...".format(tensor_file))
             with h5py.File(tensor_path, 'w') as hd5:

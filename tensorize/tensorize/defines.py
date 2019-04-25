@@ -12,3 +12,9 @@ DIRECT_RUNNER = 'DirectRunner'
 DATAFLOW_RUNNER = 'DataflowRunner'
 
 LOG_LEVEL = logging.DEBUG
+
+TENSOR_EXT = 'hd5'
+
+JOIN_CHAR = '_'
+CONCAT_CHAR = '-'
+HD5_GROUP_CHAR = '/'
