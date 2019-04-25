@@ -10,7 +10,8 @@ import java.util.stream.Collectors;
  */
 public final class CalledSVGraphGenotype extends SVGraphGenotype {
 
-    private final List<CoordinateSVGraphPath> coordinatePaths;
+    private final List<IndexedSVGraphPath> coordinatePaths;
+    private final SVGraph graph;
 
     public final static String GRAPH_ID_COLUMN = "GID";
     public final static String GENOTYPE_ID_COLUMN = "GTID";
@@ -27,7 +28,8 @@ public final class CalledSVGraphGenotype extends SVGraphGenotype {
         this.depthLikelihood = genotype.getDepthLikelihood();
         this.depthProbability = genotype.getDepthProbability();
         this.evidenceProbability = genotype.getEvidenceProbability();
-        this.coordinatePaths = genotype.getHaplotypes().stream().map(path -> path.convertToCoordinatePath(graph)).collect(Collectors.toList());
+        this.coordinatePaths = genotype.getHaplotypes();
+        this.graph = graph;
     }
 
     public static String bedHeader() {
@@ -35,7 +37,7 @@ public final class CalledSVGraphGenotype extends SVGraphGenotype {
     }
 
     public List<String> bedStrings() {
-        final List<String> pathStrings = coordinatePaths.stream().map(CoordinateSVGraphPath::toString).collect(Collectors.toList());
+        final List<String> pathStrings = coordinatePaths.stream().map(path -> path.convertToCoordinatePath(graph).toString()).collect(Collectors.toList());
         final List<String> lines = new ArrayList<>(pathStrings.size());
         for (int haplotypeId = 0; haplotypeId < pathStrings.size(); haplotypeId++) {
             lines.add(getGroupId() + "\t" + getGenotypeId() + "\t" + haplotypeId + "\t" + getProbability() + "\t" +

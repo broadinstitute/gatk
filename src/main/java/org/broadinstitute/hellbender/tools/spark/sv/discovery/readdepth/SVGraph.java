@@ -61,7 +61,7 @@ public final class SVGraph {
     final Set<Integer> startingNodes;
     final Set<Integer> endingNodes;
     final SAMSequenceDictionary dictionary;
-    final Collection<SVInterval> intervals;
+    final List<SVInterval> intervals;
 
     public SVGraph(final Collection<CoordinateSVGraphEdge> breakpointEdges, final SAMSequenceDictionary dictionary) {
         this.dictionary = dictionary;
@@ -158,7 +158,7 @@ public final class SVGraph {
             final int nodeAIndex = contigAndPositionToNodeIndexMap.get(new Tuple2<>(edge.getContigA(), edge.getNodeAPosition()));
             final int nodeBIndex = contigAndPositionToNodeIndexMap.get(new Tuple2<>(edge.getContigB(), edge.getNodeBPosition()));
             final int edgeIndex = indexedEdges.size();
-            final IndexedSVGraphEdge newEdge = new IndexedSVGraphEdge(edgeIndex, nodeAIndex, nodeBIndex, edge.isStrandA(), edge.isStrandB(), edge.isReference(), edge.getEvidence(), this, dictionary);
+            final IndexedSVGraphEdge newEdge = new IndexedSVGraphEdge(edgeIndex, nodeAIndex, nodeBIndex, edge.isStrandA(), edge.isStrandB(), edge.isReference(), new SVGraphEdgeEvidence(), this, dictionary);
             indexedEdges.add(newEdge);
             addIndexedEdgeToNodeEdgesList(newEdge, nodes.get(nodeAIndex), true);
             addIndexedEdgeToNodeEdgesList(newEdge, nodes.get(nodeBIndex), false);
@@ -190,13 +190,13 @@ public final class SVGraph {
         return edges.stream().filter(edge -> edge.isReference()).distinct().collect(Collectors.toList());
     }
 
-    private Collection<SVInterval> generateIntervals() {
+    private List<SVInterval> generateIntervals() {
         return getReferenceEdges().stream().map(edge -> edge.getInterval()).collect(Collectors.groupingBy(interval -> interval.getContig())).entrySet().stream()
                 .map(entry -> new SVInterval(entry.getKey(), entry.getValue().stream().mapToInt(SVInterval::getStart).min().getAsInt(), entry.getValue().stream().mapToInt(SVInterval::getEnd).max().getAsInt()))
                 .collect(Collectors.toList());
     }
 
-    public Collection<SVInterval> getContigIntervals() {
+    public List<SVInterval> getContigIntervals() {
         return intervals;
     }
 

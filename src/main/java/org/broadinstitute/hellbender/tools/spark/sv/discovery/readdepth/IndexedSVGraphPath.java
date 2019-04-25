@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public final class IndexedSVGraphPath implements Comparable<IndexedSVGraphPath> {
 
@@ -17,8 +17,20 @@ public final class IndexedSVGraphPath implements Comparable<IndexedSVGraphPath> 
     }
 
     public CoordinateSVGraphPath convertToCoordinatePath(final SVGraph graph) {
-        final List<CoordinateSVGraphEdge> coordinateEdges = edges.stream().map(edge -> new CoordinateSVGraphEdge(edge, graph.getNodes())).collect(Collectors.toList());
+        final List<CoordinateSVGraphEdge> coordinateEdges = new ArrayList<>(edges.size());
+        for (final IndexedSVGraphEdge edge : edges) {
+            coordinateEdges.add(new CoordinateSVGraphEdge(edge, graph.getNodes()));
+        }
         return new CoordinateSVGraphPath(coordinateEdges);
+    }
+
+    public boolean isReference() {
+        for (final IndexedSVGraphEdge edge : edges) {
+            if (!edge.isReference()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int size() {
