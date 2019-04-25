@@ -1,0 +1,7 @@
+[
+  {
+    "mode": "REQUIRED", 
+    "name": "fieldid",
+    "type": "INTEGER"
+  }
+]

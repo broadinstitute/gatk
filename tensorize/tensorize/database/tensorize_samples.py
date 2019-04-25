@@ -20,6 +20,7 @@ from apache_beam.io.gcp.internal.clients import bigquery
 
 LIMIT=500
 DATASET = 'ukbb_dev'
+FIELDIDS = 'shared_data.tensorization_fieldids'
 OUTPUT_DIRECTORY = os.path.join(os.getcwd(), 'outputs')
 if not os.path.exists(OUTPUT_DIRECTORY):
     os.makedirs(OUTPUT_DIRECTORY)
@@ -53,7 +54,13 @@ def run(argv=None):
             p
             | 'QueryTable' >> beam.io.Read(
         beam.io.BigQuerySource(
-            query='select * from `ukbb_dev.phenotype` limit %s' % LIMIT,
+            query="""select a.* from
+            `%s.phenotype` a
+            inner join
+            `%s` b
+            on a.fieldid = b.fieldid
+            limit %s"""
+            % (DATASET, FIELDIDS, LIMIT),
             use_standard_sql=True
         )
     ) |
