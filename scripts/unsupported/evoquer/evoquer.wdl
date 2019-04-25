@@ -5,9 +5,8 @@
 #  Required:
 #    String gatk_docker                 - GATK Docker image in which to run
 #
-#    File ref_fasta                     - HG38 Reference FASTA file.
-#    File ref_fasta_index               - HG38 Reference FASTA file index.
-#    File ref_fasta_dict                - HG38 Reference FASTA file sequence dictionary.
+#    File ref_fasta_dict                - HG38 Reference sequence dictionary.
+#
 #    Array[String] intervals            - Variant Context File (VCF) containing the variants to annotate.
 #    String output_file_base_name       - Base name of desired output file WITHOUT extension.
 #
@@ -29,8 +28,6 @@
 workflow Evoquer {
     String gatk_docker
 
-    File ref_fasta
-    File ref_fasta_index
     File ref_dict
 
     Array[String] intervals
@@ -47,8 +44,6 @@ workflow Evoquer {
 
     call EvoquerTask {
         input:
-            ref_fasta             = ref_fasta,
-            ref_fasta_index       = ref_fasta_index,
             ref_dict              = ref_dict,
             intervals             = intervals,
             output_file_base_name = output_file_base_name,
@@ -75,8 +70,6 @@ task EvoquerTask {
 
     # ------------------------------------------------
     # Input args:
-    File ref_fasta
-    File ref_fasta_index
     File ref_dict
 
     Array[String] intervals
@@ -134,8 +127,8 @@ task EvoquerTask {
         # Run Evoquer:
         gatk --java-options "-Xmx${command_mem}m" \
             Evoquer \
-                ${default="" sep=" --intervals " intervals}
-                -R ${ref_fasta} \
+                --intervals ${default="" sep=" --intervals " intervals} \
+                --sequence-dictionary ${ref_dict} \
                 -O ${output_file}
 
         endTime=`date +%s.%N`
