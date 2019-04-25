@@ -1,7 +1,10 @@
+import logging
 import os
+import tempfile
 import time
 
 import apache_beam as beam
+import h5py
 from apache_beam.options.pipeline_options import PipelineOptions
 
 from .utils import count_ones, process_entries
@@ -99,3 +102,46 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
 
     result = p.run()
     result.wait_until_finish()
+
+
+def write_tensor_from_sql(sampleid_to_rows):
+    sample_id, rows = sampleid_to_rows
+
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tensor_file = '{}.hd5'.format(sample_id)
+            tensor_path = '{}/{}'.format(temp_dir, tensor_file)
+            logging.info("Writing tensor {} ...".format(tensor_file))
+            with h5py.File(tensor_path, 'w') as hd5:
+                for row in rows:
+                    field_id = row['FieldID']
+                    field = row['Field']
+                    instance = row['instance']
+                    array_idx = row['array_idx']
+                    value = row['value']
+                    meaning = row['meaning']
+
+                    dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, instance, array_idx])
+                    float_category = _to_float_or_false(value)
+                    if float_category is not False:
+                        hd5.create_dataset(dataset_name, data=[float_category])
+                    else:
+                        logging.warning('Cannot cast float from: {} categorical field: {} means: {} sample id: {}'.format(
+                            value, field_id, meaning, sample_id))
+    except:
+        logging.exception("problem with processing sample id '{}'".format(sample_id))
+
+
+def _dataset_name_from_meaning(group: str, fields: List[str]) -> str:
+    clean_fields = []
+    for f in fields:
+        clean_fields.append(''.join(e for e in f if e.isalnum() or e == ' '))
+    joined = JOIN_CHAR.join(clean_fields).replace('  ', CONCAT_CHAR).replace(' ', CONCAT_CHAR)
+    return group + HD5_GROUP_CHAR + joined
+
+
+def _to_float_or_false(s):
+    try:
+        return float(s)
+    except ValueError:
+        return False

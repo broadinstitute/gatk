@@ -5,4 +5,5 @@ channels:
 dependencies:
   - python==3.5.0
   - pip:
-    - apache-beam[gcp]
+    - apache-beam[gcp]==2.11.0
+    - h5py==2.7.1
