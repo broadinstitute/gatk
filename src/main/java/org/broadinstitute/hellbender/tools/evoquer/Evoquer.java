@@ -30,7 +30,7 @@ import java.util.List;
  *
  *   ./gatk Evoquer --intervals chr2:10000-1741634 -R ~/references/Homo_sapiens_assembly38.fasta
  *   ./gatk Evoquer --intervals chr2:10000-1741634 -R ~/references/Homo_sapiens_assembly38.fasta -O evoquer.g.vcf
- *   ./gatk Evoquer --intervals chr2:10000-1741634 --sequence-dictionary ~/references/Homo_sapiens_assembly38.dict -O evoquer.g.vcf
+ *   ./gatk Evoquer --intervals chr2:10000-1741634 --sequence-dictionary ~/references/Homo_sapiens_assembly38.dict -O evoquer.vcf
  *
  * Created by jonn on 4/16/19.
  */
@@ -82,7 +82,7 @@ public class Evoquer extends GATKTool {
     /**
      * {@inheritDoc}
      *
-     * {@link Evoquer} doesn't require a reference, but DOES require a sequence dictionary.
+     * {@link Evoquer} doesn't require a reference, but DOES require a sequence dictionary for interval processing.
      */
     @Override
     public boolean requiresReference() {

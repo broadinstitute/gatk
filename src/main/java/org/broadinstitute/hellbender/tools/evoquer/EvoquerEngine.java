@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
-import com.google.cloud.bigquery.*;
+import com.google.cloud.bigquery.FieldValue;
+import com.google.cloud.bigquery.FieldValueList;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.TableResult;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
@@ -10,8 +13,6 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -117,13 +118,8 @@ class EvoquerEngine {
         // Get the samples used in the dataset:
         populateSampleNames();
 
-        // TODO: GET RID OF THIS!  WE DON'T NEED TO MERGE THEM TOGETHER!
-        // Merge and sort our interval list so we don't end up with edge cases:
-        final List<SimpleInterval> sortedMergedIntervals =
-                IntervalUtils.sortAndMergeIntervals(intervalList, IntervalMergingRule.ALL);
-
         // Now get our intervals into variants:
-        return sortedMergedIntervals.stream()
+        return intervalList.stream()
                 .flatMap( interval -> evokeInterval(interval).stream() )
                 .collect(Collectors.toList());
     }
@@ -304,8 +300,8 @@ class EvoquerEngine {
 
         for ( final FieldValueList row : result.iterateAll() ) {
 
-            final VariantDetailData variantDetailData = new VariantDetailData();
             final VariantBaseData variantBaseData = new VariantBaseData();
+            final VariantDetailData variantDetailData = new VariantDetailData();
 
             // Fill in trivial stuff:
             addBasicFieldsToVariantBuilder(row, variantBaseData);
@@ -757,7 +753,8 @@ class EvoquerEngine {
     }
 
     /**
-     * A class to hold variant detail information without constructing an entire {@link VariantContext} object.
+     * A class to hold variant detail information about a particular sample
+     * without constructing an entire {@link VariantContext} object.
      */
     private class VariantDetailData {
 
