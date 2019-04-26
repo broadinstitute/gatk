@@ -28,6 +28,7 @@ if __name__ == "__main__":
         '--setup_file={}'.format(SETUP_FILE)
     ]
 
-    pipeline_opts = get_pipeline_options(packaging_args, DATAFLOW_RUNNER)
+    runner = DIRECT_RUNNER
+    pipeline_opts = get_pipeline_options(packaging_args, runner)
 
-    tensorize.run2(pipeline_opts, GCS_OUTPUT_FILE)
+    tensorize.tensorize_categorical_fields(pipeline_opts)

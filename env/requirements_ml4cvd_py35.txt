@@ -16,6 +16,7 @@ google-cloud-bigquery==1.6.1
 google-cloud-bigtable==0.31.1
 google-cloud-core==0.28.1
 google-cloud-pubsub==0.39.0
+google-cloud-storage==1.13.0
 google-resumable-media==0.3.2
 googleapis-common-protos==1.5.9
 grpc-google-iam-v1==0.11.4

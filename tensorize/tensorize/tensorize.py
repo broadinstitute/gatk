@@ -1,15 +1,7 @@
-import logging
-import os
-import tempfile
-import time
-from typing import List
-
 import apache_beam as beam
-import h5py
 from apache_beam.options.pipeline_options import PipelineOptions
-from tensorize.defines import JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, TENSOR_EXT
 
-from .utils import count_ones, process_entries
+from .utils import count_ones, process_entries, write_tensor_from_sql
 
 
 def run(pipeline_options: PipelineOptions, output_file: str):
@@ -106,44 +98,45 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
     result.wait_until_finish()
 
 
-def write_tensor_from_sql(sampleid_to_rows):
-    sample_id, rows = sampleid_to_rows
+def tensorize_categorical_fields(pipeline_options: PipelineOptions):
+    p = beam.Pipeline(options=pipeline_options)
 
-    try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tensor_file = '{}.{}'.format(sample_id, TENSOR_EXT)
-            tensor_path = '{}/{}'.format(temp_dir, tensor_file)
-            logging.info("Writing tensor {} ...".format(tensor_file))
-            with h5py.File(tensor_path, 'w') as hd5:
-                for row in rows:
-                    field_id = row['FieldID']
-                    field = row['Field']
-                    instance = row['instance']
-                    array_idx = row['array_idx']
-                    value = row['value']
-                    meaning = row['meaning']
+    # TODO: Don't hardcode LIMIT in the query
+    limit = 300
+    query = """
+        SELECT d.field, p_sub_f_c.meaning, p_sub_f_c.sample_id, p_sub_f_c.fieldid, p_sub_f_c.instance, p_sub_f_c.array_idx, p_sub_f_c.value FROM
+        (
+            SELECT c.meaning, p_sub.sample_id, p_sub.fieldid, p_sub.instance, p_sub.array_idx, p_sub.value FROM
+                (
+                    SELECT p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id FROM `ukbb_dev.phenotype` p
+                    INNER JOIN (SELECT * FROM `shared_data.tensorization_fieldids` LIMIT 300) f
+                    ON p.fieldid = f.fieldid
+                ) AS p_sub
+            JOIN `ukbb_dev.coding` c
+            ON c.coding=p_sub.value AND c.coding_file_id=p_sub.coding_file_id
+        ) AS p_sub_f_c
+        JOIN `ukbb_dev.dictionary` d
+        ON p_sub_f_c.fieldid = d.fieldid"""
+    
+    bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
 
-                    dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, instance, array_idx])
-                    float_category = _to_float_or_false(value)
-                    if float_category is not False:
-                        hd5.create_dataset(dataset_name, data=[float_category])
-                    else:
-                        logging.warning('Cannot cast float from: {} categorical field: {} means: {} sample id: {}'.format(
-                            value, field_id, meaning, sample_id))
-    except:
-        logging.exception("problem with processing sample id '{}'".format(sample_id))
+    # Query table in BQ
+    steps = (
+            p
+            | 'QueryTables' >> beam.io.Read(bigquery_source)
 
+            # Each row is a dictionary where the keys are the BigQuery columns
+            | 'CreateKey' >> beam.Map(lambda row: (row['sample_id'], row))
 
-def _dataset_name_from_meaning(group: str, fields: List[str]) -> str:
-    clean_fields = []
-    for f in fields:
-        clean_fields.append(''.join(e for e in f if e.isalnum() or e == ' '))
-    joined = JOIN_CHAR.join(clean_fields).replace('  ', CONCAT_CHAR).replace(' ', CONCAT_CHAR)
-    return group + HD5_GROUP_CHAR + joined
+            # Group by key
+            | 'GroupByKey' >> beam.GroupByKey()
 
+            # Create dict of sample_id -> list(row dicts)
+            | 'ProcessSamples' >> beam.Map(process_entries)
 
-def _to_float_or_false(s):
-    try:
-        return float(s)
-    except ValueError:
-        return False
+            # Format into hd5 files and upload to GCS
+            | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql)
+    )
+
+    result = p.run()
+    result.wait_until_finish()
