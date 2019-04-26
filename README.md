@@ -6,8 +6,8 @@
 ### Set up a VM
 Clone this repo and cd into it:
 ```
-git clone git@github.com:broadinstitute/ml4cvd.git
-cd ml4cvd
+git clone git@github.com:broadinstitute/ml.git
+cd ml
 ```
 Make sure you have installed the [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install). With [Homebrew](https://brew.sh/), you can use 
 ```
@@ -52,8 +52,8 @@ You need to log out after that (`exit`) then ssh back in so everything takes eff
 
 Next, clone this repo onto your instance (if you have Two-Factor authentication setup you need to generate an SSH key on your VM and add it to your github settings as described [here](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/#platform-linux)):
 ```
-git clone git@github.com:broadinstitute/ml4cvd.git
-cd ml4cvd
+git clone git@github.com:broadinstitute/ml.git
+cd ml
 ```
 
 ### Do deep learning with TensorFlow
@@ -63,18 +63,18 @@ The first step is to create training data by writing tensors to the disk.
 To write tensors with default categorical and continuous phenotypes, and no MRI or EKG data, `source activate` your
 `conda` environment and run:
 ```
-${HOME}/ml4cvd/jamesp/python/tf.sh ${HOME}/ml4cvd/recipes.py --mode tensorize --tensors ${HOME}/my_tensors/ --max_sample_id 1003000 --mri_field_id  --xml_field_id
+${HOME}/ml/scripts/tf.sh ${HOME}/ml/ml4cvd/recipes.py --mode tensorize --tensors ${HOME}/my_tensors/ --max_sample_id 1003000 --mri_field_id  --xml_field_id
 ```
 This should take about a minute to run and will output the SQL queries as well as the counts for the phenotype categories and responses that it finds.  Now let's train a model:
 ```
-${HOME}/ml4cvd/jamesp/python/tf.sh ${HOME}/ml4cvd/recipes.py --mode train --tensors ${HOME}/my_tensors/ --input_tensors categorical-phenotypes-94 --output_tensors coronary_artery_disease_soft --id my_first_mlp_for_cvd
+${HOME}/ml/scripts/tf.sh ${HOME}/ml/ml4cvd/recipes.py --mode train --tensors ${HOME}/my_tensors/ --input_tensors categorical-phenotypes-94 --output_tensors coronary_artery_disease_soft --id my_first_mlp_for_cvd
 ```
 This model should achieve about 75% validation set accuracy on predicting from the phenotypes whether this person was labelled with an ICD code corresponding to cardivascular disease.
 
 ### Run a notebook
 Now let's run a Jupyter notebook.  On your VM run:
 ```
-${HOME}/ml4cvd/jamesp/jupyter/dl-jupyter.sh 
+${HOME}/ml/scripts/dl-jupyter.sh 
 ```
 This will start a notebook server on your VM. If you a Docker error like
 ```
@@ -82,7 +82,7 @@ docker: Error response from daemon: driver failed programming external connectiv
 ```
 overwrite the default port (8888) like so
 ```
-${HOME}/ml4cvd/jamesp/jupyter/dl-jupyter.sh 8889
+${HOME}/ml/scripts/dl-jupyter.sh 8889
 ```
 The command also outputs two command lines in red.
 Copy the line that looks like this:
@@ -98,7 +98,7 @@ Now open a browser on your laptop and go to the URL `http://localhost:8888`
 ### Run tests
 The command below will run all (integration and unit) tests:
 ```
-${HOME}/ml4cvd/jamesp/python/tf.sh -t ${HOME}/ml4cvd/tests.py --tensor_maps_dir ${HOME}/ml4cvd
+${HOME}/ml/scripts/tf.sh -t ${HOME}/ml/tests/tests.py --tensor_maps_dir ${HOME}/ml/
 ```
 
 Most of the tests need a GPU-enabled machine so it's best to run them on your VM. Note that spurious failures with
