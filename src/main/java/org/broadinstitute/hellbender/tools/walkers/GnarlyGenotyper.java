@@ -278,7 +278,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant)
                 || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
-                || (onlyOutputCallsStartingInIntervals && intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
+                || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             if (keepAllSites) {
                 builder.filter(GATKVCFConstants.MONOMORPHIC_FILTER_NAME);
                 vcfWriter.add(builder.make());
