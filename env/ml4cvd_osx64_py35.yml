@@ -7,4 +7,4 @@ dependencies:
   - pip:
     - apache-beam[gcp]==2.11.0
     - google-cloud-storage==1.13.0
-    - h5py==2.7.1
+    - h5py==2.9.0
