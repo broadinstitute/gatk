@@ -6,6 +6,7 @@ workflow ReadsPipelineSparkWorkflow {
 
   File gatk
   File gatk_spark_jar
+  File? gcloud_service_account_key_file
   String gcloud_project
   String? gcloud_zone
   String? cluster_name
@@ -20,6 +21,7 @@ workflow ReadsPipelineSparkWorkflow {
 
   call CreateDataprocCluster {
     input:
+      gcloud_service_account_key_file = gcloud_service_account_key_file,
       gcloud_project = gcloud_project,
       cluster_name = cluster_name,
       num_workers = num_workers
@@ -90,6 +92,7 @@ task ReadsPipelineSpark {
 }
 
 task CreateDataprocCluster {
+  File? gcloud_service_account_key_file
   String gcloud_project
   String gcloud_zone = "us-central1-a"
   String? cluster_name
@@ -102,6 +105,10 @@ task CreateDataprocCluster {
   String max_age = "3h"
 
   command {
+    if [ -n "${gcloud_service_account_key_file}" ]; then
+      gcloud auth activate-service-account --key-file=${gcloud_service_account_key_file}
+      export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
+    fi
     gcloud config set project ${gcloud_project}
     if [ -z "${cluster_name}" ]; then
         # generate a unique cluster name

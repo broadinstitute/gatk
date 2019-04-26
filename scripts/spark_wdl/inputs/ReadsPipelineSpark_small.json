@@ -5,6 +5,7 @@
   "ReadsPipelineSparkWorkflow.known_sites": "gs://broad-spark-eval-test-data/small/dbsnp_138.b37.20.21.vcf",
   "ReadsPipelineSparkWorkflow.gatk": "../../gatk",
   "ReadsPipelineSparkWorkflow.gatk_spark_jar": "../../build/libs/gatk-spark.jar",
+  "ReadsPipelineSparkWorkflow.gcloud_service_account_key_file": "/Users/tom/.gcs/broad-gatk-collab-39bacc2ec149.json",
   "ReadsPipelineSparkWorkflow.gcloud_project": "broad-gatk-collab",
   "ReadsPipelineSparkWorkflow.num_workers": "2",
   "ReadsPipelineSparkWorkflow.executor_cores": "7",

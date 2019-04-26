@@ -19,16 +19,18 @@ machine).
 CROMWELL_JAR=~/sw/cromwell-39/cromwell-39.jar
 ```
 
-The WDL doesn't currently authorize access to gcloud, so you should log
-in, e.g. with `gcloud auth login`.
-
 ### Configuration
 
 Edit the JSON configuration in _spark_wdl/inputs_ to suit your own set
 up. At a minimum you need to set
 
+* `gcloud_service_account_key_file` to the GCP service account key file
 * `gcloud_project` to the GCP project name you are using
 * `output_vcf` to a GCS bucket that you have write access to
+
+Strictly speaking, `gcloud_service_account_key_file` is optional and you
+can authorize access to gcloud before running the WDL, with e.g.
+`gcloud auth login`.
 
 The WDL will automatically create a cluster and delete it at the end of
 the job. A unique name for the cluster will be generated, unless the
