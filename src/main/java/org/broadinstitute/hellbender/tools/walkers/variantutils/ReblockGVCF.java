@@ -92,6 +92,13 @@ public final class ReblockGVCF extends VariantWalker {
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
+    /**
+     * Output the band lower bound for each GQ block instead of the min GQ -- for better compression
+     */
+    @Advanced
+    @Argument(fullName=HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS, doc = "Output the band lower bound for each GQ block regardless of the data it represents", optional = true)
+    private boolean floorBlocks = false;
+
     @Advanced
     @Argument(fullName=HaplotypeCallerArgumentCollection.GQ_BAND_LONG_NAME, shortName=HaplotypeCallerArgumentCollection.GQ_BAND_SHORT_NAME,
             doc="Exclusive upper bounds for reference confidence GQ bands (must be in [1, 100] and specified in increasing order)")
@@ -173,7 +180,7 @@ public final class ReblockGVCF extends VariantWalker {
         VariantContextWriter writer = createVCFWriter(outputFile);
 
         try {
-            vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), PLOIDY_TWO);
+            vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), PLOIDY_TWO, floorBlocks);
         } catch ( IllegalArgumentException e ) {
             throw new IllegalArgumentException("GQBands are malformed: " + e.getMessage(), e);
         }

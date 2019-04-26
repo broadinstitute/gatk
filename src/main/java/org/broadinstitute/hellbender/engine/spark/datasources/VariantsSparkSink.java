@@ -91,7 +91,7 @@ public final class VariantsSparkSink {
         final JavaRDD<VariantContext> sortedVariants = sortVariants(variants, header, numReducers);
         final JavaRDD<VariantContext> variantsToSave;
         if (writeGvcf) {
-            GVCFBlockCombiner gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy);
+            GVCFBlockCombiner gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy, false);
             gvcfBlockCombiner.addRangesToHeader(header);
             variantsToSave = sortedVariants.mapPartitions((FlatMapFunction<Iterator<VariantContext>, VariantContext>) v -> new GVCFBlockCombiningIterator(v, gqPartitions, defaultPloidy));
         } else {

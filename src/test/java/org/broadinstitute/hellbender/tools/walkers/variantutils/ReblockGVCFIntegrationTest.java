@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -112,5 +113,16 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "expected.NA12892.AS.chr20snippet.reblocked.g.vcf"));
         spec2.executeTest("testASAnnotationsAndSubsetting2", this);
+    }
+
+    @Test
+    public void testNewCompressionScheme() throws Exception {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-O %s -R " + b37_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12878.AS.chr20snippet.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false" +
+                        " --floor-blocks -GQB 10 -GQB 20 -GQB 30 -GQB 40 -GQB 50 -GQB 60",
+                Arrays.asList(getToolTestDataDir() + "expected.NA12878.AS.chr20snippet.reblocked.g.vcf"));
+        spec.executeTest("testNewCompressionScheme", this);
     }
 }

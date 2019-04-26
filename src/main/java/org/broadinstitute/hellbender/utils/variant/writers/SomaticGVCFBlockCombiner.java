@@ -17,11 +17,11 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
     protected int partitionPrecision;  //number of decimal places to use for TLOD block ranges
 
     public SomaticGVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy) {
-        super(gqPartitions, defaultPloidy);
+        super(gqPartitions, defaultPloidy, false);
     }
 
     public SomaticGVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy, final int partitionPrecision) {
-        super(gqPartitions, defaultPloidy);
+        super(gqPartitions, defaultPloidy, false);
         this.partitionPrecision = partitionPrecision;
     }
 

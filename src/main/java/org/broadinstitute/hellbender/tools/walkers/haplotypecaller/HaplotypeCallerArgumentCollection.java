@@ -24,6 +24,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
     public static final String CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "correct-overlapping-quality";
+    public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
 
 
     @ArgumentCollection
@@ -88,6 +89,13 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
             }
             GVCFGQBands.add(70); GVCFGQBands.add(80); GVCFGQBands.add(90); GVCFGQBands.add(99);
     };
+
+    /**
+     * Output the band lower bound for each GQ block instead of the min GQ -- for better compression
+     */
+    @Advanced
+    @Argument(fullName=HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS, doc = "Output the band lower bound for each GQ block regardless of the data it represents", optional = true)
+    public boolean floorBlocks = false;
 
     /**
      * This parameter determines the maximum size of an indel considered as potentially segregating in the
