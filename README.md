@@ -21,11 +21,11 @@ If you don't have your gcloud already configed -- set the project to broad-ml4cv
 
 To create a VM without a GPU run:
 ```
-./jamesp/home/launch-instance.sh ${USER}-cpu
+./scripts/launch-instance.sh ${USER}-cpu
 ```
 With GPU (not recommended unless you need something beefy and expensive)
 ```
-./jamesp/home/launch-dl-instance.sh ${USER}-gpu
+./scripts/launch-dl-instance.sh ${USER}-gpu
 ```
 This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or [console](https://console.cloud.google.com/compute/instances?project=broad-ml4cvd) when you are not using it!  
 
@@ -36,7 +36,7 @@ gcloud --project broad-ml4cvd compute ssh ${USER}-gpu --zone us-central1-a
 
 Because we don't know everyone's username, you need to run one more script to make sure that you are added as a docker user and that you have permission to pull down our docker instances from GCP's gcr.io. Run this while you're logged into your VM:
 ```
-/mnt/ml4cvd/projects/jamesp/home/run-once.sh
+/scripts/run-once.sh
 ```
 
 Note that you may see warnings like below, but these are expected:
@@ -239,7 +239,7 @@ as described in that section, to also create VMs with more CPUs and/or memory by
 [instance type](https://cloud.google.com/compute/docs/machine-types) as an argument, like so:
 
 ```
-./jamesp/home/launch-instance.sh ${USER}-cpu n1-highcpu-64
+./scripts/launch-instance.sh ${USER}-cpu n1-highcpu-64
 ``` 
 
 ### Create a disk
