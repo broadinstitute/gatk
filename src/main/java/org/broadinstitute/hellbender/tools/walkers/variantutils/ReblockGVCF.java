@@ -441,12 +441,16 @@ public final class ReblockGVCF extends VariantWalker {
         if(allelesNeedSubsetting) {
             newAlleleSet.removeAll(allelesToDrop);
             builder.alleles(newAlleleSet);
+            final GenotypesContext gc;
             if(!genotypesWereModified) {
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)));
+                gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                builder.genotypes(gc);
             }
             else {
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)));
+                gc = AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                builder.genotypes(gc);
             }
+            g = gc.get(0);
             relevantIndices = newAlleleSet.stream().mapToInt(a -> result.getAlleles().indexOf(a)).toArray();
         }
 
@@ -479,8 +483,8 @@ public final class ReblockGVCF extends VariantWalker {
             }
         }
         //do QUAL calcs after we potentially drop alleles
-        if (doQualApprox && genotype.hasPL()) {
-            attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, genotype.getPL()[0]);
+        if (doQualApprox && g.hasPL()) {
+            attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, g.getPL()[0]);
             int varDP = QualByDepth.getDepth(result.getGenotypes(), null);
             if (varDP == 0) {  //prevent QD=Infinity case
                 varDP = originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 1); //if there's no VarDP and no DP, just prevent Infs/NaNs and QD will get capped later
@@ -488,35 +492,25 @@ public final class ReblockGVCF extends VariantWalker {
             attrMap.put(GATKVCFConstants.VARIANT_DEPTH_KEY, varDP);
             if (annotationEngine.getInfoAnnotations().stream()
                     .anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().equals("AS_QualByDepth"))) {
-                /*if (result.getAlleles().size() == 3) {  //ref + one alt + NON_REF, no subsetting
-                    attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM + genotype.getPL()[0] + AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM + 0);
-                    int as_varDP = QualByDepth.getDepth(result.getGenotypes(), null);
-                    if (as_varDP == 0) {  //prevent QD=Infinity case
-                        as_varDP = originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 1); //if there's no VarDP and no DP, just prevent Infs/NaNs and QD will get capped later
+                     final List<String> quals = new ArrayList<>();
+                for (final Allele alt : newAlleleSet) {
+                    if (alt.isReference()) {
+                        continue;
                     }
-                    attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM + as_varDP  + AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM + 0);
-                }*/
-                //else if (newAlleleSet.size() >= 3) {
-                    final List<String> quals = new ArrayList<>();
-                    for (final Allele alt : newAlleleSet) {
-                        if (alt.isReference()) {
-                            continue;
-                        }
-                        final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
-                                HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt),
-                                GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
-                        if (gc.get(0).hasPL()) {
-                            quals.add(Integer.toString(gc.get(0).getPL()[0]));
-                        }
+                    final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
+                            HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt),
+                            GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
+                    if (gc.get(0).hasPL()) {
+                        quals.add(Integer.toString(gc.get(0).getPL()[0]));
                     }
-                    attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM+String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, quals));
-                    List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
-                            HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet,
-                            GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
-                    if (as_varDP != null) {
-                        attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM)));
-                    }
-                //}
+                }
+                attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM+String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, quals));
+                List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
+                        HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet,
+                        GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
+                if (as_varDP != null) {
+                    attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM)));
+                }
             }
         }
         builder.attributes(attrMap);
