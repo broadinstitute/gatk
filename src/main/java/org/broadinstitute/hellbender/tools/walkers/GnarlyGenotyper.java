@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
@@ -18,10 +19,7 @@ import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -218,6 +216,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
         allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
         allASAnnotations.add(AS_RMSMappingQuality.class);
+        allASAnnotations.add(AS_QualByDepth.class);
     }
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
@@ -331,8 +330,8 @@ public final class GnarlyGenotyper extends VariantWalker {
         //Get AC and SB annotations
         //remove the NON_REF allele and update genotypes if necessary
         final GenotypesContext calledGenotypes = iterateOnGenotypes(variant, targetAlleles, alleleCountMap, SBsum, removeNonRef, SUMMARIZE_PLs);
+        Integer numCalledAlleles = 0;
         if (variant.hasGenotypes()) {
-            Integer numCalledAlleles = 0;
             for (final Allele a : targetAlleles) {
                 numCalledAlleles += alleleCountMap.get(a);
             }
@@ -359,6 +358,11 @@ public final class GnarlyGenotyper extends VariantWalker {
             annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, variant.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
             annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, variant.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
         }
+        List<Integer> gtCounts = variant.getAttributeAsIntList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, 0);
+        final int refCount = numCalledAlleles/2 - gtCounts.get(1) - gtCounts.get(2);
+        gtCounts.set(0, refCount);
+        Pair<Integer, Double> eh = ExcessHet.calculateEH(variant, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles/2);
+        vcfBuilder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.4f", eh.getRight()));
         vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
         vcfBuilder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
         annotationDBBuilder.attribute(GATKVCFConstants.SB_TABLE_KEY, SBsum);

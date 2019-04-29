@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
@@ -108,7 +109,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
         //we need to use the AS_QUAL value that was added to the VC by the GenotypingEngine
-        if ( !vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY) ) {
+        if ( !vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY) && !vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             return null;
         }
 
@@ -122,15 +123,23 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
             return null;
         }
 
-        //Parse the VC's allele-specific qual values
-        List<Object> alleleQualObjList = vc.getAttributeAsList(GATKVCFConstants.AS_QUAL_KEY);
-        if (alleleQualObjList.size() != vc.getNAlleles() -1) {
-            throw new IllegalStateException("Number of AS_QUAL values doesn't match the number of alternate alleles.");
-        }
         List<Double> alleleQualList = new ArrayList<>();
-        for (final Object obj : alleleQualObjList) {
-            alleleQualList.add(Double.parseDouble(obj.toString()));
+        if (vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
+
+            //Parse the VC's allele-specific qual values
+            List<Object> alleleQualObjList = vc.getAttributeAsList(GATKVCFConstants.AS_QUAL_KEY);
+            if (alleleQualObjList.size() != vc.getNAlleles() - 1) {
+                throw new IllegalStateException("Number of AS_QUAL values doesn't match the number of alternate alleles.");
+            }
+            for (final Object obj : alleleQualObjList) {
+                alleleQualList.add(Double.parseDouble(obj.toString()));
+            }
         }
+        else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
+            String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "");
+            String[] values = asQuals.split("|");
+        }
+
 
         // Don't normalize indel length for AS_QD because it will only be called from GenotypeGVCFs, never UG
         List<Double> QDlist = new ArrayList<>();
