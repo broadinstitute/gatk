@@ -4,6 +4,7 @@ workflow ReadsPipelineSparkWorkflow {
   String output_vcf
   String known_sites
 
+  String gatk_docker
   File gatk
   File gatk_spark_jar
   File? gcloud_service_account_key_file
@@ -21,6 +22,7 @@ workflow ReadsPipelineSparkWorkflow {
 
   call CreateDataprocCluster {
     input:
+      gatk_docker = gatk_docker,
       gcloud_service_account_key_file = gcloud_service_account_key_file,
       gcloud_project = gcloud_project,
       cluster_name = cluster_name,
@@ -33,6 +35,7 @@ workflow ReadsPipelineSparkWorkflow {
       input_bam = input_bam,
       output_vcf = output_vcf,
       known_sites = known_sites,
+      gatk_docker = gatk_docker,
       gatk = gatk,
       gatk_spark_jar = gatk_spark_jar,
       cluster_name = CreateDataprocCluster.resolved_cluster_name,
@@ -45,6 +48,7 @@ workflow ReadsPipelineSparkWorkflow {
   if (select_first([delete_cluster, true])) {
     call DeleteDataprocCluster {
       input:
+        gatk_docker = gatk_docker,
         cluster_name = CreateDataprocCluster.resolved_cluster_name,
         job_done = ReadsPipelineSpark.done
     }
@@ -57,6 +61,7 @@ task ReadsPipelineSpark {
   String output_vcf
   String known_sites
 
+  String gatk_docker
   File gatk
   File gatk_spark_jar
   String cluster_name
@@ -85,6 +90,11 @@ task ReadsPipelineSpark {
       --executor-memory ${executor_memory} \
       --driver-memory ${driver_memory}
   }
+
+  runtime {
+    docker: gatk_docker
+  }
+
   output {
     String raw_vcf = "${output_vcf}"
     Boolean done = true
@@ -92,6 +102,7 @@ task ReadsPipelineSpark {
 }
 
 task CreateDataprocCluster {
+  String gatk_docker
   File? gcloud_service_account_key_file
   String gcloud_project
   String gcloud_zone = "us-central1-a"
@@ -132,6 +143,11 @@ task CreateDataprocCluster {
     fi
     echo "$cluster_name" > cluster_name.txt
   }
+
+  runtime {
+    docker: gatk_docker
+  }
+
   output {
     String resolved_cluster_name = read_string("cluster_name.txt")
   }
@@ -139,6 +155,7 @@ task CreateDataprocCluster {
 
 task DeleteDataprocCluster {
   Boolean job_done
+  String gatk_docker
   String cluster_name
 
   command {
@@ -146,6 +163,11 @@ task DeleteDataprocCluster {
       gcloud dataproc clusters delete --quiet "${cluster_name}"
     fi
   }
+
+  runtime {
+    docker: gatk_docker
+  }
+
   output {
     Boolean done = true
   }

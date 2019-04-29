@@ -72,3 +72,25 @@ or
 ```bash
 java -jar $CROMWELL_JAR run ReadsPipelineSpark.wdl -i inputs/ReadsPipelineSpark_genome.json
 ```
+
+#### Using local GATK
+
+WDL uses Docker to provide a controlled runtime environment. Sometimes
+it's useful to be able to use a local version of GATK, during
+development, for example. You can do this by using a local backend that
+disables Docker.
+
+You also need to change the WDL inputs in the JSON file for the `gatk`
+binary, and the Spark JAR:
+
+```
+  "ReadsPipelineSparkWorkflow.gatk": "../../gatk",
+  "ReadsPipelineSparkWorkflow.gatk_spark_jar": "../../build/libs/gatk-spark.jar",
+```
+
+Then run Cromwell using a special configuration file that disables
+Docker for the local backend:
+
+```bash
+java -Dconfig.file=local-no-docker.conf -jar $CROMWELL_JAR run ReadsPipelineSpark.wdl -i inputs/ReadsPipelineSpark_small.json
+```
