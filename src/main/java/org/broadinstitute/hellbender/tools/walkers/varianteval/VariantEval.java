@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.*;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.AlleleFrequency.*;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.IntervalStratification;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.VariantStratifier;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
@@ -218,7 +219,7 @@ public class VariantEval extends MultiVariantWalker {
     private boolean requireStrictAlleleMatch = false;
 
     @Argument(fullName="keep-ac0", shortName="keep-ac0", doc="If provided, modules that track polymorphic sites will not require that a site have AC > 0 when the input eval has genotypes", optional=true)
-    private boolean keepSitesWithAC0 = false;
+    protected boolean keepSitesWithAC0 = false;
 
     @Hidden
     @Argument(fullName="num-samples", doc="If provided, modules that track polymorphic sites will not require that a site have AC > 0 when the input eval has genotypes", optional=true)
@@ -242,6 +243,9 @@ public class VariantEval extends MultiVariantWalker {
      */
     @Argument(fullName="known-cnvs", shortName="known-cnvs", doc="File containing tribble-readable features describing a known list of copy number variants", optional=true)
     public FeatureInput<Feature> knownCNVsFile = null;
+
+    protected StratifyingScale AFScale = StratifyingScale.LINEAR;
+    protected boolean useCompAFStratifier = false;
 
     @Override
     protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
@@ -776,6 +780,11 @@ public class VariantEval extends MultiVariantWalker {
     public List<FeatureInput<VariantContext>> getComps() { return comps; }
 
     public Set<SortableJexlVCMatchExp> getJexlExpressions() { return jexlExpressions; }
+
+
+    public StratifyingScale getAFScale() { return AFScale; }
+    public boolean getCompAFStratifier() { return useCompAFStratifier; }
+
 
     public Set<String> getContigNames() {
         final TreeSet<String> contigs = new TreeSet<>();
