@@ -401,6 +401,11 @@ public final class GnarlyGenotyper extends VariantWalker {
                 throw new IllegalStateException("Something went wrong: ", e);
             }
         }
+        if (variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY) && variant.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
+            List<Integer> dps = Arrays.asList(variant.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "")
+                    .split("|")).stream().map(Integer::parseInt).collect(Collectors.toList());
+            
+        }
 
         annotationDBBuilder.alleles(targetAlleles);
 

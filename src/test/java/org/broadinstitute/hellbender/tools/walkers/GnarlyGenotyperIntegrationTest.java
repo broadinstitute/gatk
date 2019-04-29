@@ -97,10 +97,4 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                             Collections.emptyList()));
         }
     }
-
-    @Test
-    public void testASAnnotations() {
-        //TODO
-        //in output vcf and in annotationDB
-    }
 }
