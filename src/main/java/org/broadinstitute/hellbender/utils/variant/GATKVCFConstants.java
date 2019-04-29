@@ -83,7 +83,9 @@ public final class GATKVCFConstants {
     public static final String AS_QUAL_BY_DEPTH_KEY =               "AS_QD";
     public static final String AS_QUAL_KEY =                        "AS_QUAL";
     public static final String RAW_QUAL_APPROX_KEY =                "QUALapprox";
+    public static final String AS_RAW_QUAL_APPROX_KEY =             "AS_QUALapprox";
     public static final String VARIANT_DEPTH_KEY =                  "VarDP";
+    public static final String AS_VARIANT_DEPTH_KEY =               "AS_VarDP";
     public static final String READ_POS_RANK_SUM_KEY =              "ReadPosRankSum";
     public static final String AS_READ_POS_RANK_SUM_KEY =           "AS_ReadPosRankSum";
     public static final String AS_RAW_READ_POS_RANK_SUM_KEY =       "AS_RAW_ReadPosRankSum";

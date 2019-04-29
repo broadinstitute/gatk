@@ -10,6 +10,8 @@
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
 ##GVCFBlock0-20=minGQ=0(inclusive),maxGQ=20(exclusive)
 ##GVCFBlock20-100=minGQ=20(inclusive),maxGQ=100(exclusive)
+##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
+##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes; effectively sum of ADs">
 ##INFO=<ID=BLOCK_SIZE,Number=1,Type=Integer,Description="Size of the homozygous reference GVCF block">
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">

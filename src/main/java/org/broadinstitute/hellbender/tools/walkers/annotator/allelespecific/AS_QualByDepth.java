@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
@@ -147,7 +146,12 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         return map;
     }
 
-    private List<Integer> getAlleleDepths(final GenotypesContext genotypes) {
+    /**
+     *
+     * @param genotypes
+     * @return a list of length NAlleles (with ref) containing summed AD values; may be null if AD is missing
+     */
+    public static List<Integer> getAlleleDepths(final GenotypesContext genotypes) {
         int numAlleles = -1;
         for (final Genotype genotype : genotypes) {
             if (genotype.hasAD()) {
