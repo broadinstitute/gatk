@@ -151,11 +151,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         if (!vc.hasAttribute(getRawKeyName())) {
             return new HashMap<>();
         }
-        String rawRankSumData = vc.getAttributeAsString(getRawKeyName(),null);
-        if (rawRankSumData == null) {
+        String rawContingencyTableData = vc.getAttributeAsString(getRawKeyName(),null);
+        if (rawContingencyTableData == null) {
             return new HashMap<>();
         }
-        AlleleSpecificAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(originalVC.getAlleles(), rawRankSumData);
+        AlleleSpecificAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(originalVC.getAlleles(), rawContingencyTableData);
         parseRawDataString(myData);
 
         Map<Allele, Double> perAltRankSumResults = calculateReducedData(myData);

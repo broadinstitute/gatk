@@ -16,10 +16,7 @@ import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -217,9 +214,10 @@ public final class GnarlyGenotyper extends VariantWalker {
         }
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
-        allASAnnotations.addAll(reflections.getSubTypesOf(InfoFieldAnnotation.class));
+        //allASAnnotations.addAll(reflections.getSubTypesOf(InfoFieldAnnotation.class));  //we don't want AS_InbreedingCoeff
         allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
         allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
+        allASAnnotations.add(AS_RMSMappingQuality.class);
     }
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
@@ -304,8 +302,8 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
         //vcfBuilder gets the finalized annotations and annotationDBBuilder gets the raw annotations for the database
-        VariantContextBuilder vcfBuilder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
-        VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
+        final VariantContextBuilder vcfBuilder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
+        final VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
 
         final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
         double QD = QUALapprox / (double)variantDP;
@@ -373,10 +371,9 @@ public final class GnarlyGenotyper extends VariantWalker {
         for (final Class c : allASAnnotations) {
             try {
                 InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
-                if (annotation instanceof AS_StandardAnnotation) {
+                if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                     ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
                     if (variant.hasAttribute(ann.getRawKeyName())) {
-                        vcfBuilder.rmAttribute(ann.getRawKeyName());
                         if (!stripASAnnotations) {
                             final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
                             finalValue.forEach((key, value) -> vcfBuilder.attribute(key, value));
@@ -385,7 +382,24 @@ public final class GnarlyGenotyper extends VariantWalker {
                     }
                 }
             }
-            catch (Exception e) {}
+            catch (Exception e) {
+                throw new IllegalStateException("Something went wrong: ", e);
+            }
+        }
+        //since AS_FS and AS_SOR share the same raw key, we have to wait to remove raw keys until all the finalized values are added
+        for (final Class c : allASAnnotations) {
+            try {
+                InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
+                if (annotation instanceof AS_StandardAnnotation  && annotation instanceof ReducibleAnnotation) {
+                    ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
+                    if (variant.hasAttribute(ann.getRawKeyName())) {
+                        vcfBuilder.rmAttribute(ann.getRawKeyName());
+                    }
+                }
+            }
+            catch (Exception e) {
+                throw new IllegalStateException("Something went wrong: ", e);
+            }
         }
 
         annotationDBBuilder.alleles(targetAlleles);
