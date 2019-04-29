@@ -106,6 +106,8 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.RAW_QUAL_APPROX_KEY, "sum");
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.VARIANT_DEPTH_KEY, "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, "element_wise_sum");
 
 
         if (vidMapPB != null) {

@@ -12,6 +12,11 @@ import java.util.List;
  */
 public final class GATKVCFConstants {
 
+    public static final String MONOMORPHIC_FILTER_NAME = "monomorphic";
+    public static final String SB_TABLE_KEY = "SB_TABLE";
+    public static final String GENOTYPE_QUALITY_BY_ALLELE_BALANCE = "ABGQ";
+    public static final String GENOTYPE_QUALITY_BY_ALT_CONFIDENCE = "ALTGQ";
+
     public static final String CONTIG_ID_KEY =                      "ID";
     public static final String CONTIG_LENGTH_KEY =                  "length";
     public static final String ASSEMBLY_NAME_KEY =                  "assembly";
@@ -57,6 +62,7 @@ public final class GATKVCFConstants {
     public static final String INBREEDING_COEFFICIENT_KEY =         "InbreedingCoeff";
     public static final String AS_INBREEDING_COEFFICIENT_KEY =      "AS_InbreedingCoeff";
     public static final String EXCESS_HET_KEY =                     "ExcessHet";
+    public static final String RAW_GENOTYPE_COUNT_KEY =             "RAW_GT_COUNT";
     public static final String AS_HETEROZYGOSITY_KEY =              "AS_InbreedingCoeff";
     public static final String LIKELIHOOD_RANK_SUM_KEY =            "LikelihoodRankSum";
     public static final String LO_CONF_DENOVO_KEY =                 "loConfDeNovo";
