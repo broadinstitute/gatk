@@ -172,6 +172,7 @@ public final class ReblockGVCF extends VariantWalker {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
         if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
@@ -513,6 +514,7 @@ public final class ReblockGVCF extends VariantWalker {
                 }
             }
         }
+        attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1)); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
         builder.attributes(attrMap);
 
         if (allelesNeedSubsetting) {
