@@ -81,12 +81,9 @@ public final class RScriptExecutor extends ScriptExecutor {
     }
 
     public boolean exec() {
-        final List<File> tempDirs = new ArrayList<>();
         try {
             File tempLibSourceDir  = IOUtils.createTempDir("RlibSources.");
             File tempLibInstallationDir = IOUtils.createTempDir("Rlib.");
-            tempDirs.add(tempLibSourceDir);
-            tempDirs.add(tempLibInstallationDir);
 
             StringBuilder expression = new StringBuilder("tempLibDir = '").append(tempLibInstallationDir).append("';");
 
@@ -133,11 +130,6 @@ public final class RScriptExecutor extends ScriptExecutor {
             } else {
                 logger.warn(e.getMessage());
                 return false;
-            }
-        } finally {
-            for (final File tempDir: tempDirs) {
-                // deletes the dirs and their contents
-                FileUtils.deleteQuietly(tempDir);
             }
         }
     }
