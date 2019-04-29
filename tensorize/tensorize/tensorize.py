@@ -7,10 +7,10 @@ from apache_beam import Pipeline
 from apache_beam.options.pipeline_options import PipelineOptions
 from tensorize.defines import TENSOR_EXT, GCS_BUCKET
 
-from .utils import count_ones, process_entries, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket
+from .utils import count_ones, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket
 
 
-def run(pipeline_options: PipelineOptions, output_file: str):
+def example(pipeline_options: PipelineOptions, output_file: str):
     p = beam.Pipeline(options=pipeline_options)
 
     bigquery_source = beam.io.BigQuerySource(
@@ -71,39 +71,6 @@ def run(pipeline_options: PipelineOptions, output_file: str):
     result.wait_until_finish()
 
 
-def run2(pipeline_options: PipelineOptions, output_file: str):
-    limit = 500
-
-    p = beam.Pipeline(options=pipeline_options)
-
-    bigquery_source = beam.io.BigQuerySource(
-        # query='select * from `ukbb7089_r10data.phenotype` limit %s' % limit,
-        query='select * from `ukbb7089_r10data.phenotype`',
-        use_standard_sql=True
-    )
-
-    # Query table in BQ
-    table_data = (
-            p
-            | 'QueryTable' >> beam.io.Read(bigquery_source)
-
-            # Each row is a dictionary where the keys are the BigQuery columns
-            | 'CreateKey' >> beam.Map(lambda row: (row['sample_id'], row))
-
-            # Group by key
-            | 'GroupByKey' >> beam.GroupByKey()
-
-            # Create dict of sample_id -> list(row dicts)
-            | 'ProcessSamples' >> beam.Map(process_entries)
-    )
-
-    # Write to file
-    table_data | 'WriteToFile' >> beam.io.WriteToText(output_file)
-
-    result = p.run()
-    result.wait_until_finish()
-
-
 def tensorize_categorical_fields(pipeline: Pipeline, output_path: str):
     # TODO: Don't hardcode LIMIT in the query
     limit = 300
@@ -135,9 +102,6 @@ def tensorize_categorical_fields(pipeline: Pipeline, output_path: str):
             # Group by key
             | 'GroupByKey' >> beam.GroupByKey()
 
-            # Create dict of sample_id -> list(row dicts)
-            | 'ProcessSamples' >> beam.Map(process_entries)
-
             # Format into hd5 files and upload to GCS
             | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql, output_path)
     )
@@ -152,7 +116,10 @@ output_bucket = get_gcs_bucket(GCS_BUCKET)
 
 
 def write_tensor_from_sql(sampleid_to_rows, output_path):
-    sample_id, rows = sampleid_to_rows
+    # GroupByKey output is not a list of dicts, as expected, but something called an 'UnwindowedValue'.
+    # We convert it to list first to arrive at (key, [{dict1}, {dict2}, {dict3}...])
+    (sample_id, values) = sampleid_to_rows
+    rows = list(values)
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
