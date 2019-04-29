@@ -1,23 +1,22 @@
 import os
 import logging
 import numpy as np
-import pandas as pd
 from typing import List
 from typing.io import TextIO
+from DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 
-from defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP
+from defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
 from tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
-
 
 def write_tensor_maps(args) -> None:
     logging.info("Making tensor maps...")
 
     tensor_maps_file = f"{args.output_folder}/{TENSOR_MAPS_FILE_NAME}.py"
+    db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
         _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        # Commented out until BigQuery version is implemented
-        #_write_megans_tensor_maps(f)
+        _write_continuous_tensor_maps(f, db_client)
         _write_disease_tensor_maps(args.phenos_folder, f)
         _write_disease_tensor_maps_time(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
@@ -146,63 +145,64 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
         f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
 
             
-def _write_megans_tensor_maps(f: TextIO):
+def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
     annotation_units = 2
-    count = 0
+    group = 'continuous'
 
-    pyukbb_data_path = '/mnt/disks/data/raw/pyukbb_data/'
-    to_be_exported_csv_path = '/mnt/disks/data/raw/pyukbb_data/mb-ukbb-selected-fields.csv'
-    available_fields_pd = pd.read_csv(to_be_exported_csv_path)
-    fields = _get_all_available_fields(available_fields_pd)
+    # Handle special coding values in continuous variables in order to generate summary statistics (mean and std dev) for
+    # each field across all samples. This will remove missing samples from the calculation and change the value of 'Less than one'
+    query = f"""
+    WITH coding_tmp AS (
+        SELECT 
+            *,
+            CASE
+                WHEN meaning IN ('Do not know',  'Prefer not to answer', 'Ongoing when data entered') OR meaning LIKE "Still taking%" THEN TRUE
+            END AS missing,
+            CASE
+                WHEN meaning = 'Less than one' THEN '.5'
+            END AS value
+        FROM
+            {CODING_TABLE}
+    ), pheno_tmp AS (
+    SELECT 
+        sample_id, 
+        FieldID, 
+        COALESCE(c.value, p.value) new_value, 
+        COALESCE(c.missing, FALSE) missing 
+    FROM {PHENOTYPE_TABLE} AS p
+    LEFT JOIN coding_tmp AS c 
+        ON TRUE
+        AND p.value = c.coding 
+        AND p.coding_file_id = c.coding_file_id
+    WHERE TRUE
+        AND instance = 0 
+        AND array_idx = 0
+    )
 
-    continuous_field_ids = fields.loc[fields['ValueType']=='Continuous']['FieldID']
-    integer_field_ids = fields.loc[fields['ValueType']=='Integer']['FieldID']
-    f.write(f"\n\n#  Continuous tensor maps from pyukbb\n")
-    for field_id in continuous_field_ids.append(integer_field_ids):
-        print(field_id)
-        group = 'continuous'
-        pf = pyukbb.UKBioBankParsedField.from_file(_get_pkl_path_for_field(field_id, pyukbb_data_path))
-        name = str(field_id) + "_" + pf.field.replace("-", "").replace(" ", "-").replace("(", "").replace(")", "")
+    SELECT 
+        t.FieldID, 
+        Field, 
+        AVG(CAST(new_value AS FLOAT64)) mean, 
+        STDDEV(CAST(new_value AS FLOAT64)) std 
+    FROM pheno_tmp AS t
+    LEFT JOIN {DICTIONARY_TABLE} AS d ON d.FieldID = t.FieldID
+    WHERE TRUE
+        AND ValueType IN ('Integer', 'Continuous') 
+        AND NOT missing
+    GROUP BY t.FieldID, Field 
+    """
+
+    field_data_for_tensor_maps = db_client.execute(query)
+
+    f.write(f"\n\n#  Continuous tensor maps\n")
+    for row in field_data_for_tensor_maps:
+        name = str(row.FieldID) + "_" + row.Field.replace("-", "").replace(" ", "-").replace("(", "").replace(")", "")
         name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "") + "_0_0"
-        try:
-            tensor = pyukbb.utils.get_dense_tensor_for_sample_ids(pf, list(pf.included_ukbb_sample_ids))
-        except IndexError:
-            print(name + " could not be tensorized.")
-            continue
 
-        if pf.has_coding:
-            # group = 'continuous_with_categorical'
-            print("pf has coding")
-
-        df = pd.DataFrame({'sample': list(pf.included_ukbb_sample_ids)})
-        for k, v in pf.category_coding_map.items():
-            df[v] = tensor[:, 0, 0, k]
-        if 'Do not know' in df.columns and 'Prefer not to answer' in df.columns:
-            df['all_missing'] = df['Do not know'] + df['Prefer not to answer'] + df[
-                'Not available in UKBB database']
-        # -313 is "ongoing"
-        elif 'Ongoing when data entered' in df.columns:
-            df['all_missing'] = df['Ongoing when data entered'] + df['Not available in UKBB database']
-        else:
-            df['all_missing'] = df['Not available in UKBB database']
-
-        if 'Less than one' in df.columns:
-            df['true_value'] = df['Less than one'].apply(lambda x: .5 if x == 1 else 0)
-            df['true_value'] = df['true_value'] + df['Value']
-        else:
-            df['true_value'] = df['Value']
-
-        mean = np.mean(df.loc[df['all_missing'] == 0]['true_value'])
-        std = np.std(df.loc[df['all_missing'] == 0]['true_value'])
-
-        if mean is np.nan:
-            logging.warning(name + " had nans")
-            continue
-
-        f.write(f"TMAPS['{field_id}_0'] = TensorMap('{name}', group='{group}', channel_map={{'{name}': 0, "
-                f"'not-missing': 1}}, normalization={{'mean': {mean}, 'std': {std}}}, "
+        f.write(f"TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', channel_map={{'{name}': 0, "
+                f"'not-missing': 1}}, normalization={{'mean': {row.mean}, 'std': {row.std}}}, "
                 f"annotation_units={annotation_units})\n")
-        count += 1
+
 
 
 def _segmented_map(name):

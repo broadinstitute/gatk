@@ -38,3 +38,8 @@ ECG_IDX_2_CHAR = {0: '!', 1: ' ', 2: "'", 3: '(', 4: ')', 5: '-', 6: '/', 7: '1'
                   56: 'x', 57: 'y', 58: 'z'}
 
 TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
+
+#BigQuery tables
+DICTIONARY_TABLE = "ukbb7089_201904.dictionary"
+CODING_TABLE = "ukbb7089_201904.coding"
+PHENOTYPE_TABLE = "ukbb7089_201904.phenotype"
