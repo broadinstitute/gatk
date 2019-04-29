@@ -76,6 +76,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testOneSampleDropLows", this);
     }
 
+    //TODO: this isn't actually correcting non-ref GTs because I changed some args around -- separate out dropping low qual alleles and low qual sites?
     @Test  //covers non-ref AD and non-ref GT corrections
     public void testNonRefADCorrection() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
