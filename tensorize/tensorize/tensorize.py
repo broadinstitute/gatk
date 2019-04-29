@@ -1,7 +1,13 @@
-import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions
+import logging
+import tempfile
 
-from .utils import count_ones, process_entries, write_tensor_from_sql
+import apache_beam as beam
+import h5py
+from apache_beam import Pipeline
+from apache_beam.options.pipeline_options import PipelineOptions
+from tensorize.defines import TENSOR_EXT, GCS_BUCKET
+
+from .utils import count_ones, process_entries, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket
 
 
 def run(pipeline_options: PipelineOptions, output_file: str):
@@ -98,9 +104,7 @@ def run2(pipeline_options: PipelineOptions, output_file: str):
     result.wait_until_finish()
 
 
-def tensorize_categorical_fields(pipeline_options: PipelineOptions):
-    p = beam.Pipeline(options=pipeline_options)
-
+def tensorize_categorical_fields(pipeline: Pipeline, output_path: str):
     # TODO: Don't hardcode LIMIT in the query
     limit = 300
     query = """
@@ -122,7 +126,7 @@ def tensorize_categorical_fields(pipeline_options: PipelineOptions):
 
     # Query table in BQ
     steps = (
-            p
+            pipeline
             | 'QueryTables' >> beam.io.Read(bigquery_source)
 
             # Each row is a dictionary where the keys are the BigQuery columns
@@ -135,8 +139,44 @@ def tensorize_categorical_fields(pipeline_options: PipelineOptions):
             | 'ProcessSamples' >> beam.Map(process_entries)
 
             # Format into hd5 files and upload to GCS
-            | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql)
+            | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql, output_path)
     )
 
-    result = p.run()
+    result = pipeline.run()
     result.wait_until_finish()
+
+
+# Defining this in global scope because passing it explicitly into a method used by beam.Map()
+# gives a 'client not picklable` error.
+output_bucket = get_gcs_bucket(GCS_BUCKET)
+
+
+def write_tensor_from_sql(sampleid_to_rows, output_path):
+    sample_id, rows = sampleid_to_rows
+
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tensor_file = '{}.{}'.format(sample_id, TENSOR_EXT)
+            tensor_path = '{}/{}'.format(temp_dir, tensor_file)
+            gcs_blob = output_bucket.blob('{}/{}'.format(output_path, tensor_file))
+            logging.info("Writing tensor {} to {} ...".format(tensor_file, gcs_blob.public_url))
+            with h5py.File(tensor_path, 'w') as hd5:
+                for row in rows:
+                    field_id = row['fieldid']
+                    field = row['field']
+                    instance = row['instance']
+                    array_idx = row['array_idx']
+                    value = row['value']
+                    meaning = row['meaning']
+
+                    dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
+                    float_category = _to_float_or_false(value)
+                    if float_category is not False:
+                        hd5.create_dataset(dataset_name, data=[float_category])
+                    else:
+                        logging.warning('Cannot cast float from: {} categorical field: {} means: {} sample id: {}'.format(
+                            value, field_id, meaning, sample_id))
+            gcs_blob.upload_from_filename(tensor_path)
+
+    except:
+        logging.exception("Problem with processing sample id '{}'".format(sample_id))
