@@ -1,13 +1,23 @@
 package org.broadinstitute.hellbender.utils.nio;
 
+import com.google.cloud.storage.contrib.nio.CloudStorageOptions;
 import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
+import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.CloseableIterator;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -32,22 +42,22 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
         private boolean done = false;
 
         public ReadsIterator() throws IOException {
-//            Path fpath = IOUtils.getPath(path);
-//            byte[] indexData = index;
-//            SeekableStream indexInMemory = new ByteArraySeekableStream(indexData);
-//            // set high-level retries to deal with servers that might be temporarily overloaded
-//            // while we're reading a very long file from them.
-//            SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
-//                Files.newByteChannel(fpath), BUFSIZE);
-//            ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(chan, path);
-//            bam = SamReaderFactory.makeDefault()
-//                    .validationStringency(ValidationStringency.LENIENT)
-//                    .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
-//                    .open(SamInputResource.of(bamOverNIO).index(indexInMemory));
-//
-//            QueryInterval[] array = new QueryInterval[1];
-//            array[0] = interval;
-//            query = bam.query(array, false);
+            Path fpath = IOUtils.getPath(path);
+            byte[] indexData = index;
+            SeekableStream indexInMemory = new ByteArraySeekableStream(indexData);
+            // set high-level retries to deal with servers that might be temporarily overloaded
+            // while we're reading a very long file from them.
+            SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
+                Files.newByteChannel(fpath), BUFSIZE);
+            ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(chan, path);
+            bam = SamReaderFactory.makeDefault()
+                    .validationStringency(ValidationStringency.LENIENT)
+                    .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
+                    .open(SamInputResource.of(bamOverNIO).index(indexInMemory));
+
+            QueryInterval[] array = new QueryInterval[1];
+            array[0] = interval;
+            query = bam.query(array, false);
         }
 
         /**

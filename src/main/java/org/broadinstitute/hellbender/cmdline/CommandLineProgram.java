@@ -430,7 +430,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
-//        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS, "").maxChannelReopens());
+        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS, "").maxChannelReopens());
         if (Strings.isNullOrEmpty(NIO_PROJECT_FOR_REQUESTER_PAYS)) {
             logger.info("Requester pays: disabled");
         } else {
