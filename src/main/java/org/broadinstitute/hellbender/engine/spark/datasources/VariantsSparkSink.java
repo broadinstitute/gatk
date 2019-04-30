@@ -36,7 +36,7 @@ public final class VariantsSparkSink {
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header) throws IOException {
-        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0, true);
+        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0, true, true);
     }
 
     /**
@@ -51,13 +51,19 @@ public final class VariantsSparkSink {
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeTabixIndex) throws IOException {
-        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0, writeTabixIndex);
+        writeVariants(ctx, outputFile, variants, header, writeTabixIndex, true);
+    }
+
+    public static void writeVariants(
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
+            final VCFHeader header, final boolean writeTabixIndex, final boolean sort) throws IOException {
+        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0, writeTabixIndex, true);
     }
 
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy) throws IOException {
-        writeVariants(ctx, outputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, 0, true);
+        writeVariants(ctx, outputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, 0, true, true);
     }
 
     /**
@@ -74,21 +80,21 @@ public final class VariantsSparkSink {
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy,
-            final int numReducers, final boolean writeTabixIndex) throws IOException {
+            final int numReducers, final boolean writeTabixIndex, final boolean sort) throws IOException {
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
-        writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers, writeTabixIndex);
+        writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers, writeTabixIndex, sort);
     }
 
     private static void writeVariantsSingle(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy,
-            final int numReducers, final boolean writeTabixIndex) throws IOException {
+            final int numReducers, final boolean writeTabixIndex, final boolean sortVariantsToHeader) throws IOException {
 
         //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 is fixed
         if (outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
             throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
-        final JavaRDD<VariantContext> sortedVariants = sortVariants(variants, header, numReducers);
+        final JavaRDD<VariantContext> sortedVariants = sortVariantsToHeader ? sortVariants(variants, header, numReducers) : variants;
         final JavaRDD<VariantContext> variantsToSave;
         if (writeGvcf) {
             GVCFBlockCombiner gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy);

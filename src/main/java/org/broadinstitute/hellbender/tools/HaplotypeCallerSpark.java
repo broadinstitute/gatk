@@ -184,11 +184,10 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
 
         final JavaRDD<VariantContext> variants = rdd.mapPartitions(assemblyFunction(header, referenceFileName, hcArgsBroadcast, annotatorEngineBroadcast));
 
-        variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
                     hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.standardArgs.genotypeArgs.samplePloidy,
-                    0, createOutputVariantIndex);
+                    0, createOutputVariantIndex, false);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
         }
