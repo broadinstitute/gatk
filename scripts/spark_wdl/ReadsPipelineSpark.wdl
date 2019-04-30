@@ -5,8 +5,8 @@ workflow ReadsPipelineSparkWorkflow {
   String known_sites
 
   String gatk_docker
-  File gatk
-  File gatk_spark_jar
+  String gatk
+  String gatk_spark_jar
   File? gcloud_service_account_key_file
   String gcloud_project
   String? gcloud_zone
@@ -36,6 +36,8 @@ workflow ReadsPipelineSparkWorkflow {
       output_vcf = output_vcf,
       known_sites = known_sites,
       gatk_docker = gatk_docker,
+      gcloud_service_account_key_file = gcloud_service_account_key_file,
+      gcloud_project = gcloud_project,
       gatk = gatk,
       gatk_spark_jar = gatk_spark_jar,
       cluster_name = CreateDataprocCluster.resolved_cluster_name,
@@ -49,6 +51,8 @@ workflow ReadsPipelineSparkWorkflow {
     call DeleteDataprocCluster {
       input:
         gatk_docker = gatk_docker,
+        gcloud_service_account_key_file = gcloud_service_account_key_file,
+        gcloud_project = gcloud_project,
         cluster_name = CreateDataprocCluster.resolved_cluster_name,
         job_done = ReadsPipelineSpark.done
     }
@@ -62,8 +66,10 @@ task ReadsPipelineSpark {
   String known_sites
 
   String gatk_docker
-  File gatk
-  File gatk_spark_jar
+  File? gcloud_service_account_key_file
+  String gcloud_project
+  String gatk
+  String gatk_spark_jar
   String cluster_name
   String? gatk_gcs_staging
   Int executor_cores
@@ -71,10 +77,17 @@ task ReadsPipelineSpark {
   String driver_memory
 
   command {
+    if [ -n "${gcloud_service_account_key_file}" ]; then
+      gcloud auth activate-service-account --key-file=${gcloud_service_account_key_file}
+      export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
+    fi
+    gcloud config set project ${gcloud_project}
+
     export GATK_SPARK_JAR=${gatk_spark_jar}
     if [ -n "${gatk_gcs_staging}" ]; then
       export GATK_GCS_STAGING=${gatk_gcs_staging}
     fi
+
     ${gatk} \
       ReadsPipelineSpark \
       -R ${ref_fasta} \
@@ -121,6 +134,7 @@ task CreateDataprocCluster {
       export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
     fi
     gcloud config set project ${gcloud_project}
+
     if [ -z "${cluster_name}" ]; then
         # generate a unique cluster name
         cluster_name="gatk-$(python -c "import uuid; print(uuid.uuid4())")"
@@ -156,9 +170,17 @@ task CreateDataprocCluster {
 task DeleteDataprocCluster {
   Boolean job_done
   String gatk_docker
+  File? gcloud_service_account_key_file
+  String gcloud_project
   String cluster_name
 
   command {
+    if [ -n "${gcloud_service_account_key_file}" ]; then
+      gcloud auth activate-service-account --key-file=${gcloud_service_account_key_file}
+      export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
+    fi
+    gcloud config set project ${gcloud_project}
+
     if gcloud dataproc clusters describe "${cluster_name}"; then
       gcloud dataproc clusters delete --quiet "${cluster_name}"
     fi
