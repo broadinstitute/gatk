@@ -7,7 +7,7 @@ from apache_beam import Pipeline
 from apache_beam.options.pipeline_options import PipelineOptions
 from tensorize.defines import TENSOR_EXT, GCS_BUCKET
 
-from .utils import count_ones, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket
+from .utils import count_ones, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket, get_field_type
 
 
 def example(pipeline_options: PipelineOptions, output_file: str):
@@ -71,16 +71,16 @@ def example(pipeline_options: PipelineOptions, output_file: str):
     result.wait_until_finish()
 
 
-def tensorize_categorical_fields(pipeline: Pipeline, output_path: str):
-    # TODO: Don't hardcode LIMIT in the query
-    limit = 300
+def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str):
+    # TODO: Don't hardcode LIMIT, etc. in the query
+    # limit = 450
     query = """
-        SELECT d.field, p_sub_f_c.meaning, p_sub_f_c.sample_id, p_sub_f_c.fieldid, p_sub_f_c.instance, p_sub_f_c.array_idx, p_sub_f_c.value FROM
+        SELECT d.field, d.valuetype, p_sub_f_c.meaning, p_sub_f_c.sample_id, p_sub_f_c.fieldid, p_sub_f_c.instance, p_sub_f_c.array_idx, p_sub_f_c.value FROM
         (
             SELECT c.meaning, p_sub.sample_id, p_sub.fieldid, p_sub.instance, p_sub.array_idx, p_sub.value FROM
                 (
                     SELECT p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id FROM `ukbb_dev.phenotype` p
-                    INNER JOIN (SELECT * FROM `shared_data.tensorization_fieldids` LIMIT 300) f
+                    INNER JOIN (SELECT * FROM `shared_data.tensorization_fieldids`) f
                     ON p.fieldid = f.fieldid
                 ) AS p_sub
             JOIN `ukbb_dev.coding` c
@@ -134,15 +134,23 @@ def write_tensor_from_sql(sampleid_to_rows, output_path):
                     instance = row['instance']
                     array_idx = row['array_idx']
                     value = row['value']
+                    value_type = row['valuetype']
                     meaning = row['meaning']
 
-                    dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
-                    float_category = _to_float_or_false(value)
-                    if float_category is not False:
-                        hd5.create_dataset(dataset_name, data=[float_category])
+                    field_type = get_field_type(value_type)
+
+                    dataset_name = None
+                    if field_type == 'categorical':
+                        dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
+                    elif field_type == 'continuous':
+                        dataset_name = _dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
+
+                    if dataset_name is not None:
+                        float_value = _to_float_or_false(value)
+                        if float_value is not False:
+                            hd5.create_dataset(dataset_name, data=[float_value])
                     else:
-                        logging.warning('Cannot cast float from: {} categorical field: {} means: {} sample id: {}'.format(
-                            value, field_id, meaning, sample_id))
+                        logging.warning("Cannot cast to float from '{}' for field id '{}' and sample id '{}'".format(value, field_id, sample_id))
             gcs_blob.upload_from_filename(tensor_path)
 
     except:

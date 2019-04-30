@@ -1,7 +1,7 @@
 import logging
 
 GCS_BUCKET = 'ml4cvd'
-GCS_BLOB_PATH = 'dataflow_experiment/output/dataflowrunner_tensors'
+GCS_BLOB_PATH = 'dataflow_experiment/output/tensors_for_sam'
 
 REQUIREMENTS_FILE = '/Users/kyuksel/github/ml/env/requirements_ml4cvd_py35.txt'
 SETUP_FILE = '/Users/kyuksel/github/ml/tensorize/setup.py'

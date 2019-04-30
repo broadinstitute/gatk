@@ -35,4 +35,4 @@ if __name__ == "__main__":
     pipeline_options = get_pipeline_options(packaging_args, runner)
     pipeline = beam.Pipeline(options=pipeline_options)
 
-    tensorize.tensorize_categorical_fields(pipeline, GCS_BLOB_PATH)
+    tensorize.tensorize_categorical_continuous_fields(pipeline, GCS_BLOB_PATH)
