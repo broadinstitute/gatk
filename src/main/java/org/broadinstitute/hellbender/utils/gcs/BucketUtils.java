@@ -22,8 +22,8 @@ import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
-import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
+import com.google.api.gax.retrying.RetrySettings;
+import com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
 import java.io.*;
