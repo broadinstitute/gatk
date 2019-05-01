@@ -153,15 +153,43 @@ public final class ReadDepthSVCaller {
             for (final List<CalledSVGraphEvent> list : eventsMap.get(type).values()) {
                 double minQuality = 99;
                 for (final CalledSVGraphEvent event : list) {
-                    if (event.getProbability() < minQuality) minQuality = event.getProbability();
+                    if (event.getRefQuality() < minQuality) minQuality = event.getRefQuality();
                 }
                 for (final CalledSVGraphEvent event : list) {
-                    if (event.getProbability() == minQuality) {
+                    if (event.getRefQuality() == minQuality) {
                         collapsedEvents.add(event);
                         break;
                     }
                 }
             }
+        }
+
+        //Compute GQs
+        /*
+        for (final CalledSVGraphEvent event : collapsedEvents) {
+            double total = 0;
+            for (final CalledSVGraphEvent otherEvent : collapsedEvents) {
+                if (otherEvent != event && otherEvent.getPathId() != event.getPathId()) {
+                    final double overlap = event.getInterval().overlapLen(otherEvent.getInterval()) / (double) event.getInterval().getLength();
+                    total += overlap * Math.max(0, event.getRefQuality() - otherEvent.getRefQuality());
+                }
+            }
+            event.setGenotypeQuality(Math.min(total, 99));
+        }*/
+
+        //TODO this could be better - events should be organized by genotype
+        for (final CalledSVGraphEvent event : collapsedEvents) {
+            double total = 0;
+            for (final CalledSVGraphEvent otherEvent : collapsedEvents) {
+                if (otherEvent.getPathId() != event.getPathId()) {
+                    final double overlap = event.getInterval().overlapLen(otherEvent.getInterval()) / (double) event.getInterval().getLength();
+                    total += overlap * Math.exp(-otherEvent.getRefQuality() / 10.0);
+                }
+            }
+            final double eventTerm = Math.exp(-event.getRefQuality() / 10.0); //Add at the end so we don't penalize for other events in the genotype
+            final double p = eventTerm / (total + eventTerm);
+            final double gq = -10.0 * Math.log10(Math.max(p, Double.MIN_VALUE));
+            event.setGenotypeQuality(Math.min(gq, 99));
         }
 
         final Collection<CalledSVGraphGenotype> haplotypes = convertToCalledHaplotypes(genotypes, graph);
@@ -440,7 +468,7 @@ public final class ReadDepthSVCaller {
         final CalledSVGraphEvent lastEvent = eventsToMerge.get(eventsToMerge.size() - 1);
         final SVInterval firstInterval = firstEvent.getInterval();
         final SVInterval interval = new SVInterval(firstInterval.getContig(), firstInterval.getStart(), lastEvent.getInterval().getEnd());
-        final CalledSVGraphEvent mergedEvent = new CalledSVGraphEvent(firstEvent.getType(), interval, firstEvent.getGroupId(), firstEvent.getPathId(), true, firstEvent.getProbability(), firstEvent.isHomozygous());
+        final CalledSVGraphEvent mergedEvent = new CalledSVGraphEvent(firstEvent.getType(), interval, firstEvent.getGroupId(), firstEvent.getPathId(), true, firstEvent.getRefQuality(), firstEvent.isHomozygous());
         return mergedEvent;
     }
 
@@ -464,7 +492,7 @@ public final class ReadDepthSVCaller {
                     final SVInterval eventInterval = event.getInterval();
                     if (previousEventInterval.getContig() == eventInterval.getContig() &&
                             previousEventInterval.getEnd() == eventInterval.getStart() &&
-                            previousEvent.getProbability() == event.getProbability() &&
+                            previousEvent.getRefQuality() == event.getRefQuality() &&
                             previousEvent.isHomozygous() == event.isHomozygous()) {
                         eventsToMerge.add(event);
                     } else if (!eventInterval.equals(previousEventInterval)) {
