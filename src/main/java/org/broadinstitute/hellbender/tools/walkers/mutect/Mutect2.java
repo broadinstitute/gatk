@@ -142,15 +142,11 @@ import java.util.List;
  *  -R reference.fa \
  *  -L chrM \
  *  --mitochondria \
- *  --median-autosomal-coverage 30 \
  *  -I mitochondria.bam \
  *  -O mitochondria.vcf.gz
  * </pre>
  *
- * <p>Setting the advanced option --median-autosomal-coverage argument (default 0) activates a recommended filter against
- * likely erroneously mapped  <a href="https://en.wikipedia.org/wiki/NUMT">NuMTs (nuclear mitochondrial DNA segments)</a>.
- * For the value, provide the median coverage expected in autosomal regions with coverage.  The mode accepts only a
- * single sample, which can be provided in multiple files.</p>
+ * <p>The mode accepts only a single sample, which can be provided in multiple files.</p>
  *
  * <h4>(iv) Force-calling mode</h4>
  * <p>This mode force-calls all alleles in force-call-alleles.vcf in addition to any other variants Mutect2 discovers.

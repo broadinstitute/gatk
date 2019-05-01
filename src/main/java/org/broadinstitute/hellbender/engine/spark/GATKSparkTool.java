@@ -503,7 +503,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Returns a map of read input to header.
      */
-    protected LinkedHashMap<String, SAMFileHeader> getReadSouceHeaderMap(){
+    protected LinkedHashMap<String, SAMFileHeader> getReadSourceHeaderMap(){
         return readInputs;
     }
 
@@ -568,16 +568,13 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private SamFileHeaderMerger createHeaderMerger() {
         return new SamFileHeaderMerger(identifySortOrder(readInputs.values()), readInputs.values(), true);
     }
-    @VisibleForTesting
+    // If multiple bams have had their contents merged make no assumption about the underlying sort order
     static SAMFileHeader.SortOrder identifySortOrder(final Collection<SAMFileHeader> headers){
-        final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
-        final SAMFileHeader.SortOrder order;
-        if (sortOrders.size() == 1) {
-            order = sortOrders.iterator().next();
+        if (headers.size() > 1){
+            return SAMFileHeader.SortOrder.unsorted;
         } else {
-            order = SAMFileHeader.SortOrder.unsorted;
+            return headers.iterator().next().getSortOrder();
         }
-        return order;
     }
 
     /**
