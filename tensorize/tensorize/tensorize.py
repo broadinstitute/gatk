@@ -5,9 +5,9 @@ import apache_beam as beam
 import h5py
 from apache_beam import Pipeline
 from apache_beam.options.pipeline_options import PipelineOptions
-from tensorize.defines import TENSOR_EXT, GCS_BUCKET
+from tensorize.defines import TENSOR_EXT, GCS_BUCKET, FIELD_TYPE, DATASET
 
-from .utils import count_ones, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket, get_field_type
+from .utils import count_ones, _dataset_name_from_meaning, _to_float_or_false, get_gcs_bucket
 
 
 def example(pipeline_options: PipelineOptions, output_file: str):
@@ -72,23 +72,46 @@ def example(pipeline_options: PipelineOptions, output_file: str):
 
 
 def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str):
-    # TODO: Don't hardcode LIMIT, etc. in the query
-    # limit = 450
-    query = """
-        SELECT d.field, d.valuetype, p_sub_f_c.meaning, p_sub_f_c.sample_id, p_sub_f_c.fieldid, p_sub_f_c.instance, p_sub_f_c.array_idx, p_sub_f_c.value FROM
+    categorical_query = """
+        SELECT c.meaning, p_f_d.sample_id, p_f_d.fieldid, p_f_d.field, p_f_d.instance, p_f_d.array_idx, p_f_d.value
+        FROM
         (
-            SELECT c.meaning, p_sub.sample_id, p_sub.fieldid, p_sub.instance, p_sub.array_idx, p_sub.value FROM
-                (
-                    SELECT p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id FROM `ukbb_dev.phenotype` p
-                    INNER JOIN (SELECT * FROM `shared_data.tensorization_fieldids`) f
-                    ON p.fieldid = f.fieldid
-                ) AS p_sub
-            JOIN `ukbb_dev.coding` c
-            ON c.coding=p_sub.value AND c.coding_file_id=p_sub.coding_file_id
-        ) AS p_sub_f_c
-        JOIN `ukbb_dev.dictionary` d
-        ON p_sub_f_c.fieldid = d.fieldid"""
-    
+            SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
+            FROM `ukbb_dev.phenotype` p
+            INNER JOIN 
+            (
+              SELECT d.fieldid, d.field
+              FROM `shared_data.tensorization_fieldids` f
+              INNER JOIN `ukbb_dev.dictionary` d
+              ON f.fieldid = d.fieldid
+              WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
+            ) AS f_d
+            ON f_d.fieldid = p.fieldid
+        ) AS p_f_d
+        INNER JOIN `ukbb_dev.coding` c
+        ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id"""
+
+    continuous_query = """
+        SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
+        FROM `ukbb_dev.phenotype` p
+        INNER JOIN 
+        (
+          SELECT d.fieldid, d.field
+          FROM `shared_data.tensorization_fieldids` f
+          INNER JOIN `ukbb_dev.dictionary` d
+          ON f.fieldid = d.fieldid
+          WHERE d.valuetype IN ('Continuous', 'Integer')
+        ) AS f_d
+        ON f_d.fieldid = p.fieldid"""
+
+    query = None
+    if FIELD_TYPE == 'categorical':
+        query = categorical_query
+    elif FIELD_TYPE == 'continuous':
+        query = continuous_query
+    else:
+        raise ValueError("Can tensorize only categorical or continuous fields, got ", FIELD_TYPE)
+
     bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
 
     # Query table in BQ
@@ -134,20 +157,18 @@ def write_tensor_from_sql(sampleid_to_rows, output_path):
                     instance = row['instance']
                     array_idx = row['array_idx']
                     value = row['value']
-                    value_type = row['valuetype']
-                    meaning = row['meaning']
-
-                    field_type = get_field_type(value_type)
 
                     dataset_name = None
-                    if field_type == 'categorical':
+                    if FIELD_TYPE == 'categorical':
+                        meaning = row['meaning']
                         dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
-                    elif field_type == 'continuous':
+                    elif FIELD_TYPE == 'continuous':
                         dataset_name = _dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
+                    else:
+                        continue
 
-                    if dataset_name is not None:
-                        float_value = _to_float_or_false(value)
-                        if float_value is not False:
+                    float_value = _to_float_or_false(value)
+                    if float_value is not False:
                             hd5.create_dataset(dataset_name, data=[float_value])
                     else:
                         logging.warning("Cannot cast to float from '{}' for field id '{}' and sample id '{}'".format(value, field_id, sample_id))

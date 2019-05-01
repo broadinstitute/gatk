@@ -28,12 +28,3 @@ def count_ones(word_ones):
 def get_gcs_bucket(bucket_name: str) -> Bucket:
     gcs_client = storage.Client()
     return gcs_client.get_bucket(bucket_name)
-
-
-def get_field_type(value_type: str) -> str:
-    if value_type == 'Categorical single' or value_type == 'Categorical multiple':
-        return 'categorical'
-    elif value_type == 'Continuous' or value_type == 'Integer':
-        return 'continuous'
-    else:
-        return value_type
