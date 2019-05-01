@@ -54,12 +54,33 @@ public final class VariantsSparkSink {
         writeVariants(ctx, outputFile, variants, header, writeTabixIndex, true);
     }
 
+    /**
+     * Write variants to the given output file in VCF format with the given header. Note that writing sharded output is not supported.
+     * @param ctx the JavaSparkContext
+     * @param outputFile path to the output VCF
+     * @param variants variants to write
+     * @param header the header to put at the top of the output file
+     * @param writeTabixIndex whether to write a tabix index (bgzipped VCF only)
+     * @param sortVariantsToHeader whether to sort variants to be consistent with the header
+     * @throws IOException if an error occurs while writing
+     */
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
-            final VCFHeader header, final boolean writeTabixIndex, final boolean sort) throws IOException {
-        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0, writeTabixIndex, true);
+            final VCFHeader header, final boolean writeTabixIndex, final boolean sortVariantsToHeader) throws IOException {
+        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0, writeTabixIndex, sortVariantsToHeader);
     }
 
+    /**
+     * Write variants to the given output file in VCF format with the given header. Note that writing sharded output is not supported.
+     * @param ctx the JavaSparkContext
+     * @param outputFile path to the output VCF
+     * @param variants variants to write
+     * @param header the header to put at the top of the output file
+     * @param writeGvcf whether to write GVCF output
+     * @param gqPartitions the GQ partitions for GVCF output
+     * @param defaultPloidy the default ploidy for GVCF output
+     * @throws IOException if an error occurs while writing
+     */
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy) throws IOException {
@@ -72,17 +93,21 @@ public final class VariantsSparkSink {
      * @param outputFile path to the output VCF
      * @param variants variants to write
      * @param header the header to put at the top of the output file
+     * @param writeGvcf whether to write GVCF output
+     * @param gqPartitions the GQ partitions for GVCF output
+     * @param defaultPloidy the default ploidy for GVCF output
      * @param numReducers the number of reducers to use when writing a single file. A value of zero indicates that the default
      *                    should be used.
      * @param writeTabixIndex whether to write a tabix index (bgzipped VCF only)
+     * @param sortVariantsToHeader whether to sort variants to be consistent with the header
      * @throws IOException if an error occurs while writing
      */
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy,
-            final int numReducers, final boolean writeTabixIndex, final boolean sort) throws IOException {
+            final int numReducers, final boolean writeTabixIndex, final boolean sortVariantsToHeader) throws IOException {
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
-        writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers, writeTabixIndex, sort);
+        writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers, writeTabixIndex, sortVariantsToHeader);
     }
 
     private static void writeVariantsSingle(
