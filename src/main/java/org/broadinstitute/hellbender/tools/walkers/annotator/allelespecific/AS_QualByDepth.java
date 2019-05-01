@@ -52,7 +52,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY); }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_QUAL_KEY; }
+    public String getRawKeyName() { return GATKVCFConstants.AS_QUAL_APPROX;} //GATKVCFConstants.AS_QUAL_KEY; }
 
 
     @Override
@@ -125,7 +125,6 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
 
         List<Double> alleleQualList = new ArrayList<>();
         if (vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
-
             //Parse the VC's allele-specific qual values
             List<Object> alleleQualObjList = vc.getAttributeAsList(GATKVCFConstants.AS_QUAL_KEY);
             if (alleleQualObjList.size() != vc.getNAlleles() - 1) {
@@ -136,8 +135,14 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
             }
         }
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
-            String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "");
+            String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
             String[] values = asQuals.split("|");
+            if (values.length != vc.getNAlleles()) {
+                throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
+            }
+            for (int i = 1; i < vc.getNAlleles(); i++) {
+                alleleQualList.add(Double.parseDouble(values[i]));
+            }
         }
 
 

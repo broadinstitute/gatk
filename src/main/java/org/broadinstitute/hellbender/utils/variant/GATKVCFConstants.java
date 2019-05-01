@@ -16,6 +16,7 @@ public final class GATKVCFConstants {
     public static final String SB_TABLE_KEY = "SB_TABLE";
     public static final String GENOTYPE_QUALITY_BY_ALLELE_BALANCE = "ABGQ";
     public static final String GENOTYPE_QUALITY_BY_ALT_CONFIDENCE = "ALTGQ";
+    public static final String AS_QUAL_APPROX = "AS_QUALapprox";
 
     public static final String CONTIG_ID_KEY =                      "ID";
     public static final String CONTIG_LENGTH_KEY =                  "length";
