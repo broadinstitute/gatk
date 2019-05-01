@@ -191,7 +191,7 @@ public class ReferenceConfidenceModel {
         final SimpleInterval refSpan = activeRegion.getSpan();
         // Ensuring that if the underlying reads have any cached indel informativeness data it gets purged before calling the next region.
         if (USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES) {
-            readLikelihoods.sampleReads(0).forEach(r -> r.setTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME, null));
+            readLikelihoods.sampleReads(0).forEach(r -> r.clearTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME));
         }
         final List<ReadPileup> refPileups = AssemblyBasedCallerUtils.getPileupsOverReference(activeRegion.getHeader(), refSpan, readLikelihoods, samples);
         final byte[] ref = refHaplotype.getBases();
