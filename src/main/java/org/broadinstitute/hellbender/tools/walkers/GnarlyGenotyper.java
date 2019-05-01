@@ -78,7 +78,7 @@ import java.util.stream.IntStream;
         oneLineSummary = "Perform \"quick and dirty\" joint genotyping on one or more samples pre-called with HaplotypeCaller",
         programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
-public final class GnarlyGenotyper extends VariantWalker {
+public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
 
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
@@ -90,6 +90,11 @@ public final class GnarlyGenotyper extends VariantWalker {
     private double SNP_QUAL_THRESHOLD;
 
     private static final int ASSUMED_PLOIDY = GATKVariantContextUtils.DEFAULT_PLOIDY;
+
+    // the annotation engine
+    private VariantAnnotatorEngine annotationEngine;
+
+    private ReferenceConfidenceVariantContextMerger merger;
 
     private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
 
@@ -207,9 +212,9 @@ public final class GnarlyGenotyper extends VariantWalker {
             }
         }
 
-        if(IOUtils.isGenomicsDBPath(getDrivingVariantsFeatureInput().getFeaturePath())) {
+        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, false);
 
-        }
+        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), false);
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         //allASAnnotations.addAll(reflections.getSubTypesOf(InfoFieldAnnotation.class));  //we don't want AS_InbreedingCoeff
@@ -266,15 +271,17 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+    public void apply(List<VariantContext> variantContexts, ReferenceContext ref) {
+        final VariantContext mergedVC = merger.merge(variantContexts, loc, keepAllSites ? ref.getBase() : null, !keepAllSites, false);
+
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
         //builder gets the finalized annotations and dbBuilder gets the raw annotations for the database
-        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
+        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(mergedVC));
 
-        SimpleInterval variantStart = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getStart());
+        SimpleInterval variantStart = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
-        if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant)
-                || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
+        if ( !mergedVC.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(mergedVC)
+                || mergedVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
                 || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             if (keepAllSites) {
                 builder.filter(GATKVCFConstants.MONOMORPHIC_FILTER_NAME);
@@ -284,12 +291,12 @@ public final class GnarlyGenotyper extends VariantWalker {
         }
 
         //return early if variant doesn't meet QUAL threshold
-        if (!variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
+        if (!mergedVC.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
             warning.warn("Variant will not be output because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY + "key assigned by the ReblockGVCFs tool -- if the input did come from ReblockGVCFs, check the GenomicsDB vidmap.json annotation info");
         }
-        final double QUALapprox = variant.getAttributeAsDouble(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0.0);
+        final double QUALapprox = mergedVC.getAttributeAsDouble(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0.0);
         //TODO: do we want to apply the indel prior to mixed sites?
-        final boolean isIndel = variant.getReference().length() > 1 || variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
+        final boolean isIndel = mergedVC.getReference().length() > 1 || mergedVC.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
             if (keepAllSites) {
@@ -301,10 +308,10 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
         //vcfBuilder gets the finalized annotations and annotationDBBuilder gets the raw annotations for the database
-        final VariantContextBuilder vcfBuilder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
-        final VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
+        final VariantContextBuilder vcfBuilder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(mergedVC));
+        final VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(mergedVC);
 
-        final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
+        final int variantDP = mergedVC.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
         double QD = QUALapprox / (double)variantDP;
         vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
 
@@ -312,12 +319,12 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         final List<Allele> targetAlleles;
         final boolean removeNonRef;
-        if (variant.getAlleles().contains(Allele.NON_REF_ALLELE)) { //Hail combine output doesn't give NON_REFs
-            targetAlleles = variant.getAlleles().subList(0, variant.getAlleles().size() - 1);
+        if (mergedVC.getAlleles().contains(Allele.NON_REF_ALLELE)) { //Hail combine output doesn't give NON_REFs
+            targetAlleles = mergedVC.getAlleles().subList(0, mergedVC.getAlleles().size() - 1);
             removeNonRef = true;
         }
         else {
-            targetAlleles = variant.getAlleles();
+            targetAlleles = mergedVC.getAlleles();
             removeNonRef = false;
         }
 
@@ -329,9 +336,9 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         //Get AC and SB annotations
         //remove the NON_REF allele and update genotypes if necessary
-        final GenotypesContext calledGenotypes = iterateOnGenotypes(variant, targetAlleles, alleleCountMap, SBsum, removeNonRef, SUMMARIZE_PLs);
+        final GenotypesContext calledGenotypes = iterateOnGenotypes(mergedVC, targetAlleles, alleleCountMap, SBsum, removeNonRef, SUMMARIZE_PLs);
         Integer numCalledAlleles = 0;
-        if (variant.hasGenotypes()) {
+        if (mergedVC.hasGenotypes()) {
             for (final Allele a : targetAlleles) {
                 numCalledAlleles += alleleCountMap.get(a);
             }
@@ -351,17 +358,17 @@ public final class GnarlyGenotyper extends VariantWalker {
             annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
             annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
         } else {
-            if (variant.hasAttribute(GATKVCFConstants.SB_TABLE_KEY)) {
-                SBsum = GATKProtectedVariantContextUtils.getAttributeAsIntArray(variant, GATKVCFConstants.SB_TABLE_KEY, () -> null, 0);
+            if (mergedVC.hasAttribute(GATKVCFConstants.SB_TABLE_KEY)) {
+                SBsum = GATKProtectedVariantContextUtils.getAttributeAsIntArray(mergedVC, GATKVCFConstants.SB_TABLE_KEY, () -> null, 0);
             }
-            annotationDBBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, variant.getAttribute(VCFConstants.ALLELE_COUNT_KEY));
-            annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, variant.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
-            annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, variant.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, mergedVC.getAttribute(VCFConstants.ALLELE_COUNT_KEY));
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, mergedVC.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
+            annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, mergedVC.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
         }
-        List<Integer> gtCounts = variant.getAttributeAsIntList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, 0);
+        List<Integer> gtCounts = mergedVC.getAttributeAsIntList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, 0);
         final int refCount = numCalledAlleles/2 - gtCounts.get(1) - gtCounts.get(2);
         gtCounts.set(0, refCount);
-        Pair<Integer, Double> eh = ExcessHet.calculateEH(variant, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles/2);
+        Pair<Integer, Double> eh = ExcessHet.calculateEH(mergedVC, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles/2);
         vcfBuilder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.4f", eh.getRight()));
         vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
         vcfBuilder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
@@ -377,11 +384,11 @@ public final class GnarlyGenotyper extends VariantWalker {
                 InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
                 if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                     ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
-                    if (variant.hasAttribute(ann.getRawKeyName())) {
+                    if (mergedVC.hasAttribute(ann.getRawKeyName())) {
                         if (!stripASAnnotations) {
-                            final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
+                            final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), mergedVC);
                             finalValue.forEach((key, value) -> vcfBuilder.attribute(key, value));
-                            annotationDBBuilder.attribute(ann.getRawKeyName(), variant.getAttribute(ann.getRawKeyName()));
+                            annotationDBBuilder.attribute(ann.getRawKeyName(), mergedVC.getAttribute(ann.getRawKeyName()));
                         }
                     }
                 }
@@ -396,7 +403,7 @@ public final class GnarlyGenotyper extends VariantWalker {
                 InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
                 if (annotation instanceof AS_StandardAnnotation  && annotation instanceof ReducibleAnnotation) {
                     ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
-                    if (variant.hasAttribute(ann.getRawKeyName())) {
+                    if (mergedVC.hasAttribute(ann.getRawKeyName())) {
                         vcfBuilder.rmAttribute(ann.getRawKeyName());
                     }
                 }
@@ -405,8 +412,8 @@ public final class GnarlyGenotyper extends VariantWalker {
                 throw new IllegalStateException("Something went wrong: ", e);
             }
         }
-        if (variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY) && variant.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
-            List<Integer> dps = Arrays.asList(variant.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "")
+        if (mergedVC.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY) && mergedVC.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
+            List<Integer> dps = Arrays.asList(mergedVC.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "")
                     .split("|")).stream().map(Integer::parseInt).collect(Collectors.toList());
             
         }
