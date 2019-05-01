@@ -58,7 +58,7 @@ public final class PrintVariantsSpark extends VariantWalkerSpark {
     protected void processVariants(JavaRDD<VariantWalkerContext> rdd, JavaSparkContext ctx) {
         try {
             VariantsSparkSink.writeVariants(ctx, output, rdd.map(VariantWalkerContext::getVariant), getHeaderForVariants(),
-                    createOutputVariantIndex);
+                    createOutputVariantIndex, false);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
         }

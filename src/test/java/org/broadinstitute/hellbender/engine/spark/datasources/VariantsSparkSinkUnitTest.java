@@ -115,7 +115,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     public void testBrokenGVCFCasesAreDisallowed(boolean writeGvcf, String extension) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         VariantsSparkSink.writeVariants(ctx, createTempFile("test", extension).toString(), null,
-                new VCFHeader(), writeGvcf, Arrays.asList(1, 2, 4, 5), 2, 1, false);
+                new VCFHeader(), writeGvcf, Arrays.asList(1, 2, 4, 5), 2, 1, false, false);
     }
 
     @DataProvider
@@ -142,7 +142,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
 
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final File output = createTempFile(outputFileName, extension);
-        VariantsSparkSink.writeVariants(ctx, output.toString(), ctx.parallelize(vcs), getHeader(), writeGvcf, Arrays.asList(100), 2, 1, true);
+        VariantsSparkSink.writeVariants(ctx, output.toString(), ctx.parallelize(vcs), getHeader(), writeGvcf, Arrays.asList(100), 2, 1, true, true);
 
         checkFileExtensionConsistentWithContents(output.toString(), true);
 
