@@ -419,6 +419,7 @@ public final class ReadThreadingAssembler {
         chainPruner.pruneLowWeightChains(rtgraph);
 
         // sanity check: make sure there are no cycles in the graph
+        // TODO determine how to handle this...
         if ( rtgraph.hasCycles() ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
@@ -426,6 +427,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
+        // TODO this seems maybe better?
         // sanity check: make sure the graph had enough complexity with the given kmer
         if ( ! allowLowComplexityGraphs && rtgraph.isLowComplexity() ) {
             if ( debug ) {
@@ -434,10 +436,10 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        return getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
+        return getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner, reads);
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final Iterable<GATKRead> reads) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
@@ -445,6 +447,13 @@ public final class ReadThreadingAssembler {
         if ( recoverDanglingBranches ) {
             rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
             rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+        }
+
+        if (readThreader != null) {
+            ReadThreader.addrtGraph();
+            for (GATKRead read : reads) {
+                readThreader.threadRead(read);
+            }
         }
 
         // remove all heading and trailing paths
@@ -571,5 +580,11 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
+    }
+
+    //TODO this is just holding logic for right now
+    private class ReadTreader {
+
+        void addRTGraph
     }
 }

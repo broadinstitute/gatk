@@ -311,7 +311,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         }
 
         // determine the kmer size we'll use, and capture the set of nonUniques for that kmer size
-        final NonUniqueResult result = determineKmerSizeAndNonUniques(kmerSize, kmerSize);
+        final NonUniqueResult result = determineKmerSizeAndNonUniques(kmerSize);
         nonUniqueKmers = result.nonUniques;
 
         if ( DEBUG_NON_UNIQUE_CALC ) {
@@ -334,7 +334,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         }
 
         // clear
-        pending.clear();
+//        pending.clear();
         alreadyBuilt = true;
         for (final MultiDeBruijnVertex v : uniqueKmers.values()) {
             v.setAdditionalInfo(v.getAdditionalInfo() + '+');
@@ -996,37 +996,35 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param maxKmerSize the maximum kmer size to consider
      * @return a non-null NonUniqueResult
      */
-    private NonUniqueResult determineKmerSizeAndNonUniques(final int minKmerSize, final int maxKmerSize) {
+    private NonUniqueResult determineKmerSizeAndNonUniques(final int kmerSize) {
         final Collection<SequenceForKmers> withNonUniques = getAllPendingSequences();
         final Set<Kmer> nonUniqueKmers = new HashSet<>();
 
         // go through the sequences and determine which kmers aren't unique within each read
-        for (int kmerSize = minKmerSize ; kmerSize <= maxKmerSize; kmerSize++) {
-            // clear out set of non-unique kmers
-            nonUniqueKmers.clear();
+        // clear out set of non-unique kmers
+        nonUniqueKmers.clear();
 
-            // loop over all sequences that have non-unique kmers in them from the previous iterator
-            final Iterator<SequenceForKmers> it = withNonUniques.iterator();
-            while ( it.hasNext() ) {
-                final SequenceForKmers sequenceForKmers = it.next();
+        // loop over all sequences that have non-unique kmers in them from the previous iterator
+        final Iterator<SequenceForKmers> it = withNonUniques.iterator();
+        while ( it.hasNext() ) {
+            final SequenceForKmers sequenceForKmers = it.next();
 
-                // determine the non-unique kmers for this sequence
-                final Collection<Kmer> nonUniquesFromSeq = determineNonUniqueKmers(sequenceForKmers, kmerSize);
-                if ( nonUniquesFromSeq.isEmpty() ) {
-                    // remove this sequence from future consideration
-                    it.remove();
-                } else {
-                    // keep track of the non-uniques for this kmerSize, and keep it in the list of sequences that have non-uniques
-                    nonUniqueKmers.addAll(nonUniquesFromSeq);
-                }
-            }
-
-            if ( nonUniqueKmers.isEmpty() )
-                // this kmerSize produces no non-unique sequences, so go ahead and use it for our assembly
-            {
-                break;
+            // determine the non-unique kmers for this sequence
+            final Collection<Kmer> nonUniquesFromSeq = determineNonUniqueKmers(sequenceForKmers, kmerSize);
+            if ( nonUniquesFromSeq.isEmpty() ) {
+                // remove this sequence from future consideration
+                it.remove();
+            } else {
+                // keep track of the non-uniques for this kmerSize, and keep it in the list of sequences that have non-uniques
+                nonUniqueKmers.addAll(nonUniquesFromSeq);
             }
         }
+//
+//            if ( nonUniqueKmers.isEmpty() )
+//                // this kmerSize produces no non-unique sequences, so go ahead and use it for our assembly
+//            {
+//                break;
+//            }
 
         // necessary because the loop breaks with kmerSize = max + 1
         return new NonUniqueResult(nonUniqueKmers);
