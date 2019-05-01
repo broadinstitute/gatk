@@ -81,11 +81,12 @@ development, for example. You can do this by using a local backend that
 disables Docker.
 
 You also need to change the WDL inputs in the JSON file for the `gatk`
-binary, and the Spark JAR:
+binary, and the Spark JAR, like this (substitute the path on your local
+system to the GATK):
 
 ```
-  "ReadsPipelineSparkWorkflow.gatk": "../../gatk",
-  "ReadsPipelineSparkWorkflow.gatk_spark_jar": "../../build/libs/gatk-spark.jar",
+  "ReadsPipelineSparkWorkflow.gatk": "/path/to/gatk/gatk",
+  "ReadsPipelineSparkWorkflow.gatk_spark_jar": "/path/to/gatk/build/libs/gatk-spark.jar",
 ```
 
 Then run Cromwell using a special configuration file that disables
