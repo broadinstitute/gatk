@@ -108,8 +108,8 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.VARIANT_DEPTH_KEY, "sum");
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, "element_wise_sum");
-        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                "AS_RAW_MQ", "element_wise_float_sum");
+        //vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+        //        GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "element_wise_float_sum");
 
 
         if (vidMapPB != null) {
@@ -220,10 +220,10 @@ public class GenomicsDBUtils {
                     GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
-            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+            //lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
+            //infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
             infoBuilder.addVcfDelimiter("|");
-            infoBuilder.addVcfDelimiter(",");
+            //infoBuilder.addVcfDelimiter(",");
 
             if (newCombineOperation.equals("histogram_sum")) {
                 //Each element of the vector is a tuple <float, int>
