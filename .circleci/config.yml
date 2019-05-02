@@ -80,6 +80,8 @@ jobs:
        TEST_TYPE=unit
     description: "Run tests in the prebuilt docker"
     machine: true
+    requires: # test1 will not run until the `build` job is completed.
+      - buildDocker
     steps:
       - attach_workspace:
           at: .
