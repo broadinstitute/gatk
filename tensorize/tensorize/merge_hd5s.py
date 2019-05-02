@@ -3,17 +3,22 @@ import logging
 import os
 import h5py
 
-""" This script copies the hd5 group specified as 'group' from all hd5 files within the 'src'
-    directory to the same-named files within the 'dest' directory. If the destination directory
-    and/or file(s) don't exist, it creates them. If any of the destination files contains the specified
-    group already, it errors out.
+
+""" This script copies the hd5 groups specified as 'groups' from all hd5 files within the 'sources'
+    directories to the same-named files within the 'destination' directory.
+    
+    Each source directory in 'sources' must contain the group in 'groups', respectively.
+    
+    If the destination directory and/or file(s) don't exist, it creates them.
+    
+    If any of the destination files contains the specified group already, it errors out.
     
     Example command line:
     python .merge_hd5s.py \
-        --group continuous \
-        --src /path/to/src/continuous/tensor/directory \
+        --groups continuous categorical \
+        --sources /path/to/src/continuous/tensor/directory /path/to/src/categorical/tensor/directory \
         --dest /path/to/output/directory \
-        --logging_level DEBUG  
+        --logging_level DEBUG
 """
 
 TENSOR_EXT = '.hd5'
@@ -64,16 +69,20 @@ def copy_groups(group_name: str, src_dir: str, dest_dir: str):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--src', help='Source directory with hd5 files')
-    parser.add_argument('--dest', help='Destination directory to copy hd5 group to')
-    parser.add_argument('--group', default='categorical', help='hd5 group to copy',
-                        choices=['categorical', 'continuous'])
+
+    parser.add_argument('--sources', nargs='+', help='List of source directories with hd5 files')
+    parser.add_argument('--destination', help='Destination directory to copy hd5 groups to')
+    parser.add_argument('--groups', nargs='+')
     parser.add_argument("--logging_level", default='INFO', help="Logging level",
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+
     logging.getLogger().setLevel(args.logging_level)
-    copy_groups(args.group, args.src, args.dest)
+
+    for group, source in zip(args.groups, args.sources):
+        copy_groups(group, source, args.destination)
