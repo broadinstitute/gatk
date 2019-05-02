@@ -42,6 +42,7 @@ jobs:
       - run:
           name: "Build Docker"
           command: |
+             ./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
               ZIPPATHGATK=$( find ./build -name "*bundle-files-collected" )
               mv ${ZIPPATHGATK} ./unzippedJar
               ZIPPATHPYTHON=$( find ./unzippedJar -name "gatkPython*.zip" )
@@ -80,14 +81,13 @@ jobs:
        TEST_TYPE=unit
     description: "Run tests in the prebuilt docker"
     machine: true
-    requires: # test1 will not run until the `build` job is completed.
-      - buildDocker
     steps:
       - attach_workspace:
           at: .
       - run:
           description: "Run the tests"
           command: |
+            TEST_TYPE=
             echo ${TEST_TYPE}
             sudo mkdir -p build/reports/
             sudo chmod -R a+w build/reports/
