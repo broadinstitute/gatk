@@ -78,12 +78,17 @@ jobs:
   runTestInDocker:
     description: "Run tests in the prebuilt docker"
     machine: true
+    parameters:
+      test-type:
+        type: env_var_name
+        default: TEST_TYPE
     steps:
       - attach_workspace:
           at: .
       - run:
           description: "Run the tests"
           command: |
+            TEST_TYPE=${<< parameters.test-type >>}
             echo ${TEST_TYPE}
             sudo mkdir -p build/reports/
             sudo chmod -R a+w build/reports/
@@ -98,32 +103,27 @@ workflows:
       - buildDocker
       - downloadLFSFiles
       - runTestInDocker:
-          environment:
-            TEST_TYPE=unit
+          test-type: unit
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
-          environment:
-            TEST_TYPE=variantcalling
+          test-type: variantcalling
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
-          environment:
-            TEST_TYPE=integration
+          test-type: integration
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
-          environment:
-            TEST_TYPE=python
+          test-type: python
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
-          environment:
-            TEST_TYPE=cloud
+          test-type: cloud
           requires:
           - buildDocker
           - downloadLFSFiles
