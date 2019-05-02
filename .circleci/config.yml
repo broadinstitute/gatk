@@ -76,10 +76,11 @@ jobs:
           command: ./gradlew test
 
   runTestInDocker:
-    environment:
-       TEST_TYPE=unit
     description: "Run tests in the prebuilt docker"
     machine: true
+    requires:
+    - buildDocker
+    - downloadLFSFiles
     steps:
       - attach_workspace:
           at: .
@@ -99,6 +100,17 @@ workflows:
       - buildDocker
       - downloadLFSFiles
       - runTestInDocker:
-          requires:
-            - buildDocker
-            - downloadLFSFiles
+          environment:
+            TEST_TYPE=unit
+      - runTestInDocker:
+          environment:
+            TEST_TYPE=variantcalling
+      - runTestInDocker:
+          environment:
+            TEST_TYPE=integration
+      - runTestInDocker:
+          environment:
+            TEST_TYPE=python
+      - runTestInDocker:
+          environment:
+            TEST_TYPE=cloud
