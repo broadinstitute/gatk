@@ -1,0 +1,6 @@
+h5py
+pydot
+keras==2.2.4
+keras-tqdm
+pydicom
+hyperopt
