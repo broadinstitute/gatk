@@ -1,36 +1,43 @@
+import argparse
 import logging
 import os
 import h5py
 
-# TODO: Use cmdline args for file paths and log level
-CATEGORICAL_TENSORS_SRC_DIR = '/Users/kyuksel/ml4cvd/tensors/dataflow_tensors/tensors_ukbb_dev_categorical'
-CONTINUOUS_TENSORS_SRC_DIR = '/Users/kyuksel/ml4cvd/tensors/dataflow_tensors/tensors_ukbb_dev_continuous'
-DEST_DIR = '/Users/kyuksel/ml4cvd/tensors/dataflow_tensors/tensors_ukbb_dev_categorical_continuous'
+""" This script copies the hd5 group specified as 'group' from all hd5 files within the 'src'
+    directory to the same-named files within the 'dest' directory. If the destination directory
+    and/or file(s) don't exist, it creates them. If any of the destination files contains the specified
+    group already, it errors out.
+    
+    Example command line:
+    python .merge_hd5s.py \
+        --group continuous \
+        --src /path/to/src/continuous/tensor/directory \
+        --dest /path/to/output/directory \
+        --logging_level DEBUG  
+"""
 
-CATEGORICAL_GROUP_NAME = '/categorical'
-CONTINUOUS_GROUP_NAME = '/continuous'
-
-LOG_LEVEL = logging.DEBUG
 TENSOR_EXT = '.hd5'
 
 
 def _copy_group(group_name: str, src_file_path: str, dest_file_handle: h5py.File):
     with h5py.File(src_file_path, 'r') as f_src:
+        group = f"/{group_name}"
+
         # Get the name of the parent for the group we want to copy
-        group_path = f_src[group_name].parent.name
+        group_path = f_src[group].parent.name
 
         # If the group doesn't exist in the destination, create it (along with parents, if any)
         group_id = dest_file_handle.require_group(group_path)
 
         # Copy source:/categorical to dest:/categorical
-        f_src.copy(group_name, group_id, name=group_name)
+        f_src.copy(group, group_id, name=group)
 
-        msg = "Copied hd5 group {} from source {} to {}... ".format(group_name, src_file_path, dest_file_handle.filename)
+        msg = f"Copied hd5 group '{group}' from source '{src_file_path}' to '{dest_file_handle.filename}'..."
         logging.debug(msg)
 
 
 def copy_groups(group_name: str, src_dir: str, dest_dir: str):
-    msg_attempting = "Attempting to copy hd5 files from {} to {}... ".format(src_dir, dest_dir)
+    msg_attempting = f"Attempting to copy hd5 files from '{src_dir}' to '{dest_dir}'... "
     logging.debug(msg_attempting)
 
     if not os.path.exists(src_dir):
@@ -51,12 +58,22 @@ def copy_groups(group_name: str, src_dir: str, dest_dir: str):
         else:
             continue
 
-    msg_succeeded = "Successfully copied the hd5 files from {} to {}... ".format(src_dir, dest_dir)
+    msg_succeeded = f"Successfully copied the group '{group_name}' from hd5 files in '{src_dir}' to '{dest_dir}'... "
     logging.debug(msg_succeeded)
 
 
-if __name__ == "__main__":
-    logging.getLogger().setLevel(LOG_LEVEL)
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--src', help='Source directory with hd5 files')
+    parser.add_argument('--dest', help='Destination directory to copy hd5 group to')
+    parser.add_argument('--group', default='categorical', help='hd5 group to copy',
+                        choices=['categorical', 'continuous'])
+    parser.add_argument("--logging_level", default='INFO', help="Logging level",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    return parser.parse_args()
 
-    copy_groups(CATEGORICAL_GROUP_NAME, CATEGORICAL_TENSORS_SRC_DIR, DEST_DIR)
-    copy_groups(CONTINUOUS_GROUP_NAME, CONTINUOUS_TENSORS_SRC_DIR, DEST_DIR)
+
+if __name__ == "__main__":
+    args = parse_args()
+    logging.getLogger().setLevel(args.logging_level)
+    copy_groups(args.group, args.src, args.dest)
