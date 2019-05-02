@@ -42,7 +42,6 @@ jobs:
       - run:
           name: "Build Docker"
           command: |
-             ./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
               ZIPPATHGATK=$( find ./build -name "*bundle-files-collected" )
               mv ${ZIPPATHGATK} ./unzippedJar
               ZIPPATHPYTHON=$( find ./unzippedJar -name "gatkPython*.zip" )
@@ -87,11 +86,9 @@ jobs:
       - run:
           description: "Run the tests"
           command: |
-            TEST_TYPE=
             echo ${TEST_TYPE}
             sudo mkdir -p build/reports/
             sudo chmod -R a+w build/reports/
-            cp scripts/docker/dockertest.gradle .
             docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
             TEST_EXIT_VALUE=$?
             sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
