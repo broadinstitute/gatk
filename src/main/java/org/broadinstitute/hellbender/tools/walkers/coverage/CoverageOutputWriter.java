@@ -490,9 +490,7 @@ public class CoverageOutputWriter implements Closeable {
 
         // Construct the header for the histogram output
         List<String> headerColumns = Lists.newArrayList("Source_of_reads");
-//        if ( ! outputFormat.equals("rTable")) {TODO what in the worlds even RTable
-//            hBuilder.append("Source_of_reads");
-//        }
+
         headerColumns.add("from_0_to_"+leftEnds[0]+")");
         for ( int i = 1; i < leftEnds.length; i++ ) {
             headerColumns.add("from_"+leftEnds[i - 1]+"_to_"+leftEnds[i]+")");

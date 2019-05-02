@@ -84,6 +84,11 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
     private Map<Locatable, DepthOfCoveragePartitionedDataStore> activeCoveragePartitioners = new HashMap<>();
     private Map<DoCOutputType.Partition, int[][]> perIntervalStatisticsAggrigationByPartitioning = new HashMap<>();
 
+    // PartitionDataStore corresponding to every base traversed by the tool
+    private DepthOfCoveragePartitionedDataStore coverageTotalsForEntireTraversal;
+    // List of all of the samples to be output split by the partition type
+    private Map<DoCOutputType.Partition, List<String>> globalIdentifierMap;
+
     /**
      * Base file name about which to create the coverage information
      */
@@ -227,11 +232,6 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
         return true;
     }
 
-    // PartitionDataStore corresponding to every base traversed by the tool
-    private DepthOfCoveragePartitionedDataStore coverageTotalsForEntireTraversal;
-    // List of all of the samples to be output split by the partition type
-    private Map<DoCOutputType.Partition, List<String>> globalIdentifierMap;
-
     @Override
     public boolean includeDeletions() {
         return includeDeletions && ! ignoreDeletionSites;
@@ -307,13 +307,16 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
         }
     }
 
+    /**
+     * Ensure that we are tracking the newly provided interval with per-locus data
+     *
+     * @param activeInterval Locatable provided to the walker to be initialized
+     */
     public void onIntervalStart(Locatable activeInterval) {
         DepthOfCoveragePartitionedDataStore partitioner = createCoveragePartitioner();
         //NOTE: we don't populate perIntervalStatisticsAggrigationByPartitioning here because that gets populated on the fly later
         activeCoveragePartitioners.put(activeInterval, partitioner);
     }
-
-    // TODO this should have logic for handling if the gene didn't get completely covered
 
     /**
      * When this method is called, we expect at some point in the past onIntervalStart() was called on the same Locatable
