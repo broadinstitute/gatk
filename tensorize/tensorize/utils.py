@@ -13,16 +13,11 @@ def _dataset_name_from_meaning(group: str, fields: List[str]) -> str:
     return group + HD5_GROUP_CHAR + joined
 
 
-def _to_float_or_false(s):
+def to_float_or_false(s):
     try:
         return float(s)
     except ValueError:
         return False
-
-
-def count_ones(word_ones):
-    (word, ones) = word_ones
-    return word, sum(ones)
 
 
 def get_gcs_bucket(bucket_name: str) -> Bucket:

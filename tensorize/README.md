@@ -8,20 +8,16 @@ calculate counts of `coding_file_id` and write them onto a GCS bucket.
     cd ml
 ```
 
-* Activate the necessary branch:
-```
-    git checkout tensorize_with_dataflow
-```
-
 * Create and activate the right Python environment:
 ```
-    conda env create -f env/ml4cvd_osx64_py35.yml
-    source activate ml4cvd_py35
+    conda env create -f env/ml4cvd_osx64_dataflow.yml
+    conda activate ml4cvd_osx64_dataflow
 ```
 
-* Edit `tensorize/tensorize/defines.py` to update the file paths and the run name
+* Edit `tensorize/tensorize/defines.py` to update the fields as described in that file
 
-* Submit the application to Dataflow to run remotely:
+* Run the application to submit the pipeline to Dataflow to be executed remotely provided the
+`RUNNER` in `defines.py` is set to `DataflowRunner`). Set it to `DirectRunner` for local execution.
 ```
     python tensorize/tensorize_main.py
 ```
