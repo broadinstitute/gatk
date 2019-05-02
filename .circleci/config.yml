@@ -78,9 +78,6 @@ jobs:
   runTestInDocker:
     description: "Run tests in the prebuilt docker"
     machine: true
-    requires:
-    - buildDocker
-    - downloadLFSFiles
     steps:
       - attach_workspace:
           at: .
@@ -102,15 +99,30 @@ workflows:
       - runTestInDocker:
           environment:
             TEST_TYPE=unit
+          requires:
+          - buildDocker
+          - downloadLFSFiles
       - runTestInDocker:
           environment:
             TEST_TYPE=variantcalling
+          requires:
+          - buildDocker
+          - downloadLFSFiles
       - runTestInDocker:
           environment:
             TEST_TYPE=integration
+          requires:
+          - buildDocker
+          - downloadLFSFiles
       - runTestInDocker:
           environment:
             TEST_TYPE=python
+          requires:
+          - buildDocker
+          - downloadLFSFiles
       - runTestInDocker:
           environment:
             TEST_TYPE=cloud
+          requires:
+          - buildDocker
+          - downloadLFSFiles
