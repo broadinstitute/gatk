@@ -77,32 +77,34 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str
         FROM
         (
             SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
-            FROM `ukbb_dev.phenotype` p
+            FROM `{}.phenotype` p
             INNER JOIN 
             (
               SELECT d.fieldid, d.field
               FROM `shared_data.tensorization_fieldids` f
-              INNER JOIN `ukbb_dev.dictionary` d
+              INNER JOIN `{}.dictionary` d
               ON f.fieldid = d.fieldid
               WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
             ) AS f_d
             ON f_d.fieldid = p.fieldid
         ) AS p_f_d
-        INNER JOIN `ukbb_dev.coding` c
-        ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id"""
+        INNER JOIN `{}.coding` c
+        ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id
+    """.format(DATASET, DATASET, DATASET)
 
     continuous_query = """
         SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
-        FROM `ukbb_dev.phenotype` p
+        FROM `{}.phenotype` p
         INNER JOIN 
         (
           SELECT d.fieldid, d.field
           FROM `shared_data.tensorization_fieldids` f
-          INNER JOIN `ukbb_dev.dictionary` d
+          INNER JOIN `{}.dictionary` d
           ON f.fieldid = d.fieldid
           WHERE d.valuetype IN ('Continuous', 'Integer')
         ) AS f_d
-        ON f_d.fieldid = p.fieldid"""
+        ON f_d.fieldid = p.fieldid
+    """.format(DATASET, DATASET)
 
     query = None
     if FIELD_TYPE == 'categorical':
