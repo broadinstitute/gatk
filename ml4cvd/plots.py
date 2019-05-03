@@ -4,6 +4,7 @@
 import os
 import math
 import logging
+import hashlib
 import numpy as np
 from collections import Counter, OrderedDict, defaultdict
 
@@ -18,43 +19,52 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
+SUBPLOT_SIZE = 22
+
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon',
                'magenta', 'aquamarine', 'gold', 'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue',
                'orange']
 
 
-def evaluate_predictions(tm, y, test_labels, test_data, plot_title, plot_folder, test_paths=None, max_melt=200000):
+def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
         logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(test_labels[tm.output_name()], axis=0), np.sum(y, axis=0)))
-        performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, title, folder))
+        rocs.append((y, test_labels[tm.output_name()], tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
         melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
         y = y.reshape(melt_shape)[:max_melt]
         y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical() and len(tm.shape) == 3:
         melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
         y = y.reshape(melt_shape)[:max_melt]
         y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
         melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
         y = y.reshape(melt_shape)[:max_melt]
         y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
         logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y.shape, test_labels[tm.output_name()].shape))
+    elif len(tm.shape) > 1:
+        prediction_flat = tm.rescale(y).flatten()
+        truth_flat = tm.rescale(test_labels[tm.output_name()]).flatten()
+        performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
+    elif tm.is_continuous():
+        performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
     else:
-        performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), plot_title, prefix=plot_folder, paths=test_paths))
+        logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
     if tm.name == 'median':
-        plot_waves(y, test_labels[tm.output_name()], 'median_waves_'+plot_title, plot_folder)
-        #plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_'+plot_title, plot_folder)
+        plot_waves(y, test_labels[tm.output_name()], 'median_waves_' + title, folder)
+        plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
 
     return performance_metrics
 
@@ -64,7 +74,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, math.ceil(total_plots / rows))
+    cols = max(2, int(math.ceil(total_plots / rows)))
     f, axes = plt.subplots(rows, cols, sharex=True, figsize=(int(rows * 4.5), int(cols * 4.5)))
 
     for k in sorted(history.history.keys()):
@@ -99,7 +109,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
 
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3):
-    margin = (np.max(truth)-np.min(truth))/100
+    margin = float((np.max(truth)-np.min(truth))/100)
     plt.figure(figsize=(16, 16))
     matplotlib.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
@@ -107,11 +117,12 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.scatter(prediction, truth)
     if paths is not None:
         diff = np.abs(prediction-truth)
-        argsorted = diff.argsort(axis=0)[:, 0]
-        for idx in argsorted[:top_k]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[int(idx)]))
-        for idx in argsorted[-top_k:]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[int(idx)]))
+        arg_sorted = diff[:, 0].argsort()
+        # The path of the best prediction, ie the in-lier
+        plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
+        # Plot the paths of the worst predictions ie the outliers
+        for idx in arg_sorted[-top_k:]:
+            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -127,14 +138,22 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     return {title + '_pearson': pearson}
 
 
-def plot_scatters(predictions, truth, title, prefix='./figures/'):
+def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3):
+    margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(28, 42))
     plt.rcParams.update({'font.size': 36})
+    plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     for k in predictions:
-        color = COLOR_ARRAY[abs(hash(k)) % len(COLOR_ARRAY)]
+        color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
+        if paths is not None:
+            diff = np.abs(predictions[k] - truth)
+            arg_sorted = diff[:, 0].argsort()
+            plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            for idx in arg_sorted[-top_k:]:
+                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -222,7 +241,6 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     fig, axes = plt.subplots(rows, rows, figsize=(28, 24))
     for i, group in enumerate(continuous_stats):
         a = np.array(continuous_stats[group])
-
         ax = plt.subplot(rows, rows, i + 1)
         ax.set_title(group + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
         ax.hist(continuous_stats[group], bins=num_bins)
@@ -243,7 +261,7 @@ def plot_ecg(data, label, prefix='./figures/'):
     cols = math.ceil(len(data) / rows)
     fig, axes = plt.subplots(rows, cols, figsize=(28, 24))
     for i, k in enumerate(data):
-        color = COLOR_ARRAY[abs(hash(k)) % len(COLOR_ARRAY)]
+        color = _hash_string_to_color(k)
         ax = plt.subplot(rows, cols, i + 1)
         ax.set_title(k)
         ax.plot(data[k], color=color, lw=lw, label=str(k))
@@ -291,7 +309,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:
             continue
-        color = COLOR_ARRAY[abs(hash(key)) % len(COLOR_ARRAY)]
+        color = _hash_string_to_color(key)
         label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -322,7 +340,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
-            color = COLOR_ARRAY[abs(hash(p + key)) % len(COLOR_ARRAY)]
+            color = _hash_string_to_color(p+key)
             label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -342,6 +360,85 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
+def subplot_rocs(rocs, prefix='./figures/'):
+    """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
+    lw = 3
+    row = 0
+    col = 0
+    total_plots = len(rocs)
+    rows = max(2, int(math.sqrt(total_plots)))
+    cols = max(2, total_plots // rows)
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    for predicted, truth, labels in rocs:
+        fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
+        for key in labels:
+            if 'no_' in key and len(labels) == 2:
+                continue
+            color = _hash_string_to_color(key)
+            label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+            axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+            axes[row, col].set_title('ROC: ' + key + '\n')
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_xlim([0.0, 1.0])
+        axes[row, col].set_ylim([-0.02, 1.03])
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].legend(loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
+def subplot_comparison_rocs(rocs, prefix='./figures/'):
+    """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
+    lw = 3
+    row = 0
+    col = 0
+    total_plots = len(rocs)
+    rows = max(2, int(math.sqrt(total_plots)))
+    cols = max(2, total_plots // rows)
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    for predictions, truth, labels in rocs:
+        for p in predictions:
+            fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
+            for key in labels:
+                if 'no_' in key and len(labels) == 2:
+                    continue
+                color = _hash_string_to_color(p + key)
+                label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
+                axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+                axes[row, col].set_title('ROC: ' + key + '\n')
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_xlim([0.0, 1.0])
+        axes[row, col].set_ylim([-0.02, 1.03])
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].legend(loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
 def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve
     lw = 4.0
@@ -350,7 +447,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     matplotlib.rcParams.update({'font.size': 34})
 
     for k in labels:
-        c = COLOR_ARRAY[abs(hash(k)) % len(COLOR_ARRAY)]
+        c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
         plt.plot(recall, precision, lw=lw, color=c, label=k + ' area = %0.3f' % average_precision)
@@ -381,7 +478,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
 
     for p in predictions:
         for k in labels:
-            c = COLOR_ARRAY[abs(hash(p + k)) % len(COLOR_ARRAY)]
+            c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
             label_text = "{}_{} area under ROC: {:.3f}".format(p, k, average_precision)
@@ -440,6 +537,11 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     plt.savefig(figure_path)
     plt.clf()
     logging.info("Saved waves at: {}".format(figure_path))
+
+
+def _hash_string_to_color(string):
+    """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
+    return COLOR_ARRAY[int(hashlib.sha1(string.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
 
 
 if __name__ == '__main__':

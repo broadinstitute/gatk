@@ -23,7 +23,7 @@ TMAPS['sax_inlinevf_zoom_mask_weighted'] = TensorMap('sax_inlinevf_zoom_mask', (
 TMAPS['sax_inlinevf_zoom'] = TensorMap('sax_inlinevf_zoom',(96,96,48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask'])
 TMAPS['sax_inlinevf_zoom_weighted'] = TensorMap('sax_inlinevf_zoom',(96,96,48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask_weighted'])
 TMAPS['mri_systole_diastole_segmented'] = TensorMap('mri_systole_diastole_segmented', (256, 256, 2, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
-TMAPS['mri_systole_diastole_segmented_weighted'] = TensorMap('mri_systole_diastole_segmented', (256, 256, 2, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([10.0, 50.0, 50.0], 'mri_systole_diastole_segmented'))
+TMAPS['mri_systole_diastole_segmented_weighted'] = TensorMap('mri_systole_diastole_segmented', (256, 256, 2, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([20.0, 250.0, 250.0], 'mri_systole_diastole_segmented'))
 TMAPS['mri_systole_diastole'] = TensorMap('mri_systole_diastole', (256, 256, 2, 1), dependent_map=TMAPS['mri_systole_diastole_segmented'])
 TMAPS['mri_systole_diastole_weighted'] = TensorMap('mri_systole_diastole', (256, 256, 2, 1), dependent_map=TMAPS['mri_systole_diastole_segmented_weighted'])
 TMAPS['mri_systole_diastole_b0_b3_weighted'] = TensorMap('mri_systole_diastole', (256, 256, 2, 1), dependent_map=TMAPS['mri_systole_diastole_segmented_weighted'], hd5_override=list(range(4)))

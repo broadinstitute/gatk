@@ -30,7 +30,7 @@ TMAPS['ecg_rest_median'] = TensorMap('median', group='ecg_rest', shape=(600, 12)
                                'median_aVL': 10, 'median_aVR': 11})
 
 TMAPS['ecg_rest_median_stack'] = TensorMap('median', group='ecg_rest', shape=(600, 12, 1), activation='linear',
-                                           metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=10.0,
+                                           metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
                   channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4,
                                'median_V3': 5, 'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9,
                                'median_aVL': 10, 'median_aVR': 11})
@@ -165,6 +165,9 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
 
+TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
+TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
+
 TMAPS['end_systole_volume_mae'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                         loss='mean_absolute_error', channel_map={'end_systole_volume': 0},
                                         normalization={'mean': 47.0, 'std': 10.0})
@@ -236,6 +239,49 @@ TMAPS['fathers_age'] = TensorMap('fathers_age_0', group='continuous',
                                  normalization={'mean':70.928, 'std': 12.746}, annotation_units = 4)
 
 TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=1, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1})
+TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0':0}, normalization = {'mean':27.432061533712652, 'std':4.785244772462738}, annotation_units=1, loss='logcosh')
+TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0':0}, normalization = {'mean':1952.0639129359386, 'std':7.656326148519739 }, annotation_units=1, loss='logcosh', loss_weight=10.0)
+TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', group='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0':0}, normalization = {'mean':18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
+TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', group='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0':0}, normalization = {'mean':0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
+TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', group='continuous', channel_map={'1498_Coffee-intake_0_0': 0},
+                            normalization={'mean': 2.015086529948216, 'std': 2.0914960998390497}, annotation_units=1)
+TMAPS['water'] = TensorMap('1528_Water-intake_0_0', group='continuous', channel_map={'1528_Water-intake_0_0': 0},
+                            normalization={'mean': 2.7322977785723324, 'std': 2.261996814128837}, annotation_units=1)
+TMAPS['meat'] = TensorMap('3680_Age-when-last-ate-meat_0_0', group='continuous',
+                            channel_map={'3680_Age-when-last-ate-meat_0_0': 0},
+                            normalization={'mean': 29.74062983480561, 'std': 14.417292213873964}, annotation_units=1)
+TMAPS['walks'] = TensorMap('864_Number-of-daysweek-walked-10-minutes_0_0', group='continuous',
+                           channel_map={'864_Number-of-daysweek-walked-10-minutes_0_0': 0},
+                           normalization={'mean': 5.369732285440756, 'std': 1.9564911925721618}, annotation_units=1)
+TMAPS['walk_duration'] = TensorMap('874_Duration-of-walks_0_0', group='continuous', channel_map={'874_Duration-of-walks_0_0': 0},
+                           normalization={'mean': 61.64092215093373, 'std': 78.79522990818906}, annotation_units=1)
+TMAPS['physical_activities'] = TensorMap('884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0', group='continuous',
+                           channel_map={'884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0': 0 },
+                           normalization={'mean': 3.6258833281089258, 'std': 2.3343738999823676}, annotation_units=1)
+TMAPS['physical_activity'] = TensorMap('894_Duration-of-moderate-activity_0_0', group='continuous',
+                           channel_map={'894_Duration-of-moderate-activity_0_0': 0 },
+                           normalization={'mean': 66.2862593866103, 'std': 77.28681218835422}, annotation_units=1)
+TMAPS['physical_activity_vigorous'] = TensorMap('904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0', group='continuous',
+                           channel_map={'904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 0},
+                           normalization={'mean': 1.838718301735063, 'std': 1.9593505421480895}, annotation_units=1)
+TMAPS['physical_activity_vigorous_duration'] = TensorMap('914_Duration-of-vigorous-activity_0_0', group='continuous',
+                           channel_map={'914_Duration-of-vigorous-activity_0_0': 0},
+                           normalization={'mean': 44.854488382965144, 'std': 48.159967071781466}, annotation_units=1)
+TMAPS['tv'] = TensorMap('1070_Time-spent-watching-television-TV_0_0', group='continuous',
+                            channel_map={'1070_Time-spent-watching-television-TV_0_0': 0},
+                            normalization={'mean': 2.7753595642790914, 'std': 1.7135478462887321}, annotation_units=1)
+TMAPS['computer'] = TensorMap('1080_Time-spent-using-computer_0_0', group='continuous',
+                            channel_map={'1080_Time-spent-using-computer_0_0': 0},
+                            normalization={'mean': 0.9781465855433753, 'std': 1.4444414103121512}, annotation_units=1)
+TMAPS['car'] = TensorMap('1090_Time-spent-driving_0_0', group='continuous', channel_map={'1090_Time-spent-driving_0_0': 0},
+                            normalization={'mean': 0.8219851505445748, 'std': 1.304094814200189}, annotation_units=1)
+TMAPS['summer'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', group='continuous',
+                            channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0},
+                            normalization={'mean': 3.774492304870845, 'std': 2.430483731404539}, annotation_units=1)
+TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='continuous',
+                            channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
+                            normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
+
 
 TMAPS['random-forest-fields'] = TensorMap('top-80-class', group='categorical',
                                   channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,

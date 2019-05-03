@@ -13,9 +13,9 @@ from arguments import parse_args
 from defines import TENSOR_EXT
 from tensor_writer_ukbb import write_tensors
 from tensor_map_maker import write_tensor_maps
-from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
 from explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_while_learning
 from metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
+from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs
 from tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
 
@@ -101,19 +101,19 @@ def compare_multimodal_multitask_models(args):
     output_prefix = "output"
 
     tensor_paths = _get_tensor_files(args.tensors)
-    generator = TensorGenerator(args.batch_size, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
-
-    input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generator, args.test_steps)
     models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+    generator = TensorGenerator(args.batch_size, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generator, args.test_steps)
+
     common_outputs = _get_common_outputs(models_inputs_outputs, output_prefix)
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, input_prefix, output_prefix)
-    _calculate_and_plot_prediction_stats(args, predictions, output_data)
+    _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
 
 
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
-    tensor_paths = [ args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT ]
+    tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over filenames and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
@@ -218,12 +218,15 @@ def plot_while_training(args):
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, output_folder, run_id, test_paths=None):
     performance_metrics = {}
+    rocs = []
     plot_path = os.path.join(output_folder, run_id)
     y_pred = model.predict(test_data, batch_size=batch_size)
     for y, tm in zip(y_pred, tensor_maps_out):
         if len(tensor_maps_out) == 1:
             y = y_pred
-        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths))
+        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs))
+    if len(rocs) > 0:
+        subplot_rocs(rocs, plot_path)
     return performance_metrics
 
 
@@ -262,14 +265,12 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
 
-        model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze,
-                                                    args.tensor_maps_in, args.tensor_maps_out, args.activation,
-                                                    args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
-                                                    args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
-                                                    args.conv_bn, args.conv_x, args.conv_y, args.conv_z,
-                                                    args.conv_dropout, args.conv_width, args.u_connect,
-                                                    args.pool_x, args.pool_y, args.pool_z,
-                                                    args.padding, args.learning_rate)
+        model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                    args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
+                                                    args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
+                                                    args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
+                                                    args.pool_y, args.pool_z, args.padding, args.learning_rate)
+
 
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
 
@@ -286,7 +287,8 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
     return predictions
 
 
-def _calculate_and_plot_prediction_stats(args, predictions, outputs):
+def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
+    rocs = []
     for tm in args.tensor_maps_out:
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
@@ -296,6 +298,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs):
             for m in predictions[tm]:
                 logging.info(msg.format(tm.name, tm.channel_map, np.sum(outputs[tm.output_name()], axis=0), np.sum(predictions[tm][m], axis=0)))
             plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
+            rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
         elif tm.is_categorical_any_with_shape_len(4):
             for p in predictions[tm]:
                 y = predictions[tm][p]
@@ -305,17 +308,22 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs):
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
             plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
             plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
-
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
-
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
-        else:
-            plot_scatters(predictions[tm], tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
-
-            coefs = get_pearson_coefficients(predictions[tm], tm.rescale(outputs[tm.output_name()]))
+        elif tm.is_continuous() and len(tm.shape) == 1:
+            scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
+            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
+            coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
+        else:
+            scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
+            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
+            coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
+            log_pearson_coefficients(coefs, tm.name)
+    if len(rocs) > 0:
+        subplot_comparison_rocs(rocs, plot_folder)
 
 
 def _get_tensor_files(tensor_dir):
