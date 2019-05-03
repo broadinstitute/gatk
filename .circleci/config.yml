@@ -92,8 +92,7 @@ jobs:
       HELLBENDER_JSON_SERVICE_ACCOUNT_KEY: servicekey.json
     parameters:
       test-type:
-        type: env_var_name
-        default: TEST_TYPE
+        type: string
     steps:
       - checkout
       - attach_workspace:
@@ -106,12 +105,13 @@ jobs:
           command: |
             echo ${GRADLE_OPTS}
             echo "${<< parameters.test-type >>}"
+            echo << parameters.test-type >>
             sudo mkdir -p build/reports/
             sudo chmod -R a+w build/reports/
             echo "$(docker images -q | head -n 1)"
             docker images
-            echo "docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh"
-            docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${<< parameters.test-type >>}" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
+            echo "docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=<< parameters.test-type >>" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh"
+            docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=<< parameters.test-type >>" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
             TEST_EXIT_VALUE=$?
             sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
             $( exit ${TEST_EXIT_VALUE} )
