@@ -110,26 +110,46 @@ class EvoquerEngine {
         contigToPositionTableMap = Collections.unmodifiableMap(tmpContigToPositionTableMap);
         contigToVariantTableMap = Collections.unmodifiableMap(tmpContigToVariantTableMap);
         contigToSampleTableMap = Collections.unmodifiableMap(tmpContigToSampleTableMap);
+
+        // Get the samples used in the dataset:
+        populateSampleNames();
     }
 
     //==================================================================================================================
     // Public Instance Methods:
 
     /**
-     * Connects to the BigQuery table for the given {@link List<SimpleInterval>} and pulls out the information on the samples that
+     * Connects to the BigQuery table for the given interval and pulls out the information on the samples that
      * contain variants.
-     * @param intervalList {@link List<SimpleInterval>} over which to query the BigQuery table.
+     * @param interval {@link SimpleInterval} over which to query the BigQuery table.
      * @return A {@link List<VariantContext>} containing variants in the given {@code interval} in the BigQuery table.
      */
-    List<VariantContext> evokeIntervals(final List<SimpleInterval> intervalList) {
+    List<VariantContext> evokeInterval(final SimpleInterval interval) {
 
-        // Get the samples used in the dataset:
-        populateSampleNames();
+        if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
+            // Get the query string:
+            final String variantQueryString = getVariantQueryString(interval);
 
-        // Now get our intervals into variants:
-        return intervalList.stream()
-                .flatMap( interval -> evokeInterval(interval).stream() )
-                .collect(Collectors.toList());
+            logger.info("Created Query: \n" + variantQueryString);
+
+            // Execute the query:
+            final TableResult result = BigQueryUtils.executeQuery(variantQueryString);
+
+            // Show our pretty results:
+            logger.info("Pretty Query Results:");
+            final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
+            logger.info( "\n" + prettyQueryResults );
+
+            // Convert results into variant context objects:
+            return createVariantsFromTableResult( result ).stream()
+                    .map(GnarlyGenotyperEngine::finalizeGenotype)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+        else {
+            logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
+        }
+        return Collections.emptyList();
     }
 
     /**
@@ -198,40 +218,6 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         return headerLines;
-    }
-
-    /**
-     * Connects to the BigQuery table for the given interval and pulls out the information on the samples that
-     * contain variants.
-     * @param interval {@link SimpleInterval} over which to query the BigQuery table.
-     * @return A {@link List<VariantContext>} containing variants in the given {@code interval} in the BigQuery table.
-     */
-    private List<VariantContext> evokeInterval(final SimpleInterval interval) {
-
-        if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
-            // Get the query string:
-            final String variantQueryString = getVariantQueryString(interval);
-
-            logger.info("Created Query: \n" + variantQueryString);
-
-            // Execute the query:
-            final TableResult result = BigQueryUtils.executeQuery(variantQueryString);
-
-            // Show our pretty results:
-            logger.info("Pretty Query Results:");
-            final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
-            logger.info( "\n" + prettyQueryResults );
-
-            // Convert results into variant context objects:
-            return createVariantsFromTableResult( result ).stream()
-                    .map(GnarlyGenotyperEngine::finalizeGenotype)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-        }
-        else {
-            logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
-        }
-        return Collections.emptyList();
     }
 
     private String getPositionTableForContig(final String contig ) {

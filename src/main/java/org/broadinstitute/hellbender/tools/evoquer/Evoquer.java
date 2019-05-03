@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
@@ -149,18 +150,21 @@ public class Evoquer extends GATKTool {
 
     @Override
     public void traverse() {
-        // Get our variants from BigQuery:
-        final List<VariantContext> variants = evoquerEngine.evokeIntervals(getTraversalIntervals());
+        progressMeter.setRecordsBetweenTimeChecks(1L);
 
-        // Now we can write out the VariantContexts:
         if ( outputVcfPathString != null ) {
-            vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString) );
-            vcfWriter.writeHeader( evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()) );
+            vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
+            vcfWriter.writeHeader(evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()));
+        }
 
-            logger.info( "Created the following variants:" );
-            for ( final VariantContext variantContext : variants ) {
-                logger.info( variantContext.toStringWithoutGenotypes() );
-                vcfWriter.add( variantContext );
+        for (final SimpleInterval interval : getTraversalIntervals()) {
+            progressMeter.update(interval);
+
+            final List<VariantContext> variants = evoquerEngine.evokeInterval(interval);
+            if ( vcfWriter != null ) {
+                for ( final VariantContext variant : variants ) {
+                    vcfWriter.add(variant);
+                }
             }
         }
     }
