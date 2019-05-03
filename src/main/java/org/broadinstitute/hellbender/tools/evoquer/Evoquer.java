@@ -46,6 +46,8 @@ public class Evoquer extends GATKTool {
     //==================================================================================================================
     // Public Static Members:
 
+    public static final String DEFAULT_PROJECT_ID = "broad-dsp-spec-ops";
+
     //==================================================================================================================
     // Private Static Members:
 
@@ -61,8 +63,15 @@ public class Evoquer extends GATKTool {
     private String outputVcfPathString;
 
     @Argument(
+            fullName = "project-id",
+            doc = "ID of the Google Cloud project containing the dataset and tables from which to pull variant data",
+            optional = true
+    )
+    private String projectID = DEFAULT_PROJECT_ID;
+
+    @Argument(
             fullName = "query-record-limit",
-            doc = "Limits the maximum number of records returned from each query on BiqQuery. Set to 0 for no limit.",
+            doc = "Limits the maximum number of records returned from each query on BiqQuery (for profiling/debugging purposes only). Set to 0 for no limit.",
             optional = true)
     private int queryRecordLimit = 0;
 
@@ -108,7 +117,8 @@ public class Evoquer extends GATKTool {
         }
 
         // Set up our EvoquerEngine:
-        evoquerEngine = new EvoquerEngine(queryRecordLimit);
+        evoquerEngine = new EvoquerEngine(projectID,
+                                        queryRecordLimit);
     }
 
     @Override

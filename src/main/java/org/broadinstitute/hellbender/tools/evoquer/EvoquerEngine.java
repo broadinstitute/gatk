@@ -40,9 +40,6 @@ class EvoquerEngine {
 
     private static final String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR = ",";
 
-    /** ID of the project containing the dataset and tables from which to pull variant data. */
-    private static final String PROJECT_ID = "broad-dsp-spec-ops";
-
     /** ID of the table containing the names of all samples in the variant table. */
     private static final String SAMPLE_TABLE = "joint_genotyping_chr20_3_samples.sample_list";
 
@@ -94,19 +91,17 @@ class EvoquerEngine {
     /** Set of sample names seen in the variant data from BigQuery. */
     private final Set<String> sampleNames = new HashSet<>();
 
+    private final String projectID;
+
     private final int queryRecordLimit;
 
     //==================================================================================================================
     // Constructors:
-    EvoquerEngine(final int queryRecordLimit) {
+
+    EvoquerEngine(final String projectID, final int queryRecordLimit) {
+        this.projectID = projectID;
         this.queryRecordLimit = queryRecordLimit;
     }
-
-    //==================================================================================================================
-    // Override Methods:
-
-    //==================================================================================================================
-    // Static Methods:
 
     //==================================================================================================================
     // Public Instance Methods:
@@ -238,11 +233,11 @@ class EvoquerEngine {
         return contigVariantTableMap.get(contig);
     }
 
-    private static String getTableQualifier() {
-        return PROJECT_ID;
+    private String getTableQualifier() {
+        return projectID;
     }
 
-    private static String getFQTableName( final String tableName ) {
+    private String getFQTableName( final String tableName ) {
         return getTableQualifier() + "." + tableName;
     }
 
@@ -256,7 +251,7 @@ class EvoquerEngine {
      * @param interval The {@link SimpleInterval} for which to get the corresponding table in BigQuery.
      * @return The name of the table corresponding to the given {@code interval}, or {@code null} if no such table exists.
      */
-    private static String getFQPositionTable(final SimpleInterval interval) {
+    private String getFQPositionTable(final SimpleInterval interval) {
         return getFQTableName(getPositionTableForContig( interval.getContig() ));
     }
 
@@ -270,7 +265,7 @@ class EvoquerEngine {
      * @param interval The {@link SimpleInterval} for which to get the corresponding table in BigQuery.
      * @return The name of the table corresponding to the given {@code interval}, or {@code null} if no such table exists.
      */
-    private static String getFQVariantTable(final SimpleInterval interval) {
+    private String getFQVariantTable(final SimpleInterval interval) {
         return getFQTableName(getVariantTableForContig( interval.getContig() ));
     }
 
@@ -739,7 +734,7 @@ class EvoquerEngine {
                 limitString;
     }
 
-    private static String getSampleListQueryString() {
+    private String getSampleListQueryString() {
         return "SELECT sample FROM `" + getFQTableName(SAMPLE_TABLE)+ "`";
     }
 
