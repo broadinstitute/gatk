@@ -4,7 +4,7 @@ set -e
 script_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
 cd "$script_path"
 
-WORKING_DIR=/home/travis/build/broadinstitute
+WORKING_DIR=/home/circleci/project
 
 set -e
 
@@ -23,17 +23,17 @@ echo "Building docker image for M2 WDL tests (skipping unit tests)..."
 echo "Building docker without running unit tests... ========="
 cd $WORKING_DIR/gatk
 # IMPORTANT: This code is duplicated in the cnv WDL test.
-if [ ${TRAVIS_PULL_REQUEST} != false ]; then
-  HASH_TO_USE=FETCH_HEAD
-  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
-else
-  HASH_TO_USE=${TRAVIS_COMMIT}
-  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
-fi
+#if [ ${TRAVIS_PULL_REQUEST} != false ]; then
+#  HASH_TO_USE=FETCH_HEAD
+#  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+#else
+#  HASH_TO_USE=${TRAVIS_COMMIT}
+#  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
+#fi
 echo "Docker build done =========="
 echo "Putting the newly built docker image into the json parameters"
 cd $WORKING_DIR/gatk/scripts/
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_m2_wdl_multi.json >$WORKING_DIR/test_m2_wdl_multi_mod.json
+sed -r "s/__GATK_DOCKER__/gatk-test-docker/g" m2_cromwell_tests/test_m2_wdl_multi.json >$WORKING_DIR/test_m2_wdl_multi_mod.json
 echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_m2_wdl_multi_mod.json
 echo "=================="

@@ -123,33 +123,68 @@ jobs:
             $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/
             echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html"
 
+  runm2wdl:
+    description: "Run tests in the prebuilt docker"
+    machine: true
+    environment:
+      HELLBENDER_TEST_INPUTS: gs://hellbender/test/resources/
+      HELLBENDER_TEST_STAGING: gs://hellbender-test-logs/staging/
+      HELLBENDER_TEST_LOGS: /hellbender-test-logs/build_reports/
+      HELLBENDER_TEST_PROJECT: broad-dsde-dev
+      HELLBENDER_JSON_SERVICE_ACCOUNT_KEY: servicekey.json
+      CROMWELL_JAR: /home/circleci/project/cromwell-36.jar
+    steps:
+    - checkout
+    - attach_workspace:
+        at: .
+    - run:
+        name: Load archived Docker image
+        command: docker load -i docker.tar
+    - run:
+        descritpion: "Download the cromwell jar"
+        command: wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/36/cromwell-36.jar
+    - run:
+        descritpion: "Run the M2 wdl tests"
+        command: bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh
+
 workflows:
   build:
     jobs:
       - buildDocker
       - downloadLFSFiles
       - runTestInDocker:
+          name: "Unit tests"
           test-type: unit
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
+          name: "variantcalling tests"
           test-type: variantcalling
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
+          name: "integration tests"
           test-type: integration
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
+          name: "python tests"
           test-type: python
           requires:
           - buildDocker
           - downloadLFSFiles
       - runTestInDocker:
+          name: "cloud tests"
           test-type: cloud
           requires:
           - buildDocker
           - downloadLFSFiles
+
+      - runm2wdl:
+          name: "Mutect2 Wdl test"
+            requires:
+            - buildDocker
+            - downloadLFSFiles
