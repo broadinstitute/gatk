@@ -135,7 +135,8 @@ public class Evoquer extends GATKTool {
         // Set up our EvoquerEngine:
         evoquerEngine = new EvoquerEngine(projectID,
                                         datasetMap,
-                                        queryRecordLimit);
+                                        queryRecordLimit,
+                                        false);
     }
 
     @Override

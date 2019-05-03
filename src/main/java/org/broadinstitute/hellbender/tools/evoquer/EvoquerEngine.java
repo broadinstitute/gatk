@@ -89,15 +89,19 @@ class EvoquerEngine {
     
     private final int queryRecordLimit;
 
+    private final boolean printDebugInformation;
+
     //==================================================================================================================
     // Constructors:
 
     EvoquerEngine(final String projectID,
                   final Map<String, String> datasetMap,
-                  final int queryRecordLimit) {
+                  final int queryRecordLimit,
+                  final boolean printDebugInformation) {
 
         this.projectID = projectID;
         this.queryRecordLimit = queryRecordLimit;
+        this.printDebugInformation = printDebugInformation;
 
         final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
         final Map<String, String> tmpContigToVariantTableMap = new HashMap<>();
@@ -136,12 +140,14 @@ class EvoquerEngine {
             final TableResult result = BigQueryUtils.executeQuery(variantQueryString);
 
             // Show our pretty results:
-            logger.info("Pretty Query Results:");
-            final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
-            logger.info( "\n" + prettyQueryResults );
+            if ( printDebugInformation ) {
+                logger.info("Pretty Query Results:");
+                final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
+                logger.info("\n" + prettyQueryResults);
+            }
 
             // Convert results into variant context objects:
-            return createVariantsFromTableResult( result ).stream()
+            return createVariantsFromTableResult(result).stream()
                     .map(GnarlyGenotyperEngine::finalizeGenotype)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
@@ -273,26 +279,28 @@ class EvoquerEngine {
         List<VariantDetailData> currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
 
         // Position / alleles are the key here.
-        VariantBaseData currentVariantBaseData = new VariantBaseData();
-
-        // Initialize with values from the first result:
-        if ( result.getTotalRows() != 0 ) {
-            final FieldValueList row = result.iterateAll().iterator().next();
-
-            currentVariantBaseData.contig = row.get("reference_name").getStringValue();
-            currentVariantBaseData.start = row.get("start_position").getLongValue();
-            currentVariantBaseData.stop = row.get("end_position").getLongValue();
-
-            // Fill in alleles:
-            currentVariantBaseData.alleles.add( Allele.create(row.get("reference_bases").getStringValue(), true) );
-            currentVariantBaseData.alleles.addAll(
-                    row.get("alternate_bases").getRepeatedValue().stream()
-                    .map( fieldValue -> Allele.create(fieldValue.getRecordValue().get(0).getStringValue()) )
-                    .collect(Collectors.toList())
-            );
-        }
+        VariantBaseData currentVariantBaseData = null;
 
         for ( final FieldValueList row : result.iterateAll() ) {
+            if ( ! "v".equals(row.get("state").getStringValue()) ) {
+                continue;
+            }
+
+            if ( currentVariantBaseData == null ) {
+                currentVariantBaseData = new VariantBaseData();
+                
+                currentVariantBaseData.contig = row.get("reference_name").getStringValue();
+                currentVariantBaseData.start = row.get("start_position").getLongValue();
+                currentVariantBaseData.stop = row.get("end_position").getLongValue();
+
+                // Fill in alleles:
+                currentVariantBaseData.alleles.add( Allele.create(row.get("reference_bases").getStringValue(), true) );
+                currentVariantBaseData.alleles.addAll(
+                        row.get("alternate_bases").getRepeatedValue().stream()
+                                .map( fieldValue -> Allele.create(fieldValue.getRecordValue().get(0).getStringValue()) )
+                                .collect(Collectors.toList())
+                );
+            }
 
             final VariantBaseData variantBaseData = new VariantBaseData();
             final VariantDetailData variantDetailData = new VariantDetailData();
@@ -712,7 +720,21 @@ class EvoquerEngine {
         if ( queryRecordLimit > 0 ) {
             limitString = "LIMIT " + queryRecordLimit;
         }
+        
+        return String.format(
+                "SELECT *\n" +
+                "FROM `%s` AS pet\n" +
+                "LEFT OUTER JOIN `%s` AS vet\n" +
+                "ON pet.position = vet.start_position AND pet.sample = vet.call[OFFSET(0)].name\n" +
+                "WHERE (pet.position >= %d AND pet.position <= %d)\n" +
+                "ORDER BY pet.position\n" +
+                limitString,
+                getFQPositionTable(interval),
+                getFQVariantTable(interval),
+                interval.getStart(),
+                interval.getEnd());
 
+        /*
         // TODO: Replace column names with variable field values for consistency (as above)
         return "SELECT " + "\n" +
                 "  reference_name, start_position, end_position, reference_bases, alternate_bases, names, quality, " + "\n" +
@@ -726,11 +748,11 @@ class EvoquerEngine {
                 "WHERE " + "\n" +
                 "  reference_name = '" + interval.getContig() + "' AND" + "\n" +
                 "  samples.name = variant_samples.sample AND" + "\n" +
-                // Since position corresponds to end_position, we don't need to subtract 1 from thbe start here: "\n" +
-                "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
-                "  variant_samples.state = 'v' " + "\n" +
+                // Since position corresponds to end_position, we don't need to subtract 1 from the start here: "\n" +
+                "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ")" + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
                 limitString;
+         */
     }
 
     private String getSampleListQueryString(final String sampleTableName) {
