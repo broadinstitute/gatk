@@ -99,7 +99,7 @@ jobs:
           at: .
       - run:
           name: Load archived Docker image
-          command: docker load -i image.tar
+          command: docker load -i docker.tar
       - run:
           description: "Run the tests"
           command: |
