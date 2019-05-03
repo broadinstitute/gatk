@@ -1,29 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.coverage;
 
 import com.opencsv.CSVReader;
-import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.CloseableTribbleIterator;
-import htsjdk.tribble.FeatureReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.codecs.table.TableCodec;
-import org.broadinstitute.hellbender.utils.codecs.table.TableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import sun.nio.ch.IOUtil;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static org.testng.Assert.*;
 
 public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
 
