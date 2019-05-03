@@ -150,7 +150,6 @@ public class Evoquer extends GATKTool {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
         for (final SimpleInterval interval : getTraversalIntervals()) {
-            progressMeter.update(interval);
             evoquerEngine.evokeInterval(interval);
         }
     }
