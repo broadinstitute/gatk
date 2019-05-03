@@ -97,6 +97,7 @@ jobs:
     steps:
       - attach_workspace:
           at: .
+      - checkout
       - run:
           name: Load archived Docker image
           command: docker load -i docker.tar
@@ -110,7 +111,7 @@ jobs:
             sudo chmod -R a+w build/reports/
             echo "$(docker images -q | head -n 1)"
             docker images
-            echo "docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e 'TEST_VERBOSITY=minimal' -e 'TEST_TYPE=${TEST_TYPE}' -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh"
+            echo "docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh"
             docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
             TEST_EXIT_VALUE=$?
             sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
