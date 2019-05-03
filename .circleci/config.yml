@@ -116,7 +116,13 @@ jobs:
             TEST_EXIT_VALUE=$?
             sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
             $( exit ${TEST_EXIT_VALUE} )
-
+      - run:
+          descritpion: "Upload the test archives"
+          command: |
+            scripts/travis/install_and_authenticate_to_gcloud.sh
+            export REPORT_PATH=${CIRCLE_BRANCH}${CIRCLE_JOB}
+            $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/
+            echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html"
 
 workflows:
   build:
