@@ -74,7 +74,7 @@ public class Evoquer extends GATKTool {
             optional = true
     )
     private String projectID = DEFAULT_PROJECT_ID;
-
+    
     @Argument(
             fullName = "dataset-map",
             doc = "Path to a file containing a mapping from contig name to BigQuery dataset name. Each line should consist of a contig name, followed by a tab, followed by a dataset name.",

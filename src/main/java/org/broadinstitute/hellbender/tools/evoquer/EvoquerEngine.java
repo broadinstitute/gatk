@@ -44,9 +44,6 @@ class EvoquerEngine {
 
     private static final String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR = ",";
 
-    /** ID of the table containing the names of all samples in the variant table. */
-    private static final String SAMPLE_TABLE = "joint_genotyping_chr20_3_samples.sample_list";
-
     /**
      * The conf threshold above which variants are not included in the position tables.
      * This value is used to construct the genotype information of those missing samples
@@ -70,21 +67,26 @@ class EvoquerEngine {
     //==================================================================================================================
     // Private Members:
 
+    private final String projectID;
+
     /** Set of sample names seen in the variant data from BigQuery. */
     private final Set<String> sampleNames = new HashSet<>();
-
-    private final String projectID;
 
     /**
      * Map between contig name and the BigQuery table containing position data from that contig.
      */
-    private final Map<String, String> contigPositionExpandedTableMap;
+    private final Map<String, String> contigToPositionTableMap;
 
     /**
      * Map between contig name and the BigQuery table containing variant data from that contig.
      */
-    private final Map<String, String> contigVariantTableMap;
+    private final Map<String, String> contigToVariantTableMap;
 
+    /**
+     * Map between contig name and the BigQuery table containing the list of samples
+     */
+    private final Map<String, String> contigToSampleTableMap;
+    
     private final int queryRecordLimit;
 
     //==================================================================================================================
@@ -99,12 +101,15 @@ class EvoquerEngine {
 
         final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
         final Map<String, String> tmpContigToVariantTableMap = new HashMap<>();
+        final Map<String, String> tmpContigToSampleTableMap = new HashMap<>();
         for ( final Map.Entry<String, String> datasetEntry : datasetMap.entrySet() ) {
             tmpContigToPositionTableMap.put(datasetEntry.getKey(), datasetEntry.getValue() + "." + POSITION_TABLE_NAME);
             tmpContigToVariantTableMap.put(datasetEntry.getKey(), datasetEntry.getValue() + "." + VARIANT_TABLE_NAME);
+            tmpContigToSampleTableMap.put(datasetEntry.getKey(), datasetEntry.getValue() + "." + SAMPLE_TABLE_NAME);
         }
-        contigPositionExpandedTableMap = Collections.unmodifiableMap(tmpContigToPositionTableMap);
-        contigVariantTableMap = Collections.unmodifiableMap(tmpContigToVariantTableMap);
+        contigToPositionTableMap = Collections.unmodifiableMap(tmpContigToPositionTableMap);
+        contigToVariantTableMap = Collections.unmodifiableMap(tmpContigToVariantTableMap);
+        contigToSampleTableMap = Collections.unmodifiableMap(tmpContigToSampleTableMap);
     }
 
     //==================================================================================================================
@@ -203,7 +208,7 @@ class EvoquerEngine {
      */
     private List<VariantContext> evokeInterval(final SimpleInterval interval) {
 
-        if ( contigPositionExpandedTableMap.containsKey(interval.getContig()) ) {
+        if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
             final String variantQueryString = getVariantQueryString(interval);
 
@@ -230,11 +235,11 @@ class EvoquerEngine {
     }
 
     private String getPositionTableForContig(final String contig ) {
-        return contigPositionExpandedTableMap.get(contig);
+        return contigToPositionTableMap.get(contig);
     }
 
     private String getVariantTableForContig(final String contig ) {
-        return contigVariantTableMap.get(contig);
+        return contigToVariantTableMap.get(contig);
     }
 
     private String getTableQualifier() {
@@ -692,8 +697,12 @@ class EvoquerEngine {
     }
 
     private void populateSampleNames() {
+        // TODO: For now, use the sample list from an arbitrary dataset's sample_list table.
+        // TODO: Eventually, may need to crosscheck sample lists across datasets
+        final String sampleTableName = contigToSampleTableMap.entrySet().iterator().next().getValue();
+
         // Get the query string:
-        final String sampleListQueryString = getSampleListQueryString();
+        final String sampleListQueryString = getSampleListQueryString(sampleTableName);
 
         logger.info("Created Query: \n" + sampleListQueryString);
 
@@ -738,8 +747,8 @@ class EvoquerEngine {
                 limitString;
     }
 
-    private String getSampleListQueryString() {
-        return "SELECT sample FROM `" + getFQTableName(SAMPLE_TABLE)+ "`";
+    private String getSampleListQueryString(final String sampleTableName) {
+        return "SELECT sample FROM `" + getFQTableName(sampleTableName)+ "`";
     }
 
     //==================================================================================================================
