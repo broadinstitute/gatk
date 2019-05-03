@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +14,12 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Evoquer ("Evoker"):
@@ -70,6 +76,13 @@ public class Evoquer extends GATKTool {
     private String projectID = DEFAULT_PROJECT_ID;
 
     @Argument(
+            fullName = "dataset-map",
+            doc = "Path to a file containing a mapping from contig name to BigQuery dataset name. Each line should consist of a contig name, followed by a tab, followed by a dataset name.",
+            optional = false
+    )
+    private String datasetMapFile;
+
+    @Argument(
             fullName = "query-record-limit",
             doc = "Limits the maximum number of records returned from each query on BiqQuery (for profiling/debugging purposes only). Set to 0 for no limit.",
             optional = true)
@@ -116,8 +129,11 @@ public class Evoquer extends GATKTool {
                     "--sequence-dictionary SEQUENCE_DICTIONARY");
         }
 
+        final Map<String, String> datasetMap = loadDatasetMapFile(datasetMapFile);
+
         // Set up our EvoquerEngine:
         evoquerEngine = new EvoquerEngine(projectID,
+                                        datasetMap,
                                         queryRecordLimit);
     }
 
@@ -149,13 +165,36 @@ public class Evoquer extends GATKTool {
         }
     }
 
-    //==================================================================================================================
-    // Static Methods:
+    private Map<String, String> loadDatasetMapFile(final String datasetMapFile) {
+        final Path datasetMapPath = IOUtils.getPath(datasetMapFile);
+        final Map<String, String> datasetMap = new HashMap<>();
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
-    //==================================================================================================================
-    // Instance Methods:
+        try {
+            final List<String> lines = Files.readAllLines(datasetMapPath);
+            if ( lines.isEmpty() ) {
+                throw new UserException.BadInput("Dataset map file " + datasetMapFile + " is empty");
+            }
 
-    //==================================================================================================================
-    // Helper Data Types:
+            for ( final String line : lines ) {
+                final String[] split = line.split("\\t",-1);
+                if ( split.length != 2 || split[0].trim().isEmpty() || split[1].trim().isEmpty() ) {
+                    throw new UserException.BadInput("Dataset map file " + datasetMapFile + " contains a malformed line: " + line);
+                }
+
+                final String contig = split[0];
+                final String contigDataset = split[1];
+                if ( sequenceDictionary.getSequenceIndex(contig) == -1 ) {
+                    throw new UserException.BadInput("Dataset map file " + datasetMapFile + " contains a contig not in our dictionary: " + contig);
+                }
+
+                datasetMap.put(contig, contigDataset);
+            }
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile(datasetMapFile, e);
+        }
+
+        return datasetMap;
+    }
 
 }

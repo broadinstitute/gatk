@@ -35,6 +35,10 @@ class EvoquerEngine {
     //==================================================================================================================
     // Public Static Members:
 
+    public static final String SAMPLE_TABLE_NAME = "sample_list";
+    public static final String VARIANT_TABLE_NAME = "vet";
+    public static final String POSITION_TABLE_NAME = "pet";
+
     //==================================================================================================================
     // Private Static Members:
 
@@ -62,29 +66,7 @@ class EvoquerEngine {
      * the database.
      */
     private static final int MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE = 20;
-
-    /**
-     * Map between contig name and the BigQuery table containing position data from that contig.
-     */
-    private static final Map<String, String> contigPositionExpandedTableMap;
-
-    /**
-     * Map between contig name and the BigQuery table containing variant data from that contig.
-     */
-    private static final Map<String, String> contigVariantTableMap;
-
-    static {
-        final Map<String, String> tmpContigTableMap = new HashMap<>();
-        tmpContigTableMap.put("chr20", "joint_genotyping_chr20_3_samples.pet");
-
-        contigPositionExpandedTableMap = Collections.unmodifiableMap(tmpContigTableMap);
-
-        final Map<String, String> tmpVariantTableMap = new HashMap<>();
-        tmpVariantTableMap.put("chr20", "joint_genotyping_chr20_3_samples.vet");
-
-        contigVariantTableMap = Collections.unmodifiableMap(tmpVariantTableMap);
-    }
-
+    
     //==================================================================================================================
     // Private Members:
 
@@ -93,14 +75,36 @@ class EvoquerEngine {
 
     private final String projectID;
 
+    /**
+     * Map between contig name and the BigQuery table containing position data from that contig.
+     */
+    private final Map<String, String> contigPositionExpandedTableMap;
+
+    /**
+     * Map between contig name and the BigQuery table containing variant data from that contig.
+     */
+    private final Map<String, String> contigVariantTableMap;
+
     private final int queryRecordLimit;
 
     //==================================================================================================================
     // Constructors:
 
-    EvoquerEngine(final String projectID, final int queryRecordLimit) {
+    EvoquerEngine(final String projectID,
+                  final Map<String, String> datasetMap,
+                  final int queryRecordLimit) {
+
         this.projectID = projectID;
         this.queryRecordLimit = queryRecordLimit;
+
+        final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
+        final Map<String, String> tmpContigToVariantTableMap = new HashMap<>();
+        for ( final Map.Entry<String, String> datasetEntry : datasetMap.entrySet() ) {
+            tmpContigToPositionTableMap.put(datasetEntry.getKey(), datasetEntry.getValue() + "." + POSITION_TABLE_NAME);
+            tmpContigToVariantTableMap.put(datasetEntry.getKey(), datasetEntry.getValue() + "." + VARIANT_TABLE_NAME);
+        }
+        contigPositionExpandedTableMap = Collections.unmodifiableMap(tmpContigToPositionTableMap);
+        contigVariantTableMap = Collections.unmodifiableMap(tmpContigToVariantTableMap);
     }
 
     //==================================================================================================================
@@ -225,11 +229,11 @@ class EvoquerEngine {
         return Collections.emptyList();
     }
 
-    private static String getPositionTableForContig(final String contig ) {
+    private String getPositionTableForContig(final String contig ) {
         return contigPositionExpandedTableMap.get(contig);
     }
 
-    private static String getVariantTableForContig(final String contig ) {
+    private String getVariantTableForContig(final String contig ) {
         return contigVariantTableMap.get(contig);
     }
 
@@ -245,7 +249,7 @@ class EvoquerEngine {
      * Get the fully-qualified table name corresponding to the table in BigQuery that contains the position
      * data specified in the given {@code interval}.
      *
-     * Uses {@link #PROJECT_ID} for the project of the BigQuery table.
+     * Uses {@link #projectID} for the project of the BigQuery table.
      * Assumes the tables have dataset information in them.
      *
      * @param interval The {@link SimpleInterval} for which to get the corresponding table in BigQuery.
@@ -259,7 +263,7 @@ class EvoquerEngine {
      * Get the fully-qualified table name corresponding to the table in BigQuery that contains the variant
      * data specified in the given {@code interval}.
      *
-     * Uses {@link #PROJECT_ID} for the project of the BigQuery table.
+     * Uses {@link #projectID} for the project of the BigQuery table.
      * Assumes the tables have dataset information in them.
      *
      * @param interval The {@link SimpleInterval} for which to get the corresponding table in BigQuery.
