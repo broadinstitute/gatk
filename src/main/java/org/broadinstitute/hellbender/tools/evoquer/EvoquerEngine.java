@@ -94,9 +94,13 @@ class EvoquerEngine {
     /** Set of sample names seen in the variant data from BigQuery. */
     private final Set<String> sampleNames = new HashSet<>();
 
+    private final int queryRecordLimit;
+
     //==================================================================================================================
     // Constructors:
-    EvoquerEngine() {}
+    EvoquerEngine(final int queryRecordLimit) {
+        this.queryRecordLimit = queryRecordLimit;
+    }
 
     //==================================================================================================================
     // Override Methods:
@@ -710,8 +714,10 @@ class EvoquerEngine {
 
     private String getVariantQueryString( final SimpleInterval interval ) {
 
-        // TODO: When finalized, remove this variable:
-        final String limit_string = "LIMIT 10";
+        String limitString = "";
+        if ( queryRecordLimit > 0 ) {
+            limitString = "LIMIT " + queryRecordLimit;
+        }
 
         // TODO: Replace column names with variable field values for consistency (as above)
         return "SELECT " + "\n" +
@@ -730,7 +736,7 @@ class EvoquerEngine {
                 "  (position >= " + interval.getStart() + " AND position <= " + interval.getEnd() + ") AND " + "\n" +
                 "  variant_samples.state = 'v' " + "\n" +
                 "ORDER BY reference_name, start_position, end_position" + "\n" +
-                limit_string;
+                limitString;
     }
 
     private static String getSampleListQueryString() {

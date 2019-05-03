@@ -60,6 +60,12 @@ public class Evoquer extends GATKTool {
     )
     private String outputVcfPathString;
 
+    @Argument(
+            fullName = "query-record-limit",
+            doc = "Limits the maximum number of records returned from each query on BiqQuery. Set to 0 for no limit.",
+            optional = true)
+    private int queryRecordLimit = 0;
+
     private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
 
@@ -102,7 +108,7 @@ public class Evoquer extends GATKTool {
         }
 
         // Set up our EvoquerEngine:
-        evoquerEngine = new EvoquerEngine();
+        evoquerEngine = new EvoquerEngine(queryRecordLimit);
     }
 
     @Override
