@@ -98,6 +98,9 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: Load archived Docker image
+          command: docker load -i image.tar
+      - run:
           description: "Run the tests"
           command: |
             export TEST_TYPE="${<< parameters.test-type >>}"
