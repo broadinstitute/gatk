@@ -6,6 +6,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableResult;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -13,6 +14,7 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -20,6 +22,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.broadinstitute.hellbender.tools.evoquer.GnarlyGenotyperEngine.finalizeGenotype;
 
 /**
  * EvoquerEngine ("EvokerEngine"):
@@ -67,6 +71,8 @@ class EvoquerEngine {
     //==================================================================================================================
     // Private Members:
 
+    private final VariantContextWriter vcfWriter;
+
     private final String projectID;
 
     /** Set of sample names seen in the variant data from BigQuery. */
@@ -91,17 +97,23 @@ class EvoquerEngine {
 
     private final boolean printDebugInformation;
 
+    private final ProgressMeter progressMeter;
+
     //==================================================================================================================
     // Constructors:
 
-    EvoquerEngine(final String projectID,
-                  final Map<String, String> datasetMap,
-                  final int queryRecordLimit,
-                  final boolean printDebugInformation) {
+    EvoquerEngine( final VariantContextWriter vcfWriter,
+                   final String projectID,
+                   final Map<String, String> datasetMap,
+                   final int queryRecordLimit,
+                   final boolean printDebugInformation,
+                   final ProgressMeter progressMeter) {
 
+        this.vcfWriter = vcfWriter;
         this.projectID = projectID;
         this.queryRecordLimit = queryRecordLimit;
         this.printDebugInformation = printDebugInformation;
+        this.progressMeter = progressMeter;
 
         final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
         final Map<String, String> tmpContigToVariantTableMap = new HashMap<>();
@@ -126,10 +138,8 @@ class EvoquerEngine {
      * Connects to the BigQuery table for the given interval and pulls out the information on the samples that
      * contain variants.
      * @param interval {@link SimpleInterval} over which to query the BigQuery table.
-     * @return A {@link List<VariantContext>} containing variants in the given {@code interval} in the BigQuery table.
      */
-    List<VariantContext> evokeInterval(final SimpleInterval interval) {
-
+    void evokeInterval(final SimpleInterval interval) {
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
             final String variantQueryString = getVariantQueryString(interval);
@@ -146,16 +156,11 @@ class EvoquerEngine {
                 logger.info("\n" + prettyQueryResults);
             }
 
-            // Convert results into variant context objects:
-            return createVariantsFromTableResult(result).stream()
-                    .map(GnarlyGenotyperEngine::finalizeGenotype)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+            createVariantsFromTableResult(result);
         }
         else {
             logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
         }
-        return Collections.emptyList();
     }
 
     /**
@@ -270,13 +275,9 @@ class EvoquerEngine {
         return getFQTableName(getVariantTableForContig( interval.getContig() ));
     }
 
-    private List<VariantContext> createVariantsFromTableResult(final TableResult result) {
-        // Have to convert to int here.
-        // Sloppy, but if we ever go larger than MAXINT, we have bigger problems.
-        final List<VariantContext> mergedVariantContextList = new ArrayList<>((int)result.getTotalRows());
-
+    private void createVariantsFromTableResult(final TableResult result) {
         // Details of the variants to store:
-        List<VariantDetailData> currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
+        List<VariantDetailData> currentVariantDetails = new ArrayList<>();
 
         // Position / alleles are the key here.
         VariantBaseData currentVariantBaseData = null;
@@ -315,9 +316,12 @@ class EvoquerEngine {
                     (variantBaseData.stop != currentVariantBaseData.stop)  ||
                     (!variantBaseData.alleles.equals(currentVariantBaseData.alleles)) ) {
 
-                mergedVariantContextList.add(
-                        mergeVariantDetails( variantBaseData, currentVariantDetails )
-                );
+                final VariantContext finalizedVariant =
+                        GnarlyGenotyperEngine.finalizeGenotype(mergeVariantDetails(variantBaseData, currentVariantDetails));
+                if ( finalizedVariant != null ) {  // TODO: is this guard necessary?
+                    vcfWriter.add(finalizedVariant);
+                    progressMeter.update(finalizedVariant);
+                }
 
                 // Setup new values:
                 currentVariantBaseData = new VariantBaseData();
@@ -342,12 +346,13 @@ class EvoquerEngine {
 
         // We must merge the remaining variant details together if any are left:
         if ( !currentVariantDetails.isEmpty() ) {
-            mergedVariantContextList.add(
-                    mergeVariantDetails( currentVariantBaseData, currentVariantDetails )
-            );
+            final VariantContext finalizedVariant =
+                    GnarlyGenotyperEngine.finalizeGenotype(mergeVariantDetails(currentVariantBaseData, currentVariantDetails));
+            if ( finalizedVariant != null ) {  // TODO: is this guard necessary?
+                vcfWriter.add(finalizedVariant);
+                progressMeter.update(finalizedVariant);
+            }
         }
-
-        return mergedVariantContextList;
     }
 
     /**

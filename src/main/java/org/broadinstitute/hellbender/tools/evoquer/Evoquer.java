@@ -65,16 +65,16 @@ public class Evoquer extends GATKTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output VCF file to which annotated variants should be written.",
-            optional = true
+            optional = false
     )
     private String outputVcfPathString;
 
     @Argument(
             fullName = "project-id",
             doc = "ID of the Google Cloud project containing the dataset and tables from which to pull variant data",
-            optional = true
+            optional = false
     )
-    private String projectID = DEFAULT_PROJECT_ID;
+    private String projectID;
     
     @Argument(
             fullName = "dataset-map",
@@ -132,11 +132,26 @@ public class Evoquer extends GATKTool {
 
         final Map<String, String> datasetMap = loadDatasetMapFile(datasetMapFile);
 
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
+        vcfWriter.writeHeader(evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()));
+
         // Set up our EvoquerEngine:
-        evoquerEngine = new EvoquerEngine(projectID,
+        evoquerEngine = new EvoquerEngine(vcfWriter,
+                                        projectID,
                                         datasetMap,
                                         queryRecordLimit,
-                                        false);
+                                        false,
+                                        progressMeter);
+    }
+
+    @Override
+    public void traverse() {
+        progressMeter.setRecordsBetweenTimeChecks(100L);
+
+        for (final SimpleInterval interval : getTraversalIntervals()) {
+            progressMeter.update(interval);
+            evoquerEngine.evokeInterval(interval);
+        }
     }
 
     @Override
@@ -146,27 +161,6 @@ public class Evoquer extends GATKTool {
         // Close up our writer if we have to:
         if ( vcfWriter != null ) {
             vcfWriter.close();
-        }
-    }
-
-    @Override
-    public void traverse() {
-        progressMeter.setRecordsBetweenTimeChecks(1L);
-
-        if ( outputVcfPathString != null ) {
-            vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
-            vcfWriter.writeHeader(evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()));
-        }
-
-        for (final SimpleInterval interval : getTraversalIntervals()) {
-            progressMeter.update(interval);
-
-            final List<VariantContext> variants = evoquerEngine.evokeInterval(interval);
-            if ( vcfWriter != null ) {
-                for ( final VariantContext variant : variants ) {
-                    vcfWriter.add(variant);
-                }
-            }
         }
     }
 
