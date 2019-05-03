@@ -1,6 +1,17 @@
 version: 2.1
 
 jobs:
+  setupEnvironmentVariables:
+  - run:
+      name: Setup Environment Variables
+      command: |
+        echo 'export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"' >> $BASH_ENV
+        echo 'export HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/' >> $BASH_ENV
+        echo 'export HELLBENDER_TEST_STAGING=gs://hellbender-test-logs/staging/' >> $BASH_ENV
+        echo 'export HELLBENDER_TEST_LOGS=/hellbender-test-logs/build_reports/' >> $BASH_ENV
+        echo 'export HELLBENDER_TEST_PROJECT=broad-dsde-dev' >> $BASH_ENV
+        echo 'export HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json' >> $BASH_ENV
+
   downloadLFSFiles:
     description: "Download the LFS files and save them to the workspace"
     docker:
@@ -9,6 +20,7 @@ jobs:
       - run:
           name: install git-lfs
           command: |
+            echo ${GRADLE_OPTS}
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
             sudo apt-get install -y git-lfs
             git lfs --version
@@ -92,18 +104,23 @@ jobs:
             echo ${TEST_TYPE}
             sudo mkdir -p build/reports/
             sudo chmod -R a+w build/reports/
-            export DOCKER_TAG=$(docker images -q | head -n 1)
-            echo $(docker images -q | head -n 1)
+            echo "$(docker images -q | head -n 1)"
+            docker images
             echo "docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e 'TEST_VERBOSITY=minimal' -e 'TEST_TYPE=${TEST_TYPE}' -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh"
-            docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t "broadinstitute/gatk:${DOCKER_TAG}" bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
+            docker run -v "$(pwd):/gatkCloneMountPoint:cached" -v "$(pwd)/testJars:/jars:cached" --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t gatk-test-docker bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh
             TEST_EXIT_VALUE=$?
             sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
             $( exit ${TEST_EXIT_VALUE} )
 workflows:
   build:
     jobs:
-      - buildDocker
-      - downloadLFSFiles
+      - setupEnvironmentVariables
+      - buildDocker:
+          requires:
+            - setupEnvironmentVariables
+      - downloadLFSFiles:
+          requires:
+            - setupEnvironmentVariables
       - runTestInDocker:
           test-type: unit
           requires:
