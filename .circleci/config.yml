@@ -95,7 +95,7 @@ jobs:
         type: env_var_name
         default: TEST_TYPE
     steps:
-    - checkout
+      - checkout
       - attach_workspace:
           at: .
       - run:
