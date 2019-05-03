@@ -185,6 +185,6 @@ workflows:
 
       - runm2wdl:
           name: "Mutect2 Wdl test"
-            requires:
-            - buildDocker
-            - downloadLFSFiles
+          requires:
+          - buildDocker
+          - downloadLFSFiles
