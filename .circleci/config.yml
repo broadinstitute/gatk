@@ -2,15 +2,17 @@ version: 2.1
 
 jobs:
   setupEnvironmentVariables:
-  - run:
-      name: Setup Environment Variables
-      command: |
-        echo 'export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"' >> $BASH_ENV
-        echo 'export HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/' >> $BASH_ENV
-        echo 'export HELLBENDER_TEST_STAGING=gs://hellbender-test-logs/staging/' >> $BASH_ENV
-        echo 'export HELLBENDER_TEST_LOGS=/hellbender-test-logs/build_reports/' >> $BASH_ENV
-        echo 'export HELLBENDER_TEST_PROJECT=broad-dsde-dev' >> $BASH_ENV
-        echo 'export HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json' >> $BASH_ENV
+    docker:
+    - image: broadinstitute/gatk:gatkbase-2.0.3
+    - run:
+        name: Setup Environment Variables
+        command: |
+          echo 'export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"' >> $BASH_ENV
+          echo 'export HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/' >> $BASH_ENV
+          echo 'export HELLBENDER_TEST_STAGING=gs://hellbender-test-logs/staging/' >> $BASH_ENV
+          echo 'export HELLBENDER_TEST_LOGS=/hellbender-test-logs/build_reports/' >> $BASH_ENV
+          echo 'export HELLBENDER_TEST_PROJECT=broad-dsde-dev' >> $BASH_ENV
+          echo 'export HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json' >> $BASH_ENV
 
   downloadLFSFiles:
     description: "Download the LFS files and save them to the workspace"
@@ -32,6 +34,8 @@ jobs:
           paths:
             - src/test/resources/large
             - src/main/resources/large
+
+
   buildDocker:
     description: "Build the docker image and save it to the workspace"
     environment:
