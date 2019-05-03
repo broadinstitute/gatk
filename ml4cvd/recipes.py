@@ -267,7 +267,8 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
                                                     args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
                                                     args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
                                                     args.conv_bn, args.conv_x, args.conv_y, args.conv_z,
-                                                    args.conv_dropout, args.conv_width, args.u_connect, args.pool_z,
+                                                    args.conv_dropout, args.conv_width, args.u_connect,
+                                                    args.pool_x, args.pool_y, args.pool_z,
                                                     args.padding, args.learning_rate)
 
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')

@@ -36,724 +36,2217 @@ TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', (256, 256,
 
 
 #  Continuous tensor maps
-TMAPS['5117_0'] = TensorMap('5117_6mm-cylindrical-power-right_0_0', group='continuous', channel_map={'5117_6mm-cylindrical-power-right_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.8480864814236648, 'std': 0.6869584420210633}, annotation_units=2)
-TMAPS['68_0'] = TensorMap('68_Number-of-blood-samples-taken_0_0', group='continuous', channel_map={'68_Number-of-blood-samples-taken_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.221057964856847, 'std': 0.552099232699653}, annotation_units=2)
-TMAPS['90040_0'] = TensorMap('90040_Average-acceleration-13:00--13:59_0_0', group='continuous', channel_map={'90040_Average-acceleration-13:00--13:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 42.95905376344084, 'std': 22.344195193642026}, annotation_units=2)
-TMAPS['20191_0'] = TensorMap('20191_Fluid-intelligence-score_0_0', group='continuous', channel_map={'20191_Fluid-intelligence-score_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.434275224015787, 'std': 2.038851705848552}, annotation_units=2)
-TMAPS['30414_0'] = TensorMap('30414_Volume-of-RNA-held-by-UKB_0_0', group='continuous', channel_map={'30414_Volume-of-RNA-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 2606.810066904702, 'std': 2548.6928030603453}, annotation_units=2)
-TMAPS['30850_0'] = TensorMap('30850_Testosterone_0_0', group='continuous', channel_map={'30850_Testosterone_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.557780011852344, 'std': 6.054145820936543}, annotation_units=2)
-TMAPS['90078_0'] = TensorMap('90078_Wear-duration-during-18:00--18:59_0_0', group='continuous', channel_map={'90078_Wear-duration-during-18:00--18:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.397466223058006, 'std': 1.5182796325322336}, annotation_units=2)
-TMAPS['41086_0'] = TensorMap('41086_Episodes-containing-"Episode-order"-data_0_0', group='continuous', channel_map={'41086_Episodes-containing-"Episode-order"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.711730812466993, 'std': 16.033135673869012}, annotation_units=2)
-TMAPS['30141_0'] = TensorMap('30141_Neutrophill-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30141_Neutrophill-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['5132_0'] = TensorMap('5132_3mm-strong-meridian-right_0_0', group='continuous', channel_map={'5132_3mm-strong-meridian-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.96489807057278, 'std': 1.6057032060283283}, annotation_units=2)
-TMAPS['1160_0'] = TensorMap('1160_Sleep-duration_0_0', group='continuous', channel_map={'1160_Sleep-duration_0_0': 0, 'not-missing': 1}, normalization={'mean': 7.154202119120256, 'std': 1.1113586587917186}, annotation_units=2)
-TMAPS['4290_0'] = TensorMap('4290_Duration-screen-displayed_0_0', group='continuous', channel_map={'4290_Duration-screen-displayed_0_0': 0, 'not-missing': 1}, normalization={'mean': 145.98503756637504, 'std': 343.0263779829031}, annotation_units=2)
-TMAPS['20195_0'] = TensorMap('20195_Number-of-symbol-digit-matches-attempted_0_0', group='continuous', channel_map={'20195_Number-of-symbol-digit-matches-attempted_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.26419027844597, 'std': 4.862302855855112}, annotation_units=2)
-TMAPS['90070_0'] = TensorMap('90070_Wear-duration-during-10:00--10:59_0_0', group='continuous', channel_map={'90070_Wear-duration-during-10:00--10:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.40691315878297, 'std': 1.5052166238840223}, annotation_units=2)
-TMAPS['41148_0'] = TensorMap('41148_Episodes-containing-"Date-of-operation"-data_0_0', group='continuous', channel_map={'41148_Episodes-containing-"Date-of-operation"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.339758636044594, 'std': 13.586225369016745}, annotation_units=2)
-TMAPS['23109_0'] = TensorMap('23109_Impedance-of-arm-right_0_0', group='continuous', channel_map={'23109_Impedance-of-arm-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 325.55499158100406, 'std': 55.41407819309843}, annotation_units=2)
-TMAPS['30291_0'] = TensorMap('30291_High-light-scatter-reticulocyte-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30291_High-light-scatter-reticulocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['4144_0'] = TensorMap('4144_Heel-quantitative-ultrasound-index-QUI-manual-entry-right_0_0', group='continuous', channel_map={'4144_Heel-quantitative-ultrasound-index-QUI-manual-entry-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 98.52704402515724, 'std': 20.42349870900061}, annotation_units=2)
-TMAPS['3085_0'] = TensorMap('3085_Heel-Broadband-ultrasound-attenuation-BUA-manual-entry_0_0', group='continuous', channel_map={'3085_Heel-Broadband-ultrasound-attenuation-BUA-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 76.18169716184278, 'std': 19.63987587039883}, annotation_units=2)
-TMAPS['3526_0'] = TensorMap('3526_Mothers-age-at-death_0_0', group='continuous', channel_map={'3526_Mothers-age-at-death_0_0': 0, 'not-missing': 1}, normalization={'mean': 74.12840796819282, 'std': 13.249138193853838}, annotation_units=2)
-TMAPS['5116_0'] = TensorMap('5116_3mm-cylindrical-power-right_0_0', group='continuous', channel_map={'5116_3mm-cylindrical-power-right_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.8699948148350303, 'std': 0.6623053386679102}, annotation_units=2)
-TMAPS['5075_0'] = TensorMap('5075_Number-of-letters-shown-in-round-right_0_0', group='continuous', channel_map={'5075_Number-of-letters-shown-in-round-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.972277937574143, 'std': 0.2649719336997717}, annotation_units=2)
-TMAPS['30261_0'] = TensorMap('30261_Mean-reticulocyte-volume-freezethaw-cycles_0_0', group='continuous', channel_map={'30261_Mean-reticulocyte-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90031_0'] = TensorMap('90031_Average-acceleration-04:00--04:59_0_0', group='continuous', channel_map={'90031_Average-acceleration-04:00--04:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.745998842760017, 'std': 12.657702371897653}, annotation_units=2)
-TMAPS['4106_0'] = TensorMap('4106_Heel-bone-mineral-density-BMD-Tscore-automated-left_0_0', group='continuous', channel_map={'4106_Heel-bone-mineral-density-BMD-Tscore-automated-left_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.30253547397073416, 'std': 1.3102957402769355}, annotation_units=2)
-TMAPS['3972_0'] = TensorMap('3972_Number-of-adopted-brothers_0_0', group='continuous', channel_map={'3972_Number-of-adopted-brothers_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6873114181356199, 'std': 1.1830089577600718}, annotation_units=2)
-TMAPS['90065_0'] = TensorMap('90065_Wear-duration-during-05:00--05:59_0_0', group='continuous', channel_map={'90065_Wear-duration-during-05:00--05:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.206531655335359, 'std': 1.6872487855745046}, annotation_units=2)
-TMAPS['22653_0'] = TensorMap('22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_0', group='continuous', channel_map={'22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 13.109154929577468, 'std': 7.483931333781647}, annotation_units=2)
-TMAPS['5265_0'] = TensorMap('5265_Corneal-resistance-factor-left_0_0', group='continuous', channel_map={'5265_Corneal-resistance-factor-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.657931468793832, 'std': 2.5801447843854906}, annotation_units=2)
-TMAPS['90116_0'] = TensorMap('90116_Fraction-acceleration-<=-45-milligravities_0_0', group='continuous', channel_map={'90116_Fraction-acceleration-<=-45-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.812257543758137, 'std': 0.06501238111402752}, annotation_units=2)
-TMAPS['2744_0'] = TensorMap('2744_Birth-weight-of-first-child_0_0', group='continuous', channel_map={'2744_Birth-weight-of-first-child_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.942976502742263, 'std': 1.407442851384564}, annotation_units=2)
-TMAPS['30650_0'] = TensorMap('30650_Aspartate-aminotransferase_0_0', group='continuous', channel_map={'30650_Aspartate-aminotransferase_0_0': 0, 'not-missing': 1}, normalization={'mean': 26.23016083040135, 'std': 10.661580442803643}, annotation_units=2)
-TMAPS['20410_0'] = TensorMap('20410_Age-when-known-person-last-commented-about-drinking-habits_0_0', group='continuous', channel_map={'20410_Age-when-known-person-last-commented-about-drinking-habits_0_0': 0, 'not-missing': 1}, normalization={'mean': 50.58124301006551, 'std': 13.129766558596945}, annotation_units=2)
-TMAPS['30031_0'] = TensorMap('30031_Haematocrit-freezethaw-cycles_0_0', group='continuous', channel_map={'30031_Haematocrit-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['30740_0'] = TensorMap('30740_Glucose_0_0', group='continuous', channel_map={'30740_Glucose_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.124988582136449, 'std': 1.2434621168913167}, annotation_units=2)
-TMAPS['4105_0'] = TensorMap('4105_Heel-bone-mineral-density-BMD-left_0_0', group='continuous', channel_map={'4105_Heel-bone-mineral-density-BMD-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5474710176276681, 'std': 0.14610377587001144}, annotation_units=2)
-TMAPS['30041_0'] = TensorMap('30041_Mean-corpuscular-volume-freezethaw-cycles_0_0', group='continuous', channel_map={'30041_Mean-corpuscular-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90063_0'] = TensorMap('90063_Wear-duration-during-03:00--03:59_0_0', group='continuous', channel_map={'90063_Wear-duration-during-03:00--03:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.174573894594723, 'std': 1.69128563285464}, annotation_units=2)
-TMAPS['5215_0'] = TensorMap('5215_Vertex-distance-right_0_0', group='continuous', channel_map={'5215_Vertex-distance-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 12.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90152_0'] = TensorMap('90152_Fraction-acceleration-<=-1400-milligravities_0_0', group='continuous', channel_map={'90152_Fraction-acceleration-<=-1400-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.999920285452529, 'std': 0.0025236075170088582}, annotation_units=2)
-TMAPS['5114_0'] = TensorMap('5114_6mm-cylindrical-power-angle-right_0_0', group='continuous', channel_map={'5114_6mm-cylindrical-power-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 83.40099464103255, 'std': 61.870090069927365}, annotation_units=2)
-TMAPS['90189_0'] = TensorMap('90189_Sample-rate-standard-deviation_0_0', group='continuous', channel_map={'90189_Sample-rate-standard-deviation_0_0': 0, 'not-missing': 1}, normalization={'mean': 45.92016779979748, 'std': 1300.4627411111455}, annotation_units=2)
-TMAPS['4196_0'] = TensorMap('4196_Pulse-wave-peak-to-peak-time_0_0', group='continuous', channel_map={'4196_Pulse-wave-peak-to-peak-time_0_0': 0, 'not-missing': 1}, normalization={'mean': 201.85429179142514, 'std': 73.04525271657313}, annotation_units=2)
-TMAPS['20007_0'] = TensorMap('20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_0', group='continuous', channel_map={'20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 50.81223343467626, 'std': 11.446243704814497}, annotation_units=2)
-TMAPS['90134_0'] = TensorMap('90134_Fraction-acceleration-<=-275-milligravities_0_0', group='continuous', channel_map={'90134_Fraction-acceleration-<=-275-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9925612131732485, 'std': 0.008376066923715682}, annotation_units=2)
-TMAPS['22400_0'] = TensorMap('22400_Liver-iron-Fe_0_0', group='continuous', channel_map={'22400_Liver-iron-Fe_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.346558291366906, 'std': 0.3540960977285698}, annotation_units=2)
-TMAPS['3894_0'] = TensorMap('3894_Age-heart-attack-diagnosed_0_0', group='continuous', channel_map={'3894_Age-heart-attack-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 52.69682086086801, 'std': 8.419897728297661}, annotation_units=2)
-TMAPS['23117_0'] = TensorMap('23117_Leg-fatfree-mass-left_0_0', group='continuous', channel_map={'23117_Leg-fatfree-mass-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.866400981491422, 'std': 2.0106776824552703}, annotation_units=2)
-TMAPS['21022_0'] = TensorMap('21022_Age-at-recruitment_0_0', group='continuous', channel_map={'21022_Age-at-recruitment_0_0': 0, 'not-missing': 1}, normalization={'mean': 56.52836413709631, 'std': 8.095272747107957}, annotation_units=2)
-TMAPS['30061_0'] = TensorMap('30061_Mean-corpuscular-haemoglobin-concentration-freezethaw-cycles_0_0', group='continuous', channel_map={'30061_Mean-corpuscular-haemoglobin-concentration-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['22654_0'] = TensorMap('22654_Consecutive-night-shifts-during-night-shift-periods_0_0', group='continuous', channel_map={'22654_Consecutive-night-shifts-during-night-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.128521126760565, 'std': 3.5110352507744405}, annotation_units=2)
-TMAPS['90161_0'] = TensorMap('90161_Calibration-coefficients--x-offset_0_0', group='continuous', channel_map={'90161_Calibration-coefficients--x-offset_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.004632296639182216, 'std': 0.022627992536624605}, annotation_units=2)
-TMAPS['41088_0'] = TensorMap('41088_Episodes-containing-"Duration-of-episode-within-HES-data-year"-data_0_0', group='continuous', channel_map={'41088_Episodes-containing-"Duration-of-episode-within-HES-data-year"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.65380605365867, 'std': 16.13782806078228}, annotation_units=2)
-TMAPS['90091_0'] = TensorMap('90091_Nowear-time-bias-adjusted-acceleration-maximum_0_0', group='continuous', channel_map={'90091_Nowear-time-bias-adjusted-acceleration-maximum_0_0': 0, 'not-missing': 1}, normalization={'mean': 1575.5054467428506, 'std': 786.3941609034838}, annotation_units=2)
-TMAPS['90132_0'] = TensorMap('90132_Fraction-acceleration-<=-225-milligravities_0_0', group='continuous', channel_map={'90132_Fraction-acceleration-<=-225-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9877418004725395, 'std': 0.011152215531305685}, annotation_units=2)
-TMAPS['90173_0'] = TensorMap('90173_Calibration--maximum-x-stationary-value_0_0', group='continuous', channel_map={'90173_Calibration--maximum-x-stationary-value_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.964329427648392, 'std': 0.17553048985447242}, annotation_units=2)
-TMAPS['22039_0'] = TensorMap('22039_MET-minutes-per-week-for-vigorous-activity_0_0', group='continuous', channel_map={'22039_MET-minutes-per-week-for-vigorous-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 676.7597017892753, 'std': 1207.0031041595707}, annotation_units=2)
-TMAPS['3146_0'] = TensorMap('3146_Speed-of-sound-through-heel_0_0', group='continuous', channel_map={'3146_Speed-of-sound-through-heel_0_0': 0, 'not-missing': 1}, normalization={'mean': 1553.774095256863, 'std': 35.74952717929825}, annotation_units=2)
-TMAPS['30840_0'] = TensorMap('30840_Total-bilirubin_0_0', group='continuous', channel_map={'30840_Total-bilirubin_0_0': 0, 'not-missing': 1}, normalization={'mean': 9.125066682920398, 'std': 4.4266920697166166}, annotation_units=2)
-TMAPS['5202_0'] = TensorMap('5202_Number-of-rounds-to-result-right_0_0', group='continuous', channel_map={'5202_Number-of-rounds-to-result-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.8046942346263806, 'std': 1.3398411998093893}, annotation_units=2)
-TMAPS['4125_0'] = TensorMap('4125_Heel-bone-mineral-density-BMD-Tscore-automated-right_0_0', group='continuous', channel_map={'4125_Heel-bone-mineral-density-BMD-Tscore-automated-right_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.2612268506396633, 'std': 1.2997182814485158}, annotation_units=2)
-TMAPS['90094_0'] = TensorMap('90094_Fraction-acceleration-<=-3-milligravities_0_0', group='continuous', channel_map={'90094_Fraction-acceleration-<=-3-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.3971402478422295, 'std': 0.09338600035939265}, annotation_units=2)
-TMAPS['1289_0'] = TensorMap('1289_Cooked-vegetable-intake_0_0', group='continuous', channel_map={'1289_Cooked-vegetable-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.7333101656355683, 'std': 1.927164731938455}, annotation_units=2)
-TMAPS['2946_0'] = TensorMap('2946_Fathers-age_0_0', group='continuous', channel_map={'2946_Fathers-age_0_0': 0, 'not-missing': 1}, normalization={'mean': 77.86716383540292, 'std': 7.339379202289823}, annotation_units=2)
-TMAPS['1080_0'] = TensorMap('1080_Time-spent-using-computer_0_0', group='continuous', channel_map={'1080_Time-spent-using-computer_0_0': 0, 'not-missing': 1}, normalization={'mean': -1.1182702816692922, 'std': 4.770303078021908}, annotation_units=2)
-TMAPS['3436_0'] = TensorMap('3436_Age-started-smoking-in-current-smokers_0_0', group='continuous', channel_map={'3436_Age-started-smoking-in-current-smokers_0_0': 0, 'not-missing': 1}, normalization={'mean': 17.841919257061786, 'std': 5.793512220681288}, annotation_units=2)
-TMAPS['1568_0'] = TensorMap('1568_Average-weekly-red-wine-intake_0_0', group='continuous', channel_map={'1568_Average-weekly-red-wine-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.915257928959543, 'std': 5.582280031635245}, annotation_units=2)
-TMAPS['5096_0'] = TensorMap('5096_3mm-weak-meridian-left_0_0', group='continuous', channel_map={'5096_3mm-weak-meridian-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.128607890740824, 'std': 1.5302009411308704}, annotation_units=2)
-TMAPS['2704_0'] = TensorMap('2704_Years-since-last-cervical-smear-test_0_0', group='continuous', channel_map={'2704_Years-since-last-cervical-smear-test_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.860277194456111, 'std': 7.302889325364324}, annotation_units=2)
-TMAPS['30780_0'] = TensorMap('30780_LDL-direct_0_0', group='continuous', channel_map={'30780_LDL-direct_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.5563651660223763, 'std': 0.8699758052966666}, annotation_units=2)
-TMAPS['30500_0'] = TensorMap('30500_Microalbumin-in-urine_0_0', group='continuous', channel_map={'30500_Microalbumin-in-urine_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.210916582191565, 'std': 129.41440770156902}, annotation_units=2)
-TMAPS['1578_0'] = TensorMap('1578_Average-weekly-champagne-plus-white-wine-intake_0_0', group='continuous', channel_map={'1578_Average-weekly-champagne-plus-white-wine-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.6539523474601396, 'std': 4.711206710140075}, annotation_units=2)
-TMAPS['90022_0'] = TensorMap('90022_Thursday-average-acceleration_0_0', group='continuous', channel_map={'90022_Thursday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.076211582043495, 'std': 13.197469717161155}, annotation_units=2)
-TMAPS['5074_0'] = TensorMap('5074_Number-of-letters-shown-in-round-left_0_0', group='continuous', channel_map={'5074_Number-of-letters-shown-in-round-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.967286607234341, 'std': 0.2882719397542315}, annotation_units=2)
-TMAPS['90099_0'] = TensorMap('90099_Fraction-acceleration-<=-8-milligravities_0_0', group='continuous', channel_map={'90099_Fraction-acceleration-<=-8-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5905090987993634, 'std': 0.09527670148745401}, annotation_units=2)
-TMAPS['22003_0'] = TensorMap('22003_Heterozygosity_0_0', group='continuous', channel_map={'22003_Heterozygosity_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.18811705969018283, 'std': 0.004555422619636816}, annotation_units=2)
-TMAPS['5204_0'] = TensorMap('5204_Distance-of-viewer-to-screen-right_0_0', group='continuous', channel_map={'5204_Distance-of-viewer-to-screen-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.9997055434643407, 'std': 0.01758717350878949}, annotation_units=2)
-TMAPS['23098_0'] = TensorMap('23098_Weight_0_0', group='continuous', channel_map={'23098_Weight_0_0': 0, 'not-missing': 1}, normalization={'mean': 78.0328770712033, 'std': 15.899791064734362}, annotation_units=2)
-TMAPS['5113_0'] = TensorMap('5113_6mm-cylindrical-power-angle-left_0_0', group='continuous', channel_map={'5113_6mm-cylindrical-power-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 98.60493684453876, 'std': 62.37943692413593}, annotation_units=2)
-TMAPS['20200_0'] = TensorMap('20200_Values-wanted_0_0', group='continuous', channel_map={'20200_Values-wanted_0_0': 0, 'not-missing': 1}, normalization={'mean': 7.0, 'std': 0.0}, annotation_units=2)
-TMAPS['5108_0'] = TensorMap('5108_3mm-asymmetry-angle-right_0_0', group='continuous', channel_map={'5108_3mm-asymmetry-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 173.69323081277426, 'std': 125.48795117868147}, annotation_units=2)
-TMAPS['5201_0'] = TensorMap('5201_logMAR-final-right_0_0', group='continuous', channel_map={'5201_logMAR-final-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0275927792856835, 'std': 0.20804208413111092}, annotation_units=2)
-TMAPS['30150_0'] = TensorMap('30150_Eosinophill-count_0_0', group='continuous', channel_map={'30150_Eosinophill-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.1748798582056562, 'std': 0.13857791589761187}, annotation_units=2)
-TMAPS['6033_0'] = TensorMap('6033_Maximum-heart-rate-during-fitness-test_0_0', group='continuous', channel_map={'6033_Maximum-heart-rate-during-fitness-test_0_0': 0, 'not-missing': 1}, normalization={'mean': 110.24494797213207, 'std': 20.14191123730601}, annotation_units=2)
-TMAPS['23106_0'] = TensorMap('23106_Impedance-of-whole-body_0_0', group='continuous', channel_map={'23106_Impedance-of-whole-body_0_0': 0, 'not-missing': 1}, normalization={'mean': 600.1263049712798, 'std': 88.96912814227959}, annotation_units=2)
-TMAPS['20161_0'] = TensorMap('20161_Pack-years-of-smoking_0_0', group='continuous', channel_map={'20161_Pack-years-of-smoking_0_0': 0, 'not-missing': 1}, normalization={'mean': 23.38188887048678, 'std': 18.803128176701886}, annotation_units=2)
-TMAPS['90037_0'] = TensorMap('90037_Average-acceleration-10:00--10:59_0_0', group='continuous', channel_map={'90037_Average-acceleration-10:00--10:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 48.647600270022664, 'std': 26.850548452754857}, annotation_units=2)
-TMAPS['100024_0'] = TensorMap('100024_Calcium_0_0', group='continuous', channel_map={'100024_Calcium_0_0': 0, 'not-missing': 1}, normalization={'mean': 987.0313623192508, 'std': 470.33844826989474}, annotation_units=2)
-TMAPS['90042_0'] = TensorMap('90042_Average-acceleration-15:00--15:59_0_0', group='continuous', channel_map={'90042_Average-acceleration-15:00--15:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 41.38379179323979, 'std': 24.118297411291845}, annotation_units=2)
-TMAPS['41085_0'] = TensorMap('41085_Episodes-containing-"Duration-of-episode"-data_0_0', group='continuous', channel_map={'41085_Episodes-containing-"Duration-of-episode"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.782855498903625, 'std': 15.821459717550043}, annotation_units=2)
-TMAPS['90136_0'] = TensorMap('90136_Fraction-acceleration-<=-325-milligravities_0_0', group='continuous', channel_map={'90136_Fraction-acceleration-<=-325-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9950144944307827, 'std': 0.006885737565731241}, annotation_units=2)
-TMAPS['30750_0'] = TensorMap('30750_Glycated-haemoglobin-HbA1c_0_0', group='continuous', channel_map={'30750_Glycated-haemoglobin-HbA1c_0_0': 0, 'not-missing': 1}, normalization={'mean': 36.13116605577336, 'std': 6.775811313289605}, annotation_units=2)
-TMAPS['90114_0'] = TensorMap('90114_Fraction-acceleration-<=-35-milligravities_0_0', group='continuous', channel_map={'90114_Fraction-acceleration-<=-35-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.7745163894112544, 'std': 0.07133240709878881}, annotation_units=2)
-TMAPS['49_0'] = TensorMap('49_Hip-circumference_0_0', group='continuous', channel_map={'49_Hip-circumference_0_0': 0, 'not-missing': 1}, normalization={'mean': 103.40158393578466, 'std': 9.249535675810918}, annotation_units=2)
-TMAPS['5206_0'] = TensorMap('5206_logMAR-initial-left_0_0', group='continuous', channel_map={'5206_logMAR-initial-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.03740222700413291, 'std': 0.2523146285723492}, annotation_units=2)
-TMAPS['23105_0'] = TensorMap('23105_Basal-metabolic-rate_0_0', group='continuous', channel_map={'23105_Basal-metabolic-rate_0_0': 0, 'not-missing': 1}, normalization={'mean': 6616.133658821902, 'std': 1364.2964637736743}, annotation_units=2)
-TMAPS['90083_0'] = TensorMap('90083_Wear-duration-during-23:00--23:59_0_0', group='continuous', channel_map={'90083_Wear-duration-during-23:00--23:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.209585611649549, 'std': 1.6306264000655888}, annotation_units=2)
-TMAPS['3063_0'] = TensorMap('3063_Forced-expiratory-volume-in-1second-FEV1_0_0', group='continuous', channel_map={'3063_Forced-expiratory-volume-in-1second-FEV1_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.8099046777336003, 'std': 0.7987504302226321}, annotation_units=2)
-TMAPS['5257_0'] = TensorMap('5257_Corneal-resistance-factor-right_0_0', group='continuous', channel_map={'5257_Corneal-resistance-factor-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.73805051611582, 'std': 2.4458486957160437}, annotation_units=2)
-TMAPS['90118_0'] = TensorMap('90118_Fraction-acceleration-<=-55-milligravities_0_0', group='continuous', channel_map={'90118_Fraction-acceleration-<=-55-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8425518202420559, 'std': 0.058866666184345474}, annotation_units=2)
-TMAPS['100023_0'] = TensorMap('100023_Starch_0_0', group='continuous', channel_map={'100023_Starch_0_0': 0, 'not-missing': 1}, normalization={'mean': 123.36970754943658, 'std': 56.412552258469965}, annotation_units=2)
-TMAPS['90129_0'] = TensorMap('90129_Fraction-acceleration-<=-150-milligravities_0_0', group='continuous', channel_map={'90129_Fraction-acceleration-<=-150-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.966451564684893, 'std': 0.021543806887605207}, annotation_units=2)
-TMAPS['1458_0'] = TensorMap('1458_Cereal-intake_0_0', group='continuous', channel_map={'1458_Cereal-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.496601254582551, 'std': 2.7950692055756186}, annotation_units=2)
-TMAPS['30211_0'] = TensorMap('30211_Eosinophill-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30211_Eosinophill-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['4418_0'] = TensorMap('4418_Average-monthly-champagne-plus-white-wine-intake_0_0', group='continuous', channel_map={'4418_Average-monthly-champagne-plus-white-wine-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9912825352672363, 'std': 1.6260730175053386}, annotation_units=2)
-TMAPS['20129_0'] = TensorMap('20129_Number-of-columns-displayed-in-round_0_0', group='continuous', channel_map={'20129_Number-of-columns-displayed-in-round_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90158_0'] = TensorMap('90158_Fraction-acceleration-<=-2000-milligravities_0_0', group='continuous', channel_map={'90158_Fraction-acceleration-<=-2000-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9999824003085973, 'std': 0.001422016623069464}, annotation_units=2)
-TMAPS['4101_0'] = TensorMap('4101_Heel-broadband-ultrasound-attenuation-left_0_0', group='continuous', channel_map={'4101_Heel-broadband-ultrasound-attenuation-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 77.92567923195446, 'std': 20.761681015550657}, annotation_units=2)
-TMAPS['5115_0'] = TensorMap('5115_3mm-cylindrical-power-angle-right_0_0', group='continuous', channel_map={'5115_3mm-cylindrical-power-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 91.81374880415468, 'std': 68.17860140092908}, annotation_units=2)
-TMAPS['874_0'] = TensorMap('874_Duration-of-walks_0_0', group='continuous', channel_map={'874_Duration-of-walks_0_0': 0, 'not-missing': 1}, normalization={'mean': 61.64055818193779, 'std': 78.79452297243806}, annotation_units=2)
-TMAPS['30130_0'] = TensorMap('30130_Monocyte-count_0_0', group='continuous', channel_map={'30130_Monocyte-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.4759545663100159, 'std': 0.27291869693433785}, annotation_units=2)
-TMAPS['5100_0'] = TensorMap('5100_3mm-weak-meridian-angle-right_0_0', group='continuous', channel_map={'5100_3mm-weak-meridian-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 91.80619308826606, 'std': 68.154958401978}, annotation_units=2)
-TMAPS['41108_0'] = TensorMap('41108_Episodes-containing-"Duration-of-preoperative-stay"-data_0_0', group='continuous', channel_map={'41108_Episodes-containing-"Duration-of-preoperative-stay"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.2847361569813405, 'std': 13.960304410797848}, annotation_units=2)
-TMAPS['3839_0'] = TensorMap('3839_Number-of-spontaneous-miscarriages_0_0', group='continuous', channel_map={'3839_Number-of-spontaneous-miscarriages_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9474939509160042, 'std': 1.0744542549213254}, annotation_units=2)
-TMAPS['4145_0'] = TensorMap('4145_Heel-bone-mineral-density-BMD-manual-entry-right_0_0', group='continuous', channel_map={'4145_Heel-bone-mineral-density-BMD-manual-entry-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5485754716981133, 'std': 0.12684714143138237}, annotation_units=2)
-TMAPS['90093_0'] = TensorMap('90093_Fraction-acceleration-<=-2-milligravities_0_0', group='continuous', channel_map={'90093_Fraction-acceleration-<=-2-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.3089802787019625, 'std': 0.08800661058556766}, annotation_units=2)
-TMAPS['23123_0'] = TensorMap('23123_Arm-fat-percentage-left_0_0', group='continuous', channel_map={'23123_Arm-fat-percentage-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 30.425135862664433, 'std': 10.267361725229158}, annotation_units=2)
-TMAPS['41146_0'] = TensorMap('41146_Episodes-containing-"Operative-procedure--main-OPCS4"-data_0_0', group='continuous', channel_map={'41146_Episodes-containing-"Operative-procedure--main-OPCS4"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.539805621710699, 'std': 15.622922521889272}, annotation_units=2)
-TMAPS['90117_0'] = TensorMap('90117_Fraction-acceleration-<=-50-milligravities_0_0', group='continuous', channel_map={'90117_Fraction-acceleration-<=-50-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8281616567819083, 'std': 0.061961534132324504}, annotation_units=2)
-TMAPS['4689_0'] = TensorMap('4689_Age-glaucoma-diagnosed_0_0', group='continuous', channel_map={'4689_Age-glaucoma-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 52.86446342369105, 'std': 11.284868847905615}, annotation_units=2)
-TMAPS['6039_0'] = TensorMap('6039_Duration-of-fitness-test_0_0', group='continuous', channel_map={'6039_Duration-of-fitness-test_0_0': 0, 'not-missing': 1}, normalization={'mean': 386.37286417979374, 'std': 107.8361824926779}, annotation_units=2)
-TMAPS['5086_0'] = TensorMap('5086_Cylindrical-power-left_0_0', group='continuous', channel_map={'5086_Cylindrical-power-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8718293496777368, 'std': 0.7367575071494264}, annotation_units=2)
-TMAPS['90170_0'] = TensorMap('90170_Calibration-coefficients--mean-temperature_0_0', group='continuous', channel_map={'90170_Calibration-coefficients--mean-temperature_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.895970972563777, 'std': 1.6886012877960286}, annotation_units=2)
-TMAPS['5211_0'] = TensorMap('5211_Distance-of-viewer-to-screen-left_0_0', group='continuous', channel_map={'5211_Distance-of-viewer-to-screen-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.999705400143452, 'std': 0.01759145192877142}, annotation_units=2)
-TMAPS['5945_0'] = TensorMap('5945_Age-other-serious-eye-condition-diagnosed_0_0', group='continuous', channel_map={'5945_Age-other-serious-eye-condition-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 44.571974522293004, 'std': 17.768937871084766}, annotation_units=2)
-TMAPS['23101_0'] = TensorMap('23101_Whole-body-fatfree-mass_0_0', group='continuous', channel_map={'23101_Whole-body-fatfree-mass_0_0': 0, 'not-missing': 1}, normalization={'mean': 53.21773908875433, 'std': 11.49642181916704}, annotation_units=2)
-TMAPS['41142_0'] = TensorMap('41142_Episodes-containing-"Diagnoses--main-ICD10"-data_0_0', group='continuous', channel_map={'41142_Episodes-containing-"Diagnoses--main-ICD10"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.69377195099064, 'std': 15.775197738988687}, annotation_units=2)
-TMAPS['3456_0'] = TensorMap('3456_Number-of-cigarettes-currently-smoked-daily-current-cigarette-smokers_0_0', group='continuous', channel_map={'3456_Number-of-cigarettes-currently-smoked-daily-current-cigarette-smokers_0_0': 0, 'not-missing': 1}, normalization={'mean': 15.538672123441085, 'std': 8.455828854657087}, annotation_units=2)
-TMAPS['90181_0'] = TensorMap('90181_Duration-of-interrupted-recording-periods_0_0', group='continuous', channel_map={'90181_Duration-of-interrupted-recording-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8079965282800523, 'std': 46.99727836703531}, annotation_units=2)
-TMAPS['41102_0'] = TensorMap('41102_Episodes-containing-"Method-of-discharge-from-hospital"-data-polymorphic_0_0', group='continuous', channel_map={'41102_Episodes-containing-"Method-of-discharge-from-hospital"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.783474798560121, 'std': 15.822013108027429}, annotation_units=2)
-TMAPS['3064_0'] = TensorMap('3064_Peak-expiratory-flow-PEF_0_0', group='continuous', channel_map={'3064_Peak-expiratory-flow-PEF_0_0': 0, 'not-missing': 1}, normalization={'mean': 388.39422424205037, 'std': 135.58586439663506}, annotation_units=2)
-TMAPS['20008_0'] = TensorMap('20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_0', group='continuous', channel_map={'20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 1913.4952026897327, 'std': 395.55315828716056}, annotation_units=2)
-TMAPS['90149_0'] = TensorMap('90149_Fraction-acceleration-<=-1100-milligravities_0_0', group='continuous', channel_map={'90149_Fraction-acceleration-<=-1100-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9997830753652537, 'std': 0.003246607516580007}, annotation_units=2)
-TMAPS['5190_0'] = TensorMap('5190_Duration-at-which-refractometer-first-shown-right_0_0', group='continuous', channel_map={'5190_Duration-at-which-refractometer-first-shown-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 135.90780062583843, 'std': 55.56543146059977}, annotation_units=2)
-TMAPS['90090_0'] = TensorMap('90090_Nowear-time-bias-adjusted-acceleration-minimum_0_0', group='continuous', channel_map={'90090_Nowear-time-bias-adjusted-acceleration-minimum_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.06461314431746949, 'std': 2.3104969830994464}, annotation_units=2)
-TMAPS['23127_0'] = TensorMap('23127_Trunk-fat-percentage_0_0', group='continuous', channel_map={'23127_Trunk-fat-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.173420713059198, 'std': 8.008510881672985}, annotation_units=2)
-TMAPS['90087_0'] = TensorMap('90087_Nowear-time-bias-adjusted-average-acceleration_0_0', group='continuous', channel_map={'90087_Nowear-time-bias-adjusted-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.55881276821448, 'std': 14.108189524346061}, annotation_units=2)
-TMAPS['1309_0'] = TensorMap('1309_Fresh-fruit-intake_0_0', group='continuous', channel_map={'1309_Fresh-fruit-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.2351555693527874, 'std': 1.6134921035874938}, annotation_units=2)
-TMAPS['30161_0'] = TensorMap('30161_Basophill-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30161_Basophill-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90128_0'] = TensorMap('90128_Fraction-acceleration-<=-125-milligravities_0_0', group='continuous', channel_map={'90128_Fraction-acceleration-<=-125-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9507029557837889, 'std': 0.027843103586081514}, annotation_units=2)
-TMAPS['5251_0'] = TensorMap('5251_6mm-index-of-best-keratometry-results-right_0_0', group='continuous', channel_map={'5251_6mm-index-of-best-keratometry-results-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.4736809241336244, 'std': 0.7158207375462095}, annotation_units=2)
-TMAPS['30160_0'] = TensorMap('30160_Basophill-count_0_0', group='continuous', channel_map={'30160_Basophill-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.03405815076543388, 'std': 0.051608027416115816}, annotation_units=2)
-TMAPS['3809_0'] = TensorMap('3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0', group='continuous', channel_map={'3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.2746762433344218, 'std': 5.910246970218595}, annotation_units=2)
-TMAPS['3829_0'] = TensorMap('3829_Number-of-stillbirths_0_0', group='continuous', channel_map={'3829_Number-of-stillbirths_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0975155493728515, 'std': 0.37855956966324644}, annotation_units=2)
-TMAPS['90073_0'] = TensorMap('90073_Wear-duration-during-13:00--13:59_0_0', group='continuous', channel_map={'90073_Wear-duration-during-13:00--13:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.368636192680458, 'std': 1.535654195585917}, annotation_units=2)
-TMAPS['2804_0'] = TensorMap('2804_Age-when-last-used-oral-contraceptive-pill_0_0', group='continuous', channel_map={'2804_Age-when-last-used-oral-contraceptive-pill_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.823013855015315, 'std': 7.516648891125273}, annotation_units=2)
-TMAPS['2897_0'] = TensorMap('2897_Age-stopped-smoking_0_0', group='continuous', channel_map={'2897_Age-stopped-smoking_0_0': 0, 'not-missing': 1}, normalization={'mean': 39.85940162769238, 'std': 11.609253789489415}, annotation_units=2)
-TMAPS['90027_0'] = TensorMap('90027_Average-acceleration-00:00--00:59_0_0', group='continuous', channel_map={'90027_Average-acceleration-00:00--00:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 7.106457881286464, 'std': 12.68977543063959}, annotation_units=2)
-TMAPS['3849_0'] = TensorMap('3849_Number-of-pregnancy-terminations_0_0', group='continuous', channel_map={'3849_Number-of-pregnancy-terminations_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5511111625806302, 'std': 0.7549118899564191}, annotation_units=2)
-TMAPS['23113_0'] = TensorMap('23113_Leg-fatfree-mass-right_0_0', group='continuous', channel_map={'23113_Leg-fatfree-mass-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.969660016208081, 'std': 2.0246336838262917}, annotation_units=2)
-TMAPS['100003_0'] = TensorMap('100003_Protein_0_0', group='continuous', channel_map={'100003_Protein_0_0': 0, 'not-missing': 1}, normalization={'mean': 81.80167003547855, 'std': 31.330517846881712}, annotation_units=2)
-TMAPS['100016_0'] = TensorMap('100016_Potassium_0_0', group='continuous', channel_map={'100016_Potassium_0_0': 0, 'not-missing': 1}, normalization={'mean': 3779.994103354204, 'std': 1559.9782812695234}, annotation_units=2)
-TMAPS['90081_0'] = TensorMap('90081_Wear-duration-during-21:00--21:59_0_0', group='continuous', channel_map={'90081_Wear-duration-during-21:00--21:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.360730411302377, 'std': 1.5580538235743921}, annotation_units=2)
-TMAPS['30640_0'] = TensorMap('30640_Apolipoprotein-B_0_0', group='continuous', channel_map={'30640_Apolipoprotein-B_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.0320267939695962, 'std': 0.23825112625325112}, annotation_units=2)
-TMAPS['4140_0'] = TensorMap('4140_Heel-bone-mineral-density-BMD-manual-entry-left_0_0', group='continuous', channel_map={'4140_Heel-bone-mineral-density-BMD-manual-entry-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5419315960912052, 'std': 0.12838987287660628}, annotation_units=2)
-TMAPS['100019_0'] = TensorMap('100019_Carotene_0_0', group='continuous', channel_map={'100019_Carotene_0_0': 0, 'not-missing': 1}, normalization={'mean': 3211.757054716104, 'std': 3273.290265535609}, annotation_units=2)
-TMAPS['90110_0'] = TensorMap('90110_Fraction-acceleration-<=-19-milligravities_0_0', group='continuous', channel_map={'90110_Fraction-acceleration-<=-19-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6888709773856025, 'std': 0.08391288170980779}, annotation_units=2)
-TMAPS['20019_0'] = TensorMap('20019_Speechreceptionthreshold-SRT-estimate-left_0_0', group='continuous', channel_map={'20019_Speechreceptionthreshold-SRT-estimate-left_0_0': 0, 'not-missing': 1}, normalization={'mean': -6.587135061642198, 'std': 2.0968723587332954}, annotation_units=2)
-TMAPS['90075_0'] = TensorMap('90075_Wear-duration-during-15:00--15:59_0_0', group='continuous', channel_map={'90075_Wear-duration-during-15:00--15:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.370889242489994, 'std': 1.5392009728803164}, annotation_units=2)
-TMAPS['90141_0'] = TensorMap('90141_Fraction-acceleration-<=-450-milligravities_0_0', group='continuous', channel_map={'90141_Fraction-acceleration-<=-450-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9976744394618833, 'std': 0.00528526271670816}, annotation_units=2)
-TMAPS['4056_0'] = TensorMap('4056_Age-stroke-diagnosed_0_0', group='continuous', channel_map={'4056_Age-stroke-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 53.57258174852922, 'std': 9.47776143796556}, annotation_units=2)
-TMAPS['5901_0'] = TensorMap('5901_Age-when-diabetesrelated-eye-disease-diagnosed_0_0', group='continuous', channel_map={'5901_Age-when-diabetesrelated-eye-disease-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 50.8926453143535, 'std': 13.567756523947303}, annotation_units=2)
-TMAPS['30897_0'] = TensorMap('30897_Estimated-sample-dilution-factor_0_0', group='continuous', channel_map={'30897_Estimated-sample-dilution-factor_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9970687105513253, 'std': 0.010569893704978957}, annotation_units=2)
-TMAPS['30071_0'] = TensorMap('30071_Red-blood-cell-erythrocyte-distribution-width-freezethaw-cycles_0_0', group='continuous', channel_map={'30071_Red-blood-cell-erythrocyte-distribution-width-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['22661_0'] = TensorMap('22661_Number-of-gap-periods_0_0', group='continuous', channel_map={'22661_Number-of-gap-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.4835616669194338, 'std': 1.3517090669324892}, annotation_units=2)
-TMAPS['5430_0'] = TensorMap('5430_Age-when-loss-of-vision-due-to-injury-or-trauma-diagnosed_0_0', group='continuous', channel_map={'5430_Age-when-loss-of-vision-due-to-injury-or-trauma-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 33.992546583850924, 'std': 19.249796641670027}, annotation_units=2)
-TMAPS['30010_0'] = TensorMap('30010_Red-blood-cell-erythrocyte-count_0_0', group='continuous', channel_map={'30010_Red-blood-cell-erythrocyte-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.516898456712665, 'std': 0.4169165557365781}, annotation_units=2)
-TMAPS['90047_0'] = TensorMap('90047_Average-acceleration-20:00--20:59_0_0', group='continuous', channel_map={'90047_Average-acceleration-20:00--20:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 25.3894088432422, 'std': 19.687511042542315}, annotation_units=2)
-TMAPS['20015_0'] = TensorMap('20015_Sitting-height_0_0', group='continuous', channel_map={'20015_Sitting-height_0_0': 0, 'not-missing': 1}, normalization={'mean': 89.14320146537861, 'std': 4.882706194277553}, annotation_units=2)
-TMAPS['90077_0'] = TensorMap('90077_Wear-duration-during-17:00--17:59_0_0', group='continuous', channel_map={'90077_Wear-duration-during-17:00--17:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.393261295144414, 'std': 1.5229677027803825}, annotation_units=2)
-TMAPS['100011_0'] = TensorMap('100011_Iron_0_0', group='continuous', channel_map={'100011_Iron_0_0': 0, 'not-missing': 1}, normalization={'mean': 13.648492798281188, 'std': 5.320383273608107}, annotation_units=2)
-TMAPS['30201_0'] = TensorMap('30201_Neutrophill-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30201_Neutrophill-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['30020_0'] = TensorMap('30020_Haemoglobin-concentration_0_0', group='continuous', channel_map={'30020_Haemoglobin-concentration_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.17475888749477, 'std': 1.246999741921853}, annotation_units=2)
-TMAPS['1598_0'] = TensorMap('1598_Average-weekly-spirits-intake_0_0', group='continuous', channel_map={'1598_Average-weekly-spirits-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.8542452061807695, 'std': 5.341212242611891}, annotation_units=2)
-TMAPS['1498_0'] = TensorMap('1498_Coffee-intake_0_0', group='continuous', channel_map={'1498_Coffee-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.0151128692763303, 'std': 2.091538483627113}, annotation_units=2)
-TMAPS['90138_0'] = TensorMap('90138_Fraction-acceleration-<=-375-milligravities_0_0', group='continuous', channel_map={'90138_Fraction-acceleration-<=-375-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9964408987897199, 'std': 0.005995999357561531}, annotation_units=2)
-TMAPS['30241_0'] = TensorMap('30241_Reticulocyte-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30241_Reticulocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['4276_0'] = TensorMap('4276_Number-of-triplets-attempted-right_0_0', group='continuous', channel_map={'4276_Number-of-triplets-attempted-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.652431840630257, 'std': 2.11153651927071}, annotation_units=2)
-TMAPS['5078_0'] = TensorMap('5078_logMAR-in-round-left_0_0', group='continuous', channel_map={'5078_logMAR-in-round-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.13740222700413315, 'std': 0.2523146285723492}, annotation_units=2)
-TMAPS['90157_0'] = TensorMap('90157_Fraction-acceleration-<=-1900-milligravities_0_0', group='continuous', channel_map={'90157_Fraction-acceleration-<=-1900-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.999977925647331, 'std': 0.001642864427684834}, annotation_units=2)
-TMAPS['90067_0'] = TensorMap('90067_Wear-duration-during-07:00--07:59_0_0', group='continuous', channel_map={'90067_Wear-duration-during-07:00--07:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.251128694729736, 'std': 1.597056114739103}, annotation_units=2)
-TMAPS['74_0'] = TensorMap('74_Fasting-time_0_0', group='continuous', channel_map={'74_Fasting-time_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.8270666642729068, 'std': 2.4659168405053102}, annotation_units=2)
-TMAPS['1488_0'] = TensorMap('1488_Tea-intake_0_0', group='continuous', channel_map={'1488_Tea-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.424491647712963, 'std': 2.882557329461548}, annotation_units=2)
-TMAPS['4198_0'] = TensorMap('4198_Position-of-the-pulse-wave-peak_0_0', group='continuous', channel_map={'4198_Position-of-the-pulse-wave-peak_0_0': 0, 'not-missing': 1}, normalization={'mean': 22.284664351512948, 'std': 5.413583747596621}, annotation_units=2)
-TMAPS['90107_0'] = TensorMap('90107_Fraction-acceleration-<=-16-milligravities_0_0', group='continuous', channel_map={'90107_Fraction-acceleration-<=-16-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6683853705578864, 'std': 0.0867126863188436}, annotation_units=2)
-TMAPS['90160_0'] = TensorMap('90160_Error-tolerance-after-calibration_0_0', group='continuous', channel_map={'90160_Error-tolerance-after-calibration_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.563251555041227, 'std': 0.7807888919170611}, annotation_units=2)
-TMAPS['90135_0'] = TensorMap('90135_Fraction-acceleration-<=-300-milligravities_0_0', group='continuous', channel_map={'90135_Fraction-acceleration-<=-300-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9939693234967932, 'std': 0.007534428867424408}, annotation_units=2)
-TMAPS['20157_0'] = TensorMap('20157_Duration-to-complete-alphanumeric-path-trail-#2_0_0', group='continuous', channel_map={'20157_Duration-to-complete-alphanumeric-path-trail-#2_0_0': 0, 'not-missing': 1}, normalization={'mean': 66.80345922914262, 'std': 25.752353412671365}, annotation_units=2)
-TMAPS['2684_0'] = TensorMap('2684_Years-since-last-breast-cancer-screening--mammogram_0_0', group='continuous', channel_map={'2684_Years-since-last-breast-cancer-screening--mammogram_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.6584965381749851, 'std': 5.600995908985003}, annotation_units=2)
-TMAPS['5102_0'] = TensorMap('5102_6mm-weak-meridian-angle-left_0_0', group='continuous', channel_map={'5102_6mm-weak-meridian-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 98.57233073872804, 'std': 62.36321741821202}, annotation_units=2)
-TMAPS['5207_0'] = TensorMap('5207_Final-number-of-letters-displayed-left_0_0', group='continuous', channel_map={'5207_Final-number-of-letters-displayed-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.983434095023399, 'std': 0.202494585982468}, annotation_units=2)
-TMAPS['3084_0'] = TensorMap('3084_Heel-bone-mineral-density-BMD-manual-entry_0_0', group='continuous', channel_map={'3084_Heel-bone-mineral-density-BMD-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.542322258358876, 'std': 0.12769083733767947}, annotation_units=2)
-TMAPS['41143_0'] = TensorMap('41143_Episodes-containing-"Diagnoses--main-ICD10--addendum"-data_0_0', group='continuous', channel_map={'41143_Episodes-containing-"Diagnoses--main-ICD10--addendum"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.9050652107976946, 'std': 3.3783148684541815}, annotation_units=2)
-TMAPS['4451_0'] = TensorMap('4451_Average-monthly-fortified-wine-intake_0_0', group='continuous', channel_map={'4451_Average-monthly-fortified-wine-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.16545126443032654, 'std': 0.8525999041972707}, annotation_units=2)
-TMAPS['22663_0'] = TensorMap('22663_Year-gap-started_0_0', group='continuous', channel_map={'22663_Year-gap-started_0_0': 0, 'not-missing': 1}, normalization={'mean': 1990.3453756015897, 'std': 16.751705970305107}, annotation_units=2)
-TMAPS['23104_0'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.431847749487705, 'std': 4.785169842092806}, annotation_units=2)
-TMAPS['23122_0'] = TensorMap('23122_Arm-predicted-mass-right_0_0', group='continuous', channel_map={'23122_Arm-predicted-mass-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.7094604752076186, 'std': 0.7833267524137337}, annotation_units=2)
-TMAPS['41107_0'] = TensorMap('41107_Episodes-containing-"Duration-of-postoperative-stay"-data_0_0', group='continuous', channel_map={'41107_Episodes-containing-"Duration-of-postoperative-stay"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.284227340943204, 'std': 13.958278678593906}, annotation_units=2)
-TMAPS['23128_0'] = TensorMap('23128_Trunk-fat-mass_0_0', group='continuous', channel_map={'23128_Trunk-fat-mass_0_0': 0, 'not-missing': 1}, normalization={'mean': 13.735808957116552, 'std': 5.171170866436634}, annotation_units=2)
-TMAPS['40425_0'] = TensorMap('40425_Volume-of-DNA-held-by-UKB_0_0', group='continuous', channel_map={'40425_Volume-of-DNA-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 835.5959956196599, 'std': 49.91770948969756}, annotation_units=2)
-TMAPS['90120_0'] = TensorMap('90120_Fraction-acceleration-<=-65-milligravities_0_0', group='continuous', channel_map={'90120_Fraction-acceleration-<=-65-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8675027629104584, 'std': 0.0532510533854409}, annotation_units=2)
-TMAPS['30890_0'] = TensorMap('30890_Vitamin-D_0_0', group='continuous', channel_map={'30890_Vitamin-D_0_0': 0, 'not-missing': 1}, normalization={'mean': 48.61285706639076, 'std': 21.11087406647955}, annotation_units=2)
-TMAPS['90082_0'] = TensorMap('90082_Wear-duration-during-22:00--22:59_0_0', group='continuous', channel_map={'90082_Wear-duration-during-22:00--22:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.3171366025362845, 'std': 1.5791490404943698}, annotation_units=2)
-TMAPS['30111_0'] = TensorMap('30111_Platelet-distribution-width-freezethaw-cycles_0_0', group='continuous', channel_map={'30111_Platelet-distribution-width-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['30860_0'] = TensorMap('30860_Total-protein_0_0', group='continuous', channel_map={'30860_Total-protein_0_0': 0, 'not-missing': 1}, normalization={'mean': 72.51024893686838, 'std': 4.115743513768043}, annotation_units=2)
-TMAPS['30820_0'] = TensorMap('30820_Rheumatoid-factor_0_0', group='continuous', channel_map={'30820_Rheumatoid-factor_0_0': 0, 'not-missing': 1}, normalization={'mean': 24.556292961564534, 'std': 19.858152125238586}, annotation_units=2)
-TMAPS['2277_0'] = TensorMap('2277_Frequency-of-solariumsunlamp-use_0_0', group='continuous', channel_map={'2277_Frequency-of-solariumsunlamp-use_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.01890519359381569, 'std': 5.05104533210511}, annotation_units=2)
-TMAPS['4138_0'] = TensorMap('4138_Heel-bone-mineral-density-BMD-Tscore-manual-entry-left_0_0', group='continuous', channel_map={'4138_Heel-bone-mineral-density-BMD-Tscore-manual-entry-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6429804560260587, 'std': 1.0076706181075972}, annotation_units=2)
-TMAPS['22040_0'] = TensorMap('22040_Summed-MET-minutes-per-week-for-all-activity_0_0', group='continuous', channel_map={'22040_Summed-MET-minutes-per-week-for-all-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 2650.269213717759, 'std': 2713.1806848809524}, annotation_units=2)
-TMAPS['30140_0'] = TensorMap('30140_Neutrophill-count_0_0', group='continuous', channel_map={'30140_Neutrophill-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.227884419173243, 'std': 1.4218134581914315}, annotation_units=2)
-TMAPS['30100_0'] = TensorMap('30100_Mean-platelet-thrombocyte-volume_0_0', group='continuous', channel_map={'30100_Mean-platelet-thrombocyte-volume_0_0': 0, 'not-missing': 1}, normalization={'mean': 9.333080812727935, 'std': 1.0849852535700208}, annotation_units=2)
-TMAPS['78_0'] = TensorMap('78_Heel-bone-mineral-density-BMD-Tscore-automated_0_0', group='continuous', channel_map={'78_Heel-bone-mineral-density-BMD-Tscore-automated_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.3368878233144652, 'std': 1.2452428354839498}, annotation_units=2)
-TMAPS['30600_0'] = TensorMap('30600_Albumin_0_0', group='continuous', channel_map={'30600_Albumin_0_0': 0, 'not-missing': 1}, normalization={'mean': 45.21007928425593, 'std': 2.629164605833256}, annotation_units=2)
-TMAPS['30021_0'] = TensorMap('30021_Haemoglobin-concentration-freezethaw-cycles_0_0', group='continuous', channel_map={'30021_Haemoglobin-concentration-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['20229_0'] = TensorMap('20229_Values-entered_0_0', group='continuous', channel_map={'20229_Values-entered_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.680965327990978, 'std': 1.268447992590068}, annotation_units=2)
-TMAPS['90143_0'] = TensorMap('90143_Fraction-acceleration-<=-500-milligravities_0_0', group='continuous', channel_map={'90143_Fraction-acceleration-<=-500-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9981833164569168, 'std': 0.0050169292522359}, annotation_units=2)
-TMAPS['30344_0'] = TensorMap('30344_Volume-of-EDTA2-plasma-held-by-UKB_0_0', group='continuous', channel_map={'30344_Volume-of-EDTA2-plasma-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 3175.6061436322166, 'std': 516.7827685337743}, annotation_units=2)
-TMAPS['47_0'] = TensorMap('47_Hand-grip-strength-right_0_0', group='continuous', channel_map={'47_Hand-grip-strength-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.67895383148411, 'std': 11.282845062461273}, annotation_units=2)
-TMAPS['5199_0'] = TensorMap('5199_logMAR-initial-right_0_0', group='continuous', channel_map={'5199_logMAR-initial-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.03792344130072978, 'std': 0.2462581389972725}, annotation_units=2)
-TMAPS['90085_0'] = TensorMap('90085_Unique-minutes-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days_0_0', group='continuous', channel_map={'90085_Unique-minutes-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days_0_0': 0, 'not-missing': 1}, normalization={'mean': 1399.4772457688416, 'std': 211.179090104803}, annotation_units=2)
-TMAPS['95_0'] = TensorMap('95_Pulse-rate-during-bloodpressure-measurement_0_0', group='continuous', channel_map={'95_Pulse-rate-during-bloodpressure-measurement_0_0': 0, 'not-missing': 1}, normalization={'mean': 70.99900335236022, 'std': 11.896999521617}, annotation_units=2)
-TMAPS['23118_0'] = TensorMap('23118_Leg-predicted-mass-left_0_0', group='continuous', channel_map={'23118_Leg-predicted-mass-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.389605651769434, 'std': 1.914070754426116}, annotation_units=2)
-TMAPS['3786_0'] = TensorMap('3786_Age-asthma-diagnosed_0_0', group='continuous', channel_map={'3786_Age-asthma-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.156387837152113, 'std': 18.68854991513305}, annotation_units=2)
-TMAPS['5993_0'] = TensorMap('5993_ECG-number-of-stages-in-a-phase_0_0', group='continuous', channel_map={'5993_ECG-number-of-stages-in-a-phase_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9973959669557184, 'std': 0.05096356908135947}, annotation_units=2)
-TMAPS['90036_0'] = TensorMap('90036_Average-acceleration-09:00--09:59_0_0', group='continuous', channel_map={'90036_Average-acceleration-09:00--09:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 45.857465837311345, 'std': 29.639430751174306}, annotation_units=2)
-TMAPS['30690_0'] = TensorMap('30690_Cholesterol_0_0', group='continuous', channel_map={'30690_Cholesterol_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=2)
-TMAPS['3083_0'] = TensorMap('3083_Heel-quantitative-ultrasound-index-QUI-manual-entry_0_0', group='continuous', channel_map={'3083_Heel-quantitative-ultrasound-index-QUI-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 97.68872542642549, 'std': 20.3789819368478}, annotation_units=2)
-TMAPS['23108_0'] = TensorMap('23108_Impedance-of-leg-left_0_0', group='continuous', channel_map={'23108_Impedance-of-leg-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 247.76824386489056, 'std': 35.70859686372287}, annotation_units=2)
-TMAPS['30050_0'] = TensorMap('30050_Mean-corpuscular-haemoglobin_0_0', group='continuous', channel_map={'30050_Mean-corpuscular-haemoglobin_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.450949838664815, 'std': 1.9215704123050525}, annotation_units=2)
-TMAPS['5099_0'] = TensorMap('5099_3mm-weak-meridian-right_0_0', group='continuous', channel_map={'5099_3mm-weak-meridian-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.094903255737776, 'std': 1.5263663124401843}, annotation_units=2)
-TMAPS['6194_0'] = TensorMap('6194_Age-stopped-smoking-cigarettes-current-cigarpipe-or-previous-cigarette-smoker_0_0', group='continuous', channel_map={'6194_Age-stopped-smoking-cigarettes-current-cigarpipe-or-previous-cigarette-smoker_0_0': 0, 'not-missing': 1}, normalization={'mean': 37.70771950500884, 'std': 11.806893295410132}, annotation_units=2)
-TMAPS['4269_0'] = TensorMap('4269_Number-of-triplets-attempted-left_0_0', group='continuous', channel_map={'4269_Number-of-triplets-attempted-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.663892064399365, 'std': 2.077226481419056}, annotation_units=2)
-TMAPS['90159_0'] = TensorMap('90159_Error-tolerance-before-calibration_0_0', group='continuous', channel_map={'90159_Error-tolerance-before-calibration_0_0': 0, 'not-missing': 1}, normalization={'mean': 79.42395264959741, 'std': 38.23724232631871}, annotation_units=2)
-TMAPS['90089_0'] = TensorMap('90089_Nowear-time-bias-adjusted-acceleration-median_0_0', group='continuous', channel_map={'90089_Nowear-time-bias-adjusted-acceleration-median_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.529378176382661, 'std': 5.919172559006304}, annotation_units=2)
-TMAPS['30630_0'] = TensorMap('30630_Apolipoprotein-A_0_0', group='continuous', channel_map={'30630_Apolipoprotein-A_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.5376508308150054, 'std': 0.2706560785267057}, annotation_units=2)
-TMAPS['30720_0'] = TensorMap('30720_Cystatin-C_0_0', group='continuous', channel_map={'30720_Cystatin-C_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.907520377610821, 'std': 0.17630752583057652}, annotation_units=2)
-TMAPS['90188_0'] = TensorMap('90188_Sample-rate-average_0_0', group='continuous', channel_map={'90188_Sample-rate-average_0_0': 0, 'not-missing': 1}, normalization={'mean': 99.98452866579875, 'std': 74.59443675687425}, annotation_units=2)
-TMAPS['77_0'] = TensorMap('77_Heel-bone-ultrasound-Tscore-manual-entry_0_0', group='continuous', channel_map={'77_Heel-bone-ultrasound-Tscore-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.23921666393691945, 'std': 1.1765476827580195}, annotation_units=2)
-TMAPS['135_0'] = TensorMap('135_Number-of-selfreported-noncancer-illnesses_0_0', group='continuous', channel_map={'135_Number-of-selfreported-noncancer-illnesses_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.863465118782316, 'std': 1.8686871352975107}, annotation_units=2)
-TMAPS['30080_0'] = TensorMap('30080_Platelet-count_0_0', group='continuous', channel_map={'30080_Platelet-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 252.9890089231007, 'std': 60.04837429019606}, annotation_units=2)
-TMAPS['129_0'] = TensorMap('129_Place-of-birth-in-UK--north-coordinate_0_0', group='continuous', channel_map={'129_Place-of-birth-in-UK--north-coordinate_0_0': 0, 'not-missing': 1}, normalization={'mean': 354194.8660861952, 'std': 167068.55848801875}, annotation_units=2)
-TMAPS['5134_0'] = TensorMap('5134_6mm-strong-meridian-left_0_0', group='continuous', channel_map={'5134_6mm-strong-meridian-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.48577460503954, 'std': 1.5831625357208206}, annotation_units=2)
-TMAPS['5209_0'] = TensorMap('5209_Number-of-rounds-to-result-left_0_0', group='continuous', channel_map={'5209_Number-of-rounds-to-result-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.847158178775149, 'std': 1.327631029468869}, annotation_units=2)
-TMAPS['23120_0'] = TensorMap('23120_Arm-fat-mass-right_0_0', group='continuous', channel_map={'23120_Arm-fat-mass-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.2398084345670985, 'std': 0.6384610930020304}, annotation_units=2)
-TMAPS['4142_0'] = TensorMap('4142_Speed-of-sound-through-heel-manual-entry-left_0_0', group='continuous', channel_map={'4142_Speed-of-sound-through-heel-manual-entry-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1551.8999185667753, 'std': 69.66185558734954}, annotation_units=2)
-TMAPS['22641_0'] = TensorMap('22641_Period-spent-working-mix-of-day-and-night-shifts_0_0', group='continuous', channel_map={'22641_Period-spent-working-mix-of-day-and-night-shifts_0_0': 0, 'not-missing': 1}, normalization={'mean': -271.0781703362348, 'std': 451.31832169823304}, annotation_units=2)
-TMAPS['90104_0'] = TensorMap('90104_Fraction-acceleration-<=-13-milligravities_0_0', group='continuous', channel_map={'90104_Fraction-acceleration-<=-13-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6455888037031675, 'std': 0.08972766566548142}, annotation_units=2)
-TMAPS['22645_0'] = TensorMap('22645_Rest-days-during-mixed-shift-periods_0_0', group='continuous', channel_map={'22645_Rest-days-during-mixed-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.81119071370273, 'std': 2.4867670650610605}, annotation_units=2)
-TMAPS['5112_0'] = TensorMap('5112_3mm-cylindrical-power-angle-left_0_0', group='continuous', channel_map={'5112_3mm-cylindrical-power-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 86.57407474865218, 'std': 68.08982173797986}, annotation_units=2)
-TMAPS['22603_0'] = TensorMap('22603_Year-job-ended_0_0', group='continuous', channel_map={'22603_Year-job-ended_0_0': 0, 'not-missing': 1}, normalization={'mean': 1982.345832370045, 'std': 14.626800464296242}, annotation_units=2)
-TMAPS['30220_0'] = TensorMap('30220_Basophill-percentage_0_0', group='continuous', channel_map={'30220_Basophill-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5696815742996795, 'std': 0.6104582668162518}, annotation_units=2)
-TMAPS['90100_0'] = TensorMap('90100_Fraction-acceleration-<=-9-milligravities_0_0', group='continuous', channel_map={'90100_Fraction-acceleration-<=-9-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.605222112927335, 'std': 0.09409262987835804}, annotation_units=2)
-TMAPS['100013_0'] = TensorMap('100013_Vitamin-B12_0_0', group='continuous', channel_map={'100013_Vitamin-B12_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.3535030460655655, 'std': 5.466821683842562}, annotation_units=2)
-TMAPS['41097_0'] = TensorMap('41097_Episodes-containing-"Waiting-time-for-hospital-admission"-data_0_0', group='continuous', channel_map={'41097_Episodes-containing-"Waiting-time-for-hospital-admission"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.617979766799029, 'std': 9.89681007615826}, annotation_units=2)
-TMAPS['90039_0'] = TensorMap('90039_Average-acceleration-12:00--12:59_0_0', group='continuous', channel_map={'90039_Average-acceleration-12:00--12:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 46.32474468392883, 'std': 24.4658568868664}, annotation_units=2)
-TMAPS['2867_0'] = TensorMap('2867_Age-started-smoking-in-former-smokers_0_0', group='continuous', channel_map={'2867_Age-started-smoking-in-former-smokers_0_0': 0, 'not-missing': 1}, normalization={'mean': 17.282265436715697, 'std': 3.702287887946035}, annotation_units=2)
-TMAPS['100018_0'] = TensorMap('100018_Retinol_0_0', group='continuous', channel_map={'100018_Retinol_0_0': 0, 'not-missing': 1}, normalization={'mean': 314.26497573911837, 'std': 200.19802174665372}, annotation_units=2)
-TMAPS['90139_0'] = TensorMap('90139_Fraction-acceleration-<=-400-milligravities_0_0', group='continuous', channel_map={'90139_Fraction-acceleration-<=-400-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9969382130285933, 'std': 0.005691974016055796}, annotation_units=2)
-TMAPS['87_0'] = TensorMap('87_Noncancer-illness-yearage-first-occurred_0_0', group='continuous', channel_map={'87_Noncancer-illness-yearage-first-occurred_0_0': 0, 'not-missing': 1}, normalization={'mean': 702.0484723736797, 'std': 926.1963262950987}, annotation_units=2)
-TMAPS['90068_0'] = TensorMap('90068_Wear-duration-during-08:00--08:59_0_0', group='continuous', channel_map={'90068_Wear-duration-during-08:00--08:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.236876898596846, 'std': 1.5573282783522373}, annotation_units=2)
-TMAPS['21002_0'] = TensorMap('21002_Weight_0_0', group='continuous', channel_map={'21002_Weight_0_0': 0, 'not-missing': 1}, normalization={'mean': 78.05452345316375, 'std': 15.945823011839185}, annotation_units=2)
-TMAPS['5085_0'] = TensorMap('5085_Spherical-power-left_0_0', group='continuous', channel_map={'5085_Spherical-power-left_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.7476071723362784, 'std': 2.8391463141477917}, annotation_units=2)
-TMAPS['41094_0'] = TensorMap('41094_Episodes-containing-"Administrative-and-legal-status-of-patient"-data_0_0', group='continuous', channel_map={'41094_Episodes-containing-"Administrative-and-legal-status-of-patient"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.228105001783227, 'std': 3.6328308112506194}, annotation_units=2)
-TMAPS['41112_0'] = TensorMap('41112_Episodes-containing-"Treatment-speciality-of-consultant"-data-polymorphic_0_0', group='continuous', channel_map={'41112_Episodes-containing-"Treatment-speciality-of-consultant"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.783491721201892, 'std': 15.822069033321931}, annotation_units=2)
-TMAPS['90109_0'] = TensorMap('90109_Fraction-acceleration-<=-18-milligravities_0_0', group='continuous', channel_map={'90109_Fraction-acceleration-<=-18-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6822708713052703, 'std': 0.0848315599265804}, annotation_units=2)
-TMAPS['20248_0'] = TensorMap('20248_Total-errors-traversing-alphanumeric-path-trail-#2_0_0', group='continuous', channel_map={'20248_Total-errors-traversing-alphanumeric-path-trail-#2_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.2258328462887205, 'std': 5.642607994971587}, annotation_units=2)
-TMAPS['30051_0'] = TensorMap('30051_Mean-corpuscular-haemoglobin-freezethaw-cycles_0_0', group='continuous', channel_map={'30051_Mean-corpuscular-haemoglobin-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['3761_0'] = TensorMap('3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0', group='continuous', channel_map={'3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 25.206855225311596, 'std': 16.127075100760685}, annotation_units=2)
-TMAPS['23112_0'] = TensorMap('23112_Leg-fat-mass-right_0_0', group='continuous', channel_map={'23112_Leg-fat-mass-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.308648770510948, 'std': 1.898437368686469}, annotation_units=2)
-TMAPS['90076_0'] = TensorMap('90076_Wear-duration-during-16:00--16:59_0_0', group='continuous', channel_map={'90076_Wear-duration-during-16:00--16:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.381039394377742, 'std': 1.5343787540493092}, annotation_units=2)
-TMAPS['100004_0'] = TensorMap('100004_Fat_0_0', group='continuous', channel_map={'100004_Fat_0_0': 0, 'not-missing': 1}, normalization={'mean': 76.75582300309541, 'std': 36.27309870587294}, annotation_units=2)
-TMAPS['22651_0'] = TensorMap('22651_Period-spent-working-night-shifts_0_0', group='continuous', channel_map={'22651_Period-spent-working-night-shifts_0_0': 0, 'not-missing': 1}, normalization={'mean': -387.135, 'std': 494.09120065166474}, annotation_units=2)
-TMAPS['90182_0'] = TensorMap('90182_Data-recording-errors_0_0', group='continuous', channel_map={'90182_Data-recording-errors_0_0': 0, 'not-missing': 1}, normalization={'mean': 232.4316312261921, 'std': 1096.9020106007322}, annotation_units=2)
-TMAPS['90111_0'] = TensorMap('90111_Fraction-acceleration-<=-20-milligravities_0_0', group='continuous', channel_map={'90111_Fraction-acceleration-<=-20-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6953570085346448, 'std': 0.08294789744247395}, annotation_units=2)
-TMAPS['90194_0'] = TensorMap('90194_Temperature-minimum_0_0', group='continuous', channel_map={'90194_Temperature-minimum_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.30701480302811, 'std': 3.4470480575742024}, annotation_units=2)
-TMAPS['92_0'] = TensorMap('92_Operation-yearage-first-occurred_0_0', group='continuous', channel_map={'92_Operation-yearage-first-occurred_0_0': 0, 'not-missing': 1}, normalization={'mean': 1164.6171178999127, 'std': 968.6367752166657}, annotation_units=2)
-TMAPS['1090_0'] = TensorMap('1090_Time-spent-driving_0_0', group='continuous', channel_map={'1090_Time-spent-driving_0_0': 0, 'not-missing': 1}, normalization={'mean': -2.2979200246852445, 'std': 5.319307739078997}, annotation_units=2)
-TMAPS['90041_0'] = TensorMap('90041_Average-acceleration-14:00--14:59_0_0', group='continuous', channel_map={'90041_Average-acceleration-14:00--14:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 42.27841101306716, 'std': 23.115895893432956}, annotation_units=2)
-TMAPS['30800_0'] = TensorMap('30800_Oestradiol_0_0', group='continuous', channel_map={'30800_Oestradiol_0_0': 0, 'not-missing': 1}, normalization={'mean': 461.17321908339187, 'std': 431.1611967874333}, annotation_units=2)
-TMAPS['5208_0'] = TensorMap('5208_logMAR-final-left_0_0', group='continuous', channel_map={'5208_logMAR-final-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.02429882472556827, 'std': 0.2127143307841083}, annotation_units=2)
-TMAPS['23119_0'] = TensorMap('23119_Arm-fat-percentage-right_0_0', group='continuous', channel_map={'23119_Arm-fat-percentage-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 29.531533189516836, 'std': 10.173278005428738}, annotation_units=2)
-TMAPS['5255_0'] = TensorMap('5255_Intraocular-pressure-Goldmanncorrelated-right_0_0', group='continuous', channel_map={'5255_Intraocular-pressure-Goldmanncorrelated-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 15.884651187645284, 'std': 3.9687939404407735}, annotation_units=2)
-TMAPS['20010_0'] = TensorMap('20010_Interpolated-Year-when-operation-took-place_0_0', group='continuous', channel_map={'20010_Interpolated-Year-when-operation-took-place_0_0': 0, 'not-missing': 1}, normalization={'mean': 1968.5948822244086, 'std': 180.9043438503809}, annotation_units=2)
-TMAPS['5274_0'] = TensorMap('5274_Vertex-distance-left_0_0', group='continuous', channel_map={'5274_Vertex-distance-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 12.000026343056847, 'std': 0.0062860351805494675}, annotation_units=2)
-TMAPS['94_0'] = TensorMap('94_Diastolic-blood-pressure-manual-reading_0_0', group='continuous', channel_map={'94_Diastolic-blood-pressure-manual-reading_0_0': 0, 'not-missing': 1}, normalization={'mean': 82.82579807314787, 'std': 10.924588714319807}, annotation_units=2)
-TMAPS['30121_0'] = TensorMap('30121_Lymphocyte-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30121_Lymphocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['30060_0'] = TensorMap('30060_Mean-corpuscular-haemoglobin-concentration_0_0', group='continuous', channel_map={'30060_Mean-corpuscular-haemoglobin-concentration_0_0': 0, 'not-missing': 1}, normalization={'mean': 34.51283943930588, 'std': 1.0760322271050209}, annotation_units=2)
-TMAPS['30000_0'] = TensorMap('30000_White-blood-cell-leukocyte-count_0_0', group='continuous', channel_map={'30000_White-blood-cell-leukocyte-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.8850495300034495, 'std': 2.122710204449377}, annotation_units=2)
-TMAPS['5923_0'] = TensorMap('5923_Age-macular-degeneration-diagnosed_0_0', group='continuous', channel_map={'5923_Age-macular-degeneration-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 56.24879614767255, 'std': 10.779978213172937}, annotation_units=2)
-TMAPS['21001_0'] = TensorMap('21001_Body-mass-index-BMI_0_0', group='continuous', channel_map={'21001_Body-mass-index-BMI_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.432605563331066, 'std': 4.803103191651008}, annotation_units=2)
-TMAPS['20230_0'] = TensorMap('20230_Duration-to-entering-value_0_0', group='continuous', channel_map={'20230_Duration-to-entering-value_0_0': 0, 'not-missing': 1}, normalization={'mean': 9202.111255145242, 'std': 7307.304965799695}, annotation_units=2)
-TMAPS['30030_0'] = TensorMap('30030_Haematocrit-percentage_0_0', group='continuous', channel_map={'30030_Haematocrit-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 41.08495568799664, 'std': 3.5560313309184974}, annotation_units=2)
-TMAPS['4279_0'] = TensorMap('4279_Duration-of-hearing-test-right_0_0', group='continuous', channel_map={'4279_Duration-of-hearing-test-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1719.6134819292888, 'std': 611.0733076168821}, annotation_units=2)
-TMAPS['90156_0'] = TensorMap('90156_Fraction-acceleration-<=-1800-milligravities_0_0', group='continuous', channel_map={'90156_Fraction-acceleration-<=-1800-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9999728820097404, 'std': 0.0017957441716811968}, annotation_units=2)
-TMAPS['41144_0'] = TensorMap('41144_Episodes-containing-"Diagnoses--main-ICD9"-data_0_0', group='continuous', channel_map={'41144_Episodes-containing-"Diagnoses--main-ICD9"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.564159401014729, 'std': 3.1467841304346864}, annotation_units=2)
-TMAPS['41089_0'] = TensorMap('41089_Episodes-containing-"Beginning-of-spell-indicator"-data_0_0', group='continuous', channel_map={'41089_Episodes-containing-"Beginning-of-spell-indicator"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.654014427210276, 'std': 16.13793801756679}, annotation_units=2)
-TMAPS['884_0'] = TensorMap('884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0', group='continuous', channel_map={'884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.6259258012388904, 'std': 2.3343794034272642}, annotation_units=2)
-TMAPS['4429_0'] = TensorMap('4429_Average-monthly-beer-plus-cider-intake_0_0', group='continuous', channel_map={'4429_Average-monthly-beer-plus-cider-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.012238237693772, 'std': 2.3720428127631483}, annotation_units=2)
-TMAPS['90021_0'] = TensorMap('90021_Wednesday-average-acceleration_0_0', group='continuous', channel_map={'90021_Wednesday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.070400597907327, 'std': 15.968964215997312}, annotation_units=2)
-TMAPS['90060_0'] = TensorMap('90060_Wear-duration-during-00:00--00:59_0_0', group='continuous', channel_map={'90060_Wear-duration-during-00:00--00:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.133015767394764, 'std': 1.6694712653515988}, annotation_units=2)
-TMAPS['90032_0'] = TensorMap('90032_Average-acceleration-05:00--05:59_0_0', group='continuous', channel_map={'90032_Average-acceleration-05:00--05:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.277517238053909, 'std': 13.172113120629316}, annotation_units=2)
-TMAPS['1737_0'] = TensorMap('1737_Childhood-sunburn-occasions_0_0', group='continuous', channel_map={'1737_Childhood-sunburn-occasions_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.6145275628266378, 'std': 5.099119672044518}, annotation_units=2)
-TMAPS['4199_0'] = TensorMap('4199_Position-of-pulse-wave-notch_0_0', group='continuous', channel_map={'4199_Position-of-pulse-wave-notch_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.5598123671373, 'std': 6.353011976460719}, annotation_units=2)
-TMAPS['30131_0'] = TensorMap('30131_Monocyte-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30131_Monocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90176_0'] = TensorMap('90176_Calibration--minimum-z-stationary-value_0_0', group='continuous', channel_map={'90176_Calibration--minimum-z-stationary-value_0_0': 0, 'not-missing': 1}, normalization={'mean': -1.081762283620232, 'std': 0.20687482049366251}, annotation_units=2)
-TMAPS['40009_0'] = TensorMap('40009_Reported-occurrences-of-cancer_0_0', group='continuous', channel_map={'40009_Reported-occurrences-of-cancer_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.3224944022992349, 'std': 0.638438643694705}, annotation_units=2)
-TMAPS['90058_0'] = TensorMap('90058_Wear-duration-during-Saturday_0_0', group='continuous', channel_map={'90058_Wear-duration-during-Saturday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.30215883118762, 'std': 6.222934862981405}, annotation_units=2)
-TMAPS['1060_0'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='continuous', channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.18712464664782105, 'std': 4.874737082681365}, annotation_units=2)
-TMAPS['22599_0'] = TensorMap('22599_Number-of-jobs-held_0_0', group='continuous', channel_map={'22599_Number-of-jobs-held_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.3231889186593184, 'std': 2.1908846910597264}, annotation_units=2)
-TMAPS['46_0'] = TensorMap('46_Hand-grip-strength-left_0_0', group='continuous', channel_map={'46_Hand-grip-strength-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 29.54608455580347, 'std': 11.327359082668966}, annotation_units=2)
-TMAPS['23102_0'] = TensorMap('23102_Whole-body-water-mass_0_0', group='continuous', channel_map={'23102_Whole-body-water-mass_0_0': 0, 'not-missing': 1}, normalization={'mean': 38.947460814537706, 'std': 8.414129150401763}, annotation_units=2)
-TMAPS['5106_0'] = TensorMap('5106_6mm-strong-meridian-angle-right_0_0', group='continuous', channel_map={'5106_6mm-strong-meridian-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 93.21591216567809, 'std': 45.97457761850994}, annotation_units=2)
-TMAPS['6183_0'] = TensorMap('6183_Number-of-cigarettes-previously-smoked-daily-current-cigarpipe-smokers_0_0', group='continuous', channel_map={'6183_Number-of-cigarettes-previously-smoked-daily-current-cigarpipe-smokers_0_0': 0, 'not-missing': 1}, normalization={'mean': 17.656321839080455, 'std': 10.664912413664128}, annotation_units=2)
-TMAPS['41101_0'] = TensorMap('41101_Episodes-containing-"Date-of-discharge-from-hospital"-data_0_0', group='continuous', channel_map={'41101_Episodes-containing-"Date-of-discharge-from-hospital"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.142465719426689, 'std': 15.170703160611824}, annotation_units=2)
-TMAPS['23100_0'] = TensorMap('23100_Whole-body-fat-mass_0_0', group='continuous', channel_map={'23100_Whole-body-fat-mass_0_0': 0, 'not-missing': 1}, normalization={'mean': 24.85684055488536, 'std': 9.565426323411886}, annotation_units=2)
-TMAPS['2887_0'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', group='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0, 'not-missing': 1}, normalization={'mean': 19.029991199560847, 'std': 10.55043609587667}, annotation_units=2)
-TMAPS['5186_0'] = TensorMap('5186_Duration-visualacuity-screen-displayed-right_0_0', group='continuous', channel_map={'5186_Duration-visualacuity-screen-displayed-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.123006427041176, 'std': 21.512350140468634}, annotation_units=2)
-TMAPS['5098_0'] = TensorMap('5098_6mm-weak-meridian-right_0_0', group='continuous', channel_map={'5098_6mm-weak-meridian-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 42.57972234363616, 'std': 1.5418577047771713}, annotation_units=2)
-TMAPS['130_0'] = TensorMap('130_Place-of-birth-in-UK--east-coordinate_0_0', group='continuous', channel_map={'130_Place-of-birth-in-UK--east-coordinate_0_0': 0, 'not-missing': 1}, normalization={'mean': 405710.36677603936, 'std': 94504.3898173737}, annotation_units=2)
-TMAPS['5111_0'] = TensorMap('5111_3mm-asymmetry-angle-left_0_0', group='continuous', channel_map={'5111_3mm-asymmetry-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 171.18433965285044, 'std': 88.31173907842211}, annotation_units=2)
-TMAPS['23116_0'] = TensorMap('23116_Leg-fat-mass-left_0_0', group='continuous', channel_map={'23116_Leg-fat-mass-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.242730601973064, 'std': 1.8719026689632239}, annotation_units=2)
-TMAPS['4291_0'] = TensorMap('4291_Number-of-attempts_0_0', group='continuous', channel_map={'4291_Number-of-attempts_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.468970582235098, 'std': 1.4089188867392348}, annotation_units=2)
-TMAPS['20132_0'] = TensorMap('20132_Number-of-incorrect-matches-in-round_0_0', group='continuous', channel_map={'20132_Number-of-incorrect-matches-in-round_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.7364877974709172, 'std': 1.3432484608649236}, annotation_units=2)
-TMAPS['90062_0'] = TensorMap('90062_Wear-duration-during-02:00--02:59_0_0', group='continuous', channel_map={'90062_Wear-duration-during-02:00--02:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.15756989247312, 'std': 1.687817538553}, annotation_units=2)
-TMAPS['90038_0'] = TensorMap('90038_Average-acceleration-11:00--11:59_0_0', group='continuous', channel_map={'90038_Average-acceleration-11:00--11:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 47.49330121992382, 'std': 25.308289932762246}, annotation_units=2)
-TMAPS['30171_0'] = TensorMap('30171_Nucleated-red-blood-cell-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30171_Nucleated-red-blood-cell-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90172_0'] = TensorMap('90172_Calibration--minimum-x-stationary-value_0_0', group='continuous', channel_map={'90172_Calibration--minimum-x-stationary-value_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.9765587540382851, 'std': 0.17685980211984126}, annotation_units=2)
-TMAPS['22652_0'] = TensorMap('22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_0', group='continuous', channel_map={'22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.139084507042254, 'std': 2.432877511827293}, annotation_units=2)
-TMAPS['4012_0'] = TensorMap('4012_Age-deepvein-thrombosis-DVT-blood-clot-in-leg-diagnosed_0_0', group='continuous', channel_map={'4012_Age-deepvein-thrombosis-DVT-blood-clot-in-leg-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.0393650112625, 'std': 13.764394088734917}, annotation_units=2)
-TMAPS['23124_0'] = TensorMap('23124_Arm-fat-mass-left_0_0', group='continuous', channel_map={'23124_Arm-fat-mass-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.319764802928992, 'std': 0.7131871500892238}, annotation_units=2)
-TMAPS['100006_0'] = TensorMap('100006_Saturated-fat_0_0', group='continuous', channel_map={'100006_Saturated-fat_0_0': 0, 'not-missing': 1}, normalization={'mean': 29.519929749671345, 'std': 15.821915288796678}, annotation_units=2)
-TMAPS['30190_0'] = TensorMap('30190_Monocyte-percentage_0_0', group='continuous', channel_map={'30190_Monocyte-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 7.064322787581418, 'std': 2.6981487491148672}, annotation_units=2)
-TMAPS['100014_0'] = TensorMap('100014_Folate_0_0', group='continuous', channel_map={'100014_Folate_0_0': 0, 'not-missing': 1}, normalization={'mean': 307.6532973836351, 'std': 135.19408933325468}, annotation_units=2)
-TMAPS['2966_0'] = TensorMap('2966_Age-high-blood-pressure-diagnosed_0_0', group='continuous', channel_map={'2966_Age-high-blood-pressure-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 50.62922015775058, 'std': 9.947561475383283}, annotation_units=2)
-TMAPS['3160_0'] = TensorMap('3160_Weight-manual-entry_0_0', group='continuous', channel_map={'3160_Weight-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 79.50371855880353, 'std': 18.71700229682231}, annotation_units=2)
-TMAPS['90195_0'] = TensorMap('90195_Temperature-maximum_0_0', group='continuous', channel_map={'90195_Temperature-maximum_0_0': 0, 'not-missing': 1}, normalization={'mean': 24.13212883938473, 'std': 2.0246264801483136}, annotation_units=2)
-TMAPS['90183_0'] = TensorMap('90183_Readings-exceeding-8-gravities-before-calibration_0_0', group='continuous', channel_map={'90183_Readings-exceeding-8-gravities-before-calibration_0_0': 0, 'not-missing': 1}, normalization={'mean': 425.5322532426829, 'std': 6632.992953339036}, annotation_units=2)
-TMAPS['864_0'] = TensorMap('864_Number-of-daysweek-walked-10-minutes_0_0', group='continuous', channel_map={'864_Number-of-daysweek-walked-10-minutes_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.361930056113816, 'std': 1.9817371830771893}, annotation_units=2)
-TMAPS['41095_0'] = TensorMap('41095_Episodes-containing-"Date-of-decision-to-admit-to-hospital"-data_0_0', group='continuous', channel_map={'41095_Episodes-containing-"Date-of-decision-to-admit-to-hospital"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.043723843006869, 'std': 13.762791499857014}, annotation_units=2)
-TMAPS['30250_0'] = TensorMap('30250_Reticulocyte-count_0_0', group='continuous', channel_map={'30250_Reticulocyte-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.06100768497354629, 'std': 0.03879122714606539}, annotation_units=2)
-TMAPS['20083_0'] = TensorMap('20083_Delay-between-questionnaire-request-and-completion_0_0', group='continuous', channel_map={'20083_Delay-between-questionnaire-request-and-completion_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90192_0'] = TensorMap('90192_Temperature-average_0_0', group='continuous', channel_map={'90192_Temperature-average_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.348456531173152, 'std': 1.5328010781114556}, annotation_units=2)
-TMAPS['23111_0'] = TensorMap('23111_Leg-fat-percentage-right_0_0', group='continuous', channel_map={'23111_Leg-fat-percentage-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 32.046355165242254, 'std': 10.694715982950983}, annotation_units=2)
-TMAPS['20021_0'] = TensorMap('20021_Speechreceptionthreshold-SRT-estimate-right_0_0', group='continuous', channel_map={'20021_Speechreceptionthreshold-SRT-estimate-right_0_0': 0, 'not-missing': 1}, normalization={'mean': -6.54686408694907, 'std': 2.108436901790483}, annotation_units=2)
-TMAPS['5200_0'] = TensorMap('5200_Final-number-of-letters-displayed-right_0_0', group='continuous', channel_map={'5200_Final-number-of-letters-displayed-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.9856271070712275, 'std': 0.18950917702981684}, annotation_units=2)
-TMAPS['30670_0'] = TensorMap('30670_Urea_0_0', group='continuous', channel_map={'30670_Urea_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.403444556432281, 'std': 1.401322152174818}, annotation_units=2)
-TMAPS['90071_0'] = TensorMap('90071_Wear-duration-during-11:00--11:59_0_0', group='continuous', channel_map={'90071_Wear-duration-during-11:00--11:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.3789960943150605, 'std': 1.5180170347905926}, annotation_units=2)
-TMAPS['30231_0'] = TensorMap('30231_Nucleated-red-blood-cell-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30231_Nucleated-red-blood-cell-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90185_0'] = TensorMap('90185_Readings-exceeding-8-gravities-after-calibration_0_0', group='continuous', channel_map={'90185_Readings-exceeding-8-gravities-after-calibration_0_0': 0, 'not-missing': 1}, normalization={'mean': 522.3285115000723, 'std': 27295.39317108917}, annotation_units=2)
-TMAPS['5104_0'] = TensorMap('5104_3mm-strong-meridian-angle-left_0_0', group='continuous', channel_map={'5104_3mm-strong-meridian-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 94.31662074797458, 'std': 37.54313417864235}, annotation_units=2)
-TMAPS['5103_0'] = TensorMap('5103_3mm-weak-meridian-angle-left_0_0', group='continuous', channel_map={'5103_3mm-weak-meridian-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 86.57254698709724, 'std': 68.06677239606637}, annotation_units=2)
-TMAPS['5079_0'] = TensorMap('5079_logMAR-in-round-right_0_0', group='continuous', channel_map={'5079_logMAR-in-round-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.13792238163925477, 'std': 0.2462587209129232}, annotation_units=2)
-TMAPS['3147_0'] = TensorMap('3147_Heel-quantitative-ultrasound-index-QUI-direct-entry_0_0', group='continuous', channel_map={'3147_Heel-quantitative-ultrasound-index-QUI-direct-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 97.98964639607355, 'std': 22.05712597137447}, annotation_units=2)
-TMAPS['90113_0'] = TensorMap('90113_Fraction-acceleration-<=-30-milligravities_0_0', group='continuous', channel_map={'90113_Fraction-acceleration-<=-30-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.7515875403828534, 'std': 0.07505707262659325}, annotation_units=2)
-TMAPS['1528_0'] = TensorMap('1528_Water-intake_0_0', group='continuous', channel_map={'1528_Water-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.732297480281424, 'std': 2.2620300811906597}, annotation_units=2)
-TMAPS['20077_0'] = TensorMap('20077_Number-of-diet-questionnaires-completed_0_0', group='continuous', channel_map={'20077_Number-of-diet-questionnaires-completed_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.1733421159879045, 'std': 1.18059959185329}, annotation_units=2)
-TMAPS['90034_0'] = TensorMap('90034_Average-acceleration-07:00--07:59_0_0', group='continuous', channel_map={'90034_Average-acceleration-07:00--07:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 26.661664400405034, 'std': 27.915140997607782}, annotation_units=2)
-TMAPS['90020_0'] = TensorMap('90020_Tuesday-average-acceleration_0_0', group='continuous', channel_map={'90020_Tuesday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.22966758281499, 'std': 14.185801237575445}, annotation_units=2)
-TMAPS['23099_0'] = TensorMap('23099_Body-fat-percentage_0_0', group='continuous', channel_map={'23099_Body-fat-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.451786835511978, 'std': 8.547574421386418}, annotation_units=2)
-TMAPS['41080_0'] = TensorMap('41080_Episodes-containing-"Operative-procedures--secondary-OPCS4"-data_0_0', group='continuous', channel_map={'41080_Episodes-containing-"Operative-procedures--secondary-OPCS4"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 7.697808149091582, 'std': 12.681988097428166}, annotation_units=2)
-TMAPS['90174_0'] = TensorMap('90174_Calibration--minimum-y-stationary-value_0_0', group='continuous', channel_map={'90174_Calibration--minimum-y-stationary-value_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.9894458749216455, 'std': 0.1807198484544723}, annotation_units=2)
-TMAPS['90025_0'] = TensorMap('90025_Sunday-average-acceleration_0_0', group='continuous', channel_map={'90025_Sunday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 26.366480543902792, 'std': 40.20427495270532}, annotation_units=2)
-TMAPS['30314_0'] = TensorMap('30314_Volume-of-EDTA1-plasma-held-by-UKB_0_0', group='continuous', channel_map={'30314_Volume-of-EDTA1-plasma-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 3196.4802821483113, 'std': 511.1004065680864}, annotation_units=2)
-TMAPS['30001_0'] = TensorMap('30001_White-blood-cell-leukocyte-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30001_White-blood-cell-leukocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['2734_0'] = TensorMap('2734_Number-of-live-births_0_0', group='continuous', channel_map={'2734_Number-of-live-births_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.8217541722767843, 'std': 1.201688345175786}, annotation_units=2)
-TMAPS['5276_0'] = TensorMap('5276_Index-of-best-refractometry-result-left_0_0', group='continuous', channel_map={'5276_Index-of-best-refractometry-result-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.0177815633726142, 'std': 0.8297585981359478}, annotation_units=2)
-TMAPS['90096_0'] = TensorMap('90096_Fraction-acceleration-<=-5-milligravities_0_0', group='continuous', channel_map={'90096_Fraction-acceleration-<=-5-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5120027966632915, 'std': 0.09794231969994059}, annotation_units=2)
-TMAPS['23107_0'] = TensorMap('23107_Impedance-of-leg-right_0_0', group='continuous', channel_map={'23107_Impedance-of-leg-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 246.97691606228568, 'std': 36.02320433391923}, annotation_units=2)
-TMAPS['90088_0'] = TensorMap('90088_Nowear-time-bias-adjusted-acceleration-standard-deviation_0_0', group='continuous', channel_map={'90088_Nowear-time-bias-adjusted-acceleration-standard-deviation_0_0': 0, 'not-missing': 1}, normalization={'mean': 54.83249568445923, 'std': 29.178218403885648}, annotation_units=2)
-TMAPS['41103_0'] = TensorMap('41103_Episodes-containing-"Destination-on-discharge-from-hospital"-data-polymorphic_0_0', group='continuous', channel_map={'41103_Episodes-containing-"Destination-on-discharge-from-hospital"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.704589080354638, 'std': 15.793837358474425}, annotation_units=2)
-TMAPS['5364_0'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', group='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.038529032927324756, 'std': 0.5126326168922742}, annotation_units=2)
-TMAPS['41104_0'] = TensorMap('41104_Episodes-containing-"External-cause--ICD10"-data_0_0', group='continuous', channel_map={'41104_Episodes-containing-"External-cause--ICD10"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.597188335076101, 'std': 1.6128953009115339}, annotation_units=2)
-TMAPS['30520_0'] = TensorMap('30520_Potassium-in-urine_0_0', group='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0, 'not-missing': 1}, normalization={'mean': 63.06182700345119, 'std': 33.84208704773539}, annotation_units=2)
-TMAPS['90092_0'] = TensorMap('90092_Fraction-acceleration-<=-1-milligravities_0_0', group='continuous', channel_map={'90092_Fraction-acceleration-<=-1-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.19363048362987603, 'std': 0.08378851179642584}, annotation_units=2)
-TMAPS['90127_0'] = TensorMap('90127_Fraction-acceleration-<=-100-milligravities_0_0', group='continuous', channel_map={'90127_Fraction-acceleration-<=-100-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9264224408119968, 'std': 0.03641961072561102}, annotation_units=2)
-TMAPS['41079_0'] = TensorMap('41079_Episodes-containing-"Diagnoses--secondary-ICD10-addendum"-data_0_0', group='continuous', channel_map={'41079_Episodes-containing-"Diagnoses--secondary-ICD10-addendum"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.907653383934219, 'std': 10.227108478165238}, annotation_units=2)
-TMAPS['4124_0'] = TensorMap('4124_Heel-bone-mineral-density-BMD-right_0_0', group='continuous', channel_map={'4124_Heel-bone-mineral-density-BMD-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5521481253541807, 'std': 0.14481589050864077}, annotation_units=2)
-TMAPS['20022_0'] = TensorMap('20022_Birth-weight_0_0', group='continuous', channel_map={'20022_Birth-weight_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.3190472150724344, 'std': 0.6682703698213344}, annotation_units=2)
-TMAPS['5263_0'] = TensorMap('5263_Intraocular-pressure-Goldmanncorrelated-left_0_0', group='continuous', channel_map={'5263_Intraocular-pressure-Goldmanncorrelated-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 15.74138277251248, 'std': 4.020427502684884}, annotation_units=2)
-TMAPS['30110_0'] = TensorMap('30110_Platelet-distribution-width_0_0', group='continuous', channel_map={'30110_Platelet-distribution-width_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.49035525479306, 'std': 0.5224214443834251}, annotation_units=2)
-TMAPS['41076_0'] = TensorMap('41076_Episodes-containing-"Diagnoses--secondary-ICD9"-data_0_0', group='continuous', channel_map={'41076_Episodes-containing-"Diagnoses--secondary-ICD9"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.313970841464815, 'std': 3.1620287662073925}, annotation_units=2)
-TMAPS['4207_0'] = TensorMap('4207_Pulse-wave-velocity-manual-entry_0_0', group='continuous', channel_map={'4207_Pulse-wave-velocity-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 9.845776397515525, 'std': 6.273794170969385}, annotation_units=2)
-TMAPS['21003_0'] = TensorMap('21003_Age-when-attended-assessment-centre_0_0', group='continuous', channel_map={'21003_Age-when-attended-assessment-centre_0_0': 0, 'not-missing': 1}, normalization={'mean': 56.528471592084934, 'std': 8.095287610193827}, annotation_units=2)
-TMAPS['30120_0'] = TensorMap('30120_Lymphocyte-count_0_0', group='continuous', channel_map={'30120_Lymphocyte-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.9659849029249277, 'std': 1.1723467154746938}, annotation_units=2)
-TMAPS['22200_0'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0': 0, 'not-missing': 1}, normalization={'mean': 1952.0636527790373, 'std': 7.656383767945114}, annotation_units=2)
-TMAPS['90101_0'] = TensorMap('90101_Fraction-acceleration-<=-10-milligravities_0_0', group='continuous', channel_map={'90101_Fraction-acceleration-<=-10-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6173177009499013, 'std': 0.09295317946174636}, annotation_units=2)
-TMAPS['90125_0'] = TensorMap('90125_Fraction-acceleration-<=-90-milligravities_0_0', group='continuous', channel_map={'90125_Fraction-acceleration-<=-90-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9132225372486619, 'std': 0.04063906775147445}, annotation_units=2)
-TMAPS['22644_0'] = TensorMap('22644_Consecutive-night-shifts-during-mixed-shift-periods_0_0', group='continuous', channel_map={'22644_Consecutive-night-shifts-during-mixed-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.185103969754254, 'std': 3.4748563785189828}, annotation_units=2)
-TMAPS['30090_0'] = TensorMap('30090_Platelet-crit_0_0', group='continuous', channel_map={'30090_Platelet-crit_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.2327260123004729, 'std': 0.0490126877229711}, annotation_units=2)
-TMAPS['30251_0'] = TensorMap('30251_Reticulocyte-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30251_Reticulocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['20011_0'] = TensorMap('20011_Interpolated-Age-of-participant-when-operation-took-place_0_0', group='continuous', channel_map={'20011_Interpolated-Age-of-participant-when-operation-took-place_0_0': 0, 'not-missing': 1}, normalization={'mean': 33.351961266167095, 'std': 18.178438114579578}, annotation_units=2)
-TMAPS['5107_0'] = TensorMap('5107_3mm-strong-meridian-angle-right_0_0', group='continuous', channel_map={'5107_3mm-strong-meridian-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 87.55626813670642, 'std': 37.94419143992332}, annotation_units=2)
-TMAPS['5087_0'] = TensorMap('5087_Cylindrical-power-right_0_0', group='continuous', channel_map={'5087_Cylindrical-power-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8861422257231633, 'std': 0.7415289996427544}, annotation_units=2)
-TMAPS['90106_0'] = TensorMap('90106_Fraction-acceleration-<=-15-milligravities_0_0', group='continuous', channel_map={'90106_Fraction-acceleration-<=-15-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6611008245334876, 'std': 0.0877298787778097}, annotation_units=2)
-TMAPS['90164_0'] = TensorMap('90164_Calibration-coefficients--x-slope_0_0', group='continuous', channel_map={'90164_Calibration-coefficients--x-slope_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9877194464535418, 'std': 0.010874759864400715}, annotation_units=2)
-TMAPS['1873_0'] = TensorMap('1873_Number-of-full-brothers_0_0', group='continuous', channel_map={'1873_Number-of-full-brothers_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.1572501901140682, 'std': 1.2897284410977445}, annotation_units=2)
-TMAPS['22664_0'] = TensorMap('22664_Year-gap-ended_0_0', group='continuous', channel_map={'22664_Year-gap-ended_0_0': 0, 'not-missing': 1}, normalization={'mean': 1985.4258929207956, 'std': 12.268198168820737}, annotation_units=2)
-TMAPS['30880_0'] = TensorMap('30880_Urate_0_0', group='continuous', channel_map={'30880_Urate_0_0': 0, 'not-missing': 1}, normalization={'mean': 309.2054548439295, 'std': 80.43205542125855}, annotation_units=2)
-TMAPS['93_0'] = TensorMap('93_Systolic-blood-pressure-manual-reading_0_0', group='continuous', channel_map={'93_Systolic-blood-pressure-manual-reading_0_0': 0, 'not-missing': 1}, normalization={'mean': 140.38588384524775, 'std': 19.726553020065012}, annotation_units=2)
-TMAPS['5088_0'] = TensorMap('5088_Astigmatism-angle-right_0_0', group='continuous', channel_map={'5088_Astigmatism-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 94.2498555394071, 'std': 57.07623414540466}, annotation_units=2)
-TMAPS['3086_0'] = TensorMap('3086_Speed-of-sound-through-heel-manual-entry_0_0', group='continuous', channel_map={'3086_Speed-of-sound-through-heel-manual-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 1553.188703526054, 'std': 43.56541278705645}, annotation_units=2)
-TMAPS['20162_0'] = TensorMap('20162_Pack-years-adult-smoking-as-proportion-of-life-span-exposed-to-smoking_0_0', group='continuous', channel_map={'20162_Pack-years-adult-smoking-as-proportion-of-life-span-exposed-to-smoking_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5507673284808219, 'std': 0.4187321029887187}, annotation_units=2)
-TMAPS['23114_0'] = TensorMap('23114_Leg-predicted-mass-right_0_0', group='continuous', channel_map={'23114_Leg-predicted-mass-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.486474349339696, 'std': 1.9273038036404624}, annotation_units=2)
-TMAPS['30760_0'] = TensorMap('30760_HDL-cholesterol_0_0', group='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.448012905506936, 'std': 0.3823115953478376}, annotation_units=2)
-TMAPS['4407_0'] = TensorMap('4407_Average-monthly-red-wine-intake_0_0', group='continuous', channel_map={'4407_Average-monthly-red-wine-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9920382955503746, 'std': 1.8401968606027044}, annotation_units=2)
-TMAPS['20006_0'] = TensorMap('20006_Interpolated-Year-when-cancer-first-diagnosed_0_0', group='continuous', channel_map={'20006_Interpolated-Year-when-cancer-first-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 1995.611632374101, 'std': 91.71501095868412}, annotation_units=2)
-TMAPS['30334_0'] = TensorMap('30334_Volume-of-EDTA1-buffy-held-by-UKB_0_0', group='continuous', channel_map={'30334_Volume-of-EDTA1-buffy-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 464.9637793718353, 'std': 420.3180861443819}, annotation_units=2)
-TMAPS['30180_0'] = TensorMap('30180_Lymphocyte-percentage_0_0', group='continuous', channel_map={'30180_Lymphocyte-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 28.913207428187135, 'std': 7.499219296319767}, annotation_units=2)
-TMAPS['137_0'] = TensorMap('137_Number-of-treatmentsmedications-taken_0_0', group='continuous', channel_map={'137_Number-of-treatmentsmedications-taken_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.4596849747046883, 'std': 2.6811321559778927}, annotation_units=2)
-TMAPS['20455_0'] = TensorMap('20455_Age-when-last-took-cannabis_0_0', group='continuous', channel_map={'20455_Age-when-last-took-cannabis_0_0': 0, 'not-missing': 1}, normalization={'mean': 32.22470976064193, 'std': 13.125617474389651}, annotation_units=2)
-TMAPS['90097_0'] = TensorMap('90097_Fraction-acceleration-<=-6-milligravities_0_0', group='continuous', channel_map={'90097_Fraction-acceleration-<=-6-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.546760036645933, 'std': 0.09760498520981382}, annotation_units=2)
-TMAPS['30620_0'] = TensorMap('30620_Alanine-aminotransferase_0_0', group='continuous', channel_map={'30620_Alanine-aminotransferase_0_0': 0, 'not-missing': 1}, normalization={'mean': 23.546318341296853, 'std': 14.18017711660799}, annotation_units=2)
-TMAPS['3062_0'] = TensorMap('3062_Forced-vital-capacity-FVC_0_0', group='continuous', channel_map={'3062_Forced-vital-capacity-FVC_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.709652696352849, 'std': 1.0594730415475053}, annotation_units=2)
-TMAPS['5119_0'] = TensorMap('5119_3mm-cylindrical-power-left_0_0', group='continuous', channel_map={'5119_3mm-cylindrical-power-left_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.8788113878356387, 'std': 0.6687991819870329}, annotation_units=2)
-TMAPS['90177_0'] = TensorMap('90177_Calibration--maximum-z-stationary-value_0_0', group='continuous', channel_map={'90177_Calibration--maximum-z-stationary-value_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8497561116736579, 'std': 0.16670333138533877}, annotation_units=2)
-TMAPS['30374_0'] = TensorMap('30374_Volume-of-LiHep-plasma-held-by-UKB_0_0', group='continuous', channel_map={'30374_Volume-of-LiHep-plasma-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 2621.2524330238466, 'std': 582.5761642840705}, annotation_units=2)
-TMAPS['23121_0'] = TensorMap('23121_Arm-fatfree-mass-right_0_0', group='continuous', channel_map={'23121_Arm-fatfree-mass-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.8931570158616644, 'std': 0.8215411754827265}, annotation_units=2)
-TMAPS['189_0'] = TensorMap('189_Townsend-deprivation-index-at-recruitment_0_0', group='continuous', channel_map={'189_Townsend-deprivation-index-at-recruitment_0_0': 0, 'not-missing': 1}, normalization={'mean': -1.2937350780782744, 'std': 3.0950584973258257}, annotation_units=2)
-TMAPS['84_0'] = TensorMap('84_Cancer-yearage-first-occurred_0_0', group='continuous', channel_map={'84_Cancer-yearage-first-occurred_0_0': 0, 'not-missing': 1}, normalization={'mean': 1751.9461151079133, 'std': 651.0386223925018}, annotation_units=2)
-TMAPS['100005_0'] = TensorMap('100005_Carbohydrate_0_0', group='continuous', channel_map={'100005_Carbohydrate_0_0': 0, 'not-missing': 1}, normalization={'mean': 258.136390094279, 'std': 108.62251937217879}, annotation_units=2)
-TMAPS['90035_0'] = TensorMap('90035_Average-acceleration-08:00--08:59_0_0', group='continuous', channel_map={'90035_Average-acceleration-08:00--08:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 39.65167510487486, 'std': 27.94983269121508}, annotation_units=2)
-TMAPS['3982_0'] = TensorMap('3982_Number-of-adopted-sisters_0_0', group='continuous', channel_map={'3982_Number-of-adopted-sisters_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6215491402429403, 'std': 1.0470997366739097}, annotation_units=2)
-TMAPS['4079_0'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_0_0', group='continuous', channel_map={'4079_Diastolic-blood-pressure-automated-reading_0_0': 0, 'not-missing': 1}, normalization={'mean': 82.20576755871053, 'std': 10.702195314602573}, annotation_units=2)
-TMAPS['90169_0'] = TensorMap('90169_Calibration-coefficients--z-temp_0_0', group='continuous', channel_map={'90169_Calibration-coefficients--z-temp_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0017560923863252811, 'std': 0.004420036684354377}, annotation_units=2)
-TMAPS['90013_0'] = TensorMap('90013_Standard-deviation-of-acceleration_0_0', group='continuous', channel_map={'90013_Standard-deviation-of-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 53.716989922368484, 'std': 28.682196402063575}, annotation_units=2)
-TMAPS['90061_0'] = TensorMap('90061_Wear-duration-during-01:00--01:59_0_0', group='continuous', channel_map={'90061_Wear-duration-during-01:00--01:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.123179709725637, 'std': 1.682555042465214}, annotation_units=2)
-TMAPS['3143_0'] = TensorMap('3143_Ankle-spacing-width_0_0', group='continuous', channel_map={'3143_Ankle-spacing-width_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.8405259583004, 'std': 4.605420712700601}, annotation_units=2)
-TMAPS['90055_0'] = TensorMap('90055_Wear-duration-during-Wednesday_0_0', group='continuous', channel_map={'90055_Wear-duration-during-Wednesday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.764196537923716, 'std': 5.84951743739072}, annotation_units=2)
-TMAPS['5105_0'] = TensorMap('5105_6mm-strong-meridian-angle-left_0_0', group='continuous', channel_map={'5105_6mm-strong-meridian-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 86.64987516522255, 'std': 44.754881113845485}, annotation_units=2)
-TMAPS['20247_0'] = TensorMap('20247_Total-errors-traversing-numeric-path-trail-#1_0_0', group='continuous', channel_map={'20247_Total-errors-traversing-numeric-path-trail-#1_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.248975876194812, 'std': 6.700618919918852}, annotation_units=2)
-TMAPS['23130_0'] = TensorMap('23130_Trunk-predicted-mass_0_0', group='continuous', channel_map={'23130_Trunk-predicted-mass_0_0': 0, 'not-missing': 1}, normalization={'mean': 28.368691825305675, 'std': 5.804851285767165}, annotation_units=2)
-TMAPS['90064_0'] = TensorMap('90064_Wear-duration-during-04:00--04:59_0_0', group='continuous', channel_map={'90064_Wear-duration-during-04:00--04:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.187488499927671, 'std': 1.6936407746972928}, annotation_units=2)
-TMAPS['41084_0'] = TensorMap('41084_Episodes-containing-"Episode-end-date"-data_0_0', group='continuous', channel_map={'41084_Episodes-containing-"Episode-end-date"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.703998204807988, 'std': 15.793277411726411}, annotation_units=2)
-TMAPS['90023_0'] = TensorMap('90023_Friday-average-acceleration_0_0', group='continuous', channel_map={'90023_Friday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.13514614976614, 'std': 12.890072457932929}, annotation_units=2)
-TMAPS['90140_0'] = TensorMap('90140_Fraction-acceleration-<=-425-milligravities_0_0', group='continuous', channel_map={'90140_Fraction-acceleration-<=-425-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9973430637928542, 'std': 0.005466829196654861}, annotation_units=2)
-TMAPS['21021_0'] = TensorMap('21021_Pulse-wave-Arterial-Stiffness-index_0_0', group='continuous', channel_map={'21021_Pulse-wave-Arterial-Stiffness-index_0_0': 0, 'not-missing': 1}, normalization={'mean': 9.337679791931924, 'std': 4.04587871091876}, annotation_units=2)
-TMAPS['4120_0'] = TensorMap('4120_Heel-broadband-ultrasound-attenuation-right_0_0', group='continuous', channel_map={'4120_Heel-broadband-ultrasound-attenuation-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 79.11118649940639, 'std': 20.4853761942473}, annotation_units=2)
-TMAPS['1588_0'] = TensorMap('1588_Average-weekly-beer-plus-cider-intake_0_0', group='continuous', channel_map={'1588_Average-weekly-beer-plus-cider-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.0129877280169217, 'std': 5.605161315256421}, annotation_units=2)
-TMAPS['90103_0'] = TensorMap('90103_Fraction-acceleration-<=-12-milligravities_0_0', group='continuous', channel_map={'90103_Fraction-acceleration-<=-12-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6370736101065625, 'std': 0.09075443853188431}, annotation_units=2)
-TMAPS['90095_0'] = TensorMap('90095_Fraction-acceleration-<=-4-milligravities_0_0', group='continuous', channel_map={'90095_Fraction-acceleration-<=-4-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.46346794927431406, 'std': 0.09662230798179153}, annotation_units=2)
-TMAPS['1608_0'] = TensorMap('1608_Average-weekly-fortified-wine-intake_0_0', group='continuous', channel_map={'1608_Average-weekly-fortified-wine-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.2385496681252338, 'std': 1.2726276064345972}, annotation_units=2)
-TMAPS['30240_0'] = TensorMap('30240_Reticulocyte-percentage_0_0', group='continuous', channel_map={'30240_Reticulocyte-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.3502999076355993, 'std': 0.8905014830344062}, annotation_units=2)
-TMAPS['41110_0'] = TensorMap('41110_Episodes-containing-"Intended-management-of-patient"-data-polymorphic_0_0', group='continuous', channel_map={'41110_Episodes-containing-"Intended-management-of-patient"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.711635543215977, 'std': 16.033176414520554}, annotation_units=2)
-TMAPS['5158_0'] = TensorMap('5158_6mm-asymmetry-index-right_0_0', group='continuous', channel_map={'5158_6mm-asymmetry-index-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 15.111141053425047, 'std': 10.252746038164824}, annotation_units=2)
-TMAPS['41106_0'] = TensorMap('41106_Episodes-containing-"Operation-status"-data_0_0', group='continuous', channel_map={'41106_Episodes-containing-"Operation-status"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.4955644098541105, 'std': 14.267147028675092}, annotation_units=2)
-TMAPS['100002_0'] = TensorMap('100002_Energy_0_0', group='continuous', channel_map={'100002_Energy_0_0': 0, 'not-missing': 1}, normalization={'mean': 8825.824255162746, 'std': 3229.8669163574473}, annotation_units=2)
-TMAPS['100021_0'] = TensorMap('100021_Vitamin-D_0_0', group='continuous', channel_map={'100021_Vitamin-D_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.786678304380399, 'std': 3.3384450904734453}, annotation_units=2)
-TMAPS['6032_0'] = TensorMap('6032_Maximum-workload-during-fitness-test_0_0', group='continuous', channel_map={'6032_Maximum-workload-during-fitness-test_0_0': 0, 'not-missing': 1}, normalization={'mean': 71.65201718940415, 'std': 35.67292137350584}, annotation_units=2)
-TMAPS['6038_0'] = TensorMap('6038_Number-of-trend-entries_0_0', group='continuous', channel_map={'6038_Number-of-trend-entries_0_0': 0, 'not-missing': 1}, normalization={'mean': 58.75908204628249, 'std': 25.778401312237246}, annotation_units=2)
-TMAPS['30710_0'] = TensorMap('30710_Creactive-protein_0_0', group='continuous', channel_map={'30710_Creactive-protein_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.598774248069757, 'std': 4.361150498539325}, annotation_units=2)
-TMAPS['3872_0'] = TensorMap('3872_Age-of-primiparous-women-at-birth-of-child_0_0', group='continuous', channel_map={'3872_Age-of-primiparous-women-at-birth-of-child_0_0': 0, 'not-missing': 1}, normalization={'mean': 28.99714622835661, 'std': 6.417228931220436}, annotation_units=2)
-TMAPS['22602_0'] = TensorMap('22602_Year-job-started_0_0', group='continuous', channel_map={'22602_Year-job-started_0_0': 0, 'not-missing': 1}, normalization={'mean': 1971.6475986235102, 'std': 8.886381163207979}, annotation_units=2)
-TMAPS['30830_0'] = TensorMap('30830_SHBG_0_0', group='continuous', channel_map={'30830_SHBG_0_0': 0, 'not-missing': 1}, normalization={'mean': 51.629377390699936, 'std': 27.781222505868797}, annotation_units=2)
-TMAPS['90079_0'] = TensorMap('90079_Wear-duration-during-19:00--19:59_0_0', group='continuous', channel_map={'90079_Wear-duration-during-19:00--19:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.386784030088242, 'std': 1.5313735219461646}, annotation_units=2)
-TMAPS['30221_0'] = TensorMap('30221_Basophill-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30221_Basophill-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90191_0'] = TensorMap('90191_Sample-rate-maximum_0_0', group='continuous', channel_map={'90191_Sample-rate-maximum_0_0': 0, 'not-missing': 1}, normalization={'mean': 8184.358912194416, 'std': 220940.1253618749}, annotation_units=2)
-TMAPS['4147_0'] = TensorMap('4147_Speed-of-sound-through-heel-manual-entry-right_0_0', group='continuous', channel_map={'4147_Speed-of-sound-through-heel-manual-entry-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1554.7818396226414, 'std': 47.47448667160833}, annotation_units=2)
-TMAPS['90165_0'] = TensorMap('90165_Calibration-coefficients--y-slope_0_0', group='continuous', channel_map={'90165_Calibration-coefficients--y-slope_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9865097159940208, 'std': 0.013083087702843674}, annotation_units=2)
-TMAPS['1807_0'] = TensorMap('1807_Fathers-age-at-death_0_0', group='continuous', channel_map={'1807_Fathers-age-at-death_0_0': 0, 'not-missing': 1}, normalization={'mean': 70.55713596848497, 'std': 13.016618246405548}, annotation_units=2)
-TMAPS['5089_0'] = TensorMap('5089_Astigmatism-angle-left_0_0', group='continuous', channel_map={'5089_Astigmatism-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 91.69257457049505, 'std': 56.23642921381895}, annotation_units=2)
-TMAPS['90150_0'] = TensorMap('90150_Fraction-acceleration-<=-1200-milligravities_0_0', group='continuous', channel_map={'90150_Fraction-acceleration-<=-1200-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9998441776363374, 'std': 0.0030152885490644273}, annotation_units=2)
-TMAPS['90028_0'] = TensorMap('90028_Average-acceleration-01:00--01:59_0_0', group='continuous', channel_map={'90028_Average-acceleration-01:00--01:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.532738511982257, 'std': 11.430339221271472}, annotation_units=2)
-TMAPS['30404_0'] = TensorMap('30404_Volume-of-ACD-held-by-UKB_0_0', group='continuous', channel_map={'30404_Volume-of-ACD-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 1394.9801762068928, 'std': 78.47424530021983}, annotation_units=2)
-TMAPS['90057_0'] = TensorMap('90057_Wear-duration-during-Friday_0_0', group='continuous', channel_map={'90057_Wear-duration-during-Friday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.49033955349824, 'std': 6.00413178592472}, annotation_units=2)
-TMAPS['30081_0'] = TensorMap('30081_Platelet-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30081_Platelet-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['48_0'] = TensorMap('48_Waist-circumference_0_0', group='continuous', channel_map={'48_Waist-circumference_0_0': 0, 'not-missing': 1}, normalization={'mean': 90.31081898412394, 'std': 13.485877124184553}, annotation_units=2)
-TMAPS['1050_0'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', group='continuous', channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.350764394913568, 'std': 3.628185285947416}, annotation_units=2)
-TMAPS['4139_0'] = TensorMap('4139_Heel-quantitative-ultrasound-index-QUI-manual-entry-left_0_0', group='continuous', channel_map={'4139_Heel-quantitative-ultrasound-index-QUI-manual-entry-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 97.7030944625407, 'std': 20.444443087821778}, annotation_units=2)
-TMAPS['41093_0'] = TensorMap('41093_Episodes-containing-"PCT-where-patients-GP-was-registered"-data_0_0', group='continuous', channel_map={'41093_Episodes-containing-"PCT-where-patients-GP-was-registered"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.653970125464319, 'std': 16.137768670664578}, annotation_units=2)
-TMAPS['90098_0'] = TensorMap('90098_Fraction-acceleration-<=-7-milligravities_0_0', group='continuous', channel_map={'90098_Fraction-acceleration-<=-7-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5718037128116112, 'std': 0.09658138066480366}, annotation_units=2)
-TMAPS['90080_0'] = TensorMap('90080_Wear-duration-during-20:00--20:59_0_0', group='continuous', channel_map={'90080_Wear-duration-during-20:00--20:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.376575437581369, 'std': 1.5428021577386761}, annotation_units=2)
-TMAPS['100017_0'] = TensorMap('100017_Magnesium_0_0', group='continuous', channel_map={'100017_Magnesium_0_0': 0, 'not-missing': 1}, normalization={'mean': 349.66390037740075, 'std': 129.84604714346878}, annotation_units=2)
-TMAPS['90137_0'] = TensorMap('90137_Fraction-acceleration-<=-350-milligravities_0_0', group='continuous', channel_map={'90137_Fraction-acceleration-<=-350-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9958143979941172, 'std': 0.006392347972267871}, annotation_units=2)
-TMAPS['5306_0'] = TensorMap('5306_6mm-index-of-best-keratometry-results-left_0_0', group='continuous', channel_map={'5306_6mm-index-of-best-keratometry-results-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.5475421186245084, 'std': 0.6728018700501439}, annotation_units=2)
-TMAPS['100025_0'] = TensorMap('100025_Vitamin-E_0_0', group='continuous', channel_map={'100025_Vitamin-E_0_0': 0, 'not-missing': 1}, normalization={'mean': 9.228437530920038, 'std': 5.565657210717742}, annotation_units=2)
-TMAPS['41078_0'] = TensorMap('41078_Episodes-containing-"Diagnoses--secondary-ICD10"-data_0_0', group='continuous', channel_map={'41078_Episodes-containing-"Diagnoses--secondary-ICD10"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.851323793623397, 'std': 42.31535192479268}, annotation_units=2)
-TMAPS['30280_0'] = TensorMap('30280_Immature-reticulocyte-fraction_0_0', group='continuous', channel_map={'30280_Immature-reticulocyte-fraction_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.29079298624959304, 'std': 0.061048018095091285}, annotation_units=2)
-TMAPS['3627_0'] = TensorMap('3627_Age-angina-diagnosed_0_0', group='continuous', channel_map={'3627_Age-angina-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 53.528122084499536, 'std': 7.995373672649763}, annotation_units=2)
-TMAPS['30324_0'] = TensorMap('30324_Volume-of-EDTA1-red-cells-held-by-UKB_0_0', group='continuous', channel_map={'30324_Volume-of-EDTA1-red-cells-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 834.5843524257384, 'std': 110.04775521812479}, annotation_units=2)
-TMAPS['41105_0'] = TensorMap('41105_Episodes-containing-"External-cause--ICD10-addendum"-data_0_0', group='continuous', channel_map={'41105_Episodes-containing-"External-cause--ICD10-addendum"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.180790960451978, 'std': 0.5012183410175328}, annotation_units=2)
-TMAPS['90133_0'] = TensorMap('90133_Fraction-acceleration-<=-250-milligravities_0_0', group='continuous', channel_map={'90133_Fraction-acceleration-<=-250-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9905989488403492, 'std': 0.009523163978600958}, annotation_units=2)
-TMAPS['4022_0'] = TensorMap('4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0', group='continuous', channel_map={'4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 45.80101137800254, 'std': 13.012234972007676}, annotation_units=2)
-TMAPS['5157_0'] = TensorMap('5157_6mm-asymmetry-index-left_0_0', group='continuous', channel_map={'5157_6mm-asymmetry-index-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.384130662281361, 'std': 10.233873687513729}, annotation_units=2)
-TMAPS['41099_0'] = TensorMap('41099_Episodes-containing-"Source-of-admission-to-hospital"-data-polymorphic_0_0', group='continuous', channel_map={'41099_Episodes-containing-"Source-of-admission-to-hospital"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.783473427954618, 'std': 15.822042138052467}, annotation_units=2)
-TMAPS['2405_0'] = TensorMap('2405_Number-of-children-fathered_0_0', group='continuous', channel_map={'2405_Number-of-children-fathered_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.813973449556381, 'std': 1.3398570356329156}, annotation_units=2)
-TMAPS['5292_0'] = TensorMap('5292_3mm-index-of-best-keratometry-results-left_0_0', group='continuous', channel_map={'5292_3mm-index-of-best-keratometry-results-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.7062022059157829, 'std': 0.5957777064183039}, annotation_units=2)
-TMAPS['50_0'] = TensorMap('50_Standing-height_0_0', group='continuous', channel_map={'50_Standing-height_0_0': 0, 'not-missing': 1}, normalization={'mean': 168.44354526127148, 'std': 9.279066076396695}, annotation_units=2)
-TMAPS['30700_0'] = TensorMap('30700_Creatinine_0_0', group='continuous', channel_map={'30700_Creatinine_0_0': 0, 'not-missing': 1}, normalization={'mean': 72.30598402583821, 'std': 18.549736297431203}, annotation_units=2)
-TMAPS['22037_0'] = TensorMap('22037_MET-minutes-per-week-for-walking_0_0', group='continuous', channel_map={'22037_MET-minutes-per-week-for-walking_0_0': 0, 'not-missing': 1}, normalization={'mean': 1039.5601282306268, 'std': 1086.1500250153515}, annotation_units=2)
-TMAPS['90074_0'] = TensorMap('90074_Wear-duration-during-14:00--14:59_0_0', group='continuous', channel_map={'90074_Wear-duration-during-14:00--14:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.368456724046486, 'std': 1.5369328079538043}, annotation_units=2)
-TMAPS['5057_0'] = TensorMap('5057_Number-of-older-siblings_0_0', group='continuous', channel_map={'5057_Number-of-older-siblings_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.2009118177957099, 'std': 1.491901005831908}, annotation_units=2)
-TMAPS['90059_0'] = TensorMap('90059_Wear-duration-during-Sunday_0_0', group='continuous', channel_map={'90059_Wear-duration-during-Sunday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.295139881382898, 'std': 6.777737389457544}, annotation_units=2)
-TMAPS['22034_0'] = TensorMap('22034_Summed-minutes-activity_0_0', group='continuous', channel_map={'22034_Summed-minutes-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 127.09579274353938, 'std': 101.90442571639983}, annotation_units=2)
-TMAPS['90186_0'] = TensorMap('90186_Maximum-readings-exceeding-8-gravities-after-calibration-in-a-5-second-epoch_0_0', group='continuous', channel_map={'90186_Maximum-readings-exceeding-8-gravities-after-calibration-in-a-5-second-epoch_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.61730073774049, 'std': 18.944154910931644}, annotation_units=2)
-TMAPS['22011_0'] = TensorMap('22011_Genetic-relatedness-pairing_0_0', group='continuous', channel_map={'22011_Genetic-relatedness-pairing_0_0': 0, 'not-missing': 1}, normalization={'mean': 4703.121128062875, 'std': 2795.9647055523264}, annotation_units=2)
-TMAPS['5084_0'] = TensorMap('5084_Spherical-power-right_0_0', group='continuous', channel_map={'5084_Spherical-power-right_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.810313334208569, 'std': 2.826529918983138}, annotation_units=2)
-TMAPS['30270_0'] = TensorMap('30270_Mean-sphered-cell-volume_0_0', group='continuous', channel_map={'30270_Mean-sphered-cell-volume_0_0': 0, 'not-missing': 1}, normalization={'mean': 82.8668485078073, 'std': 5.315066434406765}, annotation_units=2)
-TMAPS['2976_0'] = TensorMap('2976_Age-diabetes-diagnosed_0_0', group='continuous', channel_map={'2976_Age-diabetes-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 50.961048993697894, 'std': 12.596448570403018}, annotation_units=2)
-TMAPS['30210_0'] = TensorMap('30210_Eosinophill-percentage_0_0', group='continuous', channel_map={'30210_Eosinophill-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.5724457959804483, 'std': 1.8756692623102362}, annotation_units=2)
-TMAPS['90142_0'] = TensorMap('90142_Fraction-acceleration-<=-475-milligravities_0_0', group='continuous', channel_map={'90142_Fraction-acceleration-<=-475-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9979510583924005, 'std': 0.005138435576908388}, annotation_units=2)
-TMAPS['30181_0'] = TensorMap('30181_Lymphocyte-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30181_Lymphocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90051_0'] = TensorMap('90051_Wear-duration-overall_0_0', group='continuous', channel_map={'90051_Wear-duration-overall_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.294159795554271, 'std': 1.5294148761434962}, annotation_units=2)
-TMAPS['5162_0'] = TensorMap('5162_6mm-regularity-index-left_0_0', group='continuous', channel_map={'5162_6mm-regularity-index-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.5821406579462978, 'std': 1.6799692371811412}, annotation_units=2)
-TMAPS['5109_0'] = TensorMap('5109_6mm-asymmetry-angle-right_0_0', group='continuous', channel_map={'5109_6mm-asymmetry-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 142.9314425704326, 'std': 130.34512129067178}, annotation_units=2)
-TMAPS['90119_0'] = TensorMap('90119_Fraction-acceleration-<=-60-milligravities_0_0', group='continuous', channel_map={'90119_Fraction-acceleration-<=-60-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8555916968031246, 'std': 0.05605786106696202}, annotation_units=2)
-TMAPS['4194_0'] = TensorMap('4194_Pulse-rate_0_0', group='continuous', channel_map={'4194_Pulse-rate_0_0': 0, 'not-missing': 1}, normalization={'mean': 68.99360502228288, 'std': 11.565213398676876}, annotation_units=2)
-TMAPS['90046_0'] = TensorMap('90046_Average-acceleration-19:00--19:59_0_0', group='continuous', channel_map={'90046_Average-acceleration-19:00--19:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 32.83279251651478, 'std': 24.449311966782105}, annotation_units=2)
-TMAPS['3992_0'] = TensorMap('3992_Age-emphysemachronic-bronchitis-diagnosed_0_0', group='continuous', channel_map={'3992_Age-emphysemachronic-bronchitis-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 41.862643080124876, 'std': 19.951267875285666}, annotation_units=2)
-TMAPS['40008_0'] = TensorMap('40008_Age-at-cancer-diagnosis_0_0', group='continuous', channel_map={'40008_Age-at-cancer-diagnosis_0_0': 0, 'not-missing': 1}, normalization={'mean': 57.59601672041155, 'std': 11.456438149908756}, annotation_units=2)
-TMAPS['90162_0'] = TensorMap('90162_Calibration-coefficients--y-offset_0_0', group='continuous', channel_map={'90162_Calibration-coefficients--y-offset_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.013208814311201116, 'std': 0.025080515617090206}, annotation_units=2)
-TMAPS['90155_0'] = TensorMap('90155_Fraction-acceleration-<=-1700-milligravities_0_0', group='continuous', channel_map={'90155_Fraction-acceleration-<=-1700-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9999659867881772, 'std': 0.0019569918030235226}, annotation_units=2)
-TMAPS['4141_0'] = TensorMap('4141_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-left_0_0', group='continuous', channel_map={'4141_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 76.35365635179153, 'std': 24.762803899282975}, annotation_units=2)
-TMAPS['5159_0'] = TensorMap('5159_3mm-asymmetry-index-right_0_0', group='continuous', channel_map={'5159_3mm-asymmetry-index-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 9.176335899467897, 'std': 7.4061198727646325}, annotation_units=2)
-TMAPS['20133_0'] = TensorMap('20133_Time-to-complete-round_0_0', group='continuous', channel_map={'20133_Time-to-complete-round_0_0': 0, 'not-missing': 1}, normalization={'mean': 13410.416446630277, 'std': 11214.000509902186}, annotation_units=2)
-TMAPS['6073_0'] = TensorMap('6073_Duration-at-which-OCT-screen-shown-left_0_0', group='continuous', channel_map={'6073_Duration-at-which-OCT-screen-shown-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 489.35185584397465, 'std': 165.82155361810305}, annotation_units=2)
-TMAPS['3680_0'] = TensorMap('3680_Age-when-last-ate-meat_0_0', group='continuous', channel_map={'3680_Age-when-last-ate-meat_0_0': 0, 'not-missing': 1}, normalization={'mean': 29.73972739527685, 'std': 14.418396711020819}, annotation_units=2)
-TMAPS['90049_0'] = TensorMap('90049_Average-acceleration-22:00--22:59_0_0', group='continuous', channel_map={'90049_Average-acceleration-22:00--22:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.071803172766288, 'std': 16.71302784678877}, annotation_units=2)
-TMAPS['30610_0'] = TensorMap('30610_Alkaline-phosphatase_0_0', group='continuous', channel_map={'30610_Alkaline-phosphatase_0_0': 0, 'not-missing': 1}, normalization={'mean': 83.66915643871293, 'std': 26.45996624495359}, annotation_units=2)
-TMAPS['30230_0'] = TensorMap('30230_Nucleated-red-blood-cell-percentage_0_0', group='continuous', channel_map={'30230_Nucleated-red-blood-cell-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.03519063641849083, 'std': 0.4471618594201447}, annotation_units=2)
-TMAPS['90163_0'] = TensorMap('90163_Calibration-coefficients--z-offset_0_0', group='continuous', channel_map={'90163_Calibration-coefficients--z-offset_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.12664468875066304, 'std': 0.07037598553692072}, annotation_units=2)
-TMAPS['4288_0'] = TensorMap('4288_Time-to-answer_0_0', group='continuous', channel_map={'4288_Time-to-answer_0_0': 0, 'not-missing': 1}, normalization={'mean': 462.3668914626113, 'std': 196.6502921727969}, annotation_units=2)
-TMAPS['5156_0'] = TensorMap('5156_3mm-asymmetry-index-left_0_0', group='continuous', channel_map={'5156_3mm-asymmetry-index-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.533903732235851, 'std': 7.381551632371416}, annotation_units=2)
-TMAPS['90122_0'] = TensorMap('90122_Fraction-acceleration-<=-75-milligravities_0_0', group='continuous', channel_map={'90122_Fraction-acceleration-<=-75-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8882932831862673, 'std': 0.048040170612471324}, annotation_units=2)
-TMAPS['30271_0'] = TensorMap('30271_Mean-sphered-cell-volume-freezethaw-cycles_0_0', group='continuous', channel_map={'30271_Mean-sphered-cell-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['100007_0'] = TensorMap('100007_Polyunsaturated-fat_0_0', group='continuous', channel_map={'100007_Polyunsaturated-fat_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.232844784937871, 'std': 8.825575758319898}, annotation_units=2)
-TMAPS['41096_0'] = TensorMap('41096_Episodes-containing-"Date-of-admission-to-hospital"-data_0_0', group='continuous', channel_map={'41096_Episodes-containing-"Date-of-admission-to-hospital"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.5117246239435405, 'std': 15.664253231461563}, annotation_units=2)
-TMAPS['100008_0'] = TensorMap('100008_Total-sugars_0_0', group='continuous', channel_map={'100008_Total-sugars_0_0': 0, 'not-missing': 1}, normalization={'mean': 123.24034361881073, 'std': 61.985067699217446}, annotation_units=2)
-TMAPS['30011_0'] = TensorMap('30011_Red-blood-cell-erythrocyte-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30011_Red-blood-cell-erythrocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90193_0'] = TensorMap('90193_Temperature-standard-deviation_0_0', group='continuous', channel_map={'90193_Temperature-standard-deviation_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.569109407396692, 'std': 0.48713670603278036}, annotation_units=2)
-TMAPS['30680_0'] = TensorMap('30680_Calcium_0_0', group='continuous', channel_map={'30680_Calcium_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.3798800595411227, 'std': 0.09418845422721601}, annotation_units=2)
-TMAPS['22005_0'] = TensorMap('22005_Missingness_0_0', group='continuous', channel_map={'22005_Missingness_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.00474998378743692, 'std': 0.0048483661888290034}, annotation_units=2)
-TMAPS['40007_0'] = TensorMap('40007_Age-at-death_0_0', group='continuous', channel_map={'40007_Age-at-death_0_0': 0, 'not-missing': 1}, normalization={'mean': 67.27032093960392, 'std': 7.095180722295174}, annotation_units=2)
-TMAPS['22642_0'] = TensorMap('22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_0', group='continuous', channel_map={'22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.061550094517957, 'std': 3.236329364313073}, annotation_units=2)
-TMAPS['30281_0'] = TensorMap('30281_Immature-reticulocyte-fraction-freezethaw-cycles_0_0', group='continuous', channel_map={'30281_Immature-reticulocyte-fraction-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['41100_0'] = TensorMap('41100_Episodes-containing-"First-regular-day-or-night-of-admission-to-hosp"-data_0_0', group='continuous', channel_map={'41100_Episodes-containing-"First-regular-day-or-night-of-admission-to-hosp"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.712367888255288, 'std': 14.701539208428704}, annotation_units=2)
-TMAPS['90167_0'] = TensorMap('90167_Calibration-coefficients--x-temp_0_0', group='continuous', channel_map={'90167_Calibration-coefficients--x-temp_0_0': 0, 'not-missing': 1}, normalization={'mean': -4.48719803269203e-05, 'std': 0.0011886910403996018}, annotation_units=2)
-TMAPS['5118_0'] = TensorMap('5118_6mm-cylindrical-power-left_0_0', group='continuous', channel_map={'5118_6mm-cylindrical-power-left_0_0': 0, 'not-missing': 1}, normalization={'mean': -0.8590785305163331, 'std': 0.6766761272978904}, annotation_units=2)
-TMAPS['90145_0'] = TensorMap('90145_Fraction-acceleration-<=-700-milligravities_0_0', group='continuous', channel_map={'90145_Fraction-acceleration-<=-700-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9991858913158783, 'std': 0.004385515911714362}, annotation_units=2)
-TMAPS['23125_0'] = TensorMap('23125_Arm-fatfree-mass-left_0_0', group='continuous', channel_map={'23125_Arm-fatfree-mass-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.9256461729453624, 'std': 0.8372290130379669}, annotation_units=2)
-TMAPS['90190_0'] = TensorMap('90190_Sample-rate-minimum_0_0', group='continuous', channel_map={'90190_Sample-rate-minimum_0_0': 0, 'not-missing': 1}, normalization={'mean': 57.28167799797484, 'std': 31.634722185781882}, annotation_units=2)
-TMAPS['34_0'] = TensorMap('34_Year-of-birth_0_0', group='continuous', channel_map={'34_Year-of-birth_0_0': 0, 'not-missing': 1}, normalization={'mean': 1951.542816833023, 'std': 8.116157117024176}, annotation_units=2)
-TMAPS['5163_0'] = TensorMap('5163_3mm-regularity-index-left_0_0', group='continuous', channel_map={'5163_3mm-regularity-index-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.0681633767285117, 'std': 1.4936764421790918}, annotation_units=2)
-TMAPS['90153_0'] = TensorMap('90153_Fraction-acceleration-<=-1500-milligravities_0_0', group='continuous', channel_map={'90153_Fraction-acceleration-<=-1500-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9999418486908723, 'std': 0.0022951564321133386}, annotation_units=2)
-TMAPS['30070_0'] = TensorMap('30070_Red-blood-cell-erythrocyte-distribution-width_0_0', group='continuous', channel_map={'30070_Red-blood-cell-erythrocyte-distribution-width_0_0': 0, 'not-missing': 1}, normalization={'mean': 13.49324742052455, 'std': 0.987728438359214}, annotation_units=2)
-TMAPS['41111_0'] = TensorMap('41111_Episodes-containing-"Main-speciality-of-consultant"-data-polymorphic_0_0', group='continuous', channel_map={'41111_Episodes-containing-"Main-speciality-of-consultant"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.7117423301656185, 'std': 16.033265618616817}, annotation_units=2)
-TMAPS['30200_0'] = TensorMap('30200_Neutrophill-percentage_0_0', group='continuous', channel_map={'30200_Neutrophill-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 60.88044484064049, 'std': 8.52576656912908}, annotation_units=2)
-TMAPS['90029_0'] = TensorMap('90029_Average-acceleration-02:00--02:59_0_0', group='continuous', channel_map={'90029_Average-acceleration-02:00--02:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.7740854428853843, 'std': 12.79484185459149}, annotation_units=2)
-TMAPS['2714_0'] = TensorMap('2714_Age-when-periods-started-menarche_0_0', group='continuous', channel_map={'2714_Age-when-periods-started-menarche_0_0': 0, 'not-missing': 1}, normalization={'mean': 12.969831333681098, 'std': 1.6232172496143256}, annotation_units=2)
-TMAPS['90168_0'] = TensorMap('90168_Calibration-coefficients--y-temp_0_0', group='continuous', channel_map={'90168_Calibration-coefficients--y-temp_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0010523361782149572, 'std': 0.0012639903963996546}, annotation_units=2)
-TMAPS['90056_0'] = TensorMap('90056_Wear-duration-during-Thursday_0_0', group='continuous', channel_map={'90056_Wear-duration-during-Thursday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.63471584936592, 'std': 5.9951926261779365}, annotation_units=2)
-TMAPS['4080_0'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_0_0', group='continuous', channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0, 'not-missing': 1}, normalization={'mean': 139.73921143032933, 'std': 19.696709802954203}, annotation_units=2)
-TMAPS['3882_0'] = TensorMap('3882_Age-at-bilateral-oophorectomy-both-ovaries-removed_0_0', group='continuous', channel_map={'3882_Age-at-bilateral-oophorectomy-both-ovaries-removed_0_0': 0, 'not-missing': 1}, normalization={'mean': 47.44636286442117, 'std': 7.773399828695975}, annotation_units=2)
-TMAPS['4143_0'] = TensorMap('4143_Heel-bone-mineral-density-BMD-Tscore-manual-entry-right_0_0', group='continuous', channel_map={'4143_Heel-bone-mineral-density-BMD-Tscore-manual-entry-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6763915094339621, 'std': 0.9576533150241747}, annotation_units=2)
-TMAPS['904_0'] = TensorMap('904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0', group='continuous', channel_map={'904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.8387379989893888, 'std': 1.959344068413503}, annotation_units=2)
-TMAPS['30301_0'] = TensorMap('30301_High-light-scatter-reticulocyte-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30301_High-light-scatter-reticulocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['23126_0'] = TensorMap('23126_Arm-predicted-mass-left_0_0', group='continuous', channel_map={'23126_Arm-predicted-mass-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.740075343189446, 'std': 0.7977945107270242}, annotation_units=2)
-TMAPS['90166_0'] = TensorMap('90166_Calibration-coefficients--z-slope_0_0', group='continuous', channel_map={'90166_Calibration-coefficients--z-slope_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.0084419788803698, 'std': 0.00893818372920853}, annotation_units=2)
-TMAPS['30364_0'] = TensorMap('30364_Volume-of-EDTA2-red-cells-held-by-UKB_0_0', group='continuous', channel_map={'30364_Volume-of-EDTA2-red-cells-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 835.0722763644252, 'std': 106.87264953988611}, annotation_units=2)
-TMAPS['90048_0'] = TensorMap('90048_Average-acceleration-21:00--21:59_0_0', group='continuous', channel_map={'90048_Average-acceleration-21:00--21:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.541821013549356, 'std': 17.39582659438696}, annotation_units=2)
-TMAPS['30790_0'] = TensorMap('30790_Lipoprotein-A_0_0', group='continuous', channel_map={'30790_Lipoprotein-A_0_0': 0, 'not-missing': 1}, normalization={'mean': 44.64786510991499, 'std': 49.21244270456523}, annotation_units=2)
-TMAPS['22643_0'] = TensorMap('22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_0', group='continuous', channel_map={'22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 8.639773156899812, 'std': 6.236891148705975}, annotation_units=2)
-TMAPS['90121_0'] = TensorMap('90121_Fraction-acceleration-<=-70-milligravities_0_0', group='continuous', channel_map={'90121_Fraction-acceleration-<=-70-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8783745985823813, 'std': 0.050565202007942754}, annotation_units=2)
-TMAPS['4104_0'] = TensorMap('4104_Heel-quantitative-ultrasound-index-QUI-direct-entry-left_0_0', group='continuous', channel_map={'4104_Heel-quantitative-ultrasound-index-QUI-direct-entry-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 98.59814059883445, 'std': 23.20942289761857}, annotation_units=2)
-TMAPS['90184_0'] = TensorMap('90184_Maximum-readings-exceeding-8-gravities-before-calibration-in-a-5-second-epoch_0_0', group='continuous', channel_map={'90184_Maximum-readings-exceeding-8-gravities-before-calibration-in-a-5-second-epoch_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.386566372534837, 'std': 18.69296663016614}, annotation_units=2)
-TMAPS['4195_0'] = TensorMap('4195_Pulse-wave-reflection-index_0_0', group='continuous', channel_map={'4195_Pulse-wave-reflection-index_0_0': 0, 'not-missing': 1}, normalization={'mean': 67.72835399598263, 'std': 32.180795506207915}, annotation_units=2)
-TMAPS['5262_0'] = TensorMap('5262_Intraocular-pressure-cornealcompensated-left_0_0', group='continuous', channel_map={'5262_Intraocular-pressure-cornealcompensated-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.006954506069718, 'std': 4.395220730341303}, annotation_units=2)
-TMAPS['90072_0'] = TensorMap('90072_Wear-duration-during-12:00--12:59_0_0', group='continuous', channel_map={'90072_Wear-duration-during-12:00--12:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.373508365880706, 'std': 1.5285981802400834}, annotation_units=2)
-TMAPS['914_0'] = TensorMap('914_Duration-of-vigorous-activity_0_0', group='continuous', channel_map={'914_Duration-of-vigorous-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 44.853302756719245, 'std': 48.15790408772609}, annotation_units=2)
-TMAPS['90115_0'] = TensorMap('90115_Fraction-acceleration-<=-40-milligravities_0_0', group='continuous', channel_map={'90115_Fraction-acceleration-<=-40-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.7945620907469022, 'std': 0.06806537892803469}, annotation_units=2)
-TMAPS['90066_0'] = TensorMap('90066_Wear-duration-during-06:00--06:59_0_0', group='continuous', channel_map={'90066_Wear-duration-during-06:00--06:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.231038526447756, 'std': 1.6555288367090255}, annotation_units=2)
-TMAPS['90054_0'] = TensorMap('90054_Wear-duration-during-Tuesday_0_0', group='continuous', channel_map={'90054_Wear-duration-during-Tuesday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.970947297362457, 'std': 5.839235323860918}, annotation_units=2)
-TMAPS['5986_0'] = TensorMap('5986_ECG-phase-time_0_0', group='continuous', channel_map={'5986_ECG-phase-time_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.2007157883934527, 'std': 0.40053841095690734}, annotation_units=2)
-TMAPS['20156_0'] = TensorMap('20156_Duration-to-complete-numeric-path-trail-#1_0_0', group='continuous', channel_map={'20156_Duration-to-complete-numeric-path-trail-#1_0_0': 0, 'not-missing': 1}, normalization={'mean': 39.192476620979996, 'std': 14.998535290751322}, annotation_units=2)
-TMAPS['30040_0'] = TensorMap('30040_Mean-corpuscular-volume_0_0', group='continuous', channel_map={'30040_Mean-corpuscular-volume_0_0': 0, 'not-missing': 1}, normalization={'mean': 91.1200520077457, 'std': 4.606194293568709}, annotation_units=2)
-TMAPS['100022_0'] = TensorMap('100022_Alcohol_0_0', group='continuous', channel_map={'100022_Alcohol_0_0': 0, 'not-missing': 1}, normalization={'mean': 15.87385910356625, 'std': 24.128454819959085}, annotation_units=2)
-TMAPS['2217_0'] = TensorMap('2217_Age-started-wearing-glasses-or-contact-lenses_0_0', group='continuous', channel_map={'2217_Age-started-wearing-glasses-or-contact-lenses_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.791384009085785, 'std': 16.920436780693198}, annotation_units=2)
-TMAPS['90148_0'] = TensorMap('90148_Fraction-acceleration-<=-1000-milligravities_0_0', group='continuous', channel_map={'90148_Fraction-acceleration-<=-1000-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.999698538984522, 'std': 0.003524523347059043}, annotation_units=2)
-TMAPS['100001_0'] = TensorMap('100001_Food-weight_0_0', group='continuous', channel_map={'100001_Food-weight_0_0': 0, 'not-missing': 1}, normalization={'mean': 3263.2873074476574, 'std': 939.1711925662723}, annotation_units=2)
-TMAPS['90033_0'] = TensorMap('90033_Average-acceleration-06:00--06:59_0_0', group='continuous', channel_map={'90033_Average-acceleration-06:00--06:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 12.450125560538117, 'std': 20.90498505330111}, annotation_units=2)
-TMAPS['1299_0'] = TensorMap('1299_Salad--raw-vegetable-intake_0_0', group='continuous', channel_map={'1299_Salad--raw-vegetable-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.189287995665955, 'std': 2.1571195471204074}, annotation_units=2)
-TMAPS['30870_0'] = TensorMap('30870_Triglycerides_0_0', group='continuous', channel_map={'30870_Triglycerides_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.7475781220697322, 'std': 1.0276839335308203}, annotation_units=2)
-TMAPS['5077_0'] = TensorMap('5077_Number-of-letters-correct-in-round-left_0_0', group='continuous', channel_map={'5077_Number-of-letters-correct-in-round-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.4399187075178395, 'std': 1.0047759606124052}, annotation_units=2)
-TMAPS['2355_0'] = TensorMap('2355_Most-recent-bowel-cancer-screening_0_0', group='continuous', channel_map={'2355_Most-recent-bowel-cancer-screening_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.13206313132981426, 'std': 7.3306621439009625}, annotation_units=2)
-TMAPS['4100_0'] = TensorMap('4100_Ankle-spacing-width-left_0_0', group='continuous', channel_map={'4100_Ankle-spacing-width-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 44.02652529853431, 'std': 4.628201953878173}, annotation_units=2)
-TMAPS['30091_0'] = TensorMap('30091_Platelet-crit-freezethaw-cycles_0_0', group='continuous', channel_map={'30091_Platelet-crit-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['20131_0'] = TensorMap('20131_Number-of-correct-matches-in-round_0_0', group='continuous', channel_map={'20131_Number-of-correct-matches-in-round_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.925502568731494, 'std': 0.46682694133258645}, annotation_units=2)
-TMAPS['41132_0'] = TensorMap('41132_Episodes-containing-"Episode-type"-data_0_0', group='continuous', channel_map={'41132_Episodes-containing-"Episode-type"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.6539810425246815, 'std': 16.137775500554618}, annotation_units=2)
-TMAPS['5254_0'] = TensorMap('5254_Intraocular-pressure-cornealcompensated-right_0_0', group='continuous', channel_map={'5254_Intraocular-pressure-cornealcompensated-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.079121757020328, 'std': 4.3476889312070846}, annotation_units=2)
-TMAPS['90171_0'] = TensorMap('90171_Calibration--number-of-static-points_0_0', group='continuous', channel_map={'90171_Calibration--number-of-static-points_0_0': 0, 'not-missing': 1}, normalization={'mean': 25900.544847871162, 'std': 7809.333180639968}, annotation_units=2)
-TMAPS['3710_0'] = TensorMap('3710_Length-of-menstrual-cycle_0_0', group='continuous', channel_map={'3710_Length-of-menstrual-cycle_0_0': 0, 'not-missing': 1}, normalization={'mean': 20.763829356373822, 'std': 14.242673038653912}, annotation_units=2)
-TMAPS['90024_0'] = TensorMap('90024_Saturday-average-acceleration_0_0', group='continuous', channel_map={'90024_Saturday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.19650735329572, 'std': 16.94809039173668}, annotation_units=2)
-TMAPS['22401_0'] = TensorMap('22401_Liver-inflammation-factor-LIF_0_0', group='continuous', channel_map={'22401_Liver-inflammation-factor-LIF_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8966719726027398, 'std': 0.3122547550918289}, annotation_units=2)
-TMAPS['136_0'] = TensorMap('136_Number-of-operations-selfreported_0_0', group='continuous', channel_map={'136_Number-of-operations-selfreported_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.7307813440600868, 'std': 1.5516336351355693}, annotation_units=2)
-TMAPS['90012_0'] = TensorMap('90012_Overall-acceleration-average_0_0', group='continuous', channel_map={'90012_Overall-acceleration-average_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.423471623511265, 'std': 13.995464309516002}, annotation_units=2)
-TMAPS['22655_0'] = TensorMap('22655_Rest-days-during-night-shift-periods_0_0', group='continuous', channel_map={'22655_Rest-days-during-night-shift-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.0174418604651168, 'std': 2.308634288527879}, annotation_units=2)
-TMAPS['5221_0'] = TensorMap('5221_Index-of-best-refractometry-result-right_0_0', group='continuous', channel_map={'5221_Index-of-best-refractometry-result-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.0269484924073335, 'std': 0.8334014421417066}, annotation_units=2)
-TMAPS['5264_0'] = TensorMap('5264_Corneal-hysteresis-left_0_0', group='continuous', channel_map={'5264_Corneal-hysteresis-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.614780123091771, 'std': 2.4973445204977582}, annotation_units=2)
-TMAPS['30191_0'] = TensorMap('30191_Monocyte-percentage-freezethaw-cycles_0_0', group='continuous', channel_map={'30191_Monocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['2754_0'] = TensorMap('2754_Age-at-first-live-birth_0_0', group='continuous', channel_map={'2754_Age-at-first-live-birth_0_0': 0, 'not-missing': 1}, normalization={'mean': 25.267277615783698, 'std': 4.747366029144674}, annotation_units=2)
-TMAPS['23129_0'] = TensorMap('23129_Trunk-fatfree-mass_0_0', group='continuous', channel_map={'23129_Trunk-fatfree-mass_0_0': 0, 'not-missing': 1}, normalization={'mean': 29.58595369049217, 'std': 5.981176227799396}, annotation_units=2)
-TMAPS['30770_0'] = TensorMap('30770_IGF1_0_0', group='continuous', channel_map={'30770_IGF1_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.398911635614628, 'std': 5.699765525677172}, annotation_units=2)
-TMAPS['5983_0'] = TensorMap('5983_ECG-heart-rate_0_0', group='continuous', channel_map={'5983_ECG-heart-rate_0_0': 0, 'not-missing': 1}, normalization={'mean': 72.97136989772103, 'std': 13.520516545776916}, annotation_units=2)
-TMAPS['3546_0'] = TensorMap('3546_Age-last-used-hormonereplacement-therapy-HRT_0_0', group='continuous', channel_map={'3546_Age-last-used-hormonereplacement-therapy-HRT_0_0': 0, 'not-missing': 1}, normalization={'mean': 53.92169718601282, 'std': 5.941782727750995}, annotation_units=2)
-TMAPS['90053_0'] = TensorMap('90053_Wear-duration-during-Monday_0_0', group='continuous', channel_map={'90053_Wear-duration-during-Monday_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.585114036356615, 'std': 5.938389363274724}, annotation_units=2)
-TMAPS['5076_0'] = TensorMap('5076_Number-of-letters-correct-in-round-right_0_0', group='continuous', channel_map={'5076_Number-of-letters-correct-in-round-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 4.391932606710316, 'std': 1.0244466389204858}, annotation_units=2)
-TMAPS['3700_0'] = TensorMap('3700_Time-since-last-menstrual-period_0_0', group='continuous', channel_map={'3700_Time-since-last-menstrual-period_0_0': 0, 'not-missing': 1}, normalization={'mean': 15.229588661058845, 'std': 22.32520700224633}, annotation_units=2)
-TMAPS['3536_0'] = TensorMap('3536_Age-started-hormonereplacement-therapy-HRT_0_0', group='continuous', channel_map={'3536_Age-started-hormonereplacement-therapy-HRT_0_0': 0, 'not-missing': 1}, normalization={'mean': 47.376718941067935, 'std': 5.445443728155726}, annotation_units=2)
-TMAPS['30170_0'] = TensorMap('30170_Nucleated-red-blood-cell-count_0_0', group='continuous', channel_map={'30170_Nucleated-red-blood-cell-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.002217473287240727, 'std': 0.03319170608042161}, annotation_units=2)
-TMAPS['22605_0'] = TensorMap('22605_Work-hours-per-week--exact-value_0_0', group='continuous', channel_map={'22605_Work-hours-per-week--exact-value_0_0': 0, 'not-missing': 1}, normalization={'mean': 40.43599524940617, 'std': 8.814943145289897}, annotation_units=2)
-TMAPS['90180_0'] = TensorMap('90180_Interrupted-recording-periods_0_0', group='continuous', channel_map={'90180_Interrupted-recording-periods_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.04432229133516563, 'std': 1.6731041903517418}, annotation_units=2)
-TMAPS['3144_0'] = TensorMap('3144_Heel-Broadband-ultrasound-attenuation-direct-entry_0_0', group='continuous', channel_map={'3144_Heel-Broadband-ultrasound-attenuation-direct-entry_0_0': 0, 'not-missing': 1}, normalization={'mean': 77.91299497354227, 'std': 19.602098137766433}, annotation_units=2)
-TMAPS['30354_0'] = TensorMap('30354_Volume-of-EDTA2-buffy-held-by-UKB_0_0', group='continuous', channel_map={'30354_Volume-of-EDTA2-buffy-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 830.8630044408109, 'std': 115.8571842515694}, annotation_units=2)
-TMAPS['41092_0'] = TensorMap('41092_Episodes-containing-"Current-PCT-responsible-for-patient"-data_0_0', group='continuous', channel_map={'41092_Episodes-containing-"Current-PCT-responsible-for-patient"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 5.470361569183402, 'std': 14.456057430461588}, annotation_units=2)
-TMAPS['41087_0'] = TensorMap('41087_Episodes-containing-"Episode-status"-data_0_0', group='continuous', channel_map={'41087_Episodes-containing-"Episode-status"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.6539810425246815, 'std': 16.137775500554618}, annotation_units=2)
-TMAPS['20082_0'] = TensorMap('20082_Duration-of-questionnaire_0_0', group='continuous', channel_map={'20082_Duration-of-questionnaire_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.230562547727457, 'std': 6.762106821946561}, annotation_units=2)
-TMAPS['134_0'] = TensorMap('134_Number-of-selfreported-cancers_0_0', group='continuous', channel_map={'134_Number-of-selfreported-cancers_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.08930102018442256, 'std': 0.30857741718495363}, annotation_units=2)
-TMAPS['90131_0'] = TensorMap('90131_Fraction-acceleration-<=-200-milligravities_0_0', group='continuous', channel_map={'90131_Fraction-acceleration-<=-200-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9834226529726603, 'std': 0.013503801209210558}, annotation_units=2)
-TMAPS['5188_0'] = TensorMap('5188_Duration-visualacuity-screen-displayed-left_0_0', group='continuous', channel_map={'5188_Duration-visualacuity-screen-displayed-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 90.05816385525777, 'std': 43.04048322254273}, annotation_units=2)
-TMAPS['4123_0'] = TensorMap('4123_Heel-quantitative-ultrasound-index-QUI-direct-entry-right_0_0', group='continuous', channel_map={'4123_Heel-quantitative-ultrasound-index-QUI-direct-entry-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 99.32985275259259, 'std': 23.02203573498749}, annotation_units=2)
-TMAPS['41098_0'] = TensorMap('41098_Episodes-containing-"Method-of-admission-to-hospital"-data-polymorphic_0_0', group='continuous', channel_map={'41098_Episodes-containing-"Method-of-admission-to-hospital"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.78351210809164, 'std': 15.822041903378436}, annotation_units=2)
-TMAPS['5135_0'] = TensorMap('5135_3mm-strong-meridian-left_0_0', group='continuous', channel_map={'5135_3mm-strong-meridian-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 44.007419278576464, 'std': 1.612305482657765}, annotation_units=2)
-TMAPS['2824_0'] = TensorMap('2824_Age-at-hysterectomy_0_0', group='continuous', channel_map={'2824_Age-at-hysterectomy_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.928069964295744, 'std': 8.03789699329241}, annotation_units=2)
-TMAPS['41090_0'] = TensorMap('41090_Episodes-containing-"End-of-spell-indicator"-data_0_0', group='continuous', channel_map={'41090_Episodes-containing-"End-of-spell-indicator"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.6539810425246815, 'std': 16.137775500554618}, annotation_units=2)
-TMAPS['30660_0'] = TensorMap('30660_Direct-bilirubin_0_0', group='continuous', channel_map={'30660_Direct-bilirubin_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.8336304228941827, 'std': 0.8506083585971784}, annotation_units=2)
-TMAPS['90112_0'] = TensorMap('90112_Fraction-acceleration-<=-25-milligravities_0_0', group='continuous', channel_map={'90112_Fraction-acceleration-<=-25-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.725298963305849, 'std': 0.07886963801703971}, annotation_units=2)
-TMAPS['3659_0'] = TensorMap('3659_Year-immigrated-to-UK-United-Kingdom_0_0', group='continuous', channel_map={'3659_Year-immigrated-to-UK-United-Kingdom_0_0': 0, 'not-missing': 1}, normalization={'mean': 1976.0454825251356, 'std': 16.240769055300312}, annotation_units=2)
-TMAPS['1070_0'] = TensorMap('1070_Time-spent-watching-television-TV_0_0', group='continuous', channel_map={'1070_Time-spent-watching-television-TV_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.305126920810024, 'std': 3.1666110619384864}, annotation_units=2)
-TMAPS['90105_0'] = TensorMap('90105_Fraction-acceleration-<=-14-milligravities_0_0', group='continuous', channel_map={'90105_Fraction-acceleration-<=-14-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6535506533584068, 'std': 0.08873358582581779}, annotation_units=2)
-TMAPS['5992_0'] = TensorMap('5992_ECG-phase-duration_0_0', group='continuous', channel_map={'5992_ECG-phase-duration_0_0': 0, 'not-missing': 1}, normalization={'mean': 27.45544922776951, 'std': 34.04902430879386}, annotation_units=2)
-TMAPS['90187_0'] = TensorMap('90187_Total-data-readings_0_0', group='continuous', channel_map={'90187_Total-data-readings_0_0': 0, 'not-missing': 1}, normalization={'mean': 54066561.19103139, 'std': 13123664.817067225}, annotation_units=2)
-TMAPS['90084_0'] = TensorMap('90084_Unique-hours-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days_0_0', group='continuous', channel_map={'90084_Unique-hours-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days_0_0': 0, 'not-missing': 1}, normalization={'mean': 23.517768455566802, 'std': 2.6777486507372097}, annotation_units=2)
-TMAPS['3137_0'] = TensorMap('3137_Number-of-measurements-made_0_0', group='continuous', channel_map={'3137_Number-of-measurements-made_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.7354404880500045, 'std': 0.4424807506615589}, annotation_units=2)
-TMAPS['2794_0'] = TensorMap('2794_Age-started-oral-contraceptive-pill_0_0', group='continuous', channel_map={'2794_Age-started-oral-contraceptive-pill_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.535554780838957, 'std': 4.671937079622141}, annotation_units=2)
-TMAPS['22033_0'] = TensorMap('22033_Summed-days-activity_0_0', group='continuous', channel_map={'22033_Summed-days-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.61687678114278, 'std': 4.8437819580014985}, annotation_units=2)
-TMAPS['90019_0'] = TensorMap('90019_Monday-average-acceleration_0_0', group='continuous', channel_map={'90019_Monday-average-acceleration_0_0': 0, 'not-missing': 1}, normalization={'mean': 26.969843676165677, 'std': 17.154154150610008}, annotation_units=2)
-TMAPS['1319_0'] = TensorMap('1319_Dried-fruit-intake_0_0', group='continuous', channel_map={'1319_Dried-fruit-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8517596660054849, 'std': 1.753491640401324}, annotation_units=2)
-TMAPS['4146_0'] = TensorMap('4146_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-right_0_0', group='continuous', channel_map={'4146_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 77.37633647798741, 'std': 20.01929945554501}, annotation_units=2)
-TMAPS['90124_0'] = TensorMap('90124_Fraction-acceleration-<=-85-milligravities_0_0', group='continuous', channel_map={'90124_Fraction-acceleration-<=-85-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.905676599643184, 'std': 0.04289798097062886}, annotation_units=2)
-TMAPS['30810_0'] = TensorMap('30810_Phosphate_0_0', group='continuous', channel_map={'30810_Phosphate_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.1593289926713424, 'std': 0.16110980316809714}, annotation_units=2)
-TMAPS['22012_0'] = TensorMap('22012_Genetic-relatedness-factor_0_0', group='continuous', channel_map={'22012_Genetic-relatedness-factor_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.12393868469717984, 'std': 0.08591586600275926}, annotation_units=2)
-TMAPS['30300_0'] = TensorMap('30300_High-light-scatter-reticulocyte-count_0_0', group='continuous', channel_map={'30300_High-light-scatter-reticulocyte-count_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.018121005878121547, 'std': 0.010238246080133753}, annotation_units=2)
-TMAPS['90126_0'] = TensorMap('90126_Fraction-acceleration-<=-95-milligravities_0_0', group='continuous', channel_map={'90126_Fraction-acceleration-<=-95-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9201158590095954, 'std': 0.03850529049978559}, annotation_units=2)
-TMAPS['5097_0'] = TensorMap('5097_6mm-weak-meridian-left_0_0', group='continuous', channel_map={'5097_6mm-weak-meridian-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 42.62669607452323, 'std': 1.543481646901325}, annotation_units=2)
-TMAPS['5133_0'] = TensorMap('5133_6mm-strong-meridian-right_0_0', group='continuous', channel_map={'5133_6mm-strong-meridian-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 43.427808825059856, 'std': 1.5782722917505443}, annotation_units=2)
-TMAPS['22038_0'] = TensorMap('22038_MET-minutes-per-week-for-moderate-activity_0_0', group='continuous', channel_map={'22038_MET-minutes-per-week-for-moderate-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 933.9493836978008, 'std': 1226.501777985143}, annotation_units=2)
-TMAPS['4119_0'] = TensorMap('4119_Ankle-spacing-width-right_0_0', group='continuous', channel_map={'4119_Ankle-spacing-width-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 44.03751425161516, 'std': 4.577033018195549}, annotation_units=2)
-TMAPS['5161_0'] = TensorMap('5161_6mm-regularity-index-right_0_0', group='continuous', channel_map={'5161_6mm-regularity-index-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.583435352435316, 'std': 1.7383002590674235}, annotation_units=2)
-TMAPS['5237_0'] = TensorMap('5237_3mm-index-of-best-keratometry-results-right_0_0', group='continuous', channel_map={'5237_3mm-index-of-best-keratometry-results-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.6441612313402283, 'std': 0.6504831779573323}, annotation_units=2)
-TMAPS['90154_0'] = TensorMap('90154_Fraction-acceleration-<=-1600-milligravities_0_0', group='continuous', channel_map={'90154_Fraction-acceleration-<=-1600-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.999956198466657, 'std': 0.00210842029110358}, annotation_units=2)
-TMAPS['20009_0'] = TensorMap('20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_0', group='continuous', channel_map={'20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 42.11994757298142, 'std': 18.27970369099588}, annotation_units=2)
-TMAPS['4200_0'] = TensorMap('4200_Position-of-the-shoulder-on-the-pulse-waveform_0_0', group='continuous', channel_map={'4200_Position-of-the-shoulder-on-the-pulse-waveform_0_0': 0, 'not-missing': 1}, normalization={'mean': 21.14540961237768, 'std': 5.606065558195836}, annotation_units=2)
-TMAPS['90175_0'] = TensorMap('90175_Calibration--maximum-y-stationary-value_0_0', group='continuous', channel_map={'90175_Calibration--maximum-y-stationary-value_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9632147162351126, 'std': 0.1738954427122092}, annotation_units=2)
-TMAPS['30101_0'] = TensorMap('30101_Mean-platelet-thrombocyte-volume-freezethaw-cycles_0_0', group='continuous', channel_map={'30101_Mean-platelet-thrombocyte-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['90069_0'] = TensorMap('90069_Wear-duration-during-09:00--09:59_0_0', group='continuous', channel_map={'90069_Wear-duration-during-09:00--09:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.240367520131154, 'std': 1.5347165401031986}, annotation_units=2)
-TMAPS['100012_0'] = TensorMap('100012_Vitamin-B6_0_0', group='continuous', channel_map={'100012_Vitamin-B6_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.185187923162823, 'std': 0.87703469183665}, annotation_units=2)
-TMAPS['22004_0'] = TensorMap('22004_Heterozygosity-PCA-corrected_0_0', group='continuous', channel_map={'22004_Heterozygosity-PCA-corrected_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.19029567730724511, 'std': 0.00166976887080989}, annotation_units=2)
-TMAPS['23115_0'] = TensorMap('23115_Leg-fat-percentage-left_0_0', group='continuous', channel_map={'23115_Leg-fat-percentage-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 31.951824770075724, 'std': 10.648351373024937}, annotation_units=2)
-TMAPS['5193_0'] = TensorMap('5193_Duration-at-which-refractometer-first-shown-left_0_0', group='continuous', channel_map={'5193_Duration-at-which-refractometer-first-shown-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 207.6626200445356, 'std': 81.13389201354755}, annotation_units=2)
-TMAPS['23110_0'] = TensorMap('23110_Impedance-of-arm-left_0_0', group='continuous', channel_map={'23110_Impedance-of-arm-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 332.2658059196163, 'std': 56.83465434478377}, annotation_units=2)
-TMAPS['90130_0'] = TensorMap('90130_Fraction-acceleration-<=-175-milligravities_0_0', group='continuous', channel_map={'90130_Fraction-acceleration-<=-175-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9767494768310911, 'std': 0.016886568885961222}, annotation_units=2)
-TMAPS['1279_0'] = TensorMap('1279_Exposure-to-tobacco-smoke-outside-home_0_0', group='continuous', channel_map={'1279_Exposure-to-tobacco-smoke-outside-home_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5148142702661683, 'std': 2.5522457001793115}, annotation_units=2)
-TMAPS['30730_0'] = TensorMap('30730_Gamma-glutamyltransferase_0_0', group='continuous', channel_map={'30730_Gamma-glutamyltransferase_0_0': 0, 'not-missing': 1}, normalization={'mean': 37.38983782447889, 'std': 42.08532805492437}, annotation_units=2)
-TMAPS['90151_0'] = TensorMap('90151_Fraction-acceleration-<=-1300-milligravities_0_0', group='continuous', channel_map={'90151_Fraction-acceleration-<=-1300-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9998890013983316, 'std': 0.002757928944855471}, annotation_units=2)
-TMAPS['22631_0'] = TensorMap('22631_Period-spent-working-day-shifts_0_0', group='continuous', channel_map={'22631_Period-spent-working-day-shifts_0_0': 0, 'not-missing': 1}, normalization={'mean': -292.81151003167895, 'std': 462.65163745191177}, annotation_units=2)
-TMAPS['1269_0'] = TensorMap('1269_Exposure-to-tobacco-smoke-at-home_0_0', group='continuous', channel_map={'1269_Exposure-to-tobacco-smoke-at-home_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5406217522430996, 'std': 4.5161248541653185}, annotation_units=2)
-TMAPS['1438_0'] = TensorMap('1438_Bread-intake_0_0', group='continuous', channel_map={'1438_Bread-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 12.268483269682061, 'std': 8.616980216186523}, annotation_units=2)
-TMAPS['20081_0'] = TensorMap('20081_Hourofday-questionnaire-completed_0_0', group='continuous', channel_map={'20081_Hourofday-questionnaire-completed_0_0': 0, 'not-missing': 1}, normalization={'mean': 14.106683259326312, 'std': 2.77766114427824}, annotation_units=2)
-TMAPS['30151_0'] = TensorMap('30151_Eosinophill-count-freezethaw-cycles_0_0', group='continuous', channel_map={'30151_Eosinophill-count-freezethaw-cycles_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['1845_0'] = TensorMap('1845_Mothers-age_0_0', group='continuous', channel_map={'1845_Mothers-age_0_0': 0, 'not-missing': 1}, normalization={'mean': 78.26739494692292, 'std': 8.147467930745506}, annotation_units=2)
-TMAPS['90108_0'] = TensorMap('90108_Fraction-acceleration-<=-17-milligravities_0_0', group='continuous', channel_map={'90108_Fraction-acceleration-<=-17-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6754435797290133, 'std': 0.08572298347738518}, annotation_units=2)
-TMAPS['894_0'] = TensorMap('894_Duration-of-moderate-activity_0_0', group='continuous', channel_map={'894_Duration-of-moderate-activity_0_0': 0, 'not-missing': 1}, normalization={'mean': 66.2859868738906, 'std': 77.28561471201621}, annotation_units=2)
-TMAPS['5984_0'] = TensorMap('5984_ECG-load_0_0', group='continuous', channel_map={'5984_ECG-load_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.0, 'std': 0.0}, annotation_units=2)
-TMAPS['41091_0'] = TensorMap('41091_Episodes-containing-"Duration-of-spell"-data_0_0', group='continuous', channel_map={'41091_Episodes-containing-"Duration-of-spell"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.284067998713455, 'std': 15.468551649881963}, annotation_units=2)
-TMAPS['4462_0'] = TensorMap('4462_Average-monthly-intake-of-other-alcoholic-drinks_0_0', group='continuous', channel_map={'4462_Average-monthly-intake-of-other-alcoholic-drinks_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.10946219566398344, 'std': 0.6432363263177205}, annotation_units=2)
-TMAPS['4122_0'] = TensorMap('4122_Speed-of-sound-through-heel-right_0_0', group='continuous', channel_map={'4122_Speed-of-sound-through-heel-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 1555.8457418694866, 'std': 37.170152184988076}, annotation_units=2)
-TMAPS['90179_0'] = TensorMap('90179_Device-ID_0_0', group='continuous', channel_map={'90179_Device-ID_0_0': 0, 'not-missing': 1}, normalization={'mean': 7122.602738801292, 'std': 5264.016557806373}, annotation_units=2)
-TMAPS['90144_0'] = TensorMap('90144_Fraction-acceleration-<=-600-milligravities_0_0', group='continuous', channel_map={'90144_Fraction-acceleration-<=-600-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9988182361733935, 'std': 0.004660288361213306}, annotation_units=2)
-TMAPS['3148_0'] = TensorMap('3148_Heel-bone-mineral-density-BMD_0_0', group='continuous', channel_map={'3148_Heel-bone-mineral-density-BMD_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.5435519713261645, 'std': 0.13892501345714733}, annotation_units=2)
-TMAPS['90044_0'] = TensorMap('90044_Average-acceleration-17:00--17:59_0_0', group='continuous', channel_map={'90044_Average-acceleration-17:00--17:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 39.29919996142532, 'std': 24.079870788860486}, annotation_units=2)
-TMAPS['41083_0'] = TensorMap('41083_Episodes-containing-"Episode-start-date"-data_0_0', group='continuous', channel_map={'41083_Episodes-containing-"Episode-start-date"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.704735980721437, 'std': 15.79404559278517}, annotation_units=2)
-TMAPS['100009_0'] = TensorMap('100009_Englyst-dietary-fibre_0_0', group='continuous', channel_map={'100009_Englyst-dietary-fibre_0_0': 0, 'not-missing': 1}, normalization={'mean': 16.643010021626438, 'std': 7.874280707474585}, annotation_units=2)
-TMAPS['3581_0'] = TensorMap('3581_Age-at-menopause-last-menstrual-period_0_0', group='continuous', channel_map={'3581_Age-at-menopause-last-menstrual-period_0_0': 0, 'not-missing': 1}, normalization={'mean': 49.66433426241488, 'std': 5.141535161191497}, annotation_units=2)
-TMAPS['90086_0'] = TensorMap('90086_Non-wear-episodes-over-1-hour-duration_0_0', group='continuous', channel_map={'90086_Non-wear-episodes-over-1-hour-duration_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.519803269202951, 'std': 3.8033126137708773}, annotation_units=2)
-TMAPS['41082_0'] = TensorMap('41082_Episodes-containing-"Dates-of-operations"-data_0_0', group='continuous', channel_map={'41082_Episodes-containing-"Dates-of-operations"-data_0_0': 0, 'not-missing': 1}, normalization={'mean': 7.7053936868865165, 'std': 12.844337680824587}, annotation_units=2)
-TMAPS['5101_0'] = TensorMap('5101_6mm-weak-meridian-angle-right_0_0', group='continuous', channel_map={'5101_6mm-weak-meridian-angle-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 83.39636798834424, 'std': 61.854954108590135}, annotation_units=2)
-TMAPS['5110_0'] = TensorMap('5110_6mm-asymmetry-angle-left_0_0', group='continuous', channel_map={'5110_6mm-asymmetry-angle-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 154.45664523845116, 'std': 64.77436791293435}, annotation_units=2)
-TMAPS['90045_0'] = TensorMap('90045_Average-acceleration-18:00--18:59_0_0', group='continuous', channel_map={'90045_Average-acceleration-18:00--18:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 37.70637388495104, 'std': 24.526134967495604}, annotation_units=2)
-TMAPS['1883_0'] = TensorMap('1883_Number-of-full-sisters_0_0', group='continuous', channel_map={'1883_Number-of-full-sisters_0_0': 0, 'not-missing': 1}, normalization={'mean': 1.077022270522781, 'std': 1.2215502368418465}, annotation_units=2)
-TMAPS['30260_0'] = TensorMap('30260_Mean-reticulocyte-volume_0_0', group='continuous', channel_map={'30260_Mean-reticulocyte-volume_0_0': 0, 'not-missing': 1}, normalization={'mean': 105.91970732766238, 'std': 7.83416220909367}, annotation_units=2)
-TMAPS['30530_0'] = TensorMap('30530_Sodium-in-urine_0_0', group='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0, 'not-missing': 1}, normalization={'mean': 77.45323967267045, 'std': 44.44123684846377}, annotation_units=2)
-TMAPS['20159_0'] = TensorMap('20159_Number-of-symbol-digit-matches-made-correctly_0_0', group='continuous', channel_map={'20159_Number-of-symbol-digit-matches-made-correctly_0_0': 0, 'not-missing': 1}, normalization={'mean': 19.676524953789276, 'std': 5.237203203595654}, annotation_units=2)
-TMAPS['90050_0'] = TensorMap('90050_Average-acceleration-23:00--23:59_0_0', group='continuous', channel_map={'90050_Average-acceleration-23:00--23:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 13.35339061671247, 'std': 13.59193662426638}, annotation_units=2)
-TMAPS['20240_0'] = TensorMap('20240_Maximum-digits-remembered-correctly_0_0', group='continuous', channel_map={'20240_Maximum-digits-remembered-correctly_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.9241946810234625, 'std': 1.4852872307187128}, annotation_units=2)
-TMAPS['90102_0'] = TensorMap('90102_Fraction-acceleration-<=-11-milligravities_0_0', group='continuous', channel_map={'90102_Fraction-acceleration-<=-11-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.6277743574907181, 'std': 0.09177480667842475}, annotation_units=2)
-TMAPS['30290_0'] = TensorMap('30290_High-light-scatter-reticulocyte-percentage_0_0', group='continuous', channel_map={'30290_High-light-scatter-reticulocyte-percentage_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.4020622905045768, 'std': 0.33171775634018935}, annotation_units=2)
-TMAPS['5160_0'] = TensorMap('5160_3mm-regularity-index-right_0_0', group='continuous', channel_map={'5160_3mm-regularity-index-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.0809998209219676, 'std': 1.4946415614544708}, annotation_units=2)
-TMAPS['100015_0'] = TensorMap('100015_Vitamin-C_0_0', group='continuous', channel_map={'100015_Vitamin-C_0_0': 0, 'not-missing': 1}, normalization={'mean': 154.23202566893315, 'std': 129.22786442031074}, annotation_units=2)
-TMAPS['41109_0'] = TensorMap('41109_Episodes-containing-"Patient-classification-on-admission"-data-polymorphic_0_0', group='continuous', channel_map={'41109_Episodes-containing-"Patient-classification-on-admission"-data-polymorphic_0_0': 0, 'not-missing': 1}, normalization={'mean': 6.70477516853823, 'std': 15.793942180331861}, annotation_units=2)
-TMAPS['90147_0'] = TensorMap('90147_Fraction-acceleration-<=-900-milligravities_0_0', group='continuous', channel_map={'90147_Fraction-acceleration-<=-900-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9995828632045907, 'std': 0.0037803780755459628}, annotation_units=2)
-TMAPS['5256_0'] = TensorMap('5256_Corneal-hysteresis-right_0_0', group='continuous', channel_map={'5256_Corneal-hysteresis-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 10.658289381106332, 'std': 2.3627045187390396}, annotation_units=2)
-TMAPS['90146_0'] = TensorMap('90146_Fraction-acceleration-<=-800-milligravities_0_0', group='continuous', channel_map={'90146_Fraction-acceleration-<=-800-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.9994224022373308, 'std': 0.0040383398929516754}, annotation_units=2)
-TMAPS['4272_0'] = TensorMap('4272_Duration-of-hearing-test-left_0_0', group='continuous', channel_map={'4272_Duration-of-hearing-test-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1723.7206106506612, 'std': 601.5799891774069}, annotation_units=2)
-TMAPS['90030_0'] = TensorMap('90030_Average-acceleration-03:00--03:59_0_0', group='continuous', channel_map={'90030_Average-acceleration-03:00--03:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 3.5407789189449823, 'std': 10.602845467400769}, annotation_units=2)
-TMAPS['90043_0'] = TensorMap('90043_Average-acceleration-16:00--16:59_0_0', group='continuous', channel_map={'90043_Average-acceleration-16:00--16:59_0_0': 0, 'not-missing': 1}, normalization={'mean': 39.977998167703355, 'std': 24.23061839364283}, annotation_units=2)
-TMAPS['4700_0'] = TensorMap('4700_Age-cataract-diagnosed_0_0', group='continuous', channel_map={'4700_Age-cataract-diagnosed_0_0': 0, 'not-missing': 1}, normalization={'mean': 57.14578376949511, 'std': 11.461952927161276}, annotation_units=2)
-TMAPS['4440_0'] = TensorMap('4440_Average-monthly-spirits-intake_0_0', group='continuous', channel_map={'4440_Average-monthly-spirits-intake_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.7451297087764637, 'std': 2.229589789958396}, annotation_units=2)
-TMAPS['2926_0'] = TensorMap('2926_Number-of-unsuccessful-stopsmoking-attempts_0_0', group='continuous', channel_map={'2926_Number-of-unsuccessful-stopsmoking-attempts_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.9592263652378157, 'std': 7.502349093367744}, annotation_units=2)
-TMAPS['90123_0'] = TensorMap('90123_Fraction-acceleration-<=-80-milligravities_0_0', group='continuous', channel_map={'90123_Fraction-acceleration-<=-80-milligravities_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.8973672308211582, 'std': 0.04554887887696288}, annotation_units=2)
-TMAPS['4103_0'] = TensorMap('4103_Speed-of-sound-through-heel-left_0_0', group='continuous', channel_map={'4103_Speed-of-sound-through-heel-left_0_0': 0, 'not-missing': 1}, normalization={'mean': 1555.2454639231776, 'std': 37.30059670558073}, annotation_units=2)
-TMAPS['102_0'] = TensorMap('102_Pulse-rate-automated-reading_0_0', group='continuous', channel_map={'102_Pulse-rate-automated-reading_0_0': 0, 'not-missing': 1}, normalization={'mean': 69.59755052862526, 'std': 11.660062329047573}, annotation_units=2)
-TMAPS['30510_0'] = TensorMap('30510_Creatinine-enzymatic-in-urine_0_0', group='continuous', channel_map={'30510_Creatinine-enzymatic-in-urine_0_0': 0, 'not-missing': 1}, normalization={'mean': 8881.438460331417, 'std': 5821.112337047876}, annotation_units=2)
-TMAPS['6071_0'] = TensorMap('6071_Duration-at-which-OCT-screen-shown-right_0_0', group='continuous', channel_map={'6071_Duration-at-which-OCT-screen-shown-right_0_0': 0, 'not-missing': 1}, normalization={'mean': 306.49513701322576, 'std': 106.9447539051812}, annotation_units=2)
-TMAPS['90052_0'] = TensorMap('90052_Non-wear-duration-overall_0_0', group='continuous', channel_map={'90052_Non-wear-duration-overall_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.55932532909012, 'std': 1.3194473341425854}, annotation_units=2)
-TMAPS['22013_0'] = TensorMap('22013_Genetic-relatedness-IBS0_0_0', group='continuous', channel_map={'22013_Genetic-relatedness-IBS0_0_0': 0, 'not-missing': 1}, normalization={'mean': 0.018042533518261673, 'std': 0.008303679252993714}, annotation_units=2)
-TMAPS['20130_0'] = TensorMap('20130_Number-of-rows-displayed-in-round_0_0', group='continuous', channel_map={'20130_Number-of-rows-displayed-in-round_0_0': 0, 'not-missing': 1}, normalization={'mean': 2.0, 'std': 0.0}, annotation_units=2)
-TMAPS['2764_0'] = TensorMap('2764_Age-at-last-live-birth_0_0', group='continuous', channel_map={'2764_Age-at-last-live-birth_0_0': 0, 'not-missing': 1}, normalization={'mean': 30.151378429845053, 'std': 5.280985327850117}, annotation_units=2)
-TMAPS['30384_0'] = TensorMap('30384_Volume-of-serum-held-by-UKB_0_0', group='continuous', channel_map={'30384_Volume-of-serum-held-by-UKB_0_0': 0, 'not-missing': 1}, normalization={'mean': 2262.7059162928344, 'std': 585.7574239974638}, annotation_units=2)
-
+TMAPS['90194_0'] = TensorMap('90194_Temperature-minimum', group='continuous', channel_map={'90194_Temperature-minimum_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8.307014803028112, 'std': 3.4470480575742024},
+                annotation_units=2)
+TMAPS['92_0'] = TensorMap('92_Operation-yearage-first-occurred', group='continuous', channel_map={'92_Operation-yearage-first-occurred_0_0': 0, '92_Operation-yearage-first-occurred_0_1': 1, '92_Operation-yearage-first-occurred_0_2': 2, '92_Operation-yearage-first-occurred_0_3': 3, '92_Operation-yearage-first-occurred_0_4': 4, '92_Operation-yearage-first-occurred_0_5': 5, '92_Operation-yearage-first-occurred_0_6': 6, '92_Operation-yearage-first-occurred_0_7': 7, '92_Operation-yearage-first-occurred_0_8': 8, '92_Operation-yearage-first-occurred_0_9': 9, '92_Operation-yearage-first-occurred_0_10': 10, '92_Operation-yearage-first-occurred_0_11': 11, '92_Operation-yearage-first-occurred_0_12': 12, '92_Operation-yearage-first-occurred_0_13': 13, '92_Operation-yearage-first-occurred_0_14': 14, '92_Operation-yearage-first-occurred_0_15': 15, '92_Operation-yearage-first-occurred_0_16': 16, '92_Operation-yearage-first-occurred_0_17': 17, '92_Operation-yearage-first-occurred_0_18': 18, '92_Operation-yearage-first-occurred_0_19': 19, '92_Operation-yearage-first-occurred_0_20': 20, '92_Operation-yearage-first-occurred_0_21': 21, '92_Operation-yearage-first-occurred_0_22': 22, '92_Operation-yearage-first-occurred_0_23': 23, '92_Operation-yearage-first-occurred_0_24': 24, '92_Operation-yearage-first-occurred_0_25': 25, '92_Operation-yearage-first-occurred_0_26': 26, '92_Operation-yearage-first-occurred_0_27': 27, '92_Operation-yearage-first-occurred_0_28': 28, '92_Operation-yearage-first-occurred_0_29': 29, '92_Operation-yearage-first-occurred_0_30': 30, '92_Operation-yearage-first-occurred_0_31': 31, 'not-missing': 32},
+                normalization={'mean': 1261.0216460437093, 'std': 948.5629772860955},
+                annotation_units=33)
+TMAPS['1090_0'] = TensorMap('1090_Time-spent-driving', group='continuous', channel_map={'1090_Time-spent-driving_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9779771499100695, 'std': 1.223909473541356},
+                annotation_units=2)
+TMAPS['90041_0'] = TensorMap('90041_Average-acceleration-14:00--14:59', group='continuous', channel_map={'90041_Average-acceleration-14:00--14:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 42.27841101306717, 'std': 23.115895893432963},
+                annotation_units=2)
+TMAPS['30800_0'] = TensorMap('30800_Oestradiol', group='continuous', channel_map={'30800_Oestradiol_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 461.1732190833918, 'std': 431.1611967874333},
+                annotation_units=2)
+TMAPS['5208_0'] = TensorMap('5208_logMAR-final-left', group='continuous', channel_map={'5208_logMAR-final-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.024298824725568276, 'std': 0.2127143307841083},
+                annotation_units=2)
+TMAPS['23119_0'] = TensorMap('23119_Arm-fat-percentage-right', group='continuous', channel_map={'23119_Arm-fat-percentage-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 29.531533189516836, 'std': 10.173278005428736},
+                annotation_units=2)
+TMAPS['5255_0'] = TensorMap('5255_Intraocular-pressure-Goldmanncorrelated-right', group='continuous', channel_map={'5255_Intraocular-pressure-Goldmanncorrelated-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 15.884651187645286, 'std': 3.968793940440774},
+                annotation_units=2)
+TMAPS['20010_0'] = TensorMap('20010_Interpolated-Year-when-operation-took-place', group='continuous', channel_map={'20010_Interpolated-Year-when-operation-took-place_0_0': 0, '20010_Interpolated-Year-when-operation-took-place_0_1': 1, '20010_Interpolated-Year-when-operation-took-place_0_2': 2, '20010_Interpolated-Year-when-operation-took-place_0_3': 3, '20010_Interpolated-Year-when-operation-took-place_0_4': 4, '20010_Interpolated-Year-when-operation-took-place_0_5': 5, '20010_Interpolated-Year-when-operation-took-place_0_6': 6, '20010_Interpolated-Year-when-operation-took-place_0_7': 7, '20010_Interpolated-Year-when-operation-took-place_0_8': 8, '20010_Interpolated-Year-when-operation-took-place_0_9': 9, '20010_Interpolated-Year-when-operation-took-place_0_10': 10, '20010_Interpolated-Year-when-operation-took-place_0_11': 11, '20010_Interpolated-Year-when-operation-took-place_0_12': 12, '20010_Interpolated-Year-when-operation-took-place_0_13': 13, '20010_Interpolated-Year-when-operation-took-place_0_14': 14, '20010_Interpolated-Year-when-operation-took-place_0_15': 15, '20010_Interpolated-Year-when-operation-took-place_0_16': 16, '20010_Interpolated-Year-when-operation-took-place_0_17': 17, '20010_Interpolated-Year-when-operation-took-place_0_18': 18, '20010_Interpolated-Year-when-operation-took-place_0_19': 19, '20010_Interpolated-Year-when-operation-took-place_0_20': 20, '20010_Interpolated-Year-when-operation-took-place_0_21': 21, '20010_Interpolated-Year-when-operation-took-place_0_22': 22, '20010_Interpolated-Year-when-operation-took-place_0_23': 23, '20010_Interpolated-Year-when-operation-took-place_0_24': 24, '20010_Interpolated-Year-when-operation-took-place_0_25': 25, '20010_Interpolated-Year-when-operation-took-place_0_26': 26, '20010_Interpolated-Year-when-operation-took-place_0_27': 27, '20010_Interpolated-Year-when-operation-took-place_0_28': 28, '20010_Interpolated-Year-when-operation-took-place_0_29': 29, '20010_Interpolated-Year-when-operation-took-place_0_30': 30, '20010_Interpolated-Year-when-operation-took-place_0_31': 31, 'not-missing': 32},
+                normalization={'mean': 1966.4213097327618, 'std': 197.69272637040814},
+                annotation_units=33)
+TMAPS['5274_0'] = TensorMap('5274_Vertex-distance-left', group='continuous', channel_map={'5274_Vertex-distance-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 12.000026343056849, 'std': 0.0062860351805494675},
+                annotation_units=2)
+TMAPS['94_0'] = TensorMap('94_Diastolic-blood-pressure-manual-reading', group='continuous', channel_map={'94_Diastolic-blood-pressure-manual-reading_0_0': 0, '94_Diastolic-blood-pressure-manual-reading_0_1': 1, 'not-missing': 2},
+                normalization={'mean': 82.83773943982457, 'std': 10.709969832085608},
+                annotation_units=3)
+TMAPS['30121_0'] = TensorMap('30121_Lymphocyte-count-freezethaw-cycles', group='continuous', channel_map={'30121_Lymphocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['30060_0'] = TensorMap('30060_Mean-corpuscular-haemoglobin-concentration', group='continuous', channel_map={'30060_Mean-corpuscular-haemoglobin-concentration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 34.51283943930589, 'std': 1.0760322271050209},
+                annotation_units=2)
+TMAPS['30000_0'] = TensorMap('30000_White-blood-cell-leukocyte-count', group='continuous', channel_map={'30000_White-blood-cell-leukocyte-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.88504953000345, 'std': 2.1227102044493766},
+                annotation_units=2)
+TMAPS['5923_0'] = TensorMap('5923_Age-macular-degeneration-diagnosed', group='continuous', channel_map={'5923_Age-macular-degeneration-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 56.24879614767254, 'std': 10.779978213172933},
+                annotation_units=2)
+TMAPS['21001_0'] = TensorMap('21001_Body-mass-index-BMI', group='continuous', channel_map={'21001_Body-mass-index-BMI_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.43260556333107, 'std': 4.803103191651008},
+                annotation_units=2)
+TMAPS['20230_0'] = TensorMap('20230_Duration-to-entering-value', group='continuous', channel_map={'20230_Duration-to-entering-value_0_0': 0, '20230_Duration-to-entering-value_0_1': 1, '20230_Duration-to-entering-value_0_2': 2, '20230_Duration-to-entering-value_0_3': 3, '20230_Duration-to-entering-value_0_4': 4, '20230_Duration-to-entering-value_0_5': 5, '20230_Duration-to-entering-value_0_6': 6, '20230_Duration-to-entering-value_0_7': 7, '20230_Duration-to-entering-value_0_8': 8, '20230_Duration-to-entering-value_0_9': 9, '20230_Duration-to-entering-value_0_10': 10, '20230_Duration-to-entering-value_0_11': 11, '20230_Duration-to-entering-value_0_12': 12, '20230_Duration-to-entering-value_0_13': 13, '20230_Duration-to-entering-value_0_14': 14, '20230_Duration-to-entering-value_0_15': 15, '20230_Duration-to-entering-value_0_16': 16, '20230_Duration-to-entering-value_0_17': 17, '20230_Duration-to-entering-value_0_18': 18, '20230_Duration-to-entering-value_0_19': 19, '20230_Duration-to-entering-value_0_20': 20, '20230_Duration-to-entering-value_0_21': 21, '20230_Duration-to-entering-value_0_22': 22, '20230_Duration-to-entering-value_0_23': 23, '20230_Duration-to-entering-value_0_24': 24, '20230_Duration-to-entering-value_0_25': 25, '20230_Duration-to-entering-value_0_26': 26, '20230_Duration-to-entering-value_0_27': 27, '20230_Duration-to-entering-value_0_28': 28, '20230_Duration-to-entering-value_0_29': 29, '20230_Duration-to-entering-value_0_30': 30, '20230_Duration-to-entering-value_0_31': 31, '20230_Duration-to-entering-value_0_32': 32, '20230_Duration-to-entering-value_0_33': 33, '20230_Duration-to-entering-value_0_34': 34, '20230_Duration-to-entering-value_0_35': 35, '20230_Duration-to-entering-value_0_36': 36, '20230_Duration-to-entering-value_0_37': 37, '20230_Duration-to-entering-value_0_38': 38, '20230_Duration-to-entering-value_0_39': 39, '20230_Duration-to-entering-value_0_40': 40, '20230_Duration-to-entering-value_0_41': 41, '20230_Duration-to-entering-value_0_42': 42, '20230_Duration-to-entering-value_0_43': 43, '20230_Duration-to-entering-value_0_44': 44, '20230_Duration-to-entering-value_0_45': 45, '20230_Duration-to-entering-value_0_46': 46, '20230_Duration-to-entering-value_0_47': 47, '20230_Duration-to-entering-value_0_48': 48, '20230_Duration-to-entering-value_0_49': 49, '20230_Duration-to-entering-value_0_50': 50, '20230_Duration-to-entering-value_0_51': 51, '20230_Duration-to-entering-value_0_52': 52, '20230_Duration-to-entering-value_0_53': 53, '20230_Duration-to-entering-value_0_54': 54, '20230_Duration-to-entering-value_0_55': 55, '20230_Duration-to-entering-value_0_56': 56, '20230_Duration-to-entering-value_0_57': 57, '20230_Duration-to-entering-value_0_58': 58, '20230_Duration-to-entering-value_0_59': 59, '20230_Duration-to-entering-value_0_60': 60, '20230_Duration-to-entering-value_0_61': 61, '20230_Duration-to-entering-value_0_62': 62, '20230_Duration-to-entering-value_0_63': 63, '20230_Duration-to-entering-value_0_64': 64, '20230_Duration-to-entering-value_0_65': 65, '20230_Duration-to-entering-value_0_66': 66, '20230_Duration-to-entering-value_0_67': 67, '20230_Duration-to-entering-value_0_68': 68, '20230_Duration-to-entering-value_0_69': 69, '20230_Duration-to-entering-value_0_70': 70, '20230_Duration-to-entering-value_0_71': 71, '20230_Duration-to-entering-value_0_72': 72, '20230_Duration-to-entering-value_0_73': 73, '20230_Duration-to-entering-value_0_74': 74, '20230_Duration-to-entering-value_0_75': 75, '20230_Duration-to-entering-value_0_76': 76, '20230_Duration-to-entering-value_0_77': 77, '20230_Duration-to-entering-value_0_78': 78, '20230_Duration-to-entering-value_0_79': 79, '20230_Duration-to-entering-value_0_80': 80, '20230_Duration-to-entering-value_0_81': 81, '20230_Duration-to-entering-value_0_82': 82, '20230_Duration-to-entering-value_0_83': 83, '20230_Duration-to-entering-value_0_84': 84, '20230_Duration-to-entering-value_0_85': 85, '20230_Duration-to-entering-value_0_86': 86, '20230_Duration-to-entering-value_0_87': 87, '20230_Duration-to-entering-value_0_88': 88, '20230_Duration-to-entering-value_0_89': 89, '20230_Duration-to-entering-value_0_90': 90, '20230_Duration-to-entering-value_0_91': 91, '20230_Duration-to-entering-value_0_92': 92, '20230_Duration-to-entering-value_0_93': 93, '20230_Duration-to-entering-value_0_94': 94, '20230_Duration-to-entering-value_0_95': 95, '20230_Duration-to-entering-value_0_96': 96, '20230_Duration-to-entering-value_0_97': 97, '20230_Duration-to-entering-value_0_98': 98, '20230_Duration-to-entering-value_0_99': 99, '20230_Duration-to-entering-value_0_100': 100, '20230_Duration-to-entering-value_0_101': 101, '20230_Duration-to-entering-value_0_102': 102, '20230_Duration-to-entering-value_0_103': 103, '20230_Duration-to-entering-value_0_104': 104, '20230_Duration-to-entering-value_0_105': 105, '20230_Duration-to-entering-value_0_106': 106, '20230_Duration-to-entering-value_0_107': 107, '20230_Duration-to-entering-value_0_108': 108, '20230_Duration-to-entering-value_0_109': 109, '20230_Duration-to-entering-value_0_110': 110, '20230_Duration-to-entering-value_0_111': 111, '20230_Duration-to-entering-value_0_112': 112, '20230_Duration-to-entering-value_0_113': 113, '20230_Duration-to-entering-value_0_114': 114, '20230_Duration-to-entering-value_0_115': 115, '20230_Duration-to-entering-value_0_116': 116, 'not-missing': 117},
+                normalization={'mean': 3076.7662062470804, 'std': 2461.8160261674834},
+                annotation_units=118)
+TMAPS['4279_0'] = TensorMap('4279_Duration-of-hearing-test-right', group='continuous', channel_map={'4279_Duration-of-hearing-test-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1719.6134819292886, 'std': 611.073307616882},
+                annotation_units=2)
+TMAPS['30030_0'] = TensorMap('30030_Haematocrit-percentage', group='continuous', channel_map={'30030_Haematocrit-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 41.08495568799663, 'std': 3.556031330918496},
+                annotation_units=2)
+TMAPS['90156_0'] = TensorMap('90156_Fraction-acceleration-<=-1800-milligravities', group='continuous', channel_map={'90156_Fraction-acceleration-<=-1800-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9999728820097402, 'std': 0.0017957441716811968},
+                annotation_units=2)
+TMAPS['41144_0'] = TensorMap('41144_Episodes-containing-Diagnoses--main-ICD9-data', group='continuous', channel_map={'41144_Episodes-containing-Diagnoses--main-ICD9-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.564159401014728, 'std': 3.1467841304346855},
+                annotation_units=2)
+TMAPS['41089_0'] = TensorMap('41089_Episodes-containing-Beginning-of-spell-indicator-data', group='continuous', channel_map={'41089_Episodes-containing-Beginning-of-spell-indicator-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.654014427210278, 'std': 16.137938017566785},
+                annotation_units=2)
+TMAPS['884_0'] = TensorMap('884_Number-of-daysweek-of-moderate-physical-activity-10-minutes', group='continuous', channel_map={'884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.625925801238891, 'std': 2.334379403427264},
+                annotation_units=2)
+TMAPS['4237_0'] = TensorMap('4237_Time-to-press-next-left', group='continuous', channel_map={'4237_Time-to-press-next-left_0_0': 0, '4237_Time-to-press-next-left_0_1': 1, '4237_Time-to-press-next-left_0_2': 2, '4237_Time-to-press-next-left_0_3': 3, '4237_Time-to-press-next-left_0_4': 4, '4237_Time-to-press-next-left_0_5': 5, '4237_Time-to-press-next-left_0_6': 6, '4237_Time-to-press-next-left_0_7': 7, '4237_Time-to-press-next-left_0_8': 8, '4237_Time-to-press-next-left_0_9': 9, '4237_Time-to-press-next-left_0_10': 10, '4237_Time-to-press-next-left_0_11': 11, '4237_Time-to-press-next-left_0_12': 12, '4237_Time-to-press-next-left_0_13': 13, '4237_Time-to-press-next-left_0_14': 14, '4237_Time-to-press-next-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 56.17278591817639, 'std': 103.73516223231547},
+                annotation_units=17)
+TMAPS['4429_0'] = TensorMap('4429_Average-monthly-beer-plus-cider-intake', group='continuous', channel_map={'4429_Average-monthly-beer-plus-cider-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.0122382376937722, 'std': 2.3720428127631483},
+                annotation_units=2)
+TMAPS['90021_0'] = TensorMap('90021_Wednesday-average-acceleration', group='continuous', channel_map={'90021_Wednesday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.070400597907323, 'std': 15.968964215997314},
+                annotation_units=2)
+TMAPS['90060_0'] = TensorMap('90060_Wear-duration-during-00:00--00:59', group='continuous', channel_map={'90060_Wear-duration-during-00:00--00:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.133015767394762, 'std': 1.669471265351599},
+                annotation_units=2)
+TMAPS['90032_0'] = TensorMap('90032_Average-acceleration-05:00--05:59', group='continuous', channel_map={'90032_Average-acceleration-05:00--05:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.2775172380539095, 'std': 13.172113120629316},
+                annotation_units=2)
+TMAPS['1737_0'] = TensorMap('1737_Childhood-sunburn-occasions', group='continuous', channel_map={'1737_Childhood-sunburn-occasions_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.614527562826638, 'std': 5.099119672044518},
+                annotation_units=2)
+TMAPS['4199_0'] = TensorMap('4199_Position-of-pulse-wave-notch', group='continuous', channel_map={'4199_Position-of-pulse-wave-notch_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 43.559812367137305, 'std': 6.353011976460719},
+                annotation_units=2)
+TMAPS['30131_0'] = TensorMap('30131_Monocyte-count-freezethaw-cycles', group='continuous', channel_map={'30131_Monocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90176_0'] = TensorMap('90176_Calibration--minimum-z-stationary-value', group='continuous', channel_map={'90176_Calibration--minimum-z-stationary-value_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -1.0817622836202327, 'std': 0.20687482049366254},
+                annotation_units=2)
+TMAPS['40009_0'] = TensorMap('40009_Reported-occurrences-of-cancer', group='continuous', channel_map={'40009_Reported-occurrences-of-cancer_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.3224944022992344, 'std': 0.638438643694705},
+                annotation_units=2)
+TMAPS['90058_0'] = TensorMap('90058_Wear-duration-during-Saturday', group='continuous', channel_map={'90058_Wear-duration-during-Saturday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.302158831187622, 'std': 6.222934862981404},
+                annotation_units=2)
+TMAPS['1060_0'] = TensorMap('1060_Time-spent-outdoors-in-winter', group='continuous', channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.946760893914342, 'std': 1.814279817665687},
+                annotation_units=2)
+TMAPS['22599_0'] = TensorMap('22599_Number-of-jobs-held', group='continuous', channel_map={'22599_Number-of-jobs-held_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.3231889186593193, 'std': 2.1908846910597264},
+                annotation_units=2)
+TMAPS['46_0'] = TensorMap('46_Hand-grip-strength-left', group='continuous', channel_map={'46_Hand-grip-strength-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 29.54608455580347, 'std': 11.327359082668966},
+                annotation_units=2)
+TMAPS['23102_0'] = TensorMap('23102_Whole-body-water-mass', group='continuous', channel_map={'23102_Whole-body-water-mass_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 38.94746081453771, 'std': 8.414129150401767},
+                annotation_units=2)
+TMAPS['5106_0'] = TensorMap('5106_6mm-strong-meridian-angle-right', group='continuous', channel_map={'5106_6mm-strong-meridian-angle-right_0_0': 0, '5106_6mm-strong-meridian-angle-right_0_1': 1, '5106_6mm-strong-meridian-angle-right_0_2': 2, '5106_6mm-strong-meridian-angle-right_0_3': 3, '5106_6mm-strong-meridian-angle-right_0_4': 4, '5106_6mm-strong-meridian-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 93.0532011759895, 'std': 45.7408559807841},
+                annotation_units=7)
+TMAPS['6183_0'] = TensorMap('6183_Number-of-cigarettes-previously-smoked-daily-current-cigarpipe-smokers', group='continuous', channel_map={'6183_Number-of-cigarettes-previously-smoked-daily-current-cigarpipe-smokers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 17.752873563218387, 'std': 10.459531687591946},
+                annotation_units=2)
+TMAPS['41101_0'] = TensorMap('41101_Episodes-containing-Date-of-discharge-from-hospital-data', group='continuous', channel_map={'41101_Episodes-containing-Date-of-discharge-from-hospital-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.142465719426691, 'std': 15.170703160611824},
+                annotation_units=2)
+TMAPS['23100_0'] = TensorMap('23100_Whole-body-fat-mass', group='continuous', channel_map={'23100_Whole-body-fat-mass_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 24.856840554885355, 'std': 9.565426323411884},
+                annotation_units=2)
+TMAPS['2887_0'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily', group='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 19.04508700236131, 'std': 10.516344971358315},
+                annotation_units=2)
+TMAPS['5186_0'] = TensorMap('5186_Duration-visualacuity-screen-displayed-right', group='continuous', channel_map={'5186_Duration-visualacuity-screen-displayed-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.123006427041176, 'std': 21.512350140468634},
+                annotation_units=2)
+TMAPS['5098_0'] = TensorMap('5098_6mm-weak-meridian-right', group='continuous', channel_map={'5098_6mm-weak-meridian-right_0_0': 0, '5098_6mm-weak-meridian-right_0_1': 1, '5098_6mm-weak-meridian-right_0_2': 2, '5098_6mm-weak-meridian-right_0_3': 3, '5098_6mm-weak-meridian-right_0_4': 4, '5098_6mm-weak-meridian-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 42.59086038597763, 'std': 1.5354686330880993},
+                annotation_units=7)
+TMAPS['130_0'] = TensorMap('130_Place-of-birth-in-UK--east-coordinate', group='continuous', channel_map={'130_Place-of-birth-in-UK--east-coordinate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 405710.36677603924, 'std': 94504.38981737373},
+                annotation_units=2)
+TMAPS['5111_0'] = TensorMap('5111_3mm-asymmetry-angle-left', group='continuous', channel_map={'5111_3mm-asymmetry-angle-left_0_0': 0, '5111_3mm-asymmetry-angle-left_0_1': 1, '5111_3mm-asymmetry-angle-left_0_2': 2, '5111_3mm-asymmetry-angle-left_0_3': 3, '5111_3mm-asymmetry-angle-left_0_4': 4, '5111_3mm-asymmetry-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 171.03095739681632, 'std': 88.06431006909182},
+                annotation_units=7)
+TMAPS['23116_0'] = TensorMap('23116_Leg-fat-mass-left', group='continuous', channel_map={'23116_Leg-fat-mass-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.242730601973064, 'std': 1.871902668963224},
+                annotation_units=2)
+TMAPS['4291_0'] = TensorMap('4291_Number-of-attempts', group='continuous', channel_map={'4291_Number-of-attempts_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.4689705822350985, 'std': 1.408918886739235},
+                annotation_units=2)
+TMAPS['20132_0'] = TensorMap('20132_Number-of-incorrect-matches-in-round', group='continuous', channel_map={'20132_Number-of-incorrect-matches-in-round_0_0': 0, '20132_Number-of-incorrect-matches-in-round_0_1': 1, '20132_Number-of-incorrect-matches-in-round_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 2.7142347031891, 'std': 3.1542587412255236},
+                annotation_units=4)
+TMAPS['90062_0'] = TensorMap('90062_Wear-duration-during-02:00--02:59', group='continuous', channel_map={'90062_Wear-duration-during-02:00--02:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.157569892473117, 'std': 1.687817538553},
+                annotation_units=2)
+TMAPS['90038_0'] = TensorMap('90038_Average-acceleration-11:00--11:59', group='continuous', channel_map={'90038_Average-acceleration-11:00--11:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 47.49330121992381, 'std': 25.308289932762253},
+                annotation_units=2)
+TMAPS['30171_0'] = TensorMap('30171_Nucleated-red-blood-cell-count-freezethaw-cycles', group='continuous', channel_map={'30171_Nucleated-red-blood-cell-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90172_0'] = TensorMap('90172_Calibration--minimum-x-stationary-value', group='continuous', channel_map={'90172_Calibration--minimum-x-stationary-value_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -0.9765587540382854, 'std': 0.17685980211984126},
+                annotation_units=2)
+TMAPS['22652_0'] = TensorMap('22652_Usual-length-of-each-night-shift-during-night-shift-periods', group='continuous', channel_map={'22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_0': 0, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_1': 1, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_2': 2, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_3': 3, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_4': 4, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_5': 5, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_6': 6, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_7': 7, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_8': 8, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_9': 9, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_10': 10, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_11': 11, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_12': 12, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_13': 13, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_14': 14, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_15': 15, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_16': 16, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_17': 17, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_18': 18, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_19': 19, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_20': 20, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_21': 21, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_22': 22, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_23': 23, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_24': 24, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_25': 25, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_26': 26, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_27': 27, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_28': 28, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_29': 29, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_30': 30, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_31': 31, '22652_Usual-length-of-each-night-shift-during-night-shift-periods_0_32': 32, 'not-missing': 33},
+                normalization={'mean': 10.077380952380949, 'std': 2.175321464464055},
+                annotation_units=34)
+TMAPS['4012_0'] = TensorMap('4012_Age-deepvein-thrombosis-DVT-blood-clot-in-leg-diagnosed', group='continuous', channel_map={'4012_Age-deepvein-thrombosis-DVT-blood-clot-in-leg-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 43.03936501126247, 'std': 13.764394088734917},
+                annotation_units=2)
+TMAPS['23124_0'] = TensorMap('23124_Arm-fat-mass-left', group='continuous', channel_map={'23124_Arm-fat-mass-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.3197648029289915, 'std': 0.7131871500892241},
+                annotation_units=2)
+TMAPS['100006_0'] = TensorMap('100006_Saturated-fat', group='continuous', channel_map={'100006_Saturated-fat_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 29.519929749671345, 'std': 15.821915288796678},
+                annotation_units=2)
+TMAPS['30190_0'] = TensorMap('30190_Monocyte-percentage', group='continuous', channel_map={'30190_Monocyte-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 7.064322787581422, 'std': 2.698148749114867},
+                annotation_units=2)
+TMAPS['100014_0'] = TensorMap('100014_Folate', group='continuous', channel_map={'100014_Folate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 307.65329738363516, 'std': 135.19408933325468},
+                annotation_units=2)
+TMAPS['2966_0'] = TensorMap('2966_Age-high-blood-pressure-diagnosed', group='continuous', channel_map={'2966_Age-high-blood-pressure-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 50.629220157750574, 'std': 9.947561475383283},
+                annotation_units=2)
+TMAPS['3160_0'] = TensorMap('3160_Weight-manual-entry', group='continuous', channel_map={'3160_Weight-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 79.50371855880354, 'std': 18.717002296822308},
+                annotation_units=2)
+TMAPS['90195_0'] = TensorMap('90195_Temperature-maximum', group='continuous', channel_map={'90195_Temperature-maximum_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 24.132128839384727, 'std': 2.0246264801483136},
+                annotation_units=2)
+TMAPS['90183_0'] = TensorMap('90183_Readings-exceeding-8-gravities-before-calibration', group='continuous', channel_map={'90183_Readings-exceeding-8-gravities-before-calibration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 425.5322532426829, 'std': 6632.992953339035},
+                annotation_units=2)
+TMAPS['864_0'] = TensorMap('864_Number-of-daysweek-walked-10-minutes', group='continuous', channel_map={'864_Number-of-daysweek-walked-10-minutes_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.361930056113816, 'std': 1.9817371830771893},
+                annotation_units=2)
+TMAPS['41095_0'] = TensorMap('41095_Episodes-containing-Date-of-decision-to-admit-to-hospital-data', group='continuous', channel_map={'41095_Episodes-containing-Date-of-decision-to-admit-to-hospital-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.043723843006869, 'std': 13.762791499857014},
+                annotation_units=2)
+TMAPS['30250_0'] = TensorMap('30250_Reticulocyte-count', group='continuous', channel_map={'30250_Reticulocyte-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.061007684973546306, 'std': 0.038791227146065387},
+                annotation_units=2)
+TMAPS['20083_0'] = TensorMap('20083_Delay-between-questionnaire-request-and-completion', group='continuous', channel_map={'20083_Delay-between-questionnaire-request-and-completion_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90192_0'] = TensorMap('90192_Temperature-average', group='continuous', channel_map={'90192_Temperature-average_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.348456531173145, 'std': 1.5328010781114552},
+                annotation_units=2)
+TMAPS['23111_0'] = TensorMap('23111_Leg-fat-percentage-right', group='continuous', channel_map={'23111_Leg-fat-percentage-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 32.046355165242275, 'std': 10.694715982950981},
+                annotation_units=2)
+TMAPS['20021_0'] = TensorMap('20021_Speechreceptionthreshold-SRT-estimate-right', group='continuous', channel_map={'20021_Speechreceptionthreshold-SRT-estimate-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -6.54686408694907, 'std': 2.1084369017904825},
+                annotation_units=2)
+TMAPS['5200_0'] = TensorMap('5200_Final-number-of-letters-displayed-right', group='continuous', channel_map={'5200_Final-number-of-letters-displayed-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.9856271070712275, 'std': 0.18950917702981684},
+                annotation_units=2)
+TMAPS['30670_0'] = TensorMap('30670_Urea', group='continuous', channel_map={'30670_Urea_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.403444556432281, 'std': 1.4013221521748178},
+                annotation_units=2)
+TMAPS['90071_0'] = TensorMap('90071_Wear-duration-during-11:00--11:59', group='continuous', channel_map={'90071_Wear-duration-during-11:00--11:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.37899609431506, 'std': 1.5180170347905921},
+                annotation_units=2)
+TMAPS['30231_0'] = TensorMap('30231_Nucleated-red-blood-cell-percentage-freezethaw-cycles', group='continuous', channel_map={'30231_Nucleated-red-blood-cell-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90185_0'] = TensorMap('90185_Readings-exceeding-8-gravities-after-calibration', group='continuous', channel_map={'90185_Readings-exceeding-8-gravities-after-calibration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 522.3285115000723, 'std': 27295.39317108917},
+                annotation_units=2)
+TMAPS['5104_0'] = TensorMap('5104_3mm-strong-meridian-angle-left', group='continuous', channel_map={'5104_3mm-strong-meridian-angle-left_0_0': 0, '5104_3mm-strong-meridian-angle-left_0_1': 1, '5104_3mm-strong-meridian-angle-left_0_2': 2, '5104_3mm-strong-meridian-angle-left_0_3': 3, '5104_3mm-strong-meridian-angle-left_0_4': 4, '5104_3mm-strong-meridian-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 94.36608051110271, 'std': 37.6552118153151},
+                annotation_units=7)
+TMAPS['5103_0'] = TensorMap('5103_3mm-weak-meridian-angle-left', group='continuous', channel_map={'5103_3mm-weak-meridian-angle-left_0_0': 0, '5103_3mm-weak-meridian-angle-left_0_1': 1, '5103_3mm-weak-meridian-angle-left_0_2': 2, '5103_3mm-weak-meridian-angle-left_0_3': 3, '5103_3mm-weak-meridian-angle-left_0_4': 4, '5103_3mm-weak-meridian-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 86.27880846048858, 'std': 67.96516785733142},
+                annotation_units=7)
+TMAPS['5079_0'] = TensorMap('5079_logMAR-in-round-right', group='continuous', channel_map={'5079_logMAR-in-round-right_0_0': 0, '5079_logMAR-in-round-right_0_1': 1, '5079_logMAR-in-round-right_0_2': 2, '5079_logMAR-in-round-right_0_3': 3, '5079_logMAR-in-round-right_0_4': 4, '5079_logMAR-in-round-right_0_5': 5, '5079_logMAR-in-round-right_0_6': 6, '5079_logMAR-in-round-right_0_7': 7, '5079_logMAR-in-round-right_0_8': 8, '5079_logMAR-in-round-right_0_9': 9, '5079_logMAR-in-round-right_0_10': 10, '5079_logMAR-in-round-right_0_11': 11, '5079_logMAR-in-round-right_0_12': 12, '5079_logMAR-in-round-right_0_13': 13, '5079_logMAR-in-round-right_0_14': 14, '5079_logMAR-in-round-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 0.06616830791328375, 'std': 0.24566479978416353},
+                annotation_units=17)
+TMAPS['3147_0'] = TensorMap('3147_Heel-quantitative-ultrasound-index-QUI-direct-entry', group='continuous', channel_map={'3147_Heel-quantitative-ultrasound-index-QUI-direct-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 97.98964639607355, 'std': 22.057125971374475},
+                annotation_units=2)
+TMAPS['90113_0'] = TensorMap('90113_Fraction-acceleration-<=-30-milligravities', group='continuous', channel_map={'90113_Fraction-acceleration-<=-30-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.7515875403828535, 'std': 0.07505707262659327},
+                annotation_units=2)
+TMAPS['1528_0'] = TensorMap('1528_Water-intake', group='continuous', channel_map={'1528_Water-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.7322974802814235, 'std': 2.2620300811906597},
+                annotation_units=2)
+TMAPS['20077_0'] = TensorMap('20077_Number-of-diet-questionnaires-completed', group='continuous', channel_map={'20077_Number-of-diet-questionnaires-completed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.1733421159879045, 'std': 1.18059959185329},
+                annotation_units=2)
+TMAPS['90034_0'] = TensorMap('90034_Average-acceleration-07:00--07:59', group='continuous', channel_map={'90034_Average-acceleration-07:00--07:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 26.661664400405037, 'std': 27.915140997607782},
+                annotation_units=2)
+TMAPS['90020_0'] = TensorMap('90020_Tuesday-average-acceleration', group='continuous', channel_map={'90020_Tuesday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.229667582814994, 'std': 14.185801237575442},
+                annotation_units=2)
+TMAPS['23099_0'] = TensorMap('23099_Body-fat-percentage', group='continuous', channel_map={'23099_Body-fat-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.451786835511985, 'std': 8.547574421386418},
+                annotation_units=2)
+TMAPS['41080_0'] = TensorMap('41080_Episodes-containing-Operative-procedures--secondary-OPCS4-data', group='continuous', channel_map={'41080_Episodes-containing-Operative-procedures--secondary-OPCS4-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 7.697808149091582, 'std': 12.681988097428167},
+                annotation_units=2)
+TMAPS['90174_0'] = TensorMap('90174_Calibration--minimum-y-stationary-value', group='continuous', channel_map={'90174_Calibration--minimum-y-stationary-value_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -0.9894458749216454, 'std': 0.1807198484544723},
+                annotation_units=2)
+TMAPS['90025_0'] = TensorMap('90025_Sunday-average-acceleration', group='continuous', channel_map={'90025_Sunday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 26.36648054390279, 'std': 40.20427495270532},
+                annotation_units=2)
+TMAPS['30314_0'] = TensorMap('30314_Volume-of-EDTA1-plasma-held-by-UKB', group='continuous', channel_map={'30314_Volume-of-EDTA1-plasma-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3196.4802821483117, 'std': 511.1004065680864},
+                annotation_units=2)
+TMAPS['30001_0'] = TensorMap('30001_White-blood-cell-leukocyte-count-freezethaw-cycles', group='continuous', channel_map={'30001_White-blood-cell-leukocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['2734_0'] = TensorMap('2734_Number-of-live-births', group='continuous', channel_map={'2734_Number-of-live-births_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.821754172276784, 'std': 1.2016883451757863},
+                annotation_units=2)
+TMAPS['5276_0'] = TensorMap('5276_Index-of-best-refractometry-result-left', group='continuous', channel_map={'5276_Index-of-best-refractometry-result-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.017781563372614, 'std': 0.8297585981359478},
+                annotation_units=2)
+TMAPS['90096_0'] = TensorMap('90096_Fraction-acceleration-<=-5-milligravities', group='continuous', channel_map={'90096_Fraction-acceleration-<=-5-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5120027966632916, 'std': 0.0979423196999406},
+                annotation_units=2)
+TMAPS['23107_0'] = TensorMap('23107_Impedance-of-leg-right', group='continuous', channel_map={'23107_Impedance-of-leg-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 246.9769160622856, 'std': 36.023204333919224},
+                annotation_units=2)
+TMAPS['90088_0'] = TensorMap('90088_Nowear-time-bias-adjusted-acceleration-standard-deviation', group='continuous', channel_map={'90088_Nowear-time-bias-adjusted-acceleration-standard-deviation_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 54.83249568445924, 'std': 29.17821840388565},
+                annotation_units=2)
+TMAPS['41103_0'] = TensorMap('41103_Episodes-containing-Destination-on-discharge-from-hospital-data-polymorphic', group='continuous', channel_map={'41103_Episodes-containing-Destination-on-discharge-from-hospital-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.704589080354638, 'std': 15.793837358474432},
+                annotation_units=2)
+TMAPS['5364_0'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks', group='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.038529032927324756, 'std': 0.5126326168922742},
+                annotation_units=2)
+TMAPS['3063_0'] = TensorMap('3063_Forced-expiratory-volume-in-1second-FEV1', group='continuous', channel_map={'3063_Forced-expiratory-volume-in-1second-FEV1_0_0': 0, '3063_Forced-expiratory-volume-in-1second-FEV1_0_1': 1, '3063_Forced-expiratory-volume-in-1second-FEV1_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 2.7237893218707043, 'std': 0.8269198582377147},
+                annotation_units=4)
+TMAPS['5257_0'] = TensorMap('5257_Corneal-resistance-factor-right', group='continuous', channel_map={'5257_Corneal-resistance-factor-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 10.738050516115822, 'std': 2.4458486957160437},
+                annotation_units=2)
+TMAPS['90118_0'] = TensorMap('90118_Fraction-acceleration-<=-55-milligravities', group='continuous', channel_map={'90118_Fraction-acceleration-<=-55-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8425518202420558, 'std': 0.05886666618434548},
+                annotation_units=2)
+TMAPS['100023_0'] = TensorMap('100023_Starch', group='continuous', channel_map={'100023_Starch_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 123.36970754943658, 'std': 56.412552258469965},
+                annotation_units=2)
+TMAPS['90129_0'] = TensorMap('90129_Fraction-acceleration-<=-150-milligravities', group='continuous', channel_map={'90129_Fraction-acceleration-<=-150-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9664515646848929, 'std': 0.021543806887605207},
+                annotation_units=2)
+TMAPS['1458_0'] = TensorMap('1458_Cereal-intake', group='continuous', channel_map={'1458_Cereal-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.4966012545825516, 'std': 2.795069205575618},
+                annotation_units=2)
+TMAPS['30211_0'] = TensorMap('30211_Eosinophill-percentage-freezethaw-cycles', group='continuous', channel_map={'30211_Eosinophill-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['4418_0'] = TensorMap('4418_Average-monthly-champagne-plus-white-wine-intake', group='continuous', channel_map={'4418_Average-monthly-champagne-plus-white-wine-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9912825352672362, 'std': 1.626073017505339},
+                annotation_units=2)
+TMAPS['20129_0'] = TensorMap('20129_Number-of-columns-displayed-in-round', group='continuous', channel_map={'20129_Number-of-columns-displayed-in-round_0_0': 0, '20129_Number-of-columns-displayed-in-round_0_1': 1, '20129_Number-of-columns-displayed-in-round_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 3.529685057489507, 'std': 0.49911900960793176},
+                annotation_units=4)
+TMAPS['90158_0'] = TensorMap('90158_Fraction-acceleration-<=-2000-milligravities', group='continuous', channel_map={'90158_Fraction-acceleration-<=-2000-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.999982400308597, 'std': 0.0014220166230694631},
+                annotation_units=2)
+TMAPS['4101_0'] = TensorMap('4101_Heel-broadband-ultrasound-attenuation-left', group='continuous', channel_map={'4101_Heel-broadband-ultrasound-attenuation-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 77.92567923195446, 'std': 20.761681015550657},
+                annotation_units=2)
+TMAPS['874_0'] = TensorMap('874_Duration-of-walks', group='continuous', channel_map={'874_Duration-of-walks_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 61.640558181937784, 'std': 78.79452297243806},
+                annotation_units=2)
+TMAPS['5115_0'] = TensorMap('5115_3mm-cylindrical-power-angle-right', group='continuous', channel_map={'5115_3mm-cylindrical-power-angle-right_0_0': 0, '5115_3mm-cylindrical-power-angle-right_0_1': 1, '5115_3mm-cylindrical-power-angle-right_0_2': 2, '5115_3mm-cylindrical-power-angle-right_0_3': 3, '5115_3mm-cylindrical-power-angle-right_0_4': 4, '5115_3mm-cylindrical-power-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 91.94881139838482, 'std': 68.09054638103878},
+                annotation_units=7)
+TMAPS['30130_0'] = TensorMap('30130_Monocyte-count', group='continuous', channel_map={'30130_Monocyte-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.4759545663100159, 'std': 0.2729186969343379},
+                annotation_units=2)
+TMAPS['5100_0'] = TensorMap('5100_3mm-weak-meridian-angle-right', group='continuous', channel_map={'5100_3mm-weak-meridian-angle-right_0_0': 0, '5100_3mm-weak-meridian-angle-right_0_1': 1, '5100_3mm-weak-meridian-angle-right_0_2': 2, '5100_3mm-weak-meridian-angle-right_0_3': 3, '5100_3mm-weak-meridian-angle-right_0_4': 4, '5100_3mm-weak-meridian-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 91.9387712414986, 'std': 68.06384277305852},
+                annotation_units=7)
+TMAPS['41108_0'] = TensorMap('41108_Episodes-containing-Duration-of-preoperative-stay-data', group='continuous', channel_map={'41108_Episodes-containing-Duration-of-preoperative-stay-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.284736156981339, 'std': 13.960304410797848},
+                annotation_units=2)
+TMAPS['3839_0'] = TensorMap('3839_Number-of-spontaneous-miscarriages', group='continuous', channel_map={'3839_Number-of-spontaneous-miscarriages_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9474939509160041, 'std': 1.0744542549213256},
+                annotation_units=2)
+TMAPS['4145_0'] = TensorMap('4145_Heel-bone-mineral-density-BMD-manual-entry-right', group='continuous', channel_map={'4145_Heel-bone-mineral-density-BMD-manual-entry-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5485754716981134, 'std': 0.12684714143138237},
+                annotation_units=2)
+TMAPS['90093_0'] = TensorMap('90093_Fraction-acceleration-<=-2-milligravities', group='continuous', channel_map={'90093_Fraction-acceleration-<=-2-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.3089802787019626, 'std': 0.08800661058556765},
+                annotation_units=2)
+TMAPS['23123_0'] = TensorMap('23123_Arm-fat-percentage-left', group='continuous', channel_map={'23123_Arm-fat-percentage-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 30.42513586266444, 'std': 10.267361725229156},
+                annotation_units=2)
+TMAPS['41146_0'] = TensorMap('41146_Episodes-containing-Operative-procedure--main-OPCS4-data', group='continuous', channel_map={'41146_Episodes-containing-Operative-procedure--main-OPCS4-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.539805621710698, 'std': 15.622922521889274},
+                annotation_units=2)
+TMAPS['90117_0'] = TensorMap('90117_Fraction-acceleration-<=-50-milligravities', group='continuous', channel_map={'90117_Fraction-acceleration-<=-50-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8281616567819081, 'std': 0.061961534132324504},
+                annotation_units=2)
+TMAPS['4239_0'] = TensorMap('4239_Number-of-times-clear-was-pressed-left', group='continuous', channel_map={'4239_Number-of-times-clear-was-pressed-left_0_0': 0, '4239_Number-of-times-clear-was-pressed-left_0_1': 1, '4239_Number-of-times-clear-was-pressed-left_0_2': 2, '4239_Number-of-times-clear-was-pressed-left_0_3': 3, '4239_Number-of-times-clear-was-pressed-left_0_4': 4, '4239_Number-of-times-clear-was-pressed-left_0_5': 5, '4239_Number-of-times-clear-was-pressed-left_0_6': 6, '4239_Number-of-times-clear-was-pressed-left_0_7': 7, '4239_Number-of-times-clear-was-pressed-left_0_8': 8, '4239_Number-of-times-clear-was-pressed-left_0_9': 9, '4239_Number-of-times-clear-was-pressed-left_0_10': 10, '4239_Number-of-times-clear-was-pressed-left_0_11': 11, '4239_Number-of-times-clear-was-pressed-left_0_12': 12, '4239_Number-of-times-clear-was-pressed-left_0_13': 13, '4239_Number-of-times-clear-was-pressed-left_0_14': 14, '4239_Number-of-times-clear-was-pressed-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 0.08774661669705094, 'std': 0.49309733708179393},
+                annotation_units=17)
+TMAPS['6039_0'] = TensorMap('6039_Duration-of-fitness-test', group='continuous', channel_map={'6039_Duration-of-fitness-test_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 386.3728641797937, 'std': 107.83618249267792},
+                annotation_units=2)
+TMAPS['5086_0'] = TensorMap('5086_Cylindrical-power-left', group='continuous', channel_map={'5086_Cylindrical-power-left_0_0': 0, '5086_Cylindrical-power-left_0_1': 1, '5086_Cylindrical-power-left_0_2': 2, '5086_Cylindrical-power-left_0_3': 3, '5086_Cylindrical-power-left_0_4': 4, '5086_Cylindrical-power-left_0_5': 5, '5086_Cylindrical-power-left_0_6': 6, '5086_Cylindrical-power-left_0_7': 7, '5086_Cylindrical-power-left_0_8': 8, '5086_Cylindrical-power-left_0_9': 9, 'not-missing': 10},
+                normalization={'mean': 0.8734884279252244, 'std': 0.7384053630445866},
+                annotation_units=11)
+TMAPS['90170_0'] = TensorMap('90170_Calibration-coefficients--mean-temperature', group='continuous', channel_map={'90170_Calibration-coefficients--mean-temperature_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.895970972563774, 'std': 1.6886012877960288},
+                annotation_units=2)
+TMAPS['5211_0'] = TensorMap('5211_Distance-of-viewer-to-screen-left', group='continuous', channel_map={'5211_Distance-of-viewer-to-screen-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.999705400143452, 'std': 0.017591451928771422},
+                annotation_units=2)
+TMAPS['5945_0'] = TensorMap('5945_Age-other-serious-eye-condition-diagnosed', group='continuous', channel_map={'5945_Age-other-serious-eye-condition-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 44.571974522293, 'std': 17.768937871084766},
+                annotation_units=2)
+TMAPS['23101_0'] = TensorMap('23101_Whole-body-fatfree-mass', group='continuous', channel_map={'23101_Whole-body-fatfree-mass_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 53.21773908875433, 'std': 11.49642181916704},
+                annotation_units=2)
+TMAPS['41142_0'] = TensorMap('41142_Episodes-containing-Diagnoses--main-ICD10-data', group='continuous', channel_map={'41142_Episodes-containing-Diagnoses--main-ICD10-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.69377195099064, 'std': 15.77519773898869},
+                annotation_units=2)
+TMAPS['3456_0'] = TensorMap('3456_Number-of-cigarettes-currently-smoked-daily-current-cigarette-smokers', group='continuous', channel_map={'3456_Number-of-cigarettes-currently-smoked-daily-current-cigarette-smokers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 15.541285291596386, 'std': 8.449555990368303},
+                annotation_units=2)
+TMAPS['90181_0'] = TensorMap('90181_Duration-of-interrupted-recording-periods', group='continuous', channel_map={'90181_Duration-of-interrupted-recording-periods_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8079965282800524, 'std': 46.99727836703532},
+                annotation_units=2)
+TMAPS['20148_0'] = TensorMap('20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2', group='continuous', channel_map={'20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_0': 0, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_1': 1, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_2': 2, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_3': 3, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_4': 4, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_5': 5, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_6': 6, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_7': 7, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_8': 8, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_9': 9, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_10': 10, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_11': 11, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_12': 12, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_13': 13, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_14': 14, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_15': 15, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_16': 16, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_17': 17, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_18': 18, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_19': 19, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_20': 20, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_21': 21, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_22': 22, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_23': 23, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_24': 24, '20148_Errors-before-selecting-correct-item-in-alphanumeric-path-trail-#2_0_25': 25, 'not-missing': 26},
+                normalization={'mean': 1.9077937699614251, 'std': 3.017522215483095},
+                annotation_units=27)
+TMAPS['3064_0'] = TensorMap('3064_Peak-expiratory-flow-PEF', group='continuous', channel_map={'3064_Peak-expiratory-flow-PEF_0_0': 0, '3064_Peak-expiratory-flow-PEF_0_1': 1, '3064_Peak-expiratory-flow-PEF_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 365.83632723273485, 'std': 143.87922997760828},
+                annotation_units=4)
+TMAPS['20008_0'] = TensorMap('20008_Interpolated-Year-when-noncancer-illness-first-diagnosed', group='continuous', channel_map={'20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_0': 0, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_1': 1, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_2': 2, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_3': 3, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_4': 4, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_5': 5, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_6': 6, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_7': 7, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_8': 8, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_9': 9, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_10': 10, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_11': 11, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_12': 12, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_13': 13, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_14': 14, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_15': 15, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_16': 16, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_17': 17, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_18': 18, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_19': 19, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_20': 20, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_21': 21, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_22': 22, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_23': 23, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_24': 24, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_25': 25, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_26': 26, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_27': 27, '20008_Interpolated-Year-when-noncancer-illness-first-diagnosed_0_28': 28, 'not-missing': 29},
+                normalization={'mean': 1924.7027612473557, 'std': 365.80733532433004},
+                annotation_units=30)
+TMAPS['90149_0'] = TensorMap('90149_Fraction-acceleration-<=-1100-milligravities', group='continuous', channel_map={'90149_Fraction-acceleration-<=-1100-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9997830753652538, 'std': 0.003246607516580007},
+                annotation_units=2)
+TMAPS['4689_0'] = TensorMap('4689_Age-glaucoma-diagnosed', group='continuous', channel_map={'4689_Age-glaucoma-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 52.86446342369107, 'std': 11.284868847905615},
+                annotation_units=2)
+TMAPS['5190_0'] = TensorMap('5190_Duration-at-which-refractometer-first-shown-right', group='continuous', channel_map={'5190_Duration-at-which-refractometer-first-shown-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 135.9078006258384, 'std': 55.56543146059977},
+                annotation_units=2)
+TMAPS['90090_0'] = TensorMap('90090_Nowear-time-bias-adjusted-acceleration-minimum', group='continuous', channel_map={'90090_Nowear-time-bias-adjusted-acceleration-minimum_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.06461314431746948, 'std': 2.3104969830994464},
+                annotation_units=2)
+TMAPS['23127_0'] = TensorMap('23127_Trunk-fat-percentage', group='continuous', channel_map={'23127_Trunk-fat-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.1734207130592, 'std': 8.008510881672986},
+                annotation_units=2)
+TMAPS['90087_0'] = TensorMap('90087_Nowear-time-bias-adjusted-average-acceleration', group='continuous', channel_map={'90087_Nowear-time-bias-adjusted-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.558812768214473, 'std': 14.108189524346063},
+                annotation_units=2)
+TMAPS['1309_0'] = TensorMap('1309_Fresh-fruit-intake', group='continuous', channel_map={'1309_Fresh-fruit-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.2351555693527865, 'std': 1.613492103587494},
+                annotation_units=2)
+TMAPS['30161_0'] = TensorMap('30161_Basophill-count-freezethaw-cycles', group='continuous', channel_map={'30161_Basophill-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90128_0'] = TensorMap('90128_Fraction-acceleration-<=-125-milligravities', group='continuous', channel_map={'90128_Fraction-acceleration-<=-125-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9507029557837886, 'std': 0.02784310358608152},
+                annotation_units=2)
+TMAPS['5251_0'] = TensorMap('5251_6mm-index-of-best-keratometry-results-right', group='continuous', channel_map={'5251_6mm-index-of-best-keratometry-results-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.4736809241336244, 'std': 0.7158207375462095},
+                annotation_units=2)
+TMAPS['30160_0'] = TensorMap('30160_Basophill-count', group='continuous', channel_map={'30160_Basophill-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.03405815076543386, 'std': 0.05160802741611581},
+                annotation_units=2)
+TMAPS['3809_0'] = TensorMap('3809_Time-since-last-prostate-specific-antigen-PSA-test', group='continuous', channel_map={'3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.2594406355424956, 'std': 2.4138830716050705},
+                annotation_units=2)
+TMAPS['41102_0'] = TensorMap('41102_Episodes-containing-Method-of-discharge-from-hospital-data-polymorphic', group='continuous', channel_map={'41102_Episodes-containing-Method-of-discharge-from-hospital-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.783474798560123, 'std': 15.822013108027432},
+                annotation_units=2)
+TMAPS['90073_0'] = TensorMap('90073_Wear-duration-during-13:00--13:59', group='continuous', channel_map={'90073_Wear-duration-during-13:00--13:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.368636192680459, 'std': 1.5356541955859178},
+                annotation_units=2)
+TMAPS['2804_0'] = TensorMap('2804_Age-when-last-used-oral-contraceptive-pill', group='continuous', channel_map={'2804_Age-when-last-used-oral-contraceptive-pill_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.823013855015315, 'std': 7.516648891125272},
+                annotation_units=2)
+TMAPS['2897_0'] = TensorMap('2897_Age-stopped-smoking', group='continuous', channel_map={'2897_Age-stopped-smoking_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 39.85940162769238, 'std': 11.609253789489419},
+                annotation_units=2)
+TMAPS['90027_0'] = TensorMap('90027_Average-acceleration-00:00--00:59', group='continuous', channel_map={'90027_Average-acceleration-00:00--00:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 7.106457881286466, 'std': 12.68977543063959},
+                annotation_units=2)
+TMAPS['3849_0'] = TensorMap('3849_Number-of-pregnancy-terminations', group='continuous', channel_map={'3849_Number-of-pregnancy-terminations_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5511111625806301, 'std': 0.7549118899564189},
+                annotation_units=2)
+TMAPS['23113_0'] = TensorMap('23113_Leg-fatfree-mass-right', group='continuous', channel_map={'23113_Leg-fatfree-mass-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8.969660016208081, 'std': 2.024633683826292},
+                annotation_units=2)
+TMAPS['3829_0'] = TensorMap('3829_Number-of-stillbirths', group='continuous', channel_map={'3829_Number-of-stillbirths_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0975155493728515, 'std': 0.3785595696632464},
+                annotation_units=2)
+TMAPS['100003_0'] = TensorMap('100003_Protein', group='continuous', channel_map={'100003_Protein_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 81.80167003547857, 'std': 31.330517846881715},
+                annotation_units=2)
+TMAPS['100016_0'] = TensorMap('100016_Potassium', group='continuous', channel_map={'100016_Potassium_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3779.994103354204, 'std': 1559.9782812695232},
+                annotation_units=2)
+TMAPS['90081_0'] = TensorMap('90081_Wear-duration-during-21:00--21:59', group='continuous', channel_map={'90081_Wear-duration-during-21:00--21:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.360730411302377, 'std': 1.5580538235743921},
+                annotation_units=2)
+TMAPS['30640_0'] = TensorMap('30640_Apolipoprotein-B', group='continuous', channel_map={'30640_Apolipoprotein-B_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.0320267939695964, 'std': 0.23825112625325112},
+                annotation_units=2)
+TMAPS['4140_0'] = TensorMap('4140_Heel-bone-mineral-density-BMD-manual-entry-left', group='continuous', channel_map={'4140_Heel-bone-mineral-density-BMD-manual-entry-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5419315960912052, 'std': 0.12838987287660628},
+                annotation_units=2)
+TMAPS['100019_0'] = TensorMap('100019_Carotene', group='continuous', channel_map={'100019_Carotene_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3211.757054716104, 'std': 3273.290265535609},
+                annotation_units=2)
+TMAPS['90110_0'] = TensorMap('90110_Fraction-acceleration-<=-19-milligravities', group='continuous', channel_map={'90110_Fraction-acceleration-<=-19-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6888709773856023, 'std': 0.08391288170980778},
+                annotation_units=2)
+TMAPS['20019_0'] = TensorMap('20019_Speechreceptionthreshold-SRT-estimate-left', group='continuous', channel_map={'20019_Speechreceptionthreshold-SRT-estimate-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -6.587135061642197, 'std': 2.096872358733295},
+                annotation_units=2)
+TMAPS['90075_0'] = TensorMap('90075_Wear-duration-during-15:00--15:59', group='continuous', channel_map={'90075_Wear-duration-during-15:00--15:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.370889242489997, 'std': 1.5392009728803167},
+                annotation_units=2)
+TMAPS['90141_0'] = TensorMap('90141_Fraction-acceleration-<=-450-milligravities', group='continuous', channel_map={'90141_Fraction-acceleration-<=-450-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9976744394618835, 'std': 0.0052852627167081605},
+                annotation_units=2)
+TMAPS['4056_0'] = TensorMap('4056_Age-stroke-diagnosed', group='continuous', channel_map={'4056_Age-stroke-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 53.57258174852922, 'std': 9.477761437965563},
+                annotation_units=2)
+TMAPS['5901_0'] = TensorMap('5901_Age-when-diabetesrelated-eye-disease-diagnosed', group='continuous', channel_map={'5901_Age-when-diabetesrelated-eye-disease-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 50.892645314353494, 'std': 13.5677565239473},
+                annotation_units=2)
+TMAPS['30897_0'] = TensorMap('30897_Estimated-sample-dilution-factor', group='continuous', channel_map={'30897_Estimated-sample-dilution-factor_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9970687105513254, 'std': 0.010569893704978957},
+                annotation_units=2)
+TMAPS['30071_0'] = TensorMap('30071_Red-blood-cell-erythrocyte-distribution-width-freezethaw-cycles', group='continuous', channel_map={'30071_Red-blood-cell-erythrocyte-distribution-width-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['22661_0'] = TensorMap('22661_Number-of-gap-periods', group='continuous', channel_map={'22661_Number-of-gap-periods_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.4835616669194345, 'std': 1.351709066932489},
+                annotation_units=2)
+TMAPS['5430_0'] = TensorMap('5430_Age-when-loss-of-vision-due-to-injury-or-trauma-diagnosed', group='continuous', channel_map={'5430_Age-when-loss-of-vision-due-to-injury-or-trauma-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 33.99254658385094, 'std': 19.249796641670027},
+                annotation_units=2)
+TMAPS['30010_0'] = TensorMap('30010_Red-blood-cell-erythrocyte-count', group='continuous', channel_map={'30010_Red-blood-cell-erythrocyte-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.516898456712666, 'std': 0.4169165557365781},
+                annotation_units=2)
+TMAPS['90047_0'] = TensorMap('90047_Average-acceleration-20:00--20:59', group='continuous', channel_map={'90047_Average-acceleration-20:00--20:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 25.389408843242204, 'std': 19.687511042542315},
+                annotation_units=2)
+TMAPS['20015_0'] = TensorMap('20015_Sitting-height', group='continuous', channel_map={'20015_Sitting-height_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 89.14320146537855, 'std': 4.882706194277553},
+                annotation_units=2)
+TMAPS['90077_0'] = TensorMap('90077_Wear-duration-during-17:00--17:59', group='continuous', channel_map={'90077_Wear-duration-during-17:00--17:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.393261295144413, 'std': 1.522967702780382},
+                annotation_units=2)
+TMAPS['100011_0'] = TensorMap('100011_Iron', group='continuous', channel_map={'100011_Iron_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 13.648492798281188, 'std': 5.320383273608107},
+                annotation_units=2)
+TMAPS['30201_0'] = TensorMap('30201_Neutrophill-percentage-freezethaw-cycles', group='continuous', channel_map={'30201_Neutrophill-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['30020_0'] = TensorMap('30020_Haemoglobin-concentration', group='continuous', channel_map={'30020_Haemoglobin-concentration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 14.174758887494772, 'std': 1.2469997419218528},
+                annotation_units=2)
+TMAPS['1598_0'] = TensorMap('1598_Average-weekly-spirits-intake', group='continuous', channel_map={'1598_Average-weekly-spirits-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.8542452061807697, 'std': 5.341212242611891},
+                annotation_units=2)
+TMAPS['1498_0'] = TensorMap('1498_Coffee-intake', group='continuous', channel_map={'1498_Coffee-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.01511286927633, 'std': 2.0915384836271125},
+                annotation_units=2)
+TMAPS['90138_0'] = TensorMap('90138_Fraction-acceleration-<=-375-milligravities', group='continuous', channel_map={'90138_Fraction-acceleration-<=-375-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9964408987897201, 'std': 0.005995999357561531},
+                annotation_units=2)
+TMAPS['30241_0'] = TensorMap('30241_Reticulocyte-percentage-freezethaw-cycles', group='continuous', channel_map={'30241_Reticulocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['4276_0'] = TensorMap('4276_Number-of-triplets-attempted-right', group='continuous', channel_map={'4276_Number-of-triplets-attempted-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 14.652431840630255, 'std': 2.1115365192707105},
+                annotation_units=2)
+TMAPS['5078_0'] = TensorMap('5078_logMAR-in-round-left', group='continuous', channel_map={'5078_logMAR-in-round-left_0_0': 0, '5078_logMAR-in-round-left_0_1': 1, '5078_logMAR-in-round-left_0_2': 2, '5078_logMAR-in-round-left_0_3': 3, '5078_logMAR-in-round-left_0_4': 4, '5078_logMAR-in-round-left_0_5': 5, '5078_logMAR-in-round-left_0_6': 6, '5078_logMAR-in-round-left_0_7': 7, '5078_logMAR-in-round-left_0_8': 8, '5078_logMAR-in-round-left_0_9': 9, '5078_logMAR-in-round-left_0_10': 10, '5078_logMAR-in-round-left_0_11': 11, '5078_logMAR-in-round-left_0_12': 12, '5078_logMAR-in-round-left_0_13': 13, '5078_logMAR-in-round-left_0_14': 14, '5078_logMAR-in-round-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 0.06420994226587717, 'std': 0.251582737043921},
+                annotation_units=17)
+TMAPS['90157_0'] = TensorMap('90157_Fraction-acceleration-<=-1900-milligravities', group='continuous', channel_map={'90157_Fraction-acceleration-<=-1900-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.999977925647331, 'std': 0.001642864427684834},
+                annotation_units=2)
+TMAPS['90067_0'] = TensorMap('90067_Wear-duration-during-07:00--07:59', group='continuous', channel_map={'90067_Wear-duration-during-07:00--07:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.251128694729738, 'std': 1.5970561147391027},
+                annotation_units=2)
+TMAPS['74_0'] = TensorMap('74_Fasting-time', group='continuous', channel_map={'74_Fasting-time_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.8270666642729063, 'std': 2.4659168405053093},
+                annotation_units=2)
+TMAPS['1488_0'] = TensorMap('1488_Tea-intake', group='continuous', channel_map={'1488_Tea-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.424491647712962, 'std': 2.8825573294615467},
+                annotation_units=2)
+TMAPS['4198_0'] = TensorMap('4198_Position-of-the-pulse-wave-peak', group='continuous', channel_map={'4198_Position-of-the-pulse-wave-peak_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 22.28466435151295, 'std': 5.413583747596621},
+                annotation_units=2)
+TMAPS['90107_0'] = TensorMap('90107_Fraction-acceleration-<=-16-milligravities', group='continuous', channel_map={'90107_Fraction-acceleration-<=-16-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6683853705578862, 'std': 0.08671268631884362},
+                annotation_units=2)
+TMAPS['90160_0'] = TensorMap('90160_Error-tolerance-after-calibration', group='continuous', channel_map={'90160_Error-tolerance-after-calibration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.563251555041227, 'std': 0.7807888919170612},
+                annotation_units=2)
+TMAPS['90135_0'] = TensorMap('90135_Fraction-acceleration-<=-300-milligravities', group='continuous', channel_map={'90135_Fraction-acceleration-<=-300-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9939693234967933, 'std': 0.007534428867424408},
+                annotation_units=2)
+TMAPS['20157_0'] = TensorMap('20157_Duration-to-complete-alphanumeric-path-trail-#2', group='continuous', channel_map={'20157_Duration-to-complete-alphanumeric-path-trail-#2_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 66.80345922914263, 'std': 25.752353412671365},
+                annotation_units=2)
+TMAPS['2684_0'] = TensorMap('2684_Years-since-last-breast-cancer-screening--mammogram', group='continuous', channel_map={'2684_Years-since-last-breast-cancer-screening--mammogram_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.8358682086301237, 'std': 2.1766417484382763},
+                annotation_units=2)
+TMAPS['5102_0'] = TensorMap('5102_6mm-weak-meridian-angle-left', group='continuous', channel_map={'5102_6mm-weak-meridian-angle-left_0_0': 0, '5102_6mm-weak-meridian-angle-left_0_1': 1, '5102_6mm-weak-meridian-angle-left_0_2': 2, '5102_6mm-weak-meridian-angle-left_0_3': 3, '5102_6mm-weak-meridian-angle-left_0_4': 4, '5102_6mm-weak-meridian-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 98.51123453196068, 'std': 62.56834297588254},
+                annotation_units=7)
+TMAPS['5207_0'] = TensorMap('5207_Final-number-of-letters-displayed-left', group='continuous', channel_map={'5207_Final-number-of-letters-displayed-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.983434095023401, 'std': 0.20249458598246797},
+                annotation_units=2)
+TMAPS['3084_0'] = TensorMap('3084_Heel-bone-mineral-density-BMD-manual-entry', group='continuous', channel_map={'3084_Heel-bone-mineral-density-BMD-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.542322258358876, 'std': 0.12769083733767947},
+                annotation_units=2)
+TMAPS['41143_0'] = TensorMap('41143_Episodes-containing-Diagnoses--main-ICD10--addendum-data', group='continuous', channel_map={'41143_Episodes-containing-Diagnoses--main-ICD10--addendum-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.9050652107976953, 'std': 3.3783148684541815},
+                annotation_units=2)
+TMAPS['4451_0'] = TensorMap('4451_Average-monthly-fortified-wine-intake', group='continuous', channel_map={'4451_Average-monthly-fortified-wine-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.16545126443032654, 'std': 0.8525999041972709},
+                annotation_units=2)
+TMAPS['22663_0'] = TensorMap('22663_Year-gap-started', group='continuous', channel_map={'22663_Year-gap-started_0_0': 0, '22663_Year-gap-started_0_1': 1, '22663_Year-gap-started_0_2': 2, '22663_Year-gap-started_0_3': 3, '22663_Year-gap-started_0_4': 4, '22663_Year-gap-started_0_5': 5, '22663_Year-gap-started_0_6': 6, '22663_Year-gap-started_0_7': 7, '22663_Year-gap-started_0_8': 8, '22663_Year-gap-started_0_9': 9, '22663_Year-gap-started_0_10': 10, '22663_Year-gap-started_0_11': 11, '22663_Year-gap-started_0_12': 12, '22663_Year-gap-started_0_13': 13, '22663_Year-gap-started_0_14': 14, '22663_Year-gap-started_0_15': 15, '22663_Year-gap-started_0_16': 16, '22663_Year-gap-started_0_17': 17, '22663_Year-gap-started_0_18': 18, '22663_Year-gap-started_0_19': 19, '22663_Year-gap-started_0_20': 20, '22663_Year-gap-started_0_21': 21, '22663_Year-gap-started_0_22': 22, '22663_Year-gap-started_0_23': 23, '22663_Year-gap-started_0_24': 24, '22663_Year-gap-started_0_25': 25, '22663_Year-gap-started_0_26': 26, '22663_Year-gap-started_0_27': 27, '22663_Year-gap-started_0_28': 28, '22663_Year-gap-started_0_29': 29, '22663_Year-gap-started_0_30': 30, '22663_Year-gap-started_0_31': 31, '22663_Year-gap-started_0_32': 32, 'not-missing': 33},
+                normalization={'mean': 1993.593129519869, 'std': 15.790408772806646},
+                annotation_units=34)
+TMAPS['23104_0'] = TensorMap('23104_Body-mass-index-BMI', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.431847749487705, 'std': 4.785169842092807},
+                annotation_units=2)
+TMAPS['23122_0'] = TensorMap('23122_Arm-predicted-mass-right', group='continuous', channel_map={'23122_Arm-predicted-mass-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.7094604752076186, 'std': 0.7833267524137338},
+                annotation_units=2)
+TMAPS['41107_0'] = TensorMap('41107_Episodes-containing-Duration-of-postoperative-stay-data', group='continuous', channel_map={'41107_Episodes-containing-Duration-of-postoperative-stay-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.2842273409431995, 'std': 13.958278678593906},
+                annotation_units=2)
+TMAPS['23128_0'] = TensorMap('23128_Trunk-fat-mass', group='continuous', channel_map={'23128_Trunk-fat-mass_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 13.735808957116552, 'std': 5.171170866436634},
+                annotation_units=2)
+TMAPS['40425_0'] = TensorMap('40425_Volume-of-DNA-held-by-UKB', group='continuous', channel_map={'40425_Volume-of-DNA-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 835.5959956196602, 'std': 49.91770948969756},
+                annotation_units=2)
+TMAPS['90120_0'] = TensorMap('90120_Fraction-acceleration-<=-65-milligravities', group='continuous', channel_map={'90120_Fraction-acceleration-<=-65-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8675027629104587, 'std': 0.0532510533854409},
+                annotation_units=2)
+TMAPS['30890_0'] = TensorMap('30890_Vitamin-D', group='continuous', channel_map={'30890_Vitamin-D_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 48.61285706639076, 'std': 21.11087406647955},
+                annotation_units=2)
+TMAPS['90082_0'] = TensorMap('90082_Wear-duration-during-22:00--22:59', group='continuous', channel_map={'90082_Wear-duration-during-22:00--22:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.317136602536285, 'std': 1.5791490404943693},
+                annotation_units=2)
+TMAPS['30111_0'] = TensorMap('30111_Platelet-distribution-width-freezethaw-cycles', group='continuous', channel_map={'30111_Platelet-distribution-width-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['30860_0'] = TensorMap('30860_Total-protein', group='continuous', channel_map={'30860_Total-protein_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 72.51024893686841, 'std': 4.115743513768043},
+                annotation_units=2)
+TMAPS['30820_0'] = TensorMap('30820_Rheumatoid-factor', group='continuous', channel_map={'30820_Rheumatoid-factor_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 24.556292961564534, 'std': 19.858152125238586},
+                annotation_units=2)
+TMAPS['2277_0'] = TensorMap('2277_Frequency-of-solariumsunlamp-use', group='continuous', channel_map={'2277_Frequency-of-solariumsunlamp-use_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5301349151674393, 'std': 4.513942902841888},
+                annotation_units=2)
+TMAPS['4138_0'] = TensorMap('4138_Heel-bone-mineral-density-BMD-Tscore-manual-entry-left', group='continuous', channel_map={'4138_Heel-bone-mineral-density-BMD-Tscore-manual-entry-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6429804560260587, 'std': 1.0076706181075972},
+                annotation_units=2)
+TMAPS['22040_0'] = TensorMap('22040_Summed-MET-minutes-per-week-for-all-activity', group='continuous', channel_map={'22040_Summed-MET-minutes-per-week-for-all-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2650.269213717759, 'std': 2713.1806848809524},
+                annotation_units=2)
+TMAPS['30140_0'] = TensorMap('30140_Neutrophill-count', group='continuous', channel_map={'30140_Neutrophill-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.227884419173242, 'std': 1.4218134581914315},
+                annotation_units=2)
+TMAPS['30100_0'] = TensorMap('30100_Mean-platelet-thrombocyte-volume', group='continuous', channel_map={'30100_Mean-platelet-thrombocyte-volume_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 9.333080812727935, 'std': 1.0849852535700206},
+                annotation_units=2)
+TMAPS['78_0'] = TensorMap('78_Heel-bone-mineral-density-BMD-Tscore-automated', group='continuous', channel_map={'78_Heel-bone-mineral-density-BMD-Tscore-automated_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -0.33688782331446526, 'std': 1.2452428354839498},
+                annotation_units=2)
+TMAPS['30600_0'] = TensorMap('30600_Albumin', group='continuous', channel_map={'30600_Albumin_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 45.21007928425593, 'std': 2.629164605833256},
+                annotation_units=2)
+TMAPS['30021_0'] = TensorMap('30021_Haemoglobin-concentration-freezethaw-cycles', group='continuous', channel_map={'30021_Haemoglobin-concentration-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['20229_0'] = TensorMap('20229_Values-entered', group='continuous', channel_map={'20229_Values-entered_0_0': 0, '20229_Values-entered_0_1': 1, '20229_Values-entered_0_2': 2, '20229_Values-entered_0_3': 3, '20229_Values-entered_0_4': 4, '20229_Values-entered_0_5': 5, '20229_Values-entered_0_6': 6, '20229_Values-entered_0_7': 7, '20229_Values-entered_0_8': 8, '20229_Values-entered_0_9': 9, '20229_Values-entered_0_10': 10, '20229_Values-entered_0_11': 11, '20229_Values-entered_0_12': 12, '20229_Values-entered_0_13': 13, '20229_Values-entered_0_14': 14, '20229_Values-entered_0_15': 15, '20229_Values-entered_0_16': 16, '20229_Values-entered_0_17': 17, '20229_Values-entered_0_18': 18, '20229_Values-entered_0_19': 19, '20229_Values-entered_0_20': 20, '20229_Values-entered_0_21': 21, '20229_Values-entered_0_22': 22, '20229_Values-entered_0_23': 23, '20229_Values-entered_0_24': 24, '20229_Values-entered_0_25': 25, '20229_Values-entered_0_26': 26, '20229_Values-entered_0_27': 27, '20229_Values-entered_0_28': 28, '20229_Values-entered_0_29': 29, '20229_Values-entered_0_30': 30, '20229_Values-entered_0_31': 31, '20229_Values-entered_0_32': 32, '20229_Values-entered_0_33': 33, '20229_Values-entered_0_34': 34, '20229_Values-entered_0_35': 35, '20229_Values-entered_0_36': 36, '20229_Values-entered_0_37': 37, '20229_Values-entered_0_38': 38, '20229_Values-entered_0_39': 39, '20229_Values-entered_0_40': 40, '20229_Values-entered_0_41': 41, '20229_Values-entered_0_42': 42, '20229_Values-entered_0_43': 43, '20229_Values-entered_0_44': 44, '20229_Values-entered_0_45': 45, '20229_Values-entered_0_46': 46, '20229_Values-entered_0_47': 47, '20229_Values-entered_0_48': 48, '20229_Values-entered_0_49': 49, '20229_Values-entered_0_50': 50, '20229_Values-entered_0_51': 51, '20229_Values-entered_0_52': 52, '20229_Values-entered_0_53': 53, '20229_Values-entered_0_54': 54, '20229_Values-entered_0_55': 55, '20229_Values-entered_0_56': 56, '20229_Values-entered_0_57': 57, '20229_Values-entered_0_58': 58, '20229_Values-entered_0_59': 59, '20229_Values-entered_0_60': 60, '20229_Values-entered_0_61': 61, '20229_Values-entered_0_62': 62, '20229_Values-entered_0_63': 63, '20229_Values-entered_0_64': 64, '20229_Values-entered_0_65': 65, '20229_Values-entered_0_66': 66, '20229_Values-entered_0_67': 67, '20229_Values-entered_0_68': 68, '20229_Values-entered_0_69': 69, '20229_Values-entered_0_70': 70, '20229_Values-entered_0_71': 71, '20229_Values-entered_0_72': 72, '20229_Values-entered_0_73': 73, '20229_Values-entered_0_74': 74, '20229_Values-entered_0_75': 75, '20229_Values-entered_0_76': 76, '20229_Values-entered_0_77': 77, '20229_Values-entered_0_78': 78, '20229_Values-entered_0_79': 79, '20229_Values-entered_0_80': 80, '20229_Values-entered_0_81': 81, '20229_Values-entered_0_82': 82, '20229_Values-entered_0_83': 83, '20229_Values-entered_0_84': 84, '20229_Values-entered_0_85': 85, '20229_Values-entered_0_86': 86, '20229_Values-entered_0_87': 87, '20229_Values-entered_0_88': 88, '20229_Values-entered_0_89': 89, '20229_Values-entered_0_90': 90, '20229_Values-entered_0_91': 91, '20229_Values-entered_0_92': 92, '20229_Values-entered_0_93': 93, '20229_Values-entered_0_94': 94, '20229_Values-entered_0_95': 95, '20229_Values-entered_0_96': 96, '20229_Values-entered_0_97': 97, '20229_Values-entered_0_98': 98, '20229_Values-entered_0_99': 99, '20229_Values-entered_0_100': 100, '20229_Values-entered_0_101': 101, '20229_Values-entered_0_102': 102, '20229_Values-entered_0_103': 103, '20229_Values-entered_0_104': 104, '20229_Values-entered_0_105': 105, '20229_Values-entered_0_106': 106, '20229_Values-entered_0_107': 107, '20229_Values-entered_0_108': 108, '20229_Values-entered_0_109': 109, '20229_Values-entered_0_110': 110, '20229_Values-entered_0_111': 111, '20229_Values-entered_0_112': 112, '20229_Values-entered_0_113': 113, '20229_Values-entered_0_114': 114, '20229_Values-entered_0_115': 115, '20229_Values-entered_0_116': 116, 'not-missing': 117},
+                normalization={'mean': 4.485728783760996, 'std': 2.2895283725999978},
+                annotation_units=118)
+TMAPS['90143_0'] = TensorMap('90143_Fraction-acceleration-<=-500-milligravities', group='continuous', channel_map={'90143_Fraction-acceleration-<=-500-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9981833164569166, 'std': 0.005016929252235901},
+                annotation_units=2)
+TMAPS['30344_0'] = TensorMap('30344_Volume-of-EDTA2-plasma-held-by-UKB', group='continuous', channel_map={'30344_Volume-of-EDTA2-plasma-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3175.606143632215, 'std': 516.7827685337742},
+                annotation_units=2)
+TMAPS['47_0'] = TensorMap('47_Hand-grip-strength-right', group='continuous', channel_map={'47_Hand-grip-strength-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.67895383148411, 'std': 11.282845062461273},
+                annotation_units=2)
+TMAPS['5199_0'] = TensorMap('5199_logMAR-initial-right', group='continuous', channel_map={'5199_logMAR-initial-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.03792344130072978, 'std': 0.24625813899727253},
+                annotation_units=2)
+TMAPS['90085_0'] = TensorMap('90085_Unique-minutes-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days', group='continuous', channel_map={'90085_Unique-minutes-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1399.4772457688414, 'std': 211.1790901048031},
+                annotation_units=2)
+TMAPS['95_0'] = TensorMap('95_Pulse-rate-during-bloodpressure-measurement', group='continuous', channel_map={'95_Pulse-rate-during-bloodpressure-measurement_0_0': 0, '95_Pulse-rate-during-bloodpressure-measurement_0_1': 1, 'not-missing': 2},
+                normalization={'mean': 70.49032587260213, 'std': 11.664236416568055},
+                annotation_units=3)
+TMAPS['23118_0'] = TensorMap('23118_Leg-predicted-mass-left', group='continuous', channel_map={'23118_Leg-predicted-mass-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8.38960565176943, 'std': 1.9140707544261155},
+                annotation_units=2)
+TMAPS['3786_0'] = TensorMap('3786_Age-asthma-diagnosed', group='continuous', channel_map={'3786_Age-asthma-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.156387837152117, 'std': 18.68854991513305},
+                annotation_units=2)
+TMAPS['5993_0'] = TensorMap('5993_ECG-number-of-stages-in-a-phase', group='continuous', channel_map={'5993_ECG-number-of-stages-in-a-phase_0_0': 0, '5993_ECG-number-of-stages-in-a-phase_0_1': 1, '5993_ECG-number-of-stages-in-a-phase_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 5.942142576154066, 'std': 9.066003869976088},
+                annotation_units=4)
+TMAPS['90036_0'] = TensorMap('90036_Average-acceleration-09:00--09:59', group='continuous', channel_map={'90036_Average-acceleration-09:00--09:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 45.85746583731136, 'std': 29.639430751174313},
+                annotation_units=2)
+TMAPS['30690_0'] = TensorMap('30690_Cholesterol', group='continuous', channel_map={'30690_Cholesterol_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705},
+                annotation_units=2)
+TMAPS['3083_0'] = TensorMap('3083_Heel-quantitative-ultrasound-index-QUI-manual-entry', group='continuous', channel_map={'3083_Heel-quantitative-ultrasound-index-QUI-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 97.68872542642546, 'std': 20.3789819368478},
+                annotation_units=2)
+TMAPS['23108_0'] = TensorMap('23108_Impedance-of-leg-left', group='continuous', channel_map={'23108_Impedance-of-leg-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 247.76824386489048, 'std': 35.70859686372287},
+                annotation_units=2)
+TMAPS['30050_0'] = TensorMap('30050_Mean-corpuscular-haemoglobin', group='continuous', channel_map={'30050_Mean-corpuscular-haemoglobin_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.450949838664812, 'std': 1.9215704123050528},
+                annotation_units=2)
+TMAPS['5099_0'] = TensorMap('5099_3mm-weak-meridian-right', group='continuous', channel_map={'5099_3mm-weak-meridian-right_0_0': 0, '5099_3mm-weak-meridian-right_0_1': 1, '5099_3mm-weak-meridian-right_0_2': 2, '5099_3mm-weak-meridian-right_0_3': 3, '5099_3mm-weak-meridian-right_0_4': 4, '5099_3mm-weak-meridian-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 43.0924109932876, 'std': 1.52464192184014},
+                annotation_units=7)
+TMAPS['6194_0'] = TensorMap('6194_Age-stopped-smoking-cigarettes-current-cigarpipe-or-previous-cigarette-smoker', group='continuous', channel_map={'6194_Age-stopped-smoking-cigarettes-current-cigarpipe-or-previous-cigarette-smoker_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 37.70771950500885, 'std': 11.806893295410129},
+                annotation_units=2)
+TMAPS['4269_0'] = TensorMap('4269_Number-of-triplets-attempted-left', group='continuous', channel_map={'4269_Number-of-triplets-attempted-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 14.663892064399363, 'std': 2.0772264814190566},
+                annotation_units=2)
+TMAPS['90159_0'] = TensorMap('90159_Error-tolerance-before-calibration', group='continuous', channel_map={'90159_Error-tolerance-before-calibration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 79.42395264959742, 'std': 38.2372423263187},
+                annotation_units=2)
+TMAPS['90089_0'] = TensorMap('90089_Nowear-time-bias-adjusted-acceleration-median', group='continuous', channel_map={'90089_Nowear-time-bias-adjusted-acceleration-median_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.529378176382659, 'std': 5.919172559006304},
+                annotation_units=2)
+TMAPS['30630_0'] = TensorMap('30630_Apolipoprotein-A', group='continuous', channel_map={'30630_Apolipoprotein-A_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.5376508308150054, 'std': 0.2706560785267057},
+                annotation_units=2)
+TMAPS['30720_0'] = TensorMap('30720_Cystatin-C', group='continuous', channel_map={'30720_Cystatin-C_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.907520377610821, 'std': 0.17630752583057654},
+                annotation_units=2)
+TMAPS['4241_0'] = TensorMap('4241_Signaltonoiseratio-SNR-of-triplet-right', group='continuous', channel_map={'4241_Signaltonoiseratio-SNR-of-triplet-right_0_0': 0, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_1': 1, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_2': 2, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_3': 3, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_4': 4, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_5': 5, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_6': 6, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_7': 7, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_8': 8, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_9': 9, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_10': 10, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_11': 11, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_12': 12, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_13': 13, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_14': 14, '4241_Signaltonoiseratio-SNR-of-triplet-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': -5.499250563549439, 'std': 3.5660704758105073},
+                annotation_units=17)
+TMAPS['90188_0'] = TensorMap('90188_Sample-rate-average', group='continuous', channel_map={'90188_Sample-rate-average_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 99.98452866579875, 'std': 74.59443675687423},
+                annotation_units=2)
+TMAPS['77_0'] = TensorMap('77_Heel-bone-ultrasound-Tscore-manual-entry', group='continuous', channel_map={'77_Heel-bone-ultrasound-Tscore-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -0.23921666393691945, 'std': 1.1765476827580195},
+                annotation_units=2)
+TMAPS['135_0'] = TensorMap('135_Number-of-selfreported-noncancer-illnesses', group='continuous', channel_map={'135_Number-of-selfreported-noncancer-illnesses_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.8634651187823164, 'std': 1.8686871352975107},
+                annotation_units=2)
+TMAPS['30080_0'] = TensorMap('30080_Platelet-count', group='continuous', channel_map={'30080_Platelet-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 252.98900892310073, 'std': 60.048374290196065},
+                annotation_units=2)
+TMAPS['129_0'] = TensorMap('129_Place-of-birth-in-UK--north-coordinate', group='continuous', channel_map={'129_Place-of-birth-in-UK--north-coordinate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 354194.8660861953, 'std': 167068.55848801878},
+                annotation_units=2)
+TMAPS['5134_0'] = TensorMap('5134_6mm-strong-meridian-left', group='continuous', channel_map={'5134_6mm-strong-meridian-left_0_0': 0, '5134_6mm-strong-meridian-left_0_1': 1, '5134_6mm-strong-meridian-left_0_2': 2, '5134_6mm-strong-meridian-left_0_3': 3, '5134_6mm-strong-meridian-left_0_4': 4, '5134_6mm-strong-meridian-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 43.49129313375953, 'std': 1.5778281893149044},
+                annotation_units=7)
+TMAPS['5209_0'] = TensorMap('5209_Number-of-rounds-to-result-left', group='continuous', channel_map={'5209_Number-of-rounds-to-result-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.847158178775149, 'std': 1.3276310294688691},
+                annotation_units=2)
+TMAPS['23120_0'] = TensorMap('23120_Arm-fat-mass-right', group='continuous', channel_map={'23120_Arm-fat-mass-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.2398084345670985, 'std': 0.6384610930020306},
+                annotation_units=2)
+TMAPS['4142_0'] = TensorMap('4142_Speed-of-sound-through-heel-manual-entry-left', group='continuous', channel_map={'4142_Speed-of-sound-through-heel-manual-entry-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1551.8999185667753, 'std': 69.66185558734954},
+                annotation_units=2)
+TMAPS['22641_0'] = TensorMap('22641_Period-spent-working-mix-of-day-and-night-shifts', group='continuous', channel_map={'22641_Period-spent-working-mix-of-day-and-night-shifts_0_0': 0, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_1': 1, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_2': 2, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_3': 3, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_4': 4, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_5': 5, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_6': 6, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_7': 7, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_8': 8, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_9': 9, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_10': 10, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_11': 11, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_12': 12, '22641_Period-spent-working-mix-of-day-and-night-shifts_0_13': 13, 'not-missing': 14},
+                normalization={'mean': 5.502556967737083, 'std': 6.807737162854636},
+                annotation_units=15)
+TMAPS['90104_0'] = TensorMap('90104_Fraction-acceleration-<=-13-milligravities', group='continuous', channel_map={'90104_Fraction-acceleration-<=-13-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6455888037031675, 'std': 0.08972766566548142},
+                annotation_units=2)
+TMAPS['22645_0'] = TensorMap('22645_Rest-days-during-mixed-shift-periods', group='continuous', channel_map={'22645_Rest-days-during-mixed-shift-periods_0_0': 0, '22645_Rest-days-during-mixed-shift-periods_0_1': 1, '22645_Rest-days-during-mixed-shift-periods_0_2': 2, '22645_Rest-days-during-mixed-shift-periods_0_3': 3, '22645_Rest-days-during-mixed-shift-periods_0_4': 4, '22645_Rest-days-during-mixed-shift-periods_0_5': 5, '22645_Rest-days-during-mixed-shift-periods_0_6': 6, '22645_Rest-days-during-mixed-shift-periods_0_7': 7, '22645_Rest-days-during-mixed-shift-periods_0_8': 8, '22645_Rest-days-during-mixed-shift-periods_0_9': 9, '22645_Rest-days-during-mixed-shift-periods_0_10': 10, '22645_Rest-days-during-mixed-shift-periods_0_11': 11, '22645_Rest-days-during-mixed-shift-periods_0_12': 12, '22645_Rest-days-during-mixed-shift-periods_0_13': 13, '22645_Rest-days-during-mixed-shift-periods_0_14': 14, '22645_Rest-days-during-mixed-shift-periods_0_15': 15, '22645_Rest-days-during-mixed-shift-periods_0_16': 16, '22645_Rest-days-during-mixed-shift-periods_0_17': 17, '22645_Rest-days-during-mixed-shift-periods_0_18': 18, '22645_Rest-days-during-mixed-shift-periods_0_19': 19, 'not-missing': 20},
+                normalization={'mean': 2.8234570558750285, 'std': 2.5939951270035366},
+                annotation_units=21)
+TMAPS['5112_0'] = TensorMap('5112_3mm-cylindrical-power-angle-left', group='continuous', channel_map={'5112_3mm-cylindrical-power-angle-left_0_0': 0, '5112_3mm-cylindrical-power-angle-left_0_1': 1, '5112_3mm-cylindrical-power-angle-left_0_2': 2, '5112_3mm-cylindrical-power-angle-left_0_3': 3, '5112_3mm-cylindrical-power-angle-left_0_4': 4, '5112_3mm-cylindrical-power-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 86.27697359020405, 'std': 67.98828464032387},
+                annotation_units=7)
+TMAPS['22603_0'] = TensorMap('22603_Year-job-ended', group='continuous', channel_map={'22603_Year-job-ended_0_0': 0, '22603_Year-job-ended_0_1': 1, '22603_Year-job-ended_0_2': 2, '22603_Year-job-ended_0_3': 3, '22603_Year-job-ended_0_4': 4, '22603_Year-job-ended_0_5': 5, '22603_Year-job-ended_0_6': 6, '22603_Year-job-ended_0_7': 7, '22603_Year-job-ended_0_8': 8, '22603_Year-job-ended_0_9': 9, '22603_Year-job-ended_0_10': 10, '22603_Year-job-ended_0_11': 11, '22603_Year-job-ended_0_12': 12, '22603_Year-job-ended_0_13': 13, '22603_Year-job-ended_0_14': 14, '22603_Year-job-ended_0_15': 15, '22603_Year-job-ended_0_16': 16, '22603_Year-job-ended_0_17': 17, '22603_Year-job-ended_0_18': 18, '22603_Year-job-ended_0_19': 19, '22603_Year-job-ended_0_20': 20, '22603_Year-job-ended_0_21': 21, '22603_Year-job-ended_0_22': 22, '22603_Year-job-ended_0_23': 23, '22603_Year-job-ended_0_24': 24, '22603_Year-job-ended_0_25': 25, '22603_Year-job-ended_0_26': 26, '22603_Year-job-ended_0_27': 27, '22603_Year-job-ended_0_28': 28, '22603_Year-job-ended_0_29': 29, '22603_Year-job-ended_0_30': 30, '22603_Year-job-ended_0_31': 31, '22603_Year-job-ended_0_32': 32, '22603_Year-job-ended_0_33': 33, '22603_Year-job-ended_0_34': 34, '22603_Year-job-ended_0_35': 35, '22603_Year-job-ended_0_36': 36, '22603_Year-job-ended_0_37': 37, '22603_Year-job-ended_0_38': 38, '22603_Year-job-ended_0_39': 39, 'not-missing': 40},
+                normalization={'mean': 1989.640504274581, 'std': 14.927501935765907},
+                annotation_units=41)
+TMAPS['20155_0'] = TensorMap('20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2', group='continuous', channel_map={'20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_0': 0, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_1': 1, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_2': 2, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_3': 3, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_4': 4, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_5': 5, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_6': 6, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_7': 7, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_8': 8, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_9': 9, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_10': 10, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_11': 11, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_12': 12, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_13': 13, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_14': 14, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_15': 15, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_16': 16, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_17': 17, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_18': 18, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_19': 19, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_20': 20, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_21': 21, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_22': 22, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_23': 23, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_24': 24, '20155_Interval-between-previous-point-and-current-one-in-alphanumeric-path-trail-#2_0_25': 25, 'not-missing': 26},
+                normalization={'mean': 2732.5354530531313, 'std': 3144.96750649209},
+                annotation_units=27)
+TMAPS['90100_0'] = TensorMap('90100_Fraction-acceleration-<=-9-milligravities', group='continuous', channel_map={'90100_Fraction-acceleration-<=-9-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6052221129273351, 'std': 0.09409262987835801},
+                annotation_units=2)
+TMAPS['100013_0'] = TensorMap('100013_Vitamin-B12', group='continuous', channel_map={'100013_Vitamin-B12_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.3535030460655655, 'std': 5.466821683842562},
+                annotation_units=2)
+TMAPS['41097_0'] = TensorMap('41097_Episodes-containing-Waiting-time-for-hospital-admission-data', group='continuous', channel_map={'41097_Episodes-containing-Waiting-time-for-hospital-admission-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.617979766799027, 'std': 9.89681007615826},
+                annotation_units=2)
+TMAPS['30220_0'] = TensorMap('30220_Basophill-percentage', group='continuous', channel_map={'30220_Basophill-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5696815742996797, 'std': 0.6104582668162519},
+                annotation_units=2)
+TMAPS['2867_0'] = TensorMap('2867_Age-started-smoking-in-former-smokers', group='continuous', channel_map={'2867_Age-started-smoking-in-former-smokers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 17.282265436715704, 'std': 3.7022878879460355},
+                annotation_units=2)
+TMAPS['100018_0'] = TensorMap('100018_Retinol', group='continuous', channel_map={'100018_Retinol_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 314.2649757391184, 'std': 200.19802174665372},
+                annotation_units=2)
+TMAPS['90139_0'] = TensorMap('90139_Fraction-acceleration-<=-400-milligravities', group='continuous', channel_map={'90139_Fraction-acceleration-<=-400-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9969382130285932, 'std': 0.005691974016055795},
+                annotation_units=2)
+TMAPS['90039_0'] = TensorMap('90039_Average-acceleration-12:00--12:59', group='continuous', channel_map={'90039_Average-acceleration-12:00--12:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 46.32474468392883, 'std': 24.465856886866405},
+                annotation_units=2)
+TMAPS['87_0'] = TensorMap('87_Noncancer-illness-yearage-first-occurred', group='continuous', channel_map={'87_Noncancer-illness-yearage-first-occurred_0_0': 0, '87_Noncancer-illness-yearage-first-occurred_0_1': 1, '87_Noncancer-illness-yearage-first-occurred_0_2': 2, '87_Noncancer-illness-yearage-first-occurred_0_3': 3, '87_Noncancer-illness-yearage-first-occurred_0_4': 4, '87_Noncancer-illness-yearage-first-occurred_0_5': 5, '87_Noncancer-illness-yearage-first-occurred_0_6': 6, '87_Noncancer-illness-yearage-first-occurred_0_7': 7, '87_Noncancer-illness-yearage-first-occurred_0_8': 8, '87_Noncancer-illness-yearage-first-occurred_0_9': 9, '87_Noncancer-illness-yearage-first-occurred_0_10': 10, '87_Noncancer-illness-yearage-first-occurred_0_11': 11, '87_Noncancer-illness-yearage-first-occurred_0_12': 12, '87_Noncancer-illness-yearage-first-occurred_0_13': 13, '87_Noncancer-illness-yearage-first-occurred_0_14': 14, '87_Noncancer-illness-yearage-first-occurred_0_15': 15, '87_Noncancer-illness-yearage-first-occurred_0_16': 16, '87_Noncancer-illness-yearage-first-occurred_0_17': 17, '87_Noncancer-illness-yearage-first-occurred_0_18': 18, '87_Noncancer-illness-yearage-first-occurred_0_19': 19, '87_Noncancer-illness-yearage-first-occurred_0_20': 20, '87_Noncancer-illness-yearage-first-occurred_0_21': 21, '87_Noncancer-illness-yearage-first-occurred_0_22': 22, '87_Noncancer-illness-yearage-first-occurred_0_23': 23, '87_Noncancer-illness-yearage-first-occurred_0_24': 24, '87_Noncancer-illness-yearage-first-occurred_0_25': 25, '87_Noncancer-illness-yearage-first-occurred_0_26': 26, '87_Noncancer-illness-yearage-first-occurred_0_27': 27, '87_Noncancer-illness-yearage-first-occurred_0_28': 28, 'not-missing': 29},
+                normalization={'mean': 1008.9611756727271, 'std': 980.2192163749812},
+                annotation_units=30)
+TMAPS['90068_0'] = TensorMap('90068_Wear-duration-during-08:00--08:59', group='continuous', channel_map={'90068_Wear-duration-during-08:00--08:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.2368768985968455, 'std': 1.557328278352237},
+                annotation_units=2)
+TMAPS['21002_0'] = TensorMap('21002_Weight', group='continuous', channel_map={'21002_Weight_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 78.05452345316372, 'std': 15.945823011839186},
+                annotation_units=2)
+TMAPS['5085_0'] = TensorMap('5085_Spherical-power-left', group='continuous', channel_map={'5085_Spherical-power-left_0_0': 0, '5085_Spherical-power-left_0_1': 1, '5085_Spherical-power-left_0_2': 2, '5085_Spherical-power-left_0_3': 3, '5085_Spherical-power-left_0_4': 4, '5085_Spherical-power-left_0_5': 5, '5085_Spherical-power-left_0_6': 6, '5085_Spherical-power-left_0_7': 7, '5085_Spherical-power-left_0_8': 8, '5085_Spherical-power-left_0_9': 9, 'not-missing': 10},
+                normalization={'mean': -0.7414680505335892, 'std': 2.8397422506629497},
+                annotation_units=11)
+TMAPS['41094_0'] = TensorMap('41094_Episodes-containing-Administrative-and-legal-status-of-patient-data', group='continuous', channel_map={'41094_Episodes-containing-Administrative-and-legal-status-of-patient-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.2281050017832262, 'std': 3.632830811250619},
+                annotation_units=2)
+TMAPS['41112_0'] = TensorMap('41112_Episodes-containing-Treatment-speciality-of-consultant-data-polymorphic', group='continuous', channel_map={'41112_Episodes-containing-Treatment-speciality-of-consultant-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.783491721201893, 'std': 15.82206903332193},
+                annotation_units=2)
+TMAPS['90109_0'] = TensorMap('90109_Fraction-acceleration-<=-18-milligravities', group='continuous', channel_map={'90109_Fraction-acceleration-<=-18-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6822708713052703, 'std': 0.0848315599265804},
+                annotation_units=2)
+TMAPS['20248_0'] = TensorMap('20248_Total-errors-traversing-alphanumeric-path-trail-#2', group='continuous', channel_map={'20248_Total-errors-traversing-alphanumeric-path-trail-#2_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.2258328462887205, 'std': 5.642607994971586},
+                annotation_units=2)
+TMAPS['30051_0'] = TensorMap('30051_Mean-corpuscular-haemoglobin-freezethaw-cycles', group='continuous', channel_map={'30051_Mean-corpuscular-haemoglobin-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['3761_0'] = TensorMap('3761_Age-hay-fever-rhinitis-or-eczema-diagnosed', group='continuous', channel_map={'3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 25.206855225311607, 'std': 16.12707510076069},
+                annotation_units=2)
+TMAPS['23112_0'] = TensorMap('23112_Leg-fat-mass-right', group='continuous', channel_map={'23112_Leg-fat-mass-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.308648770510948, 'std': 1.8984373686864693},
+                annotation_units=2)
+TMAPS['90076_0'] = TensorMap('90076_Wear-duration-during-16:00--16:59', group='continuous', channel_map={'90076_Wear-duration-during-16:00--16:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.38103939437774, 'std': 1.534378754049309},
+                annotation_units=2)
+TMAPS['100004_0'] = TensorMap('100004_Fat', group='continuous', channel_map={'100004_Fat_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 76.75582300309541, 'std': 36.27309870587294},
+                annotation_units=2)
+TMAPS['22651_0'] = TensorMap('22651_Period-spent-working-night-shifts', group='continuous', channel_map={'22651_Period-spent-working-night-shifts_0_0': 0, '22651_Period-spent-working-night-shifts_0_1': 1, '22651_Period-spent-working-night-shifts_0_2': 2, '22651_Period-spent-working-night-shifts_0_3': 3, '22651_Period-spent-working-night-shifts_0_4': 4, '22651_Period-spent-working-night-shifts_0_5': 5, '22651_Period-spent-working-night-shifts_0_6': 6, '22651_Period-spent-working-night-shifts_0_7': 7, '22651_Period-spent-working-night-shifts_0_8': 8, '22651_Period-spent-working-night-shifts_0_9': 9, '22651_Period-spent-working-night-shifts_0_10': 10, '22651_Period-spent-working-night-shifts_0_11': 11, '22651_Period-spent-working-night-shifts_0_12': 12, '22651_Period-spent-working-night-shifts_0_13': 13, '22651_Period-spent-working-night-shifts_0_14': 14, '22651_Period-spent-working-night-shifts_0_15': 15, '22651_Period-spent-working-night-shifts_0_16': 16, '22651_Period-spent-working-night-shifts_0_17': 17, '22651_Period-spent-working-night-shifts_0_18': 18, '22651_Period-spent-working-night-shifts_0_19': 19, '22651_Period-spent-working-night-shifts_0_20': 20, '22651_Period-spent-working-night-shifts_0_21': 21, '22651_Period-spent-working-night-shifts_0_22': 22, '22651_Period-spent-working-night-shifts_0_23': 23, '22651_Period-spent-working-night-shifts_0_24': 24, '22651_Period-spent-working-night-shifts_0_25': 25, '22651_Period-spent-working-night-shifts_0_26': 26, '22651_Period-spent-working-night-shifts_0_27': 27, '22651_Period-spent-working-night-shifts_0_28': 28, '22651_Period-spent-working-night-shifts_0_29': 29, '22651_Period-spent-working-night-shifts_0_30': 30, '22651_Period-spent-working-night-shifts_0_31': 31, '22651_Period-spent-working-night-shifts_0_32': 32, 'not-missing': 33},
+                normalization={'mean': 5.139737991266376, 'std': 7.250671654528354},
+                annotation_units=34)
+TMAPS['90182_0'] = TensorMap('90182_Data-recording-errors', group='continuous', channel_map={'90182_Data-recording-errors_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 232.43163122619222, 'std': 1096.9020106007324},
+                annotation_units=2)
+TMAPS['4234_0'] = TensorMap('4234_Time-to-press-first-digit-left', group='continuous', channel_map={'4234_Time-to-press-first-digit-left_0_0': 0, '4234_Time-to-press-first-digit-left_0_1': 1, '4234_Time-to-press-first-digit-left_0_2': 2, '4234_Time-to-press-first-digit-left_0_3': 3, '4234_Time-to-press-first-digit-left_0_4': 4, '4234_Time-to-press-first-digit-left_0_5': 5, '4234_Time-to-press-first-digit-left_0_6': 6, '4234_Time-to-press-first-digit-left_0_7': 7, '4234_Time-to-press-first-digit-left_0_8': 8, '4234_Time-to-press-first-digit-left_0_9': 9, '4234_Time-to-press-first-digit-left_0_10': 10, '4234_Time-to-press-first-digit-left_0_11': 11, '4234_Time-to-press-first-digit-left_0_12': 12, '4234_Time-to-press-first-digit-left_0_13': 13, '4234_Time-to-press-first-digit-left_0_14': 14, '4234_Time-to-press-first-digit-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 25.861205980077266, 'std': 67.55919547209987},
+                annotation_units=17)
+TMAPS['90111_0'] = TensorMap('90111_Fraction-acceleration-<=-20-milligravities', group='continuous', channel_map={'90111_Fraction-acceleration-<=-20-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6953570085346449, 'std': 0.08294789744247395},
+                annotation_units=2)
+TMAPS['5992_0'] = TensorMap('5992_ECG-phase-duration', group='continuous', channel_map={'5992_ECG-phase-duration_0_0': 0, '5992_ECG-phase-duration_0_1': 1, '5992_ECG-phase-duration_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 128.69241195888284, 'std': 145.77693042814843},
+                annotation_units=4)
+TMAPS['4230_0'] = TensorMap('4230_Signaltonoiseratio-SNR-of-triplet-left', group='continuous', channel_map={'4230_Signaltonoiseratio-SNR-of-triplet-left_0_0': 0, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_1': 1, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_2': 2, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_3': 3, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_4': 4, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_5': 5, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_6': 6, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_7': 7, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_8': 8, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_9': 9, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_10': 10, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_11': 11, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_12': 12, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_13': 13, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_14': 14, '4230_Signaltonoiseratio-SNR-of-triplet-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': -5.54000397916215, 'std': 3.5632233749909186},
+                annotation_units=17)
+TMAPS['90187_0'] = TensorMap('90187_Total-data-readings', group='continuous', channel_map={'90187_Total-data-readings_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 54066561.19103139, 'std': 13123664.817067223},
+                annotation_units=2)
+TMAPS['4245_0'] = TensorMap('4245_Time-to-press-first-digit-right', group='continuous', channel_map={'4245_Time-to-press-first-digit-right_0_0': 0, '4245_Time-to-press-first-digit-right_0_1': 1, '4245_Time-to-press-first-digit-right_0_2': 2, '4245_Time-to-press-first-digit-right_0_3': 3, '4245_Time-to-press-first-digit-right_0_4': 4, '4245_Time-to-press-first-digit-right_0_5': 5, '4245_Time-to-press-first-digit-right_0_6': 6, '4245_Time-to-press-first-digit-right_0_7': 7, '4245_Time-to-press-first-digit-right_0_8': 8, '4245_Time-to-press-first-digit-right_0_9': 9, '4245_Time-to-press-first-digit-right_0_10': 10, '4245_Time-to-press-first-digit-right_0_11': 11, '4245_Time-to-press-first-digit-right_0_12': 12, '4245_Time-to-press-first-digit-right_0_13': 13, '4245_Time-to-press-first-digit-right_0_14': 14, '4245_Time-to-press-first-digit-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 25.944958341987178, 'std': 70.05160077672136},
+                annotation_units=17)
+TMAPS['90084_0'] = TensorMap('90084_Unique-hours-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days', group='continuous', channel_map={'90084_Unique-hours-of-wear-in-a-24-hour-cycle-scattered-over-multiple-days_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 23.517768455566802, 'std': 2.67774865073721},
+                annotation_units=2)
+TMAPS['3137_0'] = TensorMap('3137_Number-of-measurements-made', group='continuous', channel_map={'3137_Number-of-measurements-made_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.7354404880500045, 'std': 0.4424807506615588},
+                annotation_units=2)
+TMAPS['20147_0'] = TensorMap('20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1', group='continuous', channel_map={'20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_0': 0, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_1': 1, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_2': 2, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_3': 3, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_4': 4, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_5': 5, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_6': 6, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_7': 7, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_8': 8, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_9': 9, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_10': 10, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_11': 11, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_12': 12, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_13': 13, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_14': 14, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_15': 15, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_16': 16, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_17': 17, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_18': 18, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_19': 19, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_20': 20, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_21': 21, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_22': 22, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_23': 23, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_24': 24, '20147_Errors-before-selecting-correct-item-in-numeric-path-trail-#1_0_25': 25, 'not-missing': 26},
+                normalization={'mean': 1.9382255108275064, 'std': 3.35318213925366},
+                annotation_units=27)
+TMAPS['2794_0'] = TensorMap('2794_Age-started-oral-contraceptive-pill', group='continuous', channel_map={'2794_Age-started-oral-contraceptive-pill_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.535554780838968, 'std': 4.671937079622142},
+                annotation_units=2)
+TMAPS['90019_0'] = TensorMap('90019_Monday-average-acceleration', group='continuous', channel_map={'90019_Monday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 26.969843676165677, 'std': 17.154154150610005},
+                annotation_units=2)
+TMAPS['22033_0'] = TensorMap('22033_Summed-days-activity', group='continuous', channel_map={'22033_Summed-days-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 10.61687678114278, 'std': 4.8437819580014985},
+                annotation_units=2)
+TMAPS['1319_0'] = TensorMap('1319_Dried-fruit-intake', group='continuous', channel_map={'1319_Dried-fruit-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8517596660054847, 'std': 1.753491640401324},
+                annotation_units=2)
+TMAPS['4146_0'] = TensorMap('4146_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-right', group='continuous', channel_map={'4146_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 77.37633647798741, 'std': 20.019299455545013},
+                annotation_units=2)
+TMAPS['90124_0'] = TensorMap('90124_Fraction-acceleration-<=-85-milligravities', group='continuous', channel_map={'90124_Fraction-acceleration-<=-85-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9056765996431845, 'std': 0.04289798097062886},
+                annotation_units=2)
+TMAPS['30810_0'] = TensorMap('30810_Phosphate', group='continuous', channel_map={'30810_Phosphate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.1593289926713426, 'std': 0.16110980316809714},
+                annotation_units=2)
+TMAPS['22012_0'] = TensorMap('22012_Genetic-relatedness-factor', group='continuous', channel_map={'22012_Genetic-relatedness-factor_0_0': 0, '22012_Genetic-relatedness-factor_0_1': 1, '22012_Genetic-relatedness-factor_0_2': 2, '22012_Genetic-relatedness-factor_0_3': 3, '22012_Genetic-relatedness-factor_0_4': 4, 'not-missing': 5},
+                normalization={'mean': 0.12354977036998814, 'std': 0.08572920073419558},
+                annotation_units=6)
+TMAPS['30300_0'] = TensorMap('30300_High-light-scatter-reticulocyte-count', group='continuous', channel_map={'30300_High-light-scatter-reticulocyte-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.01812100587812155, 'std': 0.010238246080133753},
+                annotation_units=2)
+TMAPS['90126_0'] = TensorMap('90126_Fraction-acceleration-<=-95-milligravities', group='continuous', channel_map={'90126_Fraction-acceleration-<=-95-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9201158590095952, 'std': 0.03850529049978559},
+                annotation_units=2)
+TMAPS['5097_0'] = TensorMap('5097_6mm-weak-meridian-left', group='continuous', channel_map={'5097_6mm-weak-meridian-left_0_0': 0, '5097_6mm-weak-meridian-left_0_1': 1, '5097_6mm-weak-meridian-left_0_2': 2, '5097_6mm-weak-meridian-left_0_3': 3, '5097_6mm-weak-meridian-left_0_4': 4, '5097_6mm-weak-meridian-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 42.63592044522244, 'std': 1.5381520009454699},
+                annotation_units=7)
+TMAPS['5133_0'] = TensorMap('5133_6mm-strong-meridian-right', group='continuous', channel_map={'5133_6mm-strong-meridian-right_0_0': 0, '5133_6mm-strong-meridian-right_0_1': 1, '5133_6mm-strong-meridian-right_0_2': 2, '5133_6mm-strong-meridian-right_0_3': 3, '5133_6mm-strong-meridian-right_0_4': 4, '5133_6mm-strong-meridian-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 43.4330643630443, 'std': 1.5733846084011525},
+                annotation_units=7)
+TMAPS['5237_0'] = TensorMap('5237_3mm-index-of-best-keratometry-results-right', group='continuous', channel_map={'5237_3mm-index-of-best-keratometry-results-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.6441612313402285, 'std': 0.6504831779573323},
+                annotation_units=2)
+TMAPS['4119_0'] = TensorMap('4119_Ankle-spacing-width-right', group='continuous', channel_map={'4119_Ankle-spacing-width-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 44.03751425161515, 'std': 4.577033018195549},
+                annotation_units=2)
+TMAPS['5161_0'] = TensorMap('5161_6mm-regularity-index-right', group='continuous', channel_map={'5161_6mm-regularity-index-right_0_0': 0, '5161_6mm-regularity-index-right_0_1': 1, '5161_6mm-regularity-index-right_0_2': 2, '5161_6mm-regularity-index-right_0_3': 3, '5161_6mm-regularity-index-right_0_4': 4, '5161_6mm-regularity-index-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 2.584869035718716, 'std': 1.7574062763765324},
+                annotation_units=7)
+TMAPS['90154_0'] = TensorMap('90154_Fraction-acceleration-<=-1600-milligravities', group='continuous', channel_map={'90154_Fraction-acceleration-<=-1600-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.999956198466657, 'std': 0.0021084202911035798},
+                annotation_units=2)
+TMAPS['20009_0'] = TensorMap('20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed', group='continuous', channel_map={'20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_0': 0, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_1': 1, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_2': 2, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_3': 3, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_4': 4, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_5': 5, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_6': 6, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_7': 7, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_8': 8, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_9': 9, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_10': 10, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_11': 11, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_12': 12, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_13': 13, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_14': 14, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_15': 15, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_16': 16, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_17': 17, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_18': 18, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_19': 19, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_20': 20, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_21': 21, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_22': 22, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_23': 23, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_24': 24, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_25': 25, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_26': 26, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_27': 27, '20009_Interpolated-Age-of-participant-when-noncancer-illness-first-diagnosed_0_28': 28, 'not-missing': 29},
+                normalization={'mean': 42.303938047221905, 'std': 18.454297926631597},
+                annotation_units=30)
+TMAPS['4200_0'] = TensorMap('4200_Position-of-the-shoulder-on-the-pulse-waveform', group='continuous', channel_map={'4200_Position-of-the-shoulder-on-the-pulse-waveform_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.145409612377687, 'std': 5.6060655581958345},
+                annotation_units=2)
+TMAPS['90175_0'] = TensorMap('90175_Calibration--maximum-y-stationary-value', group='continuous', channel_map={'90175_Calibration--maximum-y-stationary-value_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9632147162351127, 'std': 0.1738954427122092},
+                annotation_units=2)
+TMAPS['22038_0'] = TensorMap('22038_MET-minutes-per-week-for-moderate-activity', group='continuous', channel_map={'22038_MET-minutes-per-week-for-moderate-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 933.9493836978008, 'std': 1226.501777985143},
+                annotation_units=2)
+TMAPS['30101_0'] = TensorMap('30101_Mean-platelet-thrombocyte-volume-freezethaw-cycles', group='continuous', channel_map={'30101_Mean-platelet-thrombocyte-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90069_0'] = TensorMap('90069_Wear-duration-during-09:00--09:59', group='continuous', channel_map={'90069_Wear-duration-during-09:00--09:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.2403675201311515, 'std': 1.5347165401031984},
+                annotation_units=2)
+TMAPS['100012_0'] = TensorMap('100012_Vitamin-B6', group='continuous', channel_map={'100012_Vitamin-B6_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.185187923162823, 'std': 0.87703469183665},
+                annotation_units=2)
+TMAPS['22004_0'] = TensorMap('22004_Heterozygosity-PCA-corrected', group='continuous', channel_map={'22004_Heterozygosity-PCA-corrected_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.19029567730724503, 'std': 0.0016697688708098896},
+                annotation_units=2)
+TMAPS['23115_0'] = TensorMap('23115_Leg-fat-percentage-left', group='continuous', channel_map={'23115_Leg-fat-percentage-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.951824770075724, 'std': 10.648351373024937},
+                annotation_units=2)
+TMAPS['5193_0'] = TensorMap('5193_Duration-at-which-refractometer-first-shown-left', group='continuous', channel_map={'5193_Duration-at-which-refractometer-first-shown-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 207.6626200445356, 'std': 81.13389201354755},
+                annotation_units=2)
+TMAPS['23110_0'] = TensorMap('23110_Impedance-of-arm-left', group='continuous', channel_map={'23110_Impedance-of-arm-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 332.26580591961635, 'std': 56.83465434478377},
+                annotation_units=2)
+TMAPS['90130_0'] = TensorMap('90130_Fraction-acceleration-<=-175-milligravities', group='continuous', channel_map={'90130_Fraction-acceleration-<=-175-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9767494768310911, 'std': 0.016886568885961222},
+                annotation_units=2)
+TMAPS['1279_0'] = TensorMap('1279_Exposure-to-tobacco-smoke-outside-home', group='continuous', channel_map={'1279_Exposure-to-tobacco-smoke-outside-home_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5148142702661685, 'std': 2.5522457001793115},
+                annotation_units=2)
+TMAPS['30730_0'] = TensorMap('30730_Gamma-glutamyltransferase', group='continuous', channel_map={'30730_Gamma-glutamyltransferase_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 37.38983782447888, 'std': 42.08532805492437},
+                annotation_units=2)
+TMAPS['90151_0'] = TensorMap('90151_Fraction-acceleration-<=-1300-milligravities', group='continuous', channel_map={'90151_Fraction-acceleration-<=-1300-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9998890013983315, 'std': 0.0027579289448554723},
+                annotation_units=2)
+TMAPS['22631_0'] = TensorMap('22631_Period-spent-working-day-shifts', group='continuous', channel_map={'22631_Period-spent-working-day-shifts_0_0': 0, '22631_Period-spent-working-day-shifts_0_1': 1, '22631_Period-spent-working-day-shifts_0_2': 2, '22631_Period-spent-working-day-shifts_0_3': 3, '22631_Period-spent-working-day-shifts_0_4': 4, '22631_Period-spent-working-day-shifts_0_5': 5, '22631_Period-spent-working-day-shifts_0_6': 6, '22631_Period-spent-working-day-shifts_0_7': 7, '22631_Period-spent-working-day-shifts_0_8': 8, '22631_Period-spent-working-day-shifts_0_9': 9, '22631_Period-spent-working-day-shifts_0_10': 10, '22631_Period-spent-working-day-shifts_0_11': 11, '22631_Period-spent-working-day-shifts_0_12': 12, '22631_Period-spent-working-day-shifts_0_13': 13, '22631_Period-spent-working-day-shifts_0_14': 14, 'not-missing': 15},
+                normalization={'mean': -279.3364485981308, 'std': 455.13599545405265},
+                annotation_units=16)
+TMAPS['1269_0'] = TensorMap('1269_Exposure-to-tobacco-smoke-at-home', group='continuous', channel_map={'1269_Exposure-to-tobacco-smoke-at-home_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.540621752243099, 'std': 4.5161248541653185},
+                annotation_units=2)
+TMAPS['1438_0'] = TensorMap('1438_Bread-intake', group='continuous', channel_map={'1438_Bread-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 12.26848326968206, 'std': 8.616980216186523},
+                annotation_units=2)
+TMAPS['20081_0'] = TensorMap('20081_Hourofday-questionnaire-completed', group='continuous', channel_map={'20081_Hourofday-questionnaire-completed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 14.106683259326312, 'std': 2.77766114427824},
+                annotation_units=2)
+TMAPS['30151_0'] = TensorMap('30151_Eosinophill-count-freezethaw-cycles', group='continuous', channel_map={'30151_Eosinophill-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['1845_0'] = TensorMap('1845_Mothers-age', group='continuous', channel_map={'1845_Mothers-age_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 78.2673949469229, 'std': 8.147467930745504},
+                annotation_units=2)
+TMAPS['90108_0'] = TensorMap('90108_Fraction-acceleration-<=-17-milligravities', group='continuous', channel_map={'90108_Fraction-acceleration-<=-17-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6754435797290134, 'std': 0.08572298347738518},
+                annotation_units=2)
+TMAPS['894_0'] = TensorMap('894_Duration-of-moderate-activity', group='continuous', channel_map={'894_Duration-of-moderate-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 66.2859868738906, 'std': 77.28561471201621},
+                annotation_units=2)
+TMAPS['5984_0'] = TensorMap('5984_ECG-load', group='continuous', channel_map={'5984_ECG-load_0_0': 0, '5984_ECG-load_0_1': 1, '5984_ECG-load_0_2': 2, '5984_ECG-load_0_3': 3, '5984_ECG-load_0_4': 4, '5984_ECG-load_0_5': 5, '5984_ECG-load_0_6': 6, '5984_ECG-load_0_7': 7, '5984_ECG-load_0_8': 8, '5984_ECG-load_0_9': 9, '5984_ECG-load_0_10': 10, '5984_ECG-load_0_11': 11, '5984_ECG-load_0_12': 12, '5984_ECG-load_0_13': 13, '5984_ECG-load_0_14': 14, '5984_ECG-load_0_15': 15, '5984_ECG-load_0_16': 16, '5984_ECG-load_0_17': 17, '5984_ECG-load_0_18': 18, '5984_ECG-load_0_19': 19, '5984_ECG-load_0_20': 20, '5984_ECG-load_0_21': 21, '5984_ECG-load_0_22': 22, '5984_ECG-load_0_23': 23, '5984_ECG-load_0_24': 24, '5984_ECG-load_0_25': 25, '5984_ECG-load_0_26': 26, '5984_ECG-load_0_27': 27, '5984_ECG-load_0_28': 28, '5984_ECG-load_0_29': 29, '5984_ECG-load_0_30': 30, '5984_ECG-load_0_31': 31, '5984_ECG-load_0_32': 32, '5984_ECG-load_0_33': 33, '5984_ECG-load_0_34': 34, '5984_ECG-load_0_35': 35, '5984_ECG-load_0_36': 36, '5984_ECG-load_0_37': 37, '5984_ECG-load_0_38': 38, '5984_ECG-load_0_39': 39, '5984_ECG-load_0_40': 40, '5984_ECG-load_0_41': 41, '5984_ECG-load_0_42': 42, '5984_ECG-load_0_43': 43, '5984_ECG-load_0_44': 44, '5984_ECG-load_0_45': 45, '5984_ECG-load_0_46': 46, '5984_ECG-load_0_47': 47, '5984_ECG-load_0_48': 48, '5984_ECG-load_0_49': 49, '5984_ECG-load_0_50': 50, '5984_ECG-load_0_51': 51, '5984_ECG-load_0_52': 52, '5984_ECG-load_0_53': 53, '5984_ECG-load_0_54': 54, '5984_ECG-load_0_55': 55, '5984_ECG-load_0_56': 56, '5984_ECG-load_0_57': 57, '5984_ECG-load_0_58': 58, '5984_ECG-load_0_59': 59, '5984_ECG-load_0_60': 60, '5984_ECG-load_0_61': 61, '5984_ECG-load_0_62': 62, '5984_ECG-load_0_63': 63, '5984_ECG-load_0_64': 64, '5984_ECG-load_0_65': 65, '5984_ECG-load_0_66': 66, '5984_ECG-load_0_67': 67, '5984_ECG-load_0_68': 68, '5984_ECG-load_0_69': 69, '5984_ECG-load_0_70': 70, '5984_ECG-load_0_71': 71, '5984_ECG-load_0_72': 72, '5984_ECG-load_0_73': 73, '5984_ECG-load_0_74': 74, '5984_ECG-load_0_75': 75, '5984_ECG-load_0_76': 76, '5984_ECG-load_0_77': 77, '5984_ECG-load_0_78': 78, '5984_ECG-load_0_79': 79, '5984_ECG-load_0_80': 80, '5984_ECG-load_0_81': 81, '5984_ECG-load_0_82': 82, '5984_ECG-load_0_83': 83, '5984_ECG-load_0_84': 84, '5984_ECG-load_0_85': 85, '5984_ECG-load_0_86': 86, '5984_ECG-load_0_87': 87, '5984_ECG-load_0_88': 88, '5984_ECG-load_0_89': 89, '5984_ECG-load_0_90': 90, '5984_ECG-load_0_91': 91, '5984_ECG-load_0_92': 92, '5984_ECG-load_0_93': 93, '5984_ECG-load_0_94': 94, '5984_ECG-load_0_95': 95, '5984_ECG-load_0_96': 96, '5984_ECG-load_0_97': 97, '5984_ECG-load_0_98': 98, '5984_ECG-load_0_99': 99, '5984_ECG-load_0_100': 100, '5984_ECG-load_0_101': 101, '5984_ECG-load_0_102': 102, '5984_ECG-load_0_103': 103, '5984_ECG-load_0_104': 104, '5984_ECG-load_0_105': 105, '5984_ECG-load_0_106': 106, '5984_ECG-load_0_107': 107, '5984_ECG-load_0_108': 108, '5984_ECG-load_0_109': 109, '5984_ECG-load_0_110': 110, '5984_ECG-load_0_111': 111, '5984_ECG-load_0_112': 112, '5984_ECG-load_0_113': 113, 'not-missing': 114},
+                normalization={'mean': 48.35043533128001, 'std': 28.92508532378399},
+                annotation_units=115)
+TMAPS['41091_0'] = TensorMap('41091_Episodes-containing-Duration-of-spell-data', group='continuous', channel_map={'41091_Episodes-containing-Duration-of-spell-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.284067998713454, 'std': 15.468551649881967},
+                annotation_units=2)
+TMAPS['4462_0'] = TensorMap('4462_Average-monthly-intake-of-other-alcoholic-drinks', group='continuous', channel_map={'4462_Average-monthly-intake-of-other-alcoholic-drinks_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.1094621956639834, 'std': 0.6432363263177207},
+                annotation_units=2)
+TMAPS['4122_0'] = TensorMap('4122_Speed-of-sound-through-heel-right', group='continuous', channel_map={'4122_Speed-of-sound-through-heel-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1555.8457418694868, 'std': 37.17015218498807},
+                annotation_units=2)
+TMAPS['90179_0'] = TensorMap('90179_Device-ID', group='continuous', channel_map={'90179_Device-ID_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 7122.602738801291, 'std': 5264.016557806374},
+                annotation_units=2)
+TMAPS['90144_0'] = TensorMap('90144_Fraction-acceleration-<=-600-milligravities', group='continuous', channel_map={'90144_Fraction-acceleration-<=-600-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9988182361733934, 'std': 0.004660288361213306},
+                annotation_units=2)
+TMAPS['3148_0'] = TensorMap('3148_Heel-bone-mineral-density-BMD', group='continuous', channel_map={'3148_Heel-bone-mineral-density-BMD_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5435519713261644, 'std': 0.13892501345714736},
+                annotation_units=2)
+TMAPS['90044_0'] = TensorMap('90044_Average-acceleration-17:00--17:59', group='continuous', channel_map={'90044_Average-acceleration-17:00--17:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 39.29919996142533, 'std': 24.07987078886049},
+                annotation_units=2)
+TMAPS['41083_0'] = TensorMap('41083_Episodes-containing-Episode-start-date-data', group='continuous', channel_map={'41083_Episodes-containing-Episode-start-date-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.704735980721438, 'std': 15.79404559278517},
+                annotation_units=2)
+TMAPS['100009_0'] = TensorMap('100009_Englyst-dietary-fibre', group='continuous', channel_map={'100009_Englyst-dietary-fibre_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.643010021626438, 'std': 7.874280707474585},
+                annotation_units=2)
+TMAPS['3581_0'] = TensorMap('3581_Age-at-menopause-last-menstrual-period', group='continuous', channel_map={'3581_Age-at-menopause-last-menstrual-period_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 49.66433426241489, 'std': 5.141535161191496},
+                annotation_units=2)
+TMAPS['90086_0'] = TensorMap('90086_Non-wear-episodes-over-1-hour-duration', group='continuous', channel_map={'90086_Non-wear-episodes-over-1-hour-duration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.519803269202952, 'std': 3.8033126137708773},
+                annotation_units=2)
+TMAPS['41082_0'] = TensorMap('41082_Episodes-containing-Dates-of-operations-data', group='continuous', channel_map={'41082_Episodes-containing-Dates-of-operations-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 7.705393686886518, 'std': 12.844337680824584},
+                annotation_units=2)
+TMAPS['5110_0'] = TensorMap('5110_6mm-asymmetry-angle-left', group='continuous', channel_map={'5110_6mm-asymmetry-angle-left_0_0': 0, '5110_6mm-asymmetry-angle-left_0_1': 1, '5110_6mm-asymmetry-angle-left_0_2': 2, '5110_6mm-asymmetry-angle-left_0_3': 3, '5110_6mm-asymmetry-angle-left_0_4': 4, '5110_6mm-asymmetry-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 154.43447613559982, 'std': 64.7641091705269},
+                annotation_units=7)
+TMAPS['5101_0'] = TensorMap('5101_6mm-weak-meridian-angle-right', group='continuous', channel_map={'5101_6mm-weak-meridian-angle-right_0_0': 0, '5101_6mm-weak-meridian-angle-right_0_1': 1, '5101_6mm-weak-meridian-angle-right_0_2': 2, '5101_6mm-weak-meridian-angle-right_0_3': 3, '5101_6mm-weak-meridian-angle-right_0_4': 4, '5101_6mm-weak-meridian-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 83.45198814750808, 'std': 62.0498737775849},
+                annotation_units=7)
+TMAPS['90045_0'] = TensorMap('90045_Average-acceleration-18:00--18:59', group='continuous', channel_map={'90045_Average-acceleration-18:00--18:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 37.706373884951056, 'std': 24.526134967495597},
+                annotation_units=2)
+TMAPS['1883_0'] = TensorMap('1883_Number-of-full-sisters', group='continuous', channel_map={'1883_Number-of-full-sisters_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.0770222705227819, 'std': 1.2215502368418467},
+                annotation_units=2)
+TMAPS['30260_0'] = TensorMap('30260_Mean-reticulocyte-volume', group='continuous', channel_map={'30260_Mean-reticulocyte-volume_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 105.91970732766238, 'std': 7.834162209093671},
+                annotation_units=2)
+TMAPS['30530_0'] = TensorMap('30530_Sodium-in-urine', group='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 77.45323967267045, 'std': 44.441236848463774},
+                annotation_units=2)
+TMAPS['20159_0'] = TensorMap('20159_Number-of-symbol-digit-matches-made-correctly', group='continuous', channel_map={'20159_Number-of-symbol-digit-matches-made-correctly_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 19.67652495378928, 'std': 5.237203203595655},
+                annotation_units=2)
+TMAPS['90050_0'] = TensorMap('90050_Average-acceleration-23:00--23:59', group='continuous', channel_map={'90050_Average-acceleration-23:00--23:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 13.353390616712476, 'std': 13.59193662426638},
+                annotation_units=2)
+TMAPS['20240_0'] = TensorMap('20240_Maximum-digits-remembered-correctly', group='continuous', channel_map={'20240_Maximum-digits-remembered-correctly_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.924194681023463, 'std': 1.4852872307187126},
+                annotation_units=2)
+TMAPS['90102_0'] = TensorMap('90102_Fraction-acceleration-<=-11-milligravities', group='continuous', channel_map={'90102_Fraction-acceleration-<=-11-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6277743574907183, 'std': 0.09177480667842473},
+                annotation_units=2)
+TMAPS['30290_0'] = TensorMap('30290_High-light-scatter-reticulocyte-percentage', group='continuous', channel_map={'30290_High-light-scatter-reticulocyte-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.4020622905045769, 'std': 0.3317177563401894},
+                annotation_units=2)
+TMAPS['100015_0'] = TensorMap('100015_Vitamin-C', group='continuous', channel_map={'100015_Vitamin-C_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 154.23202566893315, 'std': 129.22786442031074},
+                annotation_units=2)
+TMAPS['5160_0'] = TensorMap('5160_3mm-regularity-index-right', group='continuous', channel_map={'5160_3mm-regularity-index-right_0_0': 0, '5160_3mm-regularity-index-right_0_1': 1, '5160_3mm-regularity-index-right_0_2': 2, '5160_3mm-regularity-index-right_0_3': 3, '5160_3mm-regularity-index-right_0_4': 4, '5160_3mm-regularity-index-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 2.080791996502064, 'std': 1.493267604888403},
+                annotation_units=7)
+TMAPS['41109_0'] = TensorMap('41109_Episodes-containing-Patient-classification-on-admission-data-polymorphic', group='continuous', channel_map={'41109_Episodes-containing-Patient-classification-on-admission-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.70477516853823, 'std': 15.79394218033186},
+                annotation_units=2)
+TMAPS['90147_0'] = TensorMap('90147_Fraction-acceleration-<=-900-milligravities', group='continuous', channel_map={'90147_Fraction-acceleration-<=-900-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9995828632045908, 'std': 0.0037803780755459628},
+                annotation_units=2)
+TMAPS['5256_0'] = TensorMap('5256_Corneal-hysteresis-right', group='continuous', channel_map={'5256_Corneal-hysteresis-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 10.65828938110633, 'std': 2.3627045187390396},
+                annotation_units=2)
+TMAPS['90146_0'] = TensorMap('90146_Fraction-acceleration-<=-800-milligravities', group='continuous', channel_map={'90146_Fraction-acceleration-<=-800-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9994224022373307, 'std': 0.0040383398929516754},
+                annotation_units=2)
+TMAPS['4272_0'] = TensorMap('4272_Duration-of-hearing-test-left', group='continuous', channel_map={'4272_Duration-of-hearing-test-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1723.7206106506612, 'std': 601.5799891774069},
+                annotation_units=2)
+TMAPS['90030_0'] = TensorMap('90030_Average-acceleration-03:00--03:59', group='continuous', channel_map={'90030_Average-acceleration-03:00--03:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.5407789189449828, 'std': 10.602845467400769},
+                annotation_units=2)
+TMAPS['90043_0'] = TensorMap('90043_Average-acceleration-16:00--16:59', group='continuous', channel_map={'90043_Average-acceleration-16:00--16:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 39.977998167703376, 'std': 24.230618393642825},
+                annotation_units=2)
+TMAPS['4700_0'] = TensorMap('4700_Age-cataract-diagnosed', group='continuous', channel_map={'4700_Age-cataract-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 57.14578376949511, 'std': 11.461952927161274},
+                annotation_units=2)
+TMAPS['4440_0'] = TensorMap('4440_Average-monthly-spirits-intake', group='continuous', channel_map={'4440_Average-monthly-spirits-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.7451297087764637, 'std': 2.229589789958396},
+                annotation_units=2)
+TMAPS['2926_0'] = TensorMap('2926_Number-of-unsuccessful-stopsmoking-attempts', group='continuous', channel_map={'2926_Number-of-unsuccessful-stopsmoking-attempts_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.959226365237816, 'std': 7.502349093367745},
+                annotation_units=2)
+TMAPS['90123_0'] = TensorMap('90123_Fraction-acceleration-<=-80-milligravities', group='continuous', channel_map={'90123_Fraction-acceleration-<=-80-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8973672308211581, 'std': 0.04554887887696288},
+                annotation_units=2)
+TMAPS['4103_0'] = TensorMap('4103_Speed-of-sound-through-heel-left', group='continuous', channel_map={'4103_Speed-of-sound-through-heel-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1555.2454639231773, 'std': 37.30059670558074},
+                annotation_units=2)
+TMAPS['102_0'] = TensorMap('102_Pulse-rate-automated-reading', group='continuous', channel_map={'102_Pulse-rate-automated-reading_0_0': 0, '102_Pulse-rate-automated-reading_0_1': 1, 'not-missing': 2},
+                normalization={'mean': 69.33447813577959, 'std': 11.453019128287748},
+                annotation_units=3)
+TMAPS['30510_0'] = TensorMap('30510_Creatinine-enzymatic-in-urine', group='continuous', channel_map={'30510_Creatinine-enzymatic-in-urine_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8881.43846033142, 'std': 5821.112337047875},
+                annotation_units=2)
+TMAPS['6071_0'] = TensorMap('6071_Duration-at-which-OCT-screen-shown-right', group='continuous', channel_map={'6071_Duration-at-which-OCT-screen-shown-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 306.4951370132257, 'std': 106.94475390518122},
+                annotation_units=2)
+TMAPS['90052_0'] = TensorMap('90052_Non-wear-duration-overall', group='continuous', channel_map={'90052_Non-wear-duration-overall_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5593253290901201, 'std': 1.3194473341425854},
+                annotation_units=2)
+TMAPS['22013_0'] = TensorMap('22013_Genetic-relatedness-IBS0', group='continuous', channel_map={'22013_Genetic-relatedness-IBS0_0_0': 0, '22013_Genetic-relatedness-IBS0_0_1': 1, '22013_Genetic-relatedness-IBS0_0_2': 2, '22013_Genetic-relatedness-IBS0_0_3': 3, '22013_Genetic-relatedness-IBS0_0_4': 4, 'not-missing': 5},
+                normalization={'mean': 0.018069508230558855, 'std': 0.008310056717435406},
+                annotation_units=6)
+TMAPS['20130_0'] = TensorMap('20130_Number-of-rows-displayed-in-round', group='continuous', channel_map={'20130_Number-of-rows-displayed-in-round_0_0': 0, '20130_Number-of-rows-displayed-in-round_0_1': 1, '20130_Number-of-rows-displayed-in-round_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 2.589055172468517, 'std': 0.6006753180732116},
+                annotation_units=4)
+TMAPS['2764_0'] = TensorMap('2764_Age-at-last-live-birth', group='continuous', channel_map={'2764_Age-at-last-live-birth_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 30.151378429845053, 'std': 5.280985327850117},
+                annotation_units=2)
+TMAPS['30384_0'] = TensorMap('30384_Volume-of-serum-held-by-UKB', group='continuous', channel_map={'30384_Volume-of-serum-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2262.7059162928326, 'std': 585.7574239974638},
+                annotation_units=2)
+TMAPS['90168_0'] = TensorMap('90168_Calibration-coefficients--y-temp', group='continuous', channel_map={'90168_Calibration-coefficients--y-temp_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.001052336178214957, 'std': 0.0012639903963996546},
+                annotation_units=2)
+TMAPS['90056_0'] = TensorMap('90056_Wear-duration-during-Thursday', group='continuous', channel_map={'90056_Wear-duration-during-Thursday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.63471584936593, 'std': 5.995192626177938},
+                annotation_units=2)
+TMAPS['4247_0'] = TensorMap('4247_Time-to-press-next-right', group='continuous', channel_map={'4247_Time-to-press-next-right_0_0': 0, '4247_Time-to-press-next-right_0_1': 1, '4247_Time-to-press-next-right_0_2': 2, '4247_Time-to-press-next-right_0_3': 3, '4247_Time-to-press-next-right_0_4': 4, '4247_Time-to-press-next-right_0_5': 5, '4247_Time-to-press-next-right_0_6': 6, '4247_Time-to-press-next-right_0_7': 7, '4247_Time-to-press-next-right_0_8': 8, '4247_Time-to-press-next-right_0_9': 9, '4247_Time-to-press-next-right_0_10': 10, '4247_Time-to-press-next-right_0_11': 11, '4247_Time-to-press-next-right_0_12': 12, '4247_Time-to-press-next-right_0_13': 13, '4247_Time-to-press-next-right_0_14': 14, '4247_Time-to-press-next-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 56.087695817453415, 'std': 104.03369540215628},
+                annotation_units=17)
+TMAPS['4080_0'] = TensorMap('4080_Systolic-blood-pressure-automated-reading', group='continuous', channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0, '4080_Systolic-blood-pressure-automated-reading_0_1': 1, 'not-missing': 2},
+                normalization={'mean': 137.79964191990328, 'std': 19.292863700283757},
+                annotation_units=3)
+TMAPS['3882_0'] = TensorMap('3882_Age-at-bilateral-oophorectomy-both-ovaries-removed', group='continuous', channel_map={'3882_Age-at-bilateral-oophorectomy-both-ovaries-removed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 47.44636286442116, 'std': 7.773399828695975},
+                annotation_units=2)
+TMAPS['4143_0'] = TensorMap('4143_Heel-bone-mineral-density-BMD-Tscore-manual-entry-right', group='continuous', channel_map={'4143_Heel-bone-mineral-density-BMD-Tscore-manual-entry-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6763915094339621, 'std': 0.9576533150241747},
+                annotation_units=2)
+TMAPS['904_0'] = TensorMap('904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes', group='continuous', channel_map={'904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.8387379989893895, 'std': 1.959344068413503},
+                annotation_units=2)
+TMAPS['30301_0'] = TensorMap('30301_High-light-scatter-reticulocyte-count-freezethaw-cycles', group='continuous', channel_map={'30301_High-light-scatter-reticulocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['4233_0'] = TensorMap('4233_Mean-signaltonoise-ratio-SNR-left', group='continuous', channel_map={'4233_Mean-signaltonoise-ratio-SNR-left_0_0': 0, '4233_Mean-signaltonoise-ratio-SNR-left_0_1': 1, '4233_Mean-signaltonoise-ratio-SNR-left_0_2': 2, '4233_Mean-signaltonoise-ratio-SNR-left_0_3': 3, '4233_Mean-signaltonoise-ratio-SNR-left_0_4': 4, '4233_Mean-signaltonoise-ratio-SNR-left_0_5': 5, '4233_Mean-signaltonoise-ratio-SNR-left_0_6': 6, '4233_Mean-signaltonoise-ratio-SNR-left_0_7': 7, '4233_Mean-signaltonoise-ratio-SNR-left_0_8': 8, '4233_Mean-signaltonoise-ratio-SNR-left_0_9': 9, '4233_Mean-signaltonoise-ratio-SNR-left_0_10': 10, '4233_Mean-signaltonoise-ratio-SNR-left_0_11': 11, '4233_Mean-signaltonoise-ratio-SNR-left_0_12': 12, '4233_Mean-signaltonoise-ratio-SNR-left_0_13': 13, '4233_Mean-signaltonoise-ratio-SNR-left_0_14': 14, '4233_Mean-signaltonoise-ratio-SNR-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': -46872.08191735274, 'std': 49898.15601657565},
+                annotation_units=17)
+TMAPS['23126_0'] = TensorMap('23126_Arm-predicted-mass-left', group='continuous', channel_map={'23126_Arm-predicted-mass-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.7400753431894476, 'std': 0.7977945107270243},
+                annotation_units=2)
+TMAPS['90166_0'] = TensorMap('90166_Calibration-coefficients--z-slope', group='continuous', channel_map={'90166_Calibration-coefficients--z-slope_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.00844197888037, 'std': 0.008938183729208527},
+                annotation_units=2)
+TMAPS['30364_0'] = TensorMap('30364_Volume-of-EDTA2-red-cells-held-by-UKB', group='continuous', channel_map={'30364_Volume-of-EDTA2-red-cells-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 835.0722763644253, 'std': 106.87264953988613},
+                annotation_units=2)
+TMAPS['90048_0'] = TensorMap('90048_Average-acceleration-21:00--21:59', group='continuous', channel_map={'90048_Average-acceleration-21:00--21:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.54182101354936, 'std': 17.39582659438696},
+                annotation_units=2)
+TMAPS['30790_0'] = TensorMap('30790_Lipoprotein-A', group='continuous', channel_map={'30790_Lipoprotein-A_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 44.64786510991498, 'std': 49.21244270456523},
+                annotation_units=2)
+TMAPS['22643_0'] = TensorMap('22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods', group='continuous', channel_map={'22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_0': 0, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_1': 1, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_2': 2, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_3': 3, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_4': 4, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_5': 5, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_6': 6, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_7': 7, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_8': 8, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_9': 9, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_10': 10, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_11': 11, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_12': 12, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_13': 13, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_14': 14, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_15': 15, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_16': 16, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_17': 17, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_18': 18, '22643_Number-of-night-shifts-worked-monthly-during-mixed-shift-periods_0_19': 19, 'not-missing': 20},
+                normalization={'mean': 8.263142661684993, 'std': 5.986238901275712},
+                annotation_units=21)
+TMAPS['90121_0'] = TensorMap('90121_Fraction-acceleration-<=-70-milligravities', group='continuous', channel_map={'90121_Fraction-acceleration-<=-70-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8783745985823814, 'std': 0.05056520200794273},
+                annotation_units=2)
+TMAPS['4104_0'] = TensorMap('4104_Heel-quantitative-ultrasound-index-QUI-direct-entry-left', group='continuous', channel_map={'4104_Heel-quantitative-ultrasound-index-QUI-direct-entry-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 98.59814059883446, 'std': 23.20942289761857},
+                annotation_units=2)
+TMAPS['90184_0'] = TensorMap('90184_Maximum-readings-exceeding-8-gravities-before-calibration-in-a-5-second-epoch', group='continuous', channel_map={'90184_Maximum-readings-exceeding-8-gravities-before-calibration-in-a-5-second-epoch_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.38656637253483, 'std': 18.692966630166147},
+                annotation_units=2)
+TMAPS['4195_0'] = TensorMap('4195_Pulse-wave-reflection-index', group='continuous', channel_map={'4195_Pulse-wave-reflection-index_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 67.72835399598262, 'std': 32.180795506207915},
+                annotation_units=2)
+TMAPS['5262_0'] = TensorMap('5262_Intraocular-pressure-cornealcompensated-left', group='continuous', channel_map={'5262_Intraocular-pressure-cornealcompensated-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.006954506069714, 'std': 4.395220730341303},
+                annotation_units=2)
+TMAPS['90072_0'] = TensorMap('90072_Wear-duration-during-12:00--12:59', group='continuous', channel_map={'90072_Wear-duration-during-12:00--12:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.373508365880706, 'std': 1.528598180240083},
+                annotation_units=2)
+TMAPS['914_0'] = TensorMap('914_Duration-of-vigorous-activity', group='continuous', channel_map={'914_Duration-of-vigorous-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 44.85330275671924, 'std': 48.15790408772608},
+                annotation_units=2)
+TMAPS['90115_0'] = TensorMap('90115_Fraction-acceleration-<=-40-milligravities', group='continuous', channel_map={'90115_Fraction-acceleration-<=-40-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.7945620907469019, 'std': 0.0680653789280347},
+                annotation_units=2)
+TMAPS['90066_0'] = TensorMap('90066_Wear-duration-during-06:00--06:59', group='continuous', channel_map={'90066_Wear-duration-during-06:00--06:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.231038526447757, 'std': 1.6555288367090253},
+                annotation_units=2)
+TMAPS['90054_0'] = TensorMap('90054_Wear-duration-during-Tuesday', group='continuous', channel_map={'90054_Wear-duration-during-Tuesday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.970947297362454, 'std': 5.839235323860917},
+                annotation_units=2)
+TMAPS['5986_0'] = TensorMap('5986_ECG-phase-time', group='continuous', channel_map={'5986_ECG-phase-time_0_0': 0, '5986_ECG-phase-time_0_1': 1, '5986_ECG-phase-time_0_2': 2, '5986_ECG-phase-time_0_3': 3, '5986_ECG-phase-time_0_4': 4, '5986_ECG-phase-time_0_5': 5, '5986_ECG-phase-time_0_6': 6, '5986_ECG-phase-time_0_7': 7, '5986_ECG-phase-time_0_8': 8, '5986_ECG-phase-time_0_9': 9, '5986_ECG-phase-time_0_10': 10, '5986_ECG-phase-time_0_11': 11, '5986_ECG-phase-time_0_12': 12, '5986_ECG-phase-time_0_13': 13, '5986_ECG-phase-time_0_14': 14, '5986_ECG-phase-time_0_15': 15, '5986_ECG-phase-time_0_16': 16, '5986_ECG-phase-time_0_17': 17, '5986_ECG-phase-time_0_18': 18, '5986_ECG-phase-time_0_19': 19, '5986_ECG-phase-time_0_20': 20, '5986_ECG-phase-time_0_21': 21, '5986_ECG-phase-time_0_22': 22, '5986_ECG-phase-time_0_23': 23, '5986_ECG-phase-time_0_24': 24, '5986_ECG-phase-time_0_25': 25, '5986_ECG-phase-time_0_26': 26, '5986_ECG-phase-time_0_27': 27, '5986_ECG-phase-time_0_28': 28, '5986_ECG-phase-time_0_29': 29, '5986_ECG-phase-time_0_30': 30, '5986_ECG-phase-time_0_31': 31, '5986_ECG-phase-time_0_32': 32, '5986_ECG-phase-time_0_33': 33, '5986_ECG-phase-time_0_34': 34, '5986_ECG-phase-time_0_35': 35, '5986_ECG-phase-time_0_36': 36, '5986_ECG-phase-time_0_37': 37, '5986_ECG-phase-time_0_38': 38, '5986_ECG-phase-time_0_39': 39, '5986_ECG-phase-time_0_40': 40, '5986_ECG-phase-time_0_41': 41, '5986_ECG-phase-time_0_42': 42, '5986_ECG-phase-time_0_43': 43, '5986_ECG-phase-time_0_44': 44, '5986_ECG-phase-time_0_45': 45, '5986_ECG-phase-time_0_46': 46, '5986_ECG-phase-time_0_47': 47, '5986_ECG-phase-time_0_48': 48, '5986_ECG-phase-time_0_49': 49, '5986_ECG-phase-time_0_50': 50, '5986_ECG-phase-time_0_51': 51, '5986_ECG-phase-time_0_52': 52, '5986_ECG-phase-time_0_53': 53, '5986_ECG-phase-time_0_54': 54, '5986_ECG-phase-time_0_55': 55, '5986_ECG-phase-time_0_56': 56, '5986_ECG-phase-time_0_57': 57, '5986_ECG-phase-time_0_58': 58, '5986_ECG-phase-time_0_59': 59, '5986_ECG-phase-time_0_60': 60, '5986_ECG-phase-time_0_61': 61, '5986_ECG-phase-time_0_62': 62, '5986_ECG-phase-time_0_63': 63, '5986_ECG-phase-time_0_64': 64, '5986_ECG-phase-time_0_65': 65, '5986_ECG-phase-time_0_66': 66, '5986_ECG-phase-time_0_67': 67, '5986_ECG-phase-time_0_68': 68, '5986_ECG-phase-time_0_69': 69, '5986_ECG-phase-time_0_70': 70, '5986_ECG-phase-time_0_71': 71, '5986_ECG-phase-time_0_72': 72, '5986_ECG-phase-time_0_73': 73, '5986_ECG-phase-time_0_74': 74, '5986_ECG-phase-time_0_75': 75, '5986_ECG-phase-time_0_76': 76, '5986_ECG-phase-time_0_77': 77, '5986_ECG-phase-time_0_78': 78, '5986_ECG-phase-time_0_79': 79, '5986_ECG-phase-time_0_80': 80, '5986_ECG-phase-time_0_81': 81, '5986_ECG-phase-time_0_82': 82, '5986_ECG-phase-time_0_83': 83, '5986_ECG-phase-time_0_84': 84, '5986_ECG-phase-time_0_85': 85, '5986_ECG-phase-time_0_86': 86, '5986_ECG-phase-time_0_87': 87, '5986_ECG-phase-time_0_88': 88, '5986_ECG-phase-time_0_89': 89, '5986_ECG-phase-time_0_90': 90, '5986_ECG-phase-time_0_91': 91, '5986_ECG-phase-time_0_92': 92, '5986_ECG-phase-time_0_93': 93, '5986_ECG-phase-time_0_94': 94, '5986_ECG-phase-time_0_95': 95, '5986_ECG-phase-time_0_96': 96, '5986_ECG-phase-time_0_97': 97, '5986_ECG-phase-time_0_98': 98, '5986_ECG-phase-time_0_99': 99, '5986_ECG-phase-time_0_100': 100, '5986_ECG-phase-time_0_101': 101, '5986_ECG-phase-time_0_102': 102, '5986_ECG-phase-time_0_103': 103, '5986_ECG-phase-time_0_104': 104, '5986_ECG-phase-time_0_105': 105, '5986_ECG-phase-time_0_106': 106, '5986_ECG-phase-time_0_107': 107, '5986_ECG-phase-time_0_108': 108, '5986_ECG-phase-time_0_109': 109, '5986_ECG-phase-time_0_110': 110, '5986_ECG-phase-time_0_111': 111, '5986_ECG-phase-time_0_112': 112, '5986_ECG-phase-time_0_113': 113, 'not-missing': 114},
+                normalization={'mean': 179.18541495338118, 'std': 110.51368871605243},
+                annotation_units=115)
+TMAPS['20156_0'] = TensorMap('20156_Duration-to-complete-numeric-path-trail-#1', group='continuous', channel_map={'20156_Duration-to-complete-numeric-path-trail-#1_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 39.192476620979996, 'std': 14.998535290751317},
+                annotation_units=2)
+TMAPS['30040_0'] = TensorMap('30040_Mean-corpuscular-volume', group='continuous', channel_map={'30040_Mean-corpuscular-volume_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 91.12005200774571, 'std': 4.606194293568708},
+                annotation_units=2)
+TMAPS['100022_0'] = TensorMap('100022_Alcohol', group='continuous', channel_map={'100022_Alcohol_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 15.873859103566252, 'std': 24.128454819959085},
+                annotation_units=2)
+TMAPS['2217_0'] = TensorMap('2217_Age-started-wearing-glasses-or-contact-lenses', group='continuous', channel_map={'2217_Age-started-wearing-glasses-or-contact-lenses_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.791384009085778, 'std': 16.920436780693194},
+                annotation_units=2)
+TMAPS['90148_0'] = TensorMap('90148_Fraction-acceleration-<=-1000-milligravities', group='continuous', channel_map={'90148_Fraction-acceleration-<=-1000-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9996985389845218, 'std': 0.0035245233470590433},
+                annotation_units=2)
+TMAPS['100001_0'] = TensorMap('100001_Food-weight', group='continuous', channel_map={'100001_Food-weight_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3263.2873074476574, 'std': 939.1711925662723},
+                annotation_units=2)
+TMAPS['90033_0'] = TensorMap('90033_Average-acceleration-06:00--06:59', group='continuous', channel_map={'90033_Average-acceleration-06:00--06:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 12.450125560538117, 'std': 20.904985053301118},
+                annotation_units=2)
+TMAPS['1299_0'] = TensorMap('1299_Salad--raw-vegetable-intake', group='continuous', channel_map={'1299_Salad--raw-vegetable-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.1892879956659543, 'std': 2.1571195471204074},
+                annotation_units=2)
+TMAPS['30870_0'] = TensorMap('30870_Triglycerides', group='continuous', channel_map={'30870_Triglycerides_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.7475781220697324, 'std': 1.0276839335308203},
+                annotation_units=2)
+TMAPS['5077_0'] = TensorMap('5077_Number-of-letters-correct-in-round-left', group='continuous', channel_map={'5077_Number-of-letters-correct-in-round-left_0_0': 0, '5077_Number-of-letters-correct-in-round-left_0_1': 1, '5077_Number-of-letters-correct-in-round-left_0_2': 2, '5077_Number-of-letters-correct-in-round-left_0_3': 3, '5077_Number-of-letters-correct-in-round-left_0_4': 4, '5077_Number-of-letters-correct-in-round-left_0_5': 5, '5077_Number-of-letters-correct-in-round-left_0_6': 6, '5077_Number-of-letters-correct-in-round-left_0_7': 7, '5077_Number-of-letters-correct-in-round-left_0_8': 8, '5077_Number-of-letters-correct-in-round-left_0_9': 9, '5077_Number-of-letters-correct-in-round-left_0_10': 10, '5077_Number-of-letters-correct-in-round-left_0_11': 11, '5077_Number-of-letters-correct-in-round-left_0_12': 12, '5077_Number-of-letters-correct-in-round-left_0_13': 13, '5077_Number-of-letters-correct-in-round-left_0_14': 14, '5077_Number-of-letters-correct-in-round-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 3.5207587913323852, 'std': 1.7938301076973655},
+                annotation_units=17)
+TMAPS['2355_0'] = TensorMap('2355_Most-recent-bowel-cancer-screening', group='continuous', channel_map={'2355_Most-recent-bowel-cancer-screening_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.9302225716305417, 'std': 4.311275554808344},
+                annotation_units=2)
+TMAPS['4100_0'] = TensorMap('4100_Ankle-spacing-width-left', group='continuous', channel_map={'4100_Ankle-spacing-width-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 44.02652529853431, 'std': 4.628201953878173},
+                annotation_units=2)
+TMAPS['30091_0'] = TensorMap('30091_Platelet-crit-freezethaw-cycles', group='continuous', channel_map={'30091_Platelet-crit-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['20131_0'] = TensorMap('20131_Number-of-correct-matches-in-round', group='continuous', channel_map={'20131_Number-of-correct-matches-in-round_0_0': 0, '20131_Number-of-correct-matches-in-round_0_1': 1, '20131_Number-of-correct-matches-in-round_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 4.584250493957454, 'std': 1.8198698323431464},
+                annotation_units=4)
+TMAPS['41132_0'] = TensorMap('41132_Episodes-containing-Episode-type-data', group='continuous', channel_map={'41132_Episodes-containing-Episode-type-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.653981042524682, 'std': 16.137775500554618},
+                annotation_units=2)
+TMAPS['5254_0'] = TensorMap('5254_Intraocular-pressure-cornealcompensated-right', group='continuous', channel_map={'5254_Intraocular-pressure-cornealcompensated-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.079121757020324, 'std': 4.3476889312070846},
+                annotation_units=2)
+TMAPS['90171_0'] = TensorMap('90171_Calibration--number-of-static-points', group='continuous', channel_map={'90171_Calibration--number-of-static-points_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 25900.54484787115, 'std': 7809.333180639968},
+                annotation_units=2)
+TMAPS['3710_0'] = TensorMap('3710_Length-of-menstrual-cycle', group='continuous', channel_map={'3710_Length-of-menstrual-cycle_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.763829356373822, 'std': 14.242673038653916},
+                annotation_units=2)
+TMAPS['90024_0'] = TensorMap('90024_Saturday-average-acceleration', group='continuous', channel_map={'90024_Saturday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.19650735329572, 'std': 16.94809039173668},
+                annotation_units=2)
+TMAPS['22401_0'] = TensorMap('22401_Liver-inflammation-factor-LIF', group='continuous', channel_map={'22401_Liver-inflammation-factor-LIF_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8966719726027398, 'std': 0.3122547550918289},
+                annotation_units=2)
+TMAPS['136_0'] = TensorMap('136_Number-of-operations-selfreported', group='continuous', channel_map={'136_Number-of-operations-selfreported_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.7307813440600868, 'std': 1.5516336351355688},
+                annotation_units=2)
+TMAPS['90012_0'] = TensorMap('90012_Overall-acceleration-average', group='continuous', channel_map={'90012_Overall-acceleration-average_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.42347162351127, 'std': 13.995464309516004},
+                annotation_units=2)
+TMAPS['22655_0'] = TensorMap('22655_Rest-days-during-night-shift-periods', group='continuous', channel_map={'22655_Rest-days-during-night-shift-periods_0_0': 0, '22655_Rest-days-during-night-shift-periods_0_1': 1, '22655_Rest-days-during-night-shift-periods_0_2': 2, '22655_Rest-days-during-night-shift-periods_0_3': 3, '22655_Rest-days-during-night-shift-periods_0_4': 4, '22655_Rest-days-during-night-shift-periods_0_5': 5, '22655_Rest-days-during-night-shift-periods_0_6': 6, '22655_Rest-days-during-night-shift-periods_0_7': 7, '22655_Rest-days-during-night-shift-periods_0_8': 8, '22655_Rest-days-during-night-shift-periods_0_9': 9, '22655_Rest-days-during-night-shift-periods_0_10': 10, '22655_Rest-days-during-night-shift-periods_0_11': 11, '22655_Rest-days-during-night-shift-periods_0_12': 12, '22655_Rest-days-during-night-shift-periods_0_13': 13, '22655_Rest-days-during-night-shift-periods_0_14': 14, '22655_Rest-days-during-night-shift-periods_0_15': 15, '22655_Rest-days-during-night-shift-periods_0_16': 16, 'not-missing': 17},
+                normalization={'mean': 3.3404534998356876, 'std': 2.01533324901676},
+                annotation_units=18)
+TMAPS['5221_0'] = TensorMap('5221_Index-of-best-refractometry-result-right', group='continuous', channel_map={'5221_Index-of-best-refractometry-result-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.026948492407334, 'std': 0.8334014421417065},
+                annotation_units=2)
+TMAPS['5264_0'] = TensorMap('5264_Corneal-hysteresis-left', group='continuous', channel_map={'5264_Corneal-hysteresis-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 10.614780123091771, 'std': 2.4973445204977582},
+                annotation_units=2)
+TMAPS['30191_0'] = TensorMap('30191_Monocyte-percentage-freezethaw-cycles', group='continuous', channel_map={'30191_Monocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['2754_0'] = TensorMap('2754_Age-at-first-live-birth', group='continuous', channel_map={'2754_Age-at-first-live-birth_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 25.26727761578369, 'std': 4.747366029144674},
+                annotation_units=2)
+TMAPS['23129_0'] = TensorMap('23129_Trunk-fatfree-mass', group='continuous', channel_map={'23129_Trunk-fatfree-mass_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 29.585953690492165, 'std': 5.981176227799398},
+                annotation_units=2)
+TMAPS['22009_0'] = TensorMap('22009_Genetic-principal-components', group='continuous', channel_map={'22009_Genetic-principal-components_0_0': 0, '22009_Genetic-principal-components_0_1': 1, '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3, '22009_Genetic-principal-components_0_4': 4, '22009_Genetic-principal-components_0_5': 5, '22009_Genetic-principal-components_0_6': 6, '22009_Genetic-principal-components_0_7': 7, '22009_Genetic-principal-components_0_8': 8, '22009_Genetic-principal-components_0_9': 9, '22009_Genetic-principal-components_0_10': 10, '22009_Genetic-principal-components_0_11': 11, '22009_Genetic-principal-components_0_12': 12, '22009_Genetic-principal-components_0_13': 13, '22009_Genetic-principal-components_0_14': 14, '22009_Genetic-principal-components_0_15': 15, '22009_Genetic-principal-components_0_16': 16, '22009_Genetic-principal-components_0_17': 17, '22009_Genetic-principal-components_0_18': 18, '22009_Genetic-principal-components_0_19': 19, '22009_Genetic-principal-components_0_20': 20, '22009_Genetic-principal-components_0_21': 21, '22009_Genetic-principal-components_0_22': 22, '22009_Genetic-principal-components_0_23': 23, '22009_Genetic-principal-components_0_24': 24, '22009_Genetic-principal-components_0_25': 25, '22009_Genetic-principal-components_0_26': 26, '22009_Genetic-principal-components_0_27': 27, '22009_Genetic-principal-components_0_28': 28, '22009_Genetic-principal-components_0_29': 29, '22009_Genetic-principal-components_0_30': 30, '22009_Genetic-principal-components_0_31': 31, '22009_Genetic-principal-components_0_32': 32, '22009_Genetic-principal-components_0_33': 33, '22009_Genetic-principal-components_0_34': 34, '22009_Genetic-principal-components_0_35': 35, '22009_Genetic-principal-components_0_36': 36, '22009_Genetic-principal-components_0_37': 37, '22009_Genetic-principal-components_0_38': 38, '22009_Genetic-principal-components_0_39': 39, '22009_Genetic-principal-components_0_40': 40, 'not-missing': 41},
+                normalization={'mean': -0.014422761536727894, 'std': 10.57799283718005},
+                annotation_units=42)
+TMAPS['30770_0'] = TensorMap('30770_IGF1', group='continuous', channel_map={'30770_IGF1_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.39891163561463, 'std': 5.699765525677173},
+                annotation_units=2)
+TMAPS['5983_0'] = TensorMap('5983_ECG-heart-rate', group='continuous', channel_map={'5983_ECG-heart-rate_0_0': 0, '5983_ECG-heart-rate_0_1': 1, '5983_ECG-heart-rate_0_2': 2, '5983_ECG-heart-rate_0_3': 3, '5983_ECG-heart-rate_0_4': 4, '5983_ECG-heart-rate_0_5': 5, '5983_ECG-heart-rate_0_6': 6, '5983_ECG-heart-rate_0_7': 7, '5983_ECG-heart-rate_0_8': 8, '5983_ECG-heart-rate_0_9': 9, '5983_ECG-heart-rate_0_10': 10, '5983_ECG-heart-rate_0_11': 11, '5983_ECG-heart-rate_0_12': 12, '5983_ECG-heart-rate_0_13': 13, '5983_ECG-heart-rate_0_14': 14, '5983_ECG-heart-rate_0_15': 15, '5983_ECG-heart-rate_0_16': 16, '5983_ECG-heart-rate_0_17': 17, '5983_ECG-heart-rate_0_18': 18, '5983_ECG-heart-rate_0_19': 19, '5983_ECG-heart-rate_0_20': 20, '5983_ECG-heart-rate_0_21': 21, '5983_ECG-heart-rate_0_22': 22, '5983_ECG-heart-rate_0_23': 23, '5983_ECG-heart-rate_0_24': 24, '5983_ECG-heart-rate_0_25': 25, '5983_ECG-heart-rate_0_26': 26, '5983_ECG-heart-rate_0_27': 27, '5983_ECG-heart-rate_0_28': 28, '5983_ECG-heart-rate_0_29': 29, '5983_ECG-heart-rate_0_30': 30, '5983_ECG-heart-rate_0_31': 31, '5983_ECG-heart-rate_0_32': 32, '5983_ECG-heart-rate_0_33': 33, '5983_ECG-heart-rate_0_34': 34, '5983_ECG-heart-rate_0_35': 35, '5983_ECG-heart-rate_0_36': 36, '5983_ECG-heart-rate_0_37': 37, '5983_ECG-heart-rate_0_38': 38, '5983_ECG-heart-rate_0_39': 39, '5983_ECG-heart-rate_0_40': 40, '5983_ECG-heart-rate_0_41': 41, '5983_ECG-heart-rate_0_42': 42, '5983_ECG-heart-rate_0_43': 43, '5983_ECG-heart-rate_0_44': 44, '5983_ECG-heart-rate_0_45': 45, '5983_ECG-heart-rate_0_46': 46, '5983_ECG-heart-rate_0_47': 47, '5983_ECG-heart-rate_0_48': 48, '5983_ECG-heart-rate_0_49': 49, '5983_ECG-heart-rate_0_50': 50, '5983_ECG-heart-rate_0_51': 51, '5983_ECG-heart-rate_0_52': 52, '5983_ECG-heart-rate_0_53': 53, '5983_ECG-heart-rate_0_54': 54, '5983_ECG-heart-rate_0_55': 55, '5983_ECG-heart-rate_0_56': 56, '5983_ECG-heart-rate_0_57': 57, '5983_ECG-heart-rate_0_58': 58, '5983_ECG-heart-rate_0_59': 59, '5983_ECG-heart-rate_0_60': 60, '5983_ECG-heart-rate_0_61': 61, '5983_ECG-heart-rate_0_62': 62, '5983_ECG-heart-rate_0_63': 63, '5983_ECG-heart-rate_0_64': 64, '5983_ECG-heart-rate_0_65': 65, '5983_ECG-heart-rate_0_66': 66, '5983_ECG-heart-rate_0_67': 67, '5983_ECG-heart-rate_0_68': 68, '5983_ECG-heart-rate_0_69': 69, '5983_ECG-heart-rate_0_70': 70, '5983_ECG-heart-rate_0_71': 71, '5983_ECG-heart-rate_0_72': 72, '5983_ECG-heart-rate_0_73': 73, '5983_ECG-heart-rate_0_74': 74, '5983_ECG-heart-rate_0_75': 75, '5983_ECG-heart-rate_0_76': 76, '5983_ECG-heart-rate_0_77': 77, '5983_ECG-heart-rate_0_78': 78, '5983_ECG-heart-rate_0_79': 79, '5983_ECG-heart-rate_0_80': 80, '5983_ECG-heart-rate_0_81': 81, '5983_ECG-heart-rate_0_82': 82, '5983_ECG-heart-rate_0_83': 83, '5983_ECG-heart-rate_0_84': 84, '5983_ECG-heart-rate_0_85': 85, '5983_ECG-heart-rate_0_86': 86, '5983_ECG-heart-rate_0_87': 87, '5983_ECG-heart-rate_0_88': 88, '5983_ECG-heart-rate_0_89': 89, '5983_ECG-heart-rate_0_90': 90, '5983_ECG-heart-rate_0_91': 91, '5983_ECG-heart-rate_0_92': 92, '5983_ECG-heart-rate_0_93': 93, '5983_ECG-heart-rate_0_94': 94, '5983_ECG-heart-rate_0_95': 95, '5983_ECG-heart-rate_0_96': 96, '5983_ECG-heart-rate_0_97': 97, '5983_ECG-heart-rate_0_98': 98, '5983_ECG-heart-rate_0_99': 99, '5983_ECG-heart-rate_0_100': 100, '5983_ECG-heart-rate_0_101': 101, '5983_ECG-heart-rate_0_102': 102, '5983_ECG-heart-rate_0_103': 103, '5983_ECG-heart-rate_0_104': 104, '5983_ECG-heart-rate_0_105': 105, '5983_ECG-heart-rate_0_106': 106, '5983_ECG-heart-rate_0_107': 107, '5983_ECG-heart-rate_0_108': 108, '5983_ECG-heart-rate_0_109': 109, '5983_ECG-heart-rate_0_110': 110, '5983_ECG-heart-rate_0_111': 111, 'not-missing': 112},
+                normalization={'mean': 95.64040545394421, 'std': 16.575427118260915},
+                annotation_units=113)
+TMAPS['10694_0'] = TensorMap('10694_Forced-vital-capacity-FVC-pilot', group='continuous', channel_map={'10694_Forced-vital-capacity-FVC-pilot_0_0': 0, '10694_Forced-vital-capacity-FVC-pilot_0_1': 1, '10694_Forced-vital-capacity-FVC-pilot_0_2': 2, '10694_Forced-vital-capacity-FVC-pilot_0_3': 3, '10694_Forced-vital-capacity-FVC-pilot_0_4': 4, 'not-missing': 5},
+                normalization={'mean': 3.6323018053375202, 'std': 1.0726680201026206},
+                annotation_units=6)
+TMAPS['3546_0'] = TensorMap('3546_Age-last-used-hormonereplacement-therapy-HRT', group='continuous', channel_map={'3546_Age-last-used-hormonereplacement-therapy-HRT_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 53.921697186012835, 'std': 5.941782727750995},
+                annotation_units=2)
+TMAPS['90053_0'] = TensorMap('90053_Wear-duration-during-Monday', group='continuous', channel_map={'90053_Wear-duration-during-Monday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.58511403635663, 'std': 5.938389363274724},
+                annotation_units=2)
+TMAPS['5076_0'] = TensorMap('5076_Number-of-letters-correct-in-round-right', group='continuous', channel_map={'5076_Number-of-letters-correct-in-round-right_0_0': 0, '5076_Number-of-letters-correct-in-round-right_0_1': 1, '5076_Number-of-letters-correct-in-round-right_0_2': 2, '5076_Number-of-letters-correct-in-round-right_0_3': 3, '5076_Number-of-letters-correct-in-round-right_0_4': 4, '5076_Number-of-letters-correct-in-round-right_0_5': 5, '5076_Number-of-letters-correct-in-round-right_0_6': 6, '5076_Number-of-letters-correct-in-round-right_0_7': 7, '5076_Number-of-letters-correct-in-round-right_0_8': 8, '5076_Number-of-letters-correct-in-round-right_0_9': 9, '5076_Number-of-letters-correct-in-round-right_0_10': 10, '5076_Number-of-letters-correct-in-round-right_0_11': 11, '5076_Number-of-letters-correct-in-round-right_0_12': 12, '5076_Number-of-letters-correct-in-round-right_0_13': 13, '5076_Number-of-letters-correct-in-round-right_0_14': 14, '5076_Number-of-letters-correct-in-round-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 3.5194362956921896, 'std': 1.752477662992447},
+                annotation_units=17)
+TMAPS['3700_0'] = TensorMap('3700_Time-since-last-menstrual-period', group='continuous', channel_map={'3700_Time-since-last-menstrual-period_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 15.229588661058848, 'std': 22.325207002246323},
+                annotation_units=2)
+TMAPS['3536_0'] = TensorMap('3536_Age-started-hormonereplacement-therapy-HRT', group='continuous', channel_map={'3536_Age-started-hormonereplacement-therapy-HRT_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 47.37671894106794, 'std': 5.445443728155725},
+                annotation_units=2)
+TMAPS['30170_0'] = TensorMap('30170_Nucleated-red-blood-cell-count', group='continuous', channel_map={'30170_Nucleated-red-blood-cell-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0022174732872407266, 'std': 0.0331917060804216},
+                annotation_units=2)
+TMAPS['22605_0'] = TensorMap('22605_Work-hours-per-week--exact-value', group='continuous', channel_map={'22605_Work-hours-per-week--exact-value_0_0': 0, '22605_Work-hours-per-week--exact-value_0_1': 1, '22605_Work-hours-per-week--exact-value_0_2': 2, '22605_Work-hours-per-week--exact-value_0_3': 3, '22605_Work-hours-per-week--exact-value_0_4': 4, '22605_Work-hours-per-week--exact-value_0_5': 5, '22605_Work-hours-per-week--exact-value_0_6': 6, '22605_Work-hours-per-week--exact-value_0_7': 7, '22605_Work-hours-per-week--exact-value_0_8': 8, '22605_Work-hours-per-week--exact-value_0_9': 9, '22605_Work-hours-per-week--exact-value_0_10': 10, '22605_Work-hours-per-week--exact-value_0_11': 11, '22605_Work-hours-per-week--exact-value_0_12': 12, '22605_Work-hours-per-week--exact-value_0_13': 13, '22605_Work-hours-per-week--exact-value_0_14': 14, '22605_Work-hours-per-week--exact-value_0_15': 15, '22605_Work-hours-per-week--exact-value_0_16': 16, '22605_Work-hours-per-week--exact-value_0_17': 17, '22605_Work-hours-per-week--exact-value_0_18': 18, '22605_Work-hours-per-week--exact-value_0_19': 19, '22605_Work-hours-per-week--exact-value_0_20': 20, '22605_Work-hours-per-week--exact-value_0_21': 21, '22605_Work-hours-per-week--exact-value_0_22': 22, '22605_Work-hours-per-week--exact-value_0_23': 23, '22605_Work-hours-per-week--exact-value_0_24': 24, '22605_Work-hours-per-week--exact-value_0_25': 25, '22605_Work-hours-per-week--exact-value_0_26': 26, '22605_Work-hours-per-week--exact-value_0_27': 27, '22605_Work-hours-per-week--exact-value_0_28': 28, '22605_Work-hours-per-week--exact-value_0_29': 29, '22605_Work-hours-per-week--exact-value_0_30': 30, '22605_Work-hours-per-week--exact-value_0_31': 31, '22605_Work-hours-per-week--exact-value_0_32': 32, '22605_Work-hours-per-week--exact-value_0_33': 33, '22605_Work-hours-per-week--exact-value_0_34': 34, 'not-missing': 35},
+                normalization={'mean': 39.377421316445584, 'std': 10.330619868423485},
+                annotation_units=36)
+TMAPS['90180_0'] = TensorMap('90180_Interrupted-recording-periods', group='continuous', channel_map={'90180_Interrupted-recording-periods_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.04432229133516563, 'std': 1.6731041903517416},
+                annotation_units=2)
+TMAPS['3144_0'] = TensorMap('3144_Heel-Broadband-ultrasound-attenuation-direct-entry', group='continuous', channel_map={'3144_Heel-Broadband-ultrasound-attenuation-direct-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 77.91299497354227, 'std': 19.602098137766433},
+                annotation_units=2)
+TMAPS['30354_0'] = TensorMap('30354_Volume-of-EDTA2-buffy-held-by-UKB', group='continuous', channel_map={'30354_Volume-of-EDTA2-buffy-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 830.863004440811, 'std': 115.85718425156942},
+                annotation_units=2)
+TMAPS['41092_0'] = TensorMap('41092_Episodes-containing-Current-PCT-responsible-for-patient-data', group='continuous', channel_map={'41092_Episodes-containing-Current-PCT-responsible-for-patient-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.470361569183403, 'std': 14.456057430461586},
+                annotation_units=2)
+TMAPS['41087_0'] = TensorMap('41087_Episodes-containing-Episode-status-data', group='continuous', channel_map={'41087_Episodes-containing-Episode-status-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.653981042524683, 'std': 16.137775500554618},
+                annotation_units=2)
+TMAPS['20082_0'] = TensorMap('20082_Duration-of-questionnaire', group='continuous', channel_map={'20082_Duration-of-questionnaire_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 14.230562547727457, 'std': 6.762106821946561},
+                annotation_units=2)
+TMAPS['134_0'] = TensorMap('134_Number-of-selfreported-cancers', group='continuous', channel_map={'134_Number-of-selfreported-cancers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.08930102018442256, 'std': 0.3085774171849537},
+                annotation_units=2)
+TMAPS['90131_0'] = TensorMap('90131_Fraction-acceleration-<=-200-milligravities', group='continuous', channel_map={'90131_Fraction-acceleration-<=-200-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9834226529726604, 'std': 0.01350380120921056},
+                annotation_units=2)
+TMAPS['5188_0'] = TensorMap('5188_Duration-visualacuity-screen-displayed-left', group='continuous', channel_map={'5188_Duration-visualacuity-screen-displayed-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 90.05816385525777, 'std': 43.04048322254273},
+                annotation_units=2)
+TMAPS['4123_0'] = TensorMap('4123_Heel-quantitative-ultrasound-index-QUI-direct-entry-right', group='continuous', channel_map={'4123_Heel-quantitative-ultrasound-index-QUI-direct-entry-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 99.32985275259257, 'std': 23.02203573498749},
+                annotation_units=2)
+TMAPS['41098_0'] = TensorMap('41098_Episodes-containing-Method-of-admission-to-hospital-data-polymorphic', group='continuous', channel_map={'41098_Episodes-containing-Method-of-admission-to-hospital-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.783512108091641, 'std': 15.822041903378437},
+                annotation_units=2)
+TMAPS['5135_0'] = TensorMap('5135_3mm-strong-meridian-left', group='continuous', channel_map={'5135_3mm-strong-meridian-left_0_0': 0, '5135_3mm-strong-meridian-left_0_1': 1, '5135_3mm-strong-meridian-left_0_2': 2, '5135_3mm-strong-meridian-left_0_3': 3, '5135_3mm-strong-meridian-left_0_4': 4, '5135_3mm-strong-meridian-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 44.00299550303943, 'std': 1.6117596794707862},
+                annotation_units=7)
+TMAPS['2824_0'] = TensorMap('2824_Age-at-hysterectomy', group='continuous', channel_map={'2824_Age-at-hysterectomy_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 43.928069964295744, 'std': 8.037896993292408},
+                annotation_units=2)
+TMAPS['41090_0'] = TensorMap('41090_Episodes-containing-End-of-spell-indicator-data', group='continuous', channel_map={'41090_Episodes-containing-End-of-spell-indicator-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.653981042524683, 'std': 16.137775500554618},
+                annotation_units=2)
+TMAPS['30660_0'] = TensorMap('30660_Direct-bilirubin', group='continuous', channel_map={'30660_Direct-bilirubin_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.8336304228941827, 'std': 0.8506083585971784},
+                annotation_units=2)
+TMAPS['90112_0'] = TensorMap('90112_Fraction-acceleration-<=-25-milligravities', group='continuous', channel_map={'90112_Fraction-acceleration-<=-25-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.7252989633058488, 'std': 0.0788696380170397},
+                annotation_units=2)
+TMAPS['3659_0'] = TensorMap('3659_Year-immigrated-to-UK-United-Kingdom', group='continuous', channel_map={'3659_Year-immigrated-to-UK-United-Kingdom_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1976.0454825251347, 'std': 16.240769055300316},
+                annotation_units=2)
+TMAPS['1070_0'] = TensorMap('1070_Time-spent-watching-television-TV', group='continuous', channel_map={'1070_Time-spent-watching-television-TV_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.798865869677602, 'std': 1.678347718227405},
+                annotation_units=2)
+TMAPS['90105_0'] = TensorMap('90105_Fraction-acceleration-<=-14-milligravities', group='continuous', channel_map={'90105_Fraction-acceleration-<=-14-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6535506533584069, 'std': 0.0887335858258178},
+                annotation_units=2)
+TMAPS['41104_0'] = TensorMap('41104_Episodes-containing-External-cause--ICD10-data', group='continuous', channel_map={'41104_Episodes-containing-External-cause--ICD10-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.597188335076101, 'std': 1.6128953009115334},
+                annotation_units=2)
+TMAPS['30520_0'] = TensorMap('30520_Potassium-in-urine', group='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 63.06182700345117, 'std': 33.84208704773539},
+                annotation_units=2)
+TMAPS['90092_0'] = TensorMap('90092_Fraction-acceleration-<=-1-milligravities', group='continuous', channel_map={'90092_Fraction-acceleration-<=-1-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.19363048362987603, 'std': 0.08378851179642582},
+                annotation_units=2)
+TMAPS['90127_0'] = TensorMap('90127_Fraction-acceleration-<=-100-milligravities', group='continuous', channel_map={'90127_Fraction-acceleration-<=-100-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9264224408119967, 'std': 0.036419610725611035},
+                annotation_units=2)
+TMAPS['41079_0'] = TensorMap('41079_Episodes-containing-Diagnoses--secondary-ICD10-addendum-data', group='continuous', channel_map={'41079_Episodes-containing-Diagnoses--secondary-ICD10-addendum-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.9076533839342207, 'std': 10.227108478165237},
+                annotation_units=2)
+TMAPS['4124_0'] = TensorMap('4124_Heel-bone-mineral-density-BMD-right', group='continuous', channel_map={'4124_Heel-bone-mineral-density-BMD-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5521481253541808, 'std': 0.14481589050864077},
+                annotation_units=2)
+TMAPS['20022_0'] = TensorMap('20022_Birth-weight', group='continuous', channel_map={'20022_Birth-weight_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.319047215072434, 'std': 0.6682703698213341},
+                annotation_units=2)
+TMAPS['5263_0'] = TensorMap('5263_Intraocular-pressure-Goldmanncorrelated-left', group='continuous', channel_map={'5263_Intraocular-pressure-Goldmanncorrelated-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 15.74138277251248, 'std': 4.020427502684884},
+                annotation_units=2)
+TMAPS['30110_0'] = TensorMap('30110_Platelet-distribution-width', group='continuous', channel_map={'30110_Platelet-distribution-width_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.49035525479306, 'std': 0.5224214443834251},
+                annotation_units=2)
+TMAPS['41076_0'] = TensorMap('41076_Episodes-containing-Diagnoses--secondary-ICD9-data', group='continuous', channel_map={'41076_Episodes-containing-Diagnoses--secondary-ICD9-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.3139708414648146, 'std': 3.162028766207393},
+                annotation_units=2)
+TMAPS['4207_0'] = TensorMap('4207_Pulse-wave-velocity-manual-entry', group='continuous', channel_map={'4207_Pulse-wave-velocity-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 9.845776397515525, 'std': 6.273794170969385},
+                annotation_units=2)
+TMAPS['21003_0'] = TensorMap('21003_Age-when-attended-assessment-centre', group='continuous', channel_map={'21003_Age-when-attended-assessment-centre_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 56.528471592084955, 'std': 8.095287610193827},
+                annotation_units=2)
+TMAPS['30120_0'] = TensorMap('30120_Lymphocyte-count', group='continuous', channel_map={'30120_Lymphocyte-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.9659849029249281, 'std': 1.1723467154746938},
+                annotation_units=2)
+TMAPS['22200_0'] = TensorMap('22200_Year-of-birth', group='continuous', channel_map={'22200_Year-of-birth_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1952.0636527790373, 'std': 7.656383767945113},
+                annotation_units=2)
+TMAPS['90101_0'] = TensorMap('90101_Fraction-acceleration-<=-10-milligravities', group='continuous', channel_map={'90101_Fraction-acceleration-<=-10-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6173177009499011, 'std': 0.09295317946174639},
+                annotation_units=2)
+TMAPS['90125_0'] = TensorMap('90125_Fraction-acceleration-<=-90-milligravities', group='continuous', channel_map={'90125_Fraction-acceleration-<=-90-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.913222537248662, 'std': 0.040639067751474446},
+                annotation_units=2)
+TMAPS['22644_0'] = TensorMap('22644_Consecutive-night-shifts-during-mixed-shift-periods', group='continuous', channel_map={'22644_Consecutive-night-shifts-during-mixed-shift-periods_0_0': 0, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_1': 1, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_2': 2, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_3': 3, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_4': 4, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_5': 5, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_6': 6, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_7': 7, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_8': 8, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_9': 9, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_10': 10, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_11': 11, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_12': 12, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_13': 13, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_14': 14, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_15': 15, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_16': 16, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_17': 17, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_18': 18, '22644_Consecutive-night-shifts-during-mixed-shift-periods_0_19': 19, 'not-missing': 20},
+                normalization={'mean': 4.069831079303266, 'std': 3.3469179027651292},
+                annotation_units=21)
+TMAPS['30090_0'] = TensorMap('30090_Platelet-crit', group='continuous', channel_map={'30090_Platelet-crit_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.2327260123004729, 'std': 0.0490126877229711},
+                annotation_units=2)
+TMAPS['30251_0'] = TensorMap('30251_Reticulocyte-count-freezethaw-cycles', group='continuous', channel_map={'30251_Reticulocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['20011_0'] = TensorMap('20011_Interpolated-Age-of-participant-when-operation-took-place', group='continuous', channel_map={'20011_Interpolated-Age-of-participant-when-operation-took-place_0_0': 0, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_1': 1, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_2': 2, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_3': 3, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_4': 4, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_5': 5, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_6': 6, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_7': 7, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_8': 8, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_9': 9, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_10': 10, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_11': 11, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_12': 12, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_13': 13, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_14': 14, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_15': 15, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_16': 16, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_17': 17, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_18': 18, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_19': 19, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_20': 20, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_21': 21, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_22': 22, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_23': 23, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_24': 24, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_25': 25, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_26': 26, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_27': 27, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_28': 28, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_29': 29, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_30': 30, '20011_Interpolated-Age-of-participant-when-operation-took-place_0_31': 31, 'not-missing': 32},
+                normalization={'mean': 35.098792258036305, 'std': 18.044426513985687},
+                annotation_units=33)
+TMAPS['5107_0'] = TensorMap('5107_3mm-strong-meridian-angle-right', group='continuous', channel_map={'5107_3mm-strong-meridian-angle-right_0_0': 0, '5107_3mm-strong-meridian-angle-right_0_1': 1, '5107_3mm-strong-meridian-angle-right_0_2': 2, '5107_3mm-strong-meridian-angle-right_0_3': 3, '5107_3mm-strong-meridian-angle-right_0_4': 4, '5107_3mm-strong-meridian-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 87.54627334901022, 'std': 38.077738734395744},
+                annotation_units=7)
+TMAPS['5087_0'] = TensorMap('5087_Cylindrical-power-right', group='continuous', channel_map={'5087_Cylindrical-power-right_0_0': 0, '5087_Cylindrical-power-right_0_1': 1, '5087_Cylindrical-power-right_0_2': 2, '5087_Cylindrical-power-right_0_3': 3, '5087_Cylindrical-power-right_0_4': 4, '5087_Cylindrical-power-right_0_5': 5, '5087_Cylindrical-power-right_0_6': 6, '5087_Cylindrical-power-right_0_7': 7, '5087_Cylindrical-power-right_0_8': 8, '5087_Cylindrical-power-right_0_9': 9, 'not-missing': 10},
+                normalization={'mean': 0.8870669578299203, 'std': 0.7420501538536189},
+                annotation_units=11)
+TMAPS['90106_0'] = TensorMap('90106_Fraction-acceleration-<=-15-milligravities', group='continuous', channel_map={'90106_Fraction-acceleration-<=-15-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6611008245334877, 'std': 0.0877298787778097},
+                annotation_units=2)
+TMAPS['4235_0'] = TensorMap('4235_Time-to-press-last-digit-left', group='continuous', channel_map={'4235_Time-to-press-last-digit-left_0_0': 0, '4235_Time-to-press-last-digit-left_0_1': 1, '4235_Time-to-press-last-digit-left_0_2': 2, '4235_Time-to-press-last-digit-left_0_3': 3, '4235_Time-to-press-last-digit-left_0_4': 4, '4235_Time-to-press-last-digit-left_0_5': 5, '4235_Time-to-press-last-digit-left_0_6': 6, '4235_Time-to-press-last-digit-left_0_7': 7, '4235_Time-to-press-last-digit-left_0_8': 8, '4235_Time-to-press-last-digit-left_0_9': 9, '4235_Time-to-press-last-digit-left_0_10': 10, '4235_Time-to-press-last-digit-left_0_11': 11, '4235_Time-to-press-last-digit-left_0_12': 12, '4235_Time-to-press-last-digit-left_0_13': 13, '4235_Time-to-press-last-digit-left_0_14': 14, '4235_Time-to-press-last-digit-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 46.78676793307916, 'std': 99.78521409195568},
+                annotation_units=17)
+TMAPS['90164_0'] = TensorMap('90164_Calibration-coefficients--x-slope', group='continuous', channel_map={'90164_Calibration-coefficients--x-slope_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9877194464535418, 'std': 0.010874759864400714},
+                annotation_units=2)
+TMAPS['22664_0'] = TensorMap('22664_Year-gap-ended', group='continuous', channel_map={'22664_Year-gap-ended_0_0': 0, '22664_Year-gap-ended_0_1': 1, '22664_Year-gap-ended_0_2': 2, '22664_Year-gap-ended_0_3': 3, '22664_Year-gap-ended_0_4': 4, '22664_Year-gap-ended_0_5': 5, '22664_Year-gap-ended_0_6': 6, '22664_Year-gap-ended_0_7': 7, '22664_Year-gap-ended_0_8': 8, '22664_Year-gap-ended_0_9': 9, '22664_Year-gap-ended_0_10': 10, '22664_Year-gap-ended_0_11': 11, '22664_Year-gap-ended_0_12': 12, '22664_Year-gap-ended_0_13': 13, '22664_Year-gap-ended_0_14': 14, '22664_Year-gap-ended_0_15': 15, '22664_Year-gap-ended_0_16': 16, '22664_Year-gap-ended_0_17': 17, '22664_Year-gap-ended_0_18': 18, '22664_Year-gap-ended_0_19': 19, '22664_Year-gap-ended_0_20': 20, '22664_Year-gap-ended_0_21': 21, '22664_Year-gap-ended_0_22': 22, '22664_Year-gap-ended_0_23': 23, '22664_Year-gap-ended_0_24': 24, '22664_Year-gap-ended_0_25': 25, '22664_Year-gap-ended_0_26': 26, '22664_Year-gap-ended_0_27': 27, '22664_Year-gap-ended_0_28': 28, '22664_Year-gap-ended_0_29': 29, '22664_Year-gap-ended_0_30': 30, '22664_Year-gap-ended_0_31': 31, 'not-missing': 32},
+                normalization={'mean': 1989.0204133883462, 'std': 12.980833002400056},
+                annotation_units=33)
+TMAPS['1873_0'] = TensorMap('1873_Number-of-full-brothers', group='continuous', channel_map={'1873_Number-of-full-brothers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.1572501901140684, 'std': 1.2897284410977445},
+                annotation_units=2)
+TMAPS['30880_0'] = TensorMap('30880_Urate', group='continuous', channel_map={'30880_Urate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 309.2054548439295, 'std': 80.43205542125857},
+                annotation_units=2)
+TMAPS['93_0'] = TensorMap('93_Systolic-blood-pressure-manual-reading', group='continuous', channel_map={'93_Systolic-blood-pressure-manual-reading_0_0': 0, '93_Systolic-blood-pressure-manual-reading_0_1': 1, 'not-missing': 2},
+                normalization={'mean': 138.69562699102238, 'std': 19.381706048164933},
+                annotation_units=3)
+TMAPS['3086_0'] = TensorMap('3086_Speed-of-sound-through-heel-manual-entry', group='continuous', channel_map={'3086_Speed-of-sound-through-heel-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1553.188703526054, 'std': 43.56541278705645},
+                annotation_units=2)
+TMAPS['5088_0'] = TensorMap('5088_Astigmatism-angle-right', group='continuous', channel_map={'5088_Astigmatism-angle-right_0_0': 0, '5088_Astigmatism-angle-right_0_1': 1, '5088_Astigmatism-angle-right_0_2': 2, '5088_Astigmatism-angle-right_0_3': 3, '5088_Astigmatism-angle-right_0_4': 4, '5088_Astigmatism-angle-right_0_5': 5, '5088_Astigmatism-angle-right_0_6': 6, '5088_Astigmatism-angle-right_0_7': 7, '5088_Astigmatism-angle-right_0_8': 8, '5088_Astigmatism-angle-right_0_9': 9, 'not-missing': 10},
+                normalization={'mean': 94.00180810732, 'std': 57.11136528637008},
+                annotation_units=11)
+TMAPS['20162_0'] = TensorMap('20162_Pack-years-adult-smoking-as-proportion-of-life-span-exposed-to-smoking', group='continuous', channel_map={'20162_Pack-years-adult-smoking-as-proportion-of-life-span-exposed-to-smoking_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5507673284808219, 'std': 0.4187321029887187},
+                annotation_units=2)
+TMAPS['23114_0'] = TensorMap('23114_Leg-predicted-mass-right', group='continuous', channel_map={'23114_Leg-predicted-mass-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8.486474349339696, 'std': 1.9273038036404622},
+                annotation_units=2)
+TMAPS['30760_0'] = TensorMap('30760_HDL-cholesterol', group='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.4480129055069355, 'std': 0.3823115953478376},
+                annotation_units=2)
+TMAPS['4407_0'] = TensorMap('4407_Average-monthly-red-wine-intake', group='continuous', channel_map={'4407_Average-monthly-red-wine-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9920382955503747, 'std': 1.840196860602704},
+                annotation_units=2)
+TMAPS['20006_0'] = TensorMap('20006_Interpolated-Year-when-cancer-first-diagnosed', group='continuous', channel_map={'20006_Interpolated-Year-when-cancer-first-diagnosed_0_0': 0, '20006_Interpolated-Year-when-cancer-first-diagnosed_0_1': 1, '20006_Interpolated-Year-when-cancer-first-diagnosed_0_2': 2, '20006_Interpolated-Year-when-cancer-first-diagnosed_0_3': 3, '20006_Interpolated-Year-when-cancer-first-diagnosed_0_4': 4, '20006_Interpolated-Year-when-cancer-first-diagnosed_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 1995.3927593749995, 'std': 94.83441466298387},
+                annotation_units=7)
+TMAPS['30334_0'] = TensorMap('30334_Volume-of-EDTA1-buffy-held-by-UKB', group='continuous', channel_map={'30334_Volume-of-EDTA1-buffy-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 464.9637793718353, 'std': 420.3180861443819},
+                annotation_units=2)
+TMAPS['30180_0'] = TensorMap('30180_Lymphocyte-percentage', group='continuous', channel_map={'30180_Lymphocyte-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 28.91320742818713, 'std': 7.499219296319767},
+                annotation_units=2)
+TMAPS['137_0'] = TensorMap('137_Number-of-treatmentsmedications-taken', group='continuous', channel_map={'137_Number-of-treatmentsmedications-taken_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.4596849747046883, 'std': 2.6811321559778927},
+                annotation_units=2)
+TMAPS['3062_0'] = TensorMap('3062_Forced-vital-capacity-FVC', group='continuous', channel_map={'3062_Forced-vital-capacity-FVC_0_0': 0, '3062_Forced-vital-capacity-FVC_0_1': 1, '3062_Forced-vital-capacity-FVC_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 3.5991826271920435, 'std': 1.082795205650612},
+                annotation_units=4)
+TMAPS['90097_0'] = TensorMap('90097_Fraction-acceleration-<=-6-milligravities', group='continuous', channel_map={'90097_Fraction-acceleration-<=-6-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5467600366459326, 'std': 0.09760498520981384},
+                annotation_units=2)
+TMAPS['30620_0'] = TensorMap('30620_Alanine-aminotransferase', group='continuous', channel_map={'30620_Alanine-aminotransferase_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 23.54631834129685, 'std': 14.18017711660799},
+                annotation_units=2)
+TMAPS['90177_0'] = TensorMap('90177_Calibration--maximum-z-stationary-value', group='continuous', channel_map={'90177_Calibration--maximum-z-stationary-value_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.849756111673658, 'std': 0.16670333138533877},
+                annotation_units=2)
+TMAPS['5119_0'] = TensorMap('5119_3mm-cylindrical-power-left', group='continuous', channel_map={'5119_3mm-cylindrical-power-left_0_0': 0, '5119_3mm-cylindrical-power-left_0_1': 1, '5119_3mm-cylindrical-power-left_0_2': 2, '5119_3mm-cylindrical-power-left_0_3': 3, '5119_3mm-cylindrical-power-left_0_4': 4, '5119_3mm-cylindrical-power-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': -0.8757534735144528, 'std': 0.6661926436810551},
+                annotation_units=7)
+TMAPS['20455_0'] = TensorMap('20455_Age-when-last-took-cannabis', group='continuous', channel_map={'20455_Age-when-last-took-cannabis_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 32.22470976064193, 'std': 13.125617474389651},
+                annotation_units=2)
+TMAPS['30374_0'] = TensorMap('30374_Volume-of-LiHep-plasma-held-by-UKB', group='continuous', channel_map={'30374_Volume-of-LiHep-plasma-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2621.2524330238457, 'std': 582.5761642840705},
+                annotation_units=2)
+TMAPS['23121_0'] = TensorMap('23121_Arm-fatfree-mass-right', group='continuous', channel_map={'23121_Arm-fatfree-mass-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.8931570158616657, 'std': 0.8215411754827265},
+                annotation_units=2)
+TMAPS['189_0'] = TensorMap('189_Townsend-deprivation-index-at-recruitment', group='continuous', channel_map={'189_Townsend-deprivation-index-at-recruitment_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -1.2937350780782741, 'std': 3.095058497325826},
+                annotation_units=2)
+TMAPS['84_0'] = TensorMap('84_Cancer-yearage-first-occurred', group='continuous', channel_map={'84_Cancer-yearage-first-occurred_0_0': 0, '84_Cancer-yearage-first-occurred_0_1': 1, '84_Cancer-yearage-first-occurred_0_2': 2, '84_Cancer-yearage-first-occurred_0_3': 3, '84_Cancer-yearage-first-occurred_0_4': 4, '84_Cancer-yearage-first-occurred_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 1754.5987946428572, 'std': 648.139663695507},
+                annotation_units=7)
+TMAPS['100005_0'] = TensorMap('100005_Carbohydrate', group='continuous', channel_map={'100005_Carbohydrate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 258.136390094279, 'std': 108.62251937217879},
+                annotation_units=2)
+TMAPS['90035_0'] = TensorMap('90035_Average-acceleration-08:00--08:59', group='continuous', channel_map={'90035_Average-acceleration-08:00--08:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 39.651675104874876, 'std': 27.94983269121508},
+                annotation_units=2)
+TMAPS['3982_0'] = TensorMap('3982_Number-of-adopted-sisters', group='continuous', channel_map={'3982_Number-of-adopted-sisters_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6215491402429405, 'std': 1.0470997366739094},
+                annotation_units=2)
+TMAPS['4079_0'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading', group='continuous', channel_map={'4079_Diastolic-blood-pressure-automated-reading_0_0': 0, '4079_Diastolic-blood-pressure-automated-reading_0_1': 1, 'not-missing': 2},
+                normalization={'mean': 82.20657551284782, 'std': 10.496040770224475},
+                annotation_units=3)
+TMAPS['90169_0'] = TensorMap('90169_Calibration-coefficients--z-temp', group='continuous', channel_map={'90169_Calibration-coefficients--z-temp_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0017560923863252811, 'std': 0.004420036684354377},
+                annotation_units=2)
+TMAPS['90013_0'] = TensorMap('90013_Standard-deviation-of-acceleration', group='continuous', channel_map={'90013_Standard-deviation-of-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 53.716989922368484, 'std': 28.68219640206359},
+                annotation_units=2)
+TMAPS['90061_0'] = TensorMap('90061_Wear-duration-during-01:00--01:59', group='continuous', channel_map={'90061_Wear-duration-during-01:00--01:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.1231797097256395, 'std': 1.6825550424652145},
+                annotation_units=2)
+TMAPS['3143_0'] = TensorMap('3143_Ankle-spacing-width', group='continuous', channel_map={'3143_Ankle-spacing-width_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 43.8405259583004, 'std': 4.605420712700601},
+                annotation_units=2)
+TMAPS['90055_0'] = TensorMap('90055_Wear-duration-during-Wednesday', group='continuous', channel_map={'90055_Wear-duration-during-Wednesday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.764196537923723, 'std': 5.849517437390718},
+                annotation_units=2)
+TMAPS['5105_0'] = TensorMap('5105_6mm-strong-meridian-angle-left', group='continuous', channel_map={'5105_6mm-strong-meridian-angle-left_0_0': 0, '5105_6mm-strong-meridian-angle-left_0_1': 1, '5105_6mm-strong-meridian-angle-left_0_2': 2, '5105_6mm-strong-meridian-angle-left_0_3': 3, '5105_6mm-strong-meridian-angle-left_0_4': 4, '5105_6mm-strong-meridian-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 86.84853136330482, 'std': 44.53524516032851},
+                annotation_units=7)
+TMAPS['20247_0'] = TensorMap('20247_Total-errors-traversing-numeric-path-trail-#1', group='continuous', channel_map={'20247_Total-errors-traversing-numeric-path-trail-#1_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.248975876194812, 'std': 6.70061891991885},
+                annotation_units=2)
+TMAPS['23130_0'] = TensorMap('23130_Trunk-predicted-mass', group='continuous', channel_map={'23130_Trunk-predicted-mass_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 28.36869182530567, 'std': 5.804851285767165},
+                annotation_units=2)
+TMAPS['90064_0'] = TensorMap('90064_Wear-duration-during-04:00--04:59', group='continuous', channel_map={'90064_Wear-duration-during-04:00--04:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.187488499927671, 'std': 1.6936407746972932},
+                annotation_units=2)
+TMAPS['41084_0'] = TensorMap('41084_Episodes-containing-Episode-end-date-data', group='continuous', channel_map={'41084_Episodes-containing-Episode-end-date-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.703998204807987, 'std': 15.793277411726407},
+                annotation_units=2)
+TMAPS['90023_0'] = TensorMap('90023_Friday-average-acceleration', group='continuous', channel_map={'90023_Friday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.135146149766133, 'std': 12.890072457932929},
+                annotation_units=2)
+TMAPS['90140_0'] = TensorMap('90140_Fraction-acceleration-<=-425-milligravities', group='continuous', channel_map={'90140_Fraction-acceleration-<=-425-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9973430637928545, 'std': 0.00546682919665486},
+                annotation_units=2)
+TMAPS['21021_0'] = TensorMap('21021_Pulse-wave-Arterial-Stiffness-index', group='continuous', channel_map={'21021_Pulse-wave-Arterial-Stiffness-index_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 9.33767979193192, 'std': 4.045878710918762},
+                annotation_units=2)
+TMAPS['4120_0'] = TensorMap('4120_Heel-broadband-ultrasound-attenuation-right', group='continuous', channel_map={'4120_Heel-broadband-ultrasound-attenuation-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 79.11118649940641, 'std': 20.4853761942473},
+                annotation_units=2)
+TMAPS['1588_0'] = TensorMap('1588_Average-weekly-beer-plus-cider-intake', group='continuous', channel_map={'1588_Average-weekly-beer-plus-cider-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.0129877280169213, 'std': 5.60516131525642},
+                annotation_units=2)
+TMAPS['90103_0'] = TensorMap('90103_Fraction-acceleration-<=-12-milligravities', group='continuous', channel_map={'90103_Fraction-acceleration-<=-12-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6370736101065624, 'std': 0.09075443853188432},
+                annotation_units=2)
+TMAPS['90095_0'] = TensorMap('90095_Fraction-acceleration-<=-4-milligravities', group='continuous', channel_map={'90095_Fraction-acceleration-<=-4-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.4634679492743142, 'std': 0.09662230798179154},
+                annotation_units=2)
+TMAPS['1608_0'] = TensorMap('1608_Average-weekly-fortified-wine-intake', group='continuous', channel_map={'1608_Average-weekly-fortified-wine-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.2385496681252338, 'std': 1.2726276064345972},
+                annotation_units=2)
+TMAPS['30240_0'] = TensorMap('30240_Reticulocyte-percentage', group='continuous', channel_map={'30240_Reticulocyte-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.3502999076355988, 'std': 0.8905014830344062},
+                annotation_units=2)
+TMAPS['41110_0'] = TensorMap('41110_Episodes-containing-Intended-management-of-patient-data-polymorphic', group='continuous', channel_map={'41110_Episodes-containing-Intended-management-of-patient-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.711635543215978, 'std': 16.03317641452055},
+                annotation_units=2)
+TMAPS['5158_0'] = TensorMap('5158_6mm-asymmetry-index-right', group='continuous', channel_map={'5158_6mm-asymmetry-index-right_0_0': 0, '5158_6mm-asymmetry-index-right_0_1': 1, '5158_6mm-asymmetry-index-right_0_2': 2, '5158_6mm-asymmetry-index-right_0_3': 3, '5158_6mm-asymmetry-index-right_0_4': 4, '5158_6mm-asymmetry-index-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 15.087403772447637, 'std': 10.207964620098544},
+                annotation_units=7)
+TMAPS['41106_0'] = TensorMap('41106_Episodes-containing-Operation-status-data', group='continuous', channel_map={'41106_Episodes-containing-Operation-status-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.4955644098541105, 'std': 14.267147028675094},
+                annotation_units=2)
+TMAPS['100002_0'] = TensorMap('100002_Energy', group='continuous', channel_map={'100002_Energy_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8825.824255162746, 'std': 3229.8669163574473},
+                annotation_units=2)
+TMAPS['100021_0'] = TensorMap('100021_Vitamin-D', group='continuous', channel_map={'100021_Vitamin-D_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.786678304380399, 'std': 3.3384450904734453},
+                annotation_units=2)
+TMAPS['6032_0'] = TensorMap('6032_Maximum-workload-during-fitness-test', group='continuous', channel_map={'6032_Maximum-workload-during-fitness-test_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 71.65201718940415, 'std': 35.67292137350584},
+                annotation_units=2)
+TMAPS['6038_0'] = TensorMap('6038_Number-of-trend-entries', group='continuous', channel_map={'6038_Number-of-trend-entries_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 58.7590820462825, 'std': 25.77840131223724},
+                annotation_units=2)
+TMAPS['30710_0'] = TensorMap('30710_Creactive-protein', group='continuous', channel_map={'30710_Creactive-protein_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.5987742480697564, 'std': 4.361150498539324},
+                annotation_units=2)
+TMAPS['3872_0'] = TensorMap('3872_Age-of-primiparous-women-at-birth-of-child', group='continuous', channel_map={'3872_Age-of-primiparous-women-at-birth-of-child_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 28.997146228356613, 'std': 6.417228931220437},
+                annotation_units=2)
+TMAPS['22602_0'] = TensorMap('22602_Year-job-started', group='continuous', channel_map={'22602_Year-job-started_0_0': 0, '22602_Year-job-started_0_1': 1, '22602_Year-job-started_0_2': 2, '22602_Year-job-started_0_3': 3, '22602_Year-job-started_0_4': 4, '22602_Year-job-started_0_5': 5, '22602_Year-job-started_0_6': 6, '22602_Year-job-started_0_7': 7, '22602_Year-job-started_0_8': 8, '22602_Year-job-started_0_9': 9, '22602_Year-job-started_0_10': 10, '22602_Year-job-started_0_11': 11, '22602_Year-job-started_0_12': 12, '22602_Year-job-started_0_13': 13, '22602_Year-job-started_0_14': 14, '22602_Year-job-started_0_15': 15, '22602_Year-job-started_0_16': 16, '22602_Year-job-started_0_17': 17, '22602_Year-job-started_0_18': 18, '22602_Year-job-started_0_19': 19, '22602_Year-job-started_0_20': 20, '22602_Year-job-started_0_21': 21, '22602_Year-job-started_0_22': 22, '22602_Year-job-started_0_23': 23, '22602_Year-job-started_0_24': 24, '22602_Year-job-started_0_25': 25, '22602_Year-job-started_0_26': 26, '22602_Year-job-started_0_27': 27, '22602_Year-job-started_0_28': 28, '22602_Year-job-started_0_29': 29, '22602_Year-job-started_0_30': 30, '22602_Year-job-started_0_31': 31, '22602_Year-job-started_0_32': 32, '22602_Year-job-started_0_33': 33, '22602_Year-job-started_0_34': 34, '22602_Year-job-started_0_35': 35, '22602_Year-job-started_0_36': 36, '22602_Year-job-started_0_37': 37, '22602_Year-job-started_0_38': 38, '22602_Year-job-started_0_39': 39, 'not-missing': 40},
+                normalization={'mean': 1982.127364921072, 'std': 13.80770390480482},
+                annotation_units=41)
+TMAPS['30830_0'] = TensorMap('30830_SHBG', group='continuous', channel_map={'30830_SHBG_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 51.62937739069993, 'std': 27.781222505868797},
+                annotation_units=2)
+TMAPS['90079_0'] = TensorMap('90079_Wear-duration-during-19:00--19:59', group='continuous', channel_map={'90079_Wear-duration-during-19:00--19:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.386784030088243, 'std': 1.5313735219461646},
+                annotation_units=2)
+TMAPS['30221_0'] = TensorMap('30221_Basophill-percentage-freezethaw-cycles', group='continuous', channel_map={'30221_Basophill-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90191_0'] = TensorMap('90191_Sample-rate-maximum', group='continuous', channel_map={'90191_Sample-rate-maximum_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8184.358912194417, 'std': 220940.1253618749},
+                annotation_units=2)
+TMAPS['4147_0'] = TensorMap('4147_Speed-of-sound-through-heel-manual-entry-right', group='continuous', channel_map={'4147_Speed-of-sound-through-heel-manual-entry-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1554.7818396226412, 'std': 47.47448667160834},
+                annotation_units=2)
+TMAPS['90165_0'] = TensorMap('90165_Calibration-coefficients--y-slope', group='continuous', channel_map={'90165_Calibration-coefficients--y-slope_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9865097159940212, 'std': 0.013083087702843672},
+                annotation_units=2)
+TMAPS['1807_0'] = TensorMap('1807_Fathers-age-at-death', group='continuous', channel_map={'1807_Fathers-age-at-death_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 70.55713596848497, 'std': 13.01661824640555},
+                annotation_units=2)
+TMAPS['5089_0'] = TensorMap('5089_Astigmatism-angle-left', group='continuous', channel_map={'5089_Astigmatism-angle-left_0_0': 0, '5089_Astigmatism-angle-left_0_1': 1, '5089_Astigmatism-angle-left_0_2': 2, '5089_Astigmatism-angle-left_0_3': 3, '5089_Astigmatism-angle-left_0_4': 4, '5089_Astigmatism-angle-left_0_5': 5, '5089_Astigmatism-angle-left_0_6': 6, '5089_Astigmatism-angle-left_0_7': 7, '5089_Astigmatism-angle-left_0_8': 8, '5089_Astigmatism-angle-left_0_9': 9, 'not-missing': 10},
+                normalization={'mean': 91.46927127260786, 'std': 56.270464574823166},
+                annotation_units=11)
+TMAPS['5117_0'] = TensorMap('5117_6mm-cylindrical-power-right', group='continuous', channel_map={'5117_6mm-cylindrical-power-right_0_0': 0, '5117_6mm-cylindrical-power-right_0_1': 1, '5117_6mm-cylindrical-power-right_0_2': 2, '5117_6mm-cylindrical-power-right_0_3': 3, '5117_6mm-cylindrical-power-right_0_4': 4, '5117_6mm-cylindrical-power-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': -0.8422039770666638, 'std': 0.6740590879663511},
+                annotation_units=7)
+TMAPS['68_0'] = TensorMap('68_Number-of-blood-samples-taken', group='continuous', channel_map={'68_Number-of-blood-samples-taken_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.221057964856847, 'std': 0.552099232699653},
+                annotation_units=2)
+TMAPS['90040_0'] = TensorMap('90040_Average-acceleration-13:00--13:59', group='continuous', channel_map={'90040_Average-acceleration-13:00--13:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 42.959053763440835, 'std': 22.344195193642026},
+                annotation_units=2)
+TMAPS['20191_0'] = TensorMap('20191_Fluid-intelligence-score', group='continuous', channel_map={'20191_Fluid-intelligence-score_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.434275224015787, 'std': 2.0388517058485522},
+                annotation_units=2)
+TMAPS['30414_0'] = TensorMap('30414_Volume-of-RNA-held-by-UKB', group='continuous', channel_map={'30414_Volume-of-RNA-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2606.8100669047035, 'std': 2548.6928030603453},
+                annotation_units=2)
+TMAPS['30850_0'] = TensorMap('30850_Testosterone', group='continuous', channel_map={'30850_Testosterone_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.557780011852343, 'std': 6.054145820936543},
+                annotation_units=2)
+TMAPS['90078_0'] = TensorMap('90078_Wear-duration-during-18:00--18:59', group='continuous', channel_map={'90078_Wear-duration-during-18:00--18:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.397466223058006, 'std': 1.5182796325322334},
+                annotation_units=2)
+TMAPS['41086_0'] = TensorMap('41086_Episodes-containing-Episode-order-data', group='continuous', channel_map={'41086_Episodes-containing-Episode-order-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.711730812466996, 'std': 16.03313567386901},
+                annotation_units=2)
+TMAPS['30141_0'] = TensorMap('30141_Neutrophill-count-freezethaw-cycles', group='continuous', channel_map={'30141_Neutrophill-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['5132_0'] = TensorMap('5132_3mm-strong-meridian-right', group='continuous', channel_map={'5132_3mm-strong-meridian-right_0_0': 0, '5132_3mm-strong-meridian-right_0_1': 1, '5132_3mm-strong-meridian-right_0_2': 2, '5132_3mm-strong-meridian-right_0_3': 3, '5132_3mm-strong-meridian-right_0_4': 4, '5132_3mm-strong-meridian-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 43.95866437639845, 'std': 1.6046630931358528},
+                annotation_units=7)
+TMAPS['20195_0'] = TensorMap('20195_Number-of-symbol-digit-matches-attempted', group='continuous', channel_map={'20195_Number-of-symbol-digit-matches-attempted_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.264190278445962, 'std': 4.862302855855112},
+                annotation_units=2)
+TMAPS['4290_0'] = TensorMap('4290_Duration-screen-displayed', group='continuous', channel_map={'4290_Duration-screen-displayed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 145.985037566375, 'std': 343.0263779829031},
+                annotation_units=2)
+TMAPS['41148_0'] = TensorMap('41148_Episodes-containing-Date-of-operation-data', group='continuous', channel_map={'41148_Episodes-containing-Date-of-operation-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.339758636044594, 'std': 13.586225369016745},
+                annotation_units=2)
+TMAPS['1160_0'] = TensorMap('1160_Sleep-duration', group='continuous', channel_map={'1160_Sleep-duration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 7.154202119120256, 'std': 1.1113586587917186},
+                annotation_units=2)
+TMAPS['90070_0'] = TensorMap('90070_Wear-duration-during-10:00--10:59', group='continuous', channel_map={'90070_Wear-duration-during-10:00--10:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.406913158782971, 'std': 1.5052166238840228},
+                annotation_units=2)
+TMAPS['30261_0'] = TensorMap('30261_Mean-reticulocyte-volume-freezethaw-cycles', group='continuous', channel_map={'30261_Mean-reticulocyte-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['23109_0'] = TensorMap('23109_Impedance-of-arm-right', group='continuous', channel_map={'23109_Impedance-of-arm-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 325.55499158100406, 'std': 55.414078193098426},
+                annotation_units=2)
+TMAPS['30291_0'] = TensorMap('30291_High-light-scatter-reticulocyte-percentage-freezethaw-cycles', group='continuous', channel_map={'30291_High-light-scatter-reticulocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['4144_0'] = TensorMap('4144_Heel-quantitative-ultrasound-index-QUI-manual-entry-right', group='continuous', channel_map={'4144_Heel-quantitative-ultrasound-index-QUI-manual-entry-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 98.52704402515722, 'std': 20.42349870900061},
+                annotation_units=2)
+TMAPS['3085_0'] = TensorMap('3085_Heel-Broadband-ultrasound-attenuation-BUA-manual-entry', group='continuous', channel_map={'3085_Heel-Broadband-ultrasound-attenuation-BUA-manual-entry_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 76.18169716184278, 'std': 19.63987587039883},
+                annotation_units=2)
+TMAPS['3526_0'] = TensorMap('3526_Mothers-age-at-death', group='continuous', channel_map={'3526_Mothers-age-at-death_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 74.12840796819279, 'std': 13.249138193853835},
+                annotation_units=2)
+TMAPS['5116_0'] = TensorMap('5116_3mm-cylindrical-power-right', group='continuous', channel_map={'5116_3mm-cylindrical-power-right_0_0': 0, '5116_3mm-cylindrical-power-right_0_1': 1, '5116_3mm-cylindrical-power-right_0_2': 2, '5116_3mm-cylindrical-power-right_0_3': 3, '5116_3mm-cylindrical-power-right_0_4': 4, '5116_3mm-cylindrical-power-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': -0.8662533831107496, 'std': 0.6599557419512333},
+                annotation_units=7)
+TMAPS['5075_0'] = TensorMap('5075_Number-of-letters-shown-in-round-right', group='continuous', channel_map={'5075_Number-of-letters-shown-in-round-right_0_0': 0, '5075_Number-of-letters-shown-in-round-right_0_1': 1, '5075_Number-of-letters-shown-in-round-right_0_2': 2, '5075_Number-of-letters-shown-in-round-right_0_3': 3, '5075_Number-of-letters-shown-in-round-right_0_4': 4, '5075_Number-of-letters-shown-in-round-right_0_5': 5, '5075_Number-of-letters-shown-in-round-right_0_6': 6, '5075_Number-of-letters-shown-in-round-right_0_7': 7, '5075_Number-of-letters-shown-in-round-right_0_8': 8, '5075_Number-of-letters-shown-in-round-right_0_9': 9, '5075_Number-of-letters-shown-in-round-right_0_10': 10, '5075_Number-of-letters-shown-in-round-right_0_11': 11, '5075_Number-of-letters-shown-in-round-right_0_12': 12, '5075_Number-of-letters-shown-in-round-right_0_13': 13, '5075_Number-of-letters-shown-in-round-right_0_14': 14, '5075_Number-of-letters-shown-in-round-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 4.9847114530205765, 'std': 0.1896981176486569},
+                annotation_units=17)
+TMAPS['90031_0'] = TensorMap('90031_Average-acceleration-04:00--04:59', group='continuous', channel_map={'90031_Average-acceleration-04:00--04:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.7459988427600175, 'std': 12.657702371897658},
+                annotation_units=2)
+TMAPS['4106_0'] = TensorMap('4106_Heel-bone-mineral-density-BMD-Tscore-automated-left', group='continuous', channel_map={'4106_Heel-bone-mineral-density-BMD-Tscore-automated-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -0.3025354739707341, 'std': 1.3102957402769355},
+                annotation_units=2)
+TMAPS['3972_0'] = TensorMap('3972_Number-of-adopted-brothers', group='continuous', channel_map={'3972_Number-of-adopted-brothers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.6873114181356204, 'std': 1.1830089577600715},
+                annotation_units=2)
+TMAPS['90065_0'] = TensorMap('90065_Wear-duration-during-05:00--05:59', group='continuous', channel_map={'90065_Wear-duration-during-05:00--05:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.206531655335358, 'std': 1.6872487855745049},
+                annotation_units=2)
+TMAPS['22653_0'] = TensorMap('22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods', group='continuous', channel_map={'22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_0': 0, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_1': 1, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_2': 2, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_3': 3, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_4': 4, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_5': 5, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_6': 6, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_7': 7, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_8': 8, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_9': 9, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_10': 10, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_11': 11, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_12': 12, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_13': 13, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_14': 14, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_15': 15, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_16': 16, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_17': 17, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_18': 18, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_19': 19, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_20': 20, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_21': 21, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_22': 22, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_23': 23, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_24': 24, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_25': 25, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_26': 26, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_27': 27, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_28': 28, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_29': 29, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_30': 30, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_31': 31, '22653_Number-of-night-shifts-worked-monthly-during-night-shift-periods_0_32': 32, 'not-missing': 33},
+                normalization={'mean': 13.656641604010023, 'std': 6.750318984488949},
+                annotation_units=34)
+TMAPS['5265_0'] = TensorMap('5265_Corneal-resistance-factor-left', group='continuous', channel_map={'5265_Corneal-resistance-factor-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 10.657931468793832, 'std': 2.5801447843854906},
+                annotation_units=2)
+TMAPS['90116_0'] = TensorMap('90116_Fraction-acceleration-<=-45-milligravities', group='continuous', channel_map={'90116_Fraction-acceleration-<=-45-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8122575437581369, 'std': 0.0650123811140275},
+                annotation_units=2)
+TMAPS['2744_0'] = TensorMap('2744_Birth-weight-of-first-child', group='continuous', channel_map={'2744_Birth-weight-of-first-child_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.9429765027422645, 'std': 1.407442851384564},
+                annotation_units=2)
+TMAPS['30650_0'] = TensorMap('30650_Aspartate-aminotransferase', group='continuous', channel_map={'30650_Aspartate-aminotransferase_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 26.23016083040135, 'std': 10.661580442803643},
+                annotation_units=2)
+TMAPS['20410_0'] = TensorMap('20410_Age-when-known-person-last-commented-about-drinking-habits', group='continuous', channel_map={'20410_Age-when-known-person-last-commented-about-drinking-habits_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 50.58124301006551, 'std': 13.129766558596945},
+                annotation_units=2)
+TMAPS['30031_0'] = TensorMap('30031_Haematocrit-freezethaw-cycles', group='continuous', channel_map={'30031_Haematocrit-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['30740_0'] = TensorMap('30740_Glucose', group='continuous', channel_map={'30740_Glucose_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 5.12498858213645, 'std': 1.2434621168913165},
+                annotation_units=2)
+TMAPS['4105_0'] = TensorMap('4105_Heel-bone-mineral-density-BMD-left', group='continuous', channel_map={'4105_Heel-bone-mineral-density-BMD-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.547471017627668, 'std': 0.14610377587001144},
+                annotation_units=2)
+TMAPS['30041_0'] = TensorMap('30041_Mean-corpuscular-volume-freezethaw-cycles', group='continuous', channel_map={'30041_Mean-corpuscular-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90063_0'] = TensorMap('90063_Wear-duration-during-03:00--03:59', group='continuous', channel_map={'90063_Wear-duration-during-03:00--03:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.174573894594724, 'std': 1.6912856328546404},
+                annotation_units=2)
+TMAPS['5215_0'] = TensorMap('5215_Vertex-distance-right', group='continuous', channel_map={'5215_Vertex-distance-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 12.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90152_0'] = TensorMap('90152_Fraction-acceleration-<=-1400-milligravities', group='continuous', channel_map={'90152_Fraction-acceleration-<=-1400-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9999202854525289, 'std': 0.0025236075170088587},
+                annotation_units=2)
+TMAPS['5114_0'] = TensorMap('5114_6mm-cylindrical-power-angle-right', group='continuous', channel_map={'5114_6mm-cylindrical-power-angle-right_0_0': 0, '5114_6mm-cylindrical-power-angle-right_0_1': 1, '5114_6mm-cylindrical-power-angle-right_0_2': 2, '5114_6mm-cylindrical-power-angle-right_0_3': 3, '5114_6mm-cylindrical-power-angle-right_0_4': 4, '5114_6mm-cylindrical-power-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 83.45155380333955, 'std': 62.06636373512519},
+                annotation_units=7)
+TMAPS['90189_0'] = TensorMap('90189_Sample-rate-standard-deviation', group='continuous', channel_map={'90189_Sample-rate-standard-deviation_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 45.92016779979748, 'std': 1300.4627411111455},
+                annotation_units=2)
+TMAPS['4196_0'] = TensorMap('4196_Pulse-wave-peak-to-peak-time', group='continuous', channel_map={'4196_Pulse-wave-peak-to-peak-time_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 201.85429179142517, 'std': 73.04525271657313},
+                annotation_units=2)
+TMAPS['20007_0'] = TensorMap('20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed', group='continuous', channel_map={'20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_0': 0, '20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_1': 1, '20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_2': 2, '20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_3': 3, '20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_4': 4, '20007_Interpolated-Age-of-participant-when-cancer-first-diagnosed_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 50.96990048178574, 'std': 11.462360746646972},
+                annotation_units=7)
+TMAPS['90134_0'] = TensorMap('90134_Fraction-acceleration-<=-275-milligravities', group='continuous', channel_map={'90134_Fraction-acceleration-<=-275-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9925612131732486, 'std': 0.008376066923715682},
+                annotation_units=2)
+TMAPS['22400_0'] = TensorMap('22400_Liver-iron-Fe', group='continuous', channel_map={'22400_Liver-iron-Fe_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.346558291366906, 'std': 0.3540960977285698},
+                annotation_units=2)
+TMAPS['3894_0'] = TensorMap('3894_Age-heart-attack-diagnosed', group='continuous', channel_map={'3894_Age-heart-attack-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 52.696820860868016, 'std': 8.419897728297665},
+                annotation_units=2)
+TMAPS['23117_0'] = TensorMap('23117_Leg-fatfree-mass-left', group='continuous', channel_map={'23117_Leg-fatfree-mass-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 8.866400981491415, 'std': 2.01067768245527},
+                annotation_units=2)
+TMAPS['21022_0'] = TensorMap('21022_Age-at-recruitment', group='continuous', channel_map={'21022_Age-at-recruitment_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 56.52836413709631, 'std': 8.095272747107957},
+                annotation_units=2)
+TMAPS['20149_0'] = TensorMap('20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1', group='continuous', channel_map={'20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_0': 0, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_1': 1, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_2': 2, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_3': 3, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_4': 4, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_5': 5, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_6': 6, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_7': 7, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_8': 8, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_9': 9, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_10': 10, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_11': 11, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_12': 12, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_13': 13, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_14': 14, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_15': 15, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_16': 16, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_17': 17, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_18': 18, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_19': 19, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_20': 20, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_21': 21, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_22': 22, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_23': 23, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_24': 24, '20149_Interval-between-previous-point-and-current-one-in-numeric-path-trail-#1_0_25': 25, 'not-missing': 26},
+                normalization={'mean': 1623.1255128003024, 'std': 2275.8786609627978},
+                annotation_units=27)
+TMAPS['30061_0'] = TensorMap('30061_Mean-corpuscular-haemoglobin-concentration-freezethaw-cycles', group='continuous', channel_map={'30061_Mean-corpuscular-haemoglobin-concentration-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['22654_0'] = TensorMap('22654_Consecutive-night-shifts-during-night-shift-periods', group='continuous', channel_map={'22654_Consecutive-night-shifts-during-night-shift-periods_0_0': 0, '22654_Consecutive-night-shifts-during-night-shift-periods_0_1': 1, '22654_Consecutive-night-shifts-during-night-shift-periods_0_2': 2, '22654_Consecutive-night-shifts-during-night-shift-periods_0_3': 3, '22654_Consecutive-night-shifts-during-night-shift-periods_0_4': 4, '22654_Consecutive-night-shifts-during-night-shift-periods_0_5': 5, '22654_Consecutive-night-shifts-during-night-shift-periods_0_6': 6, '22654_Consecutive-night-shifts-during-night-shift-periods_0_7': 7, '22654_Consecutive-night-shifts-during-night-shift-periods_0_8': 8, '22654_Consecutive-night-shifts-during-night-shift-periods_0_9': 9, '22654_Consecutive-night-shifts-during-night-shift-periods_0_10': 10, '22654_Consecutive-night-shifts-during-night-shift-periods_0_11': 11, '22654_Consecutive-night-shifts-during-night-shift-periods_0_12': 12, '22654_Consecutive-night-shifts-during-night-shift-periods_0_13': 13, '22654_Consecutive-night-shifts-during-night-shift-periods_0_14': 14, '22654_Consecutive-night-shifts-during-night-shift-periods_0_15': 15, '22654_Consecutive-night-shifts-during-night-shift-periods_0_16': 16, '22654_Consecutive-night-shifts-during-night-shift-periods_0_17': 17, '22654_Consecutive-night-shifts-during-night-shift-periods_0_18': 18, '22654_Consecutive-night-shifts-during-night-shift-periods_0_19': 19, '22654_Consecutive-night-shifts-during-night-shift-periods_0_20': 20, '22654_Consecutive-night-shifts-during-night-shift-periods_0_21': 21, '22654_Consecutive-night-shifts-during-night-shift-periods_0_22': 22, '22654_Consecutive-night-shifts-during-night-shift-periods_0_23': 23, '22654_Consecutive-night-shifts-during-night-shift-periods_0_24': 24, '22654_Consecutive-night-shifts-during-night-shift-periods_0_25': 25, '22654_Consecutive-night-shifts-during-night-shift-periods_0_26': 26, '22654_Consecutive-night-shifts-during-night-shift-periods_0_27': 27, '22654_Consecutive-night-shifts-during-night-shift-periods_0_28': 28, '22654_Consecutive-night-shifts-during-night-shift-periods_0_29': 29, '22654_Consecutive-night-shifts-during-night-shift-periods_0_30': 30, '22654_Consecutive-night-shifts-during-night-shift-periods_0_31': 31, '22654_Consecutive-night-shifts-during-night-shift-periods_0_32': 32, 'not-missing': 33},
+                normalization={'mean': 3.8223684210526305, 'std': 2.9717294774846077},
+                annotation_units=34)
+TMAPS['41088_0'] = TensorMap('41088_Episodes-containing-Duration-of-episode-within-HES-data-year-data', group='continuous', channel_map={'41088_Episodes-containing-Duration-of-episode-within-HES-data-year-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.65380605365867, 'std': 16.13782806078228},
+                annotation_units=2)
+TMAPS['90091_0'] = TensorMap('90091_Nowear-time-bias-adjusted-acceleration-maximum', group='continuous', channel_map={'90091_Nowear-time-bias-adjusted-acceleration-maximum_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1575.5054467428517, 'std': 786.3941609034839},
+                annotation_units=2)
+TMAPS['90161_0'] = TensorMap('90161_Calibration-coefficients--x-offset', group='continuous', channel_map={'90161_Calibration-coefficients--x-offset_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.004632296639182217, 'std': 0.022627992536624612},
+                annotation_units=2)
+TMAPS['90173_0'] = TensorMap('90173_Calibration--maximum-x-stationary-value', group='continuous', channel_map={'90173_Calibration--maximum-x-stationary-value_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9643294276483919, 'std': 0.1755304898544724},
+                annotation_units=2)
+TMAPS['30780_0'] = TensorMap('30780_LDL-direct', group='continuous', channel_map={'30780_LDL-direct_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.5563651660223763, 'std': 0.8699758052966666},
+                annotation_units=2)
+TMAPS['90132_0'] = TensorMap('90132_Fraction-acceleration-<=-225-milligravities', group='continuous', channel_map={'90132_Fraction-acceleration-<=-225-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9877418004725397, 'std': 0.011152215531305684},
+                annotation_units=2)
+TMAPS['3146_0'] = TensorMap('3146_Speed-of-sound-through-heel', group='continuous', channel_map={'3146_Speed-of-sound-through-heel_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1553.774095256863, 'std': 35.74952717929825},
+                annotation_units=2)
+TMAPS['22039_0'] = TensorMap('22039_MET-minutes-per-week-for-vigorous-activity', group='continuous', channel_map={'22039_MET-minutes-per-week-for-vigorous-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 676.7597017892753, 'std': 1207.0031041595707},
+                annotation_units=2)
+TMAPS['30840_0'] = TensorMap('30840_Total-bilirubin', group='continuous', channel_map={'30840_Total-bilirubin_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 9.125066682920396, 'std': 4.4266920697166166},
+                annotation_units=2)
+TMAPS['4244_0'] = TensorMap('4244_Mean-signaltonoise-ratio-SNR-right', group='continuous', channel_map={'4244_Mean-signaltonoise-ratio-SNR-right_0_0': 0, '4244_Mean-signaltonoise-ratio-SNR-right_0_1': 1, '4244_Mean-signaltonoise-ratio-SNR-right_0_2': 2, '4244_Mean-signaltonoise-ratio-SNR-right_0_3': 3, '4244_Mean-signaltonoise-ratio-SNR-right_0_4': 4, '4244_Mean-signaltonoise-ratio-SNR-right_0_5': 5, '4244_Mean-signaltonoise-ratio-SNR-right_0_6': 6, '4244_Mean-signaltonoise-ratio-SNR-right_0_7': 7, '4244_Mean-signaltonoise-ratio-SNR-right_0_8': 8, '4244_Mean-signaltonoise-ratio-SNR-right_0_9': 9, '4244_Mean-signaltonoise-ratio-SNR-right_0_10': 10, '4244_Mean-signaltonoise-ratio-SNR-right_0_11': 11, '4244_Mean-signaltonoise-ratio-SNR-right_0_12': 12, '4244_Mean-signaltonoise-ratio-SNR-right_0_13': 13, '4244_Mean-signaltonoise-ratio-SNR-right_0_14': 14, '4244_Mean-signaltonoise-ratio-SNR-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': -46879.64721595624, 'std': 49898.65251149256},
+                annotation_units=17)
+TMAPS['5202_0'] = TensorMap('5202_Number-of-rounds-to-result-right', group='continuous', channel_map={'5202_Number-of-rounds-to-result-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.8046942346263806, 'std': 1.3398411998093893},
+                annotation_units=2)
+TMAPS['4125_0'] = TensorMap('4125_Heel-bone-mineral-density-BMD-Tscore-automated-right', group='continuous', channel_map={'4125_Heel-bone-mineral-density-BMD-Tscore-automated-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -0.2612268506396632, 'std': 1.2997182814485158},
+                annotation_units=2)
+TMAPS['90094_0'] = TensorMap('90094_Fraction-acceleration-<=-3-milligravities', group='continuous', channel_map={'90094_Fraction-acceleration-<=-3-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.39714024784222973, 'std': 0.09338600035939265},
+                annotation_units=2)
+TMAPS['1289_0'] = TensorMap('1289_Cooked-vegetable-intake', group='continuous', channel_map={'1289_Cooked-vegetable-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.733310165635568, 'std': 1.927164731938455},
+                annotation_units=2)
+TMAPS['2946_0'] = TensorMap('2946_Fathers-age', group='continuous', channel_map={'2946_Fathers-age_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 77.86716383540289, 'std': 7.339379202289824},
+                annotation_units=2)
+TMAPS['1080_0'] = TensorMap('1080_Time-spent-using-computer', group='continuous', channel_map={'1080_Time-spent-using-computer_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.082895854751028, 'std': 1.3865554107228948},
+                annotation_units=2)
+TMAPS['3436_0'] = TensorMap('3436_Age-started-smoking-in-current-smokers', group='continuous', channel_map={'3436_Age-started-smoking-in-current-smokers_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 17.841919257061782, 'std': 5.793512220681288},
+                annotation_units=2)
+TMAPS['1568_0'] = TensorMap('1568_Average-weekly-red-wine-intake', group='continuous', channel_map={'1568_Average-weekly-red-wine-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.915257928959543, 'std': 5.582280031635246},
+                annotation_units=2)
+TMAPS['5096_0'] = TensorMap('5096_3mm-weak-meridian-left', group='continuous', channel_map={'5096_3mm-weak-meridian-left_0_0': 0, '5096_3mm-weak-meridian-left_0_1': 1, '5096_3mm-weak-meridian-left_0_2': 2, '5096_3mm-weak-meridian-left_0_3': 3, '5096_3mm-weak-meridian-left_0_4': 4, '5096_3mm-weak-meridian-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 43.12724202952481, 'std': 1.528157468013433},
+                annotation_units=7)
+TMAPS['2704_0'] = TensorMap('2704_Years-since-last-cervical-smear-test', group='continuous', channel_map={'2704_Years-since-last-cervical-smear-test_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.168212935741285, 'std': 5.63150945242373},
+                annotation_units=2)
+TMAPS['30500_0'] = TensorMap('30500_Microalbumin-in-urine', group='continuous', channel_map={'30500_Microalbumin-in-urine_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 31.21091658219156, 'std': 129.41440770156905},
+                annotation_units=2)
+TMAPS['1578_0'] = TensorMap('1578_Average-weekly-champagne-plus-white-wine-intake', group='continuous', channel_map={'1578_Average-weekly-champagne-plus-white-wine-intake_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.6539523474601396, 'std': 4.711206710140075},
+                annotation_units=2)
+TMAPS['90022_0'] = TensorMap('90022_Thursday-average-acceleration', group='continuous', channel_map={'90022_Thursday-average-acceleration_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 27.07621158204349, 'std': 13.197469717161153},
+                annotation_units=2)
+TMAPS['5074_0'] = TensorMap('5074_Number-of-letters-shown-in-round-left', group='continuous', channel_map={'5074_Number-of-letters-shown-in-round-left_0_0': 0, '5074_Number-of-letters-shown-in-round-left_0_1': 1, '5074_Number-of-letters-shown-in-round-left_0_2': 2, '5074_Number-of-letters-shown-in-round-left_0_3': 3, '5074_Number-of-letters-shown-in-round-left_0_4': 4, '5074_Number-of-letters-shown-in-round-left_0_5': 5, '5074_Number-of-letters-shown-in-round-left_0_6': 6, '5074_Number-of-letters-shown-in-round-left_0_7': 7, '5074_Number-of-letters-shown-in-round-left_0_8': 8, '5074_Number-of-letters-shown-in-round-left_0_9': 9, '5074_Number-of-letters-shown-in-round-left_0_10': 10, '5074_Number-of-letters-shown-in-round-left_0_11': 11, '5074_Number-of-letters-shown-in-round-left_0_12': 12, '5074_Number-of-letters-shown-in-round-left_0_13': 13, '5074_Number-of-letters-shown-in-round-left_0_14': 14, '5074_Number-of-letters-shown-in-round-left_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 4.982229886781138, 'std': 0.20385247864802825},
+                annotation_units=17)
+TMAPS['90099_0'] = TensorMap('90099_Fraction-acceleration-<=-8-milligravities', group='continuous', channel_map={'90099_Fraction-acceleration-<=-8-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5905090987993636, 'std': 0.095276701487454},
+                annotation_units=2)
+TMAPS['22003_0'] = TensorMap('22003_Heterozygosity', group='continuous', channel_map={'22003_Heterozygosity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.1881170596901828, 'std': 0.004555422619636816},
+                annotation_units=2)
+TMAPS['5204_0'] = TensorMap('5204_Distance-of-viewer-to-screen-right', group='continuous', channel_map={'5204_Distance-of-viewer-to-screen-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.99970554346434, 'std': 0.01758717350878949},
+                annotation_units=2)
+TMAPS['23098_0'] = TensorMap('23098_Weight', group='continuous', channel_map={'23098_Weight_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 78.0328770712033, 'std': 15.89979106473436},
+                annotation_units=2)
+TMAPS['5113_0'] = TensorMap('5113_6mm-cylindrical-power-angle-left', group='continuous', channel_map={'5113_6mm-cylindrical-power-angle-left_0_0': 0, '5113_6mm-cylindrical-power-angle-left_0_1': 1, '5113_6mm-cylindrical-power-angle-left_0_2': 2, '5113_6mm-cylindrical-power-angle-left_0_3': 3, '5113_6mm-cylindrical-power-angle-left_0_4': 4, '5113_6mm-cylindrical-power-angle-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 98.54271765971295, 'std': 62.58221515291403},
+                annotation_units=7)
+TMAPS['20200_0'] = TensorMap('20200_Values-wanted', group='continuous', channel_map={'20200_Values-wanted_0_0': 0, '20200_Values-wanted_0_1': 1, '20200_Values-wanted_0_2': 2, '20200_Values-wanted_0_3': 3, '20200_Values-wanted_0_4': 4, '20200_Values-wanted_0_5': 5, '20200_Values-wanted_0_6': 6, '20200_Values-wanted_0_7': 7, '20200_Values-wanted_0_8': 8, '20200_Values-wanted_0_9': 9, '20200_Values-wanted_0_10': 10, '20200_Values-wanted_0_11': 11, '20200_Values-wanted_0_12': 12, '20200_Values-wanted_0_13': 13, '20200_Values-wanted_0_14': 14, '20200_Values-wanted_0_15': 15, '20200_Values-wanted_0_16': 16, '20200_Values-wanted_0_17': 17, '20200_Values-wanted_0_18': 18, '20200_Values-wanted_0_19': 19, '20200_Values-wanted_0_20': 20, '20200_Values-wanted_0_21': 21, '20200_Values-wanted_0_22': 22, '20200_Values-wanted_0_23': 23, '20200_Values-wanted_0_24': 24, '20200_Values-wanted_0_25': 25, '20200_Values-wanted_0_26': 26, '20200_Values-wanted_0_27': 27, '20200_Values-wanted_0_28': 28, '20200_Values-wanted_0_29': 29, '20200_Values-wanted_0_30': 30, '20200_Values-wanted_0_31': 31, '20200_Values-wanted_0_32': 32, '20200_Values-wanted_0_33': 33, '20200_Values-wanted_0_34': 34, '20200_Values-wanted_0_35': 35, '20200_Values-wanted_0_36': 36, '20200_Values-wanted_0_37': 37, '20200_Values-wanted_0_38': 38, '20200_Values-wanted_0_39': 39, '20200_Values-wanted_0_40': 40, '20200_Values-wanted_0_41': 41, '20200_Values-wanted_0_42': 42, '20200_Values-wanted_0_43': 43, '20200_Values-wanted_0_44': 44, '20200_Values-wanted_0_45': 45, '20200_Values-wanted_0_46': 46, '20200_Values-wanted_0_47': 47, '20200_Values-wanted_0_48': 48, '20200_Values-wanted_0_49': 49, '20200_Values-wanted_0_50': 50, '20200_Values-wanted_0_51': 51, '20200_Values-wanted_0_52': 52, '20200_Values-wanted_0_53': 53, '20200_Values-wanted_0_54': 54, '20200_Values-wanted_0_55': 55, '20200_Values-wanted_0_56': 56, '20200_Values-wanted_0_57': 57, '20200_Values-wanted_0_58': 58, '20200_Values-wanted_0_59': 59, '20200_Values-wanted_0_60': 60, '20200_Values-wanted_0_61': 61, '20200_Values-wanted_0_62': 62, '20200_Values-wanted_0_63': 63, '20200_Values-wanted_0_64': 64, '20200_Values-wanted_0_65': 65, '20200_Values-wanted_0_66': 66, '20200_Values-wanted_0_67': 67, '20200_Values-wanted_0_68': 68, '20200_Values-wanted_0_69': 69, '20200_Values-wanted_0_70': 70, '20200_Values-wanted_0_71': 71, '20200_Values-wanted_0_72': 72, '20200_Values-wanted_0_73': 73, '20200_Values-wanted_0_74': 74, '20200_Values-wanted_0_75': 75, '20200_Values-wanted_0_76': 76, '20200_Values-wanted_0_77': 77, '20200_Values-wanted_0_78': 78, '20200_Values-wanted_0_79': 79, '20200_Values-wanted_0_80': 80, '20200_Values-wanted_0_81': 81, '20200_Values-wanted_0_82': 82, '20200_Values-wanted_0_83': 83, '20200_Values-wanted_0_84': 84, '20200_Values-wanted_0_85': 85, '20200_Values-wanted_0_86': 86, '20200_Values-wanted_0_87': 87, '20200_Values-wanted_0_88': 88, '20200_Values-wanted_0_89': 89, '20200_Values-wanted_0_90': 90, '20200_Values-wanted_0_91': 91, '20200_Values-wanted_0_92': 92, '20200_Values-wanted_0_93': 93, '20200_Values-wanted_0_94': 94, '20200_Values-wanted_0_95': 95, '20200_Values-wanted_0_96': 96, '20200_Values-wanted_0_97': 97, '20200_Values-wanted_0_98': 98, '20200_Values-wanted_0_99': 99, '20200_Values-wanted_0_100': 100, '20200_Values-wanted_0_101': 101, '20200_Values-wanted_0_102': 102, '20200_Values-wanted_0_103': 103, '20200_Values-wanted_0_104': 104, '20200_Values-wanted_0_105': 105, '20200_Values-wanted_0_106': 106, '20200_Values-wanted_0_107': 107, '20200_Values-wanted_0_108': 108, '20200_Values-wanted_0_109': 109, '20200_Values-wanted_0_110': 110, '20200_Values-wanted_0_111': 111, '20200_Values-wanted_0_112': 112, '20200_Values-wanted_0_113': 113, '20200_Values-wanted_0_114': 114, '20200_Values-wanted_0_115': 115, '20200_Values-wanted_0_116': 116, 'not-missing': 117},
+                normalization={'mean': 4.493356376699333, 'std': 2.2875311522945077},
+                annotation_units=118)
+TMAPS['5201_0'] = TensorMap('5201_logMAR-final-right', group='continuous', channel_map={'5201_logMAR-final-right_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0275927792856835, 'std': 0.20804208413111092},
+                annotation_units=2)
+TMAPS['4246_0'] = TensorMap('4246_Time-to-press-last-digit-right', group='continuous', channel_map={'4246_Time-to-press-last-digit-right_0_0': 0, '4246_Time-to-press-last-digit-right_0_1': 1, '4246_Time-to-press-last-digit-right_0_2': 2, '4246_Time-to-press-last-digit-right_0_3': 3, '4246_Time-to-press-last-digit-right_0_4': 4, '4246_Time-to-press-last-digit-right_0_5': 5, '4246_Time-to-press-last-digit-right_0_6': 6, '4246_Time-to-press-last-digit-right_0_7': 7, '4246_Time-to-press-last-digit-right_0_8': 8, '4246_Time-to-press-last-digit-right_0_9': 9, '4246_Time-to-press-last-digit-right_0_10': 10, '4246_Time-to-press-last-digit-right_0_11': 11, '4246_Time-to-press-last-digit-right_0_12': 12, '4246_Time-to-press-last-digit-right_0_13': 13, '4246_Time-to-press-last-digit-right_0_14': 14, '4246_Time-to-press-last-digit-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 46.800946678800166, 'std': 101.12143365743562},
+                annotation_units=17)
+TMAPS['30150_0'] = TensorMap('30150_Eosinophill-count', group='continuous', channel_map={'30150_Eosinophill-count_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.17487985820565616, 'std': 0.1385779158976119},
+                annotation_units=2)
+TMAPS['5108_0'] = TensorMap('5108_3mm-asymmetry-angle-right', group='continuous', channel_map={'5108_3mm-asymmetry-angle-right_0_0': 0, '5108_3mm-asymmetry-angle-right_0_1': 1, '5108_3mm-asymmetry-angle-right_0_2': 2, '5108_3mm-asymmetry-angle-right_0_3': 3, '5108_3mm-asymmetry-angle-right_0_4': 4, '5108_3mm-asymmetry-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 172.9617159259006, 'std': 125.62527821935153},
+                annotation_units=7)
+TMAPS['6033_0'] = TensorMap('6033_Maximum-heart-rate-during-fitness-test', group='continuous', channel_map={'6033_Maximum-heart-rate-during-fitness-test_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 110.24494797213207, 'std': 20.14191123730601},
+                annotation_units=2)
+TMAPS['23106_0'] = TensorMap('23106_Impedance-of-whole-body', group='continuous', channel_map={'23106_Impedance-of-whole-body_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 600.1263049712803, 'std': 88.96912814227957},
+                annotation_units=2)
+TMAPS['20161_0'] = TensorMap('20161_Pack-years-of-smoking', group='continuous', channel_map={'20161_Pack-years-of-smoking_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 23.381888870486776, 'std': 18.803128176701886},
+                annotation_units=2)
+TMAPS['90037_0'] = TensorMap('90037_Average-acceleration-10:00--10:59', group='continuous', channel_map={'90037_Average-acceleration-10:00--10:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 48.64760027002265, 'std': 26.850548452754854},
+                annotation_units=2)
+TMAPS['100024_0'] = TensorMap('100024_Calcium', group='continuous', channel_map={'100024_Calcium_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 987.0313623192507, 'std': 470.33844826989474},
+                annotation_units=2)
+TMAPS['90042_0'] = TensorMap('90042_Average-acceleration-15:00--15:59', group='continuous', channel_map={'90042_Average-acceleration-15:00--15:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 41.38379179323976, 'std': 24.118297411291845},
+                annotation_units=2)
+TMAPS['41085_0'] = TensorMap('41085_Episodes-containing-Duration-of-episode-data', group='continuous', channel_map={'41085_Episodes-containing-Duration-of-episode-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.782855498903625, 'std': 15.82145971755004},
+                annotation_units=2)
+TMAPS['90136_0'] = TensorMap('90136_Fraction-acceleration-<=-325-milligravities', group='continuous', channel_map={'90136_Fraction-acceleration-<=-325-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9950144944307825, 'std': 0.00688573756573124},
+                annotation_units=2)
+TMAPS['30750_0'] = TensorMap('30750_Glycated-haemoglobin-HbA1c', group='continuous', channel_map={'30750_Glycated-haemoglobin-HbA1c_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 36.131166055773356, 'std': 6.775811313289606},
+                annotation_units=2)
+TMAPS['90114_0'] = TensorMap('90114_Fraction-acceleration-<=-35-milligravities', group='continuous', channel_map={'90114_Fraction-acceleration-<=-35-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.7745163894112544, 'std': 0.07133240709878881},
+                annotation_units=2)
+TMAPS['49_0'] = TensorMap('49_Hip-circumference', group='continuous', channel_map={'49_Hip-circumference_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 103.40158393578466, 'std': 9.249535675810918},
+                annotation_units=2)
+TMAPS['5206_0'] = TensorMap('5206_logMAR-initial-left', group='continuous', channel_map={'5206_logMAR-initial-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.037402227004132906, 'std': 0.2523146285723492},
+                annotation_units=2)
+TMAPS['23105_0'] = TensorMap('23105_Basal-metabolic-rate', group='continuous', channel_map={'23105_Basal-metabolic-rate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6616.133658821906, 'std': 1364.2964637736743},
+                annotation_units=2)
+TMAPS['90083_0'] = TensorMap('90083_Wear-duration-during-23:00--23:59', group='continuous', channel_map={'90083_Wear-duration-during-23:00--23:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.209585611649548, 'std': 1.6306264000655886},
+                annotation_units=2)
+TMAPS['90150_0'] = TensorMap('90150_Fraction-acceleration-<=-1200-milligravities', group='continuous', channel_map={'90150_Fraction-acceleration-<=-1200-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9998441776363373, 'std': 0.0030152885490644264},
+                annotation_units=2)
+TMAPS['90028_0'] = TensorMap('90028_Average-acceleration-01:00--01:59', group='continuous', channel_map={'90028_Average-acceleration-01:00--01:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 4.532738511982256, 'std': 11.43033922127147},
+                annotation_units=2)
+TMAPS['30404_0'] = TensorMap('30404_Volume-of-ACD-held-by-UKB', group='continuous', channel_map={'30404_Volume-of-ACD-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1394.9801762068923, 'std': 78.47424530021985},
+                annotation_units=2)
+TMAPS['90057_0'] = TensorMap('90057_Wear-duration-during-Friday', group='continuous', channel_map={'90057_Wear-duration-during-Friday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.490339553498234, 'std': 6.004131785924718},
+                annotation_units=2)
+TMAPS['30081_0'] = TensorMap('30081_Platelet-count-freezethaw-cycles', group='continuous', channel_map={'30081_Platelet-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['48_0'] = TensorMap('48_Waist-circumference', group='continuous', channel_map={'48_Waist-circumference_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 90.31081898412391, 'std': 13.48587712418455},
+                annotation_units=2)
+TMAPS['1050_0'] = TensorMap('1050_Time-spend-outdoors-in-summer', group='continuous', channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.7956787003687054, 'std': 2.3994732770508778},
+                annotation_units=2)
+TMAPS['4139_0'] = TensorMap('4139_Heel-quantitative-ultrasound-index-QUI-manual-entry-left', group='continuous', channel_map={'4139_Heel-quantitative-ultrasound-index-QUI-manual-entry-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 97.70309446254072, 'std': 20.444443087821778},
+                annotation_units=2)
+TMAPS['41093_0'] = TensorMap('41093_Episodes-containing-PCT-where-patients-GP-was-registered-data', group='continuous', channel_map={'41093_Episodes-containing-PCT-where-patients-GP-was-registered-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.653970125464318, 'std': 16.13776867066458},
+                annotation_units=2)
+TMAPS['90098_0'] = TensorMap('90098_Fraction-acceleration-<=-7-milligravities', group='continuous', channel_map={'90098_Fraction-acceleration-<=-7-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.5718037128116109, 'std': 0.09658138066480368},
+                annotation_units=2)
+TMAPS['90080_0'] = TensorMap('90080_Wear-duration-during-20:00--20:59', group='continuous', channel_map={'90080_Wear-duration-during-20:00--20:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.376575437581371, 'std': 1.5428021577386761},
+                annotation_units=2)
+TMAPS['100017_0'] = TensorMap('100017_Magnesium', group='continuous', channel_map={'100017_Magnesium_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 349.66390037740075, 'std': 129.84604714346878},
+                annotation_units=2)
+TMAPS['90137_0'] = TensorMap('90137_Fraction-acceleration-<=-350-milligravities', group='continuous', channel_map={'90137_Fraction-acceleration-<=-350-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9958143979941171, 'std': 0.006392347972267872},
+                annotation_units=2)
+TMAPS['100025_0'] = TensorMap('100025_Vitamin-E', group='continuous', channel_map={'100025_Vitamin-E_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 9.228437530920036, 'std': 5.565657210717742},
+                annotation_units=2)
+TMAPS['5306_0'] = TensorMap('5306_6mm-index-of-best-keratometry-results-left', group='continuous', channel_map={'5306_6mm-index-of-best-keratometry-results-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.5475421186245082, 'std': 0.6728018700501439},
+                annotation_units=2)
+TMAPS['41078_0'] = TensorMap('41078_Episodes-containing-Diagnoses--secondary-ICD10-data', group='continuous', channel_map={'41078_Episodes-containing-Diagnoses--secondary-ICD10-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.851323793623397, 'std': 42.31535192479267},
+                annotation_units=2)
+TMAPS['30280_0'] = TensorMap('30280_Immature-reticulocyte-fraction', group='continuous', channel_map={'30280_Immature-reticulocyte-fraction_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.2907929862495929, 'std': 0.06104801809509128},
+                annotation_units=2)
+TMAPS['3627_0'] = TensorMap('3627_Age-angina-diagnosed', group='continuous', channel_map={'3627_Age-angina-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 53.52812208449953, 'std': 7.995373672649764},
+                annotation_units=2)
+TMAPS['30324_0'] = TensorMap('30324_Volume-of-EDTA1-red-cells-held-by-UKB', group='continuous', channel_map={'30324_Volume-of-EDTA1-red-cells-held-by-UKB_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 834.5843524257385, 'std': 110.04775521812482},
+                annotation_units=2)
+TMAPS['41105_0'] = TensorMap('41105_Episodes-containing-External-cause--ICD10-addendum-data', group='continuous', channel_map={'41105_Episodes-containing-External-cause--ICD10-addendum-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.1807909604519777, 'std': 0.5012183410175328},
+                annotation_units=2)
+TMAPS['90133_0'] = TensorMap('90133_Fraction-acceleration-<=-250-milligravities', group='continuous', channel_map={'90133_Fraction-acceleration-<=-250-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9905989488403492, 'std': 0.009523163978600962},
+                annotation_units=2)
+TMAPS['4022_0'] = TensorMap('4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed', group='continuous', channel_map={'4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 45.80101137800252, 'std': 13.012234972007672},
+                annotation_units=2)
+TMAPS['5157_0'] = TensorMap('5157_6mm-asymmetry-index-left', group='continuous', channel_map={'5157_6mm-asymmetry-index-left_0_0': 0, '5157_6mm-asymmetry-index-left_0_1': 1, '5157_6mm-asymmetry-index-left_0_2': 2, '5157_6mm-asymmetry-index-left_0_3': 3, '5157_6mm-asymmetry-index-left_0_4': 4, '5157_6mm-asymmetry-index-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 14.362162041038442, 'std': 10.1771722641308},
+                annotation_units=7)
+TMAPS['41099_0'] = TensorMap('41099_Episodes-containing-Source-of-admission-to-hospital-data-polymorphic', group='continuous', channel_map={'41099_Episodes-containing-Source-of-admission-to-hospital-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.783473427954616, 'std': 15.822042138052465},
+                annotation_units=2)
+TMAPS['10696_0'] = TensorMap('10696_Peak-expiratory-flow-PEF-pilot', group='continuous', channel_map={'10696_Peak-expiratory-flow-PEF-pilot_0_0': 0, '10696_Peak-expiratory-flow-PEF-pilot_0_1': 1, '10696_Peak-expiratory-flow-PEF-pilot_0_2': 2, '10696_Peak-expiratory-flow-PEF-pilot_0_3': 3, '10696_Peak-expiratory-flow-PEF-pilot_0_4': 4, 'not-missing': 5},
+                normalization={'mean': 389.8637166405023, 'std': 140.95580121591215},
+                annotation_units=6)
+TMAPS['2405_0'] = TensorMap('2405_Number-of-children-fathered', group='continuous', channel_map={'2405_Number-of-children-fathered_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.8139734495563804, 'std': 1.3398570356329154},
+                annotation_units=2)
+TMAPS['5292_0'] = TensorMap('5292_3mm-index-of-best-keratometry-results-left', group='continuous', channel_map={'5292_3mm-index-of-best-keratometry-results-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.7062022059157829, 'std': 0.5957777064183037},
+                annotation_units=2)
+TMAPS['50_0'] = TensorMap('50_Standing-height', group='continuous', channel_map={'50_Standing-height_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 168.4435452612715, 'std': 9.279066076396694},
+                annotation_units=2)
+TMAPS['30700_0'] = TensorMap('30700_Creatinine', group='continuous', channel_map={'30700_Creatinine_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 72.30598402583821, 'std': 18.549736297431203},
+                annotation_units=2)
+TMAPS['22037_0'] = TensorMap('22037_MET-minutes-per-week-for-walking', group='continuous', channel_map={'22037_MET-minutes-per-week-for-walking_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1039.5601282306268, 'std': 1086.1500250153515},
+                annotation_units=2)
+TMAPS['90074_0'] = TensorMap('90074_Wear-duration-during-14:00--14:59', group='continuous', channel_map={'90074_Wear-duration-during-14:00--14:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.368456724046482, 'std': 1.5369328079538043},
+                annotation_units=2)
+TMAPS['5057_0'] = TensorMap('5057_Number-of-older-siblings', group='continuous', channel_map={'5057_Number-of-older-siblings_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.2009118177957103, 'std': 1.4919010058319084},
+                annotation_units=2)
+TMAPS['90059_0'] = TensorMap('90059_Wear-duration-during-Sunday', group='continuous', channel_map={'90059_Wear-duration-during-Sunday_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 21.295139881382898, 'std': 6.777737389457542},
+                annotation_units=2)
+TMAPS['22034_0'] = TensorMap('22034_Summed-minutes-activity', group='continuous', channel_map={'22034_Summed-minutes-activity_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 127.09579274353938, 'std': 101.90442571639983},
+                annotation_units=2)
+TMAPS['2714_0'] = TensorMap('2714_Age-when-periods-started-menarche', group='continuous', channel_map={'2714_Age-when-periods-started-menarche_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 12.9698313336811, 'std': 1.6232172496143262},
+                annotation_units=2)
+TMAPS['22011_0'] = TensorMap('22011_Genetic-relatedness-pairing', group='continuous', channel_map={'22011_Genetic-relatedness-pairing_0_0': 0, '22011_Genetic-relatedness-pairing_0_1': 1, '22011_Genetic-relatedness-pairing_0_2': 2, '22011_Genetic-relatedness-pairing_0_3': 3, '22011_Genetic-relatedness-pairing_0_4': 4, 'not-missing': 5},
+                normalization={'mean': 4847.150884978585, 'std': 2797.7387362788163},
+                annotation_units=6)
+TMAPS['5084_0'] = TensorMap('5084_Spherical-power-right', group='continuous', channel_map={'5084_Spherical-power-right_0_0': 0, '5084_Spherical-power-right_0_1': 1, '5084_Spherical-power-right_0_2': 2, '5084_Spherical-power-right_0_3': 3, '5084_Spherical-power-right_0_4': 4, '5084_Spherical-power-right_0_5': 5, '5084_Spherical-power-right_0_6': 6, '5084_Spherical-power-right_0_7': 7, '5084_Spherical-power-right_0_8': 8, '5084_Spherical-power-right_0_9': 9, 'not-missing': 10},
+                normalization={'mean': -0.7995140702990166, 'std': 2.8265271735844455},
+                annotation_units=11)
+TMAPS['30270_0'] = TensorMap('30270_Mean-sphered-cell-volume', group='continuous', channel_map={'30270_Mean-sphered-cell-volume_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 82.86684850780729, 'std': 5.3150664344067655},
+                annotation_units=2)
+TMAPS['2976_0'] = TensorMap('2976_Age-diabetes-diagnosed', group='continuous', channel_map={'2976_Age-diabetes-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 50.96104899369791, 'std': 12.59644857040302},
+                annotation_units=2)
+TMAPS['30210_0'] = TensorMap('30210_Eosinophill-percentage', group='continuous', channel_map={'30210_Eosinophill-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.572445795980449, 'std': 1.8756692623102365},
+                annotation_units=2)
+TMAPS['90142_0'] = TensorMap('90142_Fraction-acceleration-<=-475-milligravities', group='continuous', channel_map={'90142_Fraction-acceleration-<=-475-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9979510583924006, 'std': 0.005138435576908388},
+                annotation_units=2)
+TMAPS['30181_0'] = TensorMap('30181_Lymphocyte-percentage-freezethaw-cycles', group='continuous', channel_map={'30181_Lymphocyte-percentage-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90051_0'] = TensorMap('90051_Wear-duration-overall', group='continuous', channel_map={'90051_Wear-duration-overall_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.294159795554268, 'std': 1.529414876143496},
+                annotation_units=2)
+TMAPS['5162_0'] = TensorMap('5162_6mm-regularity-index-left', group='continuous', channel_map={'5162_6mm-regularity-index-left_0_0': 0, '5162_6mm-regularity-index-left_0_1': 1, '5162_6mm-regularity-index-left_0_2': 2, '5162_6mm-regularity-index-left_0_3': 3, '5162_6mm-regularity-index-left_0_4': 4, '5162_6mm-regularity-index-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 2.5843893486129437, 'std': 1.676692464550955},
+                annotation_units=7)
+TMAPS['5109_0'] = TensorMap('5109_6mm-asymmetry-angle-right', group='continuous', channel_map={'5109_6mm-asymmetry-angle-right_0_0': 0, '5109_6mm-asymmetry-angle-right_0_1': 1, '5109_6mm-asymmetry-angle-right_0_2': 2, '5109_6mm-asymmetry-angle-right_0_3': 3, '5109_6mm-asymmetry-angle-right_0_4': 4, '5109_6mm-asymmetry-angle-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 143.18429828411914, 'std': 130.42863315195004},
+                annotation_units=7)
+TMAPS['90119_0'] = TensorMap('90119_Fraction-acceleration-<=-60-milligravities', group='continuous', channel_map={'90119_Fraction-acceleration-<=-60-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8555916968031244, 'std': 0.05605786106696202},
+                annotation_units=2)
+TMAPS['4194_0'] = TensorMap('4194_Pulse-rate', group='continuous', channel_map={'4194_Pulse-rate_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 68.99360502228289, 'std': 11.565213398676876},
+                annotation_units=2)
+TMAPS['90046_0'] = TensorMap('90046_Average-acceleration-19:00--19:59', group='continuous', channel_map={'90046_Average-acceleration-19:00--19:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 32.83279251651478, 'std': 24.44931196678211},
+                annotation_units=2)
+TMAPS['3992_0'] = TensorMap('3992_Age-emphysemachronic-bronchitis-diagnosed', group='continuous', channel_map={'3992_Age-emphysemachronic-bronchitis-diagnosed_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 41.86264308012487, 'std': 19.951267875285666},
+                annotation_units=2)
+TMAPS['40008_0'] = TensorMap('40008_Age-at-cancer-diagnosis', group='continuous', channel_map={'40008_Age-at-cancer-diagnosis_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 57.596016720411555, 'std': 11.456438149908758},
+                annotation_units=2)
+TMAPS['90162_0'] = TensorMap('90162_Calibration-coefficients--y-offset', group='continuous', channel_map={'90162_Calibration-coefficients--y-offset_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.013208814311201121, 'std': 0.025080515617090206},
+                annotation_units=2)
+TMAPS['90155_0'] = TensorMap('90155_Fraction-acceleration-<=-1700-milligravities', group='continuous', channel_map={'90155_Fraction-acceleration-<=-1700-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9999659867881769, 'std': 0.001956991803023522},
+                annotation_units=2)
+TMAPS['4141_0'] = TensorMap('4141_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-left', group='continuous', channel_map={'4141_Heel-broadband-ultrasound-attenuation-BUA-manual-entry-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 76.35365635179154, 'std': 24.762803899282975},
+                annotation_units=2)
+TMAPS['5159_0'] = TensorMap('5159_3mm-asymmetry-index-right', group='continuous', channel_map={'5159_3mm-asymmetry-index-right_0_0': 0, '5159_3mm-asymmetry-index-right_0_1': 1, '5159_3mm-asymmetry-index-right_0_2': 2, '5159_3mm-asymmetry-index-right_0_3': 3, '5159_3mm-asymmetry-index-right_0_4': 4, '5159_3mm-asymmetry-index-right_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 9.13288412872048, 'std': 7.381779218319648},
+                annotation_units=7)
+TMAPS['20133_0'] = TensorMap('20133_Time-to-complete-round', group='continuous', channel_map={'20133_Time-to-complete-round_0_0': 0, '20133_Time-to-complete-round_0_1': 1, '20133_Time-to-complete-round_0_2': 2, 'not-missing': 3},
+                normalization={'mean': 22915.969608722226, 'std': 16223.147679056186},
+                annotation_units=4)
+TMAPS['6073_0'] = TensorMap('6073_Duration-at-which-OCT-screen-shown-left', group='continuous', channel_map={'6073_Duration-at-which-OCT-screen-shown-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 489.35185584397465, 'std': 165.82155361810305},
+                annotation_units=2)
+TMAPS['3680_0'] = TensorMap('3680_Age-when-last-ate-meat', group='continuous', channel_map={'3680_Age-when-last-ate-meat_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 29.739727395276855, 'std': 14.418396711020819},
+                annotation_units=2)
+TMAPS['90049_0'] = TensorMap('90049_Average-acceleration-22:00--22:59', group='continuous', channel_map={'90049_Average-acceleration-22:00--22:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 20.071803172766284, 'std': 16.713027846788776},
+                annotation_units=2)
+TMAPS['30610_0'] = TensorMap('30610_Alkaline-phosphatase', group='continuous', channel_map={'30610_Alkaline-phosphatase_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 83.66915643871293, 'std': 26.45996624495359},
+                annotation_units=2)
+TMAPS['30230_0'] = TensorMap('30230_Nucleated-red-blood-cell-percentage', group='continuous', channel_map={'30230_Nucleated-red-blood-cell-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.03519063641849082, 'std': 0.4471618594201447},
+                annotation_units=2)
+TMAPS['90163_0'] = TensorMap('90163_Calibration-coefficients--z-offset', group='continuous', channel_map={'90163_Calibration-coefficients--z-offset_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.126644688750663, 'std': 0.07037598553692072},
+                annotation_units=2)
+TMAPS['4288_0'] = TensorMap('4288_Time-to-answer', group='continuous', channel_map={'4288_Time-to-answer_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 462.36689146261125, 'std': 196.6502921727969},
+                annotation_units=2)
+TMAPS['90186_0'] = TensorMap('90186_Maximum-readings-exceeding-8-gravities-after-calibration-in-a-5-second-epoch', group='continuous', channel_map={'90186_Maximum-readings-exceeding-8-gravities-after-calibration-in-a-5-second-epoch_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 16.617300737740493, 'std': 18.94415491093164},
+                annotation_units=2)
+TMAPS['5156_0'] = TensorMap('5156_3mm-asymmetry-index-left', group='continuous', channel_map={'5156_3mm-asymmetry-index-left_0_0': 0, '5156_3mm-asymmetry-index-left_0_1': 1, '5156_3mm-asymmetry-index-left_0_2': 2, '5156_3mm-asymmetry-index-left_0_3': 3, '5156_3mm-asymmetry-index-left_0_4': 4, '5156_3mm-asymmetry-index-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 8.501806372008417, 'std': 7.308955928298859},
+                annotation_units=7)
+TMAPS['90122_0'] = TensorMap('90122_Fraction-acceleration-<=-75-milligravities', group='continuous', channel_map={'90122_Fraction-acceleration-<=-75-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.8882932831862674, 'std': 0.048040170612471324},
+                annotation_units=2)
+TMAPS['30271_0'] = TensorMap('30271_Mean-sphered-cell-volume-freezethaw-cycles', group='continuous', channel_map={'30271_Mean-sphered-cell-volume-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['100007_0'] = TensorMap('100007_Polyunsaturated-fat', group='continuous', channel_map={'100007_Polyunsaturated-fat_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 14.232844784937871, 'std': 8.825575758319898},
+                annotation_units=2)
+TMAPS['41096_0'] = TensorMap('41096_Episodes-containing-Date-of-admission-to-hospital-data', group='continuous', channel_map={'41096_Episodes-containing-Date-of-admission-to-hospital-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.5117246239435405, 'std': 15.664253231461565},
+                annotation_units=2)
+TMAPS['100008_0'] = TensorMap('100008_Total-sugars', group='continuous', channel_map={'100008_Total-sugars_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 123.24034361881073, 'std': 61.985067699217446},
+                annotation_units=2)
+TMAPS['30011_0'] = TensorMap('30011_Red-blood-cell-erythrocyte-count-freezethaw-cycles', group='continuous', channel_map={'30011_Red-blood-cell-erythrocyte-count-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['90193_0'] = TensorMap('90193_Temperature-standard-deviation', group='continuous', channel_map={'90193_Temperature-standard-deviation_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1.5691094073966916, 'std': 0.48713670603278025},
+                annotation_units=2)
+TMAPS['30680_0'] = TensorMap('30680_Calcium', group='continuous', channel_map={'30680_Calcium_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.3798800595411223, 'std': 0.09418845422721601},
+                annotation_units=2)
+TMAPS['22005_0'] = TensorMap('22005_Missingness', group='continuous', channel_map={'22005_Missingness_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.004749983787436921, 'std': 0.004848366188829002},
+                annotation_units=2)
+TMAPS['40007_0'] = TensorMap('40007_Age-at-death', group='continuous', channel_map={'40007_Age-at-death_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 67.2703209396039, 'std': 7.095180722295176},
+                annotation_units=2)
+TMAPS['22642_0'] = TensorMap('22642_Usual-length-of-each-night-shift-during-mixed-shift-periods', group='continuous', channel_map={'22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_0': 0, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_1': 1, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_2': 2, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_3': 3, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_4': 4, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_5': 5, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_6': 6, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_7': 7, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_8': 8, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_9': 9, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_10': 10, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_11': 11, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_12': 12, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_13': 13, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_14': 14, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_15': 15, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_16': 16, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_17': 17, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_18': 18, '22642_Usual-length-of-each-night-shift-during-mixed-shift-periods_0_19': 19, 'not-missing': 20},
+                normalization={'mean': 9.994711361363992, 'std': 3.089320388052217},
+                annotation_units=21)
+TMAPS['30281_0'] = TensorMap('30281_Immature-reticulocyte-fraction-freezethaw-cycles', group='continuous', channel_map={'30281_Immature-reticulocyte-fraction-freezethaw-cycles_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.0, 'std': 0.0},
+                annotation_units=2)
+TMAPS['41100_0'] = TensorMap('41100_Episodes-containing-First-regular-day-or-night-of-admission-to-hosp-data', group='continuous', channel_map={'41100_Episodes-containing-First-regular-day-or-night-of-admission-to-hosp-data_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.7123678882552893, 'std': 14.7015392084287},
+                annotation_units=2)
+TMAPS['90167_0'] = TensorMap('90167_Calibration-coefficients--x-temp', group='continuous', channel_map={'90167_Calibration-coefficients--x-temp_0_0': 0, 'not-missing': 1},
+                normalization={'mean': -4.48719803269203e-05, 'std': 0.0011886910403996014},
+                annotation_units=2)
+TMAPS['5118_0'] = TensorMap('5118_6mm-cylindrical-power-left', group='continuous', channel_map={'5118_6mm-cylindrical-power-left_0_0': 0, '5118_6mm-cylindrical-power-left_0_1': 1, '5118_6mm-cylindrical-power-left_0_2': 2, '5118_6mm-cylindrical-power-left_0_3': 3, '5118_6mm-cylindrical-power-left_0_4': 4, '5118_6mm-cylindrical-power-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': -0.8553726885371102, 'std': 0.6666154827636736},
+                annotation_units=7)
+TMAPS['90145_0'] = TensorMap('90145_Fraction-acceleration-<=-700-milligravities', group='continuous', channel_map={'90145_Fraction-acceleration-<=-700-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9991858913158781, 'std': 0.004385515911714363},
+                annotation_units=2)
+TMAPS['23125_0'] = TensorMap('23125_Arm-fatfree-mass-left', group='continuous', channel_map={'23125_Arm-fatfree-mass-left_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 2.9256461729453607, 'std': 0.837229013037967},
+                annotation_units=2)
+TMAPS['90190_0'] = TensorMap('90190_Sample-rate-minimum', group='continuous', channel_map={'90190_Sample-rate-minimum_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 57.2816779979748, 'std': 31.634722185781886},
+                annotation_units=2)
+TMAPS['34_0'] = TensorMap('34_Year-of-birth', group='continuous', channel_map={'34_Year-of-birth_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 1951.5428168330232, 'std': 8.116157117024176},
+                annotation_units=2)
+TMAPS['10695_0'] = TensorMap('10695_Forced-expiratory-volume-in-1second-FEV1-pilot', group='continuous', channel_map={'10695_Forced-expiratory-volume-in-1second-FEV1-pilot_0_0': 0, '10695_Forced-expiratory-volume-in-1second-FEV1-pilot_0_1': 1, '10695_Forced-expiratory-volume-in-1second-FEV1-pilot_0_2': 2, '10695_Forced-expiratory-volume-in-1second-FEV1-pilot_0_3': 3, '10695_Forced-expiratory-volume-in-1second-FEV1-pilot_0_4': 4, 'not-missing': 5},
+                normalization={'mean': 2.772009419152276, 'std': 0.8046516494847459},
+                annotation_units=6)
+TMAPS['5163_0'] = TensorMap('5163_3mm-regularity-index-left', group='continuous', channel_map={'5163_3mm-regularity-index-left_0_0': 0, '5163_3mm-regularity-index-left_0_1': 1, '5163_3mm-regularity-index-left_0_2': 2, '5163_3mm-regularity-index-left_0_3': 3, '5163_3mm-regularity-index-left_0_4': 4, '5163_3mm-regularity-index-left_0_5': 5, 'not-missing': 6},
+                normalization={'mean': 2.0747083278743013, 'std': 1.4867992409125146},
+                annotation_units=7)
+TMAPS['90153_0'] = TensorMap('90153_Fraction-acceleration-<=-1500-milligravities', group='continuous', channel_map={'90153_Fraction-acceleration-<=-1500-milligravities_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 0.9999418486908725, 'std': 0.0022951564321133386},
+                annotation_units=2)
+TMAPS['30070_0'] = TensorMap('30070_Red-blood-cell-erythrocyte-distribution-width', group='continuous', channel_map={'30070_Red-blood-cell-erythrocyte-distribution-width_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 13.49324742052455, 'std': 0.987728438359214},
+                annotation_units=2)
+TMAPS['4249_0'] = TensorMap('4249_Number-of-times-clear-was-pressed-right', group='continuous', channel_map={'4249_Number-of-times-clear-was-pressed-right_0_0': 0, '4249_Number-of-times-clear-was-pressed-right_0_1': 1, '4249_Number-of-times-clear-was-pressed-right_0_2': 2, '4249_Number-of-times-clear-was-pressed-right_0_3': 3, '4249_Number-of-times-clear-was-pressed-right_0_4': 4, '4249_Number-of-times-clear-was-pressed-right_0_5': 5, '4249_Number-of-times-clear-was-pressed-right_0_6': 6, '4249_Number-of-times-clear-was-pressed-right_0_7': 7, '4249_Number-of-times-clear-was-pressed-right_0_8': 8, '4249_Number-of-times-clear-was-pressed-right_0_9': 9, '4249_Number-of-times-clear-was-pressed-right_0_10': 10, '4249_Number-of-times-clear-was-pressed-right_0_11': 11, '4249_Number-of-times-clear-was-pressed-right_0_12': 12, '4249_Number-of-times-clear-was-pressed-right_0_13': 13, '4249_Number-of-times-clear-was-pressed-right_0_14': 14, '4249_Number-of-times-clear-was-pressed-right_0_15': 15, 'not-missing': 16},
+                normalization={'mean': 0.08729198620760759, 'std': 0.4911166309730325},
+                annotation_units=17)
+TMAPS['30200_0'] = TensorMap('30200_Neutrophill-percentage', group='continuous', channel_map={'30200_Neutrophill-percentage_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 60.88044484064051, 'std': 8.525766569129082},
+                annotation_units=2)
+TMAPS['90029_0'] = TensorMap('90029_Average-acceleration-02:00--02:59', group='continuous', channel_map={'90029_Average-acceleration-02:00--02:59_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 3.7740854428853847, 'std': 12.794841854591494},
+                annotation_units=2)
+TMAPS['41111_0'] = TensorMap('41111_Episodes-containing-Main-speciality-of-consultant-data-polymorphic', group='continuous', channel_map={'41111_Episodes-containing-Main-speciality-of-consultant-data-polymorphic_0_0': 0, 'not-missing': 1},
+                normalization={'mean': 6.711742330165619, 'std': 16.03326561861681},
+                annotation_units=2)
 
 #  TensorMaps for MPG disease phenotypes
 TMAPS['allergic_rhinitis'] = TensorMap('allergic_rhinitis', group = 'categorical_index', channel_map = {'no_allergic_rhinitis':0, 'allergic_rhinitis':1}, loss = weighted_crossentropy([1.0, 8], 'allergic_rhinitis'))

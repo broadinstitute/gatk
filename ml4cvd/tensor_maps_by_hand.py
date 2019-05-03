@@ -227,7 +227,50 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', group='categorical',
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
 
+TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
+                                 channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
+                                 normalization={'mean': 75.555, 'std': 11.977}, annotation_units = 4)
+
+TMAPS['fathers_age'] = TensorMap('fathers_age_0', group='continuous',
+                                 channel_map={'father_age': 0, 'father_alive': 2, 'father_dead': 3, 'not-missing': 1},
+                                 normalization={'mean':70.928, 'std': 12.746}, annotation_units = 4)
+
 TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=1, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1})
+
+TMAPS['random-forest-fields'] = TensorMap('top-80-class', group='categorical',
+                                  channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
+                                               'Medication-for-pain-relief-constipation-heartburn_Do-not-know': 1,
+                                               'Medication-for-pain-relief-constipation-heartburn_Ibuprofen-eg-Nurofen': 2,
+                                               'Medication-for-pain-relief-constipation-heartburn_Laxatives-eg-Dulcolax-Senokot': 3,
+                                               'Medication-for-pain-relief-constipation-heartburn_None-of-the-above': 4,
+                                               'Medication-for-pain-relief-constipation-heartburn_Omeprazole-eg-Zanprol': 5,
+                                               'Medication-for-pain-relief-constipation-heartburn_Paracetamol': 6,
+                                               'Medication-for-pain-relief-constipation-heartburn_Ranitidine-eg-Zantac': 7,
+                                               'Vascularheart-problems-diagnosed-by-doctor_None-of-the-above': 8,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Heart-attack': 9,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Angina': 10,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Stroke': 11,
+                                               'Vascularheart-problems-diagnosed-by-doctor_High-blood-pressure': 12,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Prefer-not-to-answer': 13,
+                                               'Had-other-major-operations_Yes--you-will-be-asked-about-this-later-by-an-interviewer':14,
+                                               'Had-other-major-operations_No': 15,
+                                               'Had-other-major-operations_Do-not-know': 16,
+                                               'Had-other-major-operations_Prefer-not-to-answer': 17,
+                                               'Sex_Female': 18,
+                                               'Sex_Male': 19,
+                                               'Mother-still-alive_Yes': 20,
+                                               'Mother-still-alive_No': 21,
+                                               'Mother-still-alive_Do-not-know': 22,
+                                               'Mother-still-alive_Prefer-not-to-answer': 23,
+                                               'Father-still-alive_Yes': 24,
+                                               'Father-still-alive_No': 25,
+                                               'Father-still-alive_Do-not-know': 26,
+                                               'Father-still-alive_Prefer-not-to-answer': 27,
+                                               'Adopted-as-a-child_Yes': 28,
+                                               'Adopted-as-a-child_No': 29,
+                                               'Adopted-as-a-child_Do-not-know': 30,
+                                               'Adopted-as-a-child_Prefer-not-to-answer': 31
+                                               })
 
 TMAPS['categorical-phenotypes-22'] = TensorMap('categorical-phenotypes-22', group='categorical',
                                            channel_map={'Adopted-as-a-child_No_0_0': 0, 'Adopted-as-a-child_No_2_0': 1,

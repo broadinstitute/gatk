@@ -8,6 +8,8 @@ from DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
 from tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
+LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
+
 def write_tensor_maps(args) -> None:
     logging.info("Making tensor maps...")
 
@@ -146,7 +148,6 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
 
             
 def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
-    annotation_units = 2
     group = 'continuous'
 
     # Handle special coding values in continuous variables in order to generate summary statistics (mean and std dev) for
@@ -159,7 +160,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
                 WHEN meaning IN ('Do not know',  'Prefer not to answer', 'Ongoing when data entered') OR meaning LIKE "Still taking%" THEN TRUE
             END AS missing,
             CASE
-                WHEN meaning = 'Less than one' THEN '.5'
+                WHEN meaning IN {LESS_THAN_CODES} THEN '.5'
             END AS value
         FROM
             {CODING_TABLE}
@@ -167,23 +168,24 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
     SELECT 
         sample_id, 
         FieldID, 
+        array_idx,
         COALESCE(c.value, p.value) new_value, 
-        COALESCE(c.missing, FALSE) missing 
+        COALESCE(c.missing, FALSE) missing
     FROM {PHENOTYPE_TABLE} AS p
     LEFT JOIN coding_tmp AS c 
         ON TRUE
-        AND p.value = c.coding 
+        AND SAFE_CAST(p.value AS FLOAT64) = SAFE_CAST(c.coding AS FLOAT64)
         AND p.coding_file_id = c.coding_file_id
     WHERE TRUE
         AND instance = 0 
-        AND array_idx = 0
     )
 
     SELECT 
         t.FieldID, 
         Field, 
         AVG(CAST(new_value AS FLOAT64)) mean, 
-        STDDEV(CAST(new_value AS FLOAT64)) std 
+        STDDEV(CAST(new_value AS FLOAT64)) std,
+        MAX(array_idx) AS max_array
     FROM pheno_tmp AS t
     LEFT JOIN {DICTIONARY_TABLE} AS d ON d.FieldID = t.FieldID
     WHERE TRUE
@@ -197,11 +199,14 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
     f.write(f"\n\n#  Continuous tensor maps\n")
     for row in field_data_for_tensor_maps:
         name = str(row.FieldID) + "_" + row.Field.replace("-", "").replace(" ", "-").replace("(", "").replace(")", "")
-        name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "") + "_0_0"
-
-        f.write(f"TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', channel_map={{'{name}': 0, "
-                f"'not-missing': 1}}, normalization={{'mean': {row.mean}, 'std': {row.std}}}, "
-                f"annotation_units={annotation_units})\n")
+        name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
+        channel_map = "channel_map={"
+        for i in range(0, row.max_array + 1):
+            channel_map = channel_map + "'" + name + "_0_" + str(i) + "': " + str(i) + ", "
+        channel_map = channel_map + "'not-missing': " + str(row.max_array + 1) + "}"
+        f.write(f"""TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', {channel_map}, 
+                normalization={{'mean': {row.mean}, 'std': {row.std}}}, 
+                annotation_units={row.max_array + 2})\n""")
 
 
 

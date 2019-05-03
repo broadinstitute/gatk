@@ -13,8 +13,6 @@ from metrics import per_class_precision, per_class_precision_3d, per_class_preci
 np.set_printoptions(threshold=np.inf)
 
 
-CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0', '130_Place-of-birth-in-UK--east-coordinate_0_0', '87_Noncancer-illness-yearage-first-occurred_0_0', '1883_Number-of-full-sisters_0_0', '2966_Age-high-blood-pressure-diagnosed_0_0', '129_Place-of-birth-in-UK--north-coordinate_0_0', '1070_Time-spent-watching-television-TV_0_0', '1438_Bread-intake_0_0', '3526_Mothers-age-at-death_0_0', '2217_Age-started-wearing-glasses-or-contact-lenses_0_0', '1488_Tea-intake_0_0', '1060_Time-spent-outdoors-in-winter_0_0', '1528_Water-intake_0_0', '874_Duration-of-walks_0_0', '894_Duration-of-moderate-activity_0_0', '1458_Cereal-intake_0_0', '884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0', '1873_Number-of-full-brothers_0_0', '1845_Mothers-age_0_0', '1090_Time-spent-driving_0_0', '1289_Cooked-vegetable-intake_0_0', '3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0', '1568_Average-weekly-red-wine-intake_0_0', '2897_Age-stopped-smoking_0_0', '864_Number-of-daysweek-walked-10-minutes_0_0', '1588_Average-weekly-beer-plus-cider-intake_0_0', '2355_Most-recent-bowel-cancer-screening_0_0', '2976_Age-diabetes-diagnosed_0_0', '3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0', '3786_Age-asthma-diagnosed_0_0', '1578_Average-weekly-champagne-plus-white-wine-intake_0_0', '1598_Average-weekly-spirits-intake_0_0', '1608_Average-weekly-fortified-wine-intake_0_0', '1299_Salad--raw-vegetable-intake_0_0', '1309_Fresh-fruit-intake_0_0', '1319_Dried-fruit-intake_0_0', '3680_Age-when-last-ate-meat_0_0', '914_Duration-of-vigorous-activity_0_0', '1050_Time-spend-outdoors-in-summer_0_0', '1737_Childhood-sunburn-occasions_0_0', '1269_Exposure-to-tobacco-smoke-at-home_0_0', '2867_Age-started-smoking-in-former-smokers_0_0', '2887_Number-of-cigarettes-previously-smoked-daily_0_0', '2926_Number-of-unsuccessful-stopsmoking-attempts_0_0', '2684_Years-since-last-breast-cancer-screening--mammogram_0_0', '2734_Number-of-live-births_0_0', '2804_Age-when-last-used-oral-contraceptive-pill_0_0', '2824_Age-at-hysterectomy_0_0', '3536_Age-started-hormonereplacement-therapy-HRT_0_0', '3546_Age-last-used-hormonereplacement-therapy-HRT_0_0', '3581_Age-at-menopause-last-menstrual-period_0_0', '3839_Number-of-spontaneous-miscarriages_0_0', '2405_Number-of-children-fathered_0_0', '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0', '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0', '4429_Average-monthly-beer-plus-cider-intake_0_0']
-
 CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'QOffset', 'QOnset',
                          'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
                          'VentricularRate', 'lv_mass']
@@ -63,6 +61,10 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0',
                                        '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
                                        '4429_Average-monthly-beer-plus-cider-intake_0_0']
+
+MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
+
+NOT_MISSING = 'not-missing'
 
 
 class TensorMap(object):
@@ -233,17 +235,22 @@ class TensorMap(object):
             return np_tensor
 
         if 'mean' in self.normalization and 'std' in self.normalization:
+            not_missing_in_channel_map = NOT_MISSING in self.channel_map
             if self.is_continuous():
-                missing_idx = 1
-                if 'not-missing' in self.channel_map and 0 == np_tensor[missing_idx]:
-                    np_tensor[0] = np.random.normal(1)
-                else:
-                    np_tensor[0] -= self.normalization['mean']
-                    np_tensor[0] /= (self.normalization['std'] + EPS)
+                for i in range(0, len(np_tensor)):
+                    if not_missing_in_channel_map and self.channel_map[NOT_MISSING] == i:
+                        continue
+                    # If the not-missing channel exists in the channel_map and it is marked as "missing" (value of 0)
+                    # and the data itself is 0, then overwrite the value with a draw from a N(0,1)
+                    if not_missing_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
+                        np_tensor[i] = np.random.normal(1)
+                    else:
+                        np_tensor[i] -= self.normalization['mean']
+                        np_tensor[i] /= (self.normalization['std'] + EPS)
             else:
                 np_tensor -= self.normalization['mean']
                 np_tensor /= (self.normalization['std'] + EPS)
-            return np_tensor[0]
+            return np_tensor
 
     def rescale(self, np_tensor):
         if self.normalization is None:
@@ -253,6 +260,49 @@ class TensorMap(object):
             np_tensor *= self.normalization['std']
             np_tensor += self.normalization['mean']
             return np_tensor
+
+    # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
+    # at death into one channel)
+    def _merged_tensor_from_file(self, hd5):
+        if self.name == 'mothers_age_0':
+            data = np.zeros(self.shape, dtype=np.float32)
+            if 'Mother-still-alive_Yes_0_0' in hd5['categorical']:
+                if 'mother_alive' in self.channel_map.keys():
+                    data[self.channel_map['mother_alive']] = 1
+                if '1845_Mothers-age_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('1845_Mothers-age_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['mother_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            elif 'Mother-still-alive_No_0_0' in hd5['categorical']:
+                if 'mother_dead' in self.channel_map.keys():
+                    data[self.channel_map['mother_dead']] = 1
+                if '3526_Mothers-age-at-death_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('3526_Mothers-age-at-death_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['mother_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            return self.normalize(data)
+        elif self.name == 'fathers_age_0':
+            data = np.zeros(self.shape, dtype=np.float32)
+            if 'Father-still-alive_Yes_0_0' in hd5['categorical']:
+                if 'father_alive' in self.channel_map.keys():
+                    data[self.channel_map['father_alive']] = 1
+                if '2946_Fathers-age_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('2946_Fathers-age_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['father_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            elif 'Father-still-alive_No_0_0' in hd5['categorical']:
+                if 'father_dead' in self.channel_map.keys():
+                    data[self.channel_map['father_dead']] = 1
+                if '1807_Fathers-age-at-death_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('1807_Fathers-age-at-death_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['father_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            return self.normalize(data)
+        raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
 
     def tensor_from_file(self, hd5, dependents={}):
         """Reconstruct a tensor from an hd5 file
@@ -356,27 +406,33 @@ class TensorMap(object):
                 if channel in hd5['categorical']:
                     categorical_data[self.channel_map[channel]] = 1.0
             return categorical_data
+        elif self.name in MERGED_MAPS:
+            return self._merged_tensor_from_file(hd5)
         elif self.is_continuous():
             continuous_data = np.zeros(self.shape, dtype=np.float32)
             if self.name in hd5:
                 continuous_data[0] = hd5[self.name][0]
-            missing = False
+            missing = True
             for k in self.channel_map:
                 if k in hd5[self.group]:
                     value = hd5[self.group][k][0]
+                    missing = False
                     if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
                         # -10 codes for "less than one"
-                        if value == -10:
+                        #TODO: Don't hard code these values
+                        if value in [-10, -1001]:
                             value = .5
                         # -2 codes for "unnable to walk"
                         # -3 codes for "prefer not to answer"
                         # -1 codes for "do not know"
                         # -11 codes for "still taking ..."
-                        elif value in [-3, -1, -2, -11]:
+                        if value in [-3, -1, -2, -11, -818, -121, -313, -906]:
+                            # need to set missing values to 0 so normalization works
+                            value = 0
                             missing = True
                     continuous_data[self.channel_map[k]] = value
-                    if 'not-missing' in self.channel_map and not missing:
-                        continuous_data[self.channel_map['not-missing']] = 1
+            if NOT_MISSING in self.channel_map and not missing:
+                continuous_data[self.channel_map[NOT_MISSING]] = 1
             if continuous_data[0] == 0 and self.name in CONTINUOUS_NEVER_ZERO:
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
