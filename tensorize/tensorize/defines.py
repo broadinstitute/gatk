@@ -24,6 +24,12 @@ OUTPUT_FOLDER = f"tensors_{DATASET}_{FIELD_TYPE}"
 GCS_BUCKET = 'ml4cvd'
 GCS_BLOB_PATH = f"data/tensors/{OUTPUT_FOLDER}"
 
+# Needed to be able to submit a pipeline to Dataflow
+DATAFLOW_STAGING_LOCATION = f"gs://{GCS_BUCKET}/dataflow/staging"
+DATAFLOW_TEMP_LOCATION = f"gs://{GCS_BUCKET}/dataflow/temp"
+PROJECT = 'broad-ml4cvd'
+REGION = 'us-east1'
+
 TENSOR_EXT = 'hd5'
 
 JOIN_CHAR = '_'
