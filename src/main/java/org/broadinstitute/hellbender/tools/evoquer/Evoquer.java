@@ -133,7 +133,6 @@ public class Evoquer extends GATKTool {
         final Map<String, String> datasetMap = loadDatasetMapFile(datasetMapFile);
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
-        vcfWriter.writeHeader(evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()));
 
         // Set up our EvoquerEngine:
         evoquerEngine = new EvoquerEngine(vcfWriter,
@@ -142,6 +141,8 @@ public class Evoquer extends GATKTool {
                                         queryRecordLimit,
                                         false,
                                         progressMeter);
+
+        vcfWriter.writeHeader(evoquerEngine.generateVcfHeader(getDefaultToolVCFHeaderLines(), getBestAvailableSequenceDictionary()));
     }
 
     @Override
