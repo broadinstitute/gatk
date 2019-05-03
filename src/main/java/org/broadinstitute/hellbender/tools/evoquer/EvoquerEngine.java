@@ -23,8 +23,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.evoquer.GnarlyGenotyperEngine.finalizeGenotype;
-
 /**
  * EvoquerEngine ("EvokerEngine"):
  * Extract Variants Out of big QUERy Engine.
