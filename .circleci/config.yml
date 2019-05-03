@@ -95,9 +95,9 @@ jobs:
         type: env_var_name
         default: TEST_TYPE
     steps:
+    - checkout
       - attach_workspace:
           at: .
-      - checkout
       - run:
           name: Load archived Docker image
           command: docker load -i docker.tar
@@ -116,6 +116,8 @@ jobs:
             TEST_EXIT_VALUE=$?
             sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar
             $( exit ${TEST_EXIT_VALUE} )
+
+
 workflows:
   build:
     jobs:
