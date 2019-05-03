@@ -88,7 +88,7 @@ final class GnarlyGenotyperEngine {
     @SuppressWarnings({"unchecked", "rawtypes"})
     static VariantContext finalizeGenotype(final VariantContext variant) {
 
-        logger.info( "Processing variant: " + variant.toStringWithoutGenotypes() );
+        // logger.info( "Processing variant: " + variant.toStringWithoutGenotypes() );
 
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant) || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0) {
