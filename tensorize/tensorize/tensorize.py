@@ -98,18 +98,18 @@ def write_tensor_from_sql(sampleid_to_rows, output_path):
                     array_idx = row['array_idx']
                     value = row['value']
 
-                    dataset_name = None
+                    hd5_dataset_name = None
                     if FIELD_TYPE == 'categorical':
                         meaning = row['meaning']
-                        dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
+                        hd5_dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
                     elif FIELD_TYPE == 'continuous':
-                        dataset_name = _dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
+                        hd5_dataset_name = _dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
                     else:
                         continue
 
                     float_value = to_float_or_false(value)
                     if float_value is not False:
-                            hd5.create_dataset(dataset_name, data=[float_value])
+                            hd5.create_dataset(hd5_dataset_name, data=[float_value])
                     else:
                         logging.warning("Cannot cast to float from '{}' for field id '{}' and sample id '{}'".format(value, field_id, sample_id))
             gcs_blob.upload_from_filename(tensor_path)

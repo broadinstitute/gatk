@@ -1,6 +1,7 @@
 # Run Dataflow
-The following steps will run a Dataflow pipeline remotely, which in turn will, read the table `lubitz.coding`, 
-calculate counts of `coding_file_id` and write them onto a GCS bucket.
+The following steps will run a Dataflow pipeline remotely, which in turn will, tensorize fields of a type
+specified by the user (e.g. categorical, continuous) and write them onto a GCS bucket in the form of
+one `hd5` file per sample id.
 
 * Clone the repo and cd into it:
 ```
