@@ -3,7 +3,7 @@ import logging
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, GoogleCloudOptions, StandardOptions
 
-from tensorize import tensorize
+from tensorize.database import tensorize
 from tensorize.defines import REQUIREMENTS_FILE, SETUP_FILE, LOG_LEVEL, GCS_BLOB_PATH, RUNNER, DATAFLOW_STAGING_LOCATION, DATAFLOW_TEMP_LOCATION, \
     REGION, PROJECT, RUN_NAME
 

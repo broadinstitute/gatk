@@ -4,53 +4,54 @@ import tempfile
 import apache_beam as beam
 import h5py
 from apache_beam import Pipeline
-from tensorize.defines import TENSOR_EXT, GCS_BUCKET, FIELD_TYPE, DATASET
+from google.cloud import storage
+from tensorize.defines import TENSOR_EXT, GCS_BUCKET, TENSOR_TYPE, DATASET
 
-from .utils import _dataset_name_from_meaning, to_float_or_false, get_gcs_bucket
+from tensorize.utils import dataset_name_from_meaning, to_float_or_false
 
 
 def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str):
-    categorical_query = """
+    categorical_query = f"""
         SELECT c.meaning, p_f_d.sample_id, p_f_d.fieldid, p_f_d.field, p_f_d.instance, p_f_d.array_idx, p_f_d.value
         FROM
         (
             SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
-            FROM `{}.phenotype` p
+            FROM `{DATASET}.phenotype` p
             INNER JOIN 
             (
               SELECT d.fieldid, d.field
               FROM `shared_data.tensorization_fieldids` f
-              INNER JOIN `{}.dictionary` d
+              INNER JOIN `{DATASET}.dictionary` d
               ON f.fieldid = d.fieldid
               WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
             ) AS f_d
             ON f_d.fieldid = p.fieldid
         ) AS p_f_d
-        INNER JOIN `{}.coding` c
+        INNER JOIN `{DATASET}.coding` c
         ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id
-    """.format(DATASET, DATASET, DATASET)
+    """
 
-    continuous_query = """
+    continuous_query = f"""
         SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
-        FROM `{}.phenotype` p
+        FROM `{DATASET}.phenotype` p
         INNER JOIN 
         (
           SELECT d.fieldid, d.field
           FROM `shared_data.tensorization_fieldids` f
-          INNER JOIN `{}.dictionary` d
+          INNER JOIN `{DATASET}.dictionary` d
           ON f.fieldid = d.fieldid
           WHERE d.valuetype IN ('Continuous', 'Integer')
         ) AS f_d
         ON f_d.fieldid = p.fieldid
-    """.format(DATASET, DATASET)
+    """
 
     query = None
-    if FIELD_TYPE == 'categorical':
+    if TENSOR_TYPE == 'categorical':
         query = categorical_query
-    elif FIELD_TYPE == 'continuous':
+    elif TENSOR_TYPE == 'continuous':
         query = continuous_query
     else:
-        raise ValueError("Can tensorize only categorical or continuous fields, got ", FIELD_TYPE)
+        raise ValueError("Can tensorize only categorical or continuous fields, got ", TENSOR_TYPE)
 
     bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
 
@@ -75,7 +76,8 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str
 
 # Defining this in global scope because passing it explicitly into a method used by beam.Map()
 # gives a 'client not picklable` error.
-output_bucket = get_gcs_bucket(GCS_BUCKET)
+gcs_client = storage.Client()
+output_bucket = gcs_client.get_bucket(GCS_BUCKET)
 
 
 def write_tensor_from_sql(sampleid_to_rows, output_path):
@@ -99,11 +101,11 @@ def write_tensor_from_sql(sampleid_to_rows, output_path):
                     value = row['value']
 
                     hd5_dataset_name = None
-                    if FIELD_TYPE == 'categorical':
+                    if TENSOR_TYPE == 'categorical':
                         meaning = row['meaning']
-                        hd5_dataset_name = _dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
-                    elif FIELD_TYPE == 'continuous':
-                        hd5_dataset_name = _dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
+                        hd5_dataset_name = dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
+                    elif TENSOR_TYPE == 'continuous':
+                        hd5_dataset_name = dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
                     else:
                         continue
 

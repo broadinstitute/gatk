@@ -4,23 +4,28 @@ import os
 import h5py
 
 
-""" This script copies the hd5 groups specified as 'groups' from all hd5 files within the 'sources'
-    directories to the same-named files within the 'destination' directory.
-    
-    Each source directory in 'sources' must contain the group in 'groups', respectively.
-    
-    If the destination directory and/or file(s) don't exist, it creates them.
-    
-    If any of the destination files contains the specified group already, it errors out.
-    
-    Example command line:
-    python .merge_hd5s.py \
-        --groups continuous categorical \
-        --sources /path/to/src/continuous/tensor/directory /path/to/src/categorical/tensor/directory \
-        --dest /path/to/output/directory \
-        --logging_level DEBUG
+""" 
+This script copies the hd5 groups specified as 'groups' from all hd5 files within the 'sources'
+directories to the same-named files within the 'destination' directory.
+
+If the tensor files are not in a local filesystem, they can be downloaded via gsutil:
+gsutil -m cp -r <gcs bucket with tensors> <local directory>
+
+Each source directory in 'sources' must contain the group in 'groups', respectively.
+
+If the destination directory and/or file(s) don't exist, it creates them.
+
+If any of the destination files contains the specified group already, it errors out.
+
+Example command line:
+python .merge_hd5s.py \
+    --groups continuous categorical \
+    --sources /path/to/src/continuous/tensor/directory /path/to/src/categorical/tensor/directory \
+    --dest /path/to/output/directory \
+    --logging_level DEBUG
 """
 
+# TODO Import from where global defines end up after package reshuffling
 TENSOR_EXT = '.hd5'
 
 
