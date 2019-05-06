@@ -133,6 +133,7 @@ jobs:
       HELLBENDER_TEST_PROJECT: broad-dsde-dev
       HELLBENDER_JSON_SERVICE_ACCOUNT_KEY: servicekey.json
       CROMWELL_JAR: /home/circleci/project/cromwell-36.jar
+      GCLOUD_HOME: /home/circleci/project/gcloud/google-cloud-sdk/bin
     steps:
     - checkout
     - attach_workspace:
