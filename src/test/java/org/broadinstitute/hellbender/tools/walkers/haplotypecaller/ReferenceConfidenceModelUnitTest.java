@@ -508,6 +508,10 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         final IndependentSampleGenotypesModel genotypingModel = new IndependentSampleGenotypesModel();
         final List<Integer> expectedDPs = Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads);
         final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
+        // Asserting that none of the reads after calculateRefConfidence have indel informativeness caching values attached.
+        for (GATKRead read : data.getActiveRegion().getReads()) {
+            Assert.assertTrue(read.getTransientAttribute(ReferenceConfidenceModel.INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME) == null);
+        }
         checkReferenceModelResult(data, contexts, expectedDPs, calls);
     }
 
@@ -529,6 +533,10 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                 final List<Integer> expectedDPs = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), 0));
                 for ( int i = start; i < readLen + start; i++ ) expectedDPs.set(i, 1);
                 final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls);
+                // Asserting that none of the reads after calculateRefConfidence have indel informativeness caching values attached.
+                for (GATKRead read : data.getActiveRegion().getReads()) {
+                    Assert.assertTrue(read.getTransientAttribute(ReferenceConfidenceModel.INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME) == null);
+                }
                 checkReferenceModelResult(data, contexts, expectedDPs, calls);
             }
         }
@@ -565,6 +573,10 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
                     final List<Integer> expectedDPs = Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads);
                     final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls);
+                    // Asserting that none of the reads after calculateRefConfidence have indel informativeness caching values attached.
+                    for (GATKRead read : data.getActiveRegion().getReads()) {
+                        Assert.assertTrue(read.getTransientAttribute(ReferenceConfidenceModel.INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME) == null);
+                    }
                     checkReferenceModelResult(data, contexts, expectedDPs, calls);
                 }
             }
