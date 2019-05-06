@@ -5,7 +5,7 @@ import apache_beam as beam
 import h5py
 from apache_beam import Pipeline
 from google.cloud import storage
-from tensorize.defines import TENSOR_EXT, GCS_BUCKET, TENSOR_TYPE, DATASET
+from tensorize.defines import TENSOR_EXT, GCS_BUCKET, TENSOR_TYPE, BIGQUERY_DATASET
 
 from tensorize.utils import dataset_name_from_meaning, to_float_or_false
 
@@ -16,29 +16,29 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str
         FROM
         (
             SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
-            FROM `{DATASET}.phenotype` p
+            FROM `{BIGQUERY_DATASET}.phenotype` p
             INNER JOIN 
             (
               SELECT d.fieldid, d.field
               FROM `shared_data.tensorization_fieldids` f
-              INNER JOIN `{DATASET}.dictionary` d
+              INNER JOIN `{BIGQUERY_DATASET}.dictionary` d
               ON f.fieldid = d.fieldid
               WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
             ) AS f_d
             ON f_d.fieldid = p.fieldid
         ) AS p_f_d
-        INNER JOIN `{DATASET}.coding` c
+        INNER JOIN `{BIGQUERY_DATASET}.coding` c
         ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id
     """
 
     continuous_query = f"""
         SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
-        FROM `{DATASET}.phenotype` p
+        FROM `{BIGQUERY_DATASET}.phenotype` p
         INNER JOIN 
         (
           SELECT d.fieldid, d.field
           FROM `shared_data.tensorization_fieldids` f
-          INNER JOIN `{DATASET}.dictionary` d
+          INNER JOIN `{BIGQUERY_DATASET}.dictionary` d
           ON f.fieldid = d.fieldid
           WHERE d.valuetype IN ('Continuous', 'Integer')
         ) AS f_d

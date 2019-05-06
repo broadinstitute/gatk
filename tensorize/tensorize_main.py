@@ -4,7 +4,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, GoogleCloudOptions, StandardOptions
 
 from tensorize.database import tensorize
-from tensorize.defines import REQUIREMENTS_FILE, SETUP_FILE, LOG_LEVEL, GCS_BLOB_PATH, RUNNER, DATAFLOW_STAGING_LOCATION, DATAFLOW_TEMP_LOCATION, \
+from tensorize.defines import REQUIREMENTS_FILE, SETUP_FILE, LOG_LEVEL, GCS_OUTPUT_PATH, RUNNER, DATAFLOW_STAGING_LOCATION, DATAFLOW_TEMP_LOCATION, \
     REGION, PROJECT, RUN_NAME
 
 
@@ -34,4 +34,4 @@ if __name__ == "__main__":
     pipeline_options = get_pipeline_options(packaging_args, RUNNER)
     pipeline = beam.Pipeline(options=pipeline_options)
 
-    tensorize.tensorize_categorical_continuous_fields(pipeline, GCS_BLOB_PATH)
+    tensorize.tensorize_categorical_continuous_fields(pipeline, GCS_OUTPUT_PATH)
