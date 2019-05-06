@@ -73,7 +73,7 @@ import java.util.*;
  */
 @CommandLineProgramProperties(summary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", oneLineSummary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
-public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
+public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     private VariantAnnotatorEngine annotationEngine;
     private VariantContextWriter vcfWriter;
@@ -89,7 +89,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The combined GVCF output file", optional=false)
-    private File outputFile;
+    File outputFile;
 
     @Argument(fullName=BP_RES_LONG_NAME, doc = "If specified, convert banded gVCFs to all-sites gVCFs", optional=true)
     protected boolean useBpResolution = false;
@@ -133,11 +133,11 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     protected DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
     // State that gets accumulated between calls of apply()
-    private final LinkedList<VariantContext> variantContextsOverlappingCurrentMerge = new LinkedList<>();
+    final LinkedList<VariantContext> variantContextsOverlappingCurrentMerge = new LinkedList<>();
     private final Set<String> samples = new HashSet<>();
-    private SimpleInterval prevPos = null;
+    SimpleInterval prevPos = null;
     private byte refAfterPrevPos;
-    private ReferenceContext storedReferenceContext;
+    ReferenceContext storedReferenceContext;
 
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
@@ -158,7 +158,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                     ? referenceContext.getInterval().getStart() - 1
                     : variantContextsOverlappingCurrentMerge.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
 
-            createIntermediateVariants( new SimpleInterval(last.getContig(), last.getStart(), end));
+            createIntermediateVariants( new SimpleInterval(last.getContig(), last.getStart(), end), null);
         }
 
         mergeWithNewVCs(variantContexts, referenceContext);
@@ -178,7 +178,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      *
      */
     @VisibleForTesting
-    void createIntermediateVariants(SimpleInterval intervalToClose) {
+    void createIntermediateVariants(SimpleInterval intervalToClose, List<VariantContext> finalizedVCs) {
         resizeReferenceIfNeeded(intervalToClose);
 
         // Break up the GVCF according to the provided reference blocking scheme
@@ -213,7 +213,10 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             SimpleInterval loc = new SimpleInterval(intervalToClose.getContig(), stoppedLoc, stoppedLoc);
             if (( stoppedLoc <= intervalToClose.getEnd() && stoppedLoc>= intervalToClose.getStart()) && isWithinInterval(loc)) {
                 byte[] refBases = Arrays.copyOfRange(storedReferenceContext.getBases(), stoppedLoc - storedReferenceContext.getWindow().getStart(), stoppedLoc - storedReferenceContext.getWindow().getStart() + 2);
-                endPreviousStates(loc, refBases, Collections.emptyList(), true);
+                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, finalizedVCs == null);
+                if (finalizedVCs != null) {
+                    finalizedVCs.add(endedVC);
+                }
             }
         }
 
@@ -325,7 +328,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                     endPreviousStates(new SimpleInterval(loc.getContig(), loc.getStart() - 1, loc.getStart() - 1),
                             Arrays.copyOfRange(referenceContext.getBases(), 1, referenceContext.getWindow().getLengthOnReference()),
                             variantContexts,
-                            false);
+                            false, true);
                 }
             }
             variantContextsOverlappingCurrentMerge.addAll(variantContexts);
@@ -363,8 +366,9 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * @param pos   the position for the starting variantContexts
      * @param variantContexts the current variant contexts with the same starting position
      * @param forceOutputAtCurrentPosition  indicates whether we output a variant at the current position, independent of VCF start/end, i.e. in BP resolution mode
+     * @param writeToFile
      */
-    private void endPreviousStates(final SimpleInterval pos, final byte[] refBases, final List<VariantContext> variantContexts, boolean forceOutputAtCurrentPosition) {
+    VariantContext endPreviousStates(final SimpleInterval pos, final byte[] refBases, final List<VariantContext> variantContexts, boolean forceOutputAtCurrentPosition, boolean writeToFile) {
         Set<String> newSamples = getSamples(variantContexts);
 
         final byte refBase = refBases[0];
@@ -390,6 +394,8 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             }
         }
 
+        VariantContext mergedVC = null;
+
         //output the stopped variantContexts if there is no previous output (state.prevPos == null) or our current position is past
         // the last write position (state.prevPos)
         //NOTE: BP resolution with have current position == state.prevPos because it gets output via a different control flow
@@ -397,17 +403,19 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             final SimpleInterval closingSpot = new SimpleInterval(stoppedVCs.get(0).getContig(), pos.getStart(), pos.getStart());
 
             // we need the specialized merge if the site contains anything other than ref blocks
-            final VariantContext mergedVC;
             if ( containsTrueAltAllele(stoppedVCs) ) {
                 mergedVC = referenceConfidenceVariantContextMerger.merge(stoppedVCs, closingSpot, refBase, false, false);
             } else {
                 mergedVC = referenceBlockMerge(stoppedVCs, pos.getStart());
             }
 
-            vcfWriter.add(mergedVC);
+            if (writeToFile) {
+                vcfWriter.add(mergedVC);
+            }
             prevPos = closingSpot;
             refAfterPrevPos = refNextBase;
         }
+        return mergedVC;
     }
 
     /**
@@ -479,7 +487,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                     variantContextsOverlappingCurrentMerge.get(0).getContig(),
                     variantContextsOverlappingCurrentMerge.get(0).getStart(),
                     variantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get());
-                createIntermediateVariants(lastInterval);
+                createIntermediateVariants(lastInterval, null);
             // there shouldn't be any state left unless the user cut in the middle of a gVCF block
             if ( !variantContextsOverlappingCurrentMerge.isEmpty() ) {
                 logger.warn("You have asked for an interval that cuts in the middle of one or more gVCF blocks. Please note that this will cause you to lose records that don't end within your interval.");

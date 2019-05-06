@@ -13,12 +13,14 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -41,7 +43,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                //         getTestFile("fiveSampleTest.vcf"), Arrays.asList(new SimpleInterval("chr20", 250865, 348163)), Arrays.asList("-stand-call-conf 10"), b38_reference_20_21},
                 {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
                         new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
-                        getTestFile("twoSampleAS.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21
+                        getTestFile("expected.twoSamples.AS.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21
                 }
         };
     }
@@ -60,20 +62,44 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
     }
 
     protected File runTool(String input, List<SimpleInterval> intervals, String reference, List<String> additionalArguments) {
+        return runTool(input, null, intervals, reference, additionalArguments);
+    }
+
+    protected File runTool(String input, String input2, List<SimpleInterval> intervals, String reference, List<String> additionalArguments) {
         final File output = createTempFile("GnarlyGenotyper", ".vcf");
         final File outputDatabase = createTempFile("GnarlyGenotyper.annotationDatabase", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
         .addArgument("V", input)
-        .addArgument("output-db", outputDatabase.getAbsolutePath());
+        .addArgument("output-db", outputDatabase.getAbsolutePath())
+        .addBooleanArgument("add-output-vcf-command-line", false);
         args.addOutput(output);
+        if (input2 != null) {
+            args.addArgument("V", input2);
+        }
         intervals.forEach(args::addInterval);
 
         additionalArguments.forEach(args::add);
 
         runCommandLine(args);
         return output;
+    }
+
+    @Test (dataProvider = "VCFdata")
+    public void testUsingMultipleGenomicsDB(File[] inputs, File expected, List<SimpleInterval> intervals, List<String> additionalArguments, String reference) throws IOException {
+        Assert.assertTrue(inputs.length == 2,"This test expects two vcfs for two separate GDBs.");
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(inputs[0], IntervalUtils.getSpanningInterval(intervals));
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+
+        final File tempGenomicsDB2 = GenomicsDBTestUtils.createTempGenomicsDB(inputs[1], IntervalUtils.getSpanningInterval(intervals));
+        final String genomicsDBUri2 = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB2);
+
+        File output = runTool(genomicsDBUri, genomicsDBUri2, intervals, reference, additionalArguments);
+
+        final List<VariantContext> expectedVC = getVariantContexts(expected);
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        VariantContextTestUtils.assertEqualVariants(actualVC, expectedVC);
     }
 
     @Test

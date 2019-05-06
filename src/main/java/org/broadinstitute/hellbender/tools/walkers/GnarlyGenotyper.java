@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -78,7 +79,7 @@ import java.util.stream.IntStream;
         oneLineSummary = "Perform \"quick and dirty\" joint genotyping on one or more samples pre-called with HaplotypeCaller",
         programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
-public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
+public final class GnarlyGenotyper extends CombineGVCFs {
 
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
@@ -104,10 +105,6 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
 
     private final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = new HashSet<>();
 
-
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="File to which variants should be written", optional=false)
-    private File outputFile;
 
     @Argument(fullName = "output-database-name", shortName = "output-db",
             doc="File to which the sites-only annotation database derived from these input samples should be written", optional=true)
@@ -141,13 +138,6 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
     private boolean stripASAnnotations = false;
 
 
-    /**
-     * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set
-     * when appropriate. Note that dbSNP is not used in any way for the genotyping calculations themselves.
-     */
-    @ArgumentCollection
-    private final DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
-
     private VariantContextWriter vcfWriter;
     private VariantContextWriter annotationDBwriter = null;
 
@@ -175,6 +165,16 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
     }
 
     @Override
+    public boolean useVariantAnnotations() {
+        return true;
+    }
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Arrays.asList(StandardAnnotation.class, AS_StandardAnnotation.class);
+    }
+
+    @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), true, PIPELINE_MAX_ALT_COUNT);
@@ -184,6 +184,7 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void onTraversalStart() {
+        super.onTraversalStart();
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
         if(onlyOutputCallsStartingInIntervals) {
@@ -194,9 +195,7 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
         intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
-        final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
-
-        setupVCFWriter(inputVCFHeader, samples);
+        setupVCFWriter(inputVCFHeader, getSamplesForVariants());
 
         //we don't apply the prior to the QUAL approx in ReblockGVCF, so do it here
         INDEL_QUAL_THRESHOLD = genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING - 10*Math.log10(genotypeArgs.indelHeterozygosity);
@@ -224,7 +223,7 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
         allASAnnotations.add(AS_QualByDepth.class);
     }
 
-    private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
+    private void setupVCFWriter(VCFHeader inputVCFHeader, Set<String> samples) {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(inputVCFHeader.getMetaDataInInputOrder());
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 
@@ -255,14 +254,13 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
             annotationDBwriter = createVCFWriter(new File(outputDbName));
         }
 
-        final Set<String> sampleNameSet = samples.asSetOfSamples();
         final VCFHeader dbHeader = new VCFHeader(headerLines);
         if (SUMMARIZE_PLs) {
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALLELE_BALANCE));
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALT_CONFIDENCE));
         }
-        final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
+        final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(samples));
         vcfWriter.writeHeader(vcfHeader);
         if (outputDbName != null) {
             annotationDBwriter.writeHeader(dbHeader);
@@ -272,8 +270,34 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext ref) {
-        final VariantContext mergedVC = merger.merge(variantContexts, loc, keepAllSites ? ref.getBase() : null, !keepAllSites, false);
+        final List<VariantContext> mergedVCs = new ArrayList<>();
 
+        // If we need to stop at an intermediate site since the last apply, do so (caused by gvcfBlocks, contexts ending, etc...)
+        if (!variantContextsOverlappingCurrentMerge.isEmpty()) {
+            Locatable last = prevPos != null && prevPos.getContig().equals(variantContextsOverlappingCurrentMerge.get(0).getContig()) ? prevPos : variantContextsOverlappingCurrentMerge.get(0);
+            // If on a different contig, close out all the queued states on the current contig
+            int end = last.getContig().equals(ref.getWindow().getContig())
+                    ? ref.getInterval().getStart() - 1
+                    : variantContextsOverlappingCurrentMerge.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+
+            createIntermediateVariants(new SimpleInterval(last.getContig(), last.getStart(), end), mergedVCs);
+        }
+
+        mergeWithNewVCs(variantContexts, ref);
+
+        // Update the stored reference if it has a later stop position than the current stored reference
+        if ((storedReferenceContext == null) ||
+                (!ref.getWindow().contigsMatch(storedReferenceContext.getWindow())) ||
+                (storedReferenceContext.getWindow().getEnd() < ref.getWindow().getEnd())) {
+            storedReferenceContext = ref;
+        }
+
+        for (final VariantContext vc : mergedVCs) {
+            doTheThings(vc);
+        }
+    }
+
+    private void doTheThings(final VariantContext mergedVC) {
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
         //builder gets the finalized annotations and dbBuilder gets the raw annotations for the database
         VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(mergedVC));
@@ -365,7 +389,8 @@ public final class GnarlyGenotyper extends MultiVariantWalkerGroupedOnStart {
             annotationDBBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, mergedVC.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
             annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, mergedVC.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
         }
-        List<Integer> gtCounts = mergedVC.getAttributeAsIntList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, 0);
+
+        final List<Integer> gtCounts = Arrays.stream(((String)mergedVC.getAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)).split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
         final int refCount = numCalledAlleles/2 - gtCounts.get(1) - gtCounts.get(2);
         gtCounts.set(0, refCount);
         Pair<Integer, Double> eh = ExcessHet.calculateEH(mergedVC, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles/2);
