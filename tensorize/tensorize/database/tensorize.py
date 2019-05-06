@@ -5,40 +5,43 @@ import apache_beam as beam
 import h5py
 from apache_beam import Pipeline
 from google.cloud import storage
-from tensorize.defines import TENSOR_EXT, GCS_BUCKET, TENSOR_TYPE, BIGQUERY_DATASET
+from tensorize.defines import TENSOR_EXT, GCS_BUCKET
 
 from tensorize.utils import dataset_name_from_meaning, to_float_or_false
 
 
-def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str):
+def tensorize_categorical_continuous_fields(pipeline: Pipeline,
+                                            output_path: str,
+                                            bigquery_dataset: str,
+                                            tensor_type: str):
     categorical_query = f"""
         SELECT c.meaning, p_f_d.sample_id, p_f_d.fieldid, p_f_d.field, p_f_d.instance, p_f_d.array_idx, p_f_d.value
         FROM
         (
             SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
-            FROM `{BIGQUERY_DATASET}.phenotype` p
+            FROM `{bigquery_dataset}.phenotype` p
             INNER JOIN 
             (
               SELECT d.fieldid, d.field
               FROM `shared_data.tensorization_fieldids` f
-              INNER JOIN `{BIGQUERY_DATASET}.dictionary` d
+              INNER JOIN `{bigquery_dataset}.dictionary` d
               ON f.fieldid = d.fieldid
               WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
             ) AS f_d
             ON f_d.fieldid = p.fieldid
         ) AS p_f_d
-        INNER JOIN `{BIGQUERY_DATASET}.coding` c
+        INNER JOIN `{bigquery_dataset}.coding` c
         ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id
     """
 
     continuous_query = f"""
         SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
-        FROM `{BIGQUERY_DATASET}.phenotype` p
+        FROM `{bigquery_dataset}.phenotype` p
         INNER JOIN 
         (
           SELECT d.fieldid, d.field
           FROM `shared_data.tensorization_fieldids` f
-          INNER JOIN `{BIGQUERY_DATASET}.dictionary` d
+          INNER JOIN `{bigquery_dataset}.dictionary` d
           ON f.fieldid = d.fieldid
           WHERE d.valuetype IN ('Continuous', 'Integer')
         ) AS f_d
@@ -46,12 +49,12 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str
     """
 
     query = None
-    if TENSOR_TYPE == 'categorical':
+    if tensor_type == 'categorical':
         query = categorical_query
-    elif TENSOR_TYPE == 'continuous':
+    elif tensor_type == 'continuous':
         query = continuous_query
     else:
-        raise ValueError("Can tensorize only categorical or continuous fields, got ", TENSOR_TYPE)
+        raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
     bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
 
@@ -67,7 +70,7 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline, output_path: str
             | 'GroupByKey' >> beam.GroupByKey()
 
             # Format into hd5 files and upload to GCS
-            | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql, output_path)
+            | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql, output_path, tensor_type)
     )
 
     result = pipeline.run()
@@ -80,7 +83,7 @@ gcs_client = storage.Client()
 output_bucket = gcs_client.get_bucket(GCS_BUCKET)
 
 
-def write_tensor_from_sql(sampleid_to_rows, output_path):
+def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
     # GroupByKey output is not a list of dicts, as expected, but something called an 'UnwindowedValue'.
     # We convert it to list first to arrive at (key, [{dict1}, {dict2}, {dict3}...])
     (sample_id, values) = sampleid_to_rows
@@ -101,10 +104,10 @@ def write_tensor_from_sql(sampleid_to_rows, output_path):
                     value = row['value']
 
                     hd5_dataset_name = None
-                    if TENSOR_TYPE == 'categorical':
+                    if tensor_type == 'categorical':
                         meaning = row['meaning']
                         hd5_dataset_name = dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
-                    elif TENSOR_TYPE == 'continuous':
+                    elif tensor_type == 'continuous':
                         hd5_dataset_name = dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
                     else:
                         continue
