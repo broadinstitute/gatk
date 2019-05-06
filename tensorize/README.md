@@ -15,12 +15,25 @@ one `hd5` file per sample id.
     conda activate ml4cvd_dataflow
 ```
 
-* Edit the parameters within the `USER VARIABLES` section in `tensorize/tensorize/defines.py` to update the fields as described in that file
+* Run with the help option to see the list of command line arguments.
+```
+    python tensorize/tensorize_main.py -h
+```
+
+* **Note** that Google requires the `id` consist of only the
+characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or number.
 
 * Run the application to submit the pipeline to Dataflow to be executed remotely provided the
-`RUNNER` in `defines.py` is set to `DataflowRunner`). Set it to `DirectRunner` for local execution.
+command line argument `--beam_runner` is set to `DataflowRunner`. Set it to `DirectRunner` for local execution.
+For example:
 ```
     python tensorize/tensorize_main.py
+    --id my-pipeline-run \
+    --tensor_type continuous \
+    --bigquery_dataset ukbb_dev \
+    --beam_runner DataflowRunner \
+    --repo_root /Users/kyuksel/github/ml \
+    --gcs_output_path my-pipeline-run/tensors_ukbb_dev_continous
 ```
 
 * The pipeline can be run multiple times to tensorize different types of fields. This will populate the per-sample tensors
