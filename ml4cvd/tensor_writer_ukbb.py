@@ -34,6 +34,8 @@ from defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD
 from defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
 from defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
 
+MRI_PIXEL_WIDTH = 'mri_pixel_width'
+MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
@@ -594,6 +596,10 @@ def _write_tensors_from_dicoms(x,
             full_mask = np.zeros((x, y), dtype=np.float32)
 
         for slicer in views[v]:
+            if MRI_PIXEL_WIDTH not in hd5:
+                hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
+            if MRI_PIXEL_HEIGHT not in hd5:
+                hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
             if slicer.pixel_array.shape[0] == mri_shape[0] and slicer.pixel_array.shape[1] == mri_shape[1]:
                 sx = min(slicer.Rows, x)
                 sy = min(slicer.Columns, y)
@@ -621,20 +627,15 @@ def _write_tensors_from_dicoms(x,
 
                     full_slice[:sx, :sy] = slice_data
                     full_mask[:sx, :sy] = mask
-                    hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice,
-                                       compression='gzip')
-                    hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask,
-                                       compression='gzip')
+                    hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
+                    hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
                     if MRI_DATE not in hd5:
-                        hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer),
-                                           dtype=h5py.special_dtype(vlen=str))
+                        hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
                     if include_heart_zoom:
                         zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
                         zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                        hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber),
-                                           data=zoom_slice, compression='gzip')
-                        hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask,
-                                           compression='gzip')
+                        hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
+                        hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
                     if write_pngs:
                         overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
                         # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
