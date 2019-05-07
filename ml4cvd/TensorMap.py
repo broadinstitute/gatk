@@ -63,7 +63,6 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        ]
 
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
-
 NOT_MISSING = 'not-missing'
 
 
@@ -257,8 +256,8 @@ class TensorMap(object):
             return np_tensor
 
         if 'mean' in self.normalization and 'std' in self.normalization:
-            np_tensor *= self.normalization['std']
-            np_tensor += self.normalization['mean']
+            np_tensor = np.array(np_tensor) * self.normalization['std']
+            np_tensor = np.array(np_tensor) + self.normalization['mean']
             return np_tensor
 
     # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
@@ -457,6 +456,8 @@ class TensorMap(object):
                             new_shape = (window_size, channels)
                             new_total = window_size * channels
                             tensor[:, self.channel_map[k], :] = np.reshape(hd5[self.group][k][:new_total], new_shape, order='F')
+                        elif self.name == 'ecg_rest_fft':
+                            tensor[:, self.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[self.group][k])) + EPS)
                         else:
                             tensor[:, self.channel_map[k]] = hd5[self.group][k]
             return self.zero_mean_std1(tensor)

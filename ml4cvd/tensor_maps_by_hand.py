@@ -20,6 +20,10 @@ TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                      'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
+TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest',
+        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
+                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
+
 TMAPS['ecg_rest_stack'] = TensorMap('strip', shape=(600, 12, 8), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                      'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
@@ -281,7 +285,6 @@ TMAPS['summer'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', group='con
 TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='continuous',
                             channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
-
 
 TMAPS['random-forest-fields'] = TensorMap('top-80-class', group='categorical',
                                   channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
