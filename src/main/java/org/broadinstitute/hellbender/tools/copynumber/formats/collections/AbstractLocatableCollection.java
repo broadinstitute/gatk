@@ -38,20 +38,21 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
     /**
      * @param metadata records are sorted using the contained {@link SAMSequenceDictionary}
      */
-    AbstractLocatableCollection(final METADATA metadata,
+    public AbstractLocatableCollection(final METADATA metadata,
                                 final List<RECORD> records,
                                 final TableColumnCollection mandatoryColumns,
                                 final Function<DataLine, RECORD> recordFromDataLineDecoder,
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(metadata, sortRecords(records, metadata.getSequenceDictionary()), mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
-        CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), metadata.getSequenceDictionary());
+        //TODO
+        //CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), metadata.getSequenceDictionary());
         this.overlapDetector = new Lazy<>(() -> OverlapDetector.create(getRecords()));
     }
 
     /**
      * @throws IllegalArgumentException if records are not sorted according to the {@link SAMSequenceDictionary} contained in the input file
      */
-    AbstractLocatableCollection(final File inputFile,
+    public AbstractLocatableCollection(final File inputFile,
                                 final TableColumnCollection mandatoryColumns,
                                 final Function<DataLine, RECORD> recordFromDataLineDecoder,
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
