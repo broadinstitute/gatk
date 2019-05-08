@@ -1,5 +1,12 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.http.HttpTransportOptions;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration.Builder;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
+import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
@@ -15,6 +22,9 @@ import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
+import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
+import shaded.cloud_nio.org.threeten.bp.Duration;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -339,8 +349,8 @@ public final class BucketUtils {
      *                         these buckets cannot be accessed.
      */
     public static void setGlobalNIODefaultOptions(int maxReopens, String requesterProject) {
-//        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens, requesterProject));
-//        CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
+        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens, requesterProject));
+        CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
     }
 
     /**
@@ -353,51 +363,50 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-//        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
-        return null;
+        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
-//    /**
-//     * The config we want to use.
-//     *
-//     * @param maxReopens If the GCS bucket channel errors out, how many times it will attempt to
-//     *                   re-initiate the connection.
-//     * @param requesterProject Project to bill when accessing "requester pays" buckets. If unset,
-//     *                         these buckets cannot be accessed.
-//     *
-//     **/
-//    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens, String requesterProject) {
-//        Builder builder = CloudStorageConfiguration.builder()
-//            // if the channel errors out, re-open up to this many times
-//            .maxChannelReopens(maxReopens);
-//        if (!Strings.isNullOrEmpty(requesterProject)) {
-//            // enable requester pays and indicate who pays
-//            builder = builder.autoDetectRequesterPays(true).userProject(requesterProject);
-//        }
-//
-//        //this causes the gcs filesystem to treat files that end in a / as a directory
-//        //true is the default but this protects against future changes in behavior
-//        builder.usePseudoDirectories(true);
-//        return builder.build();
-//    }
+    /**
+     * The config we want to use.
+     *
+     * @param maxReopens If the GCS bucket channel errors out, how many times it will attempt to
+     *                   re-initiate the connection.
+     * @param requesterProject Project to bill when accessing "requester pays" buckets. If unset,
+     *                         these buckets cannot be accessed.
+     *
+     **/
+    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens, String requesterProject) {
+        Builder builder = CloudStorageConfiguration.builder()
+            // if the channel errors out, re-open up to this many times
+            .maxChannelReopens(maxReopens);
+        if (!Strings.isNullOrEmpty(requesterProject)) {
+            // enable requester pays and indicate who pays
+            builder = builder.autoDetectRequesterPays(true).userProject(requesterProject);
+        }
 
-//    private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {
-//        return builder
-//            .setTransportOptions(HttpTransportOptions.newBuilder()
-//                .setConnectTimeout(120000)
-//                .setReadTimeout(120000)
-//                .build())
-//            .setRetrySettings(RetrySettings.newBuilder()
-//                .setMaxAttempts(15)
-//                .setMaxRetryDelay(Duration.ofMillis(256_000L))
-//                .setTotalTimeout(Duration.ofMillis(4000_000L))
-//                .setInitialRetryDelay(Duration.ofMillis(1000L))
-//                .setRetryDelayMultiplier(2.0)
-//                .setInitialRpcTimeout(Duration.ofMillis(180_000L))
-//                .setRpcTimeoutMultiplier(1.0)
-//                .setMaxRpcTimeout(Duration.ofMillis(180_000L))
-//                .build());
-//    }
+        //this causes the gcs filesystem to treat files that end in a / as a directory
+        //true is the default but this protects against future changes in behavior
+        builder.usePseudoDirectories(true);
+        return builder.build();
+    }
+
+    private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {
+        return builder
+            .setTransportOptions(HttpTransportOptions.newBuilder()
+                .setConnectTimeout(120000)
+                .setReadTimeout(120000)
+                .build())
+            .setRetrySettings(RetrySettings.newBuilder()
+                .setMaxAttempts(15)
+                .setMaxRetryDelay(Duration.ofMillis(256_000L))
+                .setTotalTimeout(Duration.ofMillis(4000_000L))
+                .setInitialRetryDelay(Duration.ofMillis(1000L))
+                .setRetryDelayMultiplier(2.0)
+                .setInitialRpcTimeout(Duration.ofMillis(180_000L))
+                .setRpcTimeoutMultiplier(1.0)
+                .setMaxRpcTimeout(Duration.ofMillis(180_000L))
+                .build());
+    }
 
     /**
      * Get an authenticated GCS-backed NIO FileSystem object representing the selected projected and bucket.
@@ -410,16 +419,15 @@ public final class BucketUtils {
      * Files.newInputStream(Paths.get(URI.create( path ))).
      **/
     public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
-//        StorageOptions.Builder builder = StorageOptions.newBuilder()
-//                .setProjectId(projectId);
-//        if (null != credentials) {
-//            builder = builder.setCredentials(GoogleCredentials.fromStream(new ByteArrayInputStream(credentials)));
-//        }
-//        // generous timeouts, to avoid tests failing when not warranted.
-//        StorageOptions storageOptions = setGenerousTimeouts(builder).build();
-//
-//        // 2. Create GCS filesystem object with those credentials
-//        return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
-        return null;
+        StorageOptions.Builder builder = StorageOptions.newBuilder()
+                .setProjectId(projectId);
+        if (null != credentials) {
+            builder = builder.setCredentials(GoogleCredentials.fromStream(new ByteArrayInputStream(credentials)));
+        }
+        // generous timeouts, to avoid tests failing when not warranted.
+        StorageOptions storageOptions = setGenerousTimeouts(builder).build();
+
+        // 2. Create GCS filesystem object with those credentials
+        return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
     }
 }

@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import org.broadinstitute.barclay.argparser.TaggedArgument;
 import org.broadinstitute.barclay.argparser.TaggedArgumentParser;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,11 +41,11 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
     @Override
     public Path toPath() {
         // special case GCS, in case the filesystem provider wasn't installed properly but is available.
-//        if (CloudStorageFileSystem.URI_SCHEME.equals(getURI().getScheme())) {
-//            final Path tempPath = BucketUtils.getPathOnGcs(getURIString());
-//            setCachedPath(tempPath);
-//            return tempPath;
-//        } else {
+        if (CloudStorageFileSystem.URI_SCHEME.equals(getURI().getScheme())) {
+            final Path tempPath = BucketUtils.getPathOnGcs(getURIString());
+            setCachedPath(tempPath);
+            return tempPath;
+        } else {
             try {
                 return super.toPath();
             } catch (FileSystemNotFoundException e) {
@@ -57,7 +59,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
                     throw new GATKException("IOException loading new file system", ioe);
                 }
             }
-//        }
+        }
     }
 
     @Override

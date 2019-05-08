@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
@@ -40,14 +41,14 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
     }
 
-//    @Test
-//    public void testGetCloudStorageConfiguration() {
-//        String mockProject = "yes";
-//        int mockReopens = 100;
-//        CloudStorageConfiguration config = BucketUtils.getCloudStorageConfiguration(mockReopens, mockProject);
-//        Assert.assertEquals(config.maxChannelReopens(), mockReopens);
-//        Assert.assertEquals(config.userProject(), mockProject);
-//    }
+    @Test
+    public void testGetCloudStorageConfiguration() {
+        String mockProject = "yes";
+        int mockReopens = 100;
+        CloudStorageConfiguration config = BucketUtils.getCloudStorageConfiguration(mockReopens, mockProject);
+        Assert.assertEquals(config.maxChannelReopens(), mockReopens);
+        Assert.assertEquals(config.userProject(), mockProject);
+    }
 
     @Test
     public void testIsHadoopURL(){
