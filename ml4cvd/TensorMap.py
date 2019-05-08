@@ -6,9 +6,9 @@ from dateutil import relativedelta
 
 from keras.utils import to_categorical
 
-from defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
-from metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
+from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
+from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
+from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
 np.set_printoptions(threshold=np.inf)
 

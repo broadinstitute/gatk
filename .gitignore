@@ -3,10 +3,8 @@
 .idea/*
 *.linux
 *.log
-__pycache__/*
+**/__pycache__/*
 trained_models/*
 recipes_output/*
 .ipynb_checkpoints
-tensorize/tensorize/__pycache__/*
-tensorize/tensorize/database/__pycache__/*
-tensorize/ml_tensorize.egg-info/
+ml4cvd.egg-info/*

@@ -29,10 +29,11 @@ from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
 from scipy.ndimage.morphology import binary_closing  # Morphological operator
 
-from plots import plot_value_counter, plot_histograms
-from defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
-from defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
-from defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
+from ml4cvd.arguments import parse_args
+from ml4cvd.plots import plot_value_counter, plot_histograms
+from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
+from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
+from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
 
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
@@ -1128,8 +1129,6 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
 
 
 if __name__ == '__main__':
-    from arguments import parse_args
-
     args = parse_args()
     _print_disease_tensor_maps(args.phenos_folder)
     _print_disease_tensor_maps_time(args.phenos_folder)

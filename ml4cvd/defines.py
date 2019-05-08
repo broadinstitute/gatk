@@ -1,4 +1,3 @@
-# defines.py
 EPS = 1e-7
 
 DICOM_EXT = '.dcm'
@@ -43,3 +42,5 @@ TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
 DICTIONARY_TABLE = "ukbb7089_201904.dictionary"
 CODING_TABLE = "ukbb7089_201904.coding"
 PHENOTYPE_TABLE = "ukbb7089_201904.phenotype"
+
+GCS_BUCKET = 'ml4cvd'

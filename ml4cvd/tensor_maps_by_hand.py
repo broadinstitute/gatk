@@ -1,8 +1,8 @@
 import numpy as np
 
-from TensorMap import TensorMap
-from metrics import weighted_crossentropy
-from defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX
+from ml4cvd.TensorMap import TensorMap
+from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX
 
 
 def _get_lead_cm(length):

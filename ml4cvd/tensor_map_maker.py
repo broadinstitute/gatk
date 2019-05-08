@@ -3,12 +3,13 @@ import logging
 import numpy as np
 from typing import List
 from typing.io import TextIO
-from DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 
-from defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
-from tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
+from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
+from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
+from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
+
 
 def write_tensor_maps(args) -> None:
     logging.info("Making tensor maps...")
@@ -207,7 +208,6 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
         f.write(f"""TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', {channel_map}, 
                 normalization={{'mean': {row.mean}, 'std': {row.std}}}, 
                 annotation_units={row.max_array + 2})\n""")
-
 
 
 def _segmented_map(name):

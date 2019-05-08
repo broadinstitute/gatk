@@ -5,8 +5,8 @@ import logging
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, GoogleCloudOptions, StandardOptions
 
-from tensorize.database import tensorize
-from tensorize.defines import GCS_BUCKET
+from ml4cvd.defines import GCS_BUCKET
+from ml4cvd.tensorize.database import tensorize
 
 
 def parse_args():
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     packaging_args = [
         '--requirements_file={}'.format(f"{args.repo_root}/env/requirements_ml4cvd_dataflow.txt"),
-        '--setup_file={}'.format(f"{args.repo_root}/tensorize/setup.py")
+        '--setup_file={}'.format(f"{args.repo_root}/setup.py")
     ]
 
     pipeline_opts = PipelineOptions(flags=packaging_args)

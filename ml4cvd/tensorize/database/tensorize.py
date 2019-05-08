@@ -1,13 +1,13 @@
 import logging
 import tempfile
 
-import apache_beam as beam
 import h5py
+import apache_beam as beam
 from apache_beam import Pipeline
 from google.cloud import storage
-from tensorize.defines import TENSOR_EXT, GCS_BUCKET
 
-from tensorize.utils import dataset_name_from_meaning, to_float_or_false
+from ml4cvd.defines import TENSOR_EXT, GCS_BUCKET
+from ml4cvd.tensorize.utils import dataset_name_from_meaning, to_float_or_false
 
 
 def tensorize_categorical_continuous_fields(pipeline: Pipeline,
@@ -91,10 +91,10 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            tensor_file = '{}.{}'.format(sample_id, TENSOR_EXT)
-            tensor_path = '{}/{}'.format(temp_dir, tensor_file)
-            gcs_blob = output_bucket.blob('{}/{}'.format(output_path, tensor_file))
-            logging.info("Writing tensor {} to {} ...".format(tensor_file, gcs_blob.public_url))
+            tensor_file = f"{sample_id}{TENSOR_EXT}"
+            tensor_path = f"{temp_dir}/{tensor_file}"
+            gcs_blob = output_bucket.blob(f"{output_path}/{tensor_file}")
+            logging.info(f"Writing tensor {tensor_file} to {gcs_blob.public_url} ...")
             with h5py.File(tensor_path, 'w') as hd5:
                 for row in rows:
                     field_id = row['fieldid']
@@ -116,8 +116,8 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                     if float_value is not False:
                             hd5.create_dataset(hd5_dataset_name, data=[float_value])
                     else:
-                        logging.warning("Cannot cast to float from '{}' for field id '{}' and sample id '{}'".format(value, field_id, sample_id))
+                        logging.warning(f"Cannot cast to float from '{value}' for field id '{field_id}' and sample id '{sample_id}'")
             gcs_blob.upload_from_filename(tensor_path)
 
     except:
-        logging.exception("Problem with processing sample id '{}'".format(sample_id))
+        logging.exception(f"Problem with processing sample id '{sample_id}'")

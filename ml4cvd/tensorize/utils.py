@@ -1,6 +1,6 @@
 from typing import List
 
-from tensorize.defines import JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
+from ml4cvd.defines import JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
 
 
 def dataset_name_from_meaning(group: str, fields: List[str]) -> str:

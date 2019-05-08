@@ -20,8 +20,8 @@ import numpy as np
 from typing import List
 from collections import Counter
 
-from defines import TENSOR_EXT
-from TensorMap import TensorMap
+from ml4cvd.defines import TENSOR_EXT
+from ml4cvd.TensorMap import TensorMap
 
 np.set_printoptions(threshold=np.inf)
 

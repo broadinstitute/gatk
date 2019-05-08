@@ -13,7 +13,7 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_recall_curve, average_precision_score
 
-from defines import IMAGE_EXT, JOIN_CHAR
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'

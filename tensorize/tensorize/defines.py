@@ -1,6 +1,0 @@
-GCS_BUCKET = 'ml4cvd'
-
-TENSOR_EXT = 'hd5'
-JOIN_CHAR = '_'
-CONCAT_CHAR = '-'
-HD5_GROUP_CHAR = '/'

@@ -11,6 +11,7 @@ from keras.losses import binary_crossentropy, categorical_crossentropy, logcosh,
 STRING_METRICS = ['categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
                   'mean_squared_error', 'mse', 'cosine_proximity', 'logcosh']
 
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~ Metrics ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
