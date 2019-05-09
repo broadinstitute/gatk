@@ -254,9 +254,9 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
             }
         }
 
-        public SeqGraph assemble() {
+        public SeqGraph assemble(boolean recoverDanglingBranches) {
             assembler.setRemovePathsNotConnectedToRef(false); // needed to pass some of the tests
-            assembler.setRecoverDanglingBranches(false); // needed to pass some of the tests
+            assembler.setRecoverDanglingBranches(recoverDanglingBranches); // needed to pass some of the tests
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
             final SeqGraph graph = assembler.assemble(reads, refHaplotype, header, SmithWatermanJavaAligner
@@ -267,14 +267,14 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
     }
 
     private void assertLinearGraph(final TestAssembler assembler, final String seq) {
-        final SeqGraph graph = assembler.assemble();
+        final SeqGraph graph = assembler.assemble(false);
         graph.simplifyGraph();
         Assert.assertEquals(graph.vertexSet().size(), 1);
         Assert.assertEquals(graph.vertexSet().iterator().next().getSequenceString(), seq);
     }
 
     private void assertSingleBubble(final TestAssembler assembler, final String one, final String two) {
-        final SeqGraph graph = assembler.assemble();
+        final SeqGraph graph = assembler.assemble(false);
         graph.simplifyGraph();
         final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
@@ -332,7 +332,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         assembler.addSequence(ref.getBytes(), true);
         assembler.addSequence(alt.getBytes(), false);
 
-        final SeqGraph graph = assembler.assemble();
+        final SeqGraph graph = assembler.assemble(false);
         graph.simplifyGraph();
         graph.removeSingletonOrphanVertices();
         final Set<SeqVertex> sources = graph.getSources();
@@ -388,12 +388,88 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read1), false);
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
 
-        final SeqGraph graph = assembler.assemble();
+        final SeqGraph graph = assembler.assemble(false);
         final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
         final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
         final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
         Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
         Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
+    }
+
+    @Test
+    public void testAccidentallyLoopingGraph() {
+        final TestAssembler assembler = new TestAssembler(5);
+        // The single indel spans two repetitive structures
+        final String ref   = "AAACTCTGAATTCCGG"; //CTAGG is repeated at both begining and end of the reference chunk
+        final String read1 = "TCCGGGTGGCTCTG"; // starts on the last 5mer of the reference and loops back to CTCTG
+        final String read2 = "TCCGGGTGGCTCTG"; // starts on the last 5mer of the reference and loops back to CTCTG
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(ref), true);
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read1), false);
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
+        final SeqGraph graph = assembler.assemble(false);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        Assert.assertEquals(paths.size(), 2);
+        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
+        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // A series of tests demonstrating the problems with removing the unique kmer distinction, hopefully these will be fixed one-by-one as these graph changes are made.
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    @Test
+    public void testDisablingNonUniqueKmerElimination() {
+        final TestAssembler assembler = new TestAssembler(5);
+        assembler.assembler.setDuplicateNonUniqueKmers(false);
+        // The single indel spans two repetitive structures
+        final String ref   = "GGCTAGGATCTACTGTCTAGGGGTTC"; //CTAGG is repeated
+//        final String read1 = "GTTTTTCCTAGGCAAATGGTTTCTATAAAATTATGTGTGTGTGTCTCT----------GTGTGTGTGTGTGTGTGTATACCTAATCTCACACTCTTTTTTCTGG";
+//        final String read2 = "GTTTTTCCTAGGCAAATGGTTTCTATAAAATTATGTGTGTGTGTCTCT----------GTGTGTGTGTGTGTGTGTATACCTAATCTCACACTCTTTTTTCTGG";
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(ref), true);
+//        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read1), false);
+//        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
+
+        final SeqGraph graph = assembler.assemble(false);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        Assert.assertEquals(paths.size(), 2);
+        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
+        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
+//        Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
+//        Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
+    }
+
+    @Test
+    public void testDisablingNonUniqueLoopingReference() {
+        final TestAssembler assembler = new TestAssembler(5);
+        assembler.assembler.setDuplicateNonUniqueKmers(false);
+        // The single indel spans two repetitive structures
+        final String ref   = "CTAGGATCTACTGTCTAGGA"; //CTAGG is repeated at both begining and end of the reference chunk
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(ref), true);
+        final SeqGraph graph = assembler.assemble(false);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        Assert.assertEquals(paths.size(), 2);
+        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
+        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
+    }
+
+    @Test
+    public void testDisablingNonUniqueKmersDuplicatedRefSourceKmer() {
+        final TestAssembler assembler = new TestAssembler(5);
+        assembler.assembler.setDuplicateNonUniqueKmers(false);
+        // The single indel spans two repetitive structures
+        final String ref   = "GGCTAGGATCTACTGTCTAGGGGTTC"; //CTAGG is repeated
+        final String read1 = "AATCGGCTAGGATCT"; // GGCTA ref source is copied
+        final String read2 = "AATCGGCTAGGATCT"; // GGCTA ref source is copied
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(ref), true);
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read1), false);
+        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
+
+        final SeqGraph graph = assembler.assemble(true);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        Assert.assertEquals(paths.size(), 2);
+        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
+        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
+//        Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
+//        Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
     }
 }

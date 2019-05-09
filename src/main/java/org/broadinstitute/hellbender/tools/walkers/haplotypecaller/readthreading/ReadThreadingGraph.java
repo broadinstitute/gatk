@@ -47,6 +47,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
 
     private boolean startThreadingOnlyAtExistingVertex = false;
 
+    private boolean duplicateNonUniqueKmers;
+
     /** for debugging info printing */
     private static int counter = 0;
 
@@ -83,7 +85,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @throws IllegalArgumentException if (@code kmerSize) < 1.
      */
     public ReadThreadingGraph(final int kmerSize) {
-        this(kmerSize, false, (byte)6, 1);
+        this(kmerSize, false, (byte)6, 1, true);
     }
 
     /**
@@ -140,13 +142,14 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
+    ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final boolean duplicateNonUniqueKmers) {
         super(kmerSize, new MyEdgeFactory(numPruningSamples));
 
         Utils.validateArg( kmerSize > 0, () -> "bad minkKmerSize " + kmerSize);
 
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
+        this.duplicateNonUniqueKmers = duplicateNonUniqueKmers;
 
         resetToInitialState();
     }
@@ -310,9 +313,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
             return;
         }
 
-        // determine the kmer size we'll use, and capture the set of nonUniques for that kmer size
-        final NonUniqueResult result = determineKmerSizeAndNonUniques(kmerSize);
-        nonUniqueKmers = result.nonUniques;
+        // Capture the set of non-unique kmers for the given kmer size (if applicable)
+        nonUniqueKmers = duplicateNonUniqueKmers ? determineNonUniques(kmerSize) : new HashSet<>();
 
         if ( DEBUG_NON_UNIQUE_CALC ) {
             logger.info("using " + kmerSize + " kmer size for this assembly with the following non-uniques");
@@ -334,7 +336,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         }
 
         // clear
-//        pending.clear();
+        pending.clear();
         alreadyBuilt = true;
         for (final MultiDeBruijnVertex v : uniqueKmers.values()) {
             v.setAdditionalInfo(v.getAdditionalInfo() + '+');
@@ -426,15 +428,6 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
             this.danglingPathString = danglingPathString;
             this.referencePathString = referencePathString;
             this.cigar = cigar;
-        }
-    }
-
-    /** structure that keeps track of the non-unique kmers for a given kmer size */
-    private static final class NonUniqueResult {
-        final Set<Kmer> nonUniques;
-
-        private NonUniqueResult(final Set<Kmer> nonUniques) {
-            this.nonUniques = nonUniques;
         }
     }
 
@@ -872,7 +865,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param start   the reference vertex to start from
      * @param direction describes which direction to move in the graph (i.e. down to the reference sink or up to the source)
-     * @param blacklistedEdges edges to ignore in the traversal down; useful to exclude the non-reference dangling paths
+     * @param blacklistedEdge edge to ignore in the traversal down; useful to exclude the non-reference dangling paths
      * @return the path (non-null, non-empty)
      */
     private List<MultiDeBruijnVertex> getReferencePath(final MultiDeBruijnVertex start,
@@ -992,17 +985,12 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * among all sequences added to the current graph.  Will always return a result for maxKmerSize if
      * all smaller kmers had non-unique kmers.
      *
-     * @param minKmerSize the minimum kmer size to consider when constructing the graph
-     * @param maxKmerSize the maximum kmer size to consider
+     * @param kmerSize the kmer size to check for non-unique kmers of
      * @return a non-null NonUniqueResult
      */
-    private NonUniqueResult determineKmerSizeAndNonUniques(final int kmerSize) {
+    private Set<Kmer> determineNonUniques(final int kmerSize) {
         final Collection<SequenceForKmers> withNonUniques = getAllPendingSequences();
         final Set<Kmer> nonUniqueKmers = new HashSet<>();
-
-        // go through the sequences and determine which kmers aren't unique within each read
-        // clear out set of non-unique kmers
-        nonUniqueKmers.clear();
 
         // loop over all sequences that have non-unique kmers in them from the previous iterator
         final Iterator<SequenceForKmers> it = withNonUniques.iterator();
@@ -1019,15 +1007,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
                 nonUniqueKmers.addAll(nonUniquesFromSeq);
             }
         }
-//
-//            if ( nonUniqueKmers.isEmpty() )
-//                // this kmerSize produces no non-unique sequences, so go ahead and use it for our assembly
-//            {
-//                break;
-//            }
 
-        // necessary because the loop breaks with kmerSize = max + 1
-        return new NonUniqueResult(nonUniqueKmers);
+        return nonUniqueKmers;
     }
 
     /**
@@ -1165,7 +1146,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         final Kmer kmer = new Kmer(sequence, kmerStart, kmerSize);
         final MultiDeBruijnVertex uniqueMergeVertex = getUniqueKmerVertex(kmer, false);
 
-        if ( isRef && uniqueMergeVertex != null ) {
+        if (duplicateNonUniqueKmers && ( isRef && uniqueMergeVertex != null )) {
             throw new IllegalStateException("Found a unique vertex to merge into the reference graph " + prevVertex + " -> " + uniqueMergeVertex);
         }
 

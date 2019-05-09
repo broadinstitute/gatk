@@ -156,6 +156,10 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
     public boolean debugAssembly;
 
+    @Advanced
+    @Argument(fullName="disable-kmer-duplication", doc="Disable duplication of kmers in local assembly graph, this is an experimental option", optional = true)
+    public boolean disableKmerDuplication = false;
+
     @Hidden
     @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;

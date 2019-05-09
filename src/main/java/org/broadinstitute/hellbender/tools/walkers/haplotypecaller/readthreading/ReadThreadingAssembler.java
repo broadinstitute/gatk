@@ -39,6 +39,7 @@ public final class ReadThreadingAssembler {
     private final List<Integer> kmerSizes;
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
+    private boolean duplicateNonUniqueKmers;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -69,13 +70,14 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final int maxUnprunedVariants) {
+                                  final int maxUnprunedVariants, final boolean duplicateNonUniqueKmers) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes;
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
+        this.duplicateNonUniqueKmers = duplicateNonUniqueKmers;
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
@@ -83,7 +85,7 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, true);
     }
 
     @VisibleForTesting
@@ -398,7 +400,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, duplicateNonUniqueKmers);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
@@ -419,15 +421,13 @@ public final class ReadThreadingAssembler {
         chainPruner.pruneLowWeightChains(rtgraph);
 
         // sanity check: make sure there are no cycles in the graph
-        // TODO determine how to handle this...
-        if ( rtgraph.hasCycles() ) {
+        if (duplicateNonUniqueKmers && rtgraph.hasCycles() ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
             }
             return null;
         }
 
-        // TODO this seems maybe better?
         // sanity check: make sure the graph had enough complexity with the given kmer
         if ( ! allowLowComplexityGraphs && rtgraph.isLowComplexity() ) {
             if ( debug ) {
@@ -436,10 +436,10 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        return getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner, reads);
+        return getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final Iterable<GATKRead> reads) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
@@ -447,13 +447,6 @@ public final class ReadThreadingAssembler {
         if ( recoverDanglingBranches ) {
             rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
             rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
-        }
-
-        if (readThreader != null) {
-            ReadThreader.addrtGraph();
-            for (GATKRead read : reads) {
-                readThreader.threadRead(read);
-            }
         }
 
         // remove all heading and trailing paths
@@ -560,6 +553,11 @@ public final class ReadThreadingAssembler {
         this.debugGraphOutputPath = debugGraphOutputPath;
     }
 
+    @VisibleForTesting
+    public void setDuplicateNonUniqueKmers(boolean duplicateNonUniqueKmers) {
+        this.duplicateNonUniqueKmers = duplicateNonUniqueKmers;
+    }
+
     public void setRecoverDanglingBranches(final boolean recoverDanglingBranches) {
         this.recoverDanglingBranches = recoverDanglingBranches;
     }
@@ -580,11 +578,5 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
-    }
-
-    //TODO this is just holding logic for right now
-    private class ReadTreader {
-
-        void addRTGraph
     }
 }
