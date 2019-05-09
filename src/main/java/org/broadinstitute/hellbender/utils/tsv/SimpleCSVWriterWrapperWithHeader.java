@@ -15,7 +15,7 @@ import java.util.*;
 /**
  * A simple helper class wrapper around CSVWriter that has the ingrained concept of a header line with indexed fields
  *
- * The expected use case for this class is that first {@link #addHeaderLine} is called with a list of the column names
+ * The expected use case for this class is that first {@link #setHeaderLine} is called with a list of the column names
  * which will be used to determine the number of columns per line as well as how the header is indexed. Then in order to
  * construct a new line call {@link #getNewLineBuilder} to get a line builder for each line, which then has convienent
  * methods for individually assigning column values based on the header line etc. Once a line is finished being mutated
@@ -62,7 +62,7 @@ class SimpleCSVWriterWrapperWithHeader implements Closeable {
      *
      * @param columns Ordered list of header lines to be built into the CSV
      */
-    public void addHeaderLine(List<String> columns) {
+    public void setHeaderLine(List<String> columns) {
         if (headerMap != null) {
             throw new GATKException("Should not be adding multiple header lines to a file");
         }

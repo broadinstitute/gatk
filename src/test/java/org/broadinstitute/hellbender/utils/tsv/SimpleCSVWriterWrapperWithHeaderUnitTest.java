@@ -10,8 +10,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 
-import static org.testng.Assert.*;
-
 public class SimpleCSVWriterWrapperWithHeaderUnitTest extends GATKBaseTest {
 
 
@@ -25,6 +23,8 @@ public class SimpleCSVWriterWrapperWithHeaderUnitTest extends GATKBaseTest {
         SimpleCSVWriterWrapperWithHeader localWriter = new SimpleCSVWriterWrapperWithHeader(localPath, '\t');
 
         String[] header = new String[]{"a","b","c"};
+        bucketWriter.setHeaderLine(Arrays.asList(header));
+        localWriter.setHeaderLine(Arrays.asList(header));
 
         for (int i = 0; i < 100; i++) {
             SimpleCSVWriterWrapperWithHeader.SimpleCSVWriterLineBuilder bucketLine = bucketWriter.getNewLineBuilder();
