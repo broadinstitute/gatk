@@ -16,11 +16,11 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 
 import keras.backend as K
 
-from defines import IMAGE_EXT
-from arguments import parse_args
-from tensor_maps_by_script import TMAPS
-from models import make_multimodal_to_multilabel_model, train_model_from_generators
-from tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+from ml4cvd.defines import IMAGE_EXT
+from ml4cvd.arguments import parse_args
+from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators
+from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
 MAX_LOSS = 9e9
 

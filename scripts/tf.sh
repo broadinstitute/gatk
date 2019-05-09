@@ -93,6 +93,7 @@ chmod o+w /home/${USER}/jupyter/
 mkdir -p /home/${USER}/jupyter/root/
 mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
+PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
     ${DOCKER_COMMAND} run ${INTERACTIVE}
@@ -101,8 +102,9 @@ Attempting to run Docker with
         -v /home/${USER}/jupyter/root/:/root/
         -v /home/${USER}/:/home/${USER}/
         -v /mnt/:/mnt/
-        ${DOCKER_IMAGE} python $@
+        ${DOCKER_IMAGE} python ${PYTHON_ARGS}
 LAUNCH_MESSAGE
+
 
 ${DOCKER_COMMAND} run ${INTERACTIVE} \
 --rm \
@@ -110,4 +112,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
-${DOCKER_IMAGE} python "$@"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; python ${PYTHON_ARGS}"

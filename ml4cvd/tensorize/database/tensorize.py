@@ -57,7 +57,6 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline,
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
     bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
-
     # Query table in BQ
     steps = (
             pipeline
@@ -77,10 +76,12 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline,
     result.wait_until_finish()
 
 
-# Defining this in global scope because passing it explicitly into a method used by beam.Map()
-# gives a 'client not picklable` error.
-gcs_client = storage.Client()
-output_bucket = gcs_client.get_bucket(GCS_BUCKET)
+try:
+    gcs_client = storage.Client()
+    output_bucket = gcs_client.get_bucket(GCS_BUCKET)
+except OSError:
+    output_bucket ='nope'
+    logging.warning(f"no GCS storage client")
 
 
 def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
@@ -114,7 +115,7 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
 
                     float_value = to_float_or_false(value)
                     if float_value is not False:
-                            hd5.create_dataset(hd5_dataset_name, data=[float_value])
+                        hd5.create_dataset(hd5_dataset_name, data=[float_value])
                     else:
                         logging.warning(f"Cannot cast to float from '{value}' for field id '{field_id}' and sample id '{sample_id}'")
             gcs_blob.upload_from_filename(tensor_path)

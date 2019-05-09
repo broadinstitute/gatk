@@ -17,7 +17,7 @@ CONTEXT="docker/"
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
 
-BASE_IMAGE_GPU="ufoym/deepo:all-py36-jupyter"
+BASE_IMAGE_GPU="ufoym/deepo:all-jupyter-py36-cu90"
 BASE_IMAGE_CPU="ufoym/deepo:all-py36-jupyter-cpu"
 
 LATEST_TAG_GPU="latest-gpu"

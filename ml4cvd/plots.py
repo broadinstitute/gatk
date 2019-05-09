@@ -26,6 +26,7 @@ COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'orange']
 
 
+
 def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:

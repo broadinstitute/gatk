@@ -784,37 +784,56 @@ def _inspect_model(model: Model,
 
 
 def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
+    import pydot
+    legend = {}
     for n in dot.get_nodes():
         if n.get_label():
             if 'Conv1' in n.get_label():
+                legend['Conv1'] = "cyan"
                 n.set_fillcolor("cyan")
             elif 'Conv2' in n.get_label():
+                legend['Conv2'] = "deepskyblue1"
                 n.set_fillcolor("deepskyblue1")
             elif 'Conv3' in n.get_label():
+                legend['Conv3'] = "deepskyblue3"
                 n.set_fillcolor("deepskyblue3")
             elif 'UpSampling' in n.get_label():
-                n.set_fillcolor("deepskyblue3")
+                legend['UpSampling'] = "darkslategray2"
+                n.set_fillcolor("darkslategray2")
             elif 'Transpose' in n.get_label():
+                legend['Transpose'] = "deepskyblue2"
                 n.set_fillcolor("deepskyblue2")
             elif 'BatchNormalization' in n.get_label():
+                legend['BatchNormalization'] = "goldenrod1"
                 n.set_fillcolor("goldenrod1")
             elif 'output_' in n.get_label():
                 n.set_fillcolor("darkolivegreen2")
+                legend['Output'] = "darkolivegreen2"
             elif 'softmax' in n.get_label():
                 n.set_fillcolor("chartreuse")
+                legend['softmax'] = "chartreuse"
             elif 'MaxPooling' in n.get_label():
+                legend['MaxPooling'] = "aquamarine"
                 n.set_fillcolor("aquamarine")
             elif 'Dense' in n.get_label():
+                legend['Dense'] = "gold"
                 n.set_fillcolor("gold")
             elif 'Reshape' in n.get_label():
+                legend['Reshape'] = "coral"
                 n.set_fillcolor("coral")
             elif 'Input' in n.get_label():
+                legend['Input'] = "darkolivegreen1"
                 n.set_fillcolor("darkolivegreen1")
             elif 'Activation' in n.get_label():
+                legend['Activation'] = "yellow"
                 n.set_fillcolor("yellow")
         n.set_style("filled")
         if not inspect_show_labels:
             n.set_label('\n')
+
+    for l in legend:
+        legend_node = pydot.Node('legend'+l, label=l, shape="box", fillcolor=legend[l])
+        dot.add_node(legend_node)
 
     logging.info('Saving architecture diagram to:{}'.format(image_path))
     dot.write_png(image_path)

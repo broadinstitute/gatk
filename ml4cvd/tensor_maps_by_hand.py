@@ -54,14 +54,14 @@ TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted
 TMAPS['ecg_normal'] = TensorMap('ecg_normal', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
                   channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3})
 TMAPS['ecg_infarct'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_infarct': 0, 'infarct': 1},
-                             loss=weighted_crossentropy([1.0, 6.0], 'ecg_infarct'))
+                             loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'))
 
-TMAPS['ecg_rhythmp'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythm'), activation='softmax',
+TMAPS['ecg_rhythmp'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythmp'), activation='softmax',
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3}, parents=['output_median_ecg_rest'])
-TMAPS['ecg_normalp'] = TensorMap('ecg_normal', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'), activation='softmax',
+TMAPS['ecg_normalp'] = TensorMap('ecg_normal', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normalp'), activation='softmax',
                   channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3}, parents=['output_median_ecg_rest'])
 TMAPS['ecg_infarctp'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_infarct': 0, 'infarct': 1}, activation='softmax',
-                             loss=weighted_crossentropy([1.0, 6.0], 'ecg_infarct'), parents=['output_median_ecg_rest'])
+                             loss=weighted_crossentropy([1.0, 6.0], 'ecg_infarctp'), parents=['output_median_ecg_rest'])
 
 
 TMAPS['ecg_rest_next_char'] = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
@@ -242,11 +242,11 @@ TMAPS['fathers_age'] = TensorMap('fathers_age_0', group='continuous',
                                  channel_map={'father_age': 0, 'father_alive': 2, 'father_dead': 3, 'not-missing': 1},
                                  normalization={'mean':70.928, 'std': 12.746}, annotation_units = 4)
 
-TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=1, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1})
-TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0':0}, normalization = {'mean':27.432061533712652, 'std':4.785244772462738}, annotation_units=1, loss='logcosh')
-TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0':0}, normalization = {'mean':1952.0639129359386, 'std':7.656326148519739 }, annotation_units=1, loss='logcosh', loss_weight=10.0)
-TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', group='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0':0}, normalization = {'mean':18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
-TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', group='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0':0}, normalization = {'mean':0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
+TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=2, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
+TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0':0}, normalization = {'mean': 27.432061533712652, 'std': 4.785244772462738}, annotation_units=1, loss='logcosh')
+TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0':0}, normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739 }, annotation_units=1, loss='logcosh', loss_weight=10.0)
+TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', group='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
+TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', group='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
 TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', group='continuous', channel_map={'1498_Coffee-intake_0_0': 0},
                             normalization={'mean': 2.015086529948216, 'std': 2.0914960998390497}, annotation_units=1)
 TMAPS['water'] = TensorMap('1528_Water-intake_0_0', group='continuous', channel_map={'1528_Water-intake_0_0': 0},
