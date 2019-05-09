@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
@@ -171,14 +171,14 @@ public class BreakpointComplicationsAndLocationAndAltSeqInferenceUnitTest extend
         final BreakpointComplications actualComplication = actual.getComplication();
         final BreakpointComplications expectedComplication = expected.getComplication();
         Assert.assertEquals(actualComplication.getClass(), expectedComplication.getClass());
-        int levenshteinDistance = StringUtils.getLevenshteinDistance(actualComplication.getHomologyForwardStrandRep(),
-                                                                     expectedComplication.getHomologyForwardStrandRep());
+        int levenshteinDistance = LevenshteinDistance.getDefaultInstance().apply(actualComplication.getHomologyForwardStrandRep(),
+                                                                                 expectedComplication.getHomologyForwardStrandRep());
         Assert.assertTrue(levenshteinDistance <= 2);
-        levenshteinDistance = StringUtils.getLevenshteinDistance(actualComplication.getInsertedSequenceForwardStrandRep(),
-                                                                 expectedComplication.getInsertedSequenceForwardStrandRep());
+        levenshteinDistance = LevenshteinDistance.getDefaultInstance().apply(actualComplication.getInsertedSequenceForwardStrandRep(),
+                                                                             expectedComplication.getInsertedSequenceForwardStrandRep());
         Assert.assertTrue(levenshteinDistance <= 2);
-        levenshteinDistance = StringUtils.getLevenshteinDistance(new String(actual.getAltHaplotypeSequence()),
-                                                                 new String(expected.getAltHaplotypeSequence()));
+        levenshteinDistance = LevenshteinDistance.getDefaultInstance().apply(new String(actual.getAltHaplotypeSequence()),
+                                                                             new String(expected.getAltHaplotypeSequence()));
         Assert.assertTrue(levenshteinDistance <= 2);
 
         // more tests if more complications available
