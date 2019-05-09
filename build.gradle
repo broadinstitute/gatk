@@ -159,6 +159,10 @@ configurations.all {
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
 
+        force 'com.fasterxml.jackson.core:jackson-core:2.6.7'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.6.7'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.6.7'
+
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
         force googleCloudNioDependency
