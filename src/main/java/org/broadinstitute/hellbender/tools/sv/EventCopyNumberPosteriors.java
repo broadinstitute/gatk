@@ -127,12 +127,14 @@ public final class EventCopyNumberPosteriors extends GATKTool {
     private int maxEventSize = Integer.MAX_VALUE;
 
     @Argument(
-            doc = "Prior probability of neutral copy number in regions where copy number calls are not available.",
+            doc = "Prior probability of neutral copy number, per 1kb, in regions where copy number calls are not available.",
             fullName = COPY_NEUTRAL_PRIOR_LONG_NAME,
             minValue = 0,
             maxValue = 1
     )
-    private double copyNeutralPrior = 0.99;
+    private double copyNeutralPrior = 0.9999;
+
+    public final int COPY_NEUTRAL_PRIOR_BASIS_LENGTH = 1000;
 
     @Override
     public void traverse() {
@@ -154,7 +156,7 @@ public final class EventCopyNumberPosteriors extends GATKTool {
             }
             if (sampleIdEventMap.containsKey(samplePosteriors.getSampleName())) {
                 logger.info("Adding sample " + samplePosteriors.getSampleName() + " to site posteriors...");
-                addSampleToSitePosteriors(eventIdPosteriorsMap, samplePloidyCallsMap, eventsCollection, samplePosteriors, intervalSize);
+                addSampleToSitePosteriors(eventIdPosteriorsMap, samplePloidyCallsMap, eventsCollection, samplePosteriors);
             } else {
                 logger.warn("Posteriors were provided for sample " + samplePosteriors.getSampleName() + " but no events were found in this sample.");
             }
@@ -265,8 +267,7 @@ public final class EventCopyNumberPosteriors extends GATKTool {
     private void addSampleToSitePosteriors(final Map<String, SitePosterior> eventIdPosteriorsMap,
                                            final Map<String,CalledContigPloidyCollection> samplePloidyCallsMap,
                                            final Collection<EventRecord> eventsToAdd,
-                                           final LocatableCopyNumberPosteriorDistributionCollection samplePosteriors,
-                                           final int intervalSize) {
+                                           final LocatableCopyNumberPosteriorDistributionCollection samplePosteriors) {
         final String sample = samplePosteriors.getSampleName();
         if (samplePosteriors.getRecords().isEmpty()) {
             throw new IllegalArgumentException("Sample posteriors collection was empty");
@@ -280,7 +281,7 @@ public final class EventCopyNumberPosteriors extends GATKTool {
         for (final EventRecord event : eventsToAdd) {
             if (event.isInSample(sample)) {
                 final int eventPloidy = getSamplePloidy(sample, event.getInterval().getContig(), samplePloidyCallsMap);
-                final LocatableCopyNumberPosteriorDistribution eventPosterior = getEventPosterior(event, sample, overlapDetector, maxCopyState, intervalSize, eventPloidy);
+                final LocatableCopyNumberPosteriorDistribution eventPosterior = getEventPosterior(event, sample, overlapDetector, maxCopyState, eventPloidy);
                 eventIdPosteriorsMap.putIfAbsent(event.getId(), new SitePosterior(event));
                 eventIdPosteriorsMap.get(event.getId()).getPosteriors().add(eventPosterior);
             }
@@ -291,7 +292,6 @@ public final class EventCopyNumberPosteriors extends GATKTool {
                                                                        final String sample,
                                                                        final OverlapDetector<LocatableCopyNumberPosteriorDistribution> overlapDetector,
                                                                        final int maxCopyState,
-                                                                       final int posteriorsIntervalSize,
                                                                        final int ploidy) {
         Utils.validateArg(maxCopyState >= 0, "Maximum copy state must be non-negative");
         final SimpleInterval eventInterval = event.getInterval();
@@ -301,17 +301,15 @@ public final class EventCopyNumberPosteriors extends GATKTool {
         int overlapSize = 0;
         for (final LocatableCopyNumberPosteriorDistribution overlapper : overlappers) {
             final int overlap = overlapper.getInterval().intersect(eventInterval).size();
-            // TODO requires 50% overlap with interval; make adjustable
-            if (overlap >= 0.5 * overlapper.getInterval().size()) {
-                overlapSize += overlap;
-                for (final IntegerCopyNumberState state : overlapper.getIntegerCopyNumberStateList()) {
-                    copyStateSums[state.getCopyNumber()] += overlapper.getCopyNumberPosterior(state);
-                }
+            final double overlapFraction = overlap / (double) overlapper.getInterval().getLengthOnReference();
+            overlapSize += overlap;
+            for (final IntegerCopyNumberState state : overlapper.getIntegerCopyNumberStateList()) {
+                copyStateSums[state.getCopyNumber()] += overlapper.getCopyNumberPosterior(state) * overlapFraction;
             }
         }
 
         // Fill in missing copy number posterior intervals with a prior
-        final double unsupportedIntervals = (event.getInterval().size() - overlapSize) / (double) posteriorsIntervalSize;
+        final double unsupportedIntervals = (event.getInterval().size() - overlapSize) / (double) COPY_NEUTRAL_PRIOR_BASIS_LENGTH;
         if (unsupportedIntervals > 0) {
             final double logNeutralProb = FastMath.log(copyNeutralPrior);
             final double logNonNeutralProb = FastMath.log((1.0 - copyNeutralPrior) / (copyStateSums.length - 1));
