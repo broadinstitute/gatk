@@ -37,7 +37,7 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export CP_DIR=/gatk/testClasses" /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && ./gatk SortSam -I ./src/test/resources/org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam -O /dev/stdout -SO coordinate | ./gatk SetNmMdAndUqTags -I /dev/stdin -O /tmp/testOutput3813194458429945139.bam --CREATE_INDEX true -R ./src/test/resources/large/human_g1k_v37.20.21.fasta" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
