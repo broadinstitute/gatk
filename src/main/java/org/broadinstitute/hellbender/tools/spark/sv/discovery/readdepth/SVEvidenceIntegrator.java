@@ -26,14 +26,14 @@ public final class SVEvidenceIntegrator {
     private final Collection<VariantContext> structuralVariantCalls;
     private final Collection<EvidenceTargetLink> evidenceTargetLinks;
     private final Collection<BreakpointPair> pairedBreakpoints;
-    private final SVIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree;
+    private final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree;
     private final SAMSequenceDictionary dictionary;
     private final DiscoverVariantsFromReadDepthArgumentCollection arguments;
 
     public SVEvidenceIntegrator(final Collection<VariantContext> breakpoints,
                                 final Collection<VariantContext> structuralVariantCalls,
                                 final Collection<EvidenceTargetLink> evidenceTargetLinks,
-                                final SVIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree,
+                                final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree,
                                 final Collection<SVInterval> highCoverageIntervals,
                                 final Collection<SVInterval> blacklist,
                                 final SAMSequenceDictionary dictionary,

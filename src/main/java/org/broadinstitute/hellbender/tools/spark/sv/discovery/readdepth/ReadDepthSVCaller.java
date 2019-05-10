@@ -20,9 +20,9 @@ public final class ReadDepthSVCaller {
 
     private final SVGraph graph;
     private final DiscoverVariantsFromReadDepthArgumentCollection arguments;
-    private final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree;
+    private final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree;
 
-    public ReadDepthSVCaller(final SVGraph graph, final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree, final DiscoverVariantsFromReadDepthArgumentCollection arguments) {
+    public ReadDepthSVCaller(final SVGraph graph, final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree, final DiscoverVariantsFromReadDepthArgumentCollection arguments) {
         this.graph = graph;
         this.arguments = arguments;
         this.copyNumberPosteriorsTree = copyNumberPosteriorsTree;
@@ -47,7 +47,7 @@ public final class ReadDepthSVCaller {
      */
     public static Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> generateEvents(final SVGraph graph, final int groupId, final double minEventProb,
                                                                                                            final double maxPathLengthFactor, final int maxEdgeVisits,
-                                                                                                           final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
+                                                                                                           final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
                                                                                                            final int maxQueueSize, final int baselineCopyNumber, final int minSize,
                                                                                                            final double minHaplotypeProb, final int maxBreakpointsPerHaplotype,
                                                                                                            final Double parentQuality) {
@@ -207,7 +207,7 @@ public final class ReadDepthSVCaller {
 
     private static List<SVGraphGenotype> enumerateGenotypes(final Collection<IndexedSVGraphPath> paths,
                                                                   final SVGraph graph,
-                                                                  final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
+                                                                  final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
                                                                   final int groupId,
                                                                   final int baselineCopyNumber) {
         final int numEdges = graph.getEdges().size();
@@ -316,7 +316,7 @@ public final class ReadDepthSVCaller {
     /**
      * Gets copy number posteriors for all edges
      */
-    private static List<EdgeCopyNumberPosterior> getEdgeCopyNumberPosteriors(final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
+    private static List<EdgeCopyNumberPosterior> getEdgeCopyNumberPosteriors(final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
                                                                              final SVGraph graph) {
 
         final List<IndexedSVGraphEdge> edges = graph.getEdges();
@@ -363,7 +363,7 @@ public final class ReadDepthSVCaller {
         return copyNumberPosterior;
     }
 
-    private static List<SVCopyNumberInterval> getSortedOverlappingCopyNumberIntervals(final Collection<IndexedSVGraphEdge> edges, final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree) {
+    private static List<SVCopyNumberInterval> getSortedOverlappingCopyNumberIntervals(final Collection<IndexedSVGraphEdge> edges, final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree) {
         return edges.stream()
                 .flatMap(edge -> Utils.stream(copyNumberPosteriorsTree.overlappers(edge.getInterval())))
                 .map(SVIntervalTree.Entry::getValue)

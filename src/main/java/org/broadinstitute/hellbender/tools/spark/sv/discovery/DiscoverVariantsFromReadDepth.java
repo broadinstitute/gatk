@@ -132,8 +132,8 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
     private String svCallVCFPath;
     @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
     private String evidenceTargetLinksFilePath;
-    @Argument(doc = "Germline CNV (gCNV) interval calls (.vcf)", fullName = CNV_INTERVALS_LONG_NAME)
-    private String intervalCallsFilePath;
+    @Argument(doc = "Germline CNV (gCNV) interval call vcfs (.vcf), can specify more than one", fullName = CNV_INTERVALS_LONG_NAME)
+    private List<String> intervalCallsFilePaths;
     @Argument(doc = "High coverage intervals file path", fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME, optional = true)
     private String highCoverageIntervalsPath;
     @Argument(doc = "One or more blacklisted intervals files", fullName = BLACKLIST_LONG_NAME, optional = true)
@@ -157,16 +157,20 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
         }
         final Collection<VariantContext> breakpointCalls = readVCF(breakpointVCFPath, dictionary);
         final Collection<VariantContext> svCalls = readVCF(svCallVCFPath, dictionary);
-        final List<SVCopyNumberInterval> copyNumberIntervals = getCalledCopyNumberIntervals(intervalCallsFilePath, dictionary);
+        final List<SVIntervalTree<SVCopyNumberInterval>> copyNumberTrees = new ArrayList<>(intervalCallsFilePaths.size());
+        for (final String path : intervalCallsFilePaths) {
+            final List<SVCopyNumberInterval> copyNumberIntervals = getCalledCopyNumberIntervals(path, dictionary);
+            copyNumberTrees.add(SVIntervalUtils.buildCopyNumberIntervalTree(copyNumberIntervals));
+        }
+        final SVMultiscaleIntervalTree<SVCopyNumberInterval> multiscaleIntervalTree = new SVMultiscaleIntervalTree<>(copyNumberTrees);
         final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
 
         //Create graph
-        final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree = SVIntervalUtils.buildCopyNumberIntervalTree(copyNumberIntervals);
-        final SVEvidenceIntegrator evidenceIntegrator = new SVEvidenceIntegrator(breakpointCalls, svCalls, evidenceTargetLinks, copyNumberPosteriorsTree, highCoverageIntervals, blacklist, dictionary, arguments);
+        final SVEvidenceIntegrator evidenceIntegrator = new SVEvidenceIntegrator(breakpointCalls, svCalls, evidenceTargetLinks, multiscaleIntervalTree, highCoverageIntervals, blacklist, dictionary, arguments);
         final SVGraph graph = evidenceIntegrator.buildGraph();
 
         //Call events
-        final ReadDepthSVCaller caller = new ReadDepthSVCaller(graph, copyNumberPosteriorsTree, arguments);
+        final ReadDepthSVCaller caller = new ReadDepthSVCaller(graph, multiscaleIntervalTree, arguments);
         final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> callResult = caller.callEvents();
         final Collection<CalledSVGraphGenotype> haplotypes = callResult._1;
         final Collection<CalledSVGraphEvent> events = callResult._2;
