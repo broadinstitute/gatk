@@ -26,6 +26,7 @@ public final class SVEvidenceIntegrator {
     private final Collection<VariantContext> structuralVariantCalls;
     private final Collection<EvidenceTargetLink> evidenceTargetLinks;
     private final Collection<BreakpointPair> pairedBreakpoints;
+    private final Collection<EventRecord> eventRecordCollection;
     private final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree;
     private final SAMSequenceDictionary dictionary;
     private final DiscoverVariantsFromReadDepthArgumentCollection arguments;
@@ -33,6 +34,7 @@ public final class SVEvidenceIntegrator {
     public SVEvidenceIntegrator(final Collection<VariantContext> breakpoints,
                                 final Collection<VariantContext> structuralVariantCalls,
                                 final Collection<EvidenceTargetLink> evidenceTargetLinks,
+                                final Collection<EventRecord> eventRecordCollection,
                                 final SVMultiscaleIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree,
                                 final Collection<SVInterval> highCoverageIntervals,
                                 final Collection<SVInterval> blacklist,
@@ -41,6 +43,7 @@ public final class SVEvidenceIntegrator {
         Utils.nonNull(breakpoints, "Breakpoints collection cannot be null");
         Utils.nonNull(structuralVariantCalls, "Structural variant calls collection cannot be null");
         Utils.nonNull(evidenceTargetLinks, "Evidence target links collection cannot be null");
+        Utils.nonNull(eventRecordCollection, "Event record collection cannot be null");
         Utils.nonNull(copyNumberIntervalTree, "Copy number posteriors tree cannot be null");
         Utils.nonNull(highCoverageIntervals, "High coverage intervals collection cannot be null");
         Utils.nonNull(blacklist, "Blacklist intervals collection cannot be null");
@@ -51,6 +54,7 @@ public final class SVEvidenceIntegrator {
         this.arguments = arguments;
         this.structuralVariantCalls = structuralVariantCalls;
         this.evidenceTargetLinks = evidenceTargetLinks;
+        this.eventRecordCollection = eventRecordCollection;
 
         pairedBreakpoints = getBreakpointPairs(breakpoints);
         highCoverageIntervalTree = SVIntervalUtils.buildIntervalTreeWithNullValues(highCoverageIntervals);
@@ -172,6 +176,25 @@ public final class SVEvidenceIntegrator {
         return edges;
     }
 
+    private Collection<CoordinateSVGraphEdge> getEventRecordEdges() {
+        final Collection<CoordinateSVGraphEdge> edges = new ArrayList<>(eventRecordCollection.size());
+        for (final EventRecord record : eventRecordCollection) {
+            final int contig = dictionary.getSequenceIndex(record.getContig());
+            final int start = record.getStart();
+            final int end = record.getEnd();
+            if (record.getType().equals(StructuralVariantType.DEL.name())) {
+                // TODO add evidence type
+                edges.add(new CoordinateSVGraphEdge(contig, start, true, contig, end, false, false, new SVGraphEdgeEvidence(), dictionary));
+            } else if (record.getType().equals(StructuralVariantType.DUP.name())) {
+                edges.add(new CoordinateSVGraphEdge(contig, start, false, contig, end, true, false, new SVGraphEdgeEvidence(), dictionary));
+            } else if (record.getType().equals(StructuralVariantType.INV.name())) {
+                edges.add( new CoordinateSVGraphEdge(contig, start, true, contig, end, true, false, new SVGraphEdgeEvidence(), dictionary));
+                edges.add(new CoordinateSVGraphEdge(contig, start, false, contig, end, false, false, new SVGraphEdgeEvidence(), dictionary));
+            }
+        }
+        return edges;
+    }
+
     /**
      * Filters edges that do not have CNV calls or whose ends overlap blacklist or high coverage intervals
      */
@@ -202,6 +225,7 @@ public final class SVEvidenceIntegrator {
         edges.addAll(getBreakpointPairEdges(edgeTree, arguments.insertSize));
         edges.addAll(getStructuralVariantCallEdges(edgeTree, arguments.insertSize));
         edges.addAll(getEvidenceTargetLinkEdges(edgeTree, arguments.insertSize));
+        edges.addAll(getEventRecordEdges());
 
         final List<CoordinateSVGraphEdge> filteredEdges = filterEdges(edges, arguments.insertSize);
         return new SVGraph(filteredEdges, dictionary);

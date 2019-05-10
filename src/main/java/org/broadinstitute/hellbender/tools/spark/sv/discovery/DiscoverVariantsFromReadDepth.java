@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVNamingConstants;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledContigPloidyCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.DiscoverVariantsFromReadDepthArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth.*;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -121,6 +121,8 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
     public static final String HIGH_COVERAGE_INTERVALS_LONG_NAME = "high-coverage-intervals";
     public static final String BLACKLIST_LONG_NAME = "blacklist";
     public static final String GRAPH_OUTPUT_LONG_NAME = "write-graph";
+    public static final String CONTIG_PLOIDY_CALLS_LONG_NAME = "ploidy-calls";
+    public static final String STRUCTURAL_VARIANT_TABLE_LONG_NAME = "table";
 
     public static final String RESOLVED_CALLS_FILE_NAME = "calls";
     public static final String UNRESOLVED_CALLS_FILE_NAME = "unresolved";
@@ -132,11 +134,11 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
 
     @Argument(doc = "Sequence dictionary", fullName = "sequence-dictionary")
     private String sequenceDictionaryPath;
-    @Argument(doc = "BND list (.vcf)", fullName = BREAKPOINTS_LONG_NAME)
+    @Argument(doc = "BND list (.vcf)", fullName = BREAKPOINTS_LONG_NAME, optional = true)
     private String breakpointVCFPath;
-    @Argument(doc = "Structural variant calls list (.vcf)", fullName = SV_CALLS_LONG_NAME)
+    @Argument(doc = "Structural variant calls list (.vcf)", fullName = SV_CALLS_LONG_NAME, optional = true)
     private String svCallVCFPath;
-    @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
+    @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME, optional = true)
     private String evidenceTargetLinksFilePath;
     @Argument(doc = "Germline CNV (gCNV) interval call vcfs (.vcf), can specify more than one", fullName = CNV_INTERVALS_LONG_NAME)
     private List<String> intervalCallsFilePaths;
@@ -151,6 +153,18 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
     @Argument(doc = "Write graph output", fullName = GRAPH_OUTPUT_LONG_NAME, optional = true)
     private boolean writeGraph = false;
 
+    @Argument(
+            doc = "Structural variants table",
+            fullName = STRUCTURAL_VARIANT_TABLE_LONG_NAME
+    )
+    private File structuralVariantTableFile;
+
+    @Argument(
+            doc = "Contig ploidy file",
+            fullName = CONTIG_PLOIDY_CALLS_LONG_NAME
+    )
+    private File contigPloidyCallsFile;
+
     @Override
     public Object doWork() {
 
@@ -161,18 +175,19 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
         for (final String path : blacklistedPaths) {
             blacklist.addAll(getIntervals(path, dictionary));
         }
-        final Collection<VariantContext> breakpointCalls = readVCF(breakpointVCFPath, dictionary);
-        final Collection<VariantContext> svCalls = readVCF(svCallVCFPath, dictionary);
+        final Collection<VariantContext> breakpointCalls = breakpointVCFPath == null? Collections.emptyList() : readVCF(breakpointVCFPath, dictionary);
+        final Collection<VariantContext> svCalls = svCallVCFPath == null ? Collections.emptyList() : readVCF(svCallVCFPath, dictionary);
         final List<SVIntervalTree<SVCopyNumberInterval>> copyNumberTrees = new ArrayList<>(intervalCallsFilePaths.size());
         for (final String path : intervalCallsFilePaths) {
             final List<SVCopyNumberInterval> copyNumberIntervals = getCalledCopyNumberIntervals(path, dictionary);
             copyNumberTrees.add(SVIntervalUtils.buildCopyNumberIntervalTree(copyNumberIntervals));
         }
         final SVMultiscaleIntervalTree<SVCopyNumberInterval> multiscaleIntervalTree = new SVMultiscaleIntervalTree<>(copyNumberTrees);
-        final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
+        final Collection<EvidenceTargetLink> evidenceTargetLinks = evidenceTargetLinksFilePath == null ? Collections.emptyList() : getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
+        final Collection<EventRecord> eventRecordCollection = EventRecordReader.readEventRecords(structuralVariantTableFile).collect(Collectors.toList());
 
         //Create graph
-        final SVEvidenceIntegrator evidenceIntegrator = new SVEvidenceIntegrator(breakpointCalls, svCalls, evidenceTargetLinks, multiscaleIntervalTree, highCoverageIntervals, blacklist, dictionary, arguments);
+        final SVEvidenceIntegrator evidenceIntegrator = new SVEvidenceIntegrator(breakpointCalls, svCalls, evidenceTargetLinks, eventRecordCollection, multiscaleIntervalTree, highCoverageIntervals, blacklist, dictionary, arguments);
         final SVGraph graph = evidenceIntegrator.buildGraph();
 
         //Call events
@@ -298,16 +313,8 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
         }
     }
 
-
-    private Collection<CalledContigPloidyCollection> readCohortPloidyCalls() {
-        final File[] subdirs = contigPloidyCallsDir.listFiles(File::isDirectory);
-        final Collection<CalledContigPloidyCollection> ploidyCollections = new ArrayList<>();
-        for (final File subdir : subdirs) {
-            if (subdir.getName().startsWith(GermlineCNVNamingConstants.SAMPLE_PREFIX)) {
-                ploidyCollections.add(readPloidyCalls(subdir));
-            }
-        }
-        return ploidyCollections;
+    private CalledContigPloidyCollection readPloidyCalls() {
+        return new CalledContigPloidyCollection(contigPloidyCallsFile);
     }
 
     private final static class EventRecordReader {
