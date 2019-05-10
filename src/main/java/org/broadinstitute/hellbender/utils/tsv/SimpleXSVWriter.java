@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 /**
- * A simple helper class wrapper around CSVWriter that has the ingrained concept of a header line with indexed fields
+ * A simple TSV/CSV/XSV writer with support for writing in the cloud with configurable delimiter.
  *
  * The expected use case for this class is that first {@link #setHeaderLine} is called with a list of the column names
  * which will be used to determine the number of columns per line as well as how the header is indexed. Then in order to
@@ -21,83 +21,89 @@ import java.util.*;
  * methods for individually assigning column values based on the header line etc. Once a line is finished being mutated
  * one simply needs to call write() on the line to validate and finalize the line.
  *
- * Why didn't I use a tableWriter here? Who really holds the patent on the wheel anyway? Certainly not TableWriter.
+ * Header lines are encoded in the same format as each row, a single row of delimeted column titles as the first row in the table.
+ *
+ * Note: this class is intended for creating XSV files with loosely defined input types. If there exists a well defined object
+ * that summarizes your table data points then consider using {@link TableWriter}.
  */
-class SimpleCSVWriterWrapperWithHeader implements Closeable {
-    private int expectedColumns;
+public class SimpleXSVWriter implements Closeable {
+    private int expectedNumColumns;
     private Map<String, Integer> headerMap = null;
     private CSVWriter outputWriter;
 
     // The current incomplete line in the writer.
-    private SimpleCSVWriterLineBuilder currentLine = null;
+    private LineBuilder currentLineBuilder = null;
 
     /**
      * Creates a new table writer given the file and column names.
      *
-     * @param path         the destination path.
-     * @param separator    separator to use for the TSV file
+     * @param path         the destination path. This could be a cloud uri (ex. gs://...)
+     * @param separator    separator to use for the XSV file
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
-    public SimpleCSVWriterWrapperWithHeader(final Path path, final char separator) throws IOException {
+    public SimpleXSVWriter(final Path path, final char separator) throws IOException {
         this( new OutputStreamWriter(
                 Files.newOutputStream(Utils.nonNull(path, "The path cannot be null."))),
         separator);
     }
 
     /**
-     * Creates a new table writer given the file and column names.
+     * Creates a new table writer given an initialized writer and column names.
      *
      * @param writer       the destination writer.
      * @param separator    separator to use for the TSV file
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
-    public SimpleCSVWriterWrapperWithHeader(final Writer writer, final char separator) {
+    public SimpleXSVWriter(final Writer writer, final char separator) {
+        Utils.validate(separator!='\n', "Column separator cannot be a newline character");
         outputWriter = new CSVWriter(writer, separator);
     }
 
     /**
-     * Provides a header line to the CSV output file. Note that this will throw an exception if all header lines
+     * Provides a header line to the XSV output file. Note that this will throw an exception if all header lines
      * are not unique as it attempts to create an index for the provided header lines for convenience when building
-     * rows of the CSV.
+     * rows of the XSV.
      *
-     * @param columns Ordered list of header lines to be built into the CSV
+     * NOTE: This can only be set once, XSV output files are expected to only have a single row as header.
+     *
+     * @param columns Ordered list of header lines to be built into the XSV
      */
     public void setHeaderLine(List<String> columns) {
         if (headerMap != null) {
-            throw new GATKException("Should not be adding multiple header lines to a file");
+            throw new GATKException("Cannot modify header line once set");
         }
         outputWriter.writeNext(columns.toArray(new String[0]), false);
-        expectedColumns = columns.size();
+        expectedNumColumns = columns.size();
 
         // Create the mapping between header and column
         headerMap = new HashMap<>();
         for (int i = 0; i < columns.size(); i++) {
-            Utils.nonNull(columns.get(i));
+            Utils.nonNull(columns.get(i), "Provided header had null column at position: " + i);
             if (headerMap.putIfAbsent(columns.get(i), i) != null) {
-                throw new GATKException("Only allow unique column headings");
+                throw new GATKException("Column names must be unique, but found a duplicate name: " + columns.get(i));
             }
         }
     }
 
     private void writeLine(String[] line) {
         outputWriter.writeNext(line, false);
-        currentLine = null;
+        currentLineBuilder = null;
     }
 
     /**
-     * Builds a new SimpleCSVWriterLineBuilder and writes out the previous line if it exists.
+     * Builds a new LineBuilder and writes out the previous line if it exists.
      *
-     * @return a blank SimpleCSVWriterLineBuilder to allow for defining the next line
+     * @return a blank LineBuilder to allow for defining the next line
      */
-    public SimpleCSVWriterLineBuilder getNewLineBuilder() {
+    public LineBuilder getNewLineBuilder() {
         if (headerMap == null) {
             throw new GATKException("Cannot construct line without first setting the header line");
         }
-        if (currentLine != null) {
-            currentLine.write();
+        if (currentLineBuilder != null) {
+            currentLineBuilder.write();
         }
-        currentLine = new SimpleCSVWriterLineBuilder(this, expectedColumns);
-        return currentLine;
+        currentLineBuilder = new LineBuilder(expectedNumColumns);
+        return currentLineBuilder;
     }
 
     /**
@@ -113,8 +119,8 @@ class SimpleCSVWriterWrapperWithHeader implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if (currentLine != null) {
-            currentLine.write();
+        if (currentLineBuilder != null) {
+            currentLineBuilder.write();
         }
         outputWriter.close();
     }
@@ -126,21 +132,19 @@ class SimpleCSVWriterWrapperWithHeader implements Closeable {
      * so will result in a validation call where an exception will be thrown if any columns of the current line have
      * not been defined. fill() can be used to provide a default value for undefined columns.
      */
-    public class SimpleCSVWriterLineBuilder {
-        SimpleCSVWriterWrapperWithHeader thisBuilder;
+    public class LineBuilder {
         String[] lineToBuild;
         boolean hasBuilt = false;
 
-        SimpleCSVWriterLineBuilder(SimpleCSVWriterWrapperWithHeader me, int lineLength) {
-            thisBuilder = me;
+        LineBuilder(int lineLength) {
             lineToBuild = new String[lineLength];
         }
 
         /**
          * @param row complete line corresponding to this row of the tsv
          */
-        public SimpleCSVWriterLineBuilder setRow(final String[] row) {
-            checkAlteration();
+        public LineBuilder setRow(final String[] row) {
+            checkAlterationAfterWrite();
             Utils.validate(row.length == lineToBuild.length, "Provided line must have the correct number of columns");
             for (int i = 0; i < row.length; i++) {
                 lineToBuild[i] = row[i];
@@ -149,11 +153,23 @@ class SimpleCSVWriterWrapperWithHeader implements Closeable {
         }
 
         /**
+         * @param row complete line corresponding to this row of the tsv
+         */
+        public LineBuilder setRow(final List<String> row) {
+            checkAlterationAfterWrite();
+            Utils.validate(row.size() == lineToBuild.length, "Provided line must have the correct number of columns");
+            for (int i = 0; i < row.size(); i++) {
+                lineToBuild[i] = row.get(i);
+            }
+            return this;
+        }
+
+        /**
          * @param index Column index to be set
          * @param value Value to be placed into the line
          */
-        public SimpleCSVWriterLineBuilder setColumn(final int index, final String value) {
-            checkAlteration();
+        public LineBuilder setColumn(final int index, final String value) {
+            checkAlterationAfterWrite();
             lineToBuild[index] = value;
             return this;
         }
@@ -162,16 +178,16 @@ class SimpleCSVWriterWrapperWithHeader implements Closeable {
          * @param heading Column heading to be set
          * @param value   Value to be placed into the line
          */
-        public SimpleCSVWriterLineBuilder setColumn(final String heading, final String value) {
-            int index = thisBuilder.getIndexForColumn(heading);
+        public LineBuilder setColumn(final String heading, final String value) {
+            int index = getIndexForColumn(heading);
             return setColumn(index, value);
         }
 
         /**
          * Fills in every empty column of the pending line with the provided value
          */
-        public SimpleCSVWriterLineBuilder fill(final String filling) {
-            checkAlteration();
+        public LineBuilder fill(final String filling) {
+            checkAlterationAfterWrite();
             for (int i = 0; i < lineToBuild.length; i++) {
                 if (lineToBuild[i] == null) {
                     lineToBuild[i] = filling;
@@ -185,12 +201,12 @@ class SimpleCSVWriterWrapperWithHeader implements Closeable {
          */
         public void write() {
             Utils.validate(!Arrays.stream(lineToBuild).anyMatch(Objects::isNull), "Attempted to construct an incomplete line, make sure all columns are filled");
-            thisBuilder.writeLine(lineToBuild);
+            writeLine(lineToBuild);
             hasBuilt = true;
         }
 
         // Throw an exception if we try to alter an already written out line
-        private void checkAlteration() {
+        private void checkAlterationAfterWrite() {
             Utils.validate(!hasBuilt, "Cannot make alterations to an already written out CSV line");
         }
     }
