@@ -397,7 +397,8 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
     }
 
-    @Test
+    @Test (enabled = false)
+    // This graph begins and ends at the same site, this situation has to be handled somehow in the future if we are to incorpirate non-duplicate edges
     public void testAccidentallyLoopingGraph() {
         final TestAssembler assembler = new TestAssembler(5);
         // The single indel spans two repetitive structures
@@ -410,49 +411,43 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         final SeqGraph graph = assembler.assemble(false);
         final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
-        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
-        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // A series of tests demonstrating the problems with removing the unique kmer distinction, hopefully these will be fixed one-by-one as these graph changes are made.
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    @Test
+    @Test //(enabled = false)
+    // Test that we are still able to recover the reference path in the case where it creates a loop itself
     public void testDisablingNonUniqueKmerElimination() {
         final TestAssembler assembler = new TestAssembler(5);
         assembler.assembler.setDuplicateNonUniqueKmers(false);
         // The single indel spans two repetitive structures
         final String ref   = "GGCTAGGATCTACTGTCTAGGGGTTC"; //CTAGG is repeated
-//        final String read1 = "GTTTTTCCTAGGCAAATGGTTTCTATAAAATTATGTGTGTGTGTCTCT----------GTGTGTGTGTGTGTGTGTATACCTAATCTCACACTCTTTTTTCTGG";
-//        final String read2 = "GTTTTTCCTAGGCAAATGGTTTCTATAAAATTATGTGTGTGTGTCTCT----------GTGTGTGTGTGTGTGTGTATACCTAATCTCACACTCTTTTTTCTGG";
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(ref), true);
-//        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read1), false);
-//        assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
 
         final SeqGraph graph = assembler.assemble(false);
         final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
-        Assert.assertEquals(paths.size(), 2);
-        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
-        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
-//        Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
-//        Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
+        Assert.assertEquals(paths.size(), 1);
+        Assert.assertEquals(paths.get(0).getBases(), ReadThreadingGraphUnitTest.getBytes(ref));
     }
 
-    @Test
+    @Test (enabled = false)
+    // Similar to the previous, except asserting the behavior around the special start path
     public void testDisablingNonUniqueLoopingReference() {
         final TestAssembler assembler = new TestAssembler(5);
         assembler.assembler.setDuplicateNonUniqueKmers(false);
         // The single indel spans two repetitive structures
-        final String ref   = "CTAGGATCTACTGTCTAGGA"; //CTAGG is repeated at both begining and end of the reference chunk
+        final String ref   = "CTAGGATCTACTGTCTAGG"; //CTAGG is repeated at both begining and end of the reference chunk
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(ref), true);
         final SeqGraph graph = assembler.assemble(false);
         final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
-        Assert.assertEquals(paths.size(), 2);
-        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
-        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
+        Assert.assertEquals(paths.size(), 1);
+        Assert.assertEquals(paths.get(0).getBases(), ReadThreadingGraphUnitTest.getBytes(ref));
+        Assert.assertEquals(graph.vertexSet().size(), 14); // asserting that there is indeed not a unique ref start vertex
     }
 
-    @Test
+    @Test (enabled = false)
+    // Testing basic functionalty about finding paths that cross with non-unique kmers
     public void testDisablingNonUniqueKmersDuplicatedRefSourceKmer() {
         final TestAssembler assembler = new TestAssembler(5);
         assembler.assembler.setDuplicateNonUniqueKmers(false);
@@ -469,7 +464,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         Assert.assertEquals(paths.size(), 2);
         final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
         final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
-//        Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
-//        Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
+        Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
+        Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
     }
 }
