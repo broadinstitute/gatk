@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVNamingConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.DiscoverVariantsFromReadDepthArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth.*;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -22,21 +23,26 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import scala.Tuple2;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Call structural variants using SV evidence and germline CNV (gCNV) copy number calls
@@ -289,6 +295,56 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
             }
         } catch (final IOException e) {
             throw new GATKException("Error writing graph to " + filePath);
+        }
+    }
+
+
+    private Collection<CalledContigPloidyCollection> readCohortPloidyCalls() {
+        final File[] subdirs = contigPloidyCallsDir.listFiles(File::isDirectory);
+        final Collection<CalledContigPloidyCollection> ploidyCollections = new ArrayList<>();
+        for (final File subdir : subdirs) {
+            if (subdir.getName().startsWith(GermlineCNVNamingConstants.SAMPLE_PREFIX)) {
+                ploidyCollections.add(readPloidyCalls(subdir));
+            }
+        }
+        return ploidyCollections;
+    }
+
+    private final static class EventRecordReader {
+
+        private enum TABLE_COLUMNS {
+            CHROM,
+            START,
+            END,
+            ID,
+            SAMPLES,
+            TYPE
+        }
+
+        protected static Stream<EventRecord> readEventRecords(final File file) {
+            try {
+                final Reader reader = new FileReader(file);
+                final TableReader<EventRecord> tableReader = TableUtils.reader(reader, EventRecordReader::eventRecordFactory);
+                return tableReader.stream();
+            } catch (final FileNotFoundException e) {
+                throw new UserException(e.getMessage());
+            } catch (final IOException e) {
+                throw new UserException(e.getMessage());
+            }
+        }
+
+        private static Function<DataLine, EventRecord> eventRecordFactory(final TableColumnCollection columns,
+                                                                          final Function<String, RuntimeException> errorFunction) {
+            return EventRecordReader::eventRecordParser;
+        }
+
+        private static EventRecord eventRecordParser(final DataLine data) {
+            final String chrom = data.get(TABLE_COLUMNS.CHROM);
+            final int start = Integer.valueOf(data.get(TABLE_COLUMNS.START));
+            final int end = Integer.valueOf(data.get(TABLE_COLUMNS.END));
+            final SimpleInterval interval = new SimpleInterval(chrom, start, end);
+            final String[] samples = data.get(TABLE_COLUMNS.SAMPLES).split(",");
+            return new EventRecord(data.get(TABLE_COLUMNS.ID), data.get(TABLE_COLUMNS.TYPE), interval, samples);
         }
     }
 
