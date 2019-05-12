@@ -381,7 +381,8 @@ public final class VariantsToTable extends VariantWalker {
                             addFieldValue(vc.getGenotype(sample).getAnyAttribute(gf), records);
                         } else {
                             handleMissingData(errorIfMissingData, gf, records, vc);
-                        }                    }
+                        }
+                    }
                 } else {
                     handleMissingData(errorIfMissingData, gf, records, vc);
                 }
