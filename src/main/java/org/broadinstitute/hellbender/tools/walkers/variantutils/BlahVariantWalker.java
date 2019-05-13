@@ -39,12 +39,13 @@ public final class BlahVariantWalker extends VariantWalker {
 
     private PrintStream outputStream = null;
 
-    private int lastSeenPosition = -1;
+    private Integer lastSeenPosition = null;
 
-    //do we want a onTraversalSuccess?
+    private final int GQ_CUTOFF = 60;
 
     @Override
     public void onTraversalStart() {
+        // look for duplicate samples and positions covered
         try {
             outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
         }
@@ -55,11 +56,11 @@ public final class BlahVariantWalker extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        final String sampleName = variant.getGenotype(0).getSampleName();
         outputStream.println("Current variant: " + variant);
         // This is a wrapper to loop thru createTSV function -- and split out the VET and PET tables
 
-        // TODO add missing
-
+        // create VET output
         if (variant.isVariant()) {
             try {
                 final List<String> TSVtoCreate = BlahVetCreation.createTSV(variant);
@@ -67,27 +68,23 @@ public final class BlahVariantWalker extends VariantWalker {
                 throw new IllegalArgumentException("Current variant is missing required fields", e);
             }
         }
-
-        final List<String> TSVtoCreate = BlahPetCreation.createTSV(variant);
-    }
-
-    private void printReferenceBases( final ReferenceContext refContext ) {
-        outputStream.printf("\tOverlapping reference bases: %s\n\n", new String(refContext.getBases()));
-    }
-
-    private void printReads( final ReadsContext readsContext ) {
-        for ( final GATKRead read : readsContext ) {
-            outputStream.printf("\tOverlapping read at %s:%d-%d\n", read.getContig(), read.getStart(), read.getEnd());
+        // create PET output
+        try {
+            if (variant.getGenotype(0).getGQ() < GQ_CUTOFF) {
+                final List<String> TSVtoCreate = BlahPetCreation.createTSV(variant);
+            }
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("GQ NOT GOOD", e);
         }
-        outputStream.println();
-    }
 
-    private void printVariants( final FeatureContext featureContext ) {
-        for ( final VariantContext variant : featureContext.getValues(auxiliaryVariants) ) {
-            outputStream.printf("\tOverlapping variant at %s:%d-%d. Ref: %s Alt(s): %s\n",
-                    variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(), variant.getAlternateAlleles());
+        // create "missing" variants
+
+        if (!(lastSeenPosition == null) && !(lastSeenPosition + 1 == variant.getStart())){
+            // actually make sure this is a position we call over -- may want to use interval lists (ask David)
+            BlahPetCreation.createMissingTSV(lastSeenPosition + 1, variant.getEnd(), sampleName);
         }
-        outputStream.println();
+
+        lastSeenPosition = variant.getEnd();
     }
 
     @Override
