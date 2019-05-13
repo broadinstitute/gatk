@@ -39,6 +39,8 @@ public final class BlahVariantWalker extends VariantWalker {
 
     private PrintStream outputStream = null;
 
+    private int lastSeenPosition = -1;
+
     //do we want a onTraversalSuccess?
 
     @Override
@@ -55,15 +57,18 @@ public final class BlahVariantWalker extends VariantWalker {
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         outputStream.println("Current variant: " + variant);
         // This is a wrapper to loop thru createTSV function -- and split out the VET and PET tables
-        // TODO hardcode the dropped band for the GQ
 
-        try {
-            final List<String> TSVtoCreate = BlahVetCreation.createTSV(variant);
-        }
-        catch ( final IOException e ) {
-            throw new IllegalArgumentException("Current variant is missing required fields", e);
+        // TODO add missing
+
+        if (variant.isVariant()) {
+            try {
+                final List<String> TSVtoCreate = BlahVetCreation.createTSV(variant);
+            } catch (final IOException e) {
+                throw new IllegalArgumentException("Current variant is missing required fields", e);
+            }
         }
 
+        final List<String> TSVtoCreate = BlahPetCreation.createTSV(variant);
     }
 
     private void printReferenceBases( final ReferenceContext refContext ) {
