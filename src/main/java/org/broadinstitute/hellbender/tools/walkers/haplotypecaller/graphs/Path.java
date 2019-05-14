@@ -177,11 +177,11 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * @return  non-null sequence of bases corresponding to this path
      */
     public byte[] getBases() {
-        if( getEdges().isEmpty() ) { return graph.getAdditionalSequence(lastVertex); }
+        if( getEdges().isEmpty() ) { return graph.getAdditionalSequence(lastVertex, true); }
 
-        byte[] bases = graph.getAdditionalSequence(graph.getEdgeSource(edgesInOrder.get(0)));
+        byte[] bases = graph.getAdditionalSequence(graph.getEdgeSource(edgesInOrder.get(0)), true);
         for( final E e : edgesInOrder ) {
-            bases = ArrayUtils.addAll(bases, graph.getAdditionalSequence(graph.getEdgeTarget(e)));
+            bases = ArrayUtils.addAll(bases, graph.getAdditionalSequence(graph.getEdgeTarget(e), false));
         }
         return bases;
     }

@@ -381,7 +381,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final SeqGraph seqGraph = rtgraph.toSequenceGraph();
         seqGraph.simplifyGraph();
 
-        final List<String> paths = new KBestHaplotypeFinder(seqGraph).findBestHaplotypes().stream()
+        final List<String> paths = new KBestHaplotypeFinder<>(seqGraph).findBestHaplotypes().stream()
                 .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
                 .distinct()
                 .sorted()
