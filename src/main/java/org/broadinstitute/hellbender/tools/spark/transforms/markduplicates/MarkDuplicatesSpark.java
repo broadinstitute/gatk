@@ -71,12 +71,19 @@ import java.util.*;
  *     </pre>
  *
  *
- * MarkDuplicatesSpark run locally specifying the removal of sequencing duplicates and tagging OpticalDuplicates
+ * MarkDuplicatesSpark run locally specifying the removal of sequencing duplicates
  *     <pre>
  *       gatk MarkDuplicatesSpark \
  *            -I input.bam \
  *            -O marked_duplicates.bam \
- *            --remove-sequencing-duplicates \
+ *            --remove-sequencing-duplicates
+ *     </pre>
+ *
+ * MarkDuplicatesSpark run locally tagging OpticalDuplicates using the "DT" attribute for reads
+ *     <pre>
+ *       gatk MarkDuplicatesSpark \
+ *            -I input.bam \
+ *            -O marked_duplicates.bam \
  *            --duplicate-tagging-policy OpticalOnly
  *     </pre>
  *
