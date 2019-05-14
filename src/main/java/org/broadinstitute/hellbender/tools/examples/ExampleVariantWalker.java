@@ -74,7 +74,7 @@ public final class ExampleVariantWalker extends VariantWalker {
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         Set<String> sample_names = variant.getSampleNames();
         Boolean write = true;
-        int total_alleles = 0;
+        int total_het_samples = 0;
         float ad_failures = 0;
 
         for(String sample : sample_names) {
@@ -91,10 +91,10 @@ public final class ExampleVariantWalker extends VariantWalker {
 //                logger.warn("FOUND HOM VAR VARIANT???????????");
 //            }
             if (genotype.isHet()) {
+                total_het_samples += 1;
                 BinomialDistribution b = new BinomialDistribution(genotype.getDP(), .5);
                 int cutoff = b.inverseCumulativeProbability(.01);
                 for (int ad : genotype.getAD()) {
-                    total_alleles += 1;
                     if (ad < cutoff) {
                         ad_failures += 1;
                     }
@@ -102,7 +102,7 @@ public final class ExampleVariantWalker extends VariantWalker {
             }
         }
 
-        if (ad_failures / total_alleles >= .5) {
+        if (ad_failures / total_het_samples > .5) {
             write = false;
         }
 

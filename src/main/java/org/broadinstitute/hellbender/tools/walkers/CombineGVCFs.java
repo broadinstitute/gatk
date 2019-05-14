@@ -139,6 +139,8 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     private byte refAfterPrevPos;
     private ReferenceContext storedReferenceContext;
 
+    private final int TOTAL_NUMBER_OF_SAMPLES = 10;
+
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
         int num_filtered = 0;
@@ -147,13 +149,16 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                 num_filtered += 1;
             }
         }
-        if ((num_filtered * 1.0) / variantContexts.size() < .5) {
-            for (VariantContext vc : variantContexts){
-                if (!vc.isFiltered()){
-                    vcfWriter.add(vc);
-                    break;
-                }
-            }
+        if ((num_filtered * 1.0) / variantContexts.size() < .5 || variantContexts.size() >= TOTAL_NUMBER_OF_SAMPLES) {
+            VariantContextBuilder b = new VariantContextBuilder(variantContexts.get(0));
+            b.passFilters();
+            vcfWriter.add(b.make());
+//            for (VariantContext vc : variantContexts){
+//                if (!vc.isFiltered()){
+//                    vcfWriter.add(vc);
+//                    break;
+//                }
+//            }
         }
 
     }
