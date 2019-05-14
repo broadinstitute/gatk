@@ -260,7 +260,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
             final SeqGraph graph = assembler.assemble(reads, refHaplotype, header, SmithWatermanJavaAligner
-                    .getInstance()).get(0).getGraph();
+                    .getInstance()).get(0).getSeqGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;
         }

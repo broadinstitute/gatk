@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.alg.CycleDetector;
 
@@ -13,14 +15,14 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class KBestHaplotypeFinder {
+public final class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> {
 
     public static final Comparator<KBestHaplotype> K_BEST_HAPLOTYPE_COMPARATOR = Comparator.comparingDouble(KBestHaplotype::score)
             .reversed()
-            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); // This is an arbitrary deterministic tie breaker. 
-    private final SeqGraph graph;
-    final Set<SeqVertex> sinks;
-    final Set<SeqVertex> sources;
+            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); // This is an arbitrary deterministic tie breaker.
+    private final BaseGraph<V, E> graph;
+    final Set<V> sinks;
+    final Set<V> sources;
 
     /**
      * Constructs a new best haplotypes finder.
@@ -34,7 +36,7 @@ public final class KBestHaplotypeFinder {
      *     <li>any of {@code sources}' or any {@code sinks}' member is not a vertex in {@code graph}.</li>
      * </ul>
      */
-    public KBestHaplotypeFinder(final SeqGraph graph, final Set<SeqVertex> sources, final Set<SeqVertex> sinks) {
+    public KBestHaplotypeFinder(final BaseGraph<V, E> graph, final Set<V> sources, final Set<V> sinks) {
         Utils.nonNull(graph, "graph cannot be null");
         Utils.nonNull(sources, "sources cannot be null");
         Utils.nonNull(sinks, "sinks cannot be null");
@@ -54,51 +56,51 @@ public final class KBestHaplotypeFinder {
     /**
      * Constructor for the special case of a single source and sink
      */
-    public KBestHaplotypeFinder(final SeqGraph graph, final SeqVertex source, final SeqVertex sink) {
+    public KBestHaplotypeFinder(final BaseGraph<V, E> graph, final V source, final V sink) {
         this(graph, Collections.singleton(source), Collections.singleton(sink));
     }
 
     /**
      * Constructor for the default case of all sources and sinks
      */
-    public KBestHaplotypeFinder(final SeqGraph graph) {
+    public KBestHaplotypeFinder(final BaseGraph<V, E> graph) {
         this(graph, graph.getSources(), graph.getSinks());
     }
 
     /**
      * Implement Dijkstra's algorithm as described in https://en.wikipedia.org/wiki/K_shortest_path_routing
      */
-    public List<KBestHaplotype> findBestHaplotypes(final int maxNumberOfHaplotypes) {
-        final List<KBestHaplotype> result = new ArrayList<>();
-        final PriorityQueue<KBestHaplotype> queue = new PriorityQueue<>(K_BEST_HAPLOTYPE_COMPARATOR);
-        sources.forEach(source -> queue.add(new KBestHaplotype(source, graph)));
+    public List<KBestHaplotype<V, E>> findBestHaplotypes(final int maxNumberOfHaplotypes) {
+        final List<KBestHaplotype<V, E>> result = new ArrayList<>();
+        final PriorityQueue<KBestHaplotype<V, E>> queue = new PriorityQueue<>(K_BEST_HAPLOTYPE_COMPARATOR).reversed());
+        sources.forEach(source -> queue.add(new KBestHaplotype<>(source, graph)));
 
-        final Map<SeqVertex, MutableInt> vertexCounts = graph.vertexSet().stream()
+        final Map<V, MutableInt> vertexCounts = graph.vertexSet().stream()
                 .collect(Collectors.toMap(v -> v, v -> new MutableInt(0)));
 
         while (!queue.isEmpty() && result.size() < maxNumberOfHaplotypes) {
-            final KBestHaplotype pathToExtend = queue.poll();
-            final SeqVertex vertexToExtend = pathToExtend.getLastVertex();
+            final KBestHaplotype<V, E> pathToExtend = queue.poll();
+            final V vertexToExtend = pathToExtend.getLastVertex();
             if (sinks.contains(vertexToExtend)) {
                 result.add(pathToExtend);
             } else {
                 if (vertexCounts.get(vertexToExtend).getAndIncrement() < maxNumberOfHaplotypes) {
-                    final Set<BaseEdge> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
+                    final Set<E> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
                     int totalOutgoingMultiplicity = 0;
                     for (final BaseEdge edge : outgoingEdges) {
                         totalOutgoingMultiplicity += edge.getMultiplicity();
                     }
 
-                    for (final BaseEdge edge : outgoingEdges) {
-                        queue.add(new KBestHaplotype(pathToExtend, edge, totalOutgoingMultiplicity));
-                    }
+                    for (final E edge : outgoingEdges) {
+                        final V targetVertex = graph.getEdgeTarget(edge);
+                        queue.add(new KBestHaplotype<>(pathToExtend, edge, totalOutgoingMultiplicity));
                 }
             }
         }
         return result;
     }
 
-    public List<KBestHaplotype> findBestHaplotypes() {
+    public List<KBestHaplotype<V, E>> findBestHaplotypes() {
        return findBestHaplotypes(Integer.MAX_VALUE);
     }
 
@@ -106,13 +108,13 @@ public final class KBestHaplotypeFinder {
      * Removes edges that produces cycles and also dead vertices that do not lead to any sink vertex.
      * @return never {@code null}.
      */
-    private static SeqGraph removeCyclesAndVerticesThatDontLeadToSinks(final SeqGraph original, final Collection<SeqVertex> sources, final Set<SeqVertex> sinks) {
-        final Set<BaseEdge> edgesToRemove = new HashSet<>(original.edgeSet().size());
-        final Set<SeqVertex> vertexToRemove = new HashSet<>(original.vertexSet().size());
+    private BaseGraph<V, E> removeCyclesAndVerticesThatDontLeadToSinks(final BaseGraph<V, E> original, final Collection<V> sources, final Set<V> sinks) {
+        final Set<E> edgesToRemove = new HashSet<>(original.edgeSet().size());
+        final Set<V> vertexToRemove = new HashSet<>(original.vertexSet().size());
 
         boolean foundSomePath = false;
-        for (final SeqVertex source : sources) {
-            final Set<SeqVertex> parentVertices = new HashSet<>(original.vertexSet().size());
+        for (final V source : sources) {
+            final Set<V> parentVertices = new HashSet<>(original.vertexSet().size());
             foundSomePath = findGuiltyVerticesAndEdgesToRemoveCycles(original, source, sinks, edgesToRemove, vertexToRemove, parentVertices) || foundSomePath;
         }
 
@@ -121,7 +123,7 @@ public final class KBestHaplotypeFinder {
 
         Utils.validate(!(edgesToRemove.isEmpty() && vertexToRemove.isEmpty()), "cannot find a way to remove the cycles");
 
-        final SeqGraph result = original.clone();
+        final BaseGraph<V, E> result = original.clone();
         result.removeAllEdges(edgesToRemove);
         result.removeAllVertices(vertexToRemove);
         return result;
@@ -141,22 +143,22 @@ public final class KBestHaplotypeFinder {
      * @return {@code true} to indicate that the some sink vertex is reachable by {@code currentVertex},
      *  {@code false} otherwise.
      */
-    private static boolean findGuiltyVerticesAndEdgesToRemoveCycles(final SeqGraph graph,
-                                                                    final SeqVertex currentVertex,
-                                                                    final Set<SeqVertex> sinks,
-                                                                    final Set<BaseEdge> edgesToRemove,
-                                                                    final Set<SeqVertex> verticesToRemove,
-                                                                    final Set<SeqVertex> parentVertices) {
+    private boolean findGuiltyVerticesAndEdgesToRemoveCycles(final BaseGraph<V, E> graph,
+                                                                    final V currentVertex,
+                                                                    final Set<V> sinks,
+                                                                    final Set<E> edgesToRemove,
+                                                                    final Set<V> verticesToRemove,
+                                                                    final Set<V> parentVertices) {
         if (sinks.contains(currentVertex)) {
             return true;
         }
 
-        final Set<BaseEdge> outgoingEdges = graph.outgoingEdgesOf(currentVertex);
+        final Set<E> outgoingEdges = graph.outgoingEdgesOf(currentVertex);
         parentVertices.add(currentVertex);
 
         boolean reachesSink = false;
-        for (final BaseEdge edge : outgoingEdges) {
-            final SeqVertex child = graph.getEdgeTarget(edge);
+        for (final E edge : outgoingEdges) {
+            final V child = graph.getEdgeTarget(edge);
             if (parentVertices.contains(child)) {
                 edgesToRemove.add(edge);
             } else {

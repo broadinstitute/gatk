@@ -6,6 +6,8 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -482,6 +484,73 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(refPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "51M");
         Assert.assertEquals(altPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "3M6I48M");
+    }
+
+    @Test
+    public void testKmerGraphSimpleReferenceRecovery() {
+        // Construct the assembly graph
+        final ReadThreadingGraph graph = new ReadThreadingGraph(5);
+        final MultiDeBruijnVertex refSource = new MultiDeBruijnVertex( "AAATT".getBytes() );
+        final MultiDeBruijnVertex k1 = new MultiDeBruijnVertex( "AATTT".getBytes() );
+        final MultiDeBruijnVertex k2 = new MultiDeBruijnVertex( "ATTTG".getBytes() );
+        final MultiDeBruijnVertex k3 = new MultiDeBruijnVertex( "TTTGG".getBytes() );
+        final MultiDeBruijnVertex k4 = new MultiDeBruijnVertex( "TTGGG".getBytes() );
+        final MultiDeBruijnVertex k5 = new MultiDeBruijnVertex( "TGGGC".getBytes() );
+        final MultiDeBruijnVertex k6 = new MultiDeBruijnVertex( "GGGCC".getBytes() );
+        final MultiDeBruijnVertex k7 = new MultiDeBruijnVertex( "GGCCC".getBytes() );
+        final MultiDeBruijnVertex k8 = new MultiDeBruijnVertex( "GCCCT".getBytes() );
+        final MultiDeBruijnVertex refEnd = new MultiDeBruijnVertex( "CCCTT".getBytes() );
+        graph.addVertices(refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd);
+        graph.addEdges(() -> new MultiSampleEdge(true, 1, 1), refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd);
+
+        @SuppressWarnings("all")
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph, refSource, refEnd).findBestHaplotypes();
+
+        Assert.assertEquals(paths.size(), 1);
+
+        final Path<SeqVertex,BaseEdge> refPath = paths.get(0);
+
+        final String refString = "AAATTTGGGCCCTT";
+
+        Assert.assertEquals(refPath.getBases(), refString.getBytes());
+    }
+
+    @Test
+    public void testKmerGraphSimpleReferenceRecoveryWithSNP() {
+        // Construct the assembly graph
+        final ReadThreadingGraph graph = new ReadThreadingGraph(5);
+        final MultiDeBruijnVertex refSource = new MultiDeBruijnVertex( "AAATT".getBytes() );
+        final MultiDeBruijnVertex k1 = new MultiDeBruijnVertex( "AATTT".getBytes() );
+        final MultiDeBruijnVertex k2 = new MultiDeBruijnVertex( "ATTTG".getBytes() );
+        final MultiDeBruijnVertex k3 = new MultiDeBruijnVertex( "TTTGG".getBytes() );
+        final MultiDeBruijnVertex k4 = new MultiDeBruijnVertex( "TTGGG".getBytes() );
+        final MultiDeBruijnVertex k5 = new MultiDeBruijnVertex( "TGGGC".getBytes() );
+        final MultiDeBruijnVertex k6 = new MultiDeBruijnVertex( "GGGCC".getBytes() );
+        final MultiDeBruijnVertex k7 = new MultiDeBruijnVertex( "GGCCC".getBytes() );
+        final MultiDeBruijnVertex k8 = new MultiDeBruijnVertex( "GCCCT".getBytes() );
+        final MultiDeBruijnVertex refEnd = new MultiDeBruijnVertex( "CCCTT".getBytes() );
+        final MultiDeBruijnVertex v3 = new MultiDeBruijnVertex( "TTTGC".getBytes() );
+        final MultiDeBruijnVertex v4 = new MultiDeBruijnVertex( "TTGCG".getBytes() );
+        final MultiDeBruijnVertex v5 = new MultiDeBruijnVertex( "TGCGC".getBytes() );
+        final MultiDeBruijnVertex v6 = new MultiDeBruijnVertex( "GCGCC".getBytes() );
+        final MultiDeBruijnVertex v7 = new MultiDeBruijnVertex( "CGCCC".getBytes() );
+        graph.addVertices(refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd, v3, v4, v5, v6, v7);
+        graph.addEdges(() -> new MultiSampleEdge(true, 1, 4), refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd);
+        graph.addEdges(() -> new MultiSampleEdge(false, 1, 3), k2, v3, v4, v5, v6, v7, k8);
+
+        @SuppressWarnings("all")
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph, refSource, refEnd).findBestHaplotypes();
+
+        Assert.assertEquals(paths.size(), 2);
+
+        final Path<SeqVertex,BaseEdge> refPath = paths.get(0);
+        final Path<SeqVertex,BaseEdge> altPath = paths.get(1);
+
+        final String refString = "AAATTTGGGCCCTT";
+        final String altString = "AAATTTGCGCCCTT";
+
+        Assert.assertEquals(refPath.getBases(), refString.getBytes());
+        Assert.assertEquals(altPath.getBases(), altString.getBytes());
     }
 
     // -----------------------------------------------------------------
