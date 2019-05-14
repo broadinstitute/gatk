@@ -4,8 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -41,6 +39,7 @@ public final class ReadThreadingAssembler {
     private final List<Integer> kmerSizes;
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
+    private final boolean generateSeqGraph;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -74,13 +73,14 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final int maxUnprunedVariants) {
+                                  final int maxUnprunedVariants, final boolean generateSeqGraph) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes;
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
+        this.generateSeqGraph = generateSeqGraph;
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
@@ -88,7 +88,7 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, true);
     }
 
     @VisibleForTesting
@@ -134,7 +134,8 @@ public final class ReadThreadingAssembler {
             correctedReads = assemblyRegion.getReads();
         }
 
-        final List<SeqGraph> nonRefGraphs = new LinkedList<>();
+        final List<ReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
+        final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
         final AssemblyResultSet resultSet = new AssemblyResultSet();
         resultSet.setRegionForGenotyping(assemblyRegion);
         resultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
@@ -142,15 +143,23 @@ public final class ReadThreadingAssembler {
         final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
-        final Map<SeqGraph,AssemblyResult> assemblyResultByGraph = new HashMap<>();
+        final Map<ReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
+        final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
         for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
             if ( result.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION ) {
                 // do some QC on the graph
-                sanityCheckGraph(result.getGraph(), refHaplotype);
-                // add it to graphs with meaningful non-reference features
-                assemblyResultByGraph.put(result.getGraph(),result);
-                nonRefGraphs.add(result.getGraph());
+                if (generateSeqGraph) {
+                    sanityCheckGraph(result.getSeqGraph(), refHaplotype);
+                    // add it to graphs with meaningful non-reference features
+                    assemblyResultBySeqGraph.put(result.getSeqGraph(),result);
+                    nonRefSeqGraphs.add(result.getSeqGraph());
+                } else {
+                    sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
+                    // add it to graphs with meaningful non-reference features
+                    assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
+                    nonRefRTGraphs.add(result.getThreadingGraph());
+                }
 
                 if (graphHaplotypeHistogramPath != null) {
                     kmersUsedHistogram.add((double)result.getKmerSize());
@@ -159,29 +168,35 @@ public final class ReadThreadingAssembler {
         }
 
         // add assembled alt haplotypes to the {@code resultSet}
-        findBestPaths(nonRefGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByGraph, resultSet, aligner);
+        if (generateSeqGraph) {
+            findBestPaths(nonRefSeqGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultBySeqGraph, resultSet, aligner);
+        } else {
+            findBestPaths(nonRefRTGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByRTGraph, resultSet, aligner);
+        }
 
         // print the graphs if the appropriate debug option has been turned on
-        if ( graphOutputPath != null ) { printGraphs(nonRefGraphs); }
+        if ( graphOutputPath != null ) { printGraphs(nonRefSeqGraphs); }
         if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
 
         return resultSet;
     }
 
-    private List<Haplotype> findBestPaths(final Collection<SeqGraph> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
-                                          final Map<SeqGraph, AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet, final SmithWatermanAligner aligner) {
+    private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
+    List<Haplotype> findBestPaths(final Collection<T> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
+                                          final Map<T, AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet, final SmithWatermanAligner aligner) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         int failedCigars = 0;
 
-        for( final SeqGraph graph : graphs ) {
-            final SeqVertex source = graph.getReferenceSourceVertex();
-            final SeqVertex sink = graph.getReferenceSinkVertex();
+        for( final BaseGraph<V, E> graph : graphs ) {
+            final V source = graph.getReferenceSourceVertex();
+            final V sink = graph.getReferenceSinkVertex();
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
-            for (final KBestHaplotype kBestHaplotype : new KBestHaplotypeFinder(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
+            for (final KBestHaplotype<V, E> kBestHaplotype :
+                    new KBestHaplotypeFinder<V, E>(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
                     if (kBestHaplotype.isReference()) {
@@ -266,6 +281,21 @@ public final class ReadThreadingAssembler {
         }
     }
 
+    private AssemblyResult getResultSetForRTGraph(final ReadThreadingGraph rtGraph) {
+
+        // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
+        // happen in cases where for example the reference somehow manages to acquire a cycle, or
+        // where the entire assembly collapses back into the reference sequence.
+        if ( rtGraph.getReferenceSourceVertex() == null || rtGraph.getReferenceSinkVertex() == null ) {
+            return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, null, rtGraph);
+        }
+
+        rtGraph.removePathsNotConnectedToRef();
+
+        return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtGraph);
+    }
+
+    // Performs the various transformations necessary on a sequence graph
     private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype) {
         if (debugGraphTransformations) {
             printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.0.non_ref_removed.dot");
@@ -482,27 +512,50 @@ public final class ReadThreadingAssembler {
             printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
         }
 
-        final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
-        if (debugGraphTransformations) {
-            initialSeqGraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
-        }
+        // Either return an assembly result with a sequence graph or with an unchanged sequence graph deptending on the kmer duplication behavior
+        if (generateSeqGraph) {
+            final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
+            if (debugGraphTransformations) {
+                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
+            }
 
-        // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
-        if ( justReturnRawGraph ) {
-            return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
-        }
+            // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
+            if (justReturnRawGraph) {
+                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
+            }
 
-        if ( debug ) {
-            logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
-        }
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
-        }
-        initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
+            if (debug) {
+                logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
+            }
+            if (debugGraphTransformations) {
+                printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+            }
+            initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
-        final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype);
-        final AssemblyResult.Status status = cleaned.getStatus();
-        return new AssemblyResult(status, cleaned.getGraph(), rtgraph);
+            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype);
+            final AssemblyResult.Status status = cleaned.getStatus();
+            return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
+
+        } else {
+            if (debugGraphTransformations) {
+                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
+            }
+
+            // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
+            if (justReturnRawGraph) {
+                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
+            }
+
+            if (debug) {
+                logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
+            }
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+            rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
+
+            final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
+            final AssemblyResult.Status status = cleaned.getStatus();
+            return new AssemblyResult(status, null , cleaned.getThreadingGraph());
+        }
     }
 
     @Override
@@ -514,12 +567,12 @@ public final class ReadThreadingAssembler {
      * Print the generated graphs to the graphWriter
      * @param graphs a non-null list of graphs to print out
      */
-    private void printGraphs(final List<SeqGraph> graphs) {
+    private <T extends BaseGraph<?, ?>> void printGraphs(final List<T> graphs) {
         final int writeFirstGraphWithSizeSmallerThan = 50;
 
         try ( final PrintStream graphWriter = new PrintStream(graphOutputPath) ) {
             graphWriter.println("digraph assemblyGraphs {");
-            for ( final SeqGraph graph : graphs ) {
+            for ( final T graph : graphs ) {
                 if ( debugGraphTransformations && graph.getKmerSize() >= writeFirstGraphWithSizeSmallerThan ) {
                     logger.info("Skipping writing of graph with kmersize " + graph.getKmerSize());
                     continue;
