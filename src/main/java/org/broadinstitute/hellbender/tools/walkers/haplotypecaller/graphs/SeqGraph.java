@@ -287,7 +287,7 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
      * This is accomplished by traversing the graph depth first backwards from each outDegree 0 node, splitting its running
      * kmer each time it reaches an edge
      */
-    public void fillKmerMap(int kmerSize) {
+    public void fillKmerMap() {
         // TODO get sinks will need to be altered to handle pathological loop structures
         kmerToSeqMap = new HashMap<>();
 
@@ -301,8 +301,6 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
                 topCrawler.traverse(runningCrawlers, kmerToSeqMap, this);
             }
         }
-
-
     }
 
 
@@ -403,7 +401,13 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
         }
 
 
-        // TODO this needs EXTENSIVE testing
+        /**
+         * Takes the provided kmer array and the current (possibly negative) position and generates a Kmer object from it
+         *
+         * @param kmerArray  Array containing bases to be kmerized
+         * @param currentPos Offset corresponding to the modulo offset for the start of the kmer in the array
+         * @return A kmer corresponding to the bases wrapping starting from mod currentPos (or null if currentPos is > 0)
+         */
         @VisibleForTesting
         public static Kmer getKmerForRollingArray(byte[] kmerArray, int currentPos) {
             // have not finished accumulating the first complete kmer into the array
@@ -411,19 +415,13 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
                 return null;
             }
 
-            // If the kmer array happens to be accurate as is
-            int offset = Math.floorMod(currentPos, kmerArray.length);
-            if (offset == 0) {
-                return new Kmer(kmerArray);
-
             // Copy kmerArray bases into a new array to use to build the output
-            } else {
-                byte[] correctedKmer = new byte[kmerArray.length];
-                for(int i = 0; i < kmerArray.length; i++) {
-                    correctedKmer[i] = kmerArray[Math.floorMod(offset + i, kmerArray.length)];
-                }
-                return new Kmer(correctedKmer);
+            int offset = Math.floorMod(currentPos, kmerArray.length);
+            byte[] correctedKmer = new byte[kmerArray.length];
+            for(int i = 0; i < kmerArray.length; i++) {
+                correctedKmer[i] = kmerArray[Math.floorMod(offset + i, kmerArray.length)];
             }
+            return new Kmer(correctedKmer);
         }
     }
 

@@ -497,6 +497,28 @@ public final class SeqGraphUnitTest extends GATKBaseTest {
         graph.simplifyGraph();
     }
 
+    @Test
+    public void testMakeKmerMapPahtologicalLoopingCase() {
+        final SeqVertex v1 = new SeqVertex("CCCT");
+        final SeqVertex v2 = new SeqVertex("CATCCTCCCTTCTAGACTTCTCCTCCTCCTCCACCATCCTCCCCTCTAGACTTCTCCTCCTCCTCCACCATCCTCCCCTCTAGACTTCTCCTCCTCCTCC");
+        final SeqVertex v3 = new SeqVertex("CTAGACTTCTCCTCCTCCTCC");
+        final SeqVertex v4 = new SeqVertex("ACCATC");
+        final SeqVertex v5 = new SeqVertex("CCTCCACCATCCTCCCCTCTAGGCTTCTCCTCCTCCTCCACCATCCTCCCCTCTAGACTTCTCCTCCTCCTCCACCATCCTCCCCTCTAGACTTCTCCTCCTCCTCCACCATC");
+        final SeqVertex v6 = new SeqVertex("CTCCCCT");
+
+        final SeqGraph graph = new SeqGraph(11);
+        graph.addVertices(v1, v2, v3, v4, v5, v6);
+        graph.addEdges(v1, v3, v4, v6, v3);
+        graph.addEdges(v2, v4);
+        graph.addEdges(v5, v6);
+
+        graph.simplifyGraph();
+        graph.fillKmerMap();
+        graph.kmerToSeqMap.toString();
+    }
+
+
+
     // Bases for ease of reading in the tests below
     private static byte A = BaseUtils.Base.A.base;
     private static byte C = BaseUtils.Base.C.base;
