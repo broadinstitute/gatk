@@ -400,8 +400,9 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, duplicateNonUniqueKmers);
-
+        final ReadThreadingGraph rtgraph = duplicateNonUniqueKmers?
+                new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
+                new ExperimentalReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
         // add the reference sequence to the graph

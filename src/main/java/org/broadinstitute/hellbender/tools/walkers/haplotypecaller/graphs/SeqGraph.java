@@ -2,20 +2,24 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Bytes;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.EdgeFactory;
+import org.spark_project.jetty.util.ArrayQueue;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * A graph that contains base sequence at each node
  */
 public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
+
+    Map<Kmer, Pair<SeqVertex, Integer>> kmerToSeqMap;
 
     private final Logger logger = LogManager.getLogger(SeqGraph.class);
 
@@ -275,4 +279,152 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
         final byte[] seqsCat = Bytes.concat(seqs.toArray(new byte[][]{}));
         return new SeqVertex( seqsCat );
     }
+
+
+    /**
+     * Method that that takes a sequence graph and fills in kmerToSeqMap with a map of Kmer to first base in the graph.
+     *
+     * This is accomplished by traversing the graph depth first backwards from each outDegree 0 node, splitting its running
+     * kmer each time it reaches an edge
+     */
+    public void fillKmerMap(int kmerSize) {
+        // TODO get sinks will need to be altered to handle pathological loop structures
+        kmerToSeqMap = new HashMap<>();
+
+        for (SeqVertex sinkVertex : getSinks()) {
+            KmerCrawler rootCrawler = new KmerCrawler(kmerSize, sinkVertex);
+            Queue<KmerCrawler> runningCrawlers = new ArrayQueue<>();
+            runningCrawlers.add(rootCrawler);
+
+            while (!runningCrawlers.isEmpty()) {
+                KmerCrawler topCrawler = runningCrawlers.poll();
+                topCrawler.traverse(runningCrawlers, kmerToSeqMap, this);
+            }
+        }
+
+
+    }
+
+
+    /**
+     * Helper object used to build kmer maps
+     */
+    static class KmerCrawler {
+        SeqVertex startVertex;
+        int currentSeqPos;
+
+        byte[] rollingArray;
+        int arrayPos;
+
+        private KmerCrawler(final int kmerSize, final SeqVertex startVertex) {
+            this.startVertex = startVertex;
+            this.currentSeqPos = startVertex.sequence.length;
+            this.rollingArray = new byte[kmerSize];
+            this.arrayPos = kmerSize;
+        }
+
+        // Internal constructor intended for copying a kmerCrawler
+        private KmerCrawler(final byte[] original, final int arrayPos, final SeqVertex startVertex) {
+            this.startVertex = startVertex;
+            this.currentSeqPos = startVertex.sequence.length;
+            this.rollingArray = Arrays.copyOf(original, original.length);
+            this.arrayPos = arrayPos;
+        }
+
+        private KmerCrawler splitCrawler(final SeqVertex startVertex) {
+            return new KmerCrawler(this.rollingArray, arrayPos, startVertex);
+        }
+
+        /**
+         * Walk all the way to an a start vertex, adding to the mapToOutput map the appropriate kmer at each stage.
+         *
+         * When an inDegree > 1 edge is encountered, we spawn off a copy of this KmerCralwer object for each edge beyond
+         * the first pinting at the last base of each of the root vertexes. We then add each of those crawlers to the provided
+         * waitingCrawlers queue.
+         *
+         * Upon a complete call of traverse we expect kmers to be generated for the entirety of one path forward from the
+         * starting vertex already associated with this object. Kmers will be constructed from any suffix bases already
+         * present in this crawler (which may have been created when the traversal split) and the bases seen from traversal.
+         * If there are not enough accumulated bases to to construct a complete kmer then nothing is done.
+         *
+         * Each kmer has its associated starting position (SeqVertex and StartingBase index) stored in the provided
+         * mapToOutput object.
+         *
+         * NOTE: this method makes the assumption that the sequence graph will have been constructed from unique kmers,
+         *       thus making the assumption that there is only one graph position for each kmer valid.
+         *
+         * @param waitingCrawlers    Queue of spawned off crawlers that have not completed been traversed yet.
+         * @param mapToOutput        Map of kmer, to start position to have resutls added into.
+         */
+        private void traverse(Queue<KmerCrawler> waitingCrawlers, Map<Kmer, Pair<SeqVertex, Integer>> mapToOutput, SeqGraph graph) {
+            while (traverseOneEdge(waitingCrawlers, mapToOutput, graph)) {
+
+            }
+        }
+
+        private boolean traverseOneEdge(Queue<KmerCrawler> waitingCrawlers, Map<Kmer, Pair<SeqVertex, Integer>> mapToOutput, SeqGraph graph) {
+            // Check if we are at the end of the seq vertex
+            if (--currentSeqPos < 0) {
+                Set<SeqVertex> incoming = graph.incomingVerticesOf(startVertex);
+                if (incoming.size() == 0) {
+                    // Have hit the end of a source vertex and no longer have any inbound paths to traverse
+                    return false;
+                }
+                final boolean[] seenFirst = {false};
+                //TODO methodify this?
+                incoming.forEach(vertex -> {
+                    if (seenFirst[0]) {
+                        waitingCrawlers.add(splitCrawler(vertex));
+                    } else {
+                        this.startVertex = vertex;
+                        this.currentSeqPos = vertex.sequence.length;
+                    }
+                    seenFirst[0] = true;
+                });
+
+            // If we don't have to make a split, simply update the next step
+            } else {
+                // Update the position of the array (noting the rolling feature)
+                rollingArray[(--arrayPos) % rollingArray.length] = startVertex.sequence[currentSeqPos];
+                Kmer currentKmer = getKmerForRollingArray(rollingArray, arrayPos);
+
+                // If we have traversed far enough to produce a full kmer
+                if (currentKmer != null) {
+                    // If the map already has this kmer, then we terminate because we have folded back in on an extant branch
+                    if (mapToOutput.containsKey(currentKmer)) {
+                        return false;
+                    }
+
+                    mapToOutput.put(currentKmer, new ImmutablePair<>(startVertex, currentSeqPos));
+                }
+
+            }
+            return true;
+        }
+
+
+        // TODO this needs EXTENSIVE testing
+        @VisibleForTesting
+        public static Kmer getKmerForRollingArray(byte[] kmerArray, int currentPos) {
+            // have not finished accumulating the first complete kmer into the array
+            if (currentPos > 0) {
+                return null;
+            }
+
+            // If the kmer array happens to be accurate as is
+            int offset = Math.floorMod(currentPos, kmerArray.length);
+            if (offset == 0) {
+                return new Kmer(kmerArray);
+
+            // Copy kmerArray bases into a new array to use to build the output
+            } else {
+                byte[] correctedKmer = new byte[kmerArray.length];
+                for(int i = 0; i < kmerArray.length; i++) {
+                    correctedKmer[i] = kmerArray[Math.floorMod(offset + i, kmerArray.length)];
+                }
+                return new Kmer(correctedKmer);
+            }
+        }
+    }
+
 }

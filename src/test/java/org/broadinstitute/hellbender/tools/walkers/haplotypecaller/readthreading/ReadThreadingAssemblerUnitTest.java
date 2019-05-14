@@ -88,6 +88,9 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
             final SimpleInterval refLoc = new SimpleInterval(contig, startI, endI);
             for ( int variantStart = windowSize / 2 - 10; variantStart < windowSize / 2 + 10; variantStart += variantStepSize ) {
                 tests.add(new Object[]{new ReadThreadingAssembler(), refLoc, nReadsToUse, variantStart});
+                ReadThreadingAssembler nonUniqueKmerTest = new ReadThreadingAssembler();
+                nonUniqueKmerTest.setDuplicateNonUniqueKmers(false);
+                tests.add(new Object[]{nonUniqueKmerTest, refLoc, nReadsToUse, variantStart});
             }
         }
 
@@ -416,7 +419,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // A series of tests demonstrating the problems with removing the unique kmer distinction, hopefully these will be fixed one-by-one as these graph changes are made.
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    @Test //(enabled = false)
+    @Test (enabled = false)
     // Test that we are still able to recover the reference path in the case where it creates a loop itself
     public void testDisablingNonUniqueKmerElimination() {
         final TestAssembler assembler = new TestAssembler(5);

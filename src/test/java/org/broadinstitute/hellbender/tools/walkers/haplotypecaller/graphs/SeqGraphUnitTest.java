@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.base.Strings;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -493,6 +495,60 @@ public final class SeqGraphUnitTest extends GATKBaseTest {
         graph.addEdges(v5, v6);
 
         graph.simplifyGraph();
+    }
+
+    // Bases for ease of reading in the tests below
+    private static byte A = BaseUtils.Base.A.base;
+    private static byte C = BaseUtils.Base.C.base;
+    private static byte T = BaseUtils.Base.T.base;
+    private static byte G = BaseUtils.Base.G.base;
+
+    @DataProvider
+    public Object[][] kmersForRollingArrayTestCases() {
+        List<Object[]> tests = new ArrayList<>();
+        // Treat the crawler as though it had the sequence ATCGGACCCG stored
+        byte[] kmerArray = new byte[]{A,T,C,G,G,A,C,C,C,G};
+        // First set of tests asserting that null is returned when the method is called before filling the array:
+        tests.add(new Object[]{9,kmerArray,null});
+        tests.add(new Object[]{8,kmerArray,null});
+        tests.add(new Object[]{7,kmerArray,null});
+        tests.add(new Object[]{6,kmerArray,null});
+        tests.add(new Object[]{5,kmerArray,null});
+        tests.add(new Object[]{4,kmerArray,null});
+        tests.add(new Object[]{3,kmerArray,null});
+        tests.add(new Object[]{2,kmerArray,null});
+        tests.add(new Object[]{1,kmerArray,null});
+        // Tests asserting that the kmer array is built correctly when the provided offfset is negative:
+        tests.add(new Object[]{0,kmerArray,new Kmer(kmerArray)});
+        tests.add(new Object[]{-1 ,kmerArray,new Kmer(new byte[]{G,A,T,C,G,G,A,C,C,C})});
+        tests.add(new Object[]{-2 ,kmerArray,new Kmer(new byte[]{C,G,A,T,C,G,G,A,C,C})});
+        tests.add(new Object[]{-3 ,kmerArray,new Kmer(new byte[]{C,C,G,A,T,C,G,G,A,C})});
+        tests.add(new Object[]{-4 ,kmerArray,new Kmer(new byte[]{C,C,C,G,A,T,C,G,G,A})});
+        tests.add(new Object[]{-5 ,kmerArray,new Kmer(new byte[]{A,C,C,C,G,A,T,C,G,G})});
+        tests.add(new Object[]{-6 ,kmerArray,new Kmer(new byte[]{G,A,C,C,C,G,A,T,C,G})});
+        tests.add(new Object[]{-7 ,kmerArray,new Kmer(new byte[]{G,G,A,C,C,C,G,A,T,C})});
+        tests.add(new Object[]{-8 ,kmerArray,new Kmer(new byte[]{C,G,G,A,C,C,C,G,A,T})});
+        tests.add(new Object[]{-9 ,kmerArray,new Kmer(new byte[]{T,C,G,G,A,C,C,C,G,A})});
+        tests.add(new Object[]{-10,kmerArray,new Kmer(kmerArray)});
+        tests.add(new Object[]{-11,kmerArray,new Kmer(new byte[]{G,A,T,C,G,G,A,C,C,C})});
+        tests.add(new Object[]{-12,kmerArray,new Kmer(new byte[]{C,G,A,T,C,G,G,A,C,C})});
+        tests.add(new Object[]{-13,kmerArray,new Kmer(new byte[]{C,C,G,A,T,C,G,G,A,C})});
+        tests.add(new Object[]{-14,kmerArray,new Kmer(new byte[]{C,C,C,G,A,T,C,G,G,A})});
+        tests.add(new Object[]{-15,kmerArray,new Kmer(new byte[]{A,C,C,C,G,A,T,C,G,G})});
+        tests.add(new Object[]{-16,kmerArray,new Kmer(new byte[]{G,A,C,C,C,G,A,T,C,G})});
+        tests.add(new Object[]{-17,kmerArray,new Kmer(new byte[]{G,G,A,C,C,C,G,A,T,C})});
+        tests.add(new Object[]{-18,kmerArray,new Kmer(new byte[]{C,G,G,A,C,C,C,G,A,T})});
+        tests.add(new Object[]{-19,kmerArray,new Kmer(new byte[]{T,C,G,G,A,C,C,C,G,A})});
+
+        return tests.toArray(new Object[][]{});
+    }
+
+
+    @Test (dataProvider = "kmersForRollingArrayTestCases")
+    // Testing that we are properly generating kmers from the wrapping array in the KmerCrawlers
+    public void testGetKmerForRollingArray(int offset, byte[] array, Kmer expected) {
+        Kmer actual = SeqGraph.KmerCrawler.getKmerForRollingArray(array, offset);
+        Assert.assertEquals(actual, expected);
     }
 
 }
