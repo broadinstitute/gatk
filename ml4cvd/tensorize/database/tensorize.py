@@ -76,6 +76,9 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline,
     result.wait_until_finish()
 
 
+# We are instantiating the GCS client in global scope because passing it explicitly into a method used by beam.Map()
+# gives a 'client not picklable` error. We're also enclosing it in a 'try' block so when this module is imported and if
+# the client instantiation fails (when training models in Docker for instance), the whole run doesn't error out.
 try:
     gcs_client = storage.Client()
     output_bucket = gcs_client.get_bucket(GCS_BUCKET)

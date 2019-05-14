@@ -9,7 +9,7 @@ shift 1
 ACCEL=${1:-nvidia-tesla-k80}
 shift 1
 
-echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE}"
+echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE} with GPU ${ACCEL}..."
 
 echo "$@"
 
@@ -22,6 +22,10 @@ gcloud compute instances create ${NAME} \
 --maintenance-policy=TERMINATE \
 --boot-disk-type=pd-ssd \
 --boot-disk-size=${DISK_SIZE} \
+--disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
+--disk=name=survey-tensors2,device-name=survey-tensors2,mode=ro,boot=no,auto-delete=no \
+--disk=name=ecg-text3,device-name=ecg-text3,mode=ro,boot=no,auto-delete=no \
+--disk=name=pix-size-tensors,device-name=pix-size-tensors,mode=ro,boot=no,auto-delete=no \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
 --machine-type ${INSTANCE_TYPE} \

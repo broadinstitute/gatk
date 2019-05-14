@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Source this once
 # Exit and reconnect after adding any groups
 

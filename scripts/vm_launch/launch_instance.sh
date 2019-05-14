@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 NAME=${1:-jpp-1}
 shift 1
 INSTANCE_TYPE=${1:-n1-standard-1}
@@ -5,7 +7,7 @@ shift 1
 DISK_SIZE=${1:-100GB}
 shift 1
 
-echo "Creating instance ${NAME} from family ml4cvd-image of type ${INSTANCE_TYPE}"
+echo "Creating instance ${NAME} from family ml4cvd-image of type ${INSTANCE_TYPE}..."
 
 echo "$@"
 
@@ -16,7 +18,10 @@ gcloud compute instances create ${NAME} \
 --image-family ml4cvd-image \
 --boot-disk-type=pd-ssd \
 --boot-disk-size=${DISK_SIZE} \
---disk=name=data,device-name=data,mode=ro,boot=no \
+--disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
+--disk=name=survey-tensors2,device-name=survey-tensors2,mode=ro,boot=no,auto-delete=no \
+--disk=name=ecg-text3,device-name=ecg-text3,mode=ro,boot=no,auto-delete=no \
+--disk=name=pix-size-tensors,device-name=pix-size-tensors,mode=ro,boot=no,auto-delete=no \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
 --machine-type ${INSTANCE_TYPE} \
