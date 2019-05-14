@@ -15,6 +15,11 @@ one `hd5` file per sample id.
     conda activate ml4cvd_dataflow
 ```
 
+* Make sure you are authenticated by Google Cloud:
+```
+    gcloud auth application-default login
+```
+
 * Run with the help option to see the list of command line arguments.
 ```
     python tensorize/tensorize_main.py -h
@@ -27,7 +32,7 @@ characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or 
 command line argument `--beam_runner` is set to `DataflowRunner`. Set it to `DirectRunner` for local execution.
 For example:
 ```
-    python tensorize/tensorize_main.py
+    python ml4cvd/tensorize/tensorize_main.py
     --id my-pipeline-run \
     --tensor_type continuous \
     --bigquery_dataset ukbb_dev \
