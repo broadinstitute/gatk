@@ -19,7 +19,7 @@ import java.util.Spliterator;
  * VariantWalker authors must implement the {@link #apply} method to process each variant, and may optionally implement
  * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
-public abstract class VariantWalker extends VariantWalkerBase {
+public abstract class  VariantWalker extends VariantWalkerBase {
 
     // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features

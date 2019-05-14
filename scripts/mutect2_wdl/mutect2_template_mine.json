@@ -1,0 +1,22 @@
+{
+
+
+  "Mutect2.intervals": "gs://broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
+  "Mutect2.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "Mutect2.ref_fai": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "Mutect2.ref_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "Mutect2.tumor_reads": "gs://broad-dsp-spec-ops-cromwell-execution/MixBams/002d61b5-26e3-41d3-be73-06ec92e33a78/call-SpikeInBam/shard-0/rg_fixed.contaminated.bam",
+  "Mutect2.tumor_reads_index": "gs://broad-dsp-spec-ops-cromwell-execution/MixBams/002d61b5-26e3-41d3-be73-06ec92e33a78/call-SpikeInBam/shard-0/rg_fixed.contaminated.bai",
+  "Mutect2.tumor_sample_name": "50_percent_contam",
+  "Mutect2.normal_reads": "gs://broad-dsp-spec-ops/scratch/jsoto/lin_seq/ht115_hg38_bams/HT6W54.bam",
+  "Mutect2.normal_reads_index": "gs://broad-dsp-spec-ops/scratch/jsoto/lin_seq/ht115_hg38_bams/HT6W54.bai",
+  "Mutect2.normal_sample_name": "HT6W54",
+  "Mutect2.scatter_count": 50,
+  "Mutect2.gnomad": "gs://broad-dsp-spec-ops/SomaticProject/Hg38LiftedoverInputs/af-only-gnomad.hg38.raw.sites.vcf",
+  "Mutect2.gnomad_idx": "gs://broad-dsp-spec-ops/SomaticProject/Hg38LiftedoverInputs/af-only-gnomad.hg38.raw.sites.vcf.idx",
+  "Mutect2.variants_for_contamination": "gs://broad-dsp-spec-ops/SomaticProject/Hg38LiftedoverInputs/small_exac_common_3.hg38.vcf",
+  "Mutect2.variants_for_contamination_idx": "gs://broad-dsp-spec-ops/SomaticProject/Hg38LiftedoverInputs/small_exac_common_3.hg38.vcf.idx",
+  "Mutect2.run_orientation_bias_mixture_model_filter": "true",
+  "Mutect2.gatk_docker": "broadinstitute/gatk:4.1.1.0",
+  "Mutect2.preemptible_attempts": 0
+}

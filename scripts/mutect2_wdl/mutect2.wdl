@@ -96,39 +96,11 @@ workflow Mutect2 {
     String? m2_extra_filtering_args
     String? split_intervals_extra_args
     Boolean? make_bamout
-    Boolean make_bamout_or_default = select_first([make_bamout, false])
+    Boolean make_bamout_or_default = select_first([make_bamout, true])
     Boolean? compress_vcfs
     Boolean compress = select_first([compress_vcfs, false])
     File? gga_vcf
     File? gga_vcf_idx
-
-    # oncotator inputs
-    Boolean? run_oncotator
-    Boolean run_oncotator_or_default = select_first([run_oncotator, false])
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
-    String? sequencing_center
-    String? sequence_source
-    File? default_config_file
-    String? oncotator_extra_args
-
-    # Funcotator inputs
-    Boolean? run_funcotator
-    Boolean run_funcotator_or_default = select_first([run_funcotator, false])
-    String? funco_reference_version
-    String? funco_output_format
-    Boolean? funco_compress
-    Boolean? funco_use_gnomad_AF
-    File? funco_data_sources_tar_gz
-    String? funco_transcript_selection_mode
-    File? funco_transcript_selection_list
-    Array[String]? funco_annotation_defaults
-    Array[String]? funco_annotation_overrides
-    Array[String]? funcotator_excluded_fields
-    Boolean? funco_filter_funcotations
-    String? funcotator_extra_args
-
-    String funco_default_output_format = "MAF"
 
 
     # runtime
@@ -154,9 +126,6 @@ workflow Mutect2 {
     Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
     Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
-    # If no tar is provided, the task downloads one from broads ftp server
-    Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
-    Int funco_tar_size = if defined(funco_data_sources_tar_gz) then ceil(size(funco_data_sources_tar_gz, "GB") * 3) else 100
     Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
@@ -406,78 +375,6 @@ workflow Mutect2 {
                 input_vcf_idx = Filter.filtered_vcf_idx
         }
     }
-
-    if (run_oncotator_or_default) {
-        File oncotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        call oncotate_m2 {
-            input:
-                m2_vcf = oncotate_vcf_input,
-                onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir,
-                sequencing_center = sequencing_center,
-                sequence_source = sequence_source,
-                default_config_file = default_config_file,
-                case_id = M2.tumor_sample[0],
-                control_id = M2.normal_sample[0],
-                oncotator_docker = oncotator_docker_or_default,
-                preemptible_attempts = preemptible_attempts,
-                max_retries = max_retries,
-                disk_space = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad,
-                filter_maf = filter_oncotator_maf_or_default,
-                oncotator_extra_args = oncotator_extra_args
-        }
-    }
-
-    if (run_funcotator_or_default) {
-        File funcotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
-        call Funcotate {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                input_vcf = funcotate_vcf_input,
-                input_vcf_idx = funcotate_vcf_input_index,
-                reference_version = select_first([funco_reference_version, "hg19"]),
-                output_file_base_name = basename(funcotate_vcf_input, ".vcf") + ".annotated",
-                output_format = if defined(funco_output_format) then "" + funco_output_format else funco_default_output_format,
-                compress = if defined(funco_compress) then funco_compress else false,
-                use_gnomad = if defined(funco_use_gnomad_AF) then funco_use_gnomad_AF else false,
-                data_sources_tar_gz = funco_data_sources_tar_gz,
-                case_id = M2.tumor_sample[0],
-                control_id = M2.normal_sample[0],
-                sequencing_center = sequencing_center,
-                sequence_source = sequence_source,
-                transcript_selection_mode = funco_transcript_selection_mode,
-                transcript_selection_list = funco_transcript_selection_list,
-                annotation_defaults = funco_annotation_defaults,
-                annotation_overrides = funco_annotation_overrides,
-                funcotator_excluded_fields = funcotator_excluded_fields,
-                filter_funcotations = filter_funcotations_or_default,
-                extra_args = funcotator_extra_args,
-                gatk_docker = gatk_docker,
-                gatk_override = gatk_override,
-                preemptible_attempts = preemptible_attempts,
-                max_retries = max_retries,
-                disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad
-        }
-    }
-
-    output {
-        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
-        File filtering_stats = Filter.filtering_stats
-        File mutect_stats = MergeStats.merged_stats
-        File? contamination_table = CalculateContamination.contamination_table
-
-        File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
-        File? funcotated_file = Funcotate.funcotated_output_file
-        File? funcotated_file_index = Funcotate.funcotated_output_file_index
-        File? bamout = MergeBamOuts.merged_bam_out
-        File? bamout_index = MergeBamOuts.merged_bam_out_index
-        File? maf_segments = CalculateContamination.maf_segments
-        File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
-    }
 }
 
 task CramToBam {
@@ -610,8 +507,8 @@ task M2 {
     Boolean use_ssd = false
 
     # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 3500
-    Int command_mem = machine_mem - 500
+    Int machine_mem = if defined(mem) then mem * 1000 else 6000
+    Int command_mem = machine_mem - 1000
 
 
     command <<<

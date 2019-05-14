@@ -1,0 +1,4 @@
+{
+  "monitoring_script": "gs://broad-dsp-spec-ops/monitoring_script_30_seconds.sh",
+  "read_from_cache": false
+}

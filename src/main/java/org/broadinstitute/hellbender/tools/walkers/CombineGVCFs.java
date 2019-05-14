@@ -141,34 +141,21 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
-        // Check that the input variant contexts do not contain MNPs as these may not be properly merged
-        for (final VariantContext ctx : variantContexts) {
-            if (GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(ctx)) {
-                throw new UserException.BadInput(String.format(
-                        "Combining gVCFs containing MNPs is not supported. %1s contained a MNP at %2s:%3d",
-                        ctx.getSource(), ctx.getContig(), ctx.getStart()));
+        int num_filtered = 0;
+        for (VariantContext vc : variantContexts){
+            if (vc.isFiltered()){
+                num_filtered += 1;
+            }
+        }
+        if ((num_filtered * 1.0) / variantContexts.size() < .5) {
+            for (VariantContext vc : variantContexts){
+                if (!vc.isFiltered()){
+                    vcfWriter.add(vc);
+                    break;
+                }
             }
         }
 
-        // If we need to stop at an intermediate site since the last apply, do so (caused by gvcfBlocks, contexts ending, etc...)
-        if (!variantContextsOverlappingCurrentMerge.isEmpty()) {
-            Locatable last = prevPos!=null && prevPos.getContig().equals(variantContextsOverlappingCurrentMerge.get(0).getContig()) ?  prevPos : variantContextsOverlappingCurrentMerge.get(0);
-            // If on a different contig, close out all the queued states on the current contig
-            int end = last.getContig().equals(referenceContext.getWindow().getContig())
-                    ? referenceContext.getInterval().getStart() - 1
-                    : variantContextsOverlappingCurrentMerge.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
-
-            createIntermediateVariants( new SimpleInterval(last.getContig(), last.getStart(), end));
-        }
-
-        mergeWithNewVCs(variantContexts, referenceContext);
-
-        // Update the stored reference if it has a later stop position than the current stored reference
-        if ( (storedReferenceContext == null) ||
-                (!referenceContext.getWindow().contigsMatch(storedReferenceContext.getWindow()) ) ||
-                (storedReferenceContext.getWindow().getEnd() < referenceContext.getWindow().getEnd())) {
-            storedReferenceContext = referenceContext;
-        }
     }
 
     /**
@@ -252,25 +239,8 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void onTraversalStart() {
-        if (somaticInput) {
-            logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
-        }
-
-        // create the annotation engine
-        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, false);
 
         vcfWriter = getVCFWriter();
-
-        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, dropSomaticFilteringAnnotations);
-
-        //now that we have all the VCF headers, initialize the annotations (this is particularly important to turn off RankSumTest dithering in integration tests)'
-        sequenceDictionary = getBestAvailableSequenceDictionary();
-
-        // optimization to prevent mods when we always just want to break bands
-        if ( multipleAtWhichToBreakBands == 1 || useBpResolution) {
-            useBpResolution = true;
-            multipleAtWhichToBreakBands = 1;
-        }
     }
 
     private VariantContextWriter getVCFWriter() {
@@ -280,26 +250,6 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(inputVCFHeader.getMetaDataInInputOrder());
         headerLines.addAll(getDefaultToolVCFHeaderLines());
-
-        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions());
-
-        // add headers for annotations added by this tool
-        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));   // needed for gVCFs without DP tags
-        if ( dbsnp.dbsnp != null  ) {
-            VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
-        }
-
-        if (somaticInput) {
-            //single-sample M2 variant filter status will get moved to genotype filter
-            headerLines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_FILTER_KEY));
-
-            if (!dropSomaticFilteringAnnotations) {
-                //standard M2 INFO annotations for filtering will get moved to FORMAT field
-                for (final String key : Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING) {
-                    headerLines.add(GATKVCFHeaderLines.getEquivalentFormatHeaderLine(key));
-                }
-            }
-        }
 
         VariantContextWriter writer = createVCFWriter(outputFile);
 
@@ -467,25 +417,6 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public Object onTraversalSuccess() {
-
-        if (storedReferenceContext == null) {
-            logger.warn("Error: The requested interval contained no data in source VCF files");
-            return null;
-        }
-
-        if ( !variantContextsOverlappingCurrentMerge.isEmpty() ) {
-            // finish off the last blocks
-            final SimpleInterval lastInterval = new SimpleInterval(
-                    variantContextsOverlappingCurrentMerge.get(0).getContig(),
-                    variantContextsOverlappingCurrentMerge.get(0).getStart(),
-                    variantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get());
-                createIntermediateVariants(lastInterval);
-            // there shouldn't be any state left unless the user cut in the middle of a gVCF block
-            if ( !variantContextsOverlappingCurrentMerge.isEmpty() ) {
-                logger.warn("You have asked for an interval that cuts in the middle of one or more gVCF blocks. Please note that this will cause you to lose records that don't end within your interval.");
-            }
-        }
-
         return null;
     }
 
