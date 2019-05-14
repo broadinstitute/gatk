@@ -218,6 +218,8 @@ public class ReferenceConfidenceModel {
         }
 
         // Ensuring that we remove any indel informativeness data we may have attached to the underlying reads for caching purposes
+        // This is important as if multiple reference blocks are computed for a low complexity active region some reads may incorrectly
+        // be using caching values computed for a different reference block.
         if (USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES) {
             readLikelihoods.sampleReads(0).forEach(r -> r.clearTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME));
         }
