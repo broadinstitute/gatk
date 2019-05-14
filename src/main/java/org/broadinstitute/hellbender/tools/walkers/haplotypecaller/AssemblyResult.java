@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,7 +20,7 @@ public final class AssemblyResult {
      */
     public AssemblyResult(final Status status, final SeqGraph graph, final ReadThreadingGraph threadingGraph) {
         Utils.nonNull(status, "status cannot be null");
-        Utils.validateArg( status == Status.FAILED || graph != null, "graph is null but status is " + status);
+        Utils.validateArg( status == Status.FAILED || (graph != null || threadingGraph != null) , "graph is null but status is " + status);
 
         this.status = status;
         this.graph = graph;
@@ -34,7 +35,7 @@ public final class AssemblyResult {
         return status;
     }
 
-    public SeqGraph getGraph() {
+    public SeqGraph getSeqGraph() {
         return graph;
     }
 

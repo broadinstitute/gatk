@@ -45,7 +45,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
 
     private boolean alreadyBuilt;
 
-    private boolean startThreadingOnlyAtExistingVertex = false;
+    protected boolean startThreadingOnlyAtExistingVertex = false;
 
     private boolean duplicateNonUniqueKmers;
 
@@ -65,7 +65,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     /**
      * A map from kmers -> their corresponding vertex in the graph
      */
-    private final Map<Kmer, MultiDeBruijnVertex> uniqueKmers = new LinkedHashMap<>();
+    protected final Map<Kmer, MultiDeBruijnVertex> uniqueKmers = new LinkedHashMap<>();
 
     private final boolean debugGraphTransformations;
     private final byte minBaseQualityToUseInAssembly;
@@ -85,7 +85,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @throws IllegalArgumentException if (@code kmerSize) < 1.
      */
     public ReadThreadingGraph(final int kmerSize) {
-        this(kmerSize, false, (byte)6, 1, true);
+        this(kmerSize, false, (byte)6, 1);
     }
 
     /**
@@ -142,7 +142,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final boolean duplicateNonUniqueKmers) {
+    ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, new MyEdgeFactory(numPruningSamples));
 
         Utils.validateArg( kmerSize > 0, () -> "bad minkKmerSize " + kmerSize);
@@ -265,7 +265,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param seqForKmers the sequence we want to thread into the graph
      * @return the position of the starting vertex in seqForKmer, or -1 if it cannot find one
      */
-    private int findStart(final SequenceForKmers seqForKmers) {
+    protected int findStart(final SequenceForKmers seqForKmers) {
         if ( seqForKmers.isRef ) {
             return 0;
         }
@@ -289,7 +289,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param kmer the query kmer.
      * @return {@code true} if we can start thread the sequence at this kmer, {@code false} otherwise.
      */
-    private boolean isThreadingStart(final Kmer kmer) {
+    protected boolean isThreadingStart(final Kmer kmer) {
         Utils.nonNull(kmer);
         return startThreadingOnlyAtExistingVertex ? uniqueKmers.containsKey(kmer) : !nonUniqueKmers.contains(kmer);
     }
@@ -391,7 +391,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     /**
      * Edge factory that encapsulates the numPruningSamples assembly parameter
      */
-    private static final class MyEdgeFactory implements EdgeFactory<MultiDeBruijnVertex, MultiSampleEdge> {
+    protected static final class MyEdgeFactory implements EdgeFactory<MultiDeBruijnVertex, MultiSampleEdge> {
         final int numPruningSamples;
 
         private MyEdgeFactory(final int numPruningSamples) {
@@ -988,7 +988,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param kmerSize the kmer size to check for non-unique kmers of
      * @return a non-null NonUniqueResult
      */
-    private Set<Kmer> determineNonUniques(final int kmerSize) {
+    protected Set<Kmer> determineNonUniques(final int kmerSize) {
         final Collection<SequenceForKmers> withNonUniques = getAllPendingSequences();
         final Set<Kmer> nonUniqueKmers = new HashSet<>();
 
@@ -1099,7 +1099,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param kmer the kmer we want to create a vertex for
      * @return the non-null created vertex
      */
-    private MultiDeBruijnVertex createVertex(final Kmer kmer) {
+    protected MultiDeBruijnVertex createVertex(final Kmer kmer) {
         final MultiDeBruijnVertex newVertex = new MultiDeBruijnVertex(kmer.bases());
         final int prevSize = vertexSet().size();
         addVertex(newVertex);
@@ -1129,7 +1129,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param isRef is this the reference sequence?
      * @return a non-null vertex connecting prevVertex to in the graph based on sequence
      */
-    private MultiDeBruijnVertex extendChainByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
+    protected MultiDeBruijnVertex extendChainByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
 
         final int nextPos = kmerStart + kmerSize - 1;

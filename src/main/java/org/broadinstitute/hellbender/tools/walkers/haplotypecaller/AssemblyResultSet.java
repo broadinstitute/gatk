@@ -204,7 +204,7 @@ public final class AssemblyResultSet {
 
         for (final Map.Entry<Haplotype,AssemblyResult> e : assemblyResultByHaplotype.entrySet()) {
             final AssemblyResult as = e.getValue();
-            final int kmerSize = as.getGraph().getKmerSize();
+            final int kmerSize = as.getSeqGraph().getKmerSize();
             if (kmerSizeToCount.containsKey(kmerSize)) {
                 kmerSizeToCount.put(kmerSize,kmerSizeToCount.get(kmerSize) + 1);
             } else {
