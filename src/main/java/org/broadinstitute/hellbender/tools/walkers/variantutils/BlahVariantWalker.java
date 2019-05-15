@@ -1,23 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.util.List;
+import java.util.*;
 
 /**
  * Example/toy program that shows how to implement the VariantWalker interface. Prints supplied variants
@@ -30,55 +27,84 @@ import java.util.List;
         omitFromCommandLine = true
 )
 public final class BlahVariantWalker extends VariantWalker {
-
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File outputFile = null;
-
-    @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
-    private FeatureInput<VariantContext> auxiliaryVariants;
-
-    private PrintStream outputStream = null;
-
-    private Integer lastSeenPosition = null;
+    static final Logger logger = LogManager.getLogger(BlahVariantWalker.class);
 
     private final int GQ_CUTOFF = 60;
+    private final char SEPARATOR = '\t';
+    private SimpleXSVWriter vetWriter = null;
+    private SimpleXSVWriter petWriter = null;
+    private Integer lastSeenPosition = null;
+
+
+    @Argument(fullName = "vet-table-out-path",
+            shortName = "VO",
+            doc="Path to where the variants expanded table should be written")
+    public GATKPathSpecifier vetOutput = null;
+
+
+    @Argument(fullName = "pet-table-out-path",
+            shortName = "PO",
+            doc="Path to where the positions table should be written")
+    public GATKPathSpecifier petOutput = null;
+
+
 
     @Override
     public void onTraversalStart() {
-        // look for duplicate samples and positions covered
         try {
-            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
+            List<String> vetHeader = BlahVetCreation.getHeaders();
+            vetWriter = new SimpleXSVWriter(vetOutput.toPath(), SEPARATOR);
+            vetWriter.setHeaderLine(vetHeader);
+
+        } catch (final IOException e) {
+            throw new IllegalArgumentException("Current variant is missing required fields", e);
         }
-        catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(outputFile, e);
+        try {
+            List<String> petHeader = BlahPetCreation.getHeaders();
+            petWriter = new SimpleXSVWriter(petOutput.toPath(), SEPARATOR);
+            petWriter.setHeaderLine(petHeader);
+
+        } catch (final IOException e) {
+            throw new IllegalArgumentException("Current variant is missing required fields", e);
         }
     }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final String sampleName = variant.getGenotype(0).getSampleName();
-        outputStream.println("Current variant: " + variant);
+        logger.info("Current variant: " + variant);
         // This is a wrapper to loop thru createTSV function -- and split out the VET and PET tables
 
         // create VET output
-        if (variant.isVariant()) {
+        if (!variant.isReferenceBlock()) {
             try {
-                final List<String> TSVtoCreate = BlahVetCreation.createTSV(variant);
+                final List<String> TSVLineToCreateVet = BlahVetCreation.createVariantRow(variant);
+
+                // write the variant to the XSV
+                SimpleXSVWriter.LineBuilder vetLine = vetWriter.getNewLineBuilder();
+                vetLine.setRow(TSVLineToCreateVet);
+                vetLine.write();
+
             } catch (final IOException e) {
                 throw new IllegalArgumentException("Current variant is missing required fields", e);
             }
         }
         // create PET output
-        try {
-            if (variant.getGenotype(0).getGQ() < GQ_CUTOFF) {
-                final List<String> TSVtoCreate = BlahPetCreation.createTSV(variant);
+        if (variant.getGenotype(0).getGQ() < GQ_CUTOFF) {
+            List<List<String>> TSVLinesToCreatePet;
+            try {
+                TSVLinesToCreatePet = BlahPetCreation.createPositionRows(variant);
+            } catch (final Exception e) {
+                throw new IllegalArgumentException("GQ NOT GOOD", e);
             }
-        } catch (final Exception e) {
-            throw new IllegalArgumentException("GQ NOT GOOD", e);
+
+            // write the position to the XSV
+            for (List<String> TSVLineToCreatePet: TSVLinesToCreatePet) {
+                petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+            }
         }
 
         // create "missing" variants
-
         if (!(lastSeenPosition == null) && !(lastSeenPosition + 1 == variant.getStart())){
             // actually make sure this is a position we call over -- may want to use interval lists (ask David)
             BlahPetCreation.createMissingTSV(lastSeenPosition + 1, variant.getEnd(), sampleName);
@@ -89,8 +115,19 @@ public final class BlahVariantWalker extends VariantWalker {
 
     @Override
     public void closeTool() {
-        if ( outputStream != null ) {
-            outputStream.close();
+        if (vetWriter != null ) {
+            try {
+                vetWriter.close();
+            } catch (final Exception e) {
+                throw new IllegalArgumentException("Couldn't close VET writer", e);
+            }
+        }
+        if (petWriter != null) {
+            try {
+                petWriter.close();
+            } catch (final Exception e) {
+                throw new IllegalArgumentException("Couldn't close PET writer", e);
+            }
         }
     }
 }
