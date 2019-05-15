@@ -65,6 +65,13 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
 
+#TODO: These values should ultimatly come from the coding table
+CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
+CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
+
+MEAN_IDX = 0
+STD_IDX = 1
+
 
 class TensorMap(object):
     """Tensor maps encode the semantics, shapes and types of tensors available
@@ -125,7 +132,10 @@ class TensorMap(object):
         self.initialization = None  # Not yet implemented
 
         if self.shape is None:
-            self.shape = (len(channel_map),)
+            if self.is_multi_field_continuous():
+                self.shape = (len(channel_map) * 2,)
+            else:
+                self.shape = (len(channel_map),)
 
         if self.activation is None and self.is_categorical_any():
             self.activation = 'softmax'
@@ -202,6 +212,9 @@ class TensorMap(object):
     def is_continuous(self):
         return self.group == 'continuous'
 
+    def is_multi_field_continuous(self):
+        return self.group == 'multi_field_continuous'
+
     def is_diagnosis_time(self):
         return self.group == 'diagnosis_time'
 
@@ -250,6 +263,22 @@ class TensorMap(object):
                 np_tensor -= self.normalization['mean']
                 np_tensor /= (self.normalization['std'] + EPS)
             return np_tensor
+
+    def normalize_multi_field_continuous(self, np_tensor):
+        if self.normalization is None:
+            return np_tensor
+
+        for k in self.channel_map:
+            idx = self.channel_map[k] * 2
+            # If both the value (at idx) and not-missing channel (at idx + 1) are 0 then impute the value.
+            if np_tensor[idx + 1] == 0 and np_tensor[idx] == 0:
+                np_tensor[idx] = np.random.normal(1)
+            else:
+                np_tensor[idx] -= self.normalization[k][MEAN_IDX]
+                np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
+
+        return np_tensor
+
 
     def rescale(self, np_tensor):
         if self.normalization is None:
@@ -419,16 +448,10 @@ class TensorMap(object):
                 if k in hd5[self.group]:
                     value = hd5[self.group][k][0]
                     missing = False
-                    if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
-                        # -10 codes for "less than one"
-                        #TODO: Don't hard code these values
-                        if value in [-10, -1001]:
+                    if k in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
+                        if value in CODING_VALUES_LESS_THAN_ONE:
                             value = .5
-                        # -2 codes for "unnable to walk"
-                        # -3 codes for "prefer not to answer"
-                        # -1 codes for "do not know"
-                        # -11 codes for "still taking ..."
-                        if value in [-3, -1, -2, -11, -818, -121, -313, -906]:
+                        if value in CODING_VALUES_MISSING:
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
@@ -438,6 +461,25 @@ class TensorMap(object):
             if continuous_data[0] == 0 and self.name in CONTINUOUS_NEVER_ZERO:
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
+        elif self.is_multi_field_continuous():
+            continuous_data = np.zeros(self.shape, dtype=np.float32)
+            for k in self.channel_map:
+                missing = True
+                if k in hd5['continuous']:
+                    value = hd5['continuous'][k][0]
+                    missing = False
+                    if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
+                        if value in CODING_VALUES_LESS_THAN_ONE:
+                            value = .5
+                        if value in CODING_VALUES_MISSING:
+                            # need to set missing values to 0 so normalization works
+                            value = 0
+                            missing = True
+                    # Put value at index k (times 2 to make space for the not-missing channels), and put whether or not
+                    # this value is not missing in the following element.
+                    continuous_data[self.channel_map[k] * 2] = value
+                continuous_data[self.channel_map[k] * 2 + 1] = not missing
+            return self.normalize_multi_field_continuous(continuous_data)
         elif self.is_ecg_rest():
             tensor = np.zeros(self.shape, dtype=np.float32)
             if self.dependent_map is not None:

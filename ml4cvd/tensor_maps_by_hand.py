@@ -286,7 +286,20 @@ TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='con
                             channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
 
-TMAPS['random-forest-fields'] = TensorMap('top-80-class', group='categorical',
+# example of multi-field-continuous tensor map (note shape will be 1x8 to accommodate a not-missing channel for each value
+# normalization must be dictionary of [mean, stdev] for each value.
+TMAPS['blood-pressure'] = TensorMap('blood-pressure', group='multi_field_continuous',
+                          channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0,
+                                       '4080_Systolic-blood-pressure-automated-reading_0_1': 1,
+                                       '4079_Diastolic-blood-pressure-automated-reading_0_0': 2,
+                                       '4079_Diastolic-blood-pressure-automated-reading_0_1': 3},
+                          annotation_units=8,
+                          normalization={'4080_Systolic-blood-pressure-automated-reading_0_0': [137.79964191990328, 19.292863700283757],
+                                         '4080_Systolic-blood-pressure-automated-reading_0_1': [137.79964191990328, 19.292863700283757],
+                                       '4079_Diastolic-blood-pressure-automated-reading_0_0': [82.20657551284782, 10.496040770224475],
+                                       '4079_Diastolic-blood-pressure-automated-reading_0_1': [82.20657551284782, 10.496040770224475]})
+
+TMAPS['random-forest-fields'] = TensorMap('random-forest-fields', group='categorical',
                                   channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
                                                'Medication-for-pain-relief-constipation-heartburn_Do-not-know': 1,
                                                'Medication-for-pain-relief-constipation-heartburn_Ibuprofen-eg-Nurofen': 2,

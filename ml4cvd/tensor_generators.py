@@ -73,6 +73,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
 
     while True:
         for tp in train_paths:
+            [logging.info(f"Got first error: {k}") for k in stats if 'Error' in k and stats[k] == 1]
             try:
                 with h5py.File(tp, 'r') as hd5:
                     dependents = {}
@@ -98,11 +99,11 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
 
             except IndexError:
                 stats[f"IndexError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except KeyError as e:
+            except KeyError:
                 stats[f"KeyError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except ValueError as e:
+            except ValueError:
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except OSError as e:
+            except OSError:
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
 
         stats['epochs'] += 1

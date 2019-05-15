@@ -29,7 +29,6 @@ from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
 from scipy.ndimage.morphology import binary_closing  # Morphological operator
 
-from ml4cvd.arguments import parse_args
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
@@ -1127,13 +1126,3 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
 
     return False
 
-
-if __name__ == '__main__':
-    args = parse_args()
-    _print_disease_tensor_maps(args.phenos_folder)
-    _print_disease_tensor_maps_time(args.phenos_folder)
-    print('\n\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n\n\n')
-    _print_disease_tensor_maps_incident_prevalent(args.phenos_folder)
-    _plot_mi_hospital_only(args.db, args.id, args.output_folder)
-    _ukbb_stats(args.id, args.output_folder, args.phenos_folder, args.volume_csv,
-                args.icd_csv, args.app_csv, args.zip_folder)

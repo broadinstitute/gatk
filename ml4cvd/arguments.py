@@ -18,6 +18,7 @@ import datetime
 import numpy as np
 
 from ml4cvd.logger import load_config
+from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 from ml4cvd.tensor_maps_by_script import TMAPS
 
 
@@ -38,6 +39,7 @@ def parse_args():
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
     parser.add_argument('--output_tensors', default=[], nargs='+')
+    parser.add_argument('--input_continuous_tensors', default=[], nargs='+', help='Continuous tensor maps to be combined.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
 
@@ -215,7 +217,17 @@ def parse_args():
 
     args = parser.parse_args()
 
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    _process_args(args)
+
+    return args
+
+
+def _process_args(args):
+    if len(args.input_continuous_tensors) > 0:
+        multi_field_tensor_map = generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors] + [multi_field_tensor_map]
+    else:
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 
@@ -229,6 +241,4 @@ def parse_args():
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
     logging.info('Total TensorMaps:{} Arguments are {}'.format(len(TMAPS), args))
-
-    return args
 
