@@ -297,9 +297,7 @@ class EvoquerEngine {
             }
             
             final String rowSample = row.get("sample").getStringValue();
-            if ( currentVariantSamplesSeen.contains(rowSample) ) {
-                throw new UserException(String.format("Sample %s encountered more than once at locus %s:%s", rowSample, currentVariantBaseData.contig, currentVariantBaseData.start));
-            } else {
+            if ( ! currentVariantSamplesSeen.contains(rowSample) ) {
                 currentVariantSamplesSeen.add(rowSample);
             }
 
@@ -389,14 +387,17 @@ class EvoquerEngine {
             throw new GATKException("BUG: attempted to merge data from different sites in EvoquerEngine.mergeVariantBaseData()");
         }
 
-        if ( ! target.alleles.get(0).equals(source.alleles.get(0)) ) {
-            throw new GATKException("Two records at site " + target.start + " disagree on the ref allele");
+        if ( source.refAllele.length() > target.refAllele.length() ) {
+            target.refAllele = source.refAllele;
+        } else if ( source.refAllele.length() == target.refAllele.length() && ! source.refAllele.equals(target.refAllele) ) {
+            throw new GATKException(String.format("Two records at site %s:%s disagree on the ref allele (%s vs. %s)",
+                    target.contig, target.start, target.refAllele, source.refAllele));
         }
 
         // TODO: switch to HashSet for the alleles to improve performance here
-        for ( Allele sourceAltAllele : source.alleles.subList(1, source.alleles.size()) ) {
-            if ( ! target.alleles.contains(sourceAltAllele) ) {
-                target.alleles.add(sourceAltAllele);
+        for ( Allele sourceAltAllele : source.altAlleles ) {
+            if ( ! target.altAlleles.contains(sourceAltAllele) ) {
+                target.altAlleles.add(sourceAltAllele);
             }
         }
 
@@ -460,7 +461,9 @@ class EvoquerEngine {
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
 
-        final List<Allele> allelesWithoutNonRef = variantBaseData.alleles.stream().filter( a -> !a.equals(Allele.NON_REF_ALLELE) ).collect(Collectors.toList());
+        final List<Allele> allelesWithoutNonRef = new ArrayList<>();
+        allelesWithoutNonRef.add(variantBaseData.refAllele);
+        variantBaseData.altAlleles.stream().filter(a -> !a.equals(Allele.NON_REF_ALLELE) && !a.equals(variantBaseData.refAllele, true)).forEach(allelesWithoutNonRef::add);
 
         // Populate trivial fields in variant context builder:
         variantContextBuilder.chr(variantBaseData.contig)
@@ -576,6 +579,11 @@ class EvoquerEngine {
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
         genotypeBuilder.name(sampleData.sampleName);
 
+        // TERRIBLE HACK
+        if ( sampleData.gtGenotypeAlleles != null ) {
+            sampleData.gtGenotypeAlleles = null;
+        }
+
         // GT:AD:DP:GQ:PL:SB
         if ( sampleData.gtGenotypeAlleles != null ) {
             genotypeBuilder.alleles(sampleData.gtGenotypeAlleles);
@@ -661,17 +669,17 @@ class EvoquerEngine {
         }
 
         // Fill in alleles:
-        final List<Allele> alleles = new ArrayList<>(5);
-        alleles.add( Allele.create(row.get("reference_bases").getStringValue(), true) );
+        variantBaseData.refAllele = Allele.create(row.get("reference_bases").getStringValue(), true);
 
-        alleles.addAll(
+        final List<Allele> altAlleles = new ArrayList<>();
+        altAlleles.addAll(
                 row.get("alternate_bases").getRepeatedValue().stream()
                     .map( fieldValue -> Allele.create(fieldValue.getRecordValue().get(0).getStringValue()) )
                     .collect(Collectors.toList())
         );
 
         // Add the alleles:
-        variantBaseData.alleles = alleles;
+        variantBaseData.altAlleles = altAlleles;
     }
 
     private void addInfoFieldsToVariantBuilder(final FieldValueList row,
@@ -730,7 +738,11 @@ class EvoquerEngine {
 
         final List<Allele> genotypeAlleles = new ArrayList<>();
         for ( int genotypeAlleleIndex : gtGenotypeAlleleIndices ) {
-            genotypeAlleles.add(rowVariantBaseData.alleles.get(genotypeAlleleIndex));
+            if ( genotypeAlleleIndex == 0 ) {
+                genotypeAlleles.add(rowVariantBaseData.refAllele);
+            } else {
+                genotypeAlleles.add(rowVariantBaseData.altAlleles.get(genotypeAlleleIndex - 1));
+            }
         }
         rowVariantDetailData.gtGenotypeAlleles = genotypeAlleles;
 
@@ -835,7 +847,8 @@ class EvoquerEngine {
         String contig;
         long start;
 
-        List<Allele> alleles = new ArrayList<>();
+        Allele refAllele;
+        List<Allele> altAlleles = new ArrayList<>();
         Set<String> filters = new HashSet<>();
     }
 
