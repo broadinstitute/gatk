@@ -4,6 +4,7 @@ import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableResult;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -15,6 +16,8 @@ import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -38,8 +41,8 @@ class EvoquerEngine {
     // Public Static Members:
 
     public static final String SAMPLE_TABLE_NAME = "sample_list";
-    public static final String VARIANT_TABLE_NAME = "vet";
-    public static final String POSITION_TABLE_NAME = "pet";
+    public static final String VARIANT_TABLE_NAME = "vet_1_5"; // "vet";
+    public static final String POSITION_TABLE_NAME = "pet_minus_60"; // "pet";
 
     //==================================================================================================================
     // Private Static Members:
@@ -274,84 +277,141 @@ class EvoquerEngine {
     }
 
     private void createVariantsFromTableResult(final TableResult result) {
-        // Details of the variants to store:
-        List<VariantDetailData> currentVariantDetails = new ArrayList<>();
-
-        // Position / alleles are the key here.
         VariantBaseData currentVariantBaseData = null;
+        List<VariantDetailData> currentVariantDetails = new ArrayList<>();
+        final Set<String> currentVariantSamplesSeen = new HashSet<>();
+        Long currentStartPosition = null;
 
         for ( final FieldValueList row : result.iterateAll() ) {
-            if ( ! "v".equals(row.get("state").getStringValue()) ) {
-                continue;
+            final long rowStartPosition = row.get("position").getLongValue();
+            if ( currentStartPosition == null ) {
+                currentStartPosition = rowStartPosition;
             }
 
-            if ( currentVariantBaseData == null ) {
-                currentVariantBaseData = new VariantBaseData();
-                
-                currentVariantBaseData.contig = row.get("reference_name").getStringValue();
-                currentVariantBaseData.start = row.get("start_position").getLongValue();
-                currentVariantBaseData.stop = row.get("end_position").getLongValue();
-
-                // Fill in alleles:
-                currentVariantBaseData.alleles.add( Allele.create(row.get("reference_bases").getStringValue(), true) );
-                currentVariantBaseData.alleles.addAll(
-                        row.get("alternate_bases").getRepeatedValue().stream()
-                                .map( fieldValue -> Allele.create(fieldValue.getRecordValue().get(0).getStringValue()) )
-                                .collect(Collectors.toList())
-                );
+            if ( rowStartPosition != currentStartPosition ) {
+                finalizeCurrentVariant(currentVariantBaseData, currentVariantDetails, currentVariantSamplesSeen);
+                currentVariantBaseData = null;
+                currentVariantDetails = new ArrayList<>();
+                currentVariantSamplesSeen.clear();
+                currentStartPosition = rowStartPosition;
+            }
+            
+            final String rowSample = row.get("sample").getStringValue();
+            if ( currentVariantSamplesSeen.contains(rowSample) ) {
+                throw new UserException(String.format("Sample %s encountered more than once at locus %s:%s", rowSample, currentVariantBaseData.contig, currentVariantBaseData.start));
+            } else {
+                currentVariantSamplesSeen.add(rowSample);
             }
 
-            final VariantBaseData variantBaseData = new VariantBaseData();
-            final VariantDetailData variantDetailData = new VariantDetailData();
+            switch (row.get("state").getStringValue()) {
+                case "v":   // Variant
+                    final VariantBaseData thisRowVariantBaseData = new VariantBaseData();
+                    final VariantDetailData thisRowVariantDetailData = new VariantDetailData();
+                    
+                    // Fill in trivial stuff:
+                    populateVariantBaseDataFromRow(row, thisRowVariantBaseData);
+                    if ( currentVariantBaseData == null ) {
+                        currentVariantBaseData = thisRowVariantBaseData;
+                    } else {
+                        mergeVariantBaseData(currentVariantBaseData, thisRowVariantBaseData);
+                    }
 
-            // Fill in trivial stuff:
-            addBasicFieldsToVariantBuilder(row, variantBaseData);
+                    // Fill in info field stuff:
+                    addInfoFieldsToVariantBuilder(row, thisRowVariantDetailData);
 
-            // Do we have a new position / new alleles?
-            // If so we merge the accumulated variants and setup the new stores:
-            if ( (!variantBaseData.contig.equals(currentVariantBaseData.contig)) ||
-                    (variantBaseData.start != currentVariantBaseData.start)  ||
-                    (variantBaseData.stop != currentVariantBaseData.stop)  ||
-                    (!variantBaseData.alleles.equals(currentVariantBaseData.alleles)) ) {
+                    // Fill in sample field stuff:
+                    // The "call" field has the genotype / sample information in it.
+                    // It should never be null.
+                    addSampleFieldsToVariantBuilder(row, thisRowVariantBaseData, thisRowVariantDetailData);
 
-                final VariantContext finalizedVariant =
-                        GnarlyGenotyperEngine.finalizeGenotype(mergeVariantDetails(variantBaseData, currentVariantDetails));
-                if ( finalizedVariant != null ) {  // TODO: is this guard necessary?
-                    vcfWriter.add(finalizedVariant);
-                    progressMeter.update(finalizedVariant);
-                }
-
-                // Setup new values:
-                currentVariantBaseData = new VariantBaseData();
-                currentVariantBaseData.contig = variantBaseData.contig;
-                currentVariantBaseData.start = variantBaseData.start;
-                currentVariantBaseData.stop = variantBaseData.stop;
-                currentVariantBaseData.alleles = variantBaseData.alleles;
-                currentVariantDetails = new ArrayList<>( sampleNames.size() / 10 );
+                    // Add our variant data to the accumulated list:
+                    currentVariantDetails.add(thisRowVariantDetailData);
+                    break;
+                case "0":   // Non Variant Block with GQ < 10
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 0));
+                    break;
+                case "10":  // Non Variant Block with 10 <=  GQ < 20
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 10));
+                    break;
+                case "20":  // Non Variant Block with 20 <= GQ < 30
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 20));
+                    break;
+                case "30":  // Non Variant Block with 30 <= GQ < 40
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 30));
+                    break;
+                case "40":  // Non Variant Block with 40 <= GQ < 50
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 40));
+                    break;
+                case "50":  // Non Variant Block with 50 <= GQ < 60
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 50));
+                    break;
+                case "60":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
+                    currentVariantDetails.add(synthesizeRefSiteVariantDetails(rowSample, 60));
+                    break;
+                case "s":   // Spanning Deletion
+                    break;
+                case "n":   // Missing
+                    break;
+                default:
+                    throw new GATKException("Unrecognized state: " + row.get("state").getStringValue());
             }
-
-            // Fill in info field stuff:
-            addInfoFieldsToVariantBuilder( row, variantDetailData );
-
-            // Fill in sample field stuff:
-            // The "call" field has the genotype / sample information in it.
-            // It should never be null.
-            addSampleFieldsToVariantBuilder( row, result.getSchema(), variantDetailData );
-
-            // Add our variant data to the accumulated list:
-            currentVariantDetails.add( variantDetailData );
         }
 
         // We must merge the remaining variant details together if any are left:
-        if ( !currentVariantDetails.isEmpty() ) {
-            final VariantContext finalizedVariant =
-                    GnarlyGenotyperEngine.finalizeGenotype(mergeVariantDetails(currentVariantBaseData, currentVariantDetails));
-            if ( finalizedVariant != null ) {  // TODO: is this guard necessary?
-                vcfWriter.add(finalizedVariant);
-                progressMeter.update(finalizedVariant);
-            }
+        if ( ! currentVariantDetails.isEmpty() ) {
+            finalizeCurrentVariant(currentVariantBaseData, currentVariantDetails, currentVariantSamplesSeen);
         }
     }
+
+    private void finalizeCurrentVariant(final VariantBaseData currentVariantBaseData, final List<VariantDetailData> currentVariantDetails, final Set<String> currentVariantSamplesSeen) {
+        // If there were no variants at this site, we don't emit a record and there's nothing to do here
+        if ( currentVariantBaseData == null ) {
+            return;
+        }
+
+        // Find missing samples and synthesize GQ 60s
+        final Set<String> samplesNotEncountered = Sets.difference(sampleNames, currentVariantSamplesSeen);
+        for ( final String missingSample : samplesNotEncountered ) {
+            currentVariantDetails.add(synthesizeRefSiteVariantDetails(missingSample, 60));
+        }
+
+        VariantContext finalizedVariant = mergeVariantDetails(currentVariantBaseData, currentVariantDetails);
+        // TODO: re-enable the Gnarly Genotyper
+        // finalizedVariant = GnarlyGenotyperEngine.finalizeGenotype(finalizedVariant);
+        if ( finalizedVariant != null ) {  // TODO: is this guard necessary?
+            vcfWriter.add(finalizedVariant);
+            progressMeter.update(finalizedVariant);
+        }
+    }
+
+    private void mergeVariantBaseData(VariantBaseData target, VariantBaseData source) {
+        if ( ! target.contig.equals(source.contig) || target.start != source.start ) {
+            throw new GATKException("BUG: attempted to merge data from different sites in EvoquerEngine.mergeVariantBaseData()");
+        }
+
+        if ( ! target.alleles.get(0).equals(source.alleles.get(0)) ) {
+            throw new GATKException("Two records at site " + target.start + " disagree on the ref allele");
+        }
+
+        // TODO: switch to HashSet for the alleles to improve performance here
+        for ( Allele sourceAltAllele : source.alleles.subList(1, source.alleles.size()) ) {
+            if ( ! target.alleles.contains(sourceAltAllele) ) {
+                target.alleles.add(sourceAltAllele);
+            }
+        }
+
+        target.filters.addAll(source.filters);
+    }
+
+    private VariantDetailData synthesizeRefSiteVariantDetails( final String sampleName, final int gqBand ) {
+        final VariantDetailData refSiteVariantDetails = new VariantDetailData();
+
+        refSiteVariantDetails.sampleName = sampleName;
+        refSiteVariantDetails.gtGq = gqBand;
+
+        return refSiteVariantDetails;
+    }
+
 
     /**
      * Merges together the given variant details into a {@link VariantContext} object.
@@ -400,41 +460,40 @@ class EvoquerEngine {
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
 
+        final List<Allele> allelesWithoutNonRef = variantBaseData.alleles.stream().filter( a -> !a.equals(Allele.NON_REF_ALLELE) ).collect(Collectors.toList());
+
         // Populate trivial fields in variant context builder:
         variantContextBuilder.chr(variantBaseData.contig)
                             .start(variantBaseData.start)
-                            .stop(variantBaseData.stop)
-                            .alleles(variantBaseData.alleles);
-
-        // Get the alleles we actually care about here:
-        final List<Allele> genotypeAlleles = variantBaseData.alleles.stream().filter( a -> !a.equals(Allele.NON_REF_ALLELE) ).collect(Collectors.toList());
+                            .stop(variantBaseData.start + allelesWithoutNonRef.get(0).length() - 1)
+                            .alleles(allelesWithoutNonRef);
 
         // no need to populate ID
         // no need to populate FILTER
         // no need to populate QUAL as per rules
 
-        final Set<String>    samplesMissing  = new HashSet<>( sampleNames );
+        //final Set<String>    samplesMissing  = new HashSet<>( sampleNames );
         final List<Genotype> sampleGenotypes = new ArrayList<>( sampleNames.size() );
 
-        int depth = 0;
-        int variantDepth = 0;
-        int mapQualityDepth = 0;
-        long rawMq = 0;
-        double qualApprox = 0;
+        // int depth = 0;
+        // int variantDepth = 0;
+        //int mapQualityDepth = 0;
+        // long rawMq = 0;
+        // double qualApprox = 0;
 
-        final List<Double> mq             = new ArrayList<>(variantDetails.size());
-        final List<Double> mqRankSum      = new ArrayList<>(variantDetails.size());
-        final List<Double> readPosRankSum = new ArrayList<>(variantDetails.size());
+        // final List<Double> mq             = new ArrayList<>(variantDetails.size());
+        // final List<Double> mqRankSum      = new ArrayList<>(variantDetails.size());
+        // final List<Double> readPosRankSum = new ArrayList<>(variantDetails.size());
 
         // Now go over each sample and aggregate the data as per the rules:
-        for ( final VariantDetailData sampleData : variantDetails  ) {
+        for ( final VariantDetailData sampleData : variantDetails ) {
 
             // ------------------------------------------------------------------
             // INFO fields:
 
             // Simple aggregations on:
             //   DP, MQ_DP, QUALapprox, RAW_MQ, VAR_DP
-            if ( sampleData.infoDp != null ) {
+            /* if ( sampleData.infoDp != null ) {
                 depth += sampleData.infoDp;
             }
             if ( sampleData.infoQualApprox != null ) {
@@ -464,44 +523,45 @@ class EvoquerEngine {
             if ( sampleData.infoReadPosRankSum != null ) {
                 readPosRankSum.add(sampleData.infoReadPosRankSum);
             }
+            */
 
             // Genotype fields should just be added as-is:
-            sampleGenotypes.add( createGenotypeFromVariantDetails(sampleData, genotypeAlleles) );
+            sampleGenotypes.add(createGenotypeFromVariantDetails(sampleData, allelesWithoutNonRef));
 
             // Account for this sample in our sample set:
-            samplesMissing.remove( sampleData.sampleName );
+            // samplesMissing.remove( sampleData.sampleName );
         }
 
         // Calculate the median values:
-        double mqMedian             = new Median().evaluate(mq.stream().mapToDouble(Double::doubleValue).toArray());
-        double mqRankSumMedian      = new Median().evaluate(mqRankSum.stream().mapToDouble(Double::doubleValue).toArray());
-        double readPosRankSumMedian = new Median().evaluate(readPosRankSum.stream().mapToDouble(Double::doubleValue).toArray());
+        // double mqMedian             = new Median().evaluate(mq.stream().mapToDouble(Double::doubleValue).toArray());
+        // double mqRankSumMedian      = new Median().evaluate(mqRankSum.stream().mapToDouble(Double::doubleValue).toArray());
+        // double readPosRankSumMedian = new Median().evaluate(readPosRankSum.stream().mapToDouble(Double::doubleValue).toArray());
 
         // Ensure no NaN values:
         // TODO: Make sure these values are good:
-        mqMedian             = Double.isNaN(mqMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : mqMedian;
-        mqRankSumMedian      = Double.isNaN(mqRankSumMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : mqRankSumMedian;
-        readPosRankSumMedian = Double.isNaN(readPosRankSumMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : readPosRankSumMedian;
+        // mqMedian             = Double.isNaN(mqMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : mqMedian;
+        // mqRankSumMedian      = Double.isNaN(mqRankSumMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : mqRankSumMedian;
+        // readPosRankSumMedian = Double.isNaN(readPosRankSumMedian) ? MISSING_MQ_AND_READ_POS_RANK_SUM_DEFAULT_VALUE : readPosRankSumMedian;
 
         // Add the aggregate values to our builder:
-        variantContextBuilder.attribute(VCFConstants.DEPTH_KEY, depth);
-        variantContextBuilder.attribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY, qualApprox);
-        variantContextBuilder.attribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH, mapQualityDepth);
-        variantContextBuilder.attribute(GATKVCFConstants.VARIANT_DEPTH_KEY, variantDepth);
-        variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%d%s%d", rawMq, RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR, depth));
+        // variantContextBuilder.attribute(VCFConstants.DEPTH_KEY, depth);
+        // variantContextBuilder.attribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY, qualApprox);
+        // variantContextBuilder.attribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH, mapQualityDepth);
+        // variantContextBuilder.attribute(GATKVCFConstants.VARIANT_DEPTH_KEY, variantDepth);
+        // variantContextBuilder.attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, String.format("%d%s%d", rawMq, RAW_MAPPING_QUALITY_WITH_DEPTH_KEY_SEPARATOR, depth));
 
-        variantContextBuilder.attribute(VCFConstants.RMS_MAPPING_QUALITY_KEY, mqMedian);
-        variantContextBuilder.attribute(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, mqRankSumMedian);
-        variantContextBuilder.attribute(GATKVCFConstants.READ_POS_RANK_SUM_KEY, readPosRankSumMedian);
+        // variantContextBuilder.attribute(VCFConstants.RMS_MAPPING_QUALITY_KEY, mqMedian);
+        // variantContextBuilder.attribute(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, mqRankSumMedian);
+        // variantContextBuilder.attribute(GATKVCFConstants.READ_POS_RANK_SUM_KEY, readPosRankSumMedian);
 
         // Now add in empty values for each sample that was not in our variant details.
         // We assume these samples have high confidence reference regions at this allele
-        for ( final String sample : samplesMissing ) {
-            sampleGenotypes.add( createHighConfRefSampleGenotype(sample, depth, genotypeAlleles.get(0), genotypeAlleles.size() ) );
-        }
+        // for ( final String sample : samplesMissing ) {
+        //     sampleGenotypes.add( createHighConfRefSampleGenotype(sample, depth, genotypeAlleles.get(0), genotypeAlleles.size() ) );
+        // }
 
         // Set our genotypes:
-        variantContextBuilder.genotypes( sampleGenotypes );
+        variantContextBuilder.genotypes(sampleGenotypes);
 
         // Return the VC:
         return variantContextBuilder.make();
@@ -510,23 +570,30 @@ class EvoquerEngine {
     /**
      * Create a {@link Genotype} from the given {@link VariantDetailData} and {@code alleles.}
      * @param sampleData {@link VariantDetailData} containing sample information from which to create a {@link Genotype}.
-     * @param alleles {@link Allele} objects from which to create the {@link Genotype}.
      * @return A {@link Genotype} object containing the information in the given {@code sampleData}.
      */
-    private Genotype createGenotypeFromVariantDetails(final VariantDetailData sampleData, final List<Allele> alleles) {
+    private Genotype createGenotypeFromVariantDetails(final VariantDetailData sampleData, final List<Allele> siteAlleles) {
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
         genotypeBuilder.name(sampleData.sampleName);
 
         // GT:AD:DP:GQ:PL:SB
-        genotypeBuilder.alleles( alleles );
-        genotypeBuilder.AD( sampleData.gtAd );
-        genotypeBuilder.DP( sampleData.gtDp );
-        genotypeBuilder.GQ( sampleData.gtGq );
-        genotypeBuilder.PL( sampleData.gtPl );
-        genotypeBuilder.attribute(
-                VCFConstants.STRAND_BIAS_KEY,
-                Arrays.stream(sampleData.gtSb).map(i -> Integer.toString(i)).collect(Collectors.joining(","))
-        );
+        if ( sampleData.gtGenotypeAlleles != null ) {
+            genotypeBuilder.alleles(sampleData.gtGenotypeAlleles);
+        } else {
+            final Allele referenceAllele = siteAlleles.get(0);
+            final List<Allele> refGenotypeAlleles = new ArrayList<>();
+            refGenotypeAlleles.add(referenceAllele);
+            refGenotypeAlleles.add(referenceAllele);
+            genotypeBuilder.alleles(refGenotypeAlleles);
+        }
+        // genotypeBuilder.AD( sampleData.gtAd );
+        // genotypeBuilder.DP( sampleData.gtDp );
+        // genotypeBuilder.GQ( sampleData.gtGq );
+        // genotypeBuilder.PL( sampleData.gtPl );
+        //genotypeBuilder.attribute(
+        //        VCFConstants.STRAND_BIAS_KEY,
+        //        Arrays.stream(sampleData.gtSb).map(i -> Integer.toString(i)).collect(Collectors.joining(","))
+        //);
         return genotypeBuilder.make();
     }
 
@@ -579,12 +646,11 @@ class EvoquerEngine {
         return genotypeBuilder.make();
     }
 
-    private void addBasicFieldsToVariantBuilder(final FieldValueList row,
+    private void populateVariantBaseDataFromRow(final FieldValueList row,
                                                 final VariantBaseData variantBaseData) {
 
         variantBaseData.contig = row.get("reference_name").getStringValue();
         variantBaseData.start = row.get("start_position").getLongValue();
-        variantBaseData.stop = row.get("end_position").getLongValue();
 
         // Get the filter(s):
         if ( !row.get("filter").isNull() ) {
@@ -612,7 +678,7 @@ class EvoquerEngine {
                                                final VariantDetailData variantDetailData) {
 
         // NOTE: If a field is null we ignore it for the aggregation step (as per Laura's instructions).
-        if ( !row.get(VCFConstants.DEPTH_KEY).isNull() ) {
+       /* if ( !row.get(VCFConstants.DEPTH_KEY).isNull() ) {
             variantDetailData.infoDp = (int) row.get(VCFConstants.DEPTH_KEY).getLongValue();
         }
         if ( !row.get(VCFConstants.RMS_MAPPING_QUALITY_KEY).isNull() ) {
@@ -635,30 +701,21 @@ class EvoquerEngine {
         }
         if ( !row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).isNull() ) {
             variantDetailData.infoRawMq = Math.round(row.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY).getDoubleValue());
-        }
+        } */
     }
 
     private void addSampleFieldsToVariantBuilder( final FieldValueList row,
-                                                  final Schema schema,
-                                                  final VariantDetailData variantDetailData) {
+                                                  final VariantBaseData rowVariantBaseData,
+                                                  final VariantDetailData rowVariantDetailData ) {
 
-        // Create our call data with the schema information
-        // to enable name-based access to fields:
-        final FieldValueList callData =
-                FieldValueList.of(
-                        // I'm not sure why we need this extra layer of unwrapping:
-                        row.get("call").getRecordValue().get(0).getRecordValue(),
-                        schema.getFields().get("call").getSubFields()
-                );
+        final String sampleName = row.get("call_name").getStringValue();
 
-        final String sampleName = callData.get("name").getStringValue();
+        final int dp = (int)row.get("call_" + VCFConstants.DEPTH_KEY).getLongValue();
+        final int gq = (int)row.get("call_" + VCFConstants.GENOTYPE_QUALITY_KEY).getLongValue();
 
-        final int dp = (int)callData.get(VCFConstants.DEPTH_KEY).getLongValue();
-        final int gq = (int)callData.get(VCFConstants.GENOTYPE_QUALITY_KEY).getLongValue();
-
-        variantDetailData.sampleName = sampleName;
-        variantDetailData.gtDp = dp;
-        variantDetailData.gtGq = gq;
+        rowVariantDetailData.sampleName = sampleName;
+        rowVariantDetailData.gtDp = dp;
+        rowVariantDetailData.gtGq = gq;
         //TODO: Do we need to track phaseset here?
         //TODO: Do we need to track MIN_DP here?
         //TODO: Do we need to track PGT here?
@@ -667,30 +724,36 @@ class EvoquerEngine {
         // Get the array fields:
 
         // Add the alleles to our variantDetailData:
-        variantDetailData.gtGenotype = callData.get("genotype").getRepeatedValue().stream()
+        int[] gtGenotypeAlleleIndices = row.get("call_genotype").getRepeatedValue().stream()
                 .mapToInt( f -> (int)f.getLongValue() )
                 .toArray();
 
+        final List<Allele> genotypeAlleles = new ArrayList<>();
+        for ( int genotypeAlleleIndex : gtGenotypeAlleleIndices ) {
+            genotypeAlleles.add(rowVariantBaseData.alleles.get(genotypeAlleleIndex));
+        }
+        rowVariantDetailData.gtGenotypeAlleles = genotypeAlleles;
+
         // AD should never be null:
-        variantDetailData.gtAd = callData.get(VCFConstants.GENOTYPE_ALLELE_DEPTHS).getRecordValue().stream()
+/*        variantDetailData.gtAd = row.get("call_" + VCFConstants.GENOTYPE_ALLELE_DEPTHS).getRecordValue().stream()
                 .map( FieldValue::getLongValue )
                 .mapToInt( Long::intValue )
                 .toArray();
 
         // PL should never be null:
-        variantDetailData.gtPl = callData.get(VCFConstants.GENOTYPE_PL_KEY).getRecordValue().stream()
+        variantDetailData.gtPl = row.get("call_" + VCFConstants.GENOTYPE_PL_KEY).getRecordValue().stream()
                                  .map( FieldValue::getLongValue )
                                  .mapToInt( Long::intValue )
                                  .toArray();
 
-        if ( !callData.get(VCFConstants.STRAND_BIAS_KEY).isNull() ) {
+        if ( !row.get("call_" + VCFConstants.STRAND_BIAS_KEY).isNull() ) {
 
-            variantDetailData.gtSb = callData.get(VCFConstants.STRAND_BIAS_KEY).getRecordValue().stream()
+            variantDetailData.gtSb = row.get("call_" + VCFConstants.STRAND_BIAS_KEY).getRecordValue().stream()
                     .map( FieldValue::getLongValue )
                     .mapToInt( Long::intValue )
                     .boxed()
                     .toArray(Integer[]::new);
-        }
+        } */
     }
 
     private void populateSampleNames() {
@@ -728,7 +791,7 @@ class EvoquerEngine {
                 "SELECT *\n" +
                 "FROM `%s` AS pet\n" +
                 "LEFT OUTER JOIN `%s` AS vet\n" +
-                "ON pet.position = vet.start_position AND pet.sample = vet.call[OFFSET(0)].name\n" +
+                "ON pet.position = vet.start_position AND pet.sample = vet.call_name\n" +
                 "WHERE (pet.position >= %d AND pet.position <= %d)\n" +
                 "ORDER BY pet.position\n" +
                 limitString,
@@ -768,10 +831,9 @@ class EvoquerEngine {
     /**
      * A class to hold high-level variant information without constructing an entire {@link VariantContext} object.
      */
-    private class VariantBaseData {
+    private static class VariantBaseData {
         String contig;
         long start;
-        long stop;
 
         List<Allele> alleles = new ArrayList<>();
         Set<String> filters = new HashSet<>();
@@ -781,7 +843,7 @@ class EvoquerEngine {
      * A class to hold variant detail information about a particular sample
      * without constructing an entire {@link VariantContext} object.
      */
-    private class VariantDetailData {
+    private static class VariantDetailData {
 
         // High-level fields:
         String sampleName;
@@ -799,7 +861,7 @@ class EvoquerEngine {
 
         // Genotype fields:
         // GT:AD:DP:GQ:PL:SB 0/1:   4,3,0:  7: 10:  10,0,119,101,128,229:0,4,0,3
-        int gtGenotype[];
+        List<Allele> gtGenotypeAlleles; // A null List here means 0/0
         int gtAd[];
         Integer gtDp;
         Integer gtGq;
