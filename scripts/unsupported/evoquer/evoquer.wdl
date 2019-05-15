@@ -3,10 +3,12 @@
 # Description of inputs:
 #
 #  Required:
-#    String gatk_docker                 - GATK Docker image in which to run
+#    String gatk_docker                 - GATK Docker image in which to run.
 #
-#    File ref_fasta_dict                - HG38 Reference sequence dictionary.
+#    String project_id                  - BigQuery project ID to which to connect.
+#    File dataset_map                   - The data set map to send to Evoquer.
 #
+#    File ref_dict                      - HG38 Reference sequence dictionary.
 #    Array[String] intervals            - Variant Context File (VCF) containing the variants to annotate.
 #    String output_file_base_name       - Base name of desired output file WITHOUT extension.
 #
@@ -28,8 +30,10 @@
 workflow Evoquer {
     String gatk_docker
 
-    File ref_dict
+    String project_id
+    File dataset_map
 
+    File ref_dict
     Array[String] intervals
     String output_file_base_name
 
@@ -44,9 +48,13 @@ workflow Evoquer {
 
     call EvoquerTask {
         input:
+            project_id            = project_id,
+            dataset_map           = dataset_map,
+
             ref_dict              = ref_dict,
             intervals             = intervals,
             output_file_base_name = output_file_base_name,
+
             compress              = compress,
 
             gatk_docker           = gatk_docker,
@@ -70,8 +78,11 @@ task EvoquerTask {
 
     # ------------------------------------------------
     # Input args:
-    File ref_dict
 
+    String project_id
+    File dataset_map
+
+    File ref_dict
     Array[String] intervals
     String output_file_base_name
 
@@ -127,8 +138,10 @@ task EvoquerTask {
         # Run Evoquer:
         gatk --java-options "-Xmx${command_mem}m" \
             Evoquer \
-                --intervals ${default="" sep=" --intervals " intervals} \
+                --project-id ${project_id} \
+                --dataset-map ${dataset_map} \
                 --sequence-dictionary ${ref_dict} \
+                --intervals ${default="" sep=" --intervals " intervals} \
                 -O ${output_file}
 
         endTime=`date +%s.%N`
