@@ -134,7 +134,7 @@ import java.util.List;
  *
  * <h4>(iii) Mitochondrial mode</h4>
  * <p>Mutect2 automatically sets parameters appropriately for calling on mitochondria with the <nobr>--mitochondria</nobr> flag.
- * Specifically, the mode sets <nobr>–-initial-tumor-lod</nobr> to 0, <nobr>–-tumor-lod-to-emit</nobr> to 0, <nobr>--af-of-alleles-not-in-resource</nobr> to
+ * Specifically, the mode sets <nobr>--initial-tumor-lod</nobr> to 0, <nobr>--tumor-lod-to-emit</nobr> to 0, <nobr>--af-of-alleles-not-in-resource</nobr> to
  * 4e-3, and the advanced parameter <nobr>--pruning-lod-threshold</nobr> to -4.</p>
  *
  * <pre>
