@@ -8,8 +8,6 @@ import java.util.stream.Collectors;
 
 public final class BlahPetCreation {
 
-    private static final String COLUMNDELIMITER = "/t";
-
     /**
      * Expected headers for the Position Table (PET)
      */
@@ -21,7 +19,7 @@ public final class BlahPetCreation {
 
     public enum GQStateEnum {
         VARIANT("v"),
-        STAR("*"), // TODO is this s or * ?
+        STAR("*"),
         ZERO("0"),
         TEN("1"),
         TWENTY("2"),
@@ -77,12 +75,12 @@ public final class BlahPetCreation {
             } else if (genotypeQual < 60) {
                 state = GQStateEnum.FIFTY;
             } else {
-                throw new Exception("BLAHALBLAHALBLAHALB");
+                throw new Exception("GQ is not in the range we expect");
             }
 
-            for (int i = variant.getStart(); i <= variant.getEnd(); i++){ // break up ref blocks
+            for (int position = variant.getStart(); position <= variant.getEnd(); position++){ // break up ref blocks
                 List<String> row = new ArrayList<>();
-                row.add(String.valueOf(i));
+                row.add(String.valueOf(position));
                 row.add(sampleName);
                 row.add(state.value);
                 rows.add(row);
@@ -92,15 +90,18 @@ public final class BlahPetCreation {
         return rows;
     }
 
-    public static List<String> createMissingTSV(int start, int end, String sampleName) {
-        List<String> row = new ArrayList<>();
+    public static List<List<String>> createMissingTSV(int start, int end, String sampleName) {
+        List<List<String>> rows = new ArrayList<>();
 
-        for (int i = start; i < end; i ++){
-            String stringifyRow = new StringBuilder(i).append(COLUMNDELIMITER).append(sampleName).append(COLUMNDELIMITER).append(GQStateEnum.MISSING.value).toString();
-            row.add(stringifyRow);
+        for (int position = start; position < end; position ++){
+            List<String> row = new ArrayList<>();
+            row.add(String.valueOf(position));
+            row.add(sampleName);
+            row.add(GQStateEnum.MISSING.value);
+            rows.add(row);
         }
 
-        return row;
+        return rows;
     }
 
     public static List<String> getHeaders() {
