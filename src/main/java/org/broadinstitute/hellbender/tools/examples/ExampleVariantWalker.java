@@ -75,7 +75,7 @@ public final class ExampleVariantWalker extends VariantWalker {
         Set<String> sample_names = variant.getSampleNames();
         Boolean write = true;
         int total_het_samples = 0;
-        float ad_failures = 0;
+        int ad_failures = 0;
 
         for(String sample : sample_names) {
             if (write == false){
@@ -102,7 +102,7 @@ public final class ExampleVariantWalker extends VariantWalker {
             }
         }
 
-        if (ad_failures / total_het_samples > .5) {
+        if ((ad_failures * 1.0) / total_het_samples > .5) {
             write = false;
         }
 
