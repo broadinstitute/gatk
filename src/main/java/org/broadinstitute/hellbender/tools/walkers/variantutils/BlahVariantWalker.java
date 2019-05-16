@@ -72,31 +72,22 @@ public final class BlahVariantWalker extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final String sampleName = variant.getGenotype(0).getSampleName();
-        logger.info("Current variant: " + variant);
+        //logger.info("Current variant: " + variant);
         // This is a wrapper to loop thru createTSV function -- and split out the VET and PET tables
 
         // create VET output
         if (!variant.isReferenceBlock()) {
-            try {
-                final List<String> TSVLineToCreateVet = BlahVetCreation.createVariantRow(variant);
+            final List<String> TSVLineToCreateVet = BlahVetCreation.createVariantRow(variant);
 
-                // write the variant to the XSV
-                SimpleXSVWriter.LineBuilder vetLine = vetWriter.getNewLineBuilder();
-                vetLine.setRow(TSVLineToCreateVet);
-                vetLine.write();
-
-            } catch (final IOException e) {
-                throw new IllegalArgumentException("Current variant is missing required fields", e);
-            }
+            // write the variant to the XSV
+            SimpleXSVWriter.LineBuilder vetLine = vetWriter.getNewLineBuilder();
+            vetLine.setRow(TSVLineToCreateVet);
+            vetLine.write();
         }
         // create PET output
         if (variant.getGenotype(0).getGQ() < GQ_CUTOFF) {
             List<List<String>> TSVLinesToCreatePet;
-            try {
-                TSVLinesToCreatePet = BlahPetCreation.createPositionRows(variant);
-            } catch (final Exception e) {
-                throw new IllegalArgumentException("GQ NOT GOOD", e);
-            }
+            TSVLinesToCreatePet = BlahPetCreation.createPositionRows(variant);
 
             // write the position to the XSV
             for (List<String> TSVLineToCreatePet: TSVLinesToCreatePet) {

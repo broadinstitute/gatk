@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFEncoder;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,14 +45,13 @@ public final class BlahVetCreation {
         // and just leave it empty if not required
 
         START_POSITION { // Required
-             public String getColumnValue(final VariantContext variant) throws IOException {
-                 final String startPosition = String.valueOf(variant.getStart());
-                 return startPosition;
+             public String getColumnValue(final VariantContext variant) {
+                 return String.valueOf(variant.getStart());
             }
         },
 
         REFERENCE_BASES { // Required
-            public String getColumnValue(final VariantContext variant) throws IOException {
+            public String getColumnValue(final VariantContext variant) {
                 final String referenceBase = variant.getReference().getBaseString();
                 if (referenceBase == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for reference_bases");
@@ -66,12 +67,12 @@ public final class BlahVetCreation {
                 for(Allele a : variant.getAlternateAlleles()) {
                     outList.add(a.getDisplayString());
                 }
-                return String.join(DELIMITER, outList);
+                return String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
             }
         },
 
         ALTERNATE_BASES_AS_RAW_MQ { // Required
-            public String getColumnValue(final VariantContext variant) throws IOException {
+            public String getColumnValue(final VariantContext variant) {
                 String out = getAttribute(variant, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, null);
                 if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_RAW_MQ");
@@ -87,7 +88,7 @@ public final class BlahVetCreation {
         },
 
         ALTERNATE_BASES_AS_QUALAPPROX { // Required
-            public String getColumnValue(final VariantContext variant) throws IOException {
+            public String getColumnValue(final VariantContext variant) {
                 //TODO find a constant for "AS_QUALapprox"
                 String out = getAttribute(variant, "AS_QUALapprox", null);
                 if (out == null) {
@@ -104,7 +105,7 @@ public final class BlahVetCreation {
         },
 
         ALTERNATE_BASES_AS_SB_TABLE { // Required
-            public String getColumnValue(final VariantContext variant) throws IOException {
+            public String getColumnValue(final VariantContext variant) {
                 String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
                 if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_SB_TABLE");
@@ -114,10 +115,10 @@ public final class BlahVetCreation {
         },
 
         ALTERNATE_BASES_AS_VARDP { // Required
-            public String getColumnValue(final VariantContext variant) throws IOException {
+            public String getColumnValue(final VariantContext variant) {
                 //TODO find a constant for "AS_VarDP"
                 String out = getAttribute(variant, "AS_VarDP", null);
-                if (out.equals(null)) {
+                if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_VarDP");
                 }
                 return out;
@@ -132,7 +133,15 @@ public final class BlahVetCreation {
 
         CALL_GENOTYPE {
             public String getColumnValue(final VariantContext variant) {
-                return variant.getGenotype(0).getGenotypeString();
+                ArrayList<Integer> allele_indices = new ArrayList<Integer>();
+                for (Allele allele : variant.getGenotype(0).getAlleles()){
+                    allele_indices.add(GATKVariantContextUtils.indexOfAllele(variant, allele, true, true, true  ));
+                }
+
+                if (allele_indices.size() != 2){
+                    throw new IllegalArgumentException("GT doesnt have two alleles");
+                }
+                return variant.getGenotype(0).isPhased() ? StringUtils.join(allele_indices, VCFConstants.PHASED) : StringUtils.join(allele_indices, VCFConstants.UNPHASED) ;
             }
         },
 
@@ -151,7 +160,7 @@ public final class BlahVetCreation {
         },
 
         CALL_GQ { // Required
-            public String getColumnValue(final VariantContext variant) throws IOException {
+            public String getColumnValue(final VariantContext variant) {
                 if (!variant.getGenotype(0).hasGQ()) {
                     throw new IllegalArgumentException("Cannot be missing required value for call.GQ");
                 }
@@ -179,21 +188,21 @@ public final class BlahVetCreation {
             }
         };
 
-        public String getColumnValue(final VariantContext variant) throws IOException {
+        public String getColumnValue(final VariantContext variant) {
             throw new IllegalArgumentException("Not implemented");
         }
 
         private static String getAttribute(VariantContext vc, String key, String defaultValue){
-            Object x = vc.getAttribute(key);
-            if ( x == null ) return defaultValue;
-            if ( x instanceof String ) return (String)x;
-            if ( x instanceof List) return StringUtils.join((List)x, VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
-            return String.valueOf(x); // throws an exception if this isn't a string
+            Object attr = vc.getAttribute(key);
+            if ( attr == null ) return defaultValue;
+            if ( attr instanceof String ) return (String)attr;
+            if ( attr instanceof List) return StringUtils.join((List)attr, VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
+            return String.valueOf(attr); // throws an exception if this isn't a string
         }
     }
 
 
-    public static List<String> createVariantRow(final VariantContext variant) throws IOException {
+    public static List<String> createVariantRow(final VariantContext variant) {
         List<String> row = new ArrayList<>();
 
         for ( final HeaderFieldEnum fieldEnum : HeaderFieldEnum.values() ) {

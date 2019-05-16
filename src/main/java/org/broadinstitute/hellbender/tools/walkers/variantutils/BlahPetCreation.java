@@ -37,7 +37,7 @@ public final class BlahPetCreation {
 
     }
 
-    public static List<List<String>> createPositionRows(final VariantContext variant) throws Exception {
+    public static List<List<String>> createPositionRows(final VariantContext variant) {
 
         List<List<String>> rows = new ArrayList<>();
         String sampleName = variant.getSampleNamesOrderedByName().get(0);
@@ -75,7 +75,7 @@ public final class BlahPetCreation {
             } else if (genotypeQual < 60) {
                 state = GQStateEnum.FIFTY;
             } else {
-                throw new Exception("GQ is not in the range we expect");
+                throw new IllegalArgumentException("GQ is not in the range we expect");
             }
 
             for (int position = variant.getStart(); position <= variant.getEnd(); position++){ // break up ref blocks
