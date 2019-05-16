@@ -39,7 +39,7 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.use_async_io_write_tribble=false " \
                    "-Dsamjdk.compression_level=2 "
 
-PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
+PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=true",
                   "-Dsamjdk.use_async_io_write_samtools=true",
                   "-Dsamjdk.use_async_io_write_tribble=false",
                   "-Dsamjdk.compression_level=2"]
