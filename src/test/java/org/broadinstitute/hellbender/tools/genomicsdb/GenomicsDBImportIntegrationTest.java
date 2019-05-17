@@ -458,6 +458,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private void writeToGenomicsDB(final List<String> vcfInputs, final List<SimpleInterval> intervals, final String workspace,
                                    final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads, final boolean mergeIntervals) {
+        writeToGenomicsDB(vcfInputs, intervals, workspace, batchSize, useBufferSize, bufferSizePerSample, threads, mergeIntervals, false, false);
+    }
+
+    private void writeToGenomicsDB(final List<String> vcfInputs, final List<SimpleInterval> intervals, final String workspace,
+                                   final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads, 
+                                   final boolean mergeIntervals, final boolean overwriteWorkspace, final boolean incremental) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         intervals.forEach(args::addInterval);
@@ -465,6 +471,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         args.addArgument("batch-size", String.valueOf(batchSize));
         args.addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
         args.addBooleanArgument(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
+        args.addBooleanArgument(GenomicsDBImport.INCREMENTAL_ARG_NAME, incremental);
+        args.addBooleanArgument(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, overwriteWorkspace);
         if (useBufferSize) {
             args.addArgument("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
         }
@@ -870,6 +878,64 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         // this actually creates the directory on disk, not just the file name.
         final String workspace = createTempDir("workspace").getAbsolutePath();
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testOverwriteWorkspaceAndIncrementalImportCannotBothBeTrue() {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1, false, true, true);
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testIncrementalMustHaveExistingWorkspace() {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath();
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace + "workspace2", 0, false, 0, 1, false, false, true);
+    }
+
+    @Test
+    public void testGenomicsDBBasicIncremental() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), INTERVAL, workspace, 0, false, 0, 1, false, false, false);
+        checkJSONFilesAreWritten(workspace);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 0, false, 0, 1, false, false, true);
+        checkJSONFilesAreWritten(workspace);
+
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test
+    public void testGenomicsDBIncrementalAndBatchSize1() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), INTERVAL, workspace, 1, false, 0, 1, false, false, false);
+        checkJSONFilesAreWritten(workspace);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 1, false, 0, 1, false, false, true);
+        checkJSONFilesAreWritten(workspace);
+
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test
+    public void testGenomicsDBIncrementalAndBatchSize2() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), INTERVAL, workspace, 2, false, 0, 1, false, false, false);
+        checkJSONFilesAreWritten(workspace);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 2, false, 0, 1, false, false, true);
+        checkJSONFilesAreWritten(workspace);
+
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test
+    public void testGenomicsDBMultipleIncrementalImports() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        writeToGenomicsDB(LOCAL_GVCFS.subList(0,1), INTERVAL, workspace, 2, false, 0, 1, false, false, false);
+        checkJSONFilesAreWritten(workspace);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(1,2), INTERVAL, workspace, 2, false, 0, 1, false, false, true);
+        checkJSONFilesAreWritten(workspace);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 2, false, 0, 1, false, false, true);
+        checkJSONFilesAreWritten(workspace);
+
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
     }
 
     @Test(groups = {"bucket"})
