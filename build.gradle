@@ -168,6 +168,7 @@ configurations.all {
 
 tasks.withType(JavaCompile) {
   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+  options.encoding = 'UTF-8'
 }
 
 sourceSets {
@@ -580,6 +581,7 @@ task testUtilsJar(type: Jar){
 tasks.withType(Javadoc) {
     // do this for all javadoc tasks, including gatkDoc
     options.addStringOption('Xdoclint:none')
+    options.addStringOption('encoding', 'UTF-8')
 }
 
 javadoc {
