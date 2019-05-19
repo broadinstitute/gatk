@@ -21,10 +21,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -36,13 +34,11 @@ import scala.Tuple2;
 
 import java.io.*;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Call structural variants using SV evidence and germline CNV (gCNV) copy number calls
@@ -123,6 +119,7 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
     public static final String GRAPH_OUTPUT_LONG_NAME = "write-graph";
     public static final String CONTIG_PLOIDY_CALLS_LONG_NAME = "ploidy-calls";
     public static final String STRUCTURAL_VARIANT_TABLE_LONG_NAME = "table";
+    public static final String MAPPABILITY_INTERVALS_LONG_NAME = "mappable-intervals";
 
     public static final String RESOLVED_CALLS_FILE_NAME = "calls";
     public static final String UNRESOLVED_CALLS_FILE_NAME = "unresolved";
@@ -165,6 +162,12 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
     )
     private File contigPloidyCallsFile;
 
+    @Argument(
+            doc = "Mappable intervals",
+            fullName = MAPPABILITY_INTERVALS_LONG_NAME
+    )
+    private File mappabilityIntervalsFile;
+
     @Override
     public Object doWork() {
 
@@ -185,6 +188,7 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
         final SVMultiscaleIntervalTree<SVCopyNumberInterval> multiscaleIntervalTree = new SVMultiscaleIntervalTree<>(copyNumberTrees);
         final Collection<EvidenceTargetLink> evidenceTargetLinks = evidenceTargetLinksFilePath == null ? Collections.emptyList() : getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
         final Collection<EventRecord> eventRecordCollection = EventRecordReader.readEventRecords(structuralVariantTableFile).collect(Collectors.toList());
+        final SVIntervalTree<Object> mappabilityIntervals = readMappabilityIntervals(mappabilityIntervalsFile, dictionary);
 
         //Create graph
         final SVEvidenceIntegrator evidenceIntegrator = new SVEvidenceIntegrator(breakpointCalls, svCalls, evidenceTargetLinks, eventRecordCollection, multiscaleIntervalTree, highCoverageIntervals, blacklist, dictionary, arguments);
@@ -198,6 +202,8 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
 
         //Write output
         final Collection<CalledSVGraphEvent> resolvedEvents = events.stream().filter(CalledSVGraphEvent::isResolved).collect(Collectors.toList());
+        resolvedEvents.stream().forEach(event -> applyMappability(event, mappabilityIntervals));
+        markDuplicateEvents(resolvedEvents);
         final Collection<CalledSVGraphEvent> unresolvedEvents = events.stream().filter(event -> !event.isResolved()).collect(Collectors.toList());
         writeEvents(resolvedEvents, RESOLVED_CALLS_FILE_NAME, dictionary);
         writeEvents(unresolvedEvents, UNRESOLVED_CALLS_FILE_NAME, dictionary);
@@ -206,6 +212,56 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
             writeGraph(graph);
         }
         return null;
+    }
+
+    private static void applyMappability(final CalledSVGraphEvent event, final SVIntervalTree<Object> mappabilityIntervals) {
+        final SVInterval eventInterval = event.getInterval();
+        final double MIN_MAPPABILITY_OVERLAP = 0.50;
+        final int overlap = iteratorToStream(mappabilityIntervals.overlappers(event.getInterval()))
+                .mapToInt(entry -> entry.getInterval().overlapLen(eventInterval)).sum();
+        if (overlap < MIN_MAPPABILITY_OVERLAP * eventInterval.getLength()) {
+            event.setLowMappability(true);
+        } else {
+            event.setLowMappability(false);
+        }
+    }
+
+    // TODO sensitive to input order in the case of ties
+    private static void markDuplicateEvents(final Collection<CalledSVGraphEvent> events) {
+        final double DUPLICATE_RECIPROCAL_OVERLAP = 0.9;
+        final SVIntervalTree<CalledSVGraphEvent> tree = new SVIntervalTree<>();
+        for (final CalledSVGraphEvent event : events) {
+            tree.put(event.getInterval(), event);
+        }
+        final Set<CalledSVGraphEvent> testedEvents = new HashSet<>(SVUtils.hashMapCapacity(events.size()));
+        for (final CalledSVGraphEvent event : events) {
+            if (testedEvents.contains(event)) continue;
+            final Collection<CalledSVGraphEvent> overlappers = iteratorToStream(tree.overlappers(event.getInterval()))
+                    .map(SVIntervalTree.Entry::getValue)
+                    .filter(e -> SVIntervalUtils.hasReciprocalOverlap(event.getInterval(), e.getInterval(), DUPLICATE_RECIPROCAL_OVERLAP))
+                    .collect(Collectors.toList());
+            final double maxQual = overlappers.stream().mapToDouble(CalledSVGraphEvent::getRefQuality).max().getAsDouble();
+            boolean foundMax = false;
+            for (final CalledSVGraphEvent overlapper : overlappers) {
+                if (overlapper.getRefQuality() < maxQual || foundMax) {
+                    overlapper.setDuplicate(true);
+                }
+            }
+            testedEvents.addAll(overlappers);
+        }
+    }
+
+    private static <T> Stream<T> iteratorToStream(final Iterator<T> iter) {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED), false);
+    }
+
+    private static SVIntervalTree<Object> readMappabilityIntervals(final File file, final SAMSequenceDictionary dictionary) {
+        final List<SVInterval> intervals = getIntervals(file.getAbsolutePath(), dictionary);
+        final SVIntervalTree<Object> tree = new SVIntervalTree<>();
+        for (final SVInterval interval : intervals) {
+            tree.put(interval, null);
+        }
+        return tree;
     }
 
     /**
@@ -230,7 +286,9 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
             return Collections.emptyList();
         }
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
-        return IntervalUtils.parseIntervalArguments(genomeLocParser, path).stream()
+        final List<GenomeLoc> intervals = IntervalUtils.parseIntervalArguments(genomeLocParser, path);
+        final GenomeLocSortedSet mergedIntervals = IntervalUtils.sortAndMergeIntervals(genomeLocParser, intervals, IntervalMergingRule.ALL);
+        return mergedIntervals.toList().stream()
                 .map(genomeLoc -> new SVInterval(genomeLoc.getContigIndex(), genomeLoc.getStart(), genomeLoc.getEnd()))
                 .collect(Collectors.toList());
     }

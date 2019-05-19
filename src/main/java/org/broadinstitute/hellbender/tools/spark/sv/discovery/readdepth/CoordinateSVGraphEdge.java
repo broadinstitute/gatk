@@ -21,7 +21,7 @@ public final class CoordinateSVGraphEdge {
     private final boolean strandB;
     private final boolean inverted;
     private final boolean isReference;
-    //private final SVGraphEdgeEvidence evidence;
+    private final SVGraphEdgeEvidence evidence;
     //private final SVGraphEdgePrior prior;
 
     public CoordinateSVGraphEdge(final int contig1, final int position1, final boolean strand1,
@@ -50,7 +50,7 @@ public final class CoordinateSVGraphEdge {
         }
         this.isReference = isReference;
         this.inverted = false;
-        //this.evidence = evidence;
+        this.evidence = evidence;
         //this.prior = new SVGraphEdgePrior(evidence, 15, 6); //TODO
     }
 
@@ -69,13 +69,13 @@ public final class CoordinateSVGraphEdge {
         strandA = indexedEdge.isStrandA();
         strandB = indexedEdge.isStrandB();
         inverted = indexedEdge.isInverted();
-        //evidence = indexedEdge.getEvidence();
+        evidence = indexedEdge.getEvidence();
         //prior = indexedEdge.getPrior();
     }
 
-    /*public SVGraphEdgeEvidence getEvidence() {
+    public SVGraphEdgeEvidence getEvidence() {
         return evidence;
-    }*/
+    }
 
     public SVInterval getInterval() {
         if (contigA != contigB) return null;

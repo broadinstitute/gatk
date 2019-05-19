@@ -13,7 +13,7 @@ public final class SVCopyNumberInterval {
     private final double[] copyNumberLogPosteriors;
 
     public SVCopyNumberInterval(final VariantContext variantContext, final SAMSequenceDictionary dictionary) {
-        this.interval = new SVInterval(dictionary.getSequenceIndex(variantContext.getContig()), variantContext.getStart(), variantContext.getEnd());
+        this.interval = new SVInterval(dictionary.getSequenceIndex(variantContext.getContig()), variantContext.getStart(), variantContext.getEnd() + 1);
         final GenotypesContext genotypesContext = variantContext.getGenotypes();
         if (genotypesContext.isEmpty()) {
             throw new UserException.BadInput("No genotypes found in variant context " + variantContext.getID());

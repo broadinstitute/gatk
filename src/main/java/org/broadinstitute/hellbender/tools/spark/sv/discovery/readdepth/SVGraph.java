@@ -158,7 +158,7 @@ public final class SVGraph {
             final int nodeAIndex = contigAndPositionToNodeIndexMap.get(new Tuple2<>(edge.getContigA(), edge.getNodeAPosition()));
             final int nodeBIndex = contigAndPositionToNodeIndexMap.get(new Tuple2<>(edge.getContigB(), edge.getNodeBPosition()));
             final int edgeIndex = indexedEdges.size();
-            final IndexedSVGraphEdge newEdge = new IndexedSVGraphEdge(edgeIndex, nodeAIndex, nodeBIndex, edge.isStrandA(), edge.isStrandB(), edge.isReference(), new SVGraphEdgeEvidence(), this, dictionary);
+            final IndexedSVGraphEdge newEdge = new IndexedSVGraphEdge(edgeIndex, nodeAIndex, nodeBIndex, edge.isStrandA(), edge.isStrandB(), edge.isReference(), edge.getEvidence(), this, dictionary);
             indexedEdges.add(newEdge);
             addIndexedEdgeToNodeEdgesList(newEdge, nodes.get(nodeAIndex), true);
             addIndexedEdgeToNodeEdgesList(newEdge, nodes.get(nodeBIndex), false);

@@ -183,13 +183,12 @@ public final class SVEvidenceIntegrator {
             final int start = record.getStart();
             final int end = record.getEnd();
             if (record.getType().equals(StructuralVariantType.DEL.name())) {
-                // TODO add evidence type
-                edges.add(new CoordinateSVGraphEdge(contig, start, true, contig, end, false, false, new SVGraphEdgeEvidence(), dictionary));
+                edges.add(new CoordinateSVGraphEdge(contig, start, true, contig, end, false, false, new SVGraphEdgeEvidence(record), dictionary));
             } else if (record.getType().equals(StructuralVariantType.DUP.name())) {
-                edges.add(new CoordinateSVGraphEdge(contig, start, false, contig, end, true, false, new SVGraphEdgeEvidence(), dictionary));
+                edges.add(new CoordinateSVGraphEdge(contig, start, false, contig, end, true, false, new SVGraphEdgeEvidence(record), dictionary));
             } else if (record.getType().equals(StructuralVariantType.INV.name())) {
-                edges.add( new CoordinateSVGraphEdge(contig, start, true, contig, end, true, false, new SVGraphEdgeEvidence(), dictionary));
-                edges.add(new CoordinateSVGraphEdge(contig, start, false, contig, end, false, false, new SVGraphEdgeEvidence(), dictionary));
+                edges.add( new CoordinateSVGraphEdge(contig, start, true, contig, end, true, false, new SVGraphEdgeEvidence(record), dictionary));
+                edges.add(new CoordinateSVGraphEdge(contig, start, false, contig, end, false, false, new SVGraphEdgeEvidence(record), dictionary));
             }
         }
         return edges;
