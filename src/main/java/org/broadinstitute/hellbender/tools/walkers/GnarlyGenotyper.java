@@ -404,7 +404,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
         annotationDBBuilder.noGenotypes();
         vcfBuilder.alleles(targetAlleles);
 
-        for (final Class c : allASAnnotations) {
+        for (final Class<? extends InfoFieldAnnotation> c : allASAnnotations) {
             try {
                 InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
                 if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
@@ -423,7 +423,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
             }
         }
         //since AS_FS and AS_SOR share the same raw key, we have to wait to remove raw keys until all the finalized values are added
-        for (final Class c : allASAnnotations) {
+        for (final Class<? extends InfoFieldAnnotation> c : allASAnnotations) {
             try {
                 InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
                 if (annotation instanceof AS_StandardAnnotation  && annotation instanceof ReducibleAnnotation) {
