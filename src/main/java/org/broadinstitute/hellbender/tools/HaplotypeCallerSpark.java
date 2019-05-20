@@ -225,11 +225,9 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
     protected Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast(final JavaSparkContext ctx) {
         final Path referencePath = IOUtils.getPath(referenceArguments.getReferenceFileName());
         final String referenceFileName = referencePath.getFileName().toString();
-        final String pathOnExecutor = SparkFiles.get(referenceFileName);
-        final ReferenceSequenceFile taskReferenceSequenceFile = new CachingIndexedFastaSequenceFile(IOUtils.getPath(pathOnExecutor));
         final Collection<Annotation> annotations = makeVariantAnnotations();
         final VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE, false);
-        return assemblyRegionEvaluatorSupplierBroadcastFunction(ctx, hcArgs, getHeaderForReads(), taskReferenceSequenceFile, annotatorEngine);
+        return assemblyRegionEvaluatorSupplierBroadcastFunction(ctx, hcArgs, getHeaderForReads(), SparkFiles.get(referenceFileName), annotatorEngine);
     }
 
     private static Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast(
@@ -240,9 +238,8 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final Collection<Annotation> annotations) {
         final Path referencePath = IOUtils.getPath(reference);
         final String referenceFileName = referencePath.getFileName().toString();
-        final ReferenceSequenceFile taskReferenceSequenceFile = taskReferenceSequenceFile(referenceFileName);
         final VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE, false);
-        return assemblyRegionEvaluatorSupplierBroadcastFunction(ctx, hcArgs, header, taskReferenceSequenceFile, annotatorEngine);
+        return assemblyRegionEvaluatorSupplierBroadcastFunction(ctx, hcArgs, header, SparkFiles.get(referenceFileName), annotatorEngine);
     }
 
     private static ReferenceSequenceFile taskReferenceSequenceFile(final String referenceFileName) {
@@ -254,11 +251,12 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final JavaSparkContext ctx,
             final HaplotypeCallerArgumentCollection hcArgs,
             final SAMFileHeader header,
-            final ReferenceSequenceFile taskReferenceSequenceFile,
+            final String referencePathOnExecutor,
             final VariantAnnotatorEngine annotatorEngine) {
         Supplier<AssemblyRegionEvaluator> supplier = new Supplier<AssemblyRegionEvaluator>() {
             @Override
             public AssemblyRegionEvaluator get() {
+                final ReferenceSequenceFile taskReferenceSequenceFile = new CachingIndexedFastaSequenceFile(IOUtils.getPath(referencePathOnExecutor));
                 return new HaplotypeCallerEngine(hcArgs, false, false, header, taskReferenceSequenceFile, annotatorEngine);
             }
         };
