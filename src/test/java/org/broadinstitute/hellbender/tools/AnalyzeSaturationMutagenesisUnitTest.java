@@ -487,29 +487,34 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
                 new SNV(45, CALL_G, CALL_A, QUAL_30),
                 new SNV(55, CALL_C, CALL_A, QUAL_30));
 
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final List<GATKRead> reads =
+            ArtificialReadUtils.createPair(header, "blahBlah", 150, 1, 151, true, false);
+        final GATKRead read1 = reads.get(0);
+        final GATKRead read2 = reads.get(1);
         final ReadReport report1 = new ReadReport(Collections.singletonList(new Interval(0, 32)), list1);
         final ReadReport report2 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
-        updateCountsForPair(report1, report2);
+        updateCountsForPair(read1, report1, read2, report2);
 
         // shouldn't be applied -- fails flanking bases test
         Assert.assertEquals(reference.countSpanners(0, 32), 0);
         Assert.assertEquals(reference.countSpanners(32, 33), 0);
         Assert.assertEquals(reference.countSpanners(33, 60), 0);
 
-        // should be applied separately
+        // only read1 should be applied
         minFlankingLength = 1;
-        updateCountsForPair(report1, report2);
+        updateCountsForPair(read1, report1, read2, report2);
         Assert.assertEquals(reference.countSpanners(0, 32), 1);
         Assert.assertEquals(reference.countSpanners(32, 33), 0);
-        Assert.assertEquals(reference.countSpanners(33, 60), 1);
+        Assert.assertEquals(reference.countSpanners(33, 60), 0);
 
         // should be applied as one
         final ReadReport report3 = new ReadReport(Collections.singletonList(new Interval(0, 35)), list1);
         final ReadReport report4 = new ReadReport(Collections.singletonList(new Interval(33, 60)), list2);
-        updateCountsForPair(report3, report4);
+        updateCountsForPair(read1, report3, read2, report4);
         Assert.assertEquals(reference.countSpanners(0, 32), 2);
         Assert.assertEquals(reference.countSpanners(32, 33), 1);
-        Assert.assertEquals(reference.countSpanners(33, 60), 2);
+        Assert.assertEquals(reference.countSpanners(33, 60), 1);
     }
 
     @Test
@@ -518,20 +523,20 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         final byte GOOD_Q = (byte)minQ;
         final byte[] quals = new byte[100];
         Arrays.fill(quals, BAD_Q);
-        Assert.assertEquals(calculateTrim(quals).size(), 0);
+        Assert.assertEquals(calculateQualityTrim(quals).size(), 0);
         Arrays.fill(quals, GOOD_Q);
-        Assert.assertEquals(calculateTrim(quals), new Interval(0, 100));
+        Assert.assertEquals(calculateQualityTrim(quals), new Interval(0, 100));
         quals[minLength] = BAD_Q;
-        Assert.assertEquals(calculateTrim(quals), new Interval(0, 100));
+        Assert.assertEquals(calculateQualityTrim(quals), new Interval(0, 100));
         quals[minLength - 1] = BAD_Q;
-        Assert.assertEquals(calculateTrim(quals), new Interval(minLength + 1, 100));
+        Assert.assertEquals(calculateQualityTrim(quals), new Interval(minLength + 1, 100));
         quals[quals.length - minLength] = BAD_Q;
-        Assert.assertEquals(calculateTrim(quals), new Interval(minLength + 1, quals.length - minLength));
+        Assert.assertEquals(calculateQualityTrim(quals), new Interval(minLength + 1, quals.length - minLength));
         Arrays.fill(quals, GOOD_Q);
         for ( int idx = minLength - 1; idx < quals.length; idx += minLength ) {
             quals[idx] = BAD_Q;
         }
-        Assert.assertEquals(calculateTrim(quals).size(), 0);
+        Assert.assertEquals(calculateQualityTrim(quals).size(), 0);
     }
 
     @Test
