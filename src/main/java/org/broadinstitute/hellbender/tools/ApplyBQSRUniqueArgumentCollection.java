@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -58,12 +59,23 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
     @Argument(fullName = "global-qscore-prior", doc = "Global Qscore Bayesian prior to use for BQSR", optional = true)
     public double globalQScorePrior = -1.0;
 
-    public ApplyBQSRArgumentCollection toApplyBQSRArgumentCollection(int PRESERVE_QSCORES_LESS_THAN) {
+    /**
+     * Combine the extra arguments in {@link ApplyBQSRArgumentCollection} that are not in this {@link ApplyBQSRUniqueArgumentCollection}
+     * from the given {@link RecalibrationArgumentCollection} to create a {@link ApplyBQSRArgumentCollection}.
+     * @param bqsrArgs the recalibration arguments
+     * @return an argument collection with all the combined arguments
+     */
+    public ApplyBQSRArgumentCollection toApplyBQSRArgumentCollection(RecalibrationArgumentCollection bqsrArgs) {
         ApplyBQSRArgumentCollection ret = new ApplyBQSRArgumentCollection();
+        // include all the fields from ApplyBQSRArgumentCollection
         ret.quantizationLevels = this.quantizationLevels;
+        ret.staticQuantizationQuals = this.staticQuantizationQuals;
+        ret.roundDown = this.roundDown;
         ret.emitOriginalQuals = this.emitOriginalQuals;
-        ret.PRESERVE_QSCORES_LESS_THAN = PRESERVE_QSCORES_LESS_THAN;
         ret.globalQScorePrior = this.globalQScorePrior;
+        // include all the fields from RecalibrationArgumentCollection
+        ret.PRESERVE_QSCORES_LESS_THAN = bqsrArgs.PRESERVE_QSCORES_LESS_THAN;
+        ret.useOriginalBaseQualities = bqsrArgs.useOriginalBaseQualities;
         return ret;
     }
 }
