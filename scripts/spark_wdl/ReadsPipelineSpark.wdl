@@ -14,7 +14,7 @@ workflow ReadsPipelineSparkWorkflow {
   String? gatk_gcs_staging
   Int? num_workers
   String? image_version
-  Int? max_age
+  String? max_age
   Int executor_cores
   String executor_memory
   String driver_memory
@@ -25,8 +25,11 @@ workflow ReadsPipelineSparkWorkflow {
       gatk_docker = gatk_docker,
       gcloud_service_account_key_file = gcloud_service_account_key_file,
       gcloud_project = gcloud_project,
+      gcloud_zone = gcloud_zone,
       cluster_name = cluster_name,
-      num_workers = num_workers
+      num_workers = num_workers,
+      image_version = image_version,
+      max_age = max_age
   }
 
   call ReadsPipelineSpark {

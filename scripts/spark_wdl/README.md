@@ -24,13 +24,13 @@ CROMWELL_JAR=~/sw/cromwell-39/cromwell-39.jar
 Edit the JSON configuration in _spark_wdl/inputs_ to suit your own set
 up. At a minimum you need to set
 
-* `gcloud_service_account_key_file` to the GCP service account key file
 * `gcloud_project` to the GCP project name you are using
 * `output_vcf` to a GCS bucket that you have write access to
 
-Strictly speaking, `gcloud_service_account_key_file` is optional and you
-can authorize access to gcloud before running the WDL, with e.g.
-`gcloud auth login`.
+You need to authorize access to gcloud before running the WDL. You can
+do this with e.g. `gcloud auth login`, or alternatively, you can set
+`gcloud_service_account_key_file` in the JSON configuration to the GCP
+service account key file stored locally.
 
 The WDL will automatically create a cluster and delete it at the end of
 the job. A unique name for the cluster will be generated, unless the
@@ -51,6 +51,10 @@ the GATK Spark JAR so it doesn't need to be uploaded for every job
 (equivalent to the `GATK_GCS_STAGING` environment variable in GATK).
 
 ### Running workflows
+
+Workflows can be run locally, or using a hosted Cromwell backend,
+such as [Terra](https://app.terra.bio/). The instructions here focus
+on running locally.
 
 In the _spark_wdl_ directory, run the workflow for the small dataset
 with the following command:
