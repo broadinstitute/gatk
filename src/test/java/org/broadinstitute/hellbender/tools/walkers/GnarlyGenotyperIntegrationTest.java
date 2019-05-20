@@ -41,9 +41,13 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                //         getTestFile("fiveSampleTest.vcf"), Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 253000, 255600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
                // {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
                //         getTestFile("fiveSampleTest.vcf"), Arrays.asList(new SimpleInterval("chr20", 250865, 348163)), Arrays.asList("-stand-call-conf 10"), b38_reference_20_21},
-                {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
-                        new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
-                        getTestFile("expected.twoSamples.AS.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21
+               // {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
+               //         new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
+               //         getTestFile("twoSampleAS.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21
+               // },
+                {new File[]{new File(getToolTestDataDir() + "noGTCount.sample1.vcf"),
+                        new File(getToolTestDataDir() + "noGTCount.sample2.vcf")},
+                        getTestFile("noGTCount.expected.vcf"), Arrays.asList(new SimpleInterval("chr20")), NO_EXTRA_ARGS, hg38Reference
                 }
         };
     }

@@ -360,7 +360,8 @@ public final class GnarlyGenotyper extends CombineGVCFs {
 
         //Get AC and SB annotations
         //remove the NON_REF allele and update genotypes if necessary
-        final GenotypesContext calledGenotypes = iterateOnGenotypes(mergedVC, targetAlleles, alleleCountMap, SBsum, removeNonRef, SUMMARIZE_PLs);
+        final int[] rawGenotypeCounts = new int[3];
+        final GenotypesContext calledGenotypes = iterateOnGenotypes(mergedVC, targetAlleles, alleleCountMap, SBsum, removeNonRef, SUMMARIZE_PLs, mergedVC.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) ? null : rawGenotypeCounts);
         Integer numCalledAlleles = 0;
         if (mergedVC.hasGenotypes()) {
             for (final Allele a : targetAlleles) {
@@ -390,15 +391,20 @@ public final class GnarlyGenotyper extends CombineGVCFs {
             annotationDBBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, mergedVC.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
         }
 
-        final List<Integer> gtCounts = Arrays.stream(((String)mergedVC.getAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)).split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
-        final int refCount = numCalledAlleles/2 - gtCounts.get(1) - gtCounts.get(2);
+        final List<Integer> gtCounts;
+        if (mergedVC.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)) {
+            gtCounts = mergedVC.getAttributeAsIntList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, 0);
+        } else {
+            gtCounts = Arrays.stream(rawGenotypeCounts).boxed().collect(Collectors.toList());
+        }
+        final int refCount = Math.max(numCalledAlleles/2 - gtCounts.get(1) - gtCounts.get(2), 0);
+        //homRefs don't get counted properly because ref blocks aren't annotated
         gtCounts.set(0, refCount);
         Pair<Integer, Double> eh = ExcessHet.calculateEH(mergedVC, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles/2);
         vcfBuilder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.4f", eh.getRight()));
         vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
         vcfBuilder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
         annotationDBBuilder.attribute(GATKVCFConstants.SB_TABLE_KEY, SBsum);
-        //TODO: annotationDBBuilder add all the raw AS annotations
 
         vcfBuilder.genotypes(calledGenotypes);
         annotationDBBuilder.noGenotypes();
@@ -468,7 +474,8 @@ public final class GnarlyGenotyper extends CombineGVCFs {
      */
     private GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
-                                                final boolean nonRefReturned, final boolean summarizePLs) {
+                                                final boolean nonRefReturned, final boolean summarizePLs,
+                                                final int[] rawGenotypeCounts) {
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
         if(nonRefReturned && !inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalStateException("This tool assumes that the NON_REF allele is listed last, as in HaplotypeCaller GVCF output,"
@@ -544,6 +551,12 @@ public final class GnarlyGenotyper extends CombineGVCFs {
                 if (!a.equals(Allele.NO_CALL)) {
                     targetAlleleCounts.put(a,count+1);
                 }
+            }
+
+            //re-tally genotype counts if they are missing from the original VC
+            if (rawGenotypeCounts != null) {
+                int altCount = (int)g.getAlleles().stream().filter(a -> !a.isReference()).count();
+                rawGenotypeCounts[altCount]++;
             }
         }
         return mergedGenotypes;
