@@ -66,7 +66,7 @@ final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
 final disqVersion = System.getProperty('disq.version','0.3.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.0.1')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.71.1-SNAPSHOT')
-final guavaVersion = System.getProperty('guava.version', '19.0')
+final guavaVersion = System.getProperty('guava.version', '26.0-android')
 final testNGVersion = '6.11'
 
 // Using the shaded version to avoid conflicts between its protobuf dependency

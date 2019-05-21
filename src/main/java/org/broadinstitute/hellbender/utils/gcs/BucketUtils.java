@@ -24,7 +24,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.auth.oauth2.GoogleCredentials;
-import shaded.cloud_nio.org.threeten.bp.Duration;
+import org.threeten.bp.Duration;
 
 import java.io.*;
 import java.nio.file.Files;
