@@ -434,7 +434,12 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        return getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
+        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
+        // check whether recovering dangling ends created cycles
+        if (recoverAllDanglingBranches && rtgraph.hasCycles()) {
+            return null;
+        }
+        return result;
     }
 
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {

@@ -1175,4 +1175,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
                 variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
+
+    @Test
+    public void test() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File bamout = createTempFile("bamout", ".bam");
+
+        final List<String> args = Arrays.asList("-I", "/Users/davidben/Desktop/mito-5-22-19/09C97998.realigned.bam",
+                "-R", "/Users/davidben/Desktop/mito-5-22-19/Homo_sapiens_assembly38.chrM.shifted_by_8000_bases.fasta",
+                "-L", "chrM:8025-8500",
+                "--mitochondria-mode",
+                "--graph-output", "/Users/davidben/Desktop/graph.dot",
+                "--debug-graph-transformations",
+                "-bamout", bamout.getAbsolutePath(),
+                "-O", unfilteredVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
+    }
 }
