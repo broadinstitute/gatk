@@ -78,15 +78,15 @@ public final class KBestHaplotypeFinder {
             if (sinks.contains(vertexToExtend)) {
                 result.add(pathToExtend);
             } else {
-                final Set<BaseEdge> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
-                int totalOutgoingMultiplicity = 0;
-                for (final BaseEdge edge : outgoingEdges) {
-                    totalOutgoingMultiplicity += edge.getMultiplicity();
-                }
+                if (vertexCounts.get(vertexToExtend).getAndIncrement() < maxNumberOfHaplotypes) {
+                    final Set<BaseEdge> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
+                    int totalOutgoingMultiplicity = 0;
+                    for (final BaseEdge edge : outgoingEdges) {
+                        totalOutgoingMultiplicity += edge.getMultiplicity();
+                    }
 
-                for (final BaseEdge edge : outgoingEdges) {
-                    final SeqVertex targetVertex = graph.getEdgeTarget(edge);
-                    if (vertexCounts.get(targetVertex).getAndIncrement() < maxNumberOfHaplotypes) {
+                    for (final BaseEdge edge : outgoingEdges) {
+                        final SeqVertex targetVertex = graph.getEdgeTarget(edge);
                         queue.add(new KBestHaplotype(pathToExtend, edge, totalOutgoingMultiplicity));
                     }
                 }

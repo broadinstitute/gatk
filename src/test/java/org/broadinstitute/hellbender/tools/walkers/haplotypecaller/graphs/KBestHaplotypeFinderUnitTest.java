@@ -394,6 +394,66 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
     }
 
     @Test
+    /*
+     This is a test of what can go awry if path pruning is based on the number of incoming edges to a given vertex.
+     An illustration of the graph in this test:
+               / ----- top \
+              /(33)         \
+     refStart -(32) -- mid -- midExt ---------------------------- refEnd
+              \(34)        / (1)                               /
+               \ ---- bot /- (33) botExt - (15) - botExtTop - /
+                                        \ (18)               /
+                                         \ ------ botExtBot /
+
+      The expected best paths are (refStart->top->midExt->refEnd), and (refStart->mid->midExt->refEnd) because the bottom
+      path is penalized for two extra forks despite it greedily looking the best at the start.
+
+      Because the old behavior used to base pruning on the number of incoming edges < K, the edge (bot->midExt) would be created
+      first, then (top -> midExt) but (mid -> midExt) would never be created because midExt already has 2 incoming edges.                        
+      */
+
+    public void testDegeneratePathPruningOptimizationCase() {
+        // Construct an assembly graph demonstrating this issue
+        final SeqGraph graph = new SeqGraph(11);
+        final SeqVertex top = new SeqVertex("T");
+        final SeqVertex mid = new SeqVertex("C");
+        final SeqVertex midAndTopExt = new SeqVertex("GGG");
+        final SeqVertex bot = new SeqVertex("G");
+        final SeqVertex botExt = new SeqVertex("AAA");
+        final SeqVertex botExtTop = new SeqVertex("A");
+        final SeqVertex botExtBot = new SeqVertex("T");
+
+        // Ref source and sink vertexes
+        final SeqVertex refStart = new SeqVertex("CCCCCGGG");
+        final SeqVertex refEnd = new SeqVertex("TTTT");
+
+        graph.addVertices(top, bot, mid, midAndTopExt, bot, botExt, botExtTop, botExtBot, refStart, refEnd);
+        // First "diamond" with 3 mostly equivalent cost paths
+        graph.addEdges(() -> new BaseEdge(false, 34), refStart, bot, botExt);
+        graph.addEdges(() -> new BaseEdge(true, 33), refStart, top, midAndTopExt);
+        graph.addEdges(() -> new BaseEdge(false, 32), refStart, mid, midAndTopExt);
+
+        // The best looking path reconnects with a very poor edge multiplicity to midAndTopExt (This is this is what casues the bug)
+        graph.addEdges(() -> new BaseEdge(false, 1), bot, midAndTopExt);
+        // There is another diamond at bot ext that will end up discounting that path from being in the k best
+        graph.addEdges(() -> new BaseEdge(false, 15), botExt, botExtTop, refEnd);
+        graph.addEdges(() -> new BaseEdge(false, 18), botExt, botExtBot, refEnd);
+
+        // Wheras the path is smooth sailing from refEnd
+        graph.addEdges(() -> new BaseEdge(true, 65), midAndTopExt, refEnd);
+
+        @SuppressWarnings("all")
+        final List<KBestHaplotype> bestPaths = new KBestHaplotypeFinder(graph,refStart,refEnd).findBestHaplotypes(2);
+        Assert.assertEquals(bestPaths.size(), 2);
+        final Path<SeqVertex,BaseEdge> refPath = bestPaths.get(0);
+        final Path<SeqVertex,BaseEdge> altPath = bestPaths.get(1);
+
+        Assert.assertEquals(refPath.getVertices().toArray(new SeqVertex[0]), new SeqVertex[]{refStart, top, midAndTopExt, refEnd});
+        Assert.assertEquals(altPath.getVertices().toArray(new SeqVertex[0]), new SeqVertex[]{refStart, mid, midAndTopExt, refEnd});
+    }
+
+
+    @Test
     public void testHardSWPath() {
         // Construct the assembly graph
         final SeqGraph graph = new SeqGraph(11);
