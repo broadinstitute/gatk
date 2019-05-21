@@ -138,7 +138,6 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     private boolean stripASAnnotations = false;
 
 
-    private VariantContextWriter vcfWriter;
     private VariantContextWriter annotationDBwriter = null;
 
     /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */

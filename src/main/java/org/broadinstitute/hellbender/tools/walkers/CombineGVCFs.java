@@ -76,7 +76,7 @@ import java.util.*;
 public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     private VariantAnnotatorEngine annotationEngine;
-    private VariantContextWriter vcfWriter;
+    protected VariantContextWriter vcfWriter;
     private SAMSequenceDictionary sequenceDictionary;
     private ReferenceConfidenceVariantContextMerger referenceConfidenceVariantContextMerger;
 
@@ -213,7 +213,7 @@ public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             SimpleInterval loc = new SimpleInterval(intervalToClose.getContig(), stoppedLoc, stoppedLoc);
             if (( stoppedLoc <= intervalToClose.getEnd() && stoppedLoc>= intervalToClose.getStart()) && isWithinInterval(loc)) {
                 byte[] refBases = Arrays.copyOfRange(storedReferenceContext.getBases(), stoppedLoc - storedReferenceContext.getWindow().getStart(), stoppedLoc - storedReferenceContext.getWindow().getStart() + 2);
-                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, finalizedVCs == null);
+                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, finalizedVCs == null || finalizedVCs.isEmpty());
                 if (finalizedVCs != null) {
                     finalizedVCs.add(endedVC);
                 }
