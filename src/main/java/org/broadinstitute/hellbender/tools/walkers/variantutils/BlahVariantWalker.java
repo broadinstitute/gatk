@@ -29,7 +29,6 @@ import java.util.*;
 public final class BlahVariantWalker extends VariantWalker {
     static final Logger logger = LogManager.getLogger(BlahVariantWalker.class);
 
-    private final int GQ_CUTOFF = 60;
     private final char SEPARATOR = '\t';
     private SimpleXSVWriter vetWriter = null;
     private SimpleXSVWriter petWriter = null;
@@ -47,6 +46,10 @@ public final class BlahVariantWalker extends VariantWalker {
             doc="Path to where the positions table should be written")
     public GATKPathSpecifier petOutput = null;
 
+    @Argument(fullName = "gq-dropped-band",
+            shortName = "GQD",
+            doc="GQ band to drop for storage optimization")
+    private Optional<Integer> gqDroppedBand = Optional.empty();
 
 
     @Override
@@ -72,8 +75,6 @@ public final class BlahVariantWalker extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final String sampleName = variant.getGenotype(0).getSampleName();
-        //logger.info("Current variant: " + variant);
-        // This is a wrapper to loop thru createTSV function -- and split out the VET and PET tables
 
         // create VET output
         if (!variant.isReferenceBlock()) {
@@ -85,7 +86,7 @@ public final class BlahVariantWalker extends VariantWalker {
             vetLine.write();
         }
         // create PET output
-        if (variant.getGenotype(0).getGQ() < GQ_CUTOFF) {
+        if (!gqDroppedBand.isPresent() || variant.getGenotype(0).getGQ() < gqDroppedBand.get()) {
             List<List<String>> TSVLinesToCreatePet;
             TSVLinesToCreatePet = BlahPetCreation.createPositionRows(variant);
 
@@ -95,13 +96,16 @@ public final class BlahVariantWalker extends VariantWalker {
             }
         }
 
-        // create "missing" variants
-        if (!(lastSeenPosition == null) && !(lastSeenPosition + 1 == variant.getStart())){
-            // actually make sure this is a position we call over -- may want to use interval lists (ask David)
-            BlahPetCreation.createMissingTSV(lastSeenPosition + 1, variant.getEnd(), sampleName);
+        // create "missing" variants if a GQ band to drop has been set
+        if (gqDroppedBand.isPresent()) {
+            if (!(lastSeenPosition == null) && !(lastSeenPosition + 1 == variant.getStart())){
+                // actually make sure this is a position we call over -- may want to use interval lists (ask David)
+                BlahPetCreation.createMissingTSV(lastSeenPosition + 1, variant.getEnd(), sampleName);
+            }
+            lastSeenPosition = variant.getEnd();
         }
 
-        lastSeenPosition = variant.getEnd();
+
     }
 
     @Override

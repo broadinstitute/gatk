@@ -74,6 +74,8 @@ public final class BlahPetCreation {
                 state = GQStateEnum.FORTY;
             } else if (genotypeQual < 60) {
                 state = GQStateEnum.FIFTY;
+            } else if (genotypeQual >= 60) {
+                state = GQStateEnum.SIXTY;
             } else {
                 throw new IllegalArgumentException("GQ is not in the range we expect");
             }
