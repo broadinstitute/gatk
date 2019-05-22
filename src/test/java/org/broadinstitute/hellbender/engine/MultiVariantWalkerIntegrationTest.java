@@ -61,7 +61,7 @@ public final class MultiVariantWalkerIntegrationTest extends CommandLineProgramT
         }
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = UserException.class)
     public void testDuplicateSources() throws Exception {
         final TestMultiVariantWalker tool = new TestMultiVariantWalker();
 

@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
@@ -64,7 +65,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                 f -> {
                     FeatureInput<VariantContext> featureInput = new FeatureInput<>(f);
                     if (drivingVariantsFeatureInputs.contains(featureInput)) {
-                        throw new IllegalArgumentException("Feature inputs must be unique: " + featureInput.toString());
+                        throw new UserException.BadInput("Feature inputs must be unique: " + featureInput.toString());
                     }
                     drivingVariantsFeatureInputs.add(featureInput);
 
