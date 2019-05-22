@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.alg.CycleDetector;
 

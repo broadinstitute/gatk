@@ -171,9 +171,9 @@ public final class ReadThreadingAssembler {
         return resultSet;
     }
 
-    private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
-    List<Haplotype> findBestPaths(final Collection<T> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
-                                          final Map<T, AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet, final SmithWatermanAligner aligner) {
+    private <V extends  BaseVertex, E extends BaseEdge, G extends BaseGraph<V, E>>
+    List<Haplotype> findBestPaths(final Collection<G> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
+                                  final Map<G, AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet, final SmithWatermanAligner aligner) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
@@ -484,48 +484,32 @@ public final class ReadThreadingAssembler {
 
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
 
-        // Either return an assembly result with a sequence graph or with an unchanged sequence graph deptending on the kmer duplication behavior
-        if (generateSeqGraph) {
-            final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
-            if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
-            }
 
-            // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
-            if (justReturnRawGraph) {
-                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
-            }
+        final SeqGraph initialSeqGraph = generateSeqGraph? rtgraph.toSequenceGraph() : null;
 
-            if (debug) {
-                logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
-            }
-            printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
-            initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
-
-            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph);
-            final AssemblyResult.Status status = cleaned.getStatus();
-            return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
-
-        } else {
-            if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
-            }
-
-            // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
-            if (justReturnRawGraph) {
-                return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
-            }
-
-            if (debug) {
-                logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
-            }
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
-            rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
-
-            final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
-            final AssemblyResult.Status status = cleaned.getStatus();
-            return new AssemblyResult(status, null , cleaned.getThreadingGraph());
+        if (debugGraphTransformations) {
+            rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
         }
+
+        // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
+        if (justReturnRawGraph) {
+            return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, initialSeqGraph == null ? rtgraph : null);
+        }
+
+        if (debug) {
+            logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
+        }
+
+        printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+        if (generateSeqGraph) {
+            initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
+        } else {
+            rtgraph.cleanNonRefPaths();
+        }
+
+        final AssemblyResult cleaned = generateSeqGraph ? cleanupSeqGraph(initialSeqGraph) : getResultSetForRTGraph(rtgraph);
+        final AssemblyResult.Status status = cleaned.getStatus();
+        return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
     }
 
     @Override

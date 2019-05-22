@@ -133,7 +133,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     /**
      * Pull out the additional sequence implied by traversing this node in the graph
      * @param v the vertex from which to pull out the additional base sequence
-     * @param isSource if true, treat v as a source vertex regardless of graph in degree
+     * @param isSource if true, treat v as a source vertex regardless of graph in-degree
      * @return  non-null byte array
      */
     public final byte[] getAdditionalSequence( final V v, final boolean isSource) {

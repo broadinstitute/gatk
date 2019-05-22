@@ -986,26 +986,9 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @return a non-null NonUniqueResult
      */
     private Set<Kmer> determineNonUniques(final int kmerSize) {
-        final Collection<SequenceForKmers> withNonUniques = getAllPendingSequences();
-        final Set<Kmer> nonUniqueKmers = new HashSet<>();
-
-        // loop over all sequences that have non-unique kmers in them from the previous iterator
-        final Iterator<SequenceForKmers> it = withNonUniques.iterator();
-        while ( it.hasNext() ) {
-            final SequenceForKmers sequenceForKmers = it.next();
-
-            // determine the non-unique kmers for this sequence
-            final Collection<Kmer> nonUniquesFromSeq = determineNonUniqueKmers(sequenceForKmers, kmerSize);
-            if ( nonUniquesFromSeq.isEmpty() ) {
-                // remove this sequence from future consideration
-                it.remove();
-            } else {
-                // keep track of the non-uniques for this kmerSize, and keep it in the list of sequences that have non-uniques
-                nonUniqueKmers.addAll(nonUniquesFromSeq);
-            }
-        }
-
-        return nonUniqueKmers;
+        return getAllPendingSequences().stream()
+                .flatMap(seq -> determineNonUniqueKmers(seq, kmerSize).stream())
+                .collect(Collectors.toSet());
     }
 
     /**

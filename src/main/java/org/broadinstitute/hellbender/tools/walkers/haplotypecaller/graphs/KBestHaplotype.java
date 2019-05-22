@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
 /**
@@ -10,14 +8,14 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class KBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends Path<T, E>{
+public final class KBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends Path<V, E>{
     private double score;
     private boolean isReference;
 
     public double score() { return score; }
     public boolean isReference() { return isReference; }
 
-    public KBestHaplotype(final T initialVertex, final BaseGraph<T,E> graph) {
+    public KBestHaplotype(final V initialVertex, final BaseGraph<V,E> graph) {
         super(initialVertex, graph);
         score = 0;
     }
