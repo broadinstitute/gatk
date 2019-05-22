@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.segme
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
+import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.annotation.Strand;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -35,8 +36,9 @@ public class SegmentExonUtils {
      *   - "" indicates that the endpoints of the segment do not cover any transcript exons.  So either the entire
      *      transcript is covered or none of the transcript is covered.
      *
-     *   Note that this will return the first exon covered.  So, this will yield a non-blank value when a segment
-     *    breakpoint is in an intron.
+     *   Note that this will return the first exon covered, as long as the breakpoint is in the transcript.  Even if the
+     *    breakpoint itself does not cover an exon.
+     *    For example, this will yield a non-blank value when a segment breakpoint is in an intron.
      */
     public static SegmentExonOverlaps determineSegmentExonPosition(final GencodeGtfTranscriptFeature transcript, final Locatable segment) {
 
@@ -58,12 +60,19 @@ public class SegmentExonUtils {
         final SimpleInterval segmentStart = new SimpleInterval(segment.getContig(), segment.getStart(), segment.getStart());
         final SimpleInterval segmentEnd = new SimpleInterval(segment.getContig(), segment.getEnd(), segment.getEnd());
 
+//        // Find the proper index for the start.
+//        // If the start of the segment does not overlap the first exon, but the segment does, then the start index is -1 (no overlap)
+//        final int inclusiveIndexPositiveDirectionStart = findInclusiveIndexPositiveDirectionStart(transcript, exons, isExonOverlappedMask, segmentStart);
+//
+//        // If the end of the segment does not overlap the last exon, but the segment does, then the end index is -1 (no overlap)
+//        final int inclusiveIndexPositiveDirectionEnd = findInclusiveIndexPositiveDirectionEnd(transcript, exons, isExonOverlappedMask, segmentEnd);
+
         // Find the proper index for the start.
         // If the start of the segment does not overlap the first exon, but the segment does, then the start index is -1 (no overlap)
-        final int inclusiveIndexPositiveDirectionStart = findInclusiveIndexPositiveDirectionStart(transcript, exons, isExonOverlappedMask, segmentStart);
+        final int inclusiveIndexPositiveDirectionStart = findInclusiveExonIndex(transcript, exons, segmentStart);
 
         // If the end of the segment does not overlap the last exon, but the segment does, then the end index is -1 (no overlap)
-        final int inclusiveIndexPositiveDirectionEnd = findInclusiveIndexPositiveDirectionEnd(transcript, exons, isExonOverlappedMask, segmentEnd);
+        final int inclusiveIndexPositiveDirectionEnd = findInclusiveExonIndex(transcript, exons, segmentEnd);
 
         // Construct the final strings
         final String startResult = inclusiveIndexPositiveDirectionStart != NO_EXON_OVERLAP ?
@@ -75,6 +84,47 @@ public class SegmentExonUtils {
 
         return new SegmentExonOverlaps(startResult, endResult);
     }
+
+    // exons, transcript, and segment must be on the same contig.
+    private static int findInclusiveExonIndex(final GencodeGtfTranscriptFeature transcript, final List<GencodeGtfExonFeature> exons, final SimpleInterval segment) {
+
+        if (exons.size() == 0) {
+            return NO_EXON_OVERLAP;
+        }
+
+        final IntervalTree<GencodeGtfExonFeature> exonFeatureIntervalTree = new IntervalTree<>();
+        exons.forEach(e -> exonFeatureIntervalTree.put(e.getGenomicStartLocation(), e.getGenomicEndLocation(), e));
+
+        final IntervalTree.Node<GencodeGtfExonFeature> gencodeGtfExonFeatureNode = exonFeatureIntervalTree.minOverlapper(segment.getStart(), segment.getEnd());
+        final GencodeGtfExonFeature exon = gencodeGtfExonFeatureNode != null ? gencodeGtfExonFeatureNode.getValue() : null;
+
+        // We need to figure out if the segment is in an intron
+        final boolean isOverlapExonExtents = IntervalUtils.overlaps(segment, new SimpleInterval(segment.getContig(), exons.get(0).getGenomicStartLocation(),
+                exons.get(exons.size()-1).getGenomicEndLocation()));
+
+        final boolean isIntron = (exon == null) && isOverlapExonExtents;
+
+        if ((exon == null) && !isIntron) {
+            return NO_EXON_OVERLAP;
+        } else if (isIntron) {
+            // TODO: Fix for negative strand.
+            // Build an intron map
+            for (int i = 1; i < exons.size(); i ++) {
+                final GencodeGtfExonFeature currentExon =  exons.get(i);
+                final GencodeGtfExonFeature prevExon =  exons.get(i-1);
+
+                final Locatable intron = new SimpleInterval(currentExon.getChromosomeName(), prevExon.getEnd() + 1, currentExon.getStart() - 1);
+                if (IntervalUtils.overlaps(segment, intron)) {
+                    return i - 1;
+                }
+            }
+        } else {
+            return exon.getExonNumber() - 1;
+        }
+        return NO_EXON_OVERLAP;
+    }
+
+//    private static IntervalTree<Locatable> createIntronMap(final List<GencodeGtfExonFeature> exons)
 
     private static int findInclusiveIndexPositiveDirectionEnd(final GencodeGtfTranscriptFeature transcript, final List<GencodeGtfExonFeature> exons, final boolean[] isExonOverlappedMask, final SimpleInterval segmentEnd) {
         int inclusiveIndexPositiveDirectionEnd = NO_EXON_OVERLAP;
@@ -95,6 +145,8 @@ public class SegmentExonUtils {
         }
         return inclusiveIndexPositiveDirectionEnd;
     }
+
+
 
     private static int findInclusiveIndexPositiveDirectionStart(final GencodeGtfTranscriptFeature transcript, final List<GencodeGtfExonFeature> exons, final boolean[] isExonOverlappedMask, final SimpleInterval segmentStart) {
         int inclusiveIndexPositiveDirectionStart = NO_EXON_OVERLAP;

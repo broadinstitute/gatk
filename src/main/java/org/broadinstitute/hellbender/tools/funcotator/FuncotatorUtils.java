@@ -2049,8 +2049,10 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * @param configFile Must be readable.
-     * @return Configuration instance.
+     * Create a configuration instance from a properties file, where key names are ordered.
+     *
+     * @param configFile Must be a readable file.
+     * @return Configuration instance. Never {@code null}
      */
     public static Configuration retrieveConfiguration(final File configFile) {
         IOUtils.assertFileIsReadable(configFile.toPath());
@@ -2064,7 +2066,10 @@ public final class FuncotatorUtils {
         }
     }
 
-    /**
+    /** Determine whether a given variant context represents a segment.
+     *
+     * Dev note: this is done by examining the length and the alt allele of the segment.
+     *
      * @param vc Never {@code null}
      * @return Boolean whether the given variant context could represent a copy number segment.
      */
@@ -2203,8 +2208,8 @@ public final class FuncotatorUtils {
     /**
      * Create funcotations (one for each alt allele) corresponding to the given variant context.
      *
-     * Assumes that the fields in the variant context are named exactly the same as what is in the metadata.  Additionally, the
-     * metadata must include all variant attributes.
+     * Assumes that the fields in the variant context are named exactly the same as what is in the metadata, though the
+     *  metadata may have additional fields.  The metadata must include all variant attributes.
      *
      * @param vc The variant context to derive funcotations.  Never {@code null}
      * @param metadata Existing metadata that must be a superset of the variant context info field attributes.  Never {@code null}
@@ -2228,9 +2233,10 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Use the given metadata to create funcotations from a variant context attributes (and alt alleles)
+     * Use the given metadata to create funcotations from variant context attributes (and alt alleles)
      * @param vc Never {@code null}
-     * @param metadata Fields that should be present in the funcotations.  Never {@code null}
+     * @param metadata Fields that should be present in the funcotations.  Can be a superset of the fields in the
+     *                 funcotations.  Never {@code null}
      * @param datasourceName Name to appear in all funcotations.  Never {@code null}
      * @return Instances of {@link Funcotation} for each field in the metadata x alternate allele in the variant context.
      * If a field is not present in the variant context attributes, the field will ave value empty string ("") in all output

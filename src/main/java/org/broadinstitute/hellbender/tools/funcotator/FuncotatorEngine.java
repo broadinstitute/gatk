@@ -75,7 +75,7 @@ public final class FuncotatorEngine implements AutoCloseable {
     /**
      * Whether the input variant contigs must be converted to hg19.
      * This is only the case when the input reference is b37 AND when
-     * the reference version is hg19 (i.e. {@link FuncotatorVariantArgumentCollection#referenceVersion} == {@link FuncotatorArgumentDefinitions#HG19_REFERENCE_VERSION_STRING}).
+     * the reference version is hg19 (i.e. {@link FuncotatorVariantArgumentCollection#referenceVersion} == {@link FuncotatorVariantArgumentCollection.FuncotatorReferenceVersion#hg19}).
      */
     private final boolean mustConvertInputContigsToHg19;
 
@@ -209,7 +209,8 @@ public final class FuncotatorEngine implements AutoCloseable {
         // We do not need to treat the Gencode funcotations as a special case
 
         if (retrieveGencodeFuncotationFactoryStream().count() > 1) {
-            logger.warn("Attempting to annotate with more than one GENCODE datasource.  If these have overlapping transcript IDs, errors may occur.");
+            logger.error("Attempting to annotate with more than one GENCODE datasource.  If these have overlapping transcript IDs, errors may occur, so it has been disallowed.");
+            throw new UserException.BadInput("Attempting to funcotate segments with more than one GENCODE datasource.  This is currently not supported.  Please post to the forum if you would like to see support for this.");
         }
 
         final List<Funcotation> funcotations = dataSourceFactories.stream()

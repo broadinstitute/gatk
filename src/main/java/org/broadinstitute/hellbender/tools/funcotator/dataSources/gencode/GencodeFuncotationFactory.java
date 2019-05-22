@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.segment.SegmentExonUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -145,12 +146,30 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                           GencodeFuncotation.VariantClassification.START_CODON_SNP,
                                           GencodeFuncotation.VariantClassification.START_CODON_INS,
                                           GencodeFuncotation.VariantClassification.START_CODON_DEL));
+    /** Used when generating the genes field name for segment funcotations. */
     public static final String GENES_SUFFIX = "_genes";
+    /** Since gencode funcotation field names are generated dynamically, we have to search the incoming funcotation fields for the proper gencode funcotations.  This suffix (and the others below)
+     * help define regular expression patterns for finding the appropriate field names.
+     *
+     * Used when generating the start gene (gene that overlaps the starting breakpoint of a segment) field name for segment funcotations.
+     */
     public static final String START_GENE_SUFFIX = "_start_gene";
+    /** Used when generating the end gene (gene that overlaps the ending breakpoint of a segment) field name for segment funcotations.
+     * See {@link GencodeFuncotationFactory#START_GENE_SUFFIX} for more information. */
     public static final String END_GENE_SUFFIX = "_end_gene";
+    /** Used when generating start exon field name for segment funcotations.  This is the exon that overlaps the starting breakpoint.
+     * A "+" means all higher number exons in the coding direction.  And "-" means lower-number.  E.g. "5+"
+     * See {@link GencodeFuncotationFactory#START_GENE_SUFFIX} for more information. */
     public static final String START_EXON_SUFFIX = "_start_exon";
+    /** Used when generating end exon field name for segment funcotations. This is the exon that overlaps the end breakpoint.
+     * A "+" means all higher number exons in the coding direction.  And "-" means lower-number.  E.g. "7+"
+     * See {@link GencodeFuncotationFactory#START_GENE_SUFFIX} for more information. */
     public static final String END_EXON_SUFFIX = "_end_exon";
+
+    /** The separator for the genes field when funcotating segments. */
     private static final String GENES_FIELD_SEPARATOR = ",";
+
+    /** The string for the genes field when no genes overlap a segment. */
     private static final String NO_GENE_INFO_STR = "";
 
     /** For legacy reasons, the alt allele column is always blank in funcotations. */
@@ -230,14 +249,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     // Constructors:
 
     /**
-     * Creates a {@link GencodeFuncotationFactory} with the 5'/3' flank sizes both set to 0.
+     * Creates a {@link GencodeFuncotationFactory} with the 5'/3' flank sizes both set to 0 and will funcotate segments.
      *
      * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
      * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
      * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
      * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
      * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
-     * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
@@ -253,14 +272,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Create a {@link GencodeFuncotationFactory}.
+     * Create a {@link GencodeFuncotationFactory} that will funcotate segments.
      *
      * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
      * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
      * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
      * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
      * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
-     * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
      * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
@@ -285,7 +304,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
      * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
      * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
-     * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
      * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
@@ -334,8 +353,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set our comparator for outputting our funcotations in the right order with the correct "best" transcript:
         gencodeFuncotationComparator = transcriptSelectionMode.getComparator(userRequestedTranscripts);
 
-        // Initialize segment metadata.  This will only be used if funcotating segments.
-        segmentMetadata = createSegmentFuncotationMetadata();
+        // Initialize segment metadata.  This will only be used if funcotating segments.  If we are not doing that create
+        //  an empty set of metadata for segments.
+        // TODO: Refactor this away as part of https://github.com/broadinstitute/gatk/issues/5932
+        segmentMetadata = isSegmentFuncotationEnabled? createSegmentFuncotationMetadata() :
+                FuncotationMetadataUtils.createWithUnknownAttributes(Collections.emptyList());
 
         // Initialize overrides / defaults:
         initializeAnnotationOverrides( annotationOverrides );
@@ -2792,14 +2814,17 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         int fivePrimeUtrEnd;
     }
 
+    //==================================================================================================================
+    // Segment annotation specific Methods
+
     @Override
     public LinkedHashSet<String> getSupportedFuncotationFieldsForSegments() {
-        return segmentMetadata.retrieveAllHeaderInfo().stream().map(m -> m.getID())
+        return segmentMetadata.retrieveAllHeaderInfo().stream().map(VCFInfoHeaderLine::getID)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private List<String> getSupportedFuncotationFieldsForSegmentsAsList() {
-        return segmentMetadata.retrieveAllHeaderInfo().stream().map(m -> m.getID())
+        return segmentMetadata.retrieveAllHeaderInfo().stream().map(VCFInfoHeaderLine::getID)
                 .collect(Collectors.toList());
     }
 
@@ -2823,8 +2848,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         );
     }
 
-    //==================================================================================================================
-    // Segment annotation specific Methods
+
     @Override
     public boolean isSupportingSegmentFuncotation() {
         return isSegmentFuncotationEnabled;
@@ -2903,12 +2927,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     private static VariantContext createSubSegmentAsVariantContext(final VariantContext segmentVariantContext, final int start, final int end) {
-        final String dummyAlt = "<REF>";
+
         return new VariantContextBuilder()
                 .chr(segmentVariantContext.getContig())
                 .start(start)
                 .stop(end)
-                .alleles(Arrays.asList(segmentVariantContext.getReference(), Allele.create(dummyAlt)))
+                .alleles(segmentVariantContext.getAlleles())
                 .make();
     }
 

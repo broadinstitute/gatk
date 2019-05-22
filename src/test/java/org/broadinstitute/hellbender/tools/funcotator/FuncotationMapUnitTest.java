@@ -860,10 +860,13 @@ public class FuncotationMapUnitTest extends GATKBaseTest {
             };
     }
 
-    @Test(dataProvider="provideGetFieldNames")
+    @Test(dataProvider="provideGetFieldNames", description = "Tests both getFieldNames(txID) AND the private method, getFieldNames()")
     public void testGetFieldNames(final FuncotationMap funcotationMap, final LinkedHashMap<String, Set<String>> gtFieldNamesList, final boolean gtDoAllTxAlleleCombinationsHaveTheSameFields,
                                   final Map<String, Set<String>> gtTxIdToAllAlleles){
         funcotationMap.getTranscriptList().forEach(txId -> Assert.assertEquals(funcotationMap.getFieldNames(txId), gtFieldNamesList.get(txId)));
+
+        final Set<String> gtAllFieldNames = gtFieldNamesList.keySet().stream().map(gtFieldNamesList::get).flatMap(Set::stream).collect(Collectors.toSet());
+        Assert.assertEquals(funcotationMap.getFieldNames(), gtAllFieldNames);
     }
 
     @Test(dataProvider="provideGetFieldNames")

@@ -117,7 +117,7 @@ public class SegmentExonUtilsUnitTest extends GATKBaseTest {
 
         final SegmentExonOverlaps guess = SegmentExonUtils.determineSegmentExonPosition(geneFeature.getTranscripts().get(0), segment);
 
-        Assert.assertEquals(guess.getSegmentStartExonOverlap(), gtStart);
-        Assert.assertEquals(guess.getSegmentEndExonOverlap(), gtEnd);
+        Assert.assertEquals(guess.getSegmentStartExonOverlap(), gtStart, "Start segment exon overlap incorrect");
+        Assert.assertEquals(guess.getSegmentEndExonOverlap(), gtEnd, "End segment exon overlap incorrect");
     }
 }

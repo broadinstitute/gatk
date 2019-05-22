@@ -18,6 +18,12 @@ import java.util.Arrays;
  * Implements fields for use in known locatables.
  *
  * This class should only be used in specialized cases.
+ *
+ * This class creates a funcotation with only the locatable inforamtion (CONTIG, START, and END) from a locatable.
+ *
+ * If you are trying to create funcotations based on the attributes of a variant context, please see
+ * {@link FuncotatorUtils#createFuncotations(VariantContext, FuncotationMetadata, String)}
+ *
  */
 public class LocatableFuncotationCreator {
 

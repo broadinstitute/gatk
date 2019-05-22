@@ -2216,7 +2216,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    public Object[][] provideCreateFuncotationsFromMetadata() {
+    public Object[][] provideCreateFuncotations() {
         final Map<String, String> attributes1 = ImmutableMap.of("FOOFIELD", "FOO", "BAZFIELD", "BAZ");
         final List<VCFInfoHeaderLine> attributes1AsVcfHeaderLine = attributes1.keySet().stream()
                 .map(k -> new VCFInfoHeaderLine(k, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Description here"))
@@ -2226,6 +2226,12 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         final List<VCFInfoHeaderLine> attributes2AsVcfHeaderLine = attributes2.keySet().stream()
                 .map(k -> new VCFInfoHeaderLine(k, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Description here"))
                 .collect(Collectors.toList());
+
+        final List<VCFInfoHeaderLine> attributes2AsVcfHeaderLineWithExtras = attributes2.keySet().stream()
+                .map(k -> new VCFInfoHeaderLine(k, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Description here"))
+                .collect(Collectors.toList());
+        attributes2AsVcfHeaderLineWithExtras.add(new VCFInfoHeaderLine("EXTRA", VCFHeaderLineCount.A, VCFHeaderLineType.String, "Description here"));
+
 
         return new Object[][] {
             { new VariantContextBuilder(
@@ -2248,17 +2254,27 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                     .make(),
                     VcfFuncotationMetadata.create(attributes2AsVcfHeaderLine),
                     "TEST1"
+            }, { new VariantContextBuilder(
+                    FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                    "chr3",
+                    1000000,
+                    1000000,
+                    Arrays.asList(Allele.create("A", true), Allele.create("C"), Allele.create("ATT")))
+                    .attributes(attributes1)
+                    .make(),
+                    VcfFuncotationMetadata.create(attributes2AsVcfHeaderLineWithExtras),
+                    "TEST1"
             }
         };
     }
 
-    @Test(dataProvider = "provideCreateFuncotationsFromMetadata")
-    public void testCreateFuncotationsFromMetadata(final VariantContext vc, final FuncotationMetadata metadata, final String datasourceName) {
-        final List<Funcotation> funcotations = FuncotatorUtils.createFuncotationsFromMetadata(vc, metadata, datasourceName);
+    @Test(dataProvider = "provideCreateFuncotations")
+    public void testCreateFuncotations(final VariantContext vc, final FuncotationMetadata metadata, final String datasourceName) {
+        final List<Funcotation> funcotations = FuncotatorUtils.createFuncotations(vc, metadata, datasourceName);
 
         Assert.assertTrue(funcotations.stream().allMatch(f -> f.getDataSourceName().equals(datasourceName)));
-        Assert.assertEquals(funcotations.stream().map(f -> f.getAltAllele()).collect(Collectors.toSet()), new HashSet<>(vc.getAlternateAlleles()));
-        Assert.assertEquals(funcotations.stream().map(f -> f.getMetadata()).collect(Collectors.toSet()), new HashSet<>(Collections.singletonList(metadata)));
+        Assert.assertEquals(funcotations.stream().map(Funcotation::getAltAllele).collect(Collectors.toSet()), new HashSet<>(vc.getAlternateAlleles()));
+        Assert.assertEquals(funcotations.stream().map(Funcotation::getMetadata).collect(Collectors.toSet()), new HashSet<>(Collections.singletonList(metadata)));
     }
 
     @DataProvider

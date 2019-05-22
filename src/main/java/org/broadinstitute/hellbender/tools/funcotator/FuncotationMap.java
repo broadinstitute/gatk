@@ -254,15 +254,16 @@ public class FuncotationMap {
      * See {@link FuncotationMap#getFieldNames(String)}, but this returns field names for all transcripts and all alleles.
      * @return  See {@link FuncotationMap#getFieldNames(String)}
      */
-    private Set<String> getFieldNames() {
+    @VisibleForTesting
+    Set<String> getFieldNames() {
         final List<String> txIds = getTranscriptList();
-        final Set<String> result = new HashSet<>();
+        final LinkedHashSet<String> result = new LinkedHashSet<>();
         txIds.forEach(txId -> result.addAll(getFieldNames(txId)));
         return result;
     }
 
     /**
-     * See {@link FuncotationMap#getFieldNames(String)}, but this returns field names for a single transcripts and a
+     * See {@link FuncotationMap#getFieldNames(String)}, but this returns field names for a single transcript and a
      *  single allele.
      * @param transcriptId See {@link FuncotationMap#getFieldNames(String)}
      * @param allele Never {@code null}
@@ -276,7 +277,7 @@ public class FuncotationMap {
         return funcotations.stream()
                 .filter(f -> f.getAltAllele().equals(allele))
                 .map(Funcotation::getFieldNames)
-                .flatMap(LinkedHashSet::stream).collect(Collectors.toSet());
+                .flatMap(LinkedHashSet::stream).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -320,6 +321,7 @@ public class FuncotationMap {
         Utils.nonNull(funcotationMap);
         final Kryo kryo = new Kryo();
 
+        // The krypo instance is modified in-place with this call.
         GATKRegistrator.registerFuncotationMapDependencies(kryo);
 
         // Register this class to be serialized.
@@ -333,7 +335,7 @@ public class FuncotationMap {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        FuncotationMap that = (FuncotationMap) o;
+        final FuncotationMap that = (FuncotationMap) o;
 
         return txToFuncotations.equals(that.txToFuncotations);
     }

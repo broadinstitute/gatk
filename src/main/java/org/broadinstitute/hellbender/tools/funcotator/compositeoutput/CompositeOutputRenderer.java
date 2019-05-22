@@ -11,7 +11,7 @@ import java.util.List;
  */
 public class CompositeOutputRenderer extends OutputRenderer {
 
-    private List<OutputRenderer> outputRenderers;
+    private final List<OutputRenderer> outputRenderers;
 
     public CompositeOutputRenderer(final List<OutputRenderer> outputRenderers, final String toolVersion) {
         super(toolVersion);
@@ -23,7 +23,7 @@ public class CompositeOutputRenderer extends OutputRenderer {
      */
     @Override
     public void close() {
-        outputRenderers.forEach(or -> or.close());
+        outputRenderers.forEach(OutputRenderer::close);
     }
 
     /**

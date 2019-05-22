@@ -6,8 +6,8 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.segme
  * See {@link SegmentExonUtils}
  */
 public class SegmentExonOverlaps {
-    private String segmentStartExonOverlap;
-    private String segmentEndExonOverlap;
+    private final String segmentStartExonOverlap;
+    private final String segmentEndExonOverlap;
 
     public SegmentExonOverlaps(final String segmentStartExonOverlap, final String segmentEndExonOverlap) {
         this.segmentStartExonOverlap = segmentStartExonOverlap;
