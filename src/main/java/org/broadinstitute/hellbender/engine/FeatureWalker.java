@@ -96,7 +96,7 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
                 });
     }
 
-    protected <T extends Feature> SimpleInterval makeFeatureInterval(T feature) {
+    protected <T extends Feature> SimpleInterval makeFeatureInterval(final T feature) {
         return new SimpleInterval(feature);
     }
 

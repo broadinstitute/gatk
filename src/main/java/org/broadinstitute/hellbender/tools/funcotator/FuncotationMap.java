@@ -165,7 +165,7 @@ public class FuncotationMap {
     }
 
     /**
-     * Get the list of transcripts in order.
+     * Get the list of transcripts, in order.
      *
      * @return Never {@code null}
      */
@@ -174,7 +174,7 @@ public class FuncotationMap {
     }
 
     /**
-     * Get the transcripts as a of transcripts in order.
+     * Get the transcripts as a set, but preserve the order.
      *
      * @return Never {@code null}
      */

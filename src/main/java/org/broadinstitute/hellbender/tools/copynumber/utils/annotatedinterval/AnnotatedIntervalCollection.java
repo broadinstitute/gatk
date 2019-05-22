@@ -39,7 +39,6 @@ public class AnnotatedIntervalCollection {
 
     private static final Logger logger = LogManager.getLogger(AnnotatedIntervalCollection.class);
 
-    // Rename to annotated interval default.config
     private final SAMFileHeader samFileHeader;
 
     /** Does not include the locatable fields. Always sorted alphabetically. */

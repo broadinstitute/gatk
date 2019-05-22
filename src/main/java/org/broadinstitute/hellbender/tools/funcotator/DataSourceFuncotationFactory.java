@@ -221,8 +221,9 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
     }
 
     private List<Funcotation> determineFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
+
         // Create our funcotations:
-        List<Funcotation> outputFuncotations;
+        final List<Funcotation> outputFuncotations;
 
         if (FuncotatorUtils.isSegmentVariantContext(variant) && isSupportingSegmentFuncotation()) {
             outputFuncotations = createFuncotationsOnSegment(variant, referenceContext, featureList);

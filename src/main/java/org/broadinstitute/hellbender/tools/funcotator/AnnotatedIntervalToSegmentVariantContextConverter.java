@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.util.Arrays;
 import java.util.List;
 
-import static htsjdk.variant.variantcontext.Allele.UNSPECIFIED_ALTERNATE_ALLELE;
 
 /**
  * Converts an annotated interval representing a segment to a variant context.
@@ -30,8 +29,8 @@ public class AnnotatedIntervalToSegmentVariantContextConverter {
             "CALL","Segment_Call","Call"
     );
 
-    public final static String COPY_NEUTRAL_ALLELE_STRING = "<COPY_NEUTRAL>";
-    public final static Allele COPY_NEUTRAL_ALLELE = Allele.create(COPY_NEUTRAL_ALLELE_STRING);
+    public final static Allele COPY_NEUTRAL_ALLELE = Allele.create(SimpleSVType.createBracketedSymbAlleleString("COPY_NEUTRAL"));
+    public final static String COPY_NEUTRAL_ALLELE_STRING = COPY_NEUTRAL_ALLELE.getDisplayString();
 
     /**
      * Convert a segment (as annotated interval) to a {@link VariantContext}.  The variant context will have a ref allele
@@ -85,7 +84,7 @@ public class AnnotatedIntervalToSegmentVariantContextConverter {
 
     private static Allele convertActualSegCallToAllele(final CalledCopyRatioSegment.Call call) {
         if (call == null) {
-            return UNSPECIFIED_ALTERNATE_ALLELE;
+            return Allele.UNSPECIFIED_ALTERNATE_ALLELE;
         }
         switch (call) {
             case DELETION:

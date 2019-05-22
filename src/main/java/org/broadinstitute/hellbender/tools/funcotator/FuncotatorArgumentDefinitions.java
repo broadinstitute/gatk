@@ -55,9 +55,6 @@ public class FuncotatorArgumentDefinitions {
      */
     public static final String EXCLUSION_FIELDS_LONG_NAME = "exclude-field";
 
-    public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
-    public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
-
     public static final String FIVE_PRIME_FLANK_SIZE_NAME = "five-prime-flank-size";
     public static final String THREE_PRIME_FLANK_SIZE_NAME = "three-prime-flank-size";
     public static final int FIVE_PRIME_FLANK_SIZE_DEFAULT_VALUE = 5000;

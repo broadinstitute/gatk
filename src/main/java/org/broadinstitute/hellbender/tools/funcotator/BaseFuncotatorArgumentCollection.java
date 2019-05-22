@@ -15,6 +15,19 @@ import java.util.Set;
 abstract class BaseFuncotatorArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    protected enum FuncotatorReferenceVersion {
+        hg19("hg19"),hg38("hg38"),b37("b37");
+
+        private final String stringRepresentation;
+
+        FuncotatorReferenceVersion(final String stringRepresentation) {
+            this.stringRepresentation = stringRepresentation;
+        }
+
+        @Override
+        public String toString() { return stringRepresentation; }
+    }
+
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -25,7 +38,7 @@ abstract class BaseFuncotatorArgumentCollection implements Serializable {
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
             doc = "The version of the Human Genome reference to use (e.g. hg19, hg38, etc.).  This will correspond to a sub-folder of each data source corresponding to that data source for the given reference."
     )
-    public String referenceVersion;
+    public FuncotatorReferenceVersion referenceVersion;
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME,
@@ -39,7 +52,8 @@ abstract class BaseFuncotatorArgumentCollection implements Serializable {
     )
     public FuncotatorArgumentDefinitions.OutputFormatType outputFormatType;
 
-    // Optional fields ----------------------
+    //-----------------------------------------------------
+    // Optional args:
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME,
@@ -89,7 +103,7 @@ abstract class BaseFuncotatorArgumentCollection implements Serializable {
             fullName = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_NAME,
             optional = true,
             minValue = 0,
-            doc = "Number of base-pairs to cache when querying variants."
+            doc = "Number of base-pairs to cache when querying variants.  Can be overridden in individual data source configuration files."
     )
     public int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
