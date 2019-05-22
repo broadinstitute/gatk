@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -624,5 +625,52 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
+    }
+    
+    private class ThreadingTree {
+        ThreadingNode rootNode;
+        Kmer nodeBase;
+
+        public ThreadingTree(Kmer vertex) {
+            nodeBase = vertex;
+        }
+
+
+        public void threadRead(List<MultiSampleEdge> branchedEdges) {
+            rootNode.incrementNode(branchedEdges, 0);
+        }
+
+    }
+
+    //TODO these maps probably could just be a 4 element array keyed on the base
+    private class ThreadingNode {
+        private Map<MultiSampleEdge, ThreadingNode> childrenNodes;
+        private MultiSampleEdge edgeInQuesiton;
+        private int count = 0;
+
+        public ThreadingNode(MultiSampleEdge edge) {
+            edgeInQuesiton = edge;
+            childrenNodes = new HashMap<>(2);
+        }
+
+        public void incrementNode(List<MultiSampleEdge> edges, int index) {
+            count++;
+            if (index < edges.size()) {
+                getNode(edges.get(index)).incrementNode(edges, index + 1);
+            }
+        }
+
+        private ThreadingNode getNode(MultiSampleEdge edge) {
+            ThreadingNode nextNode = childrenNodes.get(edge);
+            if (nextNode == null) {
+                nextNode = new ThreadingNode(edge);
+                childrenNodes.put(edge, nextNode);
+            }
+            return nextNode;
+        }
+
+        public int getCount() {
+            return count;
+        }
     }
 }
