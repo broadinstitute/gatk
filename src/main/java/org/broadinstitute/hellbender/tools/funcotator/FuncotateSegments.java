@@ -62,6 +62,7 @@ import java.util.stream.Collectors;
                 "The functionality here is the same as seen in Oncotator with a SEG file as input, but with both SIMPLE_TSV and GENE_LIST as outputs.  " +
                 "\nNote that FuncotateSegments will support seg files from the GATK, whereas Oncotator will not." +
                 "\nFuncotateSegments can support hg38 seg files from the GATK." +
+                "\nFuncotateSegments does not support direct reading of cloud-based datasources." +
                 "\nFor more information about Oncotator, on small variants, see Ramos AH, Lichtenstein L, et al. Oncotator: Cancer Variant Annotation Tool. Human Mutation (2015). http://dx.doi.org/10.1002/humu.22771",
         oneLineSummary = "Functional annotation for segment files.  The output formats are not well-defined and subject to change.",
         programGroup = VariantEvaluationProgramGroup.class
