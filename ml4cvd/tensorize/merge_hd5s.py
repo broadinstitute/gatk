@@ -1,93 +1,58 @@
-import argparse
-import logging
 import os
 import h5py
+import logging
+import argparse
 
+from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
 """ 
-This script copies the hd5 groups specified as 'groups' from all hd5 files within the 'sources'
+This script copies all the hd5 datasets from all hd5 files within the 'sources'
 directories to the same-named files within the 'destination' directory.
 
 If the tensor files are not in a local filesystem, they can be downloaded via gsutil:
 gsutil -m cp -r <gcs bucket with tensors> <local directory>
 
-Each source directory in 'sources' must contain the group in 'groups', respectively.
-
 If the destination directory and/or file(s) don't exist, it creates them.
-
-If any of the destination files contains the specified group already, it errors out.
+If any of the source files contain the same dataset at the same group path, it errors out.
 
 Example command line:
 python .merge_hd5s.py \
-    --groups continuous categorical \
-    --sources /path/to/src/continuous/tensor/directory /path/to/src/categorical/tensor/directory \
-    --dest /path/to/output/directory \
-    --logging_level DEBUG
+    --sources /path/to/src/continuous/tensor/directory/ /path/to/src/categorical/tensor/directory/ \
+    --destination /path/to/output/directory/ 
 """
 
-# TODO Import from where global defines end up after package reshuffling
-TENSOR_EXT = '.hd5'
+
+def merge_hd5s_into_destination(destination, sources):
+    if not os.path.exists(os.path.dirname(destination)):
+        os.makedirs(os.path.dirname(destination))
+
+    for source_folder in sources:
+        for source_file in os.listdir(source_folder):
+            if not source_file.endswith(TENSOR_EXT):
+                continue
+            with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
+                with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
+                    _copy_hd5_datasets(source_hd5, destination_hd5)
 
 
-def _copy_group(group_name: str, src_file_path: str, dest_file_handle: h5py.File):
-    with h5py.File(src_file_path, 'r') as f_src:
-        group = f"/{group_name}"
-
-        # Get the name of the parent for the group we want to copy
-        group_path = f_src[group].parent.name
-
-        # If the group doesn't exist in the destination, create it (along with parents, if any)
-        group_id = dest_file_handle.require_group(group_path)
-
-        # Copy source:/categorical to dest:/categorical
-        f_src.copy(group, group_id, name=group)
-
-        msg = f"Copied hd5 group '{group}' from source '{src_file_path}' to '{dest_file_handle.filename}'..."
-        logging.debug(msg)
-
-
-def copy_groups(group_name: str, src_dir: str, dest_dir: str):
-    msg_attempting = f"Attempting to copy hd5 files from '{src_dir}' to '{dest_dir}'... "
-    logging.debug(msg_attempting)
-
-    if not os.path.exists(src_dir):
-        raise ValueError('Source directory does not exist: ', src_dir)
-
-    # If dest_dir doesn't exist, create it
-    if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
-
-    # Iterate over files in src_dir
-    for src_file in os.listdir(src_dir):
-        if src_file.endswith(TENSOR_EXT):
-            # Name the destination file with the same as the source's
-            src_file_path = os.path.join(src_dir, src_file)
-            dest_file_path = os.path.join(dest_dir, src_file)
-            with h5py.File(dest_file_path, 'a') as f_dest:
-                _copy_group(group_name, src_file_path, f_dest)
+def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
+    for k in source_file[group_path]:
+        if isinstance(source_file[group_path + k], h5py.Dataset):
+            destination_file.create_dataset(group_path + k, data=source_file[group_path + k])
         else:
-            continue
-
-    msg_succeeded = f"Successfully copied the group '{group_name}' from hd5 files in '{src_dir}' to '{dest_dir}'... "
-    logging.debug(msg_succeeded)
+            logging.debug(f"copying group {group_path + k}")
+            _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-
     parser.add_argument('--sources', nargs='+', help='List of source directories with hd5 files')
-    parser.add_argument('--destination', help='Destination directory to copy hd5 groups to')
-    parser.add_argument('--groups', nargs='+')
-    parser.add_argument("--logging_level", default='INFO', help="Logging level",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-
+    parser.add_argument('--destination', help='Destination directory to copy hd5 datasets to')
+    parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-
     logging.getLogger().setLevel(args.logging_level)
-
-    for group, source in zip(args.groups, args.sources):
-        copy_groups(group, source, args.destination)
+    merge_hd5s_into_destination(args.destination, args.sources)

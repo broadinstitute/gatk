@@ -1,58 +1,23 @@
 import logging
 import tempfile
+from typing import Dict, List
 
 import h5py
 import apache_beam as beam
 from apache_beam import Pipeline
 from google.cloud import storage
 
-from ml4cvd.defines import TENSOR_EXT, GCS_BUCKET
-from ml4cvd.tensorize.utils import dataset_name_from_meaning, to_float_or_false
+from ml4cvd.defines import TENSOR_EXT, GCS_BUCKET, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
 
 
-def tensorize_categorical_continuous_fields(pipeline: Pipeline,
-                                            output_path: str,
-                                            bigquery_dataset: str,
-                                            tensor_type: str):
-    categorical_query = f"""
-        SELECT c.meaning, p_f_d.sample_id, p_f_d.fieldid, p_f_d.field, p_f_d.instance, p_f_d.array_idx, p_f_d.value
-        FROM
-        (
-            SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
-            FROM `{bigquery_dataset}.phenotype` p
-            INNER JOIN 
-            (
-              SELECT d.fieldid, d.field
-              FROM `shared_data.tensorization_fieldids` f
-              INNER JOIN `{bigquery_dataset}.dictionary` d
-              ON f.fieldid = d.fieldid
-              WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
-            ) AS f_d
-            ON f_d.fieldid = p.fieldid
-        ) AS p_f_d
-        INNER JOIN `{bigquery_dataset}.coding` c
-        ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id
-    """
+def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str, tensor_type: str):
 
-    continuous_query = f"""
-        SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
-        FROM `{bigquery_dataset}.phenotype` p
-        INNER JOIN 
-        (
-          SELECT d.fieldid, d.field
-          FROM `shared_data.tensorization_fieldids` f
-          INNER JOIN `{bigquery_dataset}.dictionary` d
-          ON f.fieldid = d.fieldid
-          WHERE d.valuetype IN ('Continuous', 'Integer')
-        ) AS f_d
-        ON f_d.fieldid = p.fieldid
-    """
-
-    query = None
     if tensor_type == 'categorical':
-        query = categorical_query
+        query = _get_categorical_query(sql_dataset)
     elif tensor_type == 'continuous':
-        query = continuous_query
+        query = _get_continuous_query(sql_dataset)
+    elif tensor_type == 'icd':
+        query = _get_icd_query(sql_dataset)
     else:
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
@@ -100,28 +65,78 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
             gcs_blob = output_bucket.blob(f"{output_path}/{tensor_file}")
             logging.info(f"Writing tensor {tensor_file} to {gcs_blob.public_url} ...")
             with h5py.File(tensor_path, 'w') as hd5:
-                for row in rows:
-                    field_id = row['fieldid']
-                    field = row['field']
-                    instance = row['instance']
-                    array_idx = row['array_idx']
-                    value = row['value']
+                if tensor_type == 'icd':
+                    icds = sorted(list(set([row['value'] for row in rows])))
+                    hd5.create_dataset('icd', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
+                elif tensor_type == 'categorical':
+                    for row in rows:
+                        hd5_dataset_name = dataset_name_from_meaning('categorical', [row['field'], row['meaning'], str(row['instance']), str(row['array_idx'])])
+                        _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
+                elif tensor_type == 'continuous':
+                    for row in rows:
+                        hd5_dataset_name = dataset_name_from_meaning('continuous', [str(row['fieldid']), row['field'], str(row['instance']), str(row['array_idx'])])
+                        _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
 
-                    hd5_dataset_name = None
-                    if tensor_type == 'categorical':
-                        meaning = row['meaning']
-                        hd5_dataset_name = dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
-                    elif tensor_type == 'continuous':
-                        hd5_dataset_name = dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
-                    else:
-                        continue
-
-                    float_value = to_float_or_false(value)
-                    if float_value is not False:
-                        hd5.create_dataset(hd5_dataset_name, data=[float_value])
-                    else:
-                        logging.warning(f"Cannot cast to float from '{value}' for field id '{field_id}' and sample id '{sample_id}'")
             gcs_blob.upload_from_filename(tensor_path)
-
     except:
         logging.exception(f"Problem with processing sample id '{sample_id}'")
+
+
+def _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5):
+    try:
+        float_value = float(row['value'])
+        hd5.create_dataset(hd5_dataset_name, data=[float_value])
+    except ValueError:
+        logging.warning(f"Cannot cast to float from '{row['value']}' for field id '{row['fieldid']}' and sample id '{sample_id}'")
+
+
+def dataset_name_from_meaning(group: str, fields: List[str]) -> str:
+    clean_fields = []
+    for f in fields:
+        clean_fields.append(''.join(e for e in f if e.isalnum() or e == ' '))
+    joined = JOIN_CHAR.join(clean_fields).replace('  ', CONCAT_CHAR).replace(' ', CONCAT_CHAR)
+    return group + HD5_GROUP_CHAR + joined
+
+
+def _get_categorical_query(dataset):
+    return f"""
+        SELECT c.meaning, p_f_d.sample_id, p_f_d.fieldid, p_f_d.field, p_f_d.instance, p_f_d.array_idx, p_f_d.value
+        FROM
+        (
+            SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value, p.coding_file_id
+            FROM `{dataset}.phenotype` p
+            INNER JOIN 
+            (
+              SELECT d.fieldid, d.field
+              FROM `shared_data.tensorization_fieldids` f
+              INNER JOIN `{dataset}.dictionary` d
+              ON f.fieldid = d.fieldid
+              WHERE d.valuetype IN ('Categorical single', 'Categorical multiple')
+            ) AS f_d
+            ON f_d.fieldid = p.fieldid
+        ) AS p_f_d
+        INNER JOIN `{dataset}.coding` c
+        ON c.coding=p_f_d.value AND c.coding_file_id=p_f_d.coding_file_id
+    """
+
+
+def _get_continuous_query(dataset):
+    return f"""
+        SELECT f_d.field, p.sample_id, p.fieldid, p.instance, p.array_idx, p.value
+        FROM `{dataset}.phenotype` p
+        INNER JOIN 
+        (
+          SELECT d.fieldid, d.field
+          FROM `shared_data.tensorization_fieldids` f
+          INNER JOIN `{dataset}.dictionary` d
+          ON f.fieldid = d.fieldid
+          WHERE d.valuetype IN ('Continuous', 'Integer')
+        ) AS f_d
+        ON f_d.fieldid = p.fieldid
+    """
+
+
+def _get_icd_query(dataset):
+    return f"""
+        SELECT sample_id, value FROM `{dataset}.phenotype` WHERE fieldid IN (41202, 41204, 40001, 40002, 40006);
+    """

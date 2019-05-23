@@ -45,6 +45,7 @@ ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
 ECG_SINUS = ['Normal_sinus_rhythm', 'Sinus_bradycardia', 'Marked_sinus_bradycardia', 'Atrial_fibrillation']
 ECG_NORMALITY = ['Normal_ECG', 'Abnormal_ECG', 'Borderline_ECG', 'Otherwise_normal_ECG']
+ECG_BINARY_FLAGS = ['Poor data quality', 'infarct', 'block']
 ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration', 'QTInterval', 'QTCInterval', 'RRInterval', 'PPInterval',
                      'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
                      'QOffset', 'TOffset']
@@ -767,7 +768,6 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
         hd5.create_dataset('ecg_rest_date', (1,), data=_date_str_from_ecg(root), dtype=h5py.special_dtype(vlen=str))
 
         diagnosis_text = []
-        found_infarct = False
         for d in root.findall("./Interpretation/Diagnosis/DiagnosisText"):
             if 'QRS Complexes:' in d.text:
                 qrs = float(d.text.replace('QRS Complexes:', '').split(',')[0].strip())
@@ -778,19 +778,21 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                 hd5.create_dataset(categorical_group + d.text.replace(' ', '_'), data=[1])
                 stats[d.text] += 1
             else:
-                if not found_infarct and 'infarct' in d.text:
-                    hd5.create_dataset(categorical_group + 'infarct', data=[1])
-                    found_infarct = True
-                    stats['infarct'] += 1
                 for sinus in ECG_SINUS:
                     if sinus in d.text.replace(' ', '_'):
                         hd5.create_dataset(categorical_group + sinus, data=[1])
                         stats[sinus] += 1
                 diagnosis_text.append(d.text.replace(',', '').replace('*', '').replace('&', 'and').replace('  ', ' '))
-        if not found_infarct:
-            hd5.create_dataset(categorical_group + 'no_infarct', data=[1])
+
         diagnosis_str = ' '.join(diagnosis_text)
         hd5.create_dataset('ecg_rest_text', (1,), data=diagnosis_str, dtype=h5py.special_dtype(vlen=str))
+
+        for ecg_flag in ECG_BINARY_FLAGS:
+            ecg_flag_label = ecg_flag.lower().replace(' ', '_')
+            if ecg_flag in diagnosis_str:
+                hd5.create_dataset(categorical_group + ecg_flag_label, data=[1])
+            else:
+                hd5.create_dataset(categorical_group + 'no_' + ecg_flag_label, data=[1])
 
         for c in root.findall("./StripData/WaveformData"):
             lead_data = list(map(float, c.text.strip().split(',')))

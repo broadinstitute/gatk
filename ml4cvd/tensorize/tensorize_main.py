@@ -20,7 +20,7 @@ def parse_args():
                              'starting with a letter and ending with a letter or number.')
     parser.add_argument('--tensor_type', default="categorical",
                         help='Type of data to be tensorized',
-                        choices=['categorical', 'continuous'])
+                        choices=['categorical', 'continuous', 'icd'])
     parser.add_argument('--bigquery_dataset', default='ukbb_dev',
                         help='BigQuery dataset where the data will be drawn from')
     parser.add_argument('--beam_runner', default='DirectRunner',
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     pipeline = beam.Pipeline(options=pipeline_opts)
 
-    tensorize.tensorize_categorical_continuous_fields(pipeline,
-                                                      args.gcs_output_path,
-                                                      args.bigquery_dataset,
-                                                      args.tensor_type)
+    tensorize.tensorize_sql_fields(pipeline,
+                                   args.gcs_output_path,
+                                   args.bigquery_dataset,
+                                   args.tensor_type)
