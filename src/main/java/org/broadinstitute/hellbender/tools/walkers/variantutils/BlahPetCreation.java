@@ -50,7 +50,7 @@ public final class BlahPetCreation {
             rows.add(row);
 
             //if variant is variant and has additional positions--must be a deletion: add `*` state
-            for (int i = variant.getStart() + 1 ; i < variant.getEnd(); i++){
+            for (int i = variant.getStart() + 1 ; i <= variant.getEnd(); i++){
                 row = new ArrayList<>();
                 row.add(String.valueOf(i));
                 row.add(sampleName);
@@ -95,7 +95,7 @@ public final class BlahPetCreation {
     public static List<List<String>> createMissingTSV(int start, int end, String sampleName) {
         List<List<String>> rows = new ArrayList<>();
 
-        for (int position = start; position < end; position ++){
+        for (int position = start; position <= end; position ++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));
             row.add(sampleName);
