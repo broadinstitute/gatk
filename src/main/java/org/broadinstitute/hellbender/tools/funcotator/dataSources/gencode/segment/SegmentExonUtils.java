@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.segment;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
@@ -78,7 +77,8 @@ public class SegmentExonUtils {
     }
 
     // exons, transcript, and pointLocation must be on the same contig.  Exons should be input in the coding order
-    private static int findInclusiveExonIndex(final Strand codingDirection, final List<GencodeGtfExonFeature> exons, final SimpleInterval pointLocation, final boolean isStartOfSegment) {
+    private static int findInclusiveExonIndex(final Strand codingDirection, final List<GencodeGtfExonFeature> exons,
+                                              final SimpleInterval pointLocation, final boolean isStartOfSegment) {
         int result = NO_EXON_OVERLAP;
         if (exons.size() == 0) {
             return result;
@@ -120,8 +120,7 @@ public class SegmentExonUtils {
         return result;
     }
 
-    @VisibleForTesting
-    static String determineSegmentOverlapDirection(final Strand strand, final boolean isSegmentStart) {
+    private static String determineSegmentOverlapDirection(final Strand strand, final boolean isSegmentStart) {
         if (isSegmentStart ^ (strand == Strand.POSITIVE)) {
             return AND_BELOW_STR;
         } else {

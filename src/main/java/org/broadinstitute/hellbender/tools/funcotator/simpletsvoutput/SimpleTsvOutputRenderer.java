@@ -65,8 +65,8 @@ public class SimpleTsvOutputRenderer extends OutputRenderer {
     private boolean isWriterInitialized;
 
     private LinkedHashMap<String, String> columnNameToFuncotationFieldMap;
-    private Set<String> excludedOutputFields;
-    private Path outputFilePath;
+    private final Set<String> excludedOutputFields;
+    private final Path outputFilePath;
     private final LinkedHashMap<String, String> unaccountedForDefaultAnnotations;
     private final LinkedHashMap<String, String> unaccountedForOverrideAnnotations;
 
@@ -82,7 +82,7 @@ public class SimpleTsvOutputRenderer extends OutputRenderer {
      *
      * When true, all funcotation fields (not used in an alias nor column name) will appear in the output file.
      */
-    private boolean isWriteFuncotationFieldsNotInConfig;
+    private final boolean isWriteFuncotationFieldsNotInConfig;
 
     @VisibleForTesting
     SimpleTsvOutputRenderer(final Path outputFilePath,
@@ -149,7 +149,7 @@ public class SimpleTsvOutputRenderer extends OutputRenderer {
 
         // Ensure that all transcript-allele combinations have the same fields inside the matching funcotations.
         if (!txToFuncotationMap.doAllTxAlleleCombinationsHaveTheSameFields()) {
-            throw new GATKException.ShouldNeverReachHereException("The funcotation map cannot be written by this simple output renderer.  This is almost certainly an issue for the GATK development team.");
+            throw new GATKException.ShouldNeverReachHereException("The funcotation map cannot be written by this simple output renderer.  The fields in the funcotation map do not match across transcript-allele combinations.  This is almost certainly an issue for the GATK development team.");
         }
 
         for (final String txId : txToFuncotationMap.getTranscriptList()) {
@@ -355,7 +355,7 @@ public class SimpleTsvOutputRenderer extends OutputRenderer {
     }
 
     @VisibleForTesting
-    static String[] splitAndTrim( String text, String separator ) {
+    static String[] splitAndTrim(final String text, final String separator ) {
         return Stream.of(StringUtils.split(text, separator)).map(String::trim).toArray(String[]::new);
     }
 
