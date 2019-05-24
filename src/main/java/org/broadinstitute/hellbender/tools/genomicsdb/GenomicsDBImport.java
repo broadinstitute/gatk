@@ -139,6 +139,8 @@ import java.net.URISyntaxException;
  *     <li>Input GVCFs cannot contain multiple entries for a single genomic position</li>
  *     <li>The --genomicsdb-workspace-path must point to a non-existent or empty directory, unless doing incremental import</li>
  *     <li>GenomicsDBImport uses temporary disk storage during import. The amount of temporary disk storage required can exceed the space available, especially when specifying a large number of intervals. The command line argument `--tmp-dir` can be used to specify an alternate temporary storage location with sufficient space..</li>
+ *     <li>It is recommended that users backup existing genomicsdb workspaces before adding new samples using --incremental. If the tool fails during incremental import for any reason, the workspace may be in an inconsistent/corrupted state</li>
+ *     <li>If users do not have backup workspaces available while using --incremental, another potential failsafe is available if --consolidate option was not used. In this case, if the tool fails, it will leave behind a copy of the original callset file (suffixed .inc.backup) and a list of original fragment directories (suffixed .fragmentlist - containing a list of directories within the genomicsdb workspace that existed before the incremental import). If a failure occurs, the user can replace the callset file in the workspace with the original callset file (.inc.backup file) and delete all directories not named in the .fragmentlist file. Do not delete directories named genomicsdb_meta_dir</li>
  * </ul>
  *
  * <h3>Developer Note</h3>
@@ -616,8 +618,7 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private ImportConfig createImportConfig(final int batchSize) {
-        final List<GenomicsDBImportConfiguration.Partition> partitions;
-        partitions = generatePartitionListFromIntervals(intervals);
+        final List<GenomicsDBImportConfiguration.Partition> partitions = generatePartitionListFromIntervals(intervals);
         GenomicsDBImportConfiguration.ImportConfiguration.Builder importConfigurationBuilder =
                 GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
         importConfigurationBuilder.addAllColumnPartitions(partitions);
