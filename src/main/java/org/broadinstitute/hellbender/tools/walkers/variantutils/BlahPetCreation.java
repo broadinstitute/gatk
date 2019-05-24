@@ -37,20 +37,20 @@ public final class BlahPetCreation {
 
     }
 
-    public static List<List<String>> createPositionRows(final VariantContext variant) {
+    public static List<List<String>> createPositionRows(final int start, final VariantContext variant, final int end) {
 
         List<List<String>> rows = new ArrayList<>();
         String sampleName = variant.getSampleNamesOrderedByName().get(0);
 
         if (!variant.isReferenceBlock()) {
             List<String> row = new ArrayList<>();
-            row.add(String.valueOf(variant.getStart()));
+            row.add(String.valueOf(start));
             row.add(sampleName);
             row.add(GQStateEnum.VARIANT.value);
             rows.add(row);
 
             //if variant is variant and has additional positions--must be a deletion: add `*` state
-            for (int i = variant.getStart() + 1 ; i <= variant.getEnd(); i++){
+            for (int i = start + 1 ; i <= end; i++){
                 row = new ArrayList<>();
                 row.add(String.valueOf(i));
                 row.add(sampleName);
@@ -59,34 +59,36 @@ public final class BlahPetCreation {
             }
         } else {
             // TODO check in the tool to make sure it's only one sample
-            int genotypeQual = variant.getGenotype(0).getGQ();  // ok because we only have one sample
-            GQStateEnum state;
+            GQStateEnum state = getGQStateEnum(variant.getGenotype(0).getGQ());
 
-            if (genotypeQual < 10) {
-                state = GQStateEnum.ZERO;
-            } else if (genotypeQual < 20) {
-                state = GQStateEnum.TEN;
-            } else if (genotypeQual < 30) {
-                state = GQStateEnum.TWENTY;
-            } else if (genotypeQual < 40) {
-                state = GQStateEnum.THIRTY;
-            } else if (genotypeQual < 50) {
-                state = GQStateEnum.FORTY;
-            } else if (genotypeQual < 60) {
-                state = GQStateEnum.FIFTY;
-            } else if (genotypeQual >= 60) {
-                state = GQStateEnum.SIXTY;
-            } else {
-                throw new IllegalArgumentException("GQ is not in the range we expect");
-            }
-
-            for (int position = variant.getStart(); position <= variant.getEnd(); position++){ // break up ref blocks
+            for (int position = start; position <= end; position++){ // break up ref blocks
                 List<String> row = new ArrayList<>();
+
                 row.add(String.valueOf(position));
                 row.add(sampleName);
                 row.add(state.value);
                 rows.add(row);
             }
+        }
+
+        return rows;
+    }
+
+    public static List<List<String>> createSpanDelRows(final int start, final VariantContext variant, final int end) {
+        if (variant.isReferenceBlock()){
+            throw new IllegalStateException("Cannot create span deletion rows for a reference block");
+        }
+
+        List<List<String>> rows = new ArrayList<>();
+        String sampleName = variant.getSampleNamesOrderedByName().get(0);
+
+        for (int position = start; position <= end; position++){ // break up ref blocks
+            List<String> row = new ArrayList<>();
+
+            row.add(String.valueOf(position));
+            row.add(sampleName);
+            row.add(GQStateEnum.STAR.value);
+            rows.add(row);
         }
 
         return rows;
@@ -104,6 +106,25 @@ public final class BlahPetCreation {
         }
 
         return rows;
+    }
+
+    public static GQStateEnum getGQStateEnum(int GQ){
+        if (GQ < 10) {
+            return GQStateEnum.ZERO;
+        } else if (GQ < 20) {
+            return GQStateEnum.TEN;
+        } else if (GQ < 30) {
+            return GQStateEnum.TWENTY;
+        } else if (GQ < 40) {
+            return GQStateEnum.THIRTY;
+        } else if (GQ < 50) {
+            return GQStateEnum.FORTY;
+        } else if (GQ < 60) {
+            return GQStateEnum.FIFTY;
+        } else {
+            return GQStateEnum.SIXTY;
+        }
+
     }
 
     public static List<String> getHeaders() {
