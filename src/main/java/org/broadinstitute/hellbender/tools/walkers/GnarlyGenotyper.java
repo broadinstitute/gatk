@@ -100,7 +100,9 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
 
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of PIPELINE_MAX_ALT_COUNT
-    private final int[] likelihoodSizeCache = new int[PIPELINE_MAX_ALT_COUNT + 1];
+    //for multiple inputs, each input could have PIPELINE_MAX_ALT_COUNT distinct alleles
+    private int MAX_ALTS_COMBINED_INPUTS;
+    private int[] likelihoodSizeCache;
     private final static ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
 
     private final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = new HashSet<>();
@@ -184,6 +186,10 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
+
+        MAX_ALTS_COMBINED_INPUTS = (int)Math.ceil(Math.pow(PIPELINE_MAX_ALT_COUNT, multiVariantInputArgumentCollection.getDrivingVariantPaths().size()));
+        likelihoodSizeCache = new int[MAX_ALTS_COMBINED_INPUTS + 1];
+
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
         if(onlyOutputCallsStartingInIntervals) {
@@ -203,8 +209,8 @@ public final class GnarlyGenotyper extends CombineGVCFs {
         if (!SUMMARIZE_PLs) {
             GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
 
-            //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
-            for (final int numAlleles : IntStream.rangeClosed(1, PIPELINE_MAX_ALT_COUNT + 1).boxed().collect(Collectors.toList())) {
+            //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need PIPELINE_MAX_ALT_COUNT per input
+            for (final int numAlleles : IntStream.rangeClosed(1, MAX_ALTS_COMBINED_INPUTS + 1).boxed().collect(Collectors.toList())) {
                 likelihoodSizeCache[numAlleles - 1] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
                 glcCache.add(numAlleles - 1, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
             }
@@ -486,7 +492,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
         if (!summarizePLs) {
             final int maximumAlleleCount = inputAllelesWithNonRef.size();
             final int numConcreteAlts = maximumAlleleCount - 1; //-1 for NON_REF
-            if (maximumAlleleCount <= PIPELINE_MAX_ALT_COUNT) {
+            if (maximumAlleleCount <= MAX_ALTS_COMBINED_INPUTS) {
                 newPLsize = likelihoodSizeCache[numConcreteAlts - 1]; //-1 for zero-indexed array
             } else {
                 newPLsize = GenotypeLikelihoods.numLikelihoods(maximumAlleleCount, ASSUMED_PLOIDY);

@@ -213,7 +213,7 @@ public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             SimpleInterval loc = new SimpleInterval(intervalToClose.getContig(), stoppedLoc, stoppedLoc);
             if (( stoppedLoc <= intervalToClose.getEnd() && stoppedLoc>= intervalToClose.getStart()) && isWithinInterval(loc)) {
                 byte[] refBases = Arrays.copyOfRange(storedReferenceContext.getBases(), stoppedLoc - storedReferenceContext.getWindow().getStart(), stoppedLoc - storedReferenceContext.getWindow().getStart() + 2);
-                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, finalizedVCs == null || finalizedVCs.isEmpty());
+                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, !(finalizedVCs == null || finalizedVCs.isEmpty()));
                 if (finalizedVCs != null) {
                     finalizedVCs.add(endedVC);
                 }
@@ -255,6 +255,7 @@ public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void onTraversalStart() {
+        logger.warn("For the love of God, please only use this jar for GnarlyGenotyper -- CombineGVCFs had to be sacrified for the Gnarly Black Magic pipeline");
         if (somaticInput) {
             logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
         }
@@ -328,7 +329,7 @@ public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                     endPreviousStates(new SimpleInterval(loc.getContig(), loc.getStart() - 1, loc.getStart() - 1),
                             Arrays.copyOfRange(referenceContext.getBases(), 1, referenceContext.getWindow().getLengthOnReference()),
                             variantContexts,
-                            false, true);
+                            false, false);  //TODO: this will break CombineGVCFs as a standalone tool, but this branch can be just for Gnarly
                 }
             }
             variantContextsOverlappingCurrentMerge.addAll(variantContexts);
