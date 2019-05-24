@@ -105,7 +105,7 @@ workflow CNVSomaticPanelWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    if (select_first([do_explicit_gc_correction, false])) {
+    if (select_first([do_explicit_gc_correction, true])) {
         call CNVTasks.AnnotateIntervals {
             input:
                 intervals = PreprocessIntervals.preprocessed_intervals,
