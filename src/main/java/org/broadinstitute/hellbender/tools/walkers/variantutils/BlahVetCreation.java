@@ -44,13 +44,13 @@ public final class BlahVetCreation {
         // TODO is this where the validation step (required vs not) lives  -- fail if there is missing data for a required field
         // and just leave it empty if not required
 
-        START_POSITION { // Required
+        position { // Required
              public String getColumnValue(final VariantContext variant) {
                  return String.valueOf(variant.getStart());
             }
         },
 
-        REFERENCE_BASES { // Required
+        ref { // Required
             public String getColumnValue(final VariantContext variant) {
                 final String referenceBase = variant.getReference().getBaseString();
                 if (referenceBase == null) {
@@ -60,7 +60,7 @@ public final class BlahVetCreation {
             }
         },
 
-        ALTERNATE_BASES_ALT {
+        alt {
             //TODO what if this field is null?
             public String getColumnValue(final VariantContext variant) {
                 List<String> outList = new ArrayList<>();
@@ -71,7 +71,7 @@ public final class BlahVetCreation {
             }
         },
 
-        ALTERNATE_BASES_AS_RAW_MQ { // Required
+        AS_RAW_MQ { // Required
             public String getColumnValue(final VariantContext variant) {
                 String out = getAttribute(variant, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, null);
                 if (out == null) {
@@ -81,13 +81,13 @@ public final class BlahVetCreation {
             }
         },
 
-        ALTERNATE_BASES_AS_RAW_MQRANKSUM {
+        AS_RAW_MQRankSum {
             public String getColumnValue(final VariantContext variant) {
                 return getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, "");
             }
         },
 
-        ALTERNATE_BASES_AS_QUALAPPROX { // Required
+        AS_QUALapprox { // Required
             public String getColumnValue(final VariantContext variant) {
                 //TODO find a constant for "AS_QUALapprox"
                 String out = getAttribute(variant, "AS_QUALapprox", null);
@@ -98,13 +98,13 @@ public final class BlahVetCreation {
             }
         },
 
-        ALTERNATE_BASES_AS_RAW_READPOSRANKSUM {
+        AS_RAW_ReadPosRankSum {
             public String getColumnValue(final VariantContext variant) {
                 return getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, "");
             }
         },
 
-        ALTERNATE_BASES_AS_SB_TABLE { // Required
+        AS_SB_TABLE { // Required
             public String getColumnValue(final VariantContext variant) {
                 String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
                 if (out == null) {
@@ -114,7 +114,7 @@ public final class BlahVetCreation {
             }
         },
 
-        ALTERNATE_BASES_AS_VARDP { // Required
+        AS_VarDP { // Required
             public String getColumnValue(final VariantContext variant) {
                 //TODO find a constant for "AS_VarDP"
                 String out = getAttribute(variant, "AS_VarDP", null);
@@ -125,13 +125,13 @@ public final class BlahVetCreation {
             }
         },
 
-        CALL_NAME {
+        sample {
             public String getColumnValue(final VariantContext variant) {
                 return variant.getGenotype(0).getSampleName();
             }
         },
 
-        CALL_GENOTYPE {
+        call_GT {
             public String getColumnValue(final VariantContext variant) {
                 ArrayList<Integer> allele_indices = new ArrayList<Integer>();
                 for (Allele allele : variant.getGenotype(0).getAlleles()){
@@ -145,7 +145,7 @@ public final class BlahVetCreation {
             }
         },
 
-        CALL_AD {
+        call_AD {
             public String getColumnValue(final VariantContext variant) {
                 return variant.getGenotype(0).hasAD() ? Arrays.stream(variant.getGenotype(0).getAD())
                         .mapToObj(String::valueOf)
@@ -153,13 +153,13 @@ public final class BlahVetCreation {
             }
         },
 
-        CALL_DP {
+        call_DP {
             public String getColumnValue(final VariantContext variant) {
                 return variant.getGenotype(0).hasDP() ? String.valueOf(variant.getGenotype(0).getDP()): "";
             }
         },
 
-        CALL_GQ { // Required
+        call_GQ { // Required
             public String getColumnValue(final VariantContext variant) {
                 if (!variant.getGenotype(0).hasGQ()) {
                     throw new IllegalArgumentException("Cannot be missing required value for call.GQ");
@@ -174,13 +174,13 @@ public final class BlahVetCreation {
             }
         },
 
-        CALL_PID {
+        call_PID {
             public String getColumnValue(final VariantContext variant) {
                 return variant.getGenotype(0).hasAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY) ? String.valueOf(variant.getGenotype(0).getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY)) : "";
             }
         },
 
-        CALL_PL {
+        call_PL {
             public String getColumnValue(final VariantContext variant) {
                 return variant.getGenotype(0).hasPL() ? Arrays.stream(variant.getGenotype(0).getPL())
                         .mapToObj(String::valueOf)

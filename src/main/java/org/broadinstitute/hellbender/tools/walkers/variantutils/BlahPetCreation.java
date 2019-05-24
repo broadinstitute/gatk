@@ -12,9 +12,9 @@ public final class BlahPetCreation {
      * Expected headers for the Position Table (PET)
      */
     public enum HeaderFieldEnum {
-        POSITION,
-        SAMPLE,
-        STATE,
+        position,
+        sample,
+        state,
     }
 
     public enum GQStateEnum {
