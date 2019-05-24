@@ -919,7 +919,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 0, false, 0, 1, false, false, true);
         checkJSONFilesAreWritten(workspace);
 
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
     }
 
     @Test
@@ -930,7 +930,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 1, false, 0, 1, false, false, true);
         checkJSONFilesAreWritten(workspace);
 
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
     }
 
     @Test
@@ -941,7 +941,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 2, false, 0, 1, false, false, true);
         checkJSONFilesAreWritten(workspace);
 
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
     }
 
     @Test
@@ -954,7 +954,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 2, false, 0, 1, false, false, true);
         checkJSONFilesAreWritten(workspace);
 
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
     }
 
     @Test(groups = {"bucket"})
