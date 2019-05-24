@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.codecs.AnnotatedIntervalCodec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

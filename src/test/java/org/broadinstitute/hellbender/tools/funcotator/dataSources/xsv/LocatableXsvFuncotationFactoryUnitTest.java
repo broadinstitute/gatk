@@ -392,4 +392,12 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
         return configPath;
     }
+
+    @Test
+    public void testNoSupportOfSegments() {
+        final LocatableXsvFuncotationFactory factory = new LocatableXsvFuncotationFactory(LocatableXsvFuncotationFactory.DEFAULT_NAME, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null);
+
+        Assert.assertFalse(factory.isSupportingSegmentFuncotation());
+        Assert.assertEquals(factory.getSupportedFuncotationFieldsForSegments(), Collections.emptyList());
+    }
 }

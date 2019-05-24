@@ -132,7 +132,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                                   final String expectedOutputPath ) {
 
         for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values() ) {
-
+            if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
+                continue;
+            }
             final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());
 
             final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
@@ -366,6 +368,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Basic Test Cases:
         for (final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
             for (final SimpleKeyXsvFuncotationFactory.XsvDataKeyType keyType : SimpleKeyXsvFuncotationFactory.XsvDataKeyType.values()) {
+
+                // Funcotator, the command line tool, does not support SEG outputs.  Users must use FuncotateSegments.
+                if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
+                    continue;
+                }
+
                 testCases.add(
                         new Object[]{
                                 FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
@@ -593,7 +601,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                final String expectedOutputPath ) {
 
         for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
-
+            // The CLI for Funcotator does not support SEG output.  Must use FuncotateSegments for that.
+            if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
+                continue;
+            }
             final String typeCorrectedExpectedOutPath = FilenameUtils.removeExtension(expectedOutputPath) + "." + outputFormatType.toString().toLowerCase();
 
             final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());

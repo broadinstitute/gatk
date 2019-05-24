@@ -9,13 +9,16 @@ import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -30,6 +33,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +45,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     // Gencode v19
     private static final String CNTN4_GENCODE_ANNOTATIONS_FILE_NAME = toolsTestDir + "funcotator/gencode.v19.CNTN4.annotation.gtf";
     private static final String CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE = toolsTestDir + "funcotator/gencode.v19.CNTN4.pc_transcripts.fasta";
+
+    private static final String GENCODE_HG19_BIG_GTF_FILE = FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode/hg19/gencode.v19.testVariantSubset.gtf";
+    private static final String GENCODE_HG19_BIG_FASTA_FILE = FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode/hg19/gencode.v19.testVariantSubset.pc_transcripts.fa";
 
     //==================================================================================================================
     // Multi-Test Static Variables:
@@ -1354,8 +1361,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // We know the first gene is the right one - the gene in question is the MUC16 gene:
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature) gtfFeatureIterator.next();
         final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
-
-        // TODO: Make this an input argument:
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene("MUC16");
 
         // Create a factory for our funcotations:
@@ -1491,8 +1496,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // We know the first gene is the right one - the gene in question is the MUC16 gene:
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature) gtfFeatureIterator.next();
         final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, variantInterval );
-
-        // TODO: Make this an input argument:
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
         // Run this test with flanking turned on for both ends, to make sure that we don't get
@@ -1626,7 +1629,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final GencodeFuncotationBuilder builder =
                 GencodeFuncotationFactory.createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele,
-                        gtfFeature, transcript, "TEST");
+                        transcript, "TEST");
         final GencodeFuncotation gf = builder.gencodeFuncotation;
 
         // Ultra-trivial checks:
@@ -1670,8 +1673,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                        final String dataSourceName,
                                                        final GencodeFuncotation expected) {
 
-        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(
-                variant, altAllele, gtfFeature, reference, transcript, version, dataSourceName, "TEST");
+        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(variant, altAllele, reference, transcript, version, dataSourceName, "TEST");
         Assert.assertEquals( funcotation, expected );
     }
 
@@ -1804,10 +1806,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
      */
     @Test
     public void testMultipleGeneFeaturesOnlyProduceOneTranscript() throws IOException {
-        final GencodeGtfCodec gencodeGtfCodec = new GencodeGtfCodec();
-        Assert.assertTrue(gencodeGtfCodec.canDecode(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME));
-
-        final List<Feature> gencodeFeatures = new ArrayList<>();
 
         // Note the "chr" here to make this work.
         final SimpleInterval variantInterval = new SimpleInterval("chr3", 2944600, 2944600);
@@ -1817,22 +1815,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
                 .make();
 
-        try (BufferedInputStream bufferedInputStream =
-                     new BufferedInputStream(
-                             new FileInputStream(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME)
-                     )
-        ) {
-            // Get the line iterator:
-            final LineIterator lineIterator = gencodeGtfCodec.makeSourceFromStream(bufferedInputStream);
-
-            // Get the header (required for the read to work correctly):
-            gencodeGtfCodec.readHeader(lineIterator);
-
-            while (lineIterator.hasNext()) {
-                gencodeFeatures.add(gencodeGtfCodec.decode(lineIterator));
-            }
-            Assert.assertTrue(gencodeFeatures.size() > 1);
-        }
+        final List<Feature> gencodeFeatures = getCntn4Features();
 
         try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
                 IOUtils.getPath(CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE),
@@ -1871,12 +1854,96 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+    private List<Feature> getCntn4Features() throws IOException {
+        final GencodeGtfCodec gencodeGtfCodec = new GencodeGtfCodec();
+        Assert.assertTrue(gencodeGtfCodec.canDecode(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME));
+
+        final List<Feature> gencodeFeatures = new ArrayList<>();
+        try (BufferedInputStream bufferedInputStream =
+                     new BufferedInputStream(
+                             new FileInputStream(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME)
+                     )
+        ) {
+            // Get the line iterator:
+            final LineIterator lineIterator = gencodeGtfCodec.makeSourceFromStream(bufferedInputStream);
+
+            // Get the header (required for the read to work correctly):
+            gencodeGtfCodec.readHeader(lineIterator);
+
+            while (lineIterator.hasNext()) {
+                gencodeFeatures.add(gencodeGtfCodec.decode(lineIterator));
+            }
+            Assert.assertTrue(gencodeFeatures.size() > 1);
+        }
+        return gencodeFeatures;
+    }
+
     private static FeatureInput<? extends Feature> createFeatureInputForMuc16Ds(final String dsName) {
         return new FeatureInput<>(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, dsName, Collections.emptyMap());
     }
 
     private static FeatureInput<? extends Feature> createFeatureInputForCntn4Ds(final String dsName) {
         return new FeatureInput<>(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME, dsName, Collections.emptyMap());
+    }
+
+    @DataProvider
+    public Object[][] provideSimpleGenesField() {
+        return new Object[][] {
+
+                // Two genes found
+                {new VariantContextBuilder()
+                        .chr("chr3").start(2613200).stop(3200000)
+                        .attribute(VCFConstants.END_KEY, 3200000)
+                        .alleles(Arrays.asList(
+                                Allele.create("T", true),
+                                Allele.create(SimpleSVType.createBracketedSymbAlleleString(StructuralVariantType.DEL.name()), false))
+                        )
+                        .make(), "CNTN4,CNTN4-AS1"},
+
+                // Three genes found.  Note sorting is alphabetical, not order seen in the genome.  This is how users
+                //  expect it.
+                {new VariantContextBuilder()
+                        .chr("chr3").start(2100000).stop(3200000)
+                        .attribute(VCFConstants.END_KEY, 3200000)
+                        .alleles(Arrays.asList(
+                                Allele.create("T", true),
+                                Allele.create(SimpleSVType.createBracketedSymbAlleleString(StructuralVariantType.DEL.name()), false))
+                        )
+                        .make(), "CNTN4,CNTN4-AS1,CNTN4-AS2"},
+
+                // We use no call for copy neutral
+                {new VariantContextBuilder()
+                        .chr("chr3").start(2100000).stop(3200000)
+                        .attribute(VCFConstants.END_KEY, 3200000)
+                        .alleles(Arrays.asList(
+                                Allele.create("T", true),
+                                AnnotatedIntervalToSegmentVariantContextConverter.COPY_NEUTRAL_ALLELE
+                        ))
+                        .make(), "CNTN4,CNTN4-AS1,CNTN4-AS2"}
+        };
+    }
+
+    @Test(dataProvider = "provideSimpleGenesField")
+    public void testSimpleGenesField(final VariantContext vc, final String genesTruth) throws IOException {
+
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                TranscriptSelectionMode.CANONICAL,
+                Collections.emptySet(),
+                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME), "TEST")) {
+            final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch3, new SimpleInterval(vc) );
+
+            final FeatureContext featureContext = FuncotatorTestUtils.createFeatureContext(
+                    Collections.singletonList(funcotationFactory), "TEST", new SimpleInterval(vc),
+                    0,0,0,null);
+
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(
+                    vc, referenceContext, featureContext);
+            Assert.assertEquals(funcotations.size(), 1);
+            Assert.assertEquals(funcotations.get(0).getField(funcotationFactory.getName() + "_" + funcotationFactory.getVersion() + "_" + "genes"), genesTruth);
+        }
     }
 
     @DataProvider
@@ -2302,7 +2369,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 11, MUC16_START - 9, "CAG", "C", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
                 // 3-base deletion, 1 base in the 3' flank and 2 bases outside of it, 3' flank size = 10
                 { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 12, MUC16_START - 10, "TCA", "T", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
-                
+
                 /*
                  * Multi-base Deletion 3' reverse strand NEGATIVE test cases:
                  */
@@ -2508,4 +2575,40 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     public void testRequiresFeatures() {
         Assert.assertTrue(testMuc16SnpCreateFuncotationsFuncotationFactory.requiresFeatures());
     }
+
+    @Test
+    public void testFivePrimeFlankSorting() {
+        // This variant context would get a sorting that was different than the ground truth in FuncotatorIntegrationTest#nonTrivialLargeDataValidationTest
+        final VariantContext variantContext = new VariantContextBuilder("", "1", 871276, 871276,
+                Arrays.asList(Allele.create("G", true), Allele.create("A"))).make();
+        final String transcriptGtfFile = GENCODE_HG19_BIG_GTF_FILE;
+        final String transcriptFastaFile = GENCODE_HG19_BIG_FASTA_FILE;
+        final SimpleInterval variantInterval = new SimpleInterval(variantContext);
+        final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(Paths.get(b37Reference)), variantInterval);
+        final VariantContext vcHg19 = new VariantContextBuilder(variantContext).chr(FuncotatorUtils.convertB37ContigToHg19Contig(variantContext.getContig())).make();
+        final SimpleInterval vcHg19Interval = new SimpleInterval(vcHg19.getContig(), vcHg19.getStart(), vcHg19.getEnd());
+
+        final FeatureInput<GencodeGtfFeature> gencodeFeatureInput = new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap());
+        final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new HashMap<>();
+        featureInputMap.put(gencodeFeatureInput, GencodeGtfFeature.class);
+        final FeatureContext featureContext = FeatureContext.createFeatureContextForTesting(featureInputMap, "dummyName", vcHg19Interval, VariantWalker.DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, 0, 0, null);
+
+        // Sorts canonically
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(transcriptFastaFile),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
+                Collections.emptySet(),
+                new LinkedHashMap<>(),
+                gencodeFeatureInput,
+                new FlankSettings(5000, 0),
+                "TEST")) {
+
+            final List<Funcotation> gencodeFuncotationList = funcotationFactory.createFuncotations(vcHg19, referenceContext, featureContext);
+
+            System.out.println(gencodeFuncotationList.size());
+        }
+    }
+
 }

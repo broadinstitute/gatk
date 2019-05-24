@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.utils.Utils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.codecs.AnnotatedIntervalCodec;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;

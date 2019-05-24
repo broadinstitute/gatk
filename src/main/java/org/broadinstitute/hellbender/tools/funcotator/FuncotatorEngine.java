@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -15,10 +16,13 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.compositeoutput.CompositeOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.genelistoutput.GeneListOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.simpletsvoutput.SimpleTsvOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -26,8 +30,10 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,6 +47,10 @@ public final class FuncotatorEngine implements AutoCloseable {
 
     /** Obligatory logger. */
     private static final Logger logger = LogManager.getLogger(FuncotatorEngine.class);
+    private static final String SIMPLE_TSV_SEG_FILE_CONFIG = "org/broadinstitute/hellbender/tools/funcotator/simple_funcotator_seg_file.config";
+
+    @VisibleForTesting
+    static final String GENE_LIST_FILE_SUFFIX = ".gene_list.txt";
 
     /**
      * Information about what kinds of {@link Funcotation}s are going to be created by this {@link FuncotatorEngine}.
@@ -55,7 +65,7 @@ public final class FuncotatorEngine implements AutoCloseable {
     /**
      * The arguments given to the instance of the {@link GATKTool} running this {@link FuncotatorEngine}.
      */
-    private final FuncotatorArgumentCollection funcotatorArgs;
+    private final BaseFuncotatorArgumentCollection funcotatorArgs;
 
     /**
      * The {@link SAMSequenceDictionary} for the driving variants (i.e. the input variant file).
@@ -65,7 +75,7 @@ public final class FuncotatorEngine implements AutoCloseable {
     /**
      * Whether the input variant contigs must be converted to hg19.
      * This is only the case when the input reference is b37 AND when
-     * the reference version is hg19 (i.e. {@link FuncotatorArgumentCollection#referenceVersion} == {@link FuncotatorArgumentDefinitions#HG19_REFERENCE_VERSION_STRING}).
+     * the reference version is hg19 (i.e. {@link FuncotatorVariantArgumentCollection#referenceVersion} == {@link FuncotatorVariantArgumentCollection.FuncotatorReferenceVersion#hg19}).
      */
     private final boolean mustConvertInputContigsToHg19;
 
@@ -79,10 +89,11 @@ public final class FuncotatorEngine implements AutoCloseable {
      * Create a {@link FuncotatorEngine} using the given {@code metadata} and {@code funcotationFactories} representing
      * the kinds of {@link Funcotation}s to be created and the data sources from which they should be created,
      * respectively.
-     * @param metadata {@link FuncotationMetadata} containing information on the kinds of {@link Funcotation}s this {@link FuncotatorEngine} will create.
+     * @param metadata {@link FuncotationMetadata} containing information on the kinds of {@link Funcotation}s this {@link FuncotatorEngine} will create to represent the input file.
+     *          For example, this could be based on the existing annotations for an input VCF.
      * @param funcotationFactories A {@link List<DataSourceFuncotationFactory>} which can create the desired {@link Funcotation}s.
      */
-    public FuncotatorEngine(final FuncotatorArgumentCollection funcotatorArgs,
+    public FuncotatorEngine(final BaseFuncotatorArgumentCollection funcotatorArgs,
                             final SAMSequenceDictionary sequenceDictionaryForDrivingVariants,
                             final FuncotationMetadata metadata,
                             final List<DataSourceFuncotationFactory> funcotationFactories) {
@@ -105,7 +116,7 @@ public final class FuncotatorEngine implements AutoCloseable {
     /**
      * @return An unmodifiable {@link List<DataSourceFuncotationFactory>} being used by this {@link FuncotatorEngine} to create {@link Funcotation}s.
      */
-    public List<DataSourceFuncotationFactory> getFuncotationFactories() {
+    List<DataSourceFuncotationFactory> getFuncotationFactories() {
         return Collections.unmodifiableList(dataSourceFactories);
     }
 
@@ -178,15 +189,51 @@ public final class FuncotatorEngine implements AutoCloseable {
     }
 
     /**
+     * Creates a {@link FuncotationMap} for the given {@code variantContext} using the datasources initialized with this
+     *  engine.
+     *
+     * @param segmentAsVariantContext   {@link VariantContext} to annotate.  Never {@code null}.
+     * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variantContext}.  Never {@code null}.
+     * @param featureContext {@link FeatureContext} corresponding to the given {@code variantContext}.  Never {@code null}.
+     * @return an instance of FuncotationMap that maps transcript IDs to lists of funcotations for the given variantContext context.
+     */
+     FuncotationMap createFuncotationMapForSegment(final VariantContext segmentAsVariantContext,
+                                                         final ReferenceContext referenceContext,
+                                                         final FeatureContext featureContext) {
+
+        Utils.nonNull(segmentAsVariantContext);
+        Utils.nonNull(referenceContext);
+        Utils.nonNull(featureContext);
+
+        //==============================================================================================================
+        // We do not need to treat the Gencode funcotations as a special case
+
+        if (retrieveGencodeFuncotationFactoryStream().count() > 1) {
+            logger.error("Attempting to annotate with more than one GENCODE datasource.  If these have overlapping transcript IDs, errors may occur, so it has been disallowed.");
+            throw new UserException.BadInput("Attempting to funcotate segments with more than one GENCODE datasource.  This is currently not supported.  Please post to the forum if you would like to see support for this.");
+        }
+
+        final List<Funcotation> funcotations = dataSourceFactories.stream()
+                .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
+                .map(ff -> ff.createFuncotations(segmentAsVariantContext, referenceContext,
+                        featureContext))
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        // Create a place to keep our funcotations:
+        return FuncotationMap.createNoTranscriptInfo(funcotations);
+    }
+
+    /**
      * Create an output renderer for the data created by this instance of {@link FuncotatorEngine}.
-     * @param annotationDefaultsMap {@link LinkedHashMap<String, String>} of annotation names and their default values.
-     * @param annotationOverridesMap {@link LinkedHashMap<String, String>} of annotation names and the values for these fields overridden by the user.
+     * @param annotationDefaultsMap {@link LinkedHashMap<String,String>} of annotation names and their default values.
+     * @param annotationOverridesMap {@link LinkedHashMap<String,String>} of annotation names and the values for these fields overridden by the user.
      * @param headerForVariants {@link VCFHeader} for the input VCF file containing the variants to annotate.
      * @param defaultToolVcfHeaderLines {@link Set<VCFHeaderLine>} containing the default {@link VCFHeaderLine}s for the given {@code gatkToolInstance}.
      * @param gatkToolInstance {@link GATKTool} instance from which we will be using this {@link FuncotatorEngine}.
      * @return The requested {@link OutputRenderer} based on the given {@code funcotatorArgs}.
      */
-    public OutputRenderer createOutputRenderer(final LinkedHashMap<String, String> annotationDefaultsMap,
+    OutputRenderer createOutputRenderer(final LinkedHashMap<String, String> annotationDefaultsMap,
                                                final LinkedHashMap<String, String> annotationOverridesMap,
                                                final VCFHeader headerForVariants,
                                                final Set<VCFHeaderLine> defaultToolVcfHeaderLines,
@@ -208,7 +255,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
                         defaultToolVcfHeaderLines.stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)),
-                        funcotatorArgs.referenceVersion,
+                        funcotatorArgs.referenceVersion.toString(),
                         funcotatorArgs.excludedFields,
                         gatkToolInstance.getVersion()
                 );
@@ -226,6 +273,22 @@ public final class FuncotatorEngine implements AutoCloseable {
                         gatkToolInstance.getVersion()
                 );
                 break;
+
+            case SEG:
+                // Create an output renderer that will actually write multiple files.
+                outputRenderer =  new CompositeOutputRenderer(
+                            Arrays.asList(
+                                    SimpleTsvOutputRenderer.createFromResource(funcotatorArgs.outputFile.toPath(),
+                                        unaccountedForDefaultAnnotations,
+                                        unaccountedForOverrideAnnotations, funcotatorArgs.excludedFields,
+                                        Paths.get(SIMPLE_TSV_SEG_FILE_CONFIG),
+                                        gatkToolInstance.getVersion(), true),
+
+                                    new GeneListOutputRenderer(new File(funcotatorArgs.outputFile.getAbsolutePath() + GENE_LIST_FILE_SUFFIX).toPath(),
+                                        unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
+                                        funcotatorArgs.excludedFields, gatkToolInstance.getVersion())
+                        ), gatkToolInstance.getVersion());
+                break;
             default:
                 throw new GATKException("Unsupported output format type specified: " + funcotatorArgs.outputFormatType.toString());
         }
@@ -236,9 +299,9 @@ public final class FuncotatorEngine implements AutoCloseable {
     /**
      * @return A {@link VariantFilter} that will ignore any variants that have been filtered (if the user requested that the filter is turned on).  Otherwise returns a no-op filter.
      */
-    public VariantFilter makeVariantFilter() {
-        // Ignore variants that have been filtered if the user requests it:
-        return funcotatorArgs.removeFilteredVariants ?
+    public static VariantFilter makeVariantFilter(final boolean isRemovingFilteredVariants) {
+        // Ignore variants that have been filtered if the requested:
+        return isRemovingFilteredVariants ?
                 VariantFilterLibrary.PASSES_FILTERS :
                 VariantFilterLibrary.ALLOW_ALL_VARIANTS;
     }
@@ -248,7 +311,7 @@ public final class FuncotatorEngine implements AutoCloseable {
      * @param variant A {@link VariantContext} object containing the variant to convert.
      * @return A {@link VariantContext} whose contig has been transformed to HG19 if requested by the user.  Otherwise, an identical variant.
      */
-    public VariantContext getCorrectVariantContextForReference(final VariantContext variant) {
+    private VariantContext getCorrectVariantContextForReference(final VariantContext variant) {
         if ( mustConvertInputContigsToHg19 ) {
             final VariantContextBuilder vcb = new VariantContextBuilder(variant);
             vcb.chr(FuncotatorUtils.convertB37ContigToHg19Contig(variant.getContig()));
@@ -409,7 +472,7 @@ public final class FuncotatorEngine implements AutoCloseable {
         boolean mustConvertInputContigsToHg19 = false;
 
         if ( funcotatorArgs.forceB37ToHg19ContigNameConversion ||
-                ( funcotatorArgs.referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING) &&
+                ( funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19) &&
                         FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants) )) {
 
             // NOTE AND WARNING:

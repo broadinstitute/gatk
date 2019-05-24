@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;

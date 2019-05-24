@@ -397,6 +397,21 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test
+    public void testNoSupportOfSegments() {
+        final SimpleKeyXsvFuncotationFactory factory = new SimpleKeyXsvFuncotationFactory(
+                defaultName,
+                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                "VERSION",
+                ",",
+                0,
+                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+        );
+
+        Assert.assertFalse(factory.isSupportingSegmentFuncotation());
+        Assert.assertEquals(factory.getSupportedFuncotationFieldsForSegments(), Collections.emptyList());
+    }
+
     /*
      * Test that when we match on transcript IDs, we ignore the transcript version numbers
      */

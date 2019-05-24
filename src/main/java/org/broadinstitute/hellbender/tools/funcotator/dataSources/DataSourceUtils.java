@@ -204,7 +204,7 @@ final public class DataSourceUtils {
 
         try {
             configFileSet = Files.list(directory)
-                    .filter(x -> configFileMatcher.matches(x))
+                    .filter(configFileMatcher::matches)
                     .filter(Files::exists)
                     .filter(Files::isReadable)
                     .filter(Files::isRegularFile)
@@ -239,6 +239,10 @@ final public class DataSourceUtils {
      * @param gatkToolInstance Instance of the {@link GATKTool} into which to add {@link FeatureInput}s.  Must not be {@code null}.
      * @param lookaheadFeatureCachingInBp Number of base-pairs to cache when querying variants.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param doAttemptSegmentFuncotationForTranscriptDatasources Allow the caller to specify whether segments should
+     *                                                            be annotated with a gencode/transcript datasource.
+     *                                                            Not all datasources support this flag and it is
+     *                                                            ignored for those that don't.
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
@@ -247,7 +251,8 @@ final public class DataSourceUtils {
                                                                                                         final Set<String> userTranscriptIdSet,
                                                                                                         final GATKTool gatkToolInstance,
                                                                                                         final int lookaheadFeatureCachingInBp,
-                                                                                                        final FlankSettings flankSettings) {
+                                                                                                        final FlankSettings flankSettings,
+                                                                                                        final boolean doAttemptSegmentFuncotationForTranscriptDatasources) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -286,7 +291,7 @@ final public class DataSourceUtils {
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
@@ -477,6 +482,9 @@ final public class DataSourceUtils {
      * @param userTranscriptIdSet {@link Set} of {@link String}s containing transcript IDs of interest to be selected for first.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the Gencode data source we are creating.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param isSegmentFuncotationEnabled Do we want to allow the output Gencode Funcotation Factory to do segment annotations?  If false,
+     *                                    segments will be funcotated with variant classifications of
+     *                                    {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     private static GencodeFuncotationFactory createGencodeDataSource(final Path dataSourceFile,
@@ -485,7 +493,7 @@ final public class DataSourceUtils {
                                                                      final TranscriptSelectionMode transcriptSelectionMode,
                                                                      final Set<String> userTranscriptIdSet,
                                                                      final FeatureInput<? extends Feature> featureInput,
-                                                                     final FlankSettings flankSettings) {
+                                                                     final FlankSettings flankSettings, final boolean isSegmentFuncotationEnabled) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -513,7 +521,7 @@ final public class DataSourceUtils {
                 featureInput,
                 flankSettings,
                 isB37,
-                ncbiBuildVersion
+                ncbiBuildVersion, isSegmentFuncotationEnabled
             );
     }
 
