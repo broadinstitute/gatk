@@ -96,6 +96,14 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
                 });
     }
 
+    /**
+     * This method can be overridden if you need to customize the interval for a given feature.
+     *
+     * @param feature {@link Feature} to derive the interval.
+     * @param <T> Class that extends feature.
+     * @return Interval for the given feature.  Typically, this is just the extents of the feature itself.
+     * Never {@code null}
+     */
     protected <T extends Feature> SimpleInterval makeFeatureInterval(final T feature) {
         return new SimpleInterval(feature);
     }
