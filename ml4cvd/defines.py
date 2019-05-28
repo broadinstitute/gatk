@@ -2,6 +2,7 @@ EPS = 1e-7
 
 DICOM_EXT = '.dcm'
 IMAGE_EXT = '.png'
+PDF_EXT = '.pdf'
 TENSOR_EXT = '.hd5'
 
 JOIN_CHAR = '_'
@@ -18,6 +19,10 @@ MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
 
 CAD_ICDS = ['K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
             'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759']
+
+# TODO: These values should ultimately come from the coding table
+CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
+CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
 
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
 ECG_BIKE_MEDIAN_SIZE = (5500, len(ECG_BIKE_LEADS))

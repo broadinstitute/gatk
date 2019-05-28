@@ -14,7 +14,7 @@ from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.tensor_writer_ukbb import write_tensors
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_while_learning, find_tensors
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
@@ -55,6 +55,8 @@ def run(args):
             write_tensor_maps(args)
         elif 'find_tensors' == args.mode:
             find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
+        elif 'report_tensors' == args.mode:
+            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.num_samples, args.num_fields)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -331,6 +333,6 @@ def _get_tensor_files(tensor_dir):
     return [tensor_dir + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     args = parse_args()
     run(args)  # back to the top

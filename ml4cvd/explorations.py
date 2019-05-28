@@ -2,11 +2,13 @@
 
 # Imports
 import os
+from collections import defaultdict
+
 import h5py
 import logging
 import datetime
 import numpy as np
-from typing import Dict, List, Tuple, Generator, Optional
+from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -15,8 +17,8 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
@@ -121,6 +123,45 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
+def plot_histograms_from_tensor_files_in_pdf(id: str,
+                                             tensor_folder_path: str,
+                                             output_folder_path: str,
+                                             num_samples: int = None,
+                                             num_fields: int = None) -> None:
+    """
+    :param id: name for the plotting run
+    :param tensor_folder_path: directory with tensor files to plot histograms from
+    :param output_folder_path: folder containing the output plot
+    :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
+    :param num_fields: number of fields to histogram; by default all fields are plotted
+    """
+
+    if not os.path.exists(tensor_folder_path):
+        raise ValueError('Source directory does not exist: ', tensor_folder_path)
+
+    all_tensor_files = os.listdir(tensor_folder_path)
+    if num_samples is not None:
+        tensor_files = np.random.choice(all_tensor_files, num_samples, replace=False)
+    else:
+        tensor_files = all_tensor_files
+
+    logging.debug(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder_path}...")
+
+    stats = defaultdict(list)
+    file_count = 0
+    for hd5_file_name in tensor_files:
+        if hd5_file_name.endswith(TENSOR_EXT):
+            tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
+            _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
+            file_count += 1
+            if file_count % 1000 == 0:
+                logging.debug(f"Processed {file_count} tensors for histograming.")
+    logging.debug(f"Collected continuous stats for {len(stats)} fields.")
+    first_n_fields_stats = dict(list(stats.items())[0:num_fields])
+    logging.debug(f"Plotting histograms for {len(first_n_fields_stats)} of those fields...")
+    plot_histograms_in_pdf(first_n_fields_stats, id, output_folder_path)
+
+
 def mri_dates(tensors: str, output_folder: str, run_id: str):
     incident_dates = []
     prevalent_dates = []
@@ -221,3 +262,36 @@ def _sample_with_heat(preds, temperature=1.0):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
+
+
+def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: DefaultDict[str, list]) -> None:
+    def _field_meaning_to_values_dict(_, obj):
+        if _is_continuous_valid_scalar_hd5_dataset(obj):
+            value_in_tensor_file = obj[0]
+            if value_in_tensor_file in CODING_VALUES_LESS_THAN_ONE:
+                field_value = 0.5
+            else:
+                field_value = value_in_tensor_file
+
+            dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
+            if len(dataset_name_parts) == 4:  # e.g. /continuous/1488_Tea-intake_0_0
+                field_id = dataset_name_parts[0]
+                field_meaning = dataset_name_parts[1]
+                instance = dataset_name_parts[2]
+                array_idx = dataset_name_parts[3]
+                stats[field_meaning].append(field_value)
+            elif len(dataset_name_parts) == 1:  # e.g. /continuous/VentricularRate
+                field_meaning = dataset_name_parts[0]
+                stats[field_meaning].append(field_value)
+            else:
+                raise ValueError(f"Dataset name '{obj.name}' is not in format "
+                                 f"<field_id>_<field_meaning>_<instance>_<array_idx> or <field_meaning>")
+    with h5py.File(tensor_file_path, 'r') as hd5_handle:
+        hd5_handle.visititems(_field_meaning_to_values_dict)
+
+
+def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
+    return obj.name.startswith('/continuous') and \
+           isinstance(obj, h5py.Dataset) and \
+           obj[0] not in CODING_VALUES_MISSING and \
+           len(obj.shape) == 1

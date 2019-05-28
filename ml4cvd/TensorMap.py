@@ -6,7 +6,7 @@ from dateutil import relativedelta
 
 from keras.utils import to_categorical
 
-from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
+from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -64,10 +64,6 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
 
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
-
-#TODO: These values should ultimatly come from the coding table
-CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
-CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
 
 MEAN_IDX = 0
 STD_IDX = 1
