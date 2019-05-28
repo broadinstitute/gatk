@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.genomicsdb.GenomicsDBUtils;
+import org.genomicsdb.Constants;
 import org.genomicsdb.importer.GenomicsDBImporter;
 import org.genomicsdb.model.Coordinates;
 import org.genomicsdb.model.GenomicsDBCallsetsMapProto;
@@ -118,13 +119,28 @@ import java.net.URISyntaxException;
  *  sample3      sample3.vcf.gz
  *  </pre>
  *
+ *  Add new samples to an existing genomicsdb workspace.
+ *  <pre>
+ *    gatk --java-options "-Xmx4g -Xms4g" GenomicsDBImport \
+ *      -V data/gvcfs/mother.g.vcf.gz \
+ *      -V data/gvcfs/father.g.vcf.gz \
+ *      -V data/gvcfs/son.g.vcf.gz \
+ *      --genomicsdb-workspace-path my_database \
+ *      --tmp-dir=/path/to/large/tmp \
+ *      --incremental
+ *  </pre>
+ *  In the incremental import case, the tool will use the same intervals used in the initial import. Sample map 
+ *  is also supported for incremental import
+ *
  * <h3>Caveats</h3>
  * <ul>
  *     <li>IMPORTANT: The -Xmx value the tool is run with should be less than the total amount of physical memory available by at least a few GB, as the native TileDB library requires additional memory on top of the Java memory. Failure to leave enough memory for the native code can result in confusing error messages!</li>
- *     <li>At least one interval must be provided</li>
+ *     <li>At least one interval must be provided, unless incrementally importing new samples in which case specified intervals are ignored in favor of intervals specified in the existing workspace</li>
  *     <li>Input GVCFs cannot contain multiple entries for a single genomic position</li>
- *     <li>The --genomicsdb-workspace-path must point to a non-existent or empty directory.</li>
+ *     <li>The --genomicsdb-workspace-path must point to a non-existent or empty directory, unless doing incremental import</li>
  *     <li>GenomicsDBImport uses temporary disk storage during import. The amount of temporary disk storage required can exceed the space available, especially when specifying a large number of intervals. The command line argument `--tmp-dir` can be used to specify an alternate temporary storage location with sufficient space..</li>
+ *     <li>It is recommended that users backup existing genomicsdb workspaces before adding new samples using --incremental. If the tool fails during incremental import for any reason, the workspace may be in an inconsistent/corrupted state</li>
+ *     <li>If users do not have backup workspaces available while using --incremental, another potential failsafe is available if --consolidate option was not used. In this case, if the tool fails, it will leave behind a copy of the original callset file (suffixed .inc.backup) and a list of original fragment directories (suffixed .fragmentlist - containing a list of directories within the genomicsdb workspace that existed before the incremental import). If a failure occurs, the user can replace the callset file in the workspace with the original callset file (.inc.backup file) and delete all directories not named in the .fragmentlist file. Do not delete directories named genomicsdb_meta_dir</li>
  * </ul>
  *
  * <h3>Developer Note</h3>
@@ -150,6 +166,7 @@ public final class GenomicsDBImport extends GATKTool {
 
     public static final String BATCHSIZE_ARG_LONG_NAME = "batch-size";
     public static final String CONSOLIDATE_ARG_NAME = "consolidate";
+    public static final String INCREMENTAL_ARG_NAME = "incremental";
     public static final String SAMPLE_NAME_MAP_LONG_NAME = "sample-name-map";
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validate-sample-name-map";
     public static final String MERGE_INPUT_INTERVALS_LONG_NAME = "merge-input-intervals";
@@ -159,7 +176,8 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Must be a POSIX file system path, but can be a relative path." +
-                      " Must be an empty or non-existent directory.")
+                      " Must be an empty or non-existent directory if importing a new workspace." +
+                      " Must be an existing workspace if adding new samples using incremental import.")
     private String workspace;
 
     @Argument(fullName = SEGMENT_SIZE_ARG_LONG_NAME,
@@ -192,6 +210,7 @@ public final class GenomicsDBImport extends GATKTool {
     @Argument(fullName = OVERWRITE_WORKSPACE_LONG_NAME,
               doc = "Will overwrite given workspace if it exists. " +
                     "Otherwise a new workspace is created. " +
+                    "Mutually exclusive with incremental import." +
                     "Defaults to false",
               optional = true)
     private Boolean overwriteExistingWorkspace = false;
@@ -216,6 +235,13 @@ public final class GenomicsDBImport extends GATKTool {
                     "batch is used. Defaults to false",
               optional = true)
     private Boolean doConsolidation = false;
+
+    @Argument(fullName = INCREMENTAL_ARG_NAME,
+              shortName = INCREMENTAL_ARG_NAME,
+              doc = "Boolean flag to indicate incrementally adding new samples to existing workspace. " +
+                    "Defaults to false",
+              optional = true)
+    private Boolean doIncrementalImport = false;
 
     @Advanced
     @Argument(fullName = SAMPLE_NAME_MAP_LONG_NAME,
@@ -262,9 +288,6 @@ public final class GenomicsDBImport extends GATKTool {
 
     //executor service used when vcfInitializerThreads > 1
     private ExecutorService inputPreloadExecutorService;
-
-    @Override
-    public boolean requiresIntervals() { return true; }
 
     /**
      * Get the largest interval per contig that contains the intervals specified on the command line.
@@ -344,9 +367,17 @@ public final class GenomicsDBImport extends GATKTool {
     @Override
     public void onStartup() {
         assertVariantPathsOrSampleNameFileWasSpecified();
+        assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive();
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
+    }
+
+    private void assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive() {
+        if ( overwriteExistingWorkspace && doIncrementalImport ) {
+            throw new CommandLineException(OVERWRITE_WORKSPACE_LONG_NAME + " and " +
+                    INCREMENTAL_ARG_NAME + " cannot both be true");
+        }
     }
 
     private void assertVariantPathsOrSampleNameFileWasSpecified(){
@@ -503,11 +534,15 @@ public final class GenomicsDBImport extends GATKTool {
         callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
         vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
-        logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
-        logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
-        logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
-        logger.info("Importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
-
+        if (doIncrementalImport) {
+            logger.info("Callset Map JSON file will be re-written to " + callsetMapJSONFile);
+            logger.info("Incrementally importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+        } else {
+            logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
+            logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
+            logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
+            logger.info("Importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+        }
         initializeInputPreloadExecutorService();
     }
 
@@ -564,17 +599,35 @@ public final class GenomicsDBImport extends GATKTool {
         }).collect(Collectors.toList());
     }
 
+    private void generateIntervalListFromWorkspace() {
+        String[] partitions = GenomicsDBUtils.listGenomicsDBArrays(workspace);
+        intervals = new ArrayList<>();
+        for (int i=0; i<partitions.length; i++) {
+            String[] partitionInfo = partitions[i].split(Constants.CHROMOSOME_FOLDER_DELIMITER_SYMBOL_REGEX);
+            if (partitionInfo.length != 3) {
+                throw new UserException(
+                    "Workspace contains array name that doesn't fit the <contig><delim><startpos><delim><endpos> format:"+
+                    partitions[i]+" where <delim> is "+Constants.CHROMOSOME_FOLDER_DELIMITER_SYMBOL_REGEX+
+                    "\nWas the specified workspace created using GenomicsDBImport?");
+            }
+            final String contig = partitionInfo[0];
+            final int start = Integer.parseInt(partitionInfo[1]);
+            final int end = Integer.parseInt(partitionInfo[2]);
+            intervals.add(new SimpleInterval(contig, start, end));
+        }
+    }
+
     private ImportConfig createImportConfig(final int batchSize) {
         final List<GenomicsDBImportConfiguration.Partition> partitions = generatePartitionListFromIntervals(intervals);
         GenomicsDBImportConfiguration.ImportConfiguration.Builder importConfigurationBuilder =
                 GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
         importConfigurationBuilder.addAllColumnPartitions(partitions);
         importConfigurationBuilder.setSizePerColumnPartition(vcfBufferSizePerSample);
-        importConfigurationBuilder.setFailIfUpdating(true);
+        importConfigurationBuilder.setFailIfUpdating(true && !doIncrementalImport);
         importConfigurationBuilder.setSegmentSize(segmentSize);
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
         ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
-                batchSize, mergedHeaderLines, sampleNameToVcfPath, this::createSampleToReaderMap);
+                batchSize, mergedHeaderLines, sampleNameToVcfPath, this::createSampleToReaderMap, doIncrementalImport);
         importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile);
         importConfig.setOutputVidmapJsonFile(vidMapJSONFile);
         importConfig.setOutputVcfHeaderFile(vcfHeaderFile);
@@ -753,8 +806,15 @@ public final class GenomicsDBImport extends GATKTool {
         } else if (returnCode < 0) {
             throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
         } else if (!overwriteExistingWorkspace && returnCode == 1) {
-            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists");
+            if (doIncrementalImport) {
+                return workspaceDir;
+            } else {
+                throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists");
+            }
         } else {
+            if (doIncrementalImport) {
+                throw new UserException("We require an existing valid workspace when incremental import is set");
+            }
             return workspaceDir;
         }
     }
@@ -774,6 +834,12 @@ public final class GenomicsDBImport extends GATKTool {
      */
     protected void initializeIntervals() {
         if (intervalArgumentCollection.intervalsSpecified()) {
+            if (doIncrementalImport) {
+                logger.warn("Incremental import was set, so ignoring specified intervals. " +
+                    "The tool will import data using the intervals specified by the initial import");
+                generateIntervalListFromWorkspace();
+                return;
+            }
             final SAMSequenceDictionary intervalDictionary = getBestAvailableSequenceDictionary();
 
             if (intervalDictionary == null) {
@@ -793,6 +859,9 @@ public final class GenomicsDBImport extends GATKTool {
                 );
             }
             intervals = mergeInputIntervals ? IntervalUtils.getSpanningIntervals(simpleIntervalList, getBestAvailableSequenceDictionary()) : simpleIntervalList;
+        } else if (doIncrementalImport) {
+            // in incremental import case, we don't care if intervals were specified
+            generateIntervalListFromWorkspace();
         } else {
             throw new UserException("No intervals specified");
         }
