@@ -108,10 +108,30 @@ class GCContentAnnotation(IntervalAnnotation):
         return "GC_CONTENT"
 
 
+class CommonRegionAnnotation(IntervalAnnotation):
+    """This class represents class(common vs rare region) assignment for an interval."""
+    def __init__(self, region_class):
+        super().__init__(region_class)
+
+    @staticmethod
+    def parse(raw_value):
+        region_class = str(raw_value)
+        if region_class == "true":
+            return 1
+        elif region_class == "false":
+            return 0
+        else:
+            raise ValueError("Region class ({0}) must be either a rare or common string".format(region_class))
+
+    @staticmethod
+    def get_key() -> str:
+        return "MULTIALLELIC"
+
+
 interval_annotations_dict: Dict[str, IntervalAnnotation] = {
-    GCContentAnnotation.get_key(): GCContentAnnotation
+    GCContentAnnotation.get_key(): GCContentAnnotation, CommonRegionAnnotation.get_key(): CommonRegionAnnotation
 }
 
 interval_annotations_dtypes: Dict[str, object] = {
-    GCContentAnnotation.get_key(): float
+    GCContentAnnotation.get_key(): float, CommonRegionAnnotation.get_key(): str
 }

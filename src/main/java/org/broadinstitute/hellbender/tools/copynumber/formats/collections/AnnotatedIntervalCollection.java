@@ -46,7 +46,8 @@ public final class AnnotatedIntervalCollection extends AbstractLocatableCollecti
         Integer,
         Long,
         Double,
-        String
+        String,
+        Boolean
     }
     
     private static final BiConsumer<AnnotatedInterval, DataLine> ANNOTATED_INTERVAL_RECORD_TO_DATA_LINE_ENCODER = (annotatedInterval, dataLine) -> {
@@ -141,6 +142,9 @@ public final class AnnotatedIntervalCollection extends AbstractLocatableCollecti
                         annotations.add(Pair.of(key, dataLine.getDouble(key.getName())));
                         break;
                     case String:
+                        annotations.add(Pair.of(key, dataLine.get(key.getName())));
+                        break;
+                    case Boolean:
                         annotations.add(Pair.of(key, dataLine.get(key.getName())));
                         break;
                     default:

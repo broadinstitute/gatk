@@ -19,7 +19,7 @@ from .dists import HalfFlat
 from .fancy_model import GeneralizedContinuousModel
 from .theano_hmm import TheanoForwardBackward
 from .. import config, types
-from ..structs.interval import Interval, GCContentAnnotation
+from ..structs.interval import Interval, GCContentAnnotation, CommonRegionAnnotation
 from ..structs.metadata import SampleMetadataCollection
 from ..tasks.inference_task_base import HybridInferenceParameters
 
@@ -194,6 +194,7 @@ class CopyNumberCallingConfig:
     def __init__(self,
                  p_alt: float = 1e-6,
                  p_active: float = 1e-3,
+                 active_region_prior_error: float = 1e-2,
                  cnv_coherence_length: float = 10000.0,
                  class_coherence_length: float = 10000.0,
                  max_copy_number: int = 5,
@@ -201,6 +202,7 @@ class CopyNumberCallingConfig:
         """See `expose_args` for the description of arguments"""
         assert 0.0 <= p_alt <= 1.0
         assert 0.0 <= p_active <= 1.0
+        assert 0.0 <= active_region_prior_error <= 1.0
         assert cnv_coherence_length > 0.0
         assert class_coherence_length > 0.0
         assert max_copy_number > 0
@@ -209,6 +211,7 @@ class CopyNumberCallingConfig:
 
         self.p_alt = p_alt
         self.p_active = p_active
+        self.active_region_prior_error = active_region_prior_error
         self.cnv_coherence_length = cnv_coherence_length
         self.class_coherence_length = class_coherence_length
         self.max_copy_number = max_copy_number
@@ -262,6 +265,10 @@ class CopyNumberCallingConfig:
         process_and_maybe_add("p_active",
                               type=float,
                               help="Prior probability of treating an interval as CNV-active")
+
+        process_and_maybe_add("active_region_prior_error",
+                              type=float,
+                              help="Uncertainty to impose on the common region prior binary values")
 
         process_and_maybe_add("cnv_coherence_length",
                               type=float,
@@ -317,9 +324,15 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
     def initialize_posterior(denoising_config: DenoisingModelConfig,
                              calling_config: CopyNumberCallingConfig,
                              shared_workspace: 'DenoisingCallingWorkspace'):
-        # interval class log posterior probs
-        class_probs_k = np.asarray([1.0 - calling_config.p_active, calling_config.p_active], dtype=types.floatX)
-        log_q_tau_tk = np.tile(np.log(class_probs_k), (shared_workspace.num_intervals, 1))
+        assert shared_workspace.class_prior_probs_tk is not None or shared_workspace.class_prior_probs_k is not None
+
+        # initialize interval class log posterior probs
+        if shared_workspace.class_prior_probs_tk is not None:
+            log_q_tau_tk = np.log(shared_workspace.class_prior_probs_tk.get_value())
+        else:
+            log_q_tau_tk = np.tile(np.log(shared_workspace.class_prior_probs_k.get_value()),
+                                   (shared_workspace.num_intervals, 1))
+
         shared_workspace.log_q_tau_tk = th.shared(log_q_tau_tk, name="log_q_tau_tk", borrow=config.borrow_numpy)
 
         # copy number log posterior probs
@@ -332,9 +345,14 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
                 calling_config.num_copy_number_states,
                 calling_config.p_alt,
                 sample_baseline_copy_number_j)
-            sample_log_pi_jc = np.log(np.sum(sample_pi_jkc * class_probs_k[np.newaxis, :, np.newaxis], axis=1))
+            if shared_workspace.impose_uniform_priors:
+                sample_log_pi_jc = np.log(np.sum(sample_pi_jkc * shared_workspace.class_prior_probs_k.get_value()[np.newaxis, :, np.newaxis], axis=1))
             for ti in range(shared_workspace.num_intervals):
-                log_q_c_stc[si, ti, :] = sample_log_pi_jc[t_to_j_map[ti], :]
+                if shared_workspace.impose_uniform_priors:
+                    log_q_c_stc[si, ti, :] = sample_log_pi_jc[t_to_j_map[ti], :]
+                else:
+                    for c in range(calling_config.num_copy_number_states):
+                        log_q_c_stc[si, ti, c] = np.log(np.sum(sample_pi_jkc[t_to_j_map[ti], :, c] * log_q_tau_tk[ti, :]))
         shared_workspace.log_q_c_stc = th.shared(log_q_c_stc, name="log_q_c_stc", borrow=config.borrow_numpy)
 
 
@@ -424,13 +442,20 @@ class DenoisingCallingWorkspace:
         # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
         self.log_class_emission_tk: Optional[types.TensorSharedVariable] = None
 
-        # class assignment prior probabilities
-        # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
-        self.class_probs_k: Optional[types.TensorSharedVariable] = None
+        self.impose_uniform_priors = \
+            not all([CommonRegionAnnotation.get_key() in interval.annotations.keys() for interval in self.interval_list])
 
-        # class Markov chain log prior (initialized here and remains constant throughout)
-        # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
-        self.log_prior_k: Optional[np.ndarray] = None
+        # uniform class assignment prior probabilities
+        # (to be initialized by calling `initialize_class_priors`)
+        self.class_prior_probs_k: Optional[types.TensorSharedVariable] = None
+
+        # class assignment prior probabilities informed by population data
+        # (to be initialized by calling `initialize_class_priors`)
+        self.class_prior_probs_tk: Optional[types.TensorSharedVariable] = None
+
+        # class Markov chain log prior for first node (initialized here and remains constant throughout)
+        # (to be initialized by calling `initialize_class_priors`)
+        self.log_class_prior_first_node: Optional[np.ndarray] = None
 
         # class Markov chain log transition (initialized here and remains constant throughout)
         # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
@@ -449,6 +474,7 @@ class DenoisingCallingWorkspace:
         self.denoised_copy_ratio_st: types.TensorSharedVariable = th.shared(
             denoised_copy_ratio_st, name="denoised_copy_ratio_st", borrow=config.borrow_numpy)
 
+        self.initialize_class_priors()
         # initialize posterior
         posterior_initializer.initialize_posterior(denoising_config, calling_config, self)
         self.initialize_bias_inference_vars()
@@ -459,7 +485,7 @@ class DenoisingCallingWorkspace:
         The following members are initialized:
             - `DenoisingCallingWorkspace.log_class_emission_tk`
             - `DenoisingCallingWorkspace.class_probs_k`
-            - `DenoisingCallingWorkspace.log_prior_k`
+            - `DenoisingCallingWorkspace.log_class_prob_zero`
             - `DenoisingCallingWorkspace.log_trans_tkk`
         """
         # class emission log posterior
@@ -468,24 +494,43 @@ class DenoisingCallingWorkspace:
         self.log_class_emission_tk: types.TensorSharedVariable = th.shared(
             log_class_emission_tk, name="log_class_emission_tk", borrow=True)
 
-        # class assignment prior probabilities
-        # Note:
-        #   The first class is the CNV-silent class (highly biased toward the baseline copy number)
-        #   The second class is a CNV-active class (all copy number states are equally probable)
-        class_probs_k = np.asarray([1.0 - self.calling_config.p_active, self.calling_config.p_active],
-                                   dtype=types.floatX)
-        self.class_probs_k: types.TensorSharedVariable = th.shared(
-            class_probs_k, name='class_probs_k', borrow=config.borrow_numpy)
-
-        # class Markov chain log prior (initialized here and remains constant throughout)
-        self.log_prior_k: np.ndarray = np.log(class_probs_k)
-
+        class_prior_probs_tk = self.class_prior_probs_tk.get_value() if self.class_prior_probs_tk is not None else None
+        class_prior_probs_k = self.class_prior_probs_k.get_value() if self.class_prior_probs_k is not None else None
         # class Markov chain log transition (initialized here and remains constant throughout)
         self.log_trans_tkk: np.ndarray = self._get_log_trans_tkk(
             self.dist_t,
             self.calling_config.class_coherence_length,
             self.calling_config.num_copy_number_classes,
-            class_probs_k)
+            class_prior_probs_k,
+            class_prior_probs_tk)
+
+    def initialize_class_priors(self):
+        """Initializes `DenoisingCallingWorkspace.class_prior_probs_k`, `DenoisingCallingWorkspace.class_prior_probs_tk`
+         and `DenoisingCallingWorkspace.log_class_prior_first_node`"""
+        # class assignment prior probabilities
+        # Note:
+        #   The first class is the CNV-silent class (highly biased toward the baseline copy number)
+        #   The second class is a CNV-active class (all copy number states are equally probable)
+        _logger.info(self.impose_uniform_priors)
+        if self.impose_uniform_priors:
+            class_probs_k = np.asarray([1.0 - self.calling_config.p_active, self.calling_config.p_active],
+                                   dtype=types.floatX)
+            self.class_prior_probs_k: types.TensorSharedVariable = th.shared(
+                class_probs_k, name='class_probs_k', borrow=config.borrow_numpy)
+            self.log_class_prior_first_node = np.log(class_probs_k)
+        else:
+            class_prior_probs_tk = np.zeros(shape=(len(self.interval_list), 2), dtype=types.floatX)
+            for ti in range(len(self.interval_list)):
+                if self.interval_list[ti].get_annotation(CommonRegionAnnotation.get_key()):
+                    # interval is annotated as common
+                    class_prior_probs_tk[ti] = [self.calling_config.active_region_prior_error,
+                                                1.0 - self.calling_config.active_region_prior_error]
+                else:
+                    class_prior_probs_tk[ti] = [1.0 - self.calling_config.active_region_prior_error,
+                                                self.calling_config.active_region_prior_error]
+            self.class_prior_probs_tk: types.TensorSharedVariable = th.shared(
+                class_prior_probs_tk, name='class_prior_probs_tk', borrow=config.borrow_numpy)
+            self.log_class_prior_first_node = np.log(class_prior_probs_tk[0])
 
     def initialize_bias_inference_vars(self):
         """Initializes `DenoisingCallingWorkspace.W_gc_tg` and `DenoisingCallingWorkspace.interval_neighbor_index_list`
@@ -570,12 +615,17 @@ class DenoisingCallingWorkspace:
     def _get_log_trans_tkk(dist_t: np.ndarray,
                            class_coherence_length: float,
                            num_copy_number_classes: int,
-                           class_probs_k: np.ndarray) -> np.ndarray:
+                           class_prior_probs_k: np.ndarray,
+                           class_prior_probs_tk: np.ndarray) -> np.ndarray:
         """Calculates the log transition probability between copy number classes."""
+        if class_prior_probs_tk is None:
+            class_probs_tkl = class_prior_probs_k[None, None, :]
+        else:
+            class_probs_tkl = class_prior_probs_tk[1:, :, None]
         class_stay_prob_t = np.exp(-dist_t / class_coherence_length)
         class_not_stay_prob_t = np.ones_like(class_stay_prob_t) - class_stay_prob_t
         delta_kl = np.eye(num_copy_number_classes, dtype=types.floatX)
-        trans_tkl = (class_not_stay_prob_t[:, None, None] * class_probs_k[None, None, :]
+        trans_tkl = (class_not_stay_prob_t[:, None, None] * class_probs_tkl
                      + class_stay_prob_t[:, None, None] * delta_kl[None, :, :])
         return np.log(trans_tkl)
 
@@ -617,7 +667,7 @@ class DenoisingCallingWorkspace:
             contig_list: list of contigs appearing in the modeling interval list
 
         Returns:
-            global read depth, average ploudy, baseline copy number
+            global read depth, average ploidy, baseline copy number
         """
         assert sample_metadata_collection.all_samples_have_read_depth_metadata(sample_names), \
             "Some samples do not have read depth metadata"
@@ -1125,7 +1175,7 @@ class HHMMClassAndCopyNumberBasicCaller:
 
     def _update_class_log_posterior(self, class_update_summary_statistic_reducer) -> Tuple[float, float]:
         fb_result = self._hmm_q_class.perform_forward_backward(
-            self.shared_workspace.log_prior_k,
+            self.shared_workspace.log_class_prior_first_node,
             self.shared_workspace.log_trans_tkk,
             self.shared_workspace.log_class_emission_tk.get_value(borrow=True),
             prev_log_posterior_tc=self.shared_workspace.log_q_tau_tk.get_value(borrow=True),

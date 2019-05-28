@@ -19,8 +19,13 @@ public final class CopyNumberAnnotations {
             Double.class,
             segmentalDuplicationContent -> (0. <= segmentalDuplicationContent && segmentalDuplicationContent <= 1.) || Double.isNaN(segmentalDuplicationContent));
 
+    public static AnnotationKey<String> MULTIALLELIC = new AnnotationKey<>(
+            "MULTIALLELIC",
+            String.class,
+            multiallelic -> (multiallelic.equals("true") || multiallelic.equals("false")));
+
     /**
      * This defines the canonical order of these annotations.
      */
-    public static List<AnnotationKey<?>> ANNOTATIONS = Arrays.asList(GC_CONTENT, MAPPABILITY, SEGMENTAL_DUPLICATION_CONTENT);
+    public static List<AnnotationKey<?>> ANNOTATIONS = Arrays.asList(GC_CONTENT, MAPPABILITY, SEGMENTAL_DUPLICATION_CONTENT, MULTIALLELIC);
 }
