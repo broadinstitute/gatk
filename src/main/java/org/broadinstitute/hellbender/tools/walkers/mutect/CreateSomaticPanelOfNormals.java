@@ -44,8 +44,11 @@ import java.util.stream.Collectors;
  * <h3>Example workflow</h3>
  *
  * <h4>Step 1. Run Mutect2 in tumor-only mode for each normal sample.</h4>
+ * <p>
+ *   Note that as of May, 2019 -max-mnp-distance must be set to zero to avoid a bug in GenomicsDBImport.
+ * </p>
  * <pre>
- * gatk Mutect2 -R reference.fasta -I normal1.bam -O normal1.vcf.gz
+ * gatk Mutect2 -R reference.fasta -I normal1.bam -max-mnp-distance 0 -O normal1.vcf.gz
  * </pre>
  *
  * <h4>Step 2. Create a GenomicsDB from the normal Mutect2 calls.</h4>
