@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
+import java.lang.annotation.Target;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -139,24 +140,25 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
      */
     protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, List<ThreadingNode> nodesToExtend) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
-        ThreadingNode nodeAtCurrentBase = null;
-
-        if (outgoingEdges.size() != 1) {
-            nodeAtCurrentBase = readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode();
-        }
 
         final int nextPos = kmerStart + kmerSize - 1;
         for (final MultiSampleEdge outgoingEdge : outgoingEdges) {
             final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
             if (target.getSuffix() == sequence[nextPos]) {
-                // If this vertex is a junction that we must record
-                if (nodeAtCurrentBase != null) {
-                    //TODO this needs to be handled in a better way...
-                    nodesToExtend.add(nodeAtCurrentBase);
+                // If this node has an out-degree > 1, add the edge we took to existing trees
+                if (outgoingEdges.size() != 1) {
+                    // TODO, make an object to encapsulate this operation better
                     List<ThreadingNode> newNodes = nodesToExtend.stream().map(n -> n.addEdge(outgoingEdge)).collect(Collectors.toList());
                     nodesToExtend.clear();
                     nodesToExtend.addAll(newNodes);
                 }
+
+                // Only want to create a new tree if we walk into a node with
+                // NOTE: we do this after extending the previous node
+                if (incomingEdgesOf(target).size() > 1) {
+                    nodesToExtend.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
+                }
+
                 return target;
             }
         }

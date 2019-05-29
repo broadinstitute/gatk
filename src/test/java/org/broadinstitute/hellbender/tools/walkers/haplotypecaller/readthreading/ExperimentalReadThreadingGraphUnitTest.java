@@ -45,6 +45,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     }
 
     @Test
+    // The simplest case where we expect two uninformative junction trees to be constructed
     public void testSimpleJunctionTreeExample() {
         final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
         String ref = "GGGAAATTTCCCGGG";
@@ -64,14 +65,17 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees();
-        Assert.assertEquals(junctionTrees.size(), 1);
+        Assert.assertEquals(junctionTrees.size(), 2);
 
-        ExperimentalReadThreadingGraph.ThreadingTree actualTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
-        Assert.assertNotNull(actualTree); // Make sure we actually have tree data for that site
+        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
+        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TTCCC")));
+        Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
+        Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
 
-        List<String> baseChoices = actualTree.getPathsPresentAsBaseChoiceStrings();
-        Assert.assertTrue(baseChoices.contains("G"));
-        Assert.assertTrue(baseChoices.contains("T"));
+        List<String> tree1Choices = tree1.getPathsPresentAsBaseChoiceStrings();
+        List<String> tree2Choices = tree2.getPathsPresentAsBaseChoiceStrings();
+        Assert.assertEquals(tree1Choices, Collections.singletonList(""));
+        Assert.assertEquals(tree2Choices, Collections.singletonList(""));
     }
 
     @Test
