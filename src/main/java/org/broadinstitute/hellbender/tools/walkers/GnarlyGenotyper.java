@@ -398,7 +398,9 @@ public final class GnarlyGenotyper extends CombineGVCFs {
 
         final List<Integer> gtCounts;
         if (mergedVC.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)) {
-            gtCounts = mergedVC.getAttributeAsIntList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, 0);
+            //Alas, after the  merge this becomes a string
+            gtCounts =  Arrays.asList(mergedVC.getAttributeAsString(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, "")
+                    .split(",")).stream().map(Integer::parseInt).collect(Collectors.toList());
         } else {
             gtCounts = Arrays.stream(rawGenotypeCounts).boxed().collect(Collectors.toList());
         }
