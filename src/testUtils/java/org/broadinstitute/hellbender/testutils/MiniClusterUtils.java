@@ -7,6 +7,7 @@ import org.testng.Assert;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.UUID;
 
 /**
@@ -19,7 +20,7 @@ public final class MiniClusterUtils {
      * @throws IOException
      */
     public static MiniDFSCluster getMiniCluster(Configuration otherConf) throws IOException {
-        final File baseDir = BaseTest.createTempDir("minicluster_storage");
+        final File baseDir = Files.createTempDirectory("minicluster_storage").normalize().toFile();
         final Configuration configuration;
         if (otherConf != null) {
             configuration = new Configuration(otherConf);

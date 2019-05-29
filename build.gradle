@@ -265,6 +265,7 @@ dependencies {
     compile 'org.apache.commons:commons-vfs2:2.0'
     compile 'commons-io:commons-io:2.5'
     compile 'org.reflections:reflections:0.9.10'
+    compile 'commons-collections:commons-collections:3.2.2'
 
     compile 'it.unimi.dsi:fastutil:7.0.6'
 
@@ -280,6 +281,7 @@ dependencies {
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
+        exclude group: 'org.apache.hadoop'
     }
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
