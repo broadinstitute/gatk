@@ -294,7 +294,8 @@ dependencies {
     compile 'org.jgrapht:jgrapht-core:0.9.1'
 
     compile('org.disq-bio:disq:' + disqVersion)
-    compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
+    compile('org.apache.hadoop:hadoop-client-api:' + hadoopVersion) // should be a 'provided' dependency
+    compile('org.apache.hadoop:hadoop-client-runtime:' + hadoopVersion) // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
     compile('de.javakaffee:kryo-serializers:0.41') {
@@ -335,7 +336,7 @@ dependencies {
 
     testUtilsCompile sourceSets.main.output
     testUtilsCompile 'org.testng:testng:' + testNGVersion
-    testUtilsCompile 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
+    testUtilsCompile 'org.apache.hadoop:hadoop-client-minicluster:' + hadoopVersion
 
     testCompile sourceSets.testUtils.output
 
