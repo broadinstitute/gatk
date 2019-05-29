@@ -47,6 +47,7 @@ public class ContaminationModel {
     private static final int NUM_ITERATIONS = 3;
     private static final double MIN_FRACTION_OF_SITES_TO_USE = 0.25;
     private static final double MIN_RELATIVE_ERROR = 0.2;
+    private static final double MIN_ABSOLUTE_ERROR = 0.001;
     private static final List<Double> CONTAMINATION_INITIAL_GUESSES = Arrays.asList(0.02, 0.05, 0.1, 0.2);
 
     public ContaminationModel(List<PileupSummary> sites) {
@@ -100,7 +101,7 @@ public class ContaminationModel {
             } else {
                 result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, minMaf);
             }
-            if (result.getRight() < result.getLeft() * MIN_RELATIVE_ERROR) {
+            if (result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
                 return result;
             }
         }
