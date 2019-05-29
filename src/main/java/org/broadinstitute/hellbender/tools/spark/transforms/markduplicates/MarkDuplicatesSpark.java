@@ -6,6 +6,7 @@ import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -139,6 +140,11 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
             fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME)
     protected String metricsFile;
+
+    @Advanced
+    @Argument(doc = "Override to allow non-queryname sorted inputs for multiple input bams.", optional=true,
+            fullName = "allow-multiple-sort-orders-in-input")
+    protected boolean allowMultipleSortOrders = false;
 
     @ArgumentCollection
     protected MarkDuplicatesSparkArgumentCollection markDuplicatesSparkArgumentCollection = new MarkDuplicatesSparkArgumentCollection();
@@ -298,10 +304,14 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
         Map<String, SAMFileHeader> headerMap = getReadSourceHeaderMap();
         if (headerMap.size() > 1) {
-            headerMap.entrySet().stream().forEach(h -> {if(!ReadUtils.isReadNameGroupedBam(h.getValue())) {
-                throw new UserException("Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted or querygroup-sorted for multi-input processing but input "+h.getKey()+" was sorted in "+h.getValue().getSortOrder()+" order");
-                    }});
-            mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+            if (!allowMultipleSortOrders) {
+                headerMap.entrySet().stream().forEach(h -> {
+                    if (!ReadUtils.isReadNameGroupedBam(h.getValue())) {
+                        throw new UserException("Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted or querygroup-sorted for multi-input processing but input " + h.getKey() + " was sorted in " + h.getValue().getSortOrder() + " order. Try running with '--allow-multiple-sort-orders-in-input' to run by sorting all the input.");
+                    }
+                });
+                mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+            }
         }
 
         JavaRDD<GATKRead> reads = getReads();
