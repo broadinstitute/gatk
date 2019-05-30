@@ -313,7 +313,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         if (headerMap.size() > 1) {
             final Optional<Map.Entry<String, SAMFileHeader>> badlySorted = headerMap.entrySet()
                     .stream()
-                    .filter(h -> treatAsReadGroupOrdered(h.getValue(), treatUnsortedAsOrdered))
+                    .filter(h -> !treatAsReadGroupOrdered(h.getValue(), treatUnsortedAsOrdered))
                     .findFirst();
 
             if(badlySorted.isPresent()) {
@@ -328,7 +328,10 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                     .getValue().getSortOrder() + " order");
                 }
             } else {
-                mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+                // The default sort order for merged input files is unsorted, so this will be fed to the tool to be sorted
+                if (!allowMultipleSortOrders) {
+                    mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+                }
             }
 
         // If there is only one file and we are in treatUnsortedAsOrdered mode than set its group order accordingly.
