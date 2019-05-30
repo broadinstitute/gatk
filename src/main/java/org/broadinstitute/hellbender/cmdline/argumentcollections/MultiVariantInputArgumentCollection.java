@@ -15,6 +15,22 @@ import java.util.List;
 public abstract class MultiVariantInputArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
+
+
+    /**
+     * Return an argument collection that provides the driving variants.  This allows subclasses to override and use a different
+     * argument pattern besides the default -V
+     */
+    protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
+        return new MultiVariantInputArgumentCollection() {
+            @Override
+            public List<String> getDrivingVariantPaths() {
+                return null;
+            }
+        }
+        return new MultiVariantInputArgumentCollection.DefaultMultiVariantInputArgumentCollection();
+    }
+
     /**
      * @return List of paths to variants over which to iterate.  These will be merged and iterated as a single data source.
      */
