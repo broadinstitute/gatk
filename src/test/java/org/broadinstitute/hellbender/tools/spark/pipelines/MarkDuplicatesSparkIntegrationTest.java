@@ -501,7 +501,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addOutput(output);
         args.addInput(new File(TEST_DATA_DIR,"optical_dupes.queryname.bam"));
         args.addInput(new File(TEST_DATA_DIR,"optical_dupes.unsorted.querygrouped.sam"));
-        args.addArgument(MarkDuplicatesSpark.TREAT_UNSORTED_AS_OREDED);
+        args.addArgument(MarkDuplicatesSpark.TREAT_UNSORTED_AS_ORDERED);
         runCommandLine(args);
     }
 }

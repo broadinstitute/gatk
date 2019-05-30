@@ -129,7 +129,7 @@ import java.util.*;
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     public static final String ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG = "allow-multiple-sort-orders-in-input";
-    public static final String TREAT_UNSORTED_AS_OREDED = "treat-unsorted-as-querygroup-ordered-for-multiple-inputs";
+    public static final String TREAT_UNSORTED_AS_ORDERED = "treat-unsorted-as-querygroup-ordered-for-multiple-inputs";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -150,7 +150,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
     @Advanced
     @Argument(doc = "Treat unsorted files as query-group orderd files. NOTE: this may result in mark duplicates crashing if the file is unordered", optional=true,
-            fullName = TREAT_UNSORTED_AS_OREDED)
+            fullName = TREAT_UNSORTED_AS_ORDERED)
     protected boolean treatUnsortedAsOrdered = false;
 
     @ArgumentCollection
@@ -311,12 +311,23 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
         Map<String, SAMFileHeader> headerMap = getReadSourceHeaderMap();
         if (headerMap.size() > 1) {
-            if (!allowMultipleSortOrders) {
-                headerMap.entrySet().stream().forEach(h -> {
-                    if (!ReadUtils.isReadNameGroupedBam(h.getValue()) && (!treatUnsortedAsOrdered && h.getValue().getSortOrder().equals(SAMFileHeader.SortOrder.unsorted))) {
-                        throw new UserException("Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted or querygroup-sorted for multi-input processing but input " + h.getKey() + " was sorted in " + h.getValue().getSortOrder() + " order. Try running with '"+ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG+"' to run by sorting all the input.");
-                    }
-                });
+            final Optional<Map.Entry<String, SAMFileHeader>> badlySorted = headerMap.entrySet()
+                    .stream()
+                    .filter(h -> treatAsReadGroupOrdered(h.getValue(), treatUnsortedAsOrdered))
+                    .findFirst();
+
+            if(badlySorted.isPresent()) {
+                if (allowMultipleSortOrders) {
+                    //don't set an ordering, the files will all be sorted downstream
+                    logger.info("Input files are not all grouped by read name so they will be sorted.");
+                } else {
+                    final Map.Entry<String, SAMFileHeader> badPair = badlySorted.get();
+                    throw new UserException(
+                            "Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted " +
+                                    "or querygroup-sorted for multi-input processing but input " + badPair.getKey() + " was sorted in " + badPair
+                                    .getValue().getSortOrder() + " order");
+                }
+            } else {
                 mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
             }
         }
@@ -347,6 +358,18 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         mergedHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         writeReads(ctx, output, readsForWriting, mergedHeader, true);
+    }
+
+    // helper method to determin if an input header is to be treated as a query group sorted file.
+    private boolean treatAsReadGroupOrdered(SAMFileHeader header, boolean treatUnsortedAsReadGrouped) {
+        final SAMFileHeader.SortOrder sortOrder = header.getSortOrder();
+        if( ReadUtils.isReadNameGroupedBam(header) ){
+            return true;
+        } else if ( treatUnsortedAsReadGrouped && (sortOrder.equals(SAMFileHeader.SortOrder.unknown) || sortOrder.equals(SAMFileHeader.SortOrder.unsorted))) {
+            logger.warn("Input bam was marked as " + sortOrder.toString() + " but " + TREAT_UNSORTED_AS_ORDERED + " is specified so it's being treated as read name grouped");
+            return true;
+        }
+        return false;
     }
 
 }
