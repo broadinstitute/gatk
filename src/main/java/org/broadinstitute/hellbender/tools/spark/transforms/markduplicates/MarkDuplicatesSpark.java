@@ -319,7 +319,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             if(badlySorted.isPresent()) {
                 if (allowMultipleSortOrders) {
                     //don't set an ordering, the files will all be sorted downstream
-                    logger.info("Input files are not all grouped by read name so they will be sorted.");
+                    logger.info("Input files are not all grouped by read name so they will be sorted together.");
                 } else {
                     final Map.Entry<String, SAMFileHeader> badPair = badlySorted.get();
                     throw new UserException(
