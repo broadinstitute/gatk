@@ -129,7 +129,7 @@ import java.util.*;
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     public static final String ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG = "allow-multiple-sort-orders-in-input";
-    public static final String TREAT_UNSORTED_AS_ORDERED = "treat-unsorted-as-querygroup-ordered-for-multiple-inputs";
+    public static final String TREAT_UNSORTED_AS_ORDERED = "treat-unsorted-as-querygroup-ordered";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -144,12 +144,12 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     protected String metricsFile;
 
     @Advanced
-    @Argument(doc = "Override to allow non-queryname sorted inputs for multiple input bams.", optional=true,
+    @Argument(doc = "Allow non-queryname sorted inputs when specifying multiple input bams.", optional=true,
             fullName = ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG)
     protected boolean allowMultipleSortOrders = false;
 
     @Advanced
-    @Argument(doc = "Treat unsorted files as query-group orderd files. NOTE: this may result in mark duplicates crashing if the file is unordered", optional=true,
+    @Argument(doc = "Treat unsorted files as query-group orderd files. WARNING: This option disables a basic safety check and may result in unexpected behavior if the file is truly unordered", optional=true,
             fullName = TREAT_UNSORTED_AS_ORDERED)
     protected boolean treatUnsortedAsOrdered = false;
 
@@ -328,6 +328,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                     .getValue().getSortOrder() + " order");
                 }
             } else {
+                mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+            }
+
+        // If there is only one file and we are in treatUnsortedAsOrdered mode than set its group order accordingly.
+        } else {
+            if (treatUnsortedAsOrdered && (mergedHeader.getSortOrder().equals(SAMFileHeader.SortOrder.unknown) || mergedHeader.getSortOrder().equals(SAMFileHeader.SortOrder.unsorted))) {
+                logger.warn("Input bam was marked as " + mergedHeader.getSortOrder().toString() + " but " + TREAT_UNSORTED_AS_ORDERED + " is specified so it's being treated as read name grouped");
                 mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
             }
         }
