@@ -213,7 +213,7 @@ public class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             SimpleInterval loc = new SimpleInterval(intervalToClose.getContig(), stoppedLoc, stoppedLoc);
             if (( stoppedLoc <= intervalToClose.getEnd() && stoppedLoc>= intervalToClose.getStart()) && isWithinInterval(loc)) {
                 byte[] refBases = Arrays.copyOfRange(storedReferenceContext.getBases(), stoppedLoc - storedReferenceContext.getWindow().getStart(), stoppedLoc - storedReferenceContext.getWindow().getStart() + 2);
-                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, !(finalizedVCs == null || finalizedVCs.isEmpty()));
+                final VariantContext endedVC = endPreviousStates(loc, refBases, Collections.emptyList(), true, false);
                 if (finalizedVCs != null) {
                     finalizedVCs.add(endedVC);
                 }

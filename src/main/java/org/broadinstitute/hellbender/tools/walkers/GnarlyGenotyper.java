@@ -515,7 +515,14 @@ public final class GnarlyGenotyper extends CombineGVCFs {
             }
             else if (nonRefReturned) {
                 if (g.hasAD()) {
-                    final int[] AD = trimADs(g, targetAlleles.size());
+                    int[] AD = new int[1];
+                    try {
+                        AD = trimADs(g, targetAlleles.size());
+                    } catch (Exception e) {
+                        logger.warn("AD parsing error at " + vc.getContig() + ":" + vc.getStart() + " in sample " + g.getSampleName() + "\n" +
+                                "targetAlleles.size() == " + targetAlleles.size() + " and sample's AD length is " + g.getAD().length);
+                        throw e;
+                    }
                     genotypeBuilder.AD(AD);
                 }
                 else if (g.countAllele(Allele.NON_REF_ALLELE) > 0) {
