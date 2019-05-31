@@ -305,7 +305,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     private void doTheThings(final VariantContext mergedVC) {
         //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
         //builder gets the finalized annotations and dbBuilder gets the raw annotations for the database
-        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(mergedVC));
+        VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
         SimpleInterval variantStart = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
@@ -569,7 +569,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
 
             //re-tally genotype counts if they are missing from the original VC
             if (rawGenotypeCounts != null) {
-                int altCount = (int)g.getAlleles().stream().filter(a -> !a.isReference()).count();
+                int altCount = (int)calledGT.getAlleles().stream().filter(a -> !a.isReference() && !a.isNoCall()).count();
                 rawGenotypeCounts[altCount]++;
             }
         }

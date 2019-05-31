@@ -428,7 +428,19 @@ public final class ReferenceConfidenceVariantContextMerger {
                 ReducibleAnnotationData<Object> pairData = new AlleleSpecificAnnotationData<>(vcPair.getNewAlleles(), joiner.toString());
                 values.add(pairData);
 
-            // Otherwise simply treat it as a number
+            } else if (key.equals(GATKVCFConstants.VARIANT_DEPTH_KEY) || key.equals(GATKVCFConstants.MAPPING_QUALITY_DEPTH)) {  //TODO: figure out how to get the two inputs to QD into the QD code
+                int combinedValue = 0;
+                if (annotationMap.get(key) != null) {
+                    combinedValue += Integer.parseInt(annotationMap.get(key).get(0).toString());
+                }
+                annotationMap.put(key, Arrays.asList(combinedValue + Integer.parseInt(p.getValue().toString())));
+            } else if (key.equals(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
+                double combinedValue = 0;
+                if (annotationMap.get(key) != null) {
+                    combinedValue += Double.parseDouble(annotationMap.get(key).get(0).toString());
+                }
+                annotationMap.put(key, Arrays.asList(combinedValue + Double.parseDouble(p.getValue().toString())));
+                // Otherwise simply treat it as a number
             } else{
                 final Object value = p.getValue();
 
