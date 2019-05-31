@@ -482,4 +482,26 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addInput(new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"));
         runCommandLine(args);
     }
+
+    @Test
+    public void testAssertCorrectSortOrderMultipleBamsOverriding() {
+        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(new File(TEST_DATA_DIR,"optical_dupes.bam"));
+        args.addInput(new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"));
+        args.addArgument(MarkDuplicatesSpark.ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG);
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testAssertAssumeUnsortedFilesAreQueryGroupedFiles() {
+        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(new File(TEST_DATA_DIR,"optical_dupes.queryname.bam"));
+        args.addInput(new File(TEST_DATA_DIR,"optical_dupes.unsorted.querygrouped.sam"));
+        args.addArgument(MarkDuplicatesSpark.TREAT_UNSORTED_AS_ORDERED);
+        runCommandLine(args);
+    }
 }
