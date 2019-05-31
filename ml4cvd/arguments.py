@@ -190,7 +190,7 @@ def parse_args():
         help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int,
         help='Number of validation batches to examine in an epoch validation.')
-    parser.add_argument('--learning_rate', default=0.005, type=float,
+    parser.add_argument('--learning_rate', default=0.001, type=float,
         help='Learning rate during training.')
     parser.add_argument('--label_weights', nargs='*', type=float,
         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.')

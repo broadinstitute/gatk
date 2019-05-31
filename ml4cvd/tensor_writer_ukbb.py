@@ -121,6 +121,8 @@ def write_tensors(a_id: str,
     conn = sqlite3.connect(db)
     sql_cursor = conn.cursor()
 
+    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
+    logging.info('CSV of ICDs header:{}'.format(list(enumerate(lol[0]))))
     field_meanings, dates, status, lvef, lvesv, lvedv, lv_mass, icds, sample_ids = _load_meta_data_for_tensor_writing(sql_cursor, phenos_folder,
                                                                                                                       volume_csv, lv_mass_csv,
                                                                                                                       icd_csv, categorical_field_ids,

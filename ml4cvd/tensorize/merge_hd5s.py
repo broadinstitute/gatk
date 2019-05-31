@@ -22,7 +22,7 @@ python .merge_hd5s.py \
 """
 
 
-def merge_hd5s_into_destination(destination, sources):
+def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_id):
     if not os.path.exists(os.path.dirname(destination)):
         os.makedirs(os.path.dirname(destination))
 
@@ -30,6 +30,9 @@ def merge_hd5s_into_destination(destination, sources):
         for source_file in os.listdir(source_folder):
             if not source_file.endswith(TENSOR_EXT):
                 continue
+            if not min_sample_id <= int(os.path.splitext(source_file)[0]) < max_sample_id:
+                continue
+
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
                 with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
                     _copy_hd5_datasets(source_hd5, destination_hd5)
@@ -48,6 +51,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--sources', nargs='+', help='List of source directories with hd5 files')
     parser.add_argument('--destination', help='Destination directory to copy hd5 datasets to')
+    parser.add_argument('--min_sample_id', default=0, type=int, help='Minimum sample id to write to tensor.')
+    parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     return parser.parse_args()
 
@@ -55,4 +60,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
-    merge_hd5s_into_destination(args.destination, args.sources)
+    merge_hd5s_into_destination(args.destination, args.sources, args.min_sample_id, args.max_sample_id)

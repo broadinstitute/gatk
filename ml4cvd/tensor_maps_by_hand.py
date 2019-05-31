@@ -55,6 +55,11 @@ TMAPS['ecg_normal'] = TensorMap('ecg_normal', group='categorical', loss=weighted
                   channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3})
 TMAPS['ecg_infarct'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_infarct': 0, 'infarct': 1},
                              loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'))
+TMAPS['ecg_poor_data'] = TensorMap('ecg_poor_data', group='categorical', channel_map={'no_poor_data_quality': 0, 'poor_data_quality': 1},
+                             loss=weighted_crossentropy([1.0, 8.0], 'ecg_poor_data'))
+TMAPS['ecg_block'] = TensorMap('ecg_block', group='categorical', channel_map={'no_block': 0, 'block': 1},
+                             loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'))
+
 
 TMAPS['ecg_rhythmp'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythmp'), activation='softmax',
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3}, parents=['output_median_ecg_rest'])
@@ -243,8 +248,20 @@ TMAPS['fathers_age'] = TensorMap('fathers_age_0', group='continuous',
                                  normalization={'mean':70.928, 'std': 12.746}, annotation_units = 4)
 
 TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=2, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
+TMAPS['sex'] = TensorMap('sex', group='categorical', annotation_units=2, channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
 TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0':0}, normalization = {'mean': 27.432061533712652, 'std': 4.785244772462738}, annotation_units=1, loss='logcosh')
-TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0':0}, normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739 }, annotation_units=1, loss='logcosh', loss_weight=10.0)
+TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0':0}, normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739 }, annotation_units=1, loss='logcosh', loss_weight=1.0)
+TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', group='continuous', channel_map={'34_Year-of-birth_0_0':0}, normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739 }, annotation_units=1, loss='logcosh', loss_weight=1.0)
+
+TMAPS['sodium'] = TensorMap('30530_Sodium-in-urine', group='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0},
+                            normalization={'mean': 77.45323967267045, 'std': 44.441236848463774}, annotation_units=1, loss='logcosh')
+TMAPS['potassium'] = TensorMap('30520_Potassium-in-urine', group='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0},
+                               normalization={'mean': 63.06182700345117, 'std': 33.84208704773539}, annotation_units=1, loss='logcosh')
+TMAPS['cholesterol_hdl'] = TensorMap('30760_HDL-cholesterol', group='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0},
+                                     normalization={'mean': 1.4480129055069355, 'std': 0.3823115953478376}, annotation_units=1, loss='logcosh')
+TMAPS['cholesterol'] = TensorMap('30690_Cholesterol', group='continuous', channel_map={'30690_Cholesterol_0_0': 0},
+                                 normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=1, loss='logcosh')
+
 TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', group='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
 TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', group='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
 TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', group='continuous', channel_map={'1498_Coffee-intake_0_0': 0},
@@ -285,6 +302,14 @@ TMAPS['summer'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', group='con
 TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='continuous',
                             channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
+
+TMAPS['systolic_blood_pressure_0'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_0_0', group='continuous', loss='logcosh',
+                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0},
+                                               normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
+
+TMAPS['diastolic_blood_pressure_0'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading', group='continuous', loss='logcosh',
+                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading': 0},
+                                                normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
 
 # example of multi-field-continuous tensor map (note shape will be 1x8 to accommodate a not-missing channel for each value
 # normalization must be dictionary of [mean, stdev] for each value.

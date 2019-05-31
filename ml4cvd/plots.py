@@ -5,12 +5,11 @@ import os
 import math
 import logging
 import hashlib
-from itertools import islice
-from typing import Iterable, DefaultDict, Dict, List
-
 import numpy as np
 from textwrap import wrap
+from itertools import islice
 from collections import Counter, OrderedDict, defaultdict
+from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -24,13 +23,13 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
-SUBPLOT_SIZE = 22
+SUBPLOT_SIZE = 23
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
 
 
-def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
+def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[], scatters=[]):
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
@@ -63,6 +62,7 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
         performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
         performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
+        scatters.append((tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
@@ -79,8 +79,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
     cols = max(2, int(math.ceil(total_plots / rows)))
-    f, axes = plt.subplots(rows, cols, sharex=True, figsize=(int(rows * 4.5), int(cols * 4.5)))
-
+    f, axes = plt.subplots(rows, cols, figsize=(int(cols*4.5), int(rows*4.5)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
             axes[row, col].plot(history.history[k])
@@ -112,17 +111,17 @@ def plot_metric_history(history, title, prefix='./figures/'):
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
-def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3):
+def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
     plt.figure(figsize=(16, 16))
     matplotlib.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-    plt.scatter(prediction, truth)
+    plt.scatter(prediction, truth, marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
-        # The path of the best prediction, ie the in-lier
+        # The path of the best prediction, ie the inlier
         plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
         # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
@@ -142,16 +141,17 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     return {title + '_pearson': pearson}
 
 
-def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3):
+def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth) - np.min(truth)) / 100)
-    plt.figure(figsize=(28, 42))
-    plt.rcParams.update({'font.size': 36})
+    plt.figure(figsize=(16, 16))
+    plt.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     for k in predictions:
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
+        plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr), marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
@@ -168,6 +168,89 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info("Saved scatter plot at: {}".format(figure_path))
+
+
+def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]],
+                     prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+    lw = 3
+    row = 0
+    col = 0
+    total_plots = len(scatters)
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    for prediction, truth, title, paths in scatters:
+        axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
+        axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
+        axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
+        if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
+            margin = float((np.max(truth) - np.min(truth)) / 100)
+            diff = np.abs(prediction - truth)
+            arg_sorted = diff[:, 0].argsort()
+            # The path of the best prediction, ie the inlier
+            axes[row, col].text(prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            # Plot the paths of the worst predictions ie the outliers
+            for idx in arg_sorted[-top_k:]:
+                axes[row, col].text(prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        axes[row, col].set_xlabel('Predictions')
+        axes[row, col].set_ylabel('Actual')
+        axes[row, col].set_title(title + '\n')
+        pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+        axes[row, col].text(np.min(truth), np.max(truth), 'Pearson:%0.3f R^2:%0.3f' % (pearson, (pearson * pearson)))
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'scatters_together' + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    logging.info(f"Saved scatters together at: {figure_path}")
+
+
+def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]],
+                                prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+    row = 0
+    col = 0
+    total_plots = len(scatters)
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    for predictions, truth, title, paths in scatters:
+        for k in predictions:
+            c = _hash_string_to_color(title+k)
+            pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+            r_sqr = pearson * pearson
+            axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
+            axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
+            if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
+                margin = float((np.max(truth) - np.min(truth)) / 100)
+                diff = np.abs(predictions[k] - truth)
+                arg_sorted = diff[:, 0].argsort()
+                axes[row, col].text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                for idx in arg_sorted[-top_k:]:
+                    axes[row, col].text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        axes[row, col].set_xlabel('Predictions')
+        axes[row, col].set_ylabel('Actual')
+        axes[row, col].set_title(title + '\n')
+        axes[row, col].legend(loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'scatters_compared_together' + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
 def plot_noise(noise):
@@ -361,8 +444,9 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+        label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+        logging.info(f"ROC Label {label_text}")
 
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
@@ -392,8 +476,9 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p+key)
-            label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
+            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+            logging.info(f"ROC Label {label_text}")
 
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
@@ -411,24 +496,25 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
-def subplot_rocs(rocs, prefix='./figures/'):
+def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = max(2, int(math.sqrt(total_plots)))
-    cols = max(2, total_plots // rows)
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(key)
-            label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+            label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             axes[row, col].set_title('ROC: ' + key + '\n')
+            logging.info(f"ROC Label {label_text}")
 
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
@@ -444,21 +530,22 @@ def subplot_rocs(rocs, prefix='./figures/'):
             if col >= cols:
                 break
 
+    plt.tight_layout()
     figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
 
 
-def subplot_comparison_rocs(rocs, prefix='./figures/'):
+def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = max(2, int(math.sqrt(total_plots)))
-    cols = max(2, total_plots // rows)
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -466,9 +553,10 @@ def subplot_comparison_rocs(rocs, prefix='./figures/'):
                 if 'no_' in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
+                label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 axes[row, col].set_title('ROC: ' + key + '\n')
+                logging.info(f"ROC Label {label_text}")
 
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
@@ -517,7 +605,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-    logging.info("Saved Precision Recall curve at: {}".format(figure_path))
+    logging.info(f"Saved Precision Recall curve at: {figure_path}")
     return labels_to_areas
 
 
@@ -532,7 +620,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = "{}_{} area under ROC: {:.3f}".format(p, k, average_precision)
+            label_text = "{}_{} area:{:.3f}".format(p, k, average_precision)
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
 
     plt.ylim([-0.02, 1.03])

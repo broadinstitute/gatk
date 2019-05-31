@@ -30,9 +30,9 @@ TMAPS['mri_systole_diastole_b0_b3_weighted'] = TensorMap('mri_systole_diastole',
 TMAPS['mri_systole_diastole_b0_b6_weighted'] = TensorMap('mri_systole_diastole', (256, 256, 2, 1), dependent_map=TMAPS['mri_systole_diastole_segmented_weighted'], hd5_override=list(range(7)))
 TMAPS['mri_systole_diastole_b0_b9_weighted'] = TensorMap('mri_systole_diastole', (256, 256, 2, 1), dependent_map=TMAPS['mri_systole_diastole_segmented_weighted'], hd5_override=list(range(10)))
 TMAPS['mri_systole_diastole_8_segmented'] = TensorMap('mri_systole_diastole_8_segmented', (256, 256, 8, 3), loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
-TMAPS['mri_systole_diastole_8_segmented_weighted'] = TensorMap('mri_systole_diastole_8_segmented', (256, 256, 8, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([20.0, 250.0, 250.0], 'mri_systole_diastole_8_segmented'))
+TMAPS['mri_systole_diastole_8_segmented_weighted'] = TensorMap('mri_systole_diastole_8_segmented', (256, 256, 8, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'mri_systole_diastole_8_segmented'))
 TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented'])
-
+TMAPS['mri_systole_diastole_8_weighted'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented_weighted'])
 
 
 #  Continuous tensor maps

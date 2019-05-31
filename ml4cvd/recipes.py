@@ -13,11 +13,12 @@ from ml4cvd.arguments import parse_args
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.tensor_writer_ukbb import write_tensors
 from ml4cvd.tensor_map_maker import write_tensor_maps
+from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters
 
 
 def run(args):
@@ -117,8 +118,8 @@ def compare_multimodal_multitask_models(args):
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
-    tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    # hard code batch size to 1 so we can iterate over filenames and generated tensors together in the tensor_paths for loop
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -126,31 +127,38 @@ def infer_multimodal_multitask(args):
                                                 args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
                                                 args.pool_z, args.padding, args.learning_rate)
     
-    with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv' ), mode='w') as inference_file:
+    with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv'), mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        inference_writer.writerow(['sample_id'] + [ot for ot,otm in zip(args.output_tensors, args.tensor_maps_out) if len(otm.shape)==1])
+        header = ['sample_id']
+        for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
+            if len(otm.shape) == 1:
+                header.extend([ot+'_prediction', ot+'_actual'])
+        inference_writer.writerow(header)
 
         while True:
-            tensor_batch = next(generate_test)
-            tensor_path = tensor_batch[2][0]
-            if tensor_path in tensor_paths_inferred:
-                print('Done inferring tensors. Looped over at tensor:', tensor_path)
+            input_data, true_label, tensor_path = next(generate_test)
+            if tensor_path[0] in tensor_paths_inferred:
+                logging.info(f"Done inferring values for {stats['count']} tensors. Looped over at tensor:{tensor_path[0]}")
                 break
 
-            prediction = model.predict(tensor_batch[0])
+            prediction = model.predict(input_data)
             if len(args.tensor_maps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path).replace(TENSOR_EXT, '')] # extract sample id
-            for y,tm in zip(prediction, args.tensor_maps_out):
+            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1:
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
+                    if np.abs(tm.rescale(true_label[tm.output_name()])[0][0]) < 1e-4:  # Hack to handle missing LV Mass that was set to 0
+                        csv_row.append("NA")
+                    else:
+                        csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
             inference_writer.writerow(csv_row)
 
-            tensor_paths_inferred[tensor_path] = True
+            tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
-            if stats['count']% 500 == 0:
-                print('Wrote:', stats['count'], 'rows of inference.  Last tensor:', tensor_path)
+            if stats['count'] % 500 == 0:
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
 def train_shallow_model(args):
@@ -222,15 +230,20 @@ def plot_while_training(args):
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, output_folder, run_id, test_paths=None):
     performance_metrics = {}
+    scatters = []
     rocs = []
     plot_path = os.path.join(output_folder, run_id)
     y_pred = model.predict(test_data, batch_size=batch_size)
     for y, tm in zip(y_pred, tensor_maps_out):
         if len(tensor_maps_out) == 1:
             y = y_pred
-        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs))
-    if len(rocs) > 0:
+        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+
+    if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
+    if len(scatters) > 1:
+        subplot_scatters(scatters, plot_path)
+
     return performance_metrics
 
 
@@ -292,6 +305,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
 
 def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
     rocs = []
+    scatters = []
     for tm in args.tensor_maps_out:
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
@@ -318,6 +332,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         elif tm.is_continuous() and len(tm.shape) == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
+            scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
         else:
@@ -325,9 +340,11 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
-    if len(rocs) > 0:
-        subplot_comparison_rocs(rocs, plot_folder)
 
+    if len(rocs) > 1:
+        subplot_comparison_rocs(rocs, plot_folder)
+    if len(scatters) > 1:
+        subplot_comparison_scatters(scatters, plot_folder)
 
 def _get_tensor_files(tensor_dir):
     return [tensor_dir + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]

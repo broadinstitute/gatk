@@ -341,7 +341,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
             last_convolution1d = _conv_block1d(input_tensors[j], upsamplers,  conv_layers, max_pools, res_layers,
                                                activation, conv_bn, conv_width, conv_dropout, padding)
             last_convolution1d = _dense_block1d(last_convolution1d, upsamplers,  dense_blocks, block_size, activation,
-                                                conv_bn, conv_width, conv_dropout, padding)
+                                                conv_bn, conv_width, conv_dropout, pool_x, padding)
             input_multimodal.append(Flatten()(last_convolution1d))
         else:
             mlp_input = input_tensors[j]
@@ -714,6 +714,7 @@ def _dense_block1d(x: K.placeholder,
                    conv_bn: bool,
                    conv_width: int,
                    conv_dropout: float,
+                   pool_x: int,
                    padding: str):
     for db_filters in dense_blocks:
         for i in range(block_size):
@@ -728,10 +729,9 @@ def _dense_block1d(x: K.placeholder,
                 x = SpatialDropout1D(conv_dropout)(x)
 
             if i == 0:
-                pool_size = 2
                 up_conv = Conv1D(filters=db_filters, kernel_size=conv_width, activation=activation, padding=padding)
-                upsamplers.append((residual1d, up_conv, UpSampling1D(pool_size)))
-                x = AveragePooling1D(pool_size, strides=pool_size)(x)
+                upsamplers.append((residual1d, up_conv, UpSampling1D(pool_x)))
+                x = AveragePooling1D(pool_x, strides=pool_x)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]

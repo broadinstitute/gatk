@@ -73,7 +73,6 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
 
     while True:
         for tp in train_paths:
-            [logging.info(f"Got first error: {k}") for k in stats if 'Error' in k and stats[k] == 1]
             try:
                 with h5py.File(tp, 'r') as hd5:
                     dependents = {}
@@ -105,12 +104,16 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except OSError:
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+            except RuntimeError:
+                stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+            _log_first_error(stats)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
         for k in stats:
             logging.info("{}: {}".format(k, stats[k]))
-        logging.info("Generator looped over and shuffled {} tensors.".format(len(train_paths)))
+        logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
+        logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
 
 
 def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths):
@@ -180,6 +183,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                     stats['OSError:'+str(e)] += 1
                 except ValueError as e:
                     stats['ValueError:'+str(e)] += 1
+                _log_first_error(stats)
         
         for i, tlist in enumerate(paths_lists):
             if len(tlist) <= stats['train_paths_'+str(i)]:
@@ -339,3 +343,8 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     return generate_train, generate_valid, generate_test
 
 
+def _log_first_error(stats: Counter):
+    for k in stats:
+        if 'Error' in k and stats[k] == 1:
+            stats[k] += 1  # Increment so we only see these messages once
+            logging.info(f"Got first error: {k}")

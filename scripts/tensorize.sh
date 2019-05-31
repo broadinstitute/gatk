@@ -29,7 +29,7 @@ usage()
     Usage: ${SCRIPT_NAME}    -t <tensor_path>
                           [-i <id_string>] [-n <num_jobs>]
                           [-s <sample_id_start>] [-e <sample_id_end>]
-                          [-x <xml_field_id>] [-m <mri_field_id>]
+                          [-x <xml_field_id>] [-m <mri_field_id>] [-c <CONTINUOUS_FIELD_IDS>] [-a <CATEGORICAL_FIELD_IDS>]
                           [-h]
 
     Example: ./${SCRIPT_NAME} -t /mnt/disks/data/generated/tensors/test/2019-02-05/ -i my_run -n 96 -s 1000000 -e 6030000 -x "20205 6025" -m "20208 20209"
@@ -47,6 +47,10 @@ usage()
         -x      <ids>       ECG field IDs. Default: None - no ECG data is used.
 
         -m      <ids>       MRI field IDs. Default: None - no MRI data is used.
+
+        -c      <ids>       CONTINUOUS field IDs. Default: ${CONTINUOUS_FIELD_IDS}.
+
+        -a      <ids>       CATEGORICAL field IDs. Default: ${CATEGORICAL_FIELD_IDS}.
 
         -h                  Print this help text
 
@@ -74,7 +78,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":t:i:n:s:e:x:m:h" opt ; do
+while getopts ":t:i:c:a:n:s:e:x:m:h" opt ; do
     case ${opt} in
         h)
             usage
@@ -100,6 +104,12 @@ while getopts ":t:i:n:s:e:x:m:h" opt ; do
             ;;
         m)
             MRI_FIELD=$OPTARG
+            ;;
+        c)
+            CONTINUOUS_FIELD_IDS=$OPTARG
+            ;;
+        a)
+            CATEGORICAL_FIELD_IDS=$OPTARG
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -139,8 +149,8 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
                 --include_heart_zoom
                 --mri_field_id $MRI_FIELD
                 --xml_field_id $XML_FIELD
-                --categorical_field_ids <too long to list>
-                --continuous_field_ids <too long to list>
+                --categorical_field_ids $CATEGORICAL_FIELD_IDS
+                --continuous_field_ids $CONTINUOUS_FIELD_IDS
                 --dicoms ./dicoms_$MIN_SAMPLE_ID/
                 --min_sample_id $MIN_SAMPLE_ID
                 --max_sample_id $MAX_SAMPLE_ID &
