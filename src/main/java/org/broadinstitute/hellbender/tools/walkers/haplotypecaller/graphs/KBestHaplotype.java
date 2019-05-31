@@ -20,7 +20,7 @@ public final class KBestHaplotype<V extends BaseVertex, E extends BaseEdge> exte
         score = 0;
     }
 
-    public KBestHaplotype(final KBestHaplotype p, final E edge, final int totalOutgoingMultiplicity) {
+    public KBestHaplotype(final KBestHaplotype<V, E> p, final E edge, final int totalOutgoingMultiplicity) {
         super(p, edge);
         score = p.score() + MathUtils.log10(edge.getMultiplicity()) - MathUtils.log10(totalOutgoingMultiplicity);
         isReference &= edge.isRef();

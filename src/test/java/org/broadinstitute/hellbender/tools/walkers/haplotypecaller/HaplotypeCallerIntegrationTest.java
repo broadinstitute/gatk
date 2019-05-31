@@ -35,6 +35,7 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.collections.Lists;
 
 import java.io.File;
 import java.io.IOException;
@@ -239,28 +240,35 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      *  NOTE: --disable-sequence-graph-simplification is currently an experimental feature that does not directly match with
      *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
      *        sites, which is illustrated by this test. Use this mode at your own risk.
+     *
+     * This test is currently disabled due to differences in path branch weighting causing the SeqGraph free codepath to
+     * mismatch with the SeqGraph codepath.
      */
     @Test(dataProvider="HaplotypeCallerTestInputs", enabled = false)
     public void testGVCFModeIsConsistentWithPastResultsUsingKmerGraphs(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
-        final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
-        final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
+        final File output = createTempFile("testGVCFModeIsConsistentWithPastResults.noSeqGraph", ".g.vcf");
+        final File expected = createTempFile("testGVCFModeIsConsistentWithPastResults.SeqGraph", ".g.vcf");
 
-        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+        final String outputPath = output.getAbsolutePath();
+        final String expectedPath = expected.getAbsolutePath();
 
-        final String[] args = {
+        final List<String> args = Lists.newArrayList(
                 "-I", inputFileName,
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
-                "-O", outputPath,
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--disable-sequence-graph-simplification",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
-        };
+        );
+
+        final List<String> expectedArgs = new ArrayList<>(args);
+        args.addAll( Lists.newArrayList("-O", outputPath,"--disable-sequence-graph-simplification"));
+        expectedArgs.addAll( Lists.newArrayList("-O", expectedPath));
 
         runCommandLine(args);
+        runCommandLine(expectedArgs);
 
         // Test for an exact match against past results
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {

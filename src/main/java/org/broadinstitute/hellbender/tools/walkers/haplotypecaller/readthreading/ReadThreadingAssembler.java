@@ -502,7 +502,9 @@ public final class ReadThreadingAssembler {
 
         printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
         if (generateSeqGraph) {
-            initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
+            // This step is likely necessary because though non-reference paths have been removed at several points above, it is still possible
+            // that the pruning steps taken on SeqGraph might result pruning edges that are necessary for a given path to connect to the reference path.
+            initialSeqGraph.cleanNonRefPaths();
         } else {
             rtgraph.cleanNonRefPaths();
         }
