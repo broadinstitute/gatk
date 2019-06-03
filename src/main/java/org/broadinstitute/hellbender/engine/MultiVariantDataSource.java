@@ -12,6 +12,7 @@ import htsjdk.variant.vcf.VCFUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -81,14 +82,14 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      * @param reference reference to use when creating FeatureDataSources, may be null, only needed by GenomicsDB
      */
-    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions options) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         Utils.validateArg(featureInputs != null && featureInputs.size() > 0, "FeatureInputs list must be non-null and non-empty");
 
         featureInputs.forEach(
                 featureInput -> featureDataSources.add(
                         new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                reference)));
+                                                options)));
 
         // Ensure that the merged header and sequence dictionary that we use are in sync with each
         // other, and reflect the actual dictionaries used to do validation:

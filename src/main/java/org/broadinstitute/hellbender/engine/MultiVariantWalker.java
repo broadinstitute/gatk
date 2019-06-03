@@ -71,14 +71,14 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                     // Add each driving variants FeatureInput to the feature manager so that it can be queried, using a lookahead value
                     // of 0 to avoid caching because of windowed queries that need to "look behind" as well.
                     features.addToFeatureSources(0, featureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                 referenceArguments.getReferencePath());
+                            getGenomicsDBOptions());
                 }
         );
 
         // Create a (MultiVariantDataSource) FeatureDataSource for the driving variants inputs using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, getDrivingVariantCacheLookAheadBases(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                     referenceArguments.getReferencePath());
+                getGenomicsDBOptions());
 
         // Note: the intervals for the driving variants are set in onStartup()
     }
