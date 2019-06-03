@@ -31,6 +31,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.reflections.Reflections;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.util.*;
@@ -106,6 +108,8 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     private final static ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
 
     private final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = new HashSet<>();
+
+    private static final Logger logger = LogManager.getLogger();
 
 
     @Argument(fullName = "output-database-name", shortName = "output-db",
@@ -586,7 +590,10 @@ public final class GnarlyGenotyper extends CombineGVCFs {
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
 
-        if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
+        if (genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods)) {
+            gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
+        } else if (allelesToUse.size() > glcCache.size()) {
+            logger.warn("Requested number of alleles (" + allelesToUse.size() + ") exceeds expected (" + glcCache.size() + ")");
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
         } else {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
