@@ -52,12 +52,19 @@ public final class SparkContextFactory {
             .put("spark.yarn.executor.memoryOverhead", "600")
             .build();
 
-    public static final Map<String, String> DEFAULT_TEST_PROPERTIES = ImmutableMap.<String, String>builder()
-            .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
-            .put("spark.kryoserializer.buffer.max", "256m")
-            .put("spark.hadoop.fs.file.impl.disable.cache", "true") // so NonChecksumLocalFileSystem is not cached between tests
-            .putAll(getGcsHadoopAdapterTestProperties())
-            .build();
+
+    /**
+     * Get the default properties needed to run spark tests.  This should be done lazily since it can produce spurious
+     * warnings if run outside of the test environment.
+     */
+    private static ImmutableMap<String, String> getDefaultTestProperties() {
+        return ImmutableMap.<String, String>builder()
+                .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
+                .put("spark.kryoserializer.buffer.max", "256m")
+                .put("spark.hadoop.fs.file.impl.disable.cache", "true") // so NonChecksumLocalFileSystem is not cached between tests
+                .putAll(getGcsHadoopAdapterTestProperties())
+                .build();
+    }
 
     /**
      * @return checks if the necessary environment variables are present in order to configure the gcs-hadoop adapter
@@ -179,17 +186,17 @@ public final class SparkContextFactory {
     }
 
     private static JavaSparkContext createTestSparkContext(Map<String, String> overridingProperties) {
-        final SparkConf sparkConf = setupSparkConf("TestContext", DEFAULT_SPARK_MASTER, DEFAULT_TEST_PROPERTIES, overridingProperties);
+        final SparkConf sparkConf = setupSparkConf("TestContext", DEFAULT_SPARK_MASTER, getDefaultTestProperties(), overridingProperties);
         return new JavaSparkContext(sparkConf);
     }
 
     /**
      * Create the default Spark master, determines the number of cores it should use. Applicable to Spark test only.
-     *   Read the specification from the environmental variable GATK_TEST_SPARK_CORES
-     *      If the enviromental variable is not set,  use all available cores as in "local[*]"
+     *   Read the specification from the environment variable GATK_TEST_SPARK_CORES
+     *      If the environment variable is not set, use all available cores as in "local[*]"
      *      If the value is a positive integer, use the value
-     *      If the value is invalid (strings, empty, etc), throw an UserException
-     *      If the value is a negative interger or zero, throw an UserException
+     *      If the value is invalid (strings, empty, etc), throw a UserException
+     *      If the value is a negative integer or zero, throw a UserException
      */
     private static String determineDefaultSparkMaster() {
 	final String defaultSparkMasterString = "local[*]";
