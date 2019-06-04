@@ -3,6 +3,7 @@ workflow ReadsPipelineSparkWorkflow {
   String input_bam
   String output_vcf
   String known_sites
+  String emit_reference_confidence
 
   String gatk_docker
   String gatk
@@ -38,6 +39,7 @@ workflow ReadsPipelineSparkWorkflow {
       input_bam = input_bam,
       output_vcf = output_vcf,
       known_sites = known_sites,
+      emit_reference_confidence = emit_reference_confidence,
       gatk_docker = gatk_docker,
       gcloud_service_account_key_file = gcloud_service_account_key_file,
       gcloud_project = gcloud_project,
@@ -67,6 +69,7 @@ task ReadsPipelineSpark {
   String input_bam
   String output_vcf
   String known_sites
+  String emit_reference_confidence
 
   String gatk_docker
   File? gcloud_service_account_key_file
@@ -98,7 +101,8 @@ task ReadsPipelineSpark {
       -O ${output_vcf} \
       --known-sites ${known_sites} \
       -pairHMM AVX_LOGLESS_CACHING \
-      --maxReadsPerAlignmentStart 10 \
+      --max-reads-per-alignment-start 10 \
+      -ERC ${emit_reference_confidence} \
       -- \
       --spark-runner GCS \
       --cluster ${cluster_name} \
