@@ -214,8 +214,6 @@ def parse_args():
         help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true',
         help='Plot model architecture with labels for each layer.')
-    parser.add_argument('--num_fields', type=int, default=None,
-        help='Max number of continuous fields to histogram -- all are plotted if not specified.')
     parser.add_argument('--num_samples', type=int, default=None,
         help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
 

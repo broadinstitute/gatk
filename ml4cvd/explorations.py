@@ -124,42 +124,41 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
 
 
 def plot_histograms_from_tensor_files_in_pdf(id: str,
-                                             tensor_folder_path: str,
-                                             output_folder_path: str,
-                                             num_samples: int = None,
-                                             num_fields: int = None) -> None:
+                                             tensor_folder: str,
+                                             output_folder: str,
+                                             num_samples: int = None) -> None:
     """
     :param id: name for the plotting run
-    :param tensor_folder_path: directory with tensor files to plot histograms from
-    :param output_folder_path: folder containing the output plot
+    :param tensor_folder: directory with tensor files to plot histograms from
+    :param output_folder: folder containing the output plot
     :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
-    :param num_fields: number of fields to histogram; by default all fields are plotted
     """
 
-    if not os.path.exists(tensor_folder_path):
-        raise ValueError('Source directory does not exist: ', tensor_folder_path)
-
-    all_tensor_files = os.listdir(tensor_folder_path)
+    if not os.path.exists(tensor_folder):
+        raise ValueError('Source directory does not exist: ', tensor_folder)
+    all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
     if num_samples is not None:
+        if len(all_tensor_files) < num_samples:
+            logging.warning(f"{num_samples} was specified as number of samples to use but there are only "
+                            f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...")
+            num_samples = len(all_tensor_files)
         tensor_files = np.random.choice(all_tensor_files, num_samples, replace=False)
     else:
         tensor_files = all_tensor_files
 
-    logging.debug(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder_path}...")
+    num_tensor_files = len(tensor_files)
+    logging.info(f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}...")
 
-    stats = defaultdict(list)
+    # Declare the container to hold {field_1: {sample_1: [values], sample_2: [values], field_2:...}}
+    stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
     file_count = 0
-    for hd5_file_name in tensor_files:
-        if hd5_file_name.endswith(TENSOR_EXT):
-            tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
-            _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
-            file_count += 1
-            if file_count % 1000 == 0:
-                logging.debug(f"Processed {file_count} tensors for histograming.")
-    logging.debug(f"Collected continuous stats for {len(stats)} fields.")
-    first_n_fields_stats = dict(list(stats.items())[0:num_fields])
-    logging.debug(f"Plotting histograms for {len(first_n_fields_stats)} of those fields...")
-    plot_histograms_in_pdf(first_n_fields_stats, id, output_folder_path)
+    for tensor_file in tensor_files:
+        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
+        file_count += 1
+        if file_count % 1000 == 0:
+            logging.debug(f"Processed {file_count} tensors for histograming.")
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
+    plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
@@ -264,7 +263,11 @@ def _sample_with_heat(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: DefaultDict[str, list]) -> None:
+def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
+                                               tensor_file: str,
+                                               stats: DefaultDict[str, DefaultDict[str, List[float]]]) -> None:
+    # Inlining the method below to be able to reference more from the scope than the arguments of the function
+    # 'h5py.visititems()' expects. It expects a func(<name>, <object>) => <None or return value>).
     def _field_meaning_to_values_dict(_, obj):
         if _is_continuous_valid_scalar_hd5_dataset(obj):
             value_in_tensor_file = obj[0]
@@ -272,20 +275,18 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: Def
                 field_value = 0.5
             else:
                 field_value = value_in_tensor_file
-
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
             if len(dataset_name_parts) == 4:  # e.g. /continuous/1488_Tea-intake_0_0
                 field_id = dataset_name_parts[0]
                 field_meaning = dataset_name_parts[1]
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
-                stats[field_meaning].append(field_value)
-            elif len(dataset_name_parts) == 1:  # e.g. /continuous/VentricularRate
+                stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
+            else:  # e.g. /continuous/VentricularRate
                 field_meaning = dataset_name_parts[0]
-                stats[field_meaning].append(field_value)
-            else:
-                raise ValueError(f"Dataset name '{obj.name}' is not in format "
-                                 f"<field_id>_<field_meaning>_<instance>_<array_idx> or <field_meaning>")
+                stats[field_meaning][sample_id].append(field_value)
+    tensor_file_path = os.path.join(tensor_folder, tensor_file)
+    sample_id = os.path.splitext(tensor_file)[0]
     with h5py.File(tensor_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_values_dict)
 
