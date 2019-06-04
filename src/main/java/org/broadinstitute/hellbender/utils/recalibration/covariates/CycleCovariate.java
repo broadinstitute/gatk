@@ -109,7 +109,7 @@ public final class CycleCovariate implements Covariate {
         // no negative values because values must fit into the first few bits of the long
         int result = Math.abs(cycle);
         if ( result > maxCycle ) {
-            throw new UserException("The maximum allowed value for the cycle is " + maxCycle + ", but a larger cycle (" + result + ") was detected.  Please use the --maximum_cycle_value argument to increase this value (at the expense of requiring more memory to run)");
+            throw new UserException("The maximum allowed value for the cycle is " + maxCycle + ", but a larger cycle (" + result + ") was detected.  Please use the --maximum-cycle-value argument (when creating the recalibration table in BaseRecalibrator) to increase this value (at the expense of requiring more memory to run)");
         }
 
         result <<= 1; // shift so we can add the "sign" bit
