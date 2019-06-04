@@ -129,7 +129,7 @@ public final class ReadThreadingAssembler {
             correctedReads = assemblyRegion.getReads();
         }
 
-        final List<ReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
+        final List<ReadThreadingGraphInterface> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
         final AssemblyResultSet resultSet = new AssemblyResultSet();
         resultSet.setRegionForGenotyping(assemblyRegion);
@@ -138,7 +138,7 @@ public final class ReadThreadingAssembler {
         final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
-        final Map<ReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
+        final Map<ReadThreadingGraphInterface,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
         for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
@@ -273,7 +273,7 @@ public final class ReadThreadingAssembler {
         }
     }
 
-    private AssemblyResult getResultSetForRTGraph(final ReadThreadingGraph rtGraph) {
+    private AssemblyResult getResultSetForRTGraph(final ReadThreadingGraphInterface rtGraph) {
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -430,7 +430,8 @@ public final class ReadThreadingAssembler {
         }
 
         // TODO figure out how you want to hook this in
-        final ReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+        final ReadThreadingGraphInterface rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
+                new ExperimentalReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
@@ -469,7 +470,7 @@ public final class ReadThreadingAssembler {
         return getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraphInterface rtgraph, final SmithWatermanAligner aligner) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if

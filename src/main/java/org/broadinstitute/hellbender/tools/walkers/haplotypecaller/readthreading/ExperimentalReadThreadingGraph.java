@@ -2,23 +2,30 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.lang.annotation.Target;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
-    private Kmer referenceStartKmer;
+/**
+ * Experimental version of the ReadThreadingGraph which does not support seqGraph construction but does support the ability
+ * to
+ */
+public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface {
+    private final OneShotLogger oneShotDanglingTailLogger = new OneShotLogger(this.getClass());
+
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees;
 
     public ExperimentalReadThreadingGraph(int kmerSize) {
-        super(kmerSize);
+        this(kmerSize, false, (byte)6, 1);
     }
 
     /**
@@ -48,9 +55,24 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
     }
 
     @Override
+    protected void resetToInitialState() {
+        // We don't clear pending here in order to later build the read threading
+        nonUniqueKmers = null;
+        uniqueKmers.clear();
+        refSource = null;
+        alreadyBuilt = false;
+    }
+
+    @Override
     // We don't want to remove pending sequences as they are the data we need for read threading
     protected void removePendingSequencesIfNecessary() {
         return;
+    }
+
+    @Override
+    //TODO come up with some huristic for when we think one of these graphs is "too difficult" to call properly
+    public boolean isLowComplexity() {
+        return false;
     }
 
 
@@ -127,16 +149,20 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
         return nextVertex;
     }
 
-
+    @Override
+    protected boolean baseIsUsableForAssembly(byte base, byte qual) {
+        return base != BaseUtils.Base.N.base && qual >= minBaseQualityToUseInAssembly;
+    }
 
     /**
      * Extends the current vertex chain by one, making sure to build junction tree objects at each node with out-degree > 1.
      *
+     * If a node has an in-degree > 1, then it has a junction tree added to the previous node.
      *
-     * @param prevVertex
-     * @param sequence
-     * @param kmerStart
-     * @return
+     * @param prevVertex Current vertex to extend off of
+     * @param sequence Sequence of kmers to extend
+     * @param kmerStart index of where the current kmer starts
+     * @return The next vertex in the sequence. Null if the corresponding edge doesn't exist.
      */
     protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, List<ThreadingNode> nodesToExtend) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
@@ -169,10 +195,12 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
     //TODO the primary issue with this approach is the problem with choosing reference paths for smith waterman...
     @Override
     public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
+        oneShotDanglingTailLogger.warn("Cannot recover dangling heads when in experimental mode");
         return;
     }
     @Override
     public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
+        oneShotDanglingTailLogger.warn("Cannot recover dangling heads when in experimental mode");
         return;
     }
 
@@ -180,8 +208,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
     // Generate a SeqGraph that is special
     @Override
     public SeqGraph toSequenceGraph() {
-        buildGraphIfNecessary();
-        return super.toSequenceGraph();
+        throw new UnsupportedOperationException("Cannot construct a sequence graph using ExperimentalReadThreadingGraph");
     }
 
     // Generate threading trees
@@ -191,7 +218,12 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
         pending.values().stream().flatMap(Collection::stream).forEach(this::threadSequenceForJuncitonTree);
     }
 
-    //TODO update this mehtod to make some sense
+    /**
+     * Takes a contiguous sequence of kmers and threads it through the graph, generating and subsequently adding to
+     * juncition trees at each relevant node.
+     *
+     * @param seqForKmers
+     */
     public void threadSequenceForJuncitonTree(SequenceForKmers seqForKmers) {
         // Maybe handle this differently, the reference junction tree should be held seperatedly from everything else.
         if (seqForKmers.isRef) {
@@ -220,7 +252,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
                 Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
                 vertex = uniqueKmers.get(kmer);
                 if (vertex != null) {
-                   nodesUpdated.addAll(attemptToResolveThreadingBetweenVertexes(startingVertex , vertex));
+                   nodesUpdated.addAll(attemptToResolveThreadingBetweenVertexes(lastVertex , vertex));
                 }
             }
             // If for whatever reason vertex = null, then we have fallen off the corrected graph so we don't update anything
@@ -240,15 +272,20 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
     }
 
     @VisibleForTesting
-    public Map<MultiDeBruijnVertex, ThreadingTree> getReadThreadingJunctionTrees() {
-        return Collections.unmodifiableMap(readThreadingJunctionTrees);
+    public Map<MultiDeBruijnVertex, ThreadingTree> getReadThreadingJunctionTrees(boolean pruned) {
+        return pruned ? Maps.filterValues( Collections.unmodifiableMap(readThreadingJunctionTrees), n -> n.isEmptyTree())
+                : Collections.unmodifiableMap(readThreadingJunctionTrees);
     }
-
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Classes associated with junction trees
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Class for storing a junction tree. A Juntion tree is a tree whose nodes correspond to edges in the graph where a
+     * traversal decision was made (i.e. the path forks and one edge was taken). Each node keeps track of a list of
+     * its children nodes, each of which stores a count of the evidence seen supporting the given edge.
+     */
     public class ThreadingTree {
         private ThreadingNode rootNode;
         private MultiDeBruijnVertex graphBase;
@@ -258,15 +295,22 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
             rootNode = new ThreadingNode(null);
         }
 
+        /**
+         * Returns the root node for this edge (ensuring that it has had its count intcremented to keep track of the total evidence spanning this tree.
+         *
+         * @return
+         */
         public ThreadingNode getAndIncrementRootNode() {
             rootNode.incrementCount();
             return rootNode;
         }
 
-        public void threadRead(List<MultiSampleEdge> branchedEdges) {
-            rootNode.incrementNode(branchedEdges, 0);
+        // Determines if this tree actually has any data associated with it
+        public boolean isEmptyTree() {
+            return !rootNode.childrenNodes.isEmpty();
         }
 
+        // Returns a list of all the paths (illustrated as sequential edges) observed from this point throug hthe graph
         public List<List<MultiSampleEdge>> enumeratePathsPresent() {
             return rootNode.getEdgesThroughNode();
         }
@@ -284,6 +328,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
         }
     }
 
+    // Linked node object for storing tree topography
     private class ThreadingNode {
         private Map<MultiSampleEdge, ThreadingNode> childrenNodes;
         private MultiSampleEdge prevEdge = null; // This may be null if this node corresponds to the root of the graph
@@ -327,6 +372,13 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
             return nextNode;
         }
 
+        /**
+         * Helper method that returns a list of all the possible branching paths through the tree originiating from this node.
+         *
+         * NOTE: This method is intended for debugging and testing and thus may not be efficient for returning the list
+         *
+         * @return A list of potential paths originating from this node as observed
+         */
         @VisibleForTesting
         public List<List<MultiSampleEdge>> getEdgesThroughNode() {
             List<List<MultiSampleEdge>> paths = new ArrayList<>();
@@ -345,6 +397,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraph {
             return paths;
         }
 
+        // Return the count of total evidence supporting this node in the tree
         public int getCount() {
             return count;
         }
