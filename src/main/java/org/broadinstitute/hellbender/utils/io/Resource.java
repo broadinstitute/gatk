@@ -84,13 +84,16 @@ public final class Resource {
      */
     public static File getResourceContentsAsFile(final String resourcePath) throws IOException {
         final File tmpResourceFile = File.createTempFile("tmp_read_resource_", ".config");
-        final InputStream systemResourceAsStream = ClassLoader.getSystemResourceAsStream(resourcePath);
+        InputStream resourceAsStream = ClassLoader.getSystemResourceAsStream(resourcePath);
 
-        if (systemResourceAsStream == null) {
-            throw new GATKException("Null value when trying to read system resource.  Cannot find: " + resourcePath);
+        if (resourceAsStream == null) {
+            resourceAsStream = Resource.class.getClassLoader().getResourceAsStream(resourcePath);
+            if (resourceAsStream == null) {
+                throw new GATKException("Null value when trying to read resource.  Cannot find: " + resourcePath);
+            }
         }
 
-        FileUtils.copyInputStreamToFile(systemResourceAsStream,
+        FileUtils.copyInputStreamToFile(resourceAsStream,
                 tmpResourceFile);
         return tmpResourceFile;
     }
