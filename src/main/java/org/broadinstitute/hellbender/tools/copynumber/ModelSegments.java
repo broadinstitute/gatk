@@ -146,7 +146,7 @@ import java.util.stream.Stream;
  *         and the corresponding entry rows that can be plotted using IGV (see
  *         <a href="https://software.broadinstitute.org/software/igv/SEG">
  *             https://software.broadinstitute.org/software/igv/SEG</a>).
- *         The posterior medians of the copy ratio and minor-allele fraction are given in the SEGMENT_MEAN
+ *         The posterior medians of the log2 copy ratio and minor-allele fraction are given in the SEGMENT_MEAN
  *         columns in the .cr.igv.seg and .af.igv.seg files, respectively.
  *     </li>
  *     <li>
@@ -552,7 +552,7 @@ public final class ModelSegments extends CommandLineProgram {
                                 metadata.getSampleName(),
                                 s.getInterval(),
                                 s.getNumPointsCopyRatio(),
-                                Math.pow(2., s.getLog2CopyRatioSimplePosteriorSummary().getDecile50())))
+                                s.getLog2CopyRatioSimplePosteriorSummary().getDecile50()))
                         .collect(Collectors.toList()));
         final LegacySegmentCollection alleleFractionLegacySegments = new LegacySegmentCollection(
                 metadata,

@@ -1,0 +1,14 @@
+{
+  "ReadsPipelineSparkWorkflow.ref_fasta": "gs://broad-spark-eval-test-data/exome/Homo_sapiens_assembly18.fasta.gz",
+  "ReadsPipelineSparkWorkflow.input_bam": "gs://broad-spark-eval-test-data/exome/NA12878.ga2.exome.maq.raw.bam",
+  "ReadsPipelineSparkWorkflow.output_vcf": "gs://broad-spark-eval-test-data/exome/NA12878.ga2.exome.maq.raw.vcf",
+  "ReadsPipelineSparkWorkflow.known_sites": "gs://broad-spark-eval-test-data/exome/dbsnp_138.hg18.vcf.gz",
+  "ReadsPipelineSparkWorkflow.gatk_docker": "broadinstitute/gatk:4.1.2.0",
+  "ReadsPipelineSparkWorkflow.gatk": "/gatk/gatk",
+  "ReadsPipelineSparkWorkflow.gatk_spark_jar": "/gatk/gatk-spark.jar",
+  "ReadsPipelineSparkWorkflow.gcloud_project": "broad-gatk-collab",
+  "ReadsPipelineSparkWorkflow.num_workers": "10",
+  "ReadsPipelineSparkWorkflow.executor_cores": "7",
+  "ReadsPipelineSparkWorkflow.executor_memory": "20g",
+  "ReadsPipelineSparkWorkflow.driver_memory": "4g"
+}

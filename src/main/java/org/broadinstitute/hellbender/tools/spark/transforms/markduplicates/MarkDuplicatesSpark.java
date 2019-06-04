@@ -6,6 +6,7 @@ import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -127,6 +128,8 @@ import java.util.*;
         programGroup = ReadDataManipulationProgramGroup.class)
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
+    public static final String ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG = "allow-multiple-sort-orders-in-input";
+    public static final String TREAT_UNSORTED_AS_ORDERED = "treat-unsorted-as-querygroup-ordered";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -139,6 +142,16 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
             fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME)
     protected String metricsFile;
+
+    @Advanced
+    @Argument(doc = "Allow non-queryname sorted inputs when specifying multiple input bams.", optional=true,
+            fullName = ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG)
+    protected boolean allowMultipleSortOrders = false;
+
+    @Advanced
+    @Argument(doc = "Treat unsorted files as query-group orderd files. WARNING: This option disables a basic safety check and may result in unexpected behavior if the file is truly unordered", optional=true,
+            fullName = TREAT_UNSORTED_AS_ORDERED)
+    protected boolean treatUnsortedAsOrdered = false;
 
     @ArgumentCollection
     protected MarkDuplicatesSparkArgumentCollection markDuplicatesSparkArgumentCollection = new MarkDuplicatesSparkArgumentCollection();
@@ -298,10 +311,35 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
         Map<String, SAMFileHeader> headerMap = getReadSourceHeaderMap();
         if (headerMap.size() > 1) {
-            headerMap.entrySet().stream().forEach(h -> {if(!ReadUtils.isReadNameGroupedBam(h.getValue())) {
-                throw new UserException("Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted or querygroup-sorted for multi-input processing but input "+h.getKey()+" was sorted in "+h.getValue().getSortOrder()+" order");
-                    }});
-            mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+            final Optional<Map.Entry<String, SAMFileHeader>> badlySorted = headerMap.entrySet()
+                    .stream()
+                    .filter(h -> !treatAsReadGroupOrdered(h.getValue(), treatUnsortedAsOrdered))
+                    .findFirst();
+
+            if(badlySorted.isPresent()) {
+                if (allowMultipleSortOrders) {
+                    //don't set an ordering, the files will all be sorted downstream
+                    logger.info("Input files are not all grouped by read name so they will be sorted together.");
+                } else {
+                    final Map.Entry<String, SAMFileHeader> badPair = badlySorted.get();
+                    throw new UserException(
+                            "Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted " +
+                                    "or querygroup-sorted for multi-input processing but input " + badPair.getKey() + " was sorted in " + badPair
+                                    .getValue().getSortOrder() + " order");
+                }
+            } else {
+                // The default sort order for merged input files is unsorted, so this will be fed to the tool to be sorted
+                if (!allowMultipleSortOrders) {
+                    mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+                }
+            }
+
+        // If there is only one file and we are in treatUnsortedAsOrdered mode than set its group order accordingly.
+        } else {
+            if (treatUnsortedAsOrdered && (mergedHeader.getSortOrder().equals(SAMFileHeader.SortOrder.unknown) || mergedHeader.getSortOrder().equals(SAMFileHeader.SortOrder.unsorted))) {
+                logger.warn("Input bam was marked as " + mergedHeader.getSortOrder().toString() + " but " + TREAT_UNSORTED_AS_ORDERED + " is specified so it's being treated as read name grouped");
+                mergedHeader.setGroupOrder(SAMFileHeader.GroupOrder.query);
+            }
         }
 
         JavaRDD<GATKRead> reads = getReads();
@@ -330,6 +368,18 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         mergedHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         writeReads(ctx, output, readsForWriting, mergedHeader, true);
+    }
+
+    // helper method to determin if an input header is to be treated as a query group sorted file.
+    private boolean treatAsReadGroupOrdered(SAMFileHeader header, boolean treatUnsortedAsReadGrouped) {
+        final SAMFileHeader.SortOrder sortOrder = header.getSortOrder();
+        if( ReadUtils.isReadNameGroupedBam(header) ){
+            return true;
+        } else if ( treatUnsortedAsReadGrouped && (sortOrder.equals(SAMFileHeader.SortOrder.unknown) || sortOrder.equals(SAMFileHeader.SortOrder.unsorted))) {
+            logger.warn("Input bam was marked as " + sortOrder.toString() + " but " + TREAT_UNSORTED_AS_ORDERED + " is specified so it's being treated as read name grouped");
+            return true;
+        }
+        return false;
     }
 
 }
