@@ -178,7 +178,7 @@ public class M2FiltersArgumentCollection {
     public double initialLogPriorOfVariantVersusArtifact = DEFAULT_INITIAL_LOG_PRIOR_OF_VARIANT_VERSUS_ARTIFACT;
 
     @Argument(fullName = NORMAL_P_VALUE_THRESHOLD_LONG_NAME, optional = true, doc = "P value threshold for normal artifact filter")
-    public static final double normalPileupPValueThreshold = DEFAULT_NORMAL_P_VALUE_THRESHOLD;
+    public double normalPileupPValueThreshold = DEFAULT_NORMAL_P_VALUE_THRESHOLD;
 
     @Argument(fullName = MIN_POLYMERASE_SLIPPAGE_LENGTH, optional = true, doc = "Minimum number of reference bases in an STR to suspect polymerase slippage")
     public int minSlippageLength = DEFAULT_MIN_SLIPPAGE_LENGTH;

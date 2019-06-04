@@ -16,6 +16,11 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
     private static final double MIN_NORMAL_ARTIFACT_RATIO = 0.1;    // don't call normal artifact if allele fraction in normal is much smaller than allele fraction in tumor
     private static final int IMPUTED_NORMAL_BASE_QUALITY = 30;  // only used if normal base quality annotation fails somehow
 
+    private final double normalPileupPValueThreshold;
+    public NormalArtifactFilter(final double normalPileupPValueThreshold) {
+        this.normalPileupPValueThreshold = normalPileupPValueThreshold;
+    }
+
     @Override
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
@@ -50,7 +55,7 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
         final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(medianRefBaseQuality))
                 .cumulativeProbability(normalAltDepth - 1);
 
-        return normalPValue < M2FiltersArgumentCollection.normalPileupPValueThreshold ? 1.0 : normalArtifactProbability;
+        return normalPValue < normalPileupPValueThreshold ? 1.0 : normalArtifactProbability;
     }
 
     @Override

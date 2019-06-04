@@ -206,7 +206,7 @@ public class Mutect2FilteringEngine {
         filters.add(new StrandArtifactFilter());
         filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
         filters.add(new PanelOfNormalsFilter());
-        filters.add(new NormalArtifactFilter());
+        filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
         filters.add(new NRatioFilter(MTFAC.nRatio));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
