@@ -10,7 +10,7 @@ jdk:
 env:
   matrix:
   - TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
-  - TEST_TYPE=integration TEST_DOCKER=true
+  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
