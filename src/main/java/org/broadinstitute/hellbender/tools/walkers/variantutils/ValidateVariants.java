@@ -209,6 +209,18 @@ public final class ValidateVariants extends VariantWalker {
             genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         }
         validationTypes = calculateValidationTypesToApply(excludeTypes);
+
+        //warn user if certain requested validations cannot be done due to lack of arguments
+        if(dbsnp.dbsnp == null && (validationTypes.contains(ValidationType.ALL) || validationTypes.contains(ValidationType.IDS)))
+        {
+            logger.warn("IDS validation cannot be done because no DBSNP file was provided");
+            logger.warn("Other possible validations will still be performed");
+        }
+        if(!hasReference() && (validationTypes.contains(ValidationType.ALL) || validationTypes.contains(ValidationType.REF)))
+        {
+            logger.warn("REF validation cannot be done because no reference file was provided");
+            logger.warn("Other possible validations will still be performed");
+        }
     }
 
     @Override
@@ -304,17 +316,20 @@ public final class ValidateVariants extends VariantWalker {
      * @return the final set of type to validate. May be empty.
      */
     private Collection<ValidationType> calculateValidationTypesToApply(final List<ValidationType> excludeTypes) {
-        if (VALIDATE_GVCF && !excludeTypes.contains(ValidationType.ALLELES)) {
+
+        //creates local, temp list so that original list provided by user doesn't get modified
+        List<ValidationType> excludeTypesTemp = new ArrayList<>(excludeTypes);
+        if (VALIDATE_GVCF && !excludeTypesTemp.contains(ValidationType.ALLELES)) {
             // Note: in a future version allele validation might be OK for GVCFs, if that happens
             // this will be more complicated.
             logger.warn("GVCF format is currently incompatible with allele validation. Not validating Alleles.");
-            excludeTypes.add(ValidationType.ALLELES);
+            excludeTypesTemp.add(ValidationType.ALLELES);
         }
-        if (excludeTypes.isEmpty()) {
+        if (excludeTypesTemp.isEmpty()) {
             return Collections.singleton(ValidationType.ALL);
         }
-        final Set<ValidationType> excludeTypeSet = new LinkedHashSet<>(excludeTypes);
-        if (excludeTypes.size() != excludeTypeSet.size()) {
+        final Set<ValidationType> excludeTypeSet = new LinkedHashSet<>(excludeTypesTemp);
+        if (excludeTypesTemp.size() != excludeTypeSet.size()) {
             logger.warn("found repeat redundant validation types listed using the --validation-type-to-exclude argument");
         }
         if (excludeTypeSet.contains(ValidationType.ALL)) {
@@ -345,8 +360,29 @@ public final class ValidateVariants extends VariantWalker {
         // The workaround is to not pass an empty list.
         switch( t ) {
             case ALL:
-                if (!rsIDs.isEmpty()) {
-                    vc.extraStrictValidation(reportedRefAllele, observedRefAllele, rsIDs);
+                if(hasReference())
+                {
+                    if(!rsIDs.isEmpty())
+                    {
+                        vc.extraStrictValidation(reportedRefAllele, observedRefAllele, rsIDs);
+                    }
+                    else{
+                        vc.validateReferenceBases(reportedRefAllele, observedRefAllele);
+                        vc.validateAlternateAlleles();
+                        vc.validateChromosomeCounts();
+                    }
+                }
+                else{
+                    if (rsIDs.isEmpty())
+                    {
+                        vc.validateAlternateAlleles();
+                        vc.validateChromosomeCounts();
+                    }
+                    else{
+                        vc.validateAlternateAlleles();
+                        vc.validateChromosomeCounts();
+                        vc.validateRSIDs(rsIDs);
+                    }
                 }
                 break;
             case REF:
