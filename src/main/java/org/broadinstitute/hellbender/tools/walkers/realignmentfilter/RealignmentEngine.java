@@ -1,14 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.realignmentfilter;
 
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.math3.util.Pair;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
@@ -16,23 +17,15 @@ import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class RealignmentEngine {
     private final BwaMemAligner aligner;
-    private final int maxReasonableFragmentLength;
-    private final int minAlignerScoreDifference;
-    private final double minMismatchRatio;
     private final int numberOfRegularContigs;
 
     public RealignmentEngine(final RealignmentArgumentCollection rfac) {
         final BwaMemIndex index = new BwaMemIndex(rfac.bwaMemIndexImage);
-        maxReasonableFragmentLength = rfac.maxReasonableFragmentLength;
-        minAlignerScoreDifference = rfac.minAlignerScoreDifference;
-        minMismatchRatio = rfac.minMismatchRatio;
         numberOfRegularContigs = rfac.numRegularContigs;
         aligner = new BwaMemAligner(index);
         aligner.setMinSeedLengthOption(rfac.minSeedLength);
@@ -83,57 +76,67 @@ public class RealignmentEngine {
         return cigarOperator == CigarOperator.I || cigarOperator == CigarOperator.S;
     }
 
-    public RealignmentResult realign(final GATKRead read) {
-        final List<BwaMemAlignment> alignments = aligner.alignSeqs(Arrays.asList(read), GATKRead::getBasesNoCopy).get(0);
-
-        final List<BwaMemAlignment> nonAltAlignments = alignments.size() == 1 ? alignments :
-                alignments.stream().filter(a -> a.getRefId() < numberOfRegularContigs).collect(Collectors.toList());
-        return checkAlignments(nonAltAlignments, minAlignerScoreDifference, minMismatchRatio);
-    }
-
-    @VisibleForTesting
-    static RealignmentResult checkAlignments(final List<BwaMemAlignment> alignments, final int minAlignerScoreDifference, final double minMismatchRatio) {
-        if (alignments.isEmpty()) {
-            return new RealignmentResult(false, Collections.emptyList());
-        } else if (alignments.get(0).getRefId() < 0) {
-            return new RealignmentResult(false, alignments);
-        } else if (alignments.size() == 1) {
-            return new RealignmentResult(true, alignments);
-        } else {
-            final int scoreDifference = alignments.get(0).getAlignerScore() - alignments.get(1).getAlignerScore();
-            final double mismatchRatio = (double) alignments.get(1).getNMismatches() / (Math.max(alignments.get(0).getNMismatches(),0.0001));
-            return new RealignmentResult(scoreDifference >= minAlignerScoreDifference && mismatchRatio > minMismatchRatio, alignments);
-        }
-
-        // TODO: we need to check that contig is the same or equivalent up to hg38 alt contig
-        // TODO: do this by looking at index.getReferenceContigNames() and bamHeader.getSequenceDictionary().getSequences()
-        // TODO: in IDE and seeing what the correspondence could be
-        // TODO: put in check that start position is within eg 10 Mb of original mapping
-    }
-
-    // note that we realigned the original aligned bases of the read and mate, not the raw sequenced bases
-    // thus one of them has been reverse-complemented and we look for pairs that map to the same strand
-    public static List<Pair<BwaMemAlignment, BwaMemAlignment>> findPlausiblePairs(List<BwaMemAlignment> readRealignments, List<BwaMemAlignment> mateRealignments, int maxReasonableFragmentLength) {
-        return readRealignments.stream()
-                .flatMap(r -> mateRealignments.stream()
-                        .filter(m -> m.getRefId() == r.getRefId())
-                        .filter(m -> Math.abs(m.getRefStart() - r.getRefStart()) < maxReasonableFragmentLength)
-                        .filter(m -> SAMFlag.READ_REVERSE_STRAND.isSet(m.getSamFlag()) == SAMFlag.READ_REVERSE_STRAND.isSet(r.getSamFlag()))
-                        .map(m -> new Pair<>(r,m)))
+    public List<BwaMemAlignment> realign(final byte[] sequence) {
+        final List<BwaMemAlignment> alignments = aligner.alignSeqs(Arrays.asList(sequence)).get(0).stream()
+                .filter(a -> a.getRefId() >= 0)
                 .collect(Collectors.toList());
+
+        return alignments.size() == 1 ? alignments :
+                alignments.stream().filter(a -> a.getRefId() < numberOfRegularContigs).collect(Collectors.toList());
     }
 
-    public static class RealignmentResult {
-        private final boolean mapsToSupposedLocation;
-        private final List<BwaMemAlignment> realignments;
-
-        public RealignmentResult(boolean mapsToSupposedLocation, List<BwaMemAlignment> realignments) {
-            this.mapsToSupposedLocation = mapsToSupposedLocation;
-            this.realignments = realignments;
+    /**
+     * Find all common alignments of a set of unitigs.  That is, find all alignments in which each unitig aligns within a small distance of the others
+     * @param allUnitigAlignments for each unitig, a list of possible alignments
+     * @param maxReasonableFragmentLength
+     * @return
+     */
+    public static List<List<BwaMemAlignment>> findJointAlignments(List<List<BwaMemAlignment>> allUnitigAlignments, int maxReasonableFragmentLength) {
+        if (allUnitigAlignments.isEmpty()) {
+            return Collections.emptyList();
+        } else if (allUnitigAlignments.size() == 1) {
+            return allUnitigAlignments.get(0).stream().map(Collections::singletonList).collect(Collectors.toList());
         }
 
-        public boolean isGood() { return mapsToSupposedLocation;  }
+        // it's more efficient to start from the unitig with the fewest alignments
+        Collections.sort(allUnitigAlignments, Comparator.comparingInt(List::size));
 
-        public List<BwaMemAlignment> getRealignments() { return realignments; }
+        // make an OverlapDetector for each unitig with padding given by {@code maxReasonableFragmentLength}
+        final List<OverlapDetector<BwaMemAlignment>> overlapDetectors = new ArrayList<>();
+        for (final List<BwaMemAlignment> unitigAlignments : allUnitigAlignments) {
+            final List<SimpleInterval> intervals = unitigAlignments.stream().map(RealignmentEngine::convertToInterval).collect(Collectors.toList());
+            final OverlapDetector<BwaMemAlignment> overlapDetector = new OverlapDetector<BwaMemAlignment>(-maxReasonableFragmentLength/2, -maxReasonableFragmentLength/2);
+            overlapDetector.addAll(unitigAlignments, intervals);
+            overlapDetectors.add(overlapDetector);
+        }
+
+        final Set<List<BwaMemAlignment>> commonAlignments = new HashSet<>();
+        for (final BwaMemAlignment alignment : allUnitigAlignments.get(0)) {
+            final Strand strand = getStrand(alignment);
+            final SimpleInterval interval = convertToInterval(alignment);
+
+            // only alignments that have a same-strand overlap every unitig alignment
+            if (!overlapDetectors.stream().allMatch(detector -> detector.getOverlaps(interval).stream().anyMatch(a -> getStrand(a) == strand))) {
+                continue;
+            }
+
+            final List<BwaMemAlignment> alignments = overlapDetectors.stream()
+                    .map(detector -> detector.getOverlaps(interval).stream()
+                            .filter(a -> getStrand(a) == strand)
+                            .max(Comparator.comparingInt(BwaMemAlignment::getAlignerScore)).get())
+                    .collect(Collectors.toList());
+
+            commonAlignments.add(alignments);
+        }
+
+        return new ArrayList<>(commonAlignments);
+    }
+
+    private static SimpleInterval convertToInterval(final BwaMemAlignment alignment) {
+        return new SimpleInterval(Integer.toString(alignment.getRefId()), alignment.getRefStart(), alignment.getRefEnd());
+    }
+
+    private static Strand getStrand(final BwaMemAlignment alignment) {
+        return SAMFlag.READ_REVERSE_STRAND.isSet(alignment.getSamFlag()) ? Strand.NEGATIVE : Strand.POSITIVE;
     }
 }

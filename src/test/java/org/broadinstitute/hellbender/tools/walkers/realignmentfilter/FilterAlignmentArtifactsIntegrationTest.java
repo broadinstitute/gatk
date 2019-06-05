@@ -27,6 +27,7 @@ public class FilterAlignmentArtifactsIntegrationTest extends CommandLineProgramT
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final String[] args = {
+                "-R", b37Reference,
                 "-I", tumorBam.getAbsolutePath(),
                 "-V", truthVcf.getAbsolutePath(),
                 "-L", "20",
@@ -37,4 +38,5 @@ public class FilterAlignmentArtifactsIntegrationTest extends CommandLineProgramT
 
         runCommandLine(args);
     }
+
 }

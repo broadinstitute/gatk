@@ -218,7 +218,6 @@ public class GATKVCFHeaderLines {
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
         addInfoLine(new VCFInfoHeaderLine(NORMAL_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Normal log 10 likelihood ratio of diploid het or hom alt genotypes"));
-        addInfoLine(new VCFInfoHeaderLine(REALIGNMENT_COUNTS_KEY, 2, VCFHeaderLineType.Integer, "Number of reads passing and failing realignment."));
         addInfoLine(new VCFInfoHeaderLine(TUMOR_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log 10 likelihood ratio score of variant existing versus not existing"));
         addFormatLine(new VCFFormatHeaderLine(TUMOR_LOG_10_ODDS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log 10 likelihood ratio score of variant existing versus not existing"));
         addInfoLine(new VCFInfoHeaderLine(IN_PON_KEY, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
@@ -237,5 +236,8 @@ public class GATKVCFHeaderLines {
         addInfoLine(new FragmentLength().getDescriptions().get(0));
         addInfoLine(new MappingQuality().getDescriptions().get(0));
         addInfoLine(new ReadPosition().getDescriptions().get(0));
+        addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
+        addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
+        addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
     }
 }
