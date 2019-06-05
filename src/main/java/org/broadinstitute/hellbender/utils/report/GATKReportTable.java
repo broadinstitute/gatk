@@ -434,6 +434,36 @@ public final class GATKReportTable {
         return get(rowIdToIndex.get(rowID), columnNameToIndex.get(columnName));
     }
 
+
+    /**
+     * Get entire column from the given column index in the table
+     *
+     * @param columnIndex the  index of the column
+     * @return the entire column at the specified index
+     */
+    public ArrayList<Object> getColumn(final int columnIndex) {
+
+        // better way to do this ? like a list comprehension ??
+        ArrayList<Object> column = new ArrayList<>();
+
+        for (int rowIndex = 0; rowIndex< getNumRows(); rowIndex++) {
+            verifyEntry(rowIndex, columnIndex);
+            column.add(underlyingData.get(rowIndex)[columnIndex]);
+        }
+        return column;
+    }
+
+
+    /**
+     * Get entire row from the given row index in the table
+     *
+     * @param rowIndex the  index of the column
+     * @return the entire row at the specified index
+     */
+    public Object[] getRow(final int rowIndex) {
+        return underlyingData.get(rowIndex);
+    }
+
     /**
      * Get a value from the given position in the table
      *
