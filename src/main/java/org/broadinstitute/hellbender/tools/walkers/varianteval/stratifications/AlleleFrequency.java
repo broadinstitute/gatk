@@ -13,8 +13,8 @@ import java.util.List;
 /**
  * Stratifies the eval RODs by the allele frequency of the alternate allele
  *
- * Uses a constant 0.005 frequency grid, and projects the AF INFO field value.  Requires
- * that AF be present in every ROD, otherwise this stratification throws an exception
+ * Either uses a constant 0.005 frequency grid, and projects the AF INFO field value or logit scale from -30 to 30.
+ * Requires that AF be present in every ROD, otherwise this stratification throws an exception
  */
 @DocumentedFeature(groupName= "tools", summary = "Stratify by  eval RODs by the allele frequency of the alternate allele") // , extraDocs = {VariantEval.class})
 public class AlleleFrequency extends VariantStratifier {
@@ -27,7 +27,7 @@ public class AlleleFrequency extends VariantStratifier {
     private StratifyingScale scale;
     private boolean useCompAFStratifier;
 
-    private static int log_lim = 30; // go form -30 to 30
+    private static int logLimit = 30; // go from -30 to 30 using logit function
 
     @Override
     public void initialize() {
@@ -41,7 +41,7 @@ public class AlleleFrequency extends VariantStratifier {
                 }
                 break;
             case LOGARITHMIC:
-                for (int a = -log_lim; a <= log_lim; a += 1) {
+                for (int a = -logLimit; a <= logLimit; a += 1) {
                     states.add(String.format("%d", a));
                 }
 
@@ -51,22 +51,20 @@ public class AlleleFrequency extends VariantStratifier {
     public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         if (eval != null) {
             try {
-                Double allele_fraction  = Collections.max(eval.getAttributeAsDoubleList("AF", 0.0));
+                Double alleleFraction  = Collections.max(eval.getAttributeAsDoubleList("AF", 0.0));
                 if (useCompAFStratifier) {
                     if (comp != null) {
-                        allele_fraction = Collections.max(comp.getAttributeAsDoubleList("AF", 0.0));
+                        alleleFraction = Collections.max(comp.getAttributeAsDoubleList("AF", 0.0));
                     } else {
-                        allele_fraction = 0.0; // any site that isn't in the comp should be the expected lowest allele fraction
+                        alleleFraction = 0.0; // any site that isn't in the comp should be the expected lowest allele fraction
                     }
                 }
                 switch(scale) {
                     case LINEAR:
-                        return Collections.singletonList((Object)String.format("%.3f", (5.0 * MathUtils.roundToNDecimalPlaces(allele_fraction / 5.0, 3))));
+                        return Collections.singletonList((Object)String.format("%.3f", (5.0 * MathUtils.roundToNDecimalPlaces(alleleFraction / 5.0, 3))));
                     case LOGARITHMIC:
-                        allele_fraction += Math.pow(10.0, -6); // never have AF of 0.0
-                        // using logit function
-                        Float score = (float)( -10 * Math.log10((allele_fraction/(1-allele_fraction))));
-                        return Collections.singletonList(String.format("%d", Math.min(log_lim, Math.max(-log_lim, Math.round(score)))));
+                        alleleFraction += Math.pow(10.0, -6); // never have AF of 0.0
+                        return Collections.singletonList(String.format("%d", getLogitBucket(alleleFraction)));
                 }
 
             } catch (Exception e) {
@@ -76,4 +74,13 @@ public class AlleleFrequency extends VariantStratifier {
 
         return Collections.emptyList();
     }
+
+    private int getLogitBucket(Double alleleFraction) {
+        // calculate logit value
+        Float score = (float)( -10 * Math.log10((alleleFraction/(1-alleleFraction))));
+
+        // find correct bucket
+        return Math.min(logLimit, Math.max(-logLimit, Math.round(score)));
+    }
 }
+

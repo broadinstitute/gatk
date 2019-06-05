@@ -17,9 +17,6 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
         return getToolTestDataDir() + "expected/" + testName + ".expected.txt";
     }
 
-    /*protected String getTestFilePath(String fileName) {
-        return super.getTestFile(fileName).getPath();
-    }*/
 
     @Test
     public void testAlleleFrequencyIntegrationTest() throws IOException {
@@ -31,7 +28,6 @@ public class AlleleFrequencyQCIntegrationTest extends CommandLineProgramTest {
                         " --comp " + comparisonVcf +
                         " -eval:thousand_genomes " + comparisonVcf +
                         " -L " + comparisonVcf +
-                        " --sample-name \'test_na12878\'" +
                         " -O %s"
                 , Arrays.asList(getExpectedFile(name)));
 

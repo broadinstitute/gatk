@@ -1,83 +1,55 @@
-library(plyr)
 library(dplyr)
 library(ggplot2)
+
+CHI_SQ_VAR = 0.01 # how much variance we expect between thousand genomes and our array vcf
 
 inverseLogitFn = function(score) {
     v = 10.0^(-score/10.0)
     v / (1.0 + v)
 }
 
-probToPhred = function(prob){
-    as.integer(- 10. * log10(prob))
-}
-
 args <- commandArgs(TRUE)
 verbose = TRUE
 
-filename <- args[1]
+variant_eval_filename <- args[1]
+output_basename <- tools::file_path_sans_ext(args[2])
 sample <- args[3]
 
-folder <- gsub("(.*)\\/.*", "\\1", args[2]) ## just the path / directory
-output_basename <- paste(folder, "/", sample, sep="")
 
-run_single_sample = function(filename, output_basename, sample) {
-
-    df = read.table(filename, sep = "", stringsAsFactors = F, header = T) %>%
-        filter(Filter == "called" ) %>% rowwise()  %>%
-        mutate(AF = inverseLogitFn(AlleleFrequency),
-        num_sites = totalHetSites + totalHomRefSites + totalHomVarSites,
-        EvalFeatureInput = ifelse(EvalFeatureInput == "eval", "Array VCF", "Thousand Genomes VCF"))
-
-    test_results = ks.test(subset(df, EvalFeatureInput == "Array VCF")$avgVarAlleles,
-    subset(df, EvalFeatureInput == "Thousand Genomes VCF")$avgVarAlleles)
-    output_test_df = data.frame(SAMPLE = sample, TEST_TYPE = "Variant Allele Frequency",
-    `LOD SCORE` = probToPhred(test_results$p.value),
-    PVALUE = round(test_results$p.value, digits = 4),
-    `FILTER STATUS` = "Called Sites Only")
-
-    png(filename = paste(output_basename, ".af_differences.png", sep = ""), width = 6, height = 6, units = 'in', res = 300)
-    print(ggplot(df, aes(x = AF, y = avgVarAlleles, color = EvalFeatureInput, size = totalCalledAlleles)) +
-        geom_point() + theme(legend.position = "bottom") +
-        labs(x = "Expected AF from Thousand Genomes", y = "Observed AF", title = "Expected vs Actual Allele Frequencies"))
-    dev.off()
-
-    png(filename = paste(output_basename,".af_cdf.png", sep = ""), width = 6, height = 6, units = 'in', res = 300)
-    print(ggplot(df, aes(avgVarAlleles, color = EvalFeatureInput)) + stat_ecdf(alpha=0.7) + theme(legend.position = "bottom") +
-        labs(x = "Observed AF", y = "Density", title = "CDF of Allele Frequencies: Thousand Genomes vs Array VCF"))
-    dev.off()
-
-    df_with_calculated_vals = df %>% rowwise() %>% transmute(AF = AF, EvalFeatureInput = EvalFeatureInput,
-    p_2 = totalHomVarSites/num_sites,
-    two_pq = totalHetSites/num_sites,
-    q_2 = totalHomRefSites/num_sites)
-
-    png(filename = paste(output_basename, ".p^2_differences.png", sep = ""), width = 6, height = 6, units = 'in', res = 300)
-    print(ggplot(df_with_calculated_vals, aes(x=AF, y=p_2, color = EvalFeatureInput)) + geom_point() + theme(legend.position = "bottom") +
-        labs(x = "AF bin from thousand genomes", y = "Fraction of sites that are homozygous variant(p^2)"))
-    dev.off()
-
-    png(filename = paste(output_basename, ".2pq_differences.png", sep = ""), width = 6, height = 6, units = 'in', res = 300)
-    print(ggplot(df_with_calculated_vals, aes(x = AF, y = two_pq, color = EvalFeatureInput)) + geom_point() + theme(legend.position = "bottom") +
-        labs(x = "AF bin from thousand genomes", y = "Fraction of sites that are heterozygous (2pq)"))
-
-    dev.off()
-
-    heterozygosity_p_2 = ks.test(subset(df_with_calculated_vals, EvalFeatureInput == "Array VCF")$p_2,
-    subset(df_with_calculated_vals, EvalFeatureInput == "Thousand Genomes VCF")$p_2)
-    heterozygosity_2pq = ks.test(subset(df_with_calculated_vals, EvalFeatureInput == "Array VCF")$two_pq,
-    subset(df_with_calculated_vals, EvalFeatureInput == "Thousand Genomes VCF")$two_pq)
-
-    output_test_df = rbind(output_test_df,
-    data.frame(SAMPLE = sample, TEST_TYPE = "Excess Variant Homozygosity (p^2)", `LOD SCORE` = probToPhred(heterozygosity_p_2$p.value), PVALUE=round(heterozygosity_p_2$p.value, digits=4), `FILTER STATUS`="Called Sites Only"),
-    data.frame(SAMPLE = sample, TEST_TYPE = "Excess Heterozygosity (2pq)", `LOD SCORE` = probToPhred(heterozygosity_2pq$p.value), PVALUE=round(heterozygosity_2pq$p.value, digits=4), `FILTER STATUS`="Called Sites Only"))
-
-    write.table(output_test_df, sep = "\t", file = paste(output_basename, ".pvals.txt", sep = ""), row.names = F, quote = F)
-
-    # make sure tests fail if significant p value
-    if (any(output_test_df$PVALUE <= 0.05)) {
-        significant_pvals =  paste(unlist(as.character(subset(output_test_df, PVALUE <= 0.05)$TEST_TYPE)), collapse = " and ")
-        stop(paste("The p-value from the Kolmogorov-Smirnov test is less than 0.05: the array VCF has significantly different ", significant_pvals, " compared to the given Thousand Genomes VCF.", sep=""))
+make_sample_df = function(filename, sample) {
+    df = read.table(filename, sep="", stringsAsFactors = F, header = T)
+    df = df %>% rowwise() %>%
+    dplyr::filter(Filter == "called" )
+    if ("Novelty" %in% colnames(df)) { # this can be removed later
+        df = df %>% dplyr::filter(Novelty == "all")
     }
+    df = df %>%
+        rowwise() %>% transmute(AF_bin = inverseLogitFn(AlleleFrequency),
+                                EvaluationType = EvalFeatureInput,
+                                avgVarAlleles = avgVarAlleles)
+
+    merge(subset(df, EvaluationType == "eval", select = -EvaluationType),
+          subset(df, EvaluationType == "thousand_genomes", select = -EvaluationType),
+          by = c("AF_bin"), suffixes = c(".array", ".thousand_g")) %>%
+      mutate(sample = sample)
 }
 
-run_single_sample(filename, output_basename, sample)
+run_single_sample = function(filename, output_basename, sample) {
+    single_samp = make_sample_df(filename, sample)
+
+    png(paste(output_basename,  ".af_differences", ".png", sep = ""), width = 6, height = 6, units = 'in', res = 300)
+    print(ggplot(single_samp, aes(x = avgVarAlleles.thousand_g, y = avgVarAlleles.array)) + geom_point() +
+        geom_abline(slope = 1, intercept = 0, color = "red", alpha = 0.7) +
+        labs(x = "AF from Thousand Genomes", y = "AF from Array"))
+    dev.off()
+
+    png(paste(output_basename,  ".af", ".png", sep = ""), width = 6, height = 6, units = 'in', res = 300)
+    print(ggplot(single_samp) + geom_point(aes(x = AF_bin, y = avgVarAlleles.array, color = "array")) +
+        geom_point(aes(x = AF_bin, y = avgVarAlleles.thousand_g, color = "thousand genomes"))  +
+        geom_abline(slope = 1, intercept = 0, color = "black", alpha = 0.7) +
+        labs(x = "AF Bin", y = "AF in VCFs") + theme(legend.position = "bottom"))
+    dev.off()
+}
+
+
+run_single_sample(variant_eval_filename, output_basename, sample)
