@@ -1,8 +1,6 @@
 library(dplyr)
 library(ggplot2)
 
-CHI_SQ_VAR = 0.01 # how much variance we expect between thousand genomes and our array vcf
-
 inverseLogitFn = function(score) {
     v = 10.0^(-score/10.0)
     v / (1.0 + v)
@@ -18,15 +16,11 @@ sample <- args[3]
 
 make_sample_df = function(filename, sample) {
     df = read.table(filename, sep="", stringsAsFactors = F, header = T)
-    df = df %>% rowwise() %>%
-    dplyr::filter(Filter == "called" )
-    if ("Novelty" %in% colnames(df)) { # this can be removed later
-        df = df %>% dplyr::filter(Novelty == "all")
-    }
-    df = df %>%
-        rowwise() %>% transmute(AF_bin = inverseLogitFn(AlleleFrequency),
-                                EvaluationType = EvalFeatureInput,
-                                avgVarAlleles = avgVarAlleles)
+    df = df %>% rowwise() %>% dplyr::filter(Filter == "called" ) # only called sites
+    df = df %>% rowwise() %>% 
+	    transmute(AF_bin = inverseLogitFn(AlleleFrequency),
+                      EvaluationType = EvalFeatureInput,
+                      avgVarAlleles = avgVarAlleles)
 
     merge(subset(df, EvaluationType == "eval", select = -EvaluationType),
           subset(df, EvaluationType == "thousand_genomes", select = -EvaluationType),
