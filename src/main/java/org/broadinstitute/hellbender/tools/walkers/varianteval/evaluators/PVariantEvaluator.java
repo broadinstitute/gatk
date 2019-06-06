@@ -75,3 +75,4 @@ public class PVariantEvaluator extends VariantEvaluator {
         this.avgVarAlleles = this.totalCalledSites == 0 ? 0 : this.sumVariantAFs / this.totalCalledSites;
     }
 }
+
