@@ -328,8 +328,8 @@ public final class GnarlyGenotyper extends CombineGVCFs {
             warning.warn("Variant will not be output because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY + "key assigned by the ReblockGVCFs tool -- if the input did come from ReblockGVCFs, check the GenomicsDB vidmap.json annotation info");
         }
         final double QUALapprox = mergedVC.getAttributeAsDouble(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0.0);
-        //TODO: do we want to apply the indel prior to mixed sites?
-        final boolean isIndel = mergedVC.getReference().length() > 1 || mergedVC.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
+        //o we want to apply the indel prior to mixed sites?
+        final boolean isIndel = mergedVC.getAlternateAlleles().stream().anyMatch(allele -> !allele.equals(Allele.SPAN_DEL) && !allele.equals(Allele.NON_REF_ALLELE) && allele.length() != mergedVC.getReference().length());
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
             if (keepAllSites) {

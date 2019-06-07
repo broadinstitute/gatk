@@ -543,6 +543,7 @@ public final class VariantsToTable extends VariantWalker {
         getters.put("NSAMPLES", vc -> Integer.toString(vc.getNSamples()));
         getters.put("NCALLED", vc -> Integer.toString(vc.getNSamples() - vc.getNoCallCount()));
         getters.put("MULTI-ALLELIC", vc -> Boolean.toString(vc.getAlternateAlleles().size() > 1));
+        getters.put("NALTS", vc -> Integer.toString(vc.getNAlleles()-1));
     }
 
     private static Object splitAltAlleles(final VariantContext vc) {
