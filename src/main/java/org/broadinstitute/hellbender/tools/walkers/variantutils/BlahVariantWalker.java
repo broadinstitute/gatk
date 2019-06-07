@@ -46,17 +46,20 @@ public final class BlahVariantWalker extends VariantWalker {
     private String sampleName;
 
 
-    @Argument(fullName = "vet-table-out-path",
+    @Argument(fullName = "vet-out-path",
             shortName = "VO",
-            doc="Path to where the variants expanded table should be written")
+            doc = "Path to where the variants TSV should be written")
     public GATKPathSpecifier vetOutput = null;
 
-    @Argument(fullName = "pet-table-out-path",
+    @Argument(fullName = "pet-out-path",
             shortName = "PO",
-            doc="Path to where the positions table should be written",
-            optional = true)
+            doc = "Path to where the positions expanded TSV should be written")
     public GATKPathSpecifier petOutput = null;
 
+    @Argument(fullName = "ref-block-gq-to-ignore",
+            shortName = "IG",
+            doc = "Ref Bock GQ band to ignore, bands of 10 e.g 0-9 get combined to 0, 20-29 get combined to 20",
+            optional = true)
     public BlahPetCreation.GQStateEnum gqStateToIgnore = null;
 
     @Override
@@ -70,7 +73,7 @@ public final class BlahVariantWalker extends VariantWalker {
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
         if (samples.numberOfSamples() > 1){
-            throw new IllegalArgumentException("This tool can only be run on single sample vcfs");
+            throw new UserException("This tool can only be run on single sample vcfs");
         }
         sampleName = samples.getSample(0);
 
@@ -86,18 +89,16 @@ public final class BlahVariantWalker extends VariantWalker {
             vetWriter.setHeaderLine(vetHeader);
 
         } catch (final IOException e) {
-            throw new IllegalArgumentException("Could not create vet output", e);
+            throw new UserException("Could not create vet output", e);
         }
 
-        if (petOutput != null) {
-            try {
-                List<String> petHeader = BlahPetCreation.getHeaders();
-                petWriter = new SimpleXSVWriter(petOutput.toPath(), SEPARATOR);
-                petWriter.setHeaderLine(petHeader);
+        try {
+            List<String> petHeader = BlahPetCreation.getHeaders();
+            petWriter = new SimpleXSVWriter(petOutput.toPath(), SEPARATOR);
+            petWriter.setHeaderLine(petHeader);
 
-            } catch (final IOException e) {
-                throw new IllegalArgumentException("Could not create pet output", e);
-            }
+        } catch (final IOException e) {
+            throw new UserException("Could not create pet output", e);
         }
     }
 
@@ -109,7 +110,7 @@ public final class BlahVariantWalker extends VariantWalker {
         final List<GenomeLoc> intervalsToWrite = intervalArgumentGenomeLocSortedSet.getOverlapping(variantGenomeLoc);
 
         if (intervalsToWrite.size() == 0){
-            throw new IllegalStateException("There are no intervals being covered by this variant");
+            throw new IllegalStateException("There are no intervals being covered by this variant, something went wrong with interval parsing");
         }
 
         // take the first interval(assuming this is returned in order) and make sure if its a variant, that it starts at/after the interval start
@@ -132,59 +133,55 @@ public final class BlahVariantWalker extends VariantWalker {
             vetLine.setRow(TSVLineToCreateVet);
             vetLine.write();
         }
-        if (petOutput != null) {
-            boolean firstInterval = true;
-            for (GenomeLoc genomeLoc : intervalsToWrite) {
+        boolean firstInterval = true;
+        for (GenomeLoc genomeLoc : intervalsToWrite) {
 
-                int start = Math.max(genomeLoc.getStart(), variant.getStart());
-                int end = Math.min(genomeLoc.getEnd(), variant.getEnd());
+            int start = Math.max(genomeLoc.getStart(), variant.getStart());
+            int end = Math.min(genomeLoc.getEnd(), variant.getEnd());
 
-                // create PET output if the reference block's GQ is not the one to throw away or its a variant
-                if (!variant.isReferenceBlock() || !BlahPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
+            // create PET output if the reference block's GQ is not the one to throw away or its a variant
+            if (!variant.isReferenceBlock() || !BlahPetCreation.getGQStateEnum(variant.getGenotype(0).getGQ()).equals(gqStateToIgnore)) {
 
-                    // add interval to "covered" intervals
-                    // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
-                    // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
-                    // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
-                    // small as possible while still containing the same bases.
-                    final SimpleInterval variantInterval = new SimpleInterval(variant.getContig(), start, end);
-                    final int intervalStart = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
-                            previousInterval.getStart() : variantInterval.getStart();
-                    final int intervalEnd = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
-                            Math.max(previousInterval.getEnd(), variantInterval.getEnd()) : variantInterval.getEnd();
-                    final GenomeLoc possiblyMergedGenomeLoc = coverageLocSortedSet.getGenomeLocParser().createGenomeLoc(variantInterval.getContig(), intervalStart, intervalEnd);
-                    coverageLocSortedSet.add(possiblyMergedGenomeLoc, true);
-                    previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
+                // add interval to "covered" intervals
+                // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
+                // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
+                // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
+                // small as possible while still containing the same bases.
+                final SimpleInterval variantInterval = new SimpleInterval(variant.getContig(), start, end);
+                final int intervalStart = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
+                        previousInterval.getStart() : variantInterval.getStart();
+                final int intervalEnd = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
+                        Math.max(previousInterval.getEnd(), variantInterval.getEnd()) : variantInterval.getEnd();
+                final GenomeLoc possiblyMergedGenomeLoc = coverageLocSortedSet.getGenomeLocParser().createGenomeLoc(variantInterval.getContig(), intervalStart, intervalEnd);
+                coverageLocSortedSet.add(possiblyMergedGenomeLoc, true);
+                previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
 
-                    List<List<String>> TSVLinesToCreatePet;
-                    // handle deletions that span across multiple intervals
-                    if (!firstInterval && !variant.isReferenceBlock()) {
-                        TSVLinesToCreatePet = BlahPetCreation.createSpanDelRows(start, variant, end);
-                    } else {
-                        TSVLinesToCreatePet = BlahPetCreation.createPositionRows(start, variant, end);
-                    }
-
-                    // write the position to the XSV
-                    for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
-                        petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                    }
+                List<List<String>> TSVLinesToCreatePet;
+                // handle deletions that span across multiple intervals
+                if (!firstInterval && !variant.isReferenceBlock()) {
+                    TSVLinesToCreatePet = BlahPetCreation.createSpanDelRows(start, variant, end);
+                } else {
+                    TSVLinesToCreatePet = BlahPetCreation.createPositionRows(start, variant, end);
                 }
-                firstInterval = false;
+
+                // write the position to the XSV
+                for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
+                    petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                }
             }
+            firstInterval = false;
         }
     }
 
     @Override
     public Object onTraversalSuccess() {
-        if (petOutput != null) {
-            final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
-            logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
-            logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
-            for (GenomeLoc genomeLoc : uncoveredIntervals) {
-                // write the position to the XSV
-                for (List<String> TSVLineToCreatePet : BlahPetCreation.createMissingTSV(genomeLoc.getStart(), genomeLoc.getEnd(), sampleName)) {
-                    petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                }
+        final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(coverageLocSortedSet);
+        logger.info("MISSING_GREP_HERE:" + uncoveredIntervals.coveredSize());
+        logger.info("MISSING_PERCENTAGE_GREP_HERE:" + (1.0 * uncoveredIntervals.coveredSize()) / intervalArgumentGenomeLocSortedSet.coveredSize());
+        for (GenomeLoc genomeLoc : uncoveredIntervals) {
+            // write the position to the XSV
+            for (List<String> TSVLineToCreatePet : BlahPetCreation.createMissingTSV(genomeLoc.getStart(), genomeLoc.getEnd(), sampleName)) {
+                petWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
             }
         }
         return 0;
