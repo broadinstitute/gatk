@@ -3,13 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.lang.annotation.Target;
 import java.util.*;
@@ -193,15 +196,113 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
     //TODO this is a placeholder for when these mechanisms should be more smart, as of right now I can live with the consequnces
     //TODO the primary issue with this approach is the problem with choosing reference paths for smith waterman...
+
+    /**
+     * Generates the CIGAR string from the Smith-Waterman alignment of the dangling path (where the
+     * provided vertex is the source) and the reference path.
+     *
+     * @param aligner
+     * @param vertex   the source of the dangling head
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param recoverAll recover even branches with forks
+     * @return a SmithWaterman object which can be null if no proper alignment could be generated
+     */
+    @VisibleForTesting
     @Override
-    public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
-        oneShotDanglingTailLogger.warn("Cannot recover dangling heads when in experimental mode");
-        return;
+    DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
+
+        // find the highest common descendant path between vertex and the reference source if available
+        final List<MultiDeBruijnVertex> altPath = findPathDownwardsToHighestCommonDescendantOfReference(vertex, pruneFactor, !recoverAll);
+        if ( altPath == null || isRefSink(altPath.get(0)) || altPath.size() < minDanglingBranchLength + 1 ) // add 1 to include the LCA
+        {
+            return null;
+        }
+
+        // now get the reference path from the LCA
+        final List<MultiDeBruijnVertex> refPath = getReferencePathBackwardsForKmer(altPath.get(0));
+
+        // create the Smith-Waterman strings to use
+        final byte[] refBases = getBasesForPath(refPath, true);
+        final byte[] altBases = getBasesForPath(altPath, true);
+
+        // run Smith-Waterman to determine the best alignment (and remove trailing deletions since they aren't interesting)
+        final SmithWatermanAlignment alignment = aligner.align(refBases, altBases, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.LEADING_INDEL);
+        return new DanglingChainMergeHelper(altPath, refPath, altBases, refBases, AlignmentUtils.removeTrailingDeletions(alignment.getCigar()));
     }
+
+
+    /**
+     * NOTE: we override the old behavior here to allow for looping/nonunique references to be handled properly
+     *
+     * @return the reference source vertex pulled from the graph, can be null if it doesn't exist in the graph
+     */
     @Override
-    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
-        oneShotDanglingTailLogger.warn("Cannot recover dangling heads when in experimental mode");
-        return;
+    public final MultiDeBruijnVertex getReferenceSourceVertex( ) {
+        return referencePath != null && !referencePath.isEmpty()? referencePath.get(0) : null;
+    }
+
+    /**
+     * NOTE: we override the old behavior here to allow for looping/nonunique references to be handled properly
+     *
+     * @return the reference sink vertex pulled from the graph, can be null if it doesn't exist in the graph
+     */
+    @Override
+    public final MultiDeBruijnVertex getReferenceSinkVertex( ) {
+        return referencePath != null && !referencePath.isEmpty()? referencePath.get(referencePath.size() - 1) : null;
+    }
+
+    /**
+     * Generates the CIGAR string from the Smith-Waterman alignment of the dangling path (where the
+     * provided vertex is the sink) and the reference path.
+     *
+     * @param aligner
+     * @param vertex   the sink of the dangling chain
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param recoverAll recover even branches with forks
+     * @return a SmithWaterman object which can be null if no proper alignment could be generated
+     */
+    @Override
+    DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
+        final int minTailPathLength = Math.max(1, minDanglingBranchLength); // while heads can be 0, tails absolutely cannot
+
+        // find the lowest common ancestor path between this vertex and the diverging master path if available
+        final List<MultiDeBruijnVertex> altPath = findPathUpwardsToLowestCommonAncestor(vertex, pruneFactor, !recoverAll);
+        if ( altPath == null || isRefSource(altPath.get(0)) || altPath.size() < minTailPathLength + 1 ) // add 1 to include the LCA
+        {
+            return null;
+        }
+
+        // now get the reference path from the LCA
+        final List<MultiDeBruijnVertex> refPath = getReferencePathForwardFromKmer(altPath.get(0));
+
+        // create the Smith-Waterman strings to use
+        final byte[] refBases = getBasesForPath(refPath, false);
+        final byte[] altBases = getBasesForPath(altPath, false);
+
+        // run Smith-Waterman to determine the best alignment (and remove trailing deletions since they aren't interesting)
+        final SmithWatermanAlignment alignment = aligner.align(refBases, altBases, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.LEADING_INDEL);
+        return new DanglingChainMergeHelper(altPath, refPath, altBases, refBases, AlignmentUtils.removeTrailingDeletions(alignment.getCigar()));
+    }
+
+    /**
+     * This is a heruistic for deciding what the proper reference path is to align the dangling ends to. The last possible
+     * reference path emanating from the kmer (in the case of the root kmer for a dangling end being a repeated kmer
+     * from the reference) is chose (or the first in the case for dangling heads). This is based on the assumption that
+     * dangling tails worthy of recovering are often a result of the assembly window and thus we choose the last possible
+     * kmer as the option.
+     *
+     *
+     * @param targetKmer
+     * @return
+     */
+    private List<MultiDeBruijnVertex> getReferencePathForwardFromKmer(final MultiDeBruijnVertex targetKmer) {
+        int finalIndex = referencePath.lastIndexOf(targetKmer);
+        return referencePath.subList(finalIndex, referencePath.size());
+    }
+
+    private List<MultiDeBruijnVertex> getReferencePathBackwardsForKmer(final MultiDeBruijnVertex targetKmer) {
+        int firstIndex = referencePath.indexOf(targetKmer);
+        return Lists.reverse(referencePath.subList(0, firstIndex + 1));
     }
 
 
@@ -272,6 +373,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     }
 
     @VisibleForTesting
+    // Test method for returning all existing junction trees.
     public Map<MultiDeBruijnVertex, ThreadingTree> getReadThreadingJunctionTrees(boolean pruned) {
         return pruned ? Maps.filterValues( Collections.unmodifiableMap(readThreadingJunctionTrees), n -> n.isEmptyTree())
                 : Collections.unmodifiableMap(readThreadingJunctionTrees);

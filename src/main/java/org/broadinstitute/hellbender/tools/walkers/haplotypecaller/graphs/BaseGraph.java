@@ -186,14 +186,14 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     /**
      * @return the reference source vertex pulled from the graph, can be null if it doesn't exist in the graph
      */
-    public final V getReferenceSourceVertex( ) {
+    public V getReferenceSourceVertex( ) {
         return vertexSet().stream().filter(v -> isRefSource(v)).findFirst().orElse(null);
     }
 
     /**
      * @return the reference sink vertex pulled from the graph, can be null if it doesn't exist in the graph
      */
-    public final V getReferenceSinkVertex( ) {
+    public V getReferenceSinkVertex( ) {
         return vertexSet().stream().filter(v -> isRefSink(v)).findFirst().orElse(null);
     }
 

@@ -592,7 +592,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting
-    final DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
+    DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
         final int minTailPathLength = Math.max(1, minDanglingBranchLength); // while heads can be 0, tails absolutely cannot
 
         // find the lowest common ancestor path between this vertex and the diverging master path if available
@@ -625,7 +625,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting
-    final DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
+    DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
 
         // find the highest common descendant path between vertex and the reference source if available
         final List<MultiDeBruijnVertex> altPath = findPathDownwardsToHighestCommonDescendantOfReference(vertex, pruneFactor, !recoverAll);
@@ -656,7 +656,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * @return the path if it can be determined or null if this vertex either doesn't merge onto another path or
      *  has an ancestor with multiple incoming edges before hitting the reference path
      */
-    private List<MultiDeBruijnVertex> findPathUpwardsToLowestCommonAncestor(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
+    protected List<MultiDeBruijnVertex> findPathUpwardsToLowestCommonAncestor(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
         return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, v -> incomingEdgeOf(v), e -> getEdgeSource(e))
                 :findPath(vertex, pruneFactor, v -> hasIncidentRefEdge(v) || inDegreeOf(v) == 0, v -> outDegreeOf(v) > 1 && hasIncidentRefEdge(v), this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
     }
@@ -687,7 +687,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * @return the path if it can be determined or null if this vertex either doesn't merge onto the reference path or
      *  has a descendant with multiple outgoing edges before hitting the reference path
      */
-    private List<MultiDeBruijnVertex> findPathDownwardsToHighestCommonDescendantOfReference(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
+    protected List<MultiDeBruijnVertex> findPathDownwardsToHighestCommonDescendantOfReference(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
         return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v), e -> getEdgeTarget(e))
                 : findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) == 0, v -> isReferenceNode(v), this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
     }

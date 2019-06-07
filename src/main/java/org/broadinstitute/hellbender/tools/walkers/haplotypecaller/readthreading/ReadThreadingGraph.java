@@ -187,5 +187,4 @@ public class ReadThreadingGraph extends ReadThreadingGraphInterface {
         return "ReadThreadingAssembler{kmerSize=" + kmerSize + '}';
     }
 
-
 }

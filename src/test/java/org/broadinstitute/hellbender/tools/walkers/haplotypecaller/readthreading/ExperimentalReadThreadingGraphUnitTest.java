@@ -462,7 +462,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "DanglingTails", enabled = false)
+    @Test(dataProvider = "DanglingTails")
     public void testDanglingTails(final String refEnd,
                                   final String altEnd,
                                   final String cigar,
@@ -527,7 +527,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         }
     }
 
-    @Test (enabled = false)
+    @Test ()
     public void testForkedDanglingEnds() {
 
         final int kmerSize = 15;
@@ -569,10 +569,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
             Assert.assertTrue(mergeResult == 1);
         }
 
-        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
-        seqGraph.simplifyGraph();
-
-        final List<String> paths = new KBestHaplotypeFinder<>(seqGraph).findBestHaplotypes().stream()
+        final List<String> paths = new KBestHaplotypeFinder<>(rtgraph).findBestHaplotypes().stream()
                 .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
                 .distinct()
                 .sorted()
@@ -618,18 +615,22 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         List<Object[]> tests = new ArrayList<>();
 
         // add 1M to the expected CIGAR because it includes the last (common) base too
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true});        // 1 snp
+        tests.add(new Object[]{"XXTXXXXAACCGGTTACGT", "AAYCGGTTACGT", "8M", true});        // 1 snp
         tests.add(new Object[]{"XXXAACCGGTTACGT", "XAAACCGGTTACGT", "7M", false});         // 1 snp
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "XAACGGTTACGT", "4M1D4M", false});   // deletion
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYYCGGTTACGT", "8M", true});        // 2 snps
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGTAA", "AYCYGGTTACGTAA", "9M", true});    // 2 snps
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "AYCGGTTACGT", "7M", true});         // very little data
-        tests.add(new Object[]{"XXXXXXXAACCGGTTACGT", "YCCGGTTACGT", "6M", true});         // begins in mismatch
+        tests.add(new Object[]{"XXTXXXXAACCGGTTACGT", "XAACGGTTACGT", "4M1D4M", false});   // deletion
+        tests.add(new Object[]{"XXTXXXXAACCGGTTACGT", "AYYCGGTTACGT", "8M", true});        // 2 snps
+        tests.add(new Object[]{"XXTXXXXAACCGGTTACGTAA", "AYCYGGTTACGTAA", "9M", true});    // 2 snps
+        tests.add(new Object[]{"XXXTXXXAACCGGTTACGT", "AYCGGTTACGT", "7M", true});         // very little data
+        tests.add(new Object[]{"XXTXXXXAACCGGTTACGT", "YCCGGTTACGT", "6M", true});         // begins in mismatch
+
+        //TODO these tests are diffiuclt to evaluate, as KBestHaplotypeFinder currently cannot handle looping sequence which poses a problem for testing explicitly looping refrence behavior
+//        tests.add(new Object[]{"XXTXXXXAACCGGTTACGTTTACGT", "AAYCGGTTACGT", "8M", true});        // dangling head hanging off of a non-unique reference kmer
+//        tests.add(new Object[]{"XXTXXXXAACCGGTTACGTCGGTTACGT", "AAYCGGTTACGT", "8M", true});
 
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "DanglingHeads", enabled = false)
+    @Test(dataProvider = "DanglingHeads")
     public void testDanglingHeads(final String ref,
                                   final String alt,
                                   final String cigar,
@@ -674,8 +675,8 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         // confirm that we created the appropriate bubble in the graph only if expected
         rtgraph.cleanNonRefPaths();
-        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(seqGraph, seqGraph.getReferenceSourceVertex(), seqGraph.getReferenceSinkVertex()).findBestHaplotypes();
+//        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
         Assert.assertEquals(paths.size(), shouldBeMerged ? 2 : 1);
     }
 
