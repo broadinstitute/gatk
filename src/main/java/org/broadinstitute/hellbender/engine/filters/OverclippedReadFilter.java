@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
@@ -21,13 +23,23 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads that are over-soft-clipped")
 public final class OverclippedReadFilter extends ReadFilter{
-
     static final long serialVersionUID = 1L;
+    private final Logger logger = LogManager.getLogger(this.getClass());
+
+    private static final double DEFAULT_MIN_SOFT_CLIPPED_RATIO = Double.MIN_VALUE;
 
     @Argument(fullName = ReadFilterArgumentDefinitions.FILTER_TOO_SHORT_NAME,
             doc = "Minimum number of aligned bases",
-            optional = true)
+            optional = true,
+            mutex = {"soft-clipped-ratio-threshold"})
     public int minimumSequenceLength = 30;
+
+    @Argument(fullName = "soft-clipped-ratio-threshold",
+            doc = "Minimum ratio of soft clipped bases to total bases in read for read to be included.",
+            optional = true,
+            mutex = {ReadFilterArgumentDefinitions.FILTER_TOO_SHORT_NAME}
+    )
+    public double minimumSoftClippedRatio = DEFAULT_MIN_SOFT_CLIPPED_RATIO;
 
     @Argument(fullName = ReadFilterArgumentDefinitions.DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME,
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
@@ -43,8 +55,7 @@ public final class OverclippedReadFilter extends ReadFilter{
         this.doNotRequireSoftClipsOnBothEnds = doNotRequireSoftClipsOnBothEnds;
     }
 
-    @Override
-    public boolean test(final GATKRead read) {
+    private boolean testMinSequenceLength(final GATKRead read) {
         int alignedLength = 0;
         int softClipBlocks = 0;
         int minSoftClipBlocks = doNotRequireSoftClipsOnBothEnds ? 1 : 2;
@@ -64,5 +75,35 @@ public final class OverclippedReadFilter extends ReadFilter{
         }
 
         return(alignedLength >= minimumSequenceLength || softClipBlocks < minSoftClipBlocks);
+    }
+
+    private boolean testMinSoftClippedRatio(final GATKRead read) {
+        int numSoftClippedBases = 0;
+        for ( final CigarElement element : read.getCigarElements() ) {
+            if (element.getOperator() == CigarOperator.S) {
+                numSoftClippedBases += element.getLength();
+            }
+        }
+
+        final double softClipRatio = ((double)numSoftClippedBases / (double)read.getLength());
+
+        logger.debug( "  Num Soft Clipped Bases: " + numSoftClippedBases );
+        logger.debug( "  Read Length: " + read.getLength() );
+        logger.debug( "  Read Filter status: (" + softClipRatio + " > " + minimumSoftClippedRatio + ")" );
+        logger.debug( "  Read Filter status: " + (softClipRatio > minimumSoftClippedRatio) );
+
+        return softClipRatio > minimumSoftClippedRatio;
+    }
+
+    @Override
+    public boolean test(final GATKRead read) {
+        logger.debug( "About to test read: " + read.toString());
+        // If we didn't specify the clipping ratio, we use the min sequence length test:
+        if ( minimumSoftClippedRatio == DEFAULT_MIN_SOFT_CLIPPED_RATIO ) {
+            return testMinSequenceLength(read);
+        }
+        else {
+            return testMinSoftClippedRatio(read);
+        }
     }
 }
