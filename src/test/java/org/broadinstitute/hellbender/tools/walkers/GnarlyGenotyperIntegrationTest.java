@@ -47,7 +47,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                // },
                 {new File[]{new File(getToolTestDataDir() + "noGTCount.sample1.vcf"),
                         new File(getToolTestDataDir() + "noGTCount.sample2.vcf")},
-                        getTestFile("noGTCount.expected.vcf"), Arrays.asList(new SimpleInterval("chr20")), NO_EXTRA_ARGS, hg38Reference
+                        getTestFile("noGTCount.expected.vcf"), Arrays.asList(new SimpleInterval("chr20")), Arrays.asList("--pipeline-max-alt-count 1"), hg38Reference
                 }
         };
     }

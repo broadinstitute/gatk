@@ -87,8 +87,6 @@ public final class GnarlyGenotyper extends CombineGVCFs {
 
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
 
-    public static final int PIPELINE_MAX_ALT_COUNT = 6;
-
     private double INDEL_QUAL_THRESHOLD;
     private double SNP_QUAL_THRESHOLD;
 
@@ -102,7 +100,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
 
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of PIPELINE_MAX_ALT_COUNT
-    //for multiple inputs, each input could have PIPELINE_MAX_ALT_COUNT distinct alleles
+    //for multiple inputs, each input could have PIPELINE_MAX_ALT_COUNT+1 distinct alleles
     private int MAX_ALTS_COMBINED_INPUTS;
     private int[] likelihoodSizeCache;
     private final static ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
@@ -138,6 +136,12 @@ public final class GnarlyGenotyper extends CombineGVCFs {
                     "using large lists of +intervals, as in exome sequencing, especially if GVCF data only exists for " +
                     "specified intervals.")
     private boolean mergeInputIntervals = false;
+
+    /**
+     * Maximum number of alternate alleles for which to output PLs.  Beyond this number genotypes will be called and ADs will be output, but PLs will not be omitted to save on compute and file size.
+     */
+    @Argument(fullName = "pipeline-max-alt-count", doc = "Maximum number of alternate alleles for which to output PLs")
+    public static int PIPELINE_MAX_ALT_COUNT = 6;
 
     @Hidden
     @Argument(fullName = "strip-allele-specific-annotations", shortName = "strip-as", doc = "Remove raw AS values and don't calculate finalized values")
@@ -191,7 +195,8 @@ public final class GnarlyGenotyper extends CombineGVCFs {
     public void onTraversalStart() {
         super.onTraversalStart();
 
-        MAX_ALTS_COMBINED_INPUTS = (int)Math.ceil(Math.pow(PIPELINE_MAX_ALT_COUNT, multiVariantInputArgumentCollection.getDrivingVariantPaths().size()));
+        //MAX_ALTS_COMBINED_INPUTS = (int)Math.ceil(Math.pow(PIPELINE_MAX_ALT_COUNT, multiVariantInputArgumentCollection.getDrivingVariantPaths().size()));
+        MAX_ALTS_COMBINED_INPUTS = PIPELINE_MAX_ALT_COUNT * multiVariantInputArgumentCollection.getDrivingVariantPaths().size();
         likelihoodSizeCache = new int[MAX_ALTS_COMBINED_INPUTS + 1];
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
@@ -597,7 +602,7 @@ public final class GnarlyGenotyper extends CombineGVCFs {
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
         } else {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-            final GenotypeLikelihoodCalculator glCalc = glcCache.get(allelesToUse.size());
+            final GenotypeLikelihoodCalculator glCalc = glcCache.get(allelesToUse.size()-1);
             final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));

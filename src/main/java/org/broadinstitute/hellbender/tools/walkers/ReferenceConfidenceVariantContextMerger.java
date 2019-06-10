@@ -612,7 +612,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
             }
             //genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).name(name);
-            final List<Allele> remappedGTAlleles = g.getAlleles().stream().map(a -> remappedAlleles.get(vc.getAlleleIndex(a))).collect(Collectors.toList());
+            final List<Allele> remappedGTAlleles = g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList());
             genotypeBuilder.alleles(remappedGTAlleles).name(name);
             mergedGenotypes.add(genotypeBuilder.make());
         }
