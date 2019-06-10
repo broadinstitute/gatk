@@ -1,0 +1,52 @@
+EPS = 1e-7
+
+DICOM_EXT = '.dcm'
+IMAGE_EXT = '.png'
+PDF_EXT = '.pdf'
+TENSOR_EXT = '.hd5'
+
+JOIN_CHAR = '_'
+CONCAT_CHAR = '-'
+HD5_GROUP_CHAR = '/'
+
+MRI_FRAMES = 50
+MRI_TO_SEGMENT = 'cine_segmented_sax_inlinevf'
+MRI_SEGMENTED = 'cine_segmented_sax_inlinevf_segmented'
+MRI_ZOOM_INPUT = 'sax_inlinevf_zoom'
+MRI_ZOOM_MASK = 'sax_inlinevf_zoom_mask'
+MRI_DATE = 'mri_date'
+MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
+
+CAD_ICDS = ['K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
+            'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759']
+
+# TODO: These values should ultimately come from the coding table
+CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
+CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
+
+ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
+ECG_BIKE_MEDIAN_SIZE = (5500, len(ECG_BIKE_LEADS))
+ECG_BIKE_STRIP_SIZE = (5000, len(ECG_BIKE_LEADS))
+ECG_BIKE_FULL_SIZE = (216500, len(ECG_BIKE_LEADS))
+ECG_CHAR_2_IDX = {'!': 0, ' ': 1, "'": 2, ')': 4, '(': 3, '-': 5, '/': 6, '1': 7, '3': 9, '2': 8, '4': 10, ':': 11,
+                  '?': 12, 'A': 13, 'C': 15, 'B': 14, 'E': 17, 'D': 16, 'G': 18, 'I': 20, 'H': 19, 'J': 21, 'M': 23,
+                  'L': 22, 'N': 24, 'Q': 26, 'P': 25, 'S': 28, 'R': 27, 'U': 30, 'T': 29, 'W': 32, 'V': 31, 'a': 33,
+                  'c': 35, 'b': 34, 'e': 37, 'd': 36, 'g': 39, 'f': 38, 'i': 41, 'h': 40, 'k': 43, 'j': 42, 'm': 45,
+                  'l': 44, 'o': 47, 'n': 46, 'q': 49, 'p': 48, 's': 51, 'r': 50, 'u': 53, 't': 52, 'w': 55, 'v': 54,
+                  'y': 57, 'x': 56, 'z': 58}
+ECG_IDX_2_CHAR = {0: '!', 1: ' ', 2: "'", 3: '(', 4: ')', 5: '-', 6: '/', 7: '1', 8: '2', 9: '3', 10: '4', 11: ':',
+                  12: '?', 13: 'A', 14: 'B', 15: 'C', 16: 'D', 17: 'E', 18: 'G', 19: 'H', 20: 'I', 21: 'J', 22: 'L',
+                  23: 'M', 24: 'N', 25: 'P', 26: 'Q', 27: 'R', 28: 'S', 29: 'T', 30: 'U', 31: 'V', 32: 'W', 33: 'a',
+                  34: 'b', 35: 'c', 36: 'd', 37: 'e', 38: 'f', 39: 'g', 40: 'h', 41: 'i', 42: 'j', 43: 'k', 44: 'l',
+                  45: 'm', 46: 'n', 47: 'o', 48: 'p', 49: 'q', 50: 'r', 51: 's', 52: 't', 53: 'u', 54: 'v', 55: 'w',
+                  56: 'x', 57: 'y', 58: 'z'}
+
+TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
+
+#BigQuery tables
+SQL_DATASET = "ukbb7089_201904"
+DICTIONARY_TABLE = SQL_DATASET+".dictionary"
+CODING_TABLE = SQL_DATASET+".coding"
+PHENOTYPE_TABLE = SQL_DATASET+".phenotype"
+
+GCS_BUCKET = 'ml4cvd'

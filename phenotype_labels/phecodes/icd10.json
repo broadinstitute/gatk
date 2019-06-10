@@ -1,0 +1,20 @@
+[
+  {
+    "mode": "REQUIRED", 
+    "name": "icd10", 
+    "type": "STRING"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "phecode", 
+    "type": "STRING"
+  },
+  {
+    "name": "excluded_phecodes", 
+    "type": "STRING"
+  }, 
+  {
+    "name": "excluded_phenotypes", 
+    "type": "STRING"
+  } 
+]

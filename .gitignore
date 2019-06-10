@@ -1,0 +1,10 @@
+.DS_Store
+.vscode
+.idea/*
+*.linux
+*.log
+**/__pycache__/*
+trained_models/*
+recipes_output/*
+.ipynb_checkpoints
+ml4cvd.egg-info/*
