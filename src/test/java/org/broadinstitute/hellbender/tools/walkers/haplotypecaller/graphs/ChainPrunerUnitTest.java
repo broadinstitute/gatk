@@ -1,15 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import htsjdk.samtools.SAMFileHeader;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
@@ -168,7 +164,7 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         seqGraph.removePathsNotConnectedToRef();
         seqGraph.simplifyGraph();
 
-        final List<KBestHaplotype> bestPaths = new KBestHaplotypeFinder(seqGraph).findBestHaplotypes(10);
+        final List<KBestHaplotype> bestPaths = new GraphBasedKBestHaplotypeFinder(seqGraph).findBestHaplotypes(10);
 
         final OptionalInt altIndex = IntStream.range(0, bestPaths.size()).filter(n -> bestPaths.get(n).haplotype().basesMatch(alt)).findFirst();
         Assert.assertTrue(altIndex.isPresent());

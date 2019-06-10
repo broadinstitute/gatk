@@ -401,9 +401,18 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
             graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", v.toString(), new String(getAdditionalSequence(v)) + v.getAdditionalInfo()));
         }
 
+        for( String line : getExtraGraphFileLines() ) {
+            graphWriter.println(line);
+        }
+
         if ( writeHeader ) {
             graphWriter.println("}");
         }
+    }
+
+    // Extendable method intended to allow for adding extra material to the graph
+    public List<String> getExtraGraphFileLines() {
+        return Collections.emptyList();
     }
 
     /**

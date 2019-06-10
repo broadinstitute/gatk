@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -151,6 +150,7 @@ public final class ReadThreadingAssembler {
                     nonRefSeqGraphs.add(result.getSeqGraph());
                 } else {
                     sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
+                    ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).generateJunctionTrees();
                     // add it to graphs with meaningful non-reference features
                     assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
                     nonRefRTGraphs.add(result.getThreadingGraph());
@@ -187,9 +187,13 @@ public final class ReadThreadingAssembler {
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
             for (final KBestHaplotype<V, E> kBestHaplotype :
-                    new KBestHaplotypeFinder<V, E>(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
+                    (generateSeqGraph ?
+                            new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
+                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE))
+                            .findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
+                    // TODO this score seems to be irrelevant at this point...
                     if (kBestHaplotype.isReference()) {
                         refHaplotype.setScore(kBestHaplotype.score());
                     }

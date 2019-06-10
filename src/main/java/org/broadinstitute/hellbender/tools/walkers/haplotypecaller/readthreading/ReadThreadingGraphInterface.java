@@ -670,7 +670,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         return false;
     }
 
-    private MultiSampleEdge getHeaviestIncomingEdge(final MultiDeBruijnVertex v) {
+    public MultiSampleEdge getHeaviestIncomingEdge(final MultiDeBruijnVertex v) {
         final Set<MultiSampleEdge> incomingEdges = incomingEdgesOf(v);
         return incomingEdges.size() == 1 ? incomingEdges.iterator().next() :
                 incomingEdges.stream().max(Comparator.comparingInt(MultiSampleEdge::getMultiplicity)).get();

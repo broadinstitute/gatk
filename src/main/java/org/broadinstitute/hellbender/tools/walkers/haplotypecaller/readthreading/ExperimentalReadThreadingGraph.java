@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.commons.collections.ListUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
@@ -23,9 +24,12 @@ import java.util.stream.Collectors;
  * to
  */
 public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface {
+    private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
+    private MultiSampleEdge SYMBOLIC_END_EDGE;
+
     private final OneShotLogger oneShotDanglingTailLogger = new OneShotLogger(this.getClass());
 
-    private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees;
+    private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
 
     public ExperimentalReadThreadingGraph(int kmerSize) {
         this(kmerSize, false, (byte)6, 1);
@@ -131,13 +135,14 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     @Override
     protected MultiDeBruijnVertex extendChainByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
+        final int countToUse = isRef ? 0 : count; //NOTE we do not count reference multiplicity in the graph now
 
         final int nextPos = kmerStart + kmerSize - 1;
         for ( final MultiSampleEdge outgoingEdge : outgoingEdges ) {
             final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
             if ( target.getSuffix() == sequence[nextPos] ) {
                 // we've got a match in the chain, so simply increase the count of the edge by 1 and continue
-                outgoingEdge.incMultiplicity(count);
+                outgoingEdge.incMultiplicity(countToUse);
                 return target;
             }
         }
@@ -148,7 +153,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
         // either use our unique merge vertex, or create a new one in the chain
         final MultiDeBruijnVertex nextVertex = mkergeVertex == null ? createVertex(kmer) : mkergeVertex;
-        addEdge(prevVertex, nextVertex, ((MyEdgeFactory)getEdgeFactory()).createEdge(isRef, count));
+        addEdge(prevVertex, nextVertex, ((MyEdgeFactory)getEdgeFactory()).createEdge(isRef, countToUse));
         return nextVertex;
     }
 
@@ -174,24 +179,46 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         for (final MultiSampleEdge outgoingEdge : outgoingEdges) {
             final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
             if (target.getSuffix() == sequence[nextPos]) {
+                // Only want to create a new tree if we walk into a node with
+                // NOTE: we do this deciding on our path
+                if (vertexWarrantsJunctionTree(prevVertex)) {
+                    nodesToExtend.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
+                }
+
                 // If this node has an out-degree > 1, add the edge we took to existing trees
                 if (outgoingEdges.size() != 1) {
                     // TODO, make an object to encapsulate this operation better
-                    List<ThreadingNode> newNodes = nodesToExtend.stream().map(n -> n.addEdge(outgoingEdge)).collect(Collectors.toList());
-                    nodesToExtend.clear();
-                    nodesToExtend.addAll(newNodes);
-                }
-
-                // Only want to create a new tree if we walk into a node with
-                // NOTE: we do this after extending the previous node
-                if (incomingEdgesOf(target).size() > 1) {
-                    nodesToExtend.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
+                    addEdgeToJunctionTreeNodes(nodesToExtend, outgoingEdge);
                 }
 
                 return target;
             }
         }
         return null;
+    }
+
+    // Helper method that adds a single edge to all of the nodes in nodesToExtend.
+    private static void addEdgeToJunctionTreeNodes(List<ThreadingNode> nodesToExtend, MultiSampleEdge outgoingEdge) {
+        List<ThreadingNode> newNodes = nodesToExtend.stream().map(n -> n.addEdge(outgoingEdge)).collect(Collectors.toList());
+        nodesToExtend.clear();
+        nodesToExtend.addAll(newNodes);
+    }
+
+    // Helper method used to determine whether a vertex meets the criteria to hold a junction tree
+    // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
+    // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
+    private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
+        // The reference source vertex warrants a junction tree
+        if (getReferenceSourceVertex() == vertex) {
+            return true;
+        }
+
+        for (MultiSampleEdge edge : outgoingEdgesOf(vertex)) {
+            if (inDegreeOf(getEdgeTarget(edge)) > 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     //TODO this is a placeholder for when these mechanisms should be more smart, as of right now I can live with the consequnces
@@ -273,7 +300,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         }
 
         // now get the reference path from the LCA
-        final List<MultiDeBruijnVertex> refPath = getReferencePathForwardFromKmer(altPath.get(0));
+        final List<MultiDeBruijnVertex> refPath = getReferencePathForwardFromKmer(altPath.get(0), Optional.ofNullable(getHeaviestIncomingEdge(altPath.get(1))));
 
         // create the Smith-Waterman strings to use
         final byte[] refBases = getBasesForPath(refPath, false);
@@ -291,20 +318,58 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
      * dangling tails worthy of recovering are often a result of the assembly window and thus we choose the last possible
      * kmer as the option.
      *
+     * //TODO both of these are a hack to emulate the current behavior when targetkmer isn't actually a reference kmer. The old behaior
+     * //TODO was to return a singleton list of targetKmer. The real solution is to walk back target kmer to the actual ref base
      *
-     * @param targetKmer
+     * @param targetKmer vertex corresponding to the root
      * @return
      */
-    private List<MultiDeBruijnVertex> getReferencePathForwardFromKmer(final MultiDeBruijnVertex targetKmer) {
-        int finalIndex = referencePath.lastIndexOf(targetKmer);
-        return referencePath.subList(finalIndex, referencePath.size());
+    private List<MultiDeBruijnVertex> getReferencePathForwardFromKmer(final MultiDeBruijnVertex targetKmer,
+                                                                      final Optional<MultiSampleEdge> blacklistedEdge) {
+        List<MultiDeBruijnVertex> extraSequence = new ArrayList<>(2);
+        MultiDeBruijnVertex vert = targetKmer;
+        int finalIndex = referencePath.lastIndexOf(vert);
+
+        while (finalIndex == -1 &&  vert != null) {
+            // If the current verex is not a reference vertex but exists, add it to our list of extra bases to append to the reference
+            extraSequence.add(vert);
+
+            final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(vert);
+
+            // singleton or empty set
+            final Set<MultiSampleEdge> blacklistedEdgeSet = blacklistedEdge.isPresent() ? Collections.singleton(blacklistedEdge.get()) : Collections.emptySet();
+
+            // walk forward while the path is unambiguous
+            final List<MultiSampleEdge> edges = outgoingEdges.stream().filter(e -> !blacklistedEdgeSet.contains(e)).limit(2).collect(Collectors.toList());
+
+            vert = edges.size() == 1 ? getEdgeTarget(edges.get(0)) : null;
+            finalIndex = vert == null ? -1 : referencePath.lastIndexOf(vert);
+        }
+
+        // if we found extra sequence append it to the front of the
+        extraSequence.addAll(finalIndex != -1 ? referencePath.subList(finalIndex, referencePath.size()) : Collections.emptyList());
+        return extraSequence;
     }
 
+    // TODO this behavior is frankly silly and needs to be fixed, there is no way upwards paths should be dangingling head recovered differently
     private List<MultiDeBruijnVertex> getReferencePathBackwardsForKmer(final MultiDeBruijnVertex targetKmer) {
         int firstIndex = referencePath.indexOf(targetKmer);
+        if (firstIndex == -1) return Collections.singletonList(targetKmer);
         return Lists.reverse(referencePath.subList(0, firstIndex + 1));
     }
 
+
+    /**
+     * Filters empty or uninformative junction trees from the graph.
+     *
+     * @return
+     */
+    public void pruneJunctionTrees(final int pruneFactor) {
+        if (pruneFactor > 0) {
+            throw new UnsupportedOperationException("Currently pruning based JT evidence is not supported.");
+        }
+        readThreadingJunctionTrees = Maps.filterValues( Collections.unmodifiableMap(readThreadingJunctionTrees), ThreadingTree::isEmptyTree);
+    }
 
     // Generate a SeqGraph that is special
     @Override
@@ -315,6 +380,10 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     // Generate threading trees
     public void generateJunctionTrees() {
         buildGraphIfNecessary();
+        // Adding handle vertex to support symbolic end alleles
+        addVertex(SYMBOLIC_END_VETEX);
+        SYMBOLIC_END_EDGE = addEdge(getReferenceSinkVertex(), SYMBOLIC_END_VETEX);
+
         readThreadingJunctionTrees = new HashMap<>();
         pending.values().stream().flatMap(Collection::stream).forEach(this::threadSequenceForJuncitonTree);
     }
@@ -325,7 +394,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
      *
      * @param seqForKmers
      */
-    public void threadSequenceForJuncitonTree(SequenceForKmers seqForKmers) {
+    public void threadSequenceForJuncitonTree(final SequenceForKmers seqForKmers) {
         // Maybe handle this differently, the reference junction tree should be held seperatedly from everything else.
         if (seqForKmers.isRef) {
             return;
@@ -346,12 +415,13 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         MultiDeBruijnVertex lastVertex = startingVertex;
         int kmersPastSinceLast = 0;
         for ( int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
-            MultiDeBruijnVertex vertex;
+            final MultiDeBruijnVertex vertex;
             if (kmersPastSinceLast == 0) {
                 vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodesUpdated);
             } else {
                 Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
                 vertex = uniqueKmers.get(kmer);
+                // TODO this might cause problems
                 if (vertex != null) {
                    nodesUpdated.addAll(attemptToResolveThreadingBetweenVertexes(lastVertex , vertex));
                 }
@@ -359,11 +429,47 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             // If for whatever reason vertex = null, then we have fallen off the corrected graph so we don't update anything
             if (vertex != null) {
                 lastVertex = vertex;
+                kmersPastSinceLast = 0;
             } else {
                 kmersPastSinceLast++;
             }
-
         }
+
+        // As a final step, if the last vetex happens to be the ref-stop vertex then we want to append a symbolic node to the junciton trees
+        if (lastVertex == getReferenceSinkVertex()) {
+            addEdgeToJunctionTreeNodes(nodesUpdated, SYMBOLIC_END_EDGE);
+        }
+    }
+
+    // Extendable method intended to allow for adding extra material to the graph
+    public List<String> getExtraGraphFileLines() {
+        List<String> output = new ArrayList<>();
+        for( Map.Entry<MultiDeBruijnVertex, ThreadingTree> entry : readThreadingJunctionTrees.entrySet()) {
+            // adding the root node to the graph
+            output.add(String.format("\t%s -> %s ", entry.getKey().toString(), entry.getValue().rootNode.getDotName()) +
+            String.format("[color=blue];"));
+            output.add(String.format("\t%s [shape=point];", entry.getValue().rootNode.getDotName()));
+
+            output.addAll(edgesForNodeRecursive(entry.getValue().rootNode));
+        }
+        return output;
+    }
+
+    // Recursive search through a threading tree for nodes
+    private List<String> edgesForNodeRecursive(ThreadingNode node) {
+        List<String> output = new ArrayList<>();
+
+        for ( Map.Entry<MultiSampleEdge, ThreadingNode> childrenNode : node.childrenNodes.entrySet() ) {
+            output.add(String.format("\t%s -> %s ", node.getDotName(), childrenNode.getValue().getDotName() + String.format("[color=blue,label=\"%d\"];",childrenNode.getValue().count)));
+            output.add(String.format("\t%s [label=\"%s\",shape=plaintext]", childrenNode.getValue().getDotName(),
+                    new String(getEdgeTarget(childrenNode.getKey()).getAdditionalSequence(false))));
+            output.addAll(edgesForNodeRecursive(childrenNode.getValue()));
+        }
+        return output;
+    }
+
+    public ThreadingTree getJunctionTreeForNode(MultiDeBruijnVertex vertex) {
+        return readThreadingJunctionTrees.get(vertex);
     }
 
     // TODO this needs to be filled out and resolved
@@ -392,7 +498,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         private ThreadingNode rootNode;
         private MultiDeBruijnVertex graphBase;
 
-        public ThreadingTree(MultiDeBruijnVertex vertex) {
+        private ThreadingTree(MultiDeBruijnVertex vertex) {
             graphBase = vertex;
             rootNode = new ThreadingNode(null);
         }
@@ -402,24 +508,24 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
          *
          * @return
          */
-        public ThreadingNode getAndIncrementRootNode() {
+        private ThreadingNode getAndIncrementRootNode() {
             rootNode.incrementCount();
             return rootNode;
         }
 
         // Determines if this tree actually has any data associated with it
-        public boolean isEmptyTree() {
+        private boolean isEmptyTree() {
             return !rootNode.childrenNodes.isEmpty();
         }
 
         // Returns a list of all the paths (illustrated as sequential edges) observed from this point throug hthe graph
-        public List<List<MultiSampleEdge>> enumeratePathsPresent() {
+        private List<List<MultiSampleEdge>> enumeratePathsPresent() {
             return rootNode.getEdgesThroughNode();
         }
 
         // Returns the junction choices as a list of suffixes to follow
         @VisibleForTesting
-        public List<String> getPathsPresentAsBaseChoiceStrings() {
+        List<String> getPathsPresentAsBaseChoiceStrings() {
             return rootNode.getEdgesThroughNode().stream()
                     .map(path -> path.stream()
                                     .map(edge -> getEdgeTarget(edge).getSuffix())
@@ -428,12 +534,17 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
                     .collect(Collectors.toList());
 
         }
+
+        // getter for the root node, TODO to possibly be replaced when the graph gets hidden from prying eyes.
+        public ThreadingNode getRootNode() {
+            return rootNode;
+        }
     }
 
     // Linked node object for storing tree topography
-    private class ThreadingNode {
+    public class ThreadingNode {
         private Map<MultiSampleEdge, ThreadingNode> childrenNodes;
-        private MultiSampleEdge prevEdge = null; // This may be null if this node corresponds to the root of the graph
+        private MultiSampleEdge prevEdge; // This may be null if this node corresponds to the root of the graph
         private int count = 0;
 
         private ThreadingNode(MultiSampleEdge edge) {
@@ -448,7 +559,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
          * @param edge edge to add to this current node
          * @return the node corresponding to the one that was added to this graph
          */
-        public ThreadingNode addEdge(MultiSampleEdge edge) {
+        private ThreadingNode addEdge(MultiSampleEdge edge) {
             ThreadingNode nextNode = childrenNodes.computeIfAbsent(edge, k -> new ThreadingNode(edge));
             nextNode.incrementCount();
             return nextNode;
@@ -482,7 +593,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
          * @return A list of potential paths originating from this node as observed
          */
         @VisibleForTesting
-        public List<List<MultiSampleEdge>> getEdgesThroughNode() {
+        private List<List<MultiSampleEdge>> getEdgesThroughNode() {
             List<List<MultiSampleEdge>> paths = new ArrayList<>();
             if (childrenNodes.isEmpty()) {
                 paths.add(prevEdge == null ? new ArrayList<>() : Lists.newArrayList(prevEdge));
@@ -499,9 +610,24 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             return paths;
         }
 
+        // Returns a unique name based on the memory id that conforms to the restrictions placed on .dot file nodes
+        public String getDotName() {
+            return "TreadingNode_" + Integer.toHexString(hashCode());
+        }
+
+        // Getter for external tools to access a node
+        public Map<MultiSampleEdge, ThreadingNode> getChildrenNodes() {
+            return Collections.unmodifiableMap(childrenNodes);
+        }
+
         // Return the count of total evidence supporting this node in the tree
         public int getCount() {
             return count;
+        }
+
+        // Checks if this node is the symbolic end by determining if its previous edge ends on the symbolic edge
+        public boolean isSymbolicEnd() {
+            return prevEdge == SYMBOLIC_END_EDGE;
         }
     }
 

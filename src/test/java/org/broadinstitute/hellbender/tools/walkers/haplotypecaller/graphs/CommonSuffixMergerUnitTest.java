@@ -99,9 +99,9 @@ public class CommonSuffixMergerUnitTest extends GATKBaseTest {
     };
 
     public static void assertSameHaplotypes(final String name, final SeqGraph actual, final SeqGraph original) {
-        final List<Haplotype> sortedOriginalKBestHaplotypes = new KBestHaplotypeFinder<>(original).findBestHaplotypes().stream()
+        final List<Haplotype> sortedOriginalKBestHaplotypes = new GraphBasedKBestHaplotypeFinder<>(original).findBestHaplotypes().stream()
                 .sorted(KBESTHAPLOTYPE_COMPARATOR).map(KBestHaplotype::haplotype).collect(Collectors.toList());
-        final List<Haplotype> sortedActualKBestHaplotypes = new KBestHaplotypeFinder<>(actual).findBestHaplotypes().stream()
+        final List<Haplotype> sortedActualKBestHaplotypes = new GraphBasedKBestHaplotypeFinder<>(actual).findBestHaplotypes().stream()
                 .sorted(KBESTHAPLOTYPE_COMPARATOR).map(KBestHaplotype::haplotype).collect(Collectors.toList());
         try {
             Assert.assertEquals(sortedActualKBestHaplotypes, sortedOriginalKBestHaplotypes);

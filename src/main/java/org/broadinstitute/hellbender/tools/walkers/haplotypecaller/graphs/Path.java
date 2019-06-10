@@ -75,6 +75,30 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
     }
 
     /**
+     * Create a new Path extending p with edge
+     *
+     * @param p the path to extend.
+     * @param edges list of edges to extend. Does not check arguments' validity i.e. doesn't check that edges are in order
+     *
+     * @throws IllegalArgumentException if {@code p} or {@code edges} are {@code null} or empty, or {@code edges} is
+     * not part of {@code p}'s graph, or {@code edges} does not have as a source the last vertex in {@code p}.
+     */
+    public Path(final Path<T,E> p, final List<E> edges) {
+        Utils.nonNull(p, "Path cannot be null");
+        Utils.nonEmpty(edges, "Edge cannot be null");
+        edges.forEach(edge -> Utils.validateArg(p.graph.containsEdge(edge), () -> "Graph must contain edge " + edge + " but it doesn't"));
+        if ( ! p.graph.getEdgeSource(edges.get(0)).equals(p.lastVertex) ) {
+            throw new IllegalStateException("Edges added to path must be contiguous.");
+        }
+
+        graph = p.graph;
+        lastVertex = p.graph.getEdgeTarget(edges.get(edges.size() - 1));
+        edgesInOrder = new ArrayList<>(p.length() + 1);
+        edgesInOrder.addAll(p.edgesInOrder);
+        edgesInOrder.addAll(edges);
+    }
+
+    /**
      * Length of the path in edges.
      *
      * @return {@code 0} or greater.
