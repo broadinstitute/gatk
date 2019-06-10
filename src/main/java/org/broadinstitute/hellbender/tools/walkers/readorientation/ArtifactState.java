@@ -42,6 +42,10 @@ public enum ArtifactState {
         return Arrays.asList(F2R1_A, F2R1_C, F2R1_G, F2R1_T);
     }
 
+    static List<ArtifactState> getArtifactStates(){
+        return Arrays.asList(F1R2_A, F1R2_C, F1R2_G, F1R2_T, F2R1_A, F2R1_C, F2R1_G, F2R1_T);
+    }
+
     public static List<ArtifactState> getNonArtifactStates(){
         return Arrays.asList(HOM_REF, GERMLINE_HET, SOMATIC_HET, HOM_VAR);
     }

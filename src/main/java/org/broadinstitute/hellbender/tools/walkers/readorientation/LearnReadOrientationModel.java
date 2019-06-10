@@ -4,6 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.linear.AbstractRealMatrix;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -110,8 +113,10 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                 sample -> sumHistogramsFromFiles(altHistogramMetricsFilesBySample.get(sample), false)));
 
         final Map<String, List<AltSiteRecord>> recordsBySample = gatherAltSiteRecords(altTableFiles);
-
         final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = new HashMap<>();
+        // TODO: extract a class if needed
+        final Map<String, Map<String, Map<ArtifactState, BetaDistributionShape>>> posteriorAltF1R2BySample = new HashMap<>();
+
         for (final Map.Entry<String, List<AltSiteRecord>> entry : recordsBySample.entrySet()) {
             final String sample = entry.getKey();
             final List<AltSiteRecord> records = entry.getValue();
@@ -120,6 +125,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                     .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
 
             final ArtifactPriorCollection artifactPriorCollection = new ArtifactPriorCollection(sample);
+            final Map<String, PosteriorAltF1R2> posteriorAltF1R2 = new HashMap<>();
 
             // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
             for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS) {
@@ -166,9 +172,11 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                         maxEMIterations,
                         maxDepth,
                         logger);
-                final ArtifactPrior artifactPrior = engine.learnPriorForArtifactStates();
-                artifactPriorCollection.set(artifactPrior);
+                final Pair<ArtifactPrior, PosteriorAltF1R2> learnedParameters = engine.learnPriorForArtifactStates();
+                artifactPriorCollection.set(learnedParameters.getLeft());
+                posteriorAltF1R2.put(refContext, learnedParameters.getRight()); // TODO: make sample specific?
             }
+
             artifactPriorCollectionBySample.put(sample, artifactPriorCollection);
         }
 
@@ -179,13 +187,14 @@ public class LearnReadOrientationModel extends CommandLineProgram {
             artifactPriorCollection.writeArtifactPriors(destination);
         }
 
+        final File destination = new File(tmpPriorDir, "yup");
+
+
         try {
             IOUtils.writeTarGz(outputTarGz.getAbsolutePath(), tmpPriorDir.listFiles());
         } catch (IOException ex) {
             throw new UserException.CouldNotCreateOutputFile("Could not create output .tar.gz file.", ex);
         }
-
-
         return "SUCCESS";
     }
 

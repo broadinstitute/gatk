@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Histogram;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
@@ -140,7 +142,7 @@ public class LearnReadOrientationModelEngine {
     }
 
     // Learn the prior probabilities for the artifact states by the EM algorithm
-    public ArtifactPrior learnPriorForArtifactStates() {
+    public Pair<ArtifactPrior, PosteriorAltF1R2> learnPriorForArtifactStates() {
         // Initialize the prior for artifact
         double[] statePrior = getFlatPrior(refAllele);
         double l2Distance;
@@ -167,7 +169,20 @@ public class LearnReadOrientationModelEngine {
                     referenceContext, numRefExamples, numAltExamples, numIterations.intValue()));
         }
 
-        return new ArtifactPrior(referenceContext, statePrior, numExamples, numAltExamples);
+        final PosteriorAltF1R2 posteriorAltF1R2 = new PosteriorAltF1R2();
+        for (final ArtifactState state: ArtifactState.getArtifactStates()) {
+            // Get the f1r2 frequency
+            double[] responsibility = altResponsibilities.getColumn(state.ordinal());
+            double[] altF1R2Counts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltF1R2).toArray();
+            double[] altCounts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltCount).toArray();
+            double effectiveAltF1R2Sum = MathUtils.dotProduct(responsibility, altF1R2Counts);
+            double effectiveAltSum = MathUtils.dotProduct(responsibility, altCounts);
+            // +1 comes from flat prior
+            final BetaDistributionShape betaShape = new BetaDistributionShape(effectiveAltF1R2Sum + 1, effectiveAltSum - effectiveAltF1R2Sum + 1);
+            posteriorAltF1R2.add(state, betaShape);
+        }
+
+        return new ImmutablePair<>(new ArtifactPrior(referenceContext, statePrior, numExamples, numAltExamples), posteriorAltF1R2);
     }
 
     /**

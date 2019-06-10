@@ -11,7 +11,7 @@ public class BetaDistributionShape {
 
     public BetaDistributionShape(final double alpha, final double beta){
         ParamUtils.isPositive(alpha, "alpha must be greater than 0 but got " + alpha);
-        Utils.validateArg(beta > 0, "beta must be greater than 0 but got " + beta);
+        ParamUtils.isPositive(beta, "beta must be greater than 0 but got " + beta);
 
         this.alpha = alpha;
         this.beta = beta;
@@ -24,4 +24,8 @@ public class BetaDistributionShape {
     public double getBeta() {
         return beta;
     }
+
+    public double getMean() { return alpha / (alpha + beta); }
+
+    public double getVariance() { return alpha*beta/(Math.pow(alpha+beta, 2.0)*(alpha+beta+1)); }
 }

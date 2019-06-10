@@ -4,8 +4,11 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.Histogram;
 import java.nio.file.Path;
+
+import javafx.geometry.Pos;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.UniformIntegerDistribution;
@@ -116,7 +119,9 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final ArtifactPrior artifactPrior = engine.learnPriorForArtifactStates();
+        final Pair<ArtifactPrior, PosteriorAltF1R2> learnedParameters = engine.learnPriorForArtifactStates();
+        final ArtifactPrior artifactPrior = learnedParameters.getLeft();
+        final PosteriorAltF1R2 posteriorBeta = learnedParameters.getRight();
 
         final double epsilon = 1e-3;
         IntStream.range(0, F1R2FilterConstants.DEFAULT_MAX_DEPTH).mapToDouble(i -> MathUtils.sum(engine.getRefResonsibilities(i)))
@@ -130,6 +135,8 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
         Assert.assertEquals(artifactPrior.getPi(artifactState), (double) numAltExamples/numExamples, EPSILON);
         Assert.assertEquals(artifactPrior.getPi(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
+
+        Assert.assertEquals(posteriorBeta.get(artifactState).getMean(), 1.0, 1e-2);
     }
 
 
@@ -186,7 +193,8 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final ArtifactPrior artifactPrior = engine.learnPriorForArtifactStates();
+        final Pair<ArtifactPrior, PosteriorAltF1R2> learnedParameters = engine.learnPriorForArtifactStates();
+        final ArtifactPrior artifactPrior = learnedParameters.getLeft();
 
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_T), (double) numArtifactExamples, epsilon);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_A), (double) numArtifactExamples, epsilon);
