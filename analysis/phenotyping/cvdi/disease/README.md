@@ -19,3 +19,6 @@ Field	Coding	exclude
 `go build -o cvdidisease.osx *.go`
 
 `GOOS=linux go build -o cvdidisease.linux *.go`
+
+# Database dependencies
+This requires the materialized tables (defined in the SQL files in this directory) to exist in tables with the same name as their filename (except the suffix).
