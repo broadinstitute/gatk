@@ -25,7 +25,7 @@ Useful for:
 
 ## ICD10
 
-* Date FieldID ==> derived from HESIN
+* Date FieldID ==> derived from HESIN (Hospital Episode Statistics data in Showcase)
 * Main ICD10: 41202
 * Secondary ICD10: 41204
 * ICD10 Primary Cause of Death: 40001
