@@ -156,6 +156,7 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
+        force 'com.twitter:chill_2.11:0.8.1'
 
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
