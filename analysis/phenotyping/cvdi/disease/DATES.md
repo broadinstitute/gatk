@@ -48,12 +48,27 @@ Useful for:
 
 ## Special cases
 
-* Myocardial infarction:
+* Subarachnoid hemorrhage
+  * FieldID: 42013
+  * Date: 42012
+* Intracerebral hemorrhage
+  * FieldID: 42011
+  * Date: 42010
+* Hemorrhagic stroke
+  * FieldID: 42009
+  * Date: 42008
+* Stroke
+  * FieldID: 42007
+  * Date: 42006
+* Myocardial infarction
   * FieldID: 42001
   * Date: 42000
-* Non-cancer illness:
+* Self-reported operation
+  * FieldID: 20004
+  * Date: 20010
+* Non-cancer illness
   * FieldID: 20002
   * Date: 20008
-* Cancer:
+* Cancer
   * FieldID: 20001
   * Date: 20006
