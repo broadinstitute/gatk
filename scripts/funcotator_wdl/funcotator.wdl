@@ -1,4 +1,4 @@
-# Run Funcotator on a set of called variants from Mutect 2.
+# Run Funcotator on a set of called variants.
 #
 # Description of inputs:
 #
@@ -28,8 +28,6 @@
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 # independent of what is in the docker file.  See the README.md for more info.
-#
-# NOTE: This only does VCF output right now!
 #
 workflow Funcotator {
     String gatk_docker
@@ -94,15 +92,21 @@ task Funcotate {
      File ref_fasta
      File ref_fasta_index
      File ref_dict
+
      File input_vcf
      File input_vcf_idx
+
      String reference_version
+
      String output_file_base_name
      String output_format
+
      Boolean compress
      Boolean use_gnomad
 
-     File? data_sources_tar_gz
+     # This should be updated when a new version of the data sources is released
+     # TODO: Make this dynamically chosen in the command.
+     File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
 
      String? control_id
      String? case_id
@@ -125,10 +129,10 @@ task Funcotate {
      String output_maf_index = output_maf + ".idx"
 
      String output_vcf = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
-     String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
 
      String output_file = if output_format == "MAF" then output_maf else output_vcf
-     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_index
+     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_idx
 
      String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
@@ -153,42 +157,41 @@ task Funcotate {
 
      Boolean use_ssd = false
 
-     # This should be updated when a new version of the data sources is released
-     # TODO: Make this dynamically chosen in the command.
-     # TODO: Make this pull from google cloud, rather than from the FTP:
-     String default_datasources_version = "funcotator_dataSources.v1.6.20190124s"
-
-     # You may have to change the following two parameter values depending on the task requirements
-     Int default_ram_mb = 3000
-     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
-     Int default_disk_space_gb = 100
-
      # Mem is in units of GB but our command and memory runtime values are in MB
-     Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
-     Int command_mem = machine_mem - 1000
+     Int default_ram_mb = 1024 * 3
+     Int machine_mem = if defined(mem) then mem *1024 else default_ram_mb
+     Int command_mem = machine_mem - 1024
 
+     # Calculate disk size:
+     Float ref_size_gb = size(ref_fasta, "GiB") + size(ref_fasta_index, "GiB") + size(ref_dict, "GiB")
+     Float vcf_size_gb = size(input_vcf, "GiB") + size(input_vcf_idx, "GiB")
+
+     Int default_disk_space_gb = ceil( ref_size_gb + (vcf_size_gb * 10) ) + 20
+
+     # Silly hack to allow us to use the dollar sign in the command section:
      String dollar = "$"
 
      command <<<
          set -e
          export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-         # Handle our data sources:
-         DATA_SOURCES_TAR_GZ=${data_sources_tar_gz}
-         if [[ ! -e $DATA_SOURCES_TAR_GZ ]] ; then
-             # We have to download the data sources:
-             echo "Data sources gzip does not exist: $DATA_SOURCES_TAR_GZ"
-             echo "Downloading default data sources..."
-             wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/${default_datasources_version}.tar.gz
-             tar -zxf ${default_datasources_version}.tar.gz
-             DATA_SOURCES_FOLDER=${default_datasources_version}
-         else
-             # Extract the tar.gz:
-             echo "Extracting data sources zip file..."
-             mkdir datasources_dir
-             tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
-             DATA_SOURCES_FOLDER="$PWD/datasources_dir"
+         # =======================================
+         # Hack to validate our WDL inputs:
+         #
+         # NOTE: This happens here so that we don't waste time copying down the data sources if there's an error.
+
+         if [[ "${output_format}" != "MAF" ]] && [[ "${output_format}" != "VCF" ]] ; then
+            echo "ERROR: Output format must be MAF or VCF."
          fi
+
+         # =======================================
+         # Handle our data sources:
+
+         # Extract the tar.gz:
+         echo "Extracting data sources zip file..."
+         mkdir datasources_dir
+         tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+         DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
          # Handle gnomAD:
          if ${use_gnomad} ; then
@@ -205,6 +208,7 @@ task Funcotate {
              done
          fi
 
+         # =======================================
          # Run Funcotator:
          gatk --java-options "-Xmx${command_mem}m" Funcotator \
              --data-sources-path $DATA_SOURCES_FOLDER \
@@ -226,6 +230,7 @@ task Funcotate {
              ${filter_funcotations_args} \
              ${extra_args_arg}
 
+         # =======================================
          # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:
          if [[ "${output_format}" == "MAF" ]] ; then
             touch ${output_maf_index}
@@ -238,7 +243,7 @@ task Funcotate {
          memory: machine_mem + " MB"
          disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
          preemptible: select_first([preemptible_attempts, 3])
-         maxRetries: select_first([max_retries, 3])
+         maxRetries: select_first([max_retries, 0])
          cpu: select_first([cpu, 1])
      }
 
