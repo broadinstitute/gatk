@@ -142,7 +142,7 @@ public class LearnReadOrientationModelEngine {
     }
 
     // Learn the prior probabilities for the artifact states by the EM algorithm
-    public Pair<ArtifactPrior, PosteriorAltF1R2> learnPriorForArtifactStates() {
+    public Pair<LearnedParameter, LearnedParameter> learnPriorForArtifactStates() {
         // Initialize the prior for artifact
         double[] statePrior = getFlatPrior(refAllele);
         double l2Distance;
@@ -169,7 +169,10 @@ public class LearnReadOrientationModelEngine {
                     referenceContext, numRefExamples, numAltExamples, numIterations.intValue()));
         }
 
-        final PosteriorAltF1R2 posteriorAltF1R2 = new PosteriorAltF1R2();
+        final LearnedParameter artifacPrior = new LearnedParameter(referenceContext, statePrior, numExamples, numAltExamples);
+
+        final LearnedParameter posteriorAltF1R2 = new LearnedParameter(referenceContext, numExamples, numAltExamples);
+
         for (final ArtifactState state: ArtifactState.getArtifactStates()) {
             // Get the f1r2 frequency
             double[] responsibility = altResponsibilities.getColumn(state.ordinal());
@@ -177,12 +180,12 @@ public class LearnReadOrientationModelEngine {
             double[] altCounts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltCount).toArray();
             double effectiveAltF1R2Sum = MathUtils.dotProduct(responsibility, altF1R2Counts);
             double effectiveAltSum = MathUtils.dotProduct(responsibility, altCounts);
-            // +1 comes from flat prior
+            // +1 comes from a flat prior
             final BetaDistributionShape betaShape = new BetaDistributionShape(effectiveAltF1R2Sum + 1, effectiveAltSum - effectiveAltF1R2Sum + 1);
-            posteriorAltF1R2.add(state, betaShape);
+            posteriorAltF1R2.setParameter(state, betaShape.getMean());
         }
 
-        return new ImmutablePair<>(new ArtifactPrior(referenceContext, statePrior, numExamples, numAltExamples), posteriorAltF1R2);
+        return new ImmutablePair<>(artifacPrior, posteriorAltF1R2);
     }
 
     /**

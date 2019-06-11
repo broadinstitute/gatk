@@ -90,7 +90,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
         IOUtils.extractTarGz(priorTarGz.toPath(), extractedPriorDir.toPath());
 
 
-        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(extractedPriorDir.listFiles()[0]);
+        final LearnedParameterCollection learnedParameterCollection = LearnedParameterCollection.readArtifactPriors(extractedPriorDir.listFiles()[0], ParameterType.ARTIFACT_PRIOR);
 
         // Step 4: Mutect 2
         final File unfilteredVcf = GATKBaseTest.createTempFile("unfiltered", ".vcf");
@@ -115,7 +115,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
 
 
         // These artifacts have been verified manually
-        // The pair is of type (Position, Expected Source of Prior Probability)
+        // The pair is of label (Position, Expected Source of Prior Probability)
         // Prior for e.g. TGA->A F2R1 should come from TCA->T F1R2
         final List<Triple<Integer, ReadOrientation, ArtifactState>> knownArtifacts = Arrays.asList(
                 new ImmutableTriple<>(23421079, ReadOrientation.F2R1, ArtifactState.F2R1_G), // CAC->G F2R1

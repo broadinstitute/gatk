@@ -4,16 +4,12 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.math3.linear.AbstractRealMatrix;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -53,6 +49,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     public static final String MAX_EM_ITERATIONS_LONG_NAME = "num-em-iterations";
     public static final String MAX_DEPTH_LONG_NAME = "max-depth";
     public static final String ARTIFACT_PRIOR_EXTENSION = ".orientation_priors";
+    public static final String POSTERIOR_F1R2_FRACTION_EXTENSION = "_f1r2_fraction.tsv";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more .tar.gz containing outputs of CollectF1R2Counts")
@@ -113,9 +110,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                 sample -> sumHistogramsFromFiles(altHistogramMetricsFilesBySample.get(sample), false)));
 
         final Map<String, List<AltSiteRecord>> recordsBySample = gatherAltSiteRecords(altTableFiles);
-        final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = new HashMap<>();
-        // TODO: extract a class if needed
-        final Map<String, Map<String, Map<ArtifactState, BetaDistributionShape>>> posteriorAltF1R2BySample = new HashMap<>();
+        final Map<String, LearnedParameterCollection> artifactPriorCollectionBySample = new HashMap<>();
+        final Map<String, LearnedParameterCollection> posteriorAltF1R2BySample = new HashMap<>();
 
         for (final Map.Entry<String, List<AltSiteRecord>> entry : recordsBySample.entrySet()) {
             final String sample = entry.getKey();
@@ -124,8 +120,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
             final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = records.stream()
                     .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
 
-            final ArtifactPriorCollection artifactPriorCollection = new ArtifactPriorCollection(sample);
-            final Map<String, PosteriorAltF1R2> posteriorAltF1R2 = new HashMap<>();
+            final LearnedParameterCollection learnedParameterCollection = new LearnedParameterCollection(sample);
+            final LearnedParameterCollection posteriorAltF1R2 = new LearnedParameterCollection(sample);
 
             // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
             for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS) {
@@ -172,23 +168,25 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                         maxEMIterations,
                         maxDepth,
                         logger);
-                final Pair<ArtifactPrior, PosteriorAltF1R2> learnedParameters = engine.learnPriorForArtifactStates();
-                artifactPriorCollection.set(learnedParameters.getLeft());
-                posteriorAltF1R2.put(refContext, learnedParameters.getRight()); // TODO: make sample specific?
+                final Pair<LearnedParameter, LearnedParameter> learnedParameters = engine.learnPriorForArtifactStates();
+                learnedParameterCollection.set(learnedParameters.getLeft());
+                posteriorAltF1R2.set(learnedParameters.getRight());
             }
 
-            artifactPriorCollectionBySample.put(sample, artifactPriorCollection);
+            posteriorAltF1R2BySample.put(sample, posteriorAltF1R2);
+            artifactPriorCollectionBySample.put(sample, learnedParameterCollection);
         }
 
         final File tmpPriorDir = IOUtils.createTempDir("priors");
         for (final String sample : artifactPriorCollectionBySample.keySet()) {
-            final ArtifactPriorCollection artifactPriorCollection = artifactPriorCollectionBySample.get(sample);
+            final LearnedParameterCollection artifactPrior = artifactPriorCollectionBySample.get(sample);
             final File destination = new File(tmpPriorDir, IOUtils.urlEncode(sample) + ARTIFACT_PRIOR_EXTENSION);
-            artifactPriorCollection.writeArtifactPriors(destination);
+            artifactPrior.writeArtifactPriors(destination, ParameterType.ARTIFACT_PRIOR);
+
+            final File altF1R2Destination = new File(tmpPriorDir, IOUtils.urlEncode(sample) + POSTERIOR_F1R2_FRACTION_EXTENSION);
+            final LearnedParameterCollection posteriorAltF1R2 = posteriorAltF1R2BySample.get(sample);
+            posteriorAltF1R2.writeArtifactPriors(altF1R2Destination, ParameterType.MEAN_ALT_F1R2_FRACTION);
         }
-
-        final File destination = new File(tmpPriorDir, "yup");
-
 
         try {
             IOUtils.writeTarGz(outputTarGz.getAbsolutePath(), tmpPriorDir.listFiles());

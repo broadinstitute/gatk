@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.Histogram;
-import java.nio.file.Path;
 
-import javafx.geometry.Pos;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Pair;
@@ -17,7 +15,6 @@ import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
@@ -119,9 +116,9 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final Pair<ArtifactPrior, PosteriorAltF1R2> learnedParameters = engine.learnPriorForArtifactStates();
-        final ArtifactPrior artifactPrior = learnedParameters.getLeft();
-        final PosteriorAltF1R2 posteriorBeta = learnedParameters.getRight();
+        final Pair<LearnedParameter, LearnedParameter> learnedParameters = engine.learnPriorForArtifactStates();
+        final LearnedParameter learnedParameter = learnedParameters.getLeft();
+        final LearnedParameter posteriorBetaMean = learnedParameters.getRight();
 
         final double epsilon = 1e-3;
         IntStream.range(0, F1R2FilterConstants.DEFAULT_MAX_DEPTH).mapToDouble(i -> MathUtils.sum(engine.getRefResonsibilities(i)))
@@ -133,10 +130,10 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         Assert.assertEquals(engine.getEffectiveCounts(artifactState), (double) numAltExamples, EPSILON);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.HOM_REF), (double) numRefExamples, EPSILON);
 
-        Assert.assertEquals(artifactPrior.getPi(artifactState), (double) numAltExamples/numExamples, EPSILON);
-        Assert.assertEquals(artifactPrior.getPi(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
+        Assert.assertEquals(learnedParameter.getParameter(artifactState), (double) numAltExamples/numExamples, EPSILON);
+        Assert.assertEquals(learnedParameter.getParameter(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
 
-        Assert.assertEquals(posteriorBeta.get(artifactState).getMean(), 1.0, 1e-2);
+        Assert.assertEquals(posteriorBetaMean.getParameter(artifactState), 1.0, 1e-2);
     }
 
 
@@ -193,21 +190,25 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final Pair<ArtifactPrior, PosteriorAltF1R2> learnedParameters = engine.learnPriorForArtifactStates();
-        final ArtifactPrior artifactPrior = learnedParameters.getLeft();
+        final Pair<LearnedParameter, LearnedParameter> learnedParameters = engine.learnPriorForArtifactStates();
+        final LearnedParameter artifactPrior = learnedParameters.getLeft();
 
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_T), (double) numArtifactExamples, epsilon);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_A), (double) numArtifactExamples, epsilon);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.SOMATIC_HET), (double) numSomaticHetExamples, epsilon);
 
         final int numExamples = numRefExamples + 2*numArtifactExamples + numSomaticHetExamples;
-        Assert.assertEquals(artifactPrior.getPi(ArtifactState.SOMATIC_HET), (double) numSomaticHetExamples/numExamples, 1e-3);
-        Assert.assertEquals(MathUtils.sum(artifactPrior.getPi()), 1.0, 1e-3);
+        Assert.assertEquals(artifactPrior.getParameter(ArtifactState.SOMATIC_HET), (double) numSomaticHetExamples/numExamples, 1e-3);
+        Assert.assertEquals(MathUtils.sum(artifactPrior.getParameters()), 1.0, 1e-3);
 
         // Make sure ref->ref transitions get 0 probability
         for (ArtifactState state : ArtifactState.getRefToRefArtifacts(refAllele)){
-            Assert.assertEquals(artifactPrior.getPi(state), 0.0);
+            Assert.assertEquals(artifactPrior.getParameter(state), 0.0);
         }
+
+        final LearnedParameter meanF1R2Fraction = learnedParameters.getRight();
+        Assert.assertEquals(meanF1R2Fraction.getParameter(ArtifactState.F1R2_A), 1, 1e-2);
+        Assert.assertEquals(meanF1R2Fraction.getParameter(ArtifactState.F1R2_T), 1, 1e-2);
     }
 
     @Test
@@ -266,6 +267,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final File inputTarGz = createTempFile("input", ".tar.gz");
         IOUtils.writeTarGz(inputTarGz.getAbsolutePath(), f1r2Dir.listFiles());
 
+        START HERE add a test (do I need a new directory for the f1r2fractioni?)
         final File artifactPriorTarGz = createTempFile("prior", ".tar.gz");
         new Main().instanceMain(makeCommandLineArgs(
                 Arrays.asList(
@@ -276,10 +278,9 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final File extractedDir = createTempDir("extracted");
         IOUtils.extractTarGz(artifactPriorTarGz.toPath(), extractedDir.toPath());
 
+        final LearnedParameterCollection artifactPrior = LearnedParameterCollection.readArtifactPriors(Arrays.stream(extractedDir.listFiles()).findFirst().get(), ParameterType.ARTIFACT_PRIOR);
 
-        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(Arrays.stream(extractedDir.listFiles()).findFirst().get());
-
-        Assert.assertEquals(artifactPriorCollection.getNumUniqueContexts(), expectedNumUniqueContexts);
+        Assert.assertEquals(artifactPrior.getNumUniqueContexts(), expectedNumUniqueContexts);
 
         final double expectedRefFraction = (double) numRefExamples/(numArtifactExamples + numRefExamples);
         final double expectedArtifactFraction = (double) numArtifactExamples/(numArtifactExamples + numRefExamples);
@@ -290,9 +291,9 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
             final ReadOrientation f1r2 = transition.getRight();
             final ArtifactState state = f1r2 == ReadOrientation.F1R2 ? ArtifactState.getF1R2StateForAlt(altAllele) :
                     ArtifactState.getF2R1StateForAlt(altAllele);
-            final ArtifactPrior artifactPrior = artifactPriorCollection.get(refContext).get();
-            Assert.assertEquals(artifactPrior.getPi(state), expectedArtifactFraction, epsilon);
-            Assert.assertEquals(artifactPrior.getPi(ArtifactState.HOM_REF), expectedRefFraction, epsilon);
+            final LearnedParameter learnedParameter = artifactPrior.get(refContext).get();
+            Assert.assertEquals(learnedParameter.getParameter(state), expectedArtifactFraction, epsilon);
+            Assert.assertEquals(learnedParameter.getParameter(ArtifactState.HOM_REF), expectedRefFraction, epsilon);
         }
     }
 

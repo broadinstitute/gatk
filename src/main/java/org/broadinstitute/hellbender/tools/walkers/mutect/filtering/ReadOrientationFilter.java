@@ -18,13 +18,13 @@ import java.io.File;
 import java.util.*;
 
 public class ReadOrientationFilter extends Mutect2VariantFilter {
-    private Map<String, ArtifactPriorCollection> artifactPriorCollections = new HashMap<>();
+    private Map<String, LearnedParameterCollection> artifactPriorCollections = new HashMap<>();
 
     public ReadOrientationFilter(final List<File> readOrientationPriorTables) {
         readOrientationPriorTables.stream()
                 .forEach(file -> {
-                    final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(file);
-                    artifactPriorCollections.put(artifactPriorCollection.getSample(), artifactPriorCollection);
+                    final LearnedParameterCollection learnedParameterCollection = LearnedParameterCollection.readArtifactPriors(file, ParameterType.ARTIFACT_PRIOR);
+                    artifactPriorCollections.put(learnedParameterCollection.getSample(), learnedParameterCollection);
                 });
     }
 
@@ -102,7 +102,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
         final int altF1R2 = f1r2[indexOfMaxTumorLod + 1];
         final int altF2R1 = f2r1[indexOfMaxTumorLod + 1];
         final int altCount = altF1R2 + altF2R1;
-        final Optional<ArtifactPrior> artifactPrior = artifactPriorCollections.get(g.getSampleName()).get(refContext);
+        final Optional<LearnedParameter> artifactPrior = artifactPriorCollections.get(g.getSampleName()).get(refContext);
 
         if (! artifactPrior.isPresent()){
             return 0;
@@ -110,7 +110,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
 
         final int depth = refCount + altCount;
 
-        final double[] posterior = LearnReadOrientationModelEngine.computeResponsibilities(refAllele, altBase, altCount, altF1R2, depth, artifactPrior.get().getPi(), true);
+        final double[] posterior = LearnReadOrientationModelEngine.computeResponsibilities(refAllele, altBase, altCount, altF1R2, depth, artifactPrior.get().getParameters(), true);
 
         final double posteriorOfF1R2 = posterior[ArtifactState.getF1R2StateForAlt(altBase).ordinal()];
         final double posteriorOfF2R1 = posterior[ArtifactState.getF2R1StateForAlt(altBase).ordinal()];
