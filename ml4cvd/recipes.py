@@ -17,8 +17,10 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, \
+    plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, \
+    subplot_scatters, subplot_comparison_scatters
 
 
 def run(args):
@@ -48,6 +50,10 @@ def run(args):
             mri_dates(args.tensors, args.output_folder, args.id)
         elif 'plot_ecg_dates' == args.mode:
             ecg_dates(args.tensors, args.output_folder, args.id)
+        elif 'plot_histograms' == args.mode:
+            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
+        elif 'tabulate_correlations' == args.mode:
+            tabulate_correlations_from_tensor_files(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
         elif 'train_char' == args.mode:
@@ -56,8 +62,6 @@ def run(args):
             write_tensor_maps(args)
         elif 'find_tensors' == args.mode:
             find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
-        elif 'report_tensors' == args.mode:
-            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.num_samples)
         else:
             raise ValueError('Unknown mode:', args.mode)
 

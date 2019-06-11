@@ -92,6 +92,10 @@ def parse_args():
         help='Include instances for UKBB phenotypes.')
     parser.add_argument('--min_values', default=10, type=int,
         help='Per feature size minimum.')
+    parser.add_argument('--min_samples', default=3, type=int,
+        help='Min number of samples to require for calculating correlations.')
+    parser.add_argument('--max_samples', type=int, default=None,
+        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
     parser.add_argument('--mri_field_ids', default=['20208', '20209'], nargs='*',
         help='Field id for MR images.')
     parser.add_argument('--xml_field_ids', default=['20205', '6025'], nargs='*',
@@ -214,8 +218,6 @@ def parse_args():
         help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true',
         help='Plot model architecture with labels for each layer.')
-    parser.add_argument('--num_samples', type=int, default=None,
-        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
 
     args = parser.parse_args()
 
