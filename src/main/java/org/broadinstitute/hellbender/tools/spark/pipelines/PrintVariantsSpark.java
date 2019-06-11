@@ -43,7 +43,6 @@ import java.io.IOException;
         oneLineSummary = "Prints out variants from the input VCF.",
         programGroup = VariantManipulationProgramGroup.class)
 @DocumentedFeature
-@BetaFeature
 public final class PrintVariantsSpark extends VariantWalkerSpark {
 
     private static final long serialVersionUID = 1L;

@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 @CommandLineProgramProperties(summary = "Print reads from the input BAM", oneLineSummary = "PrintReads on Spark", programGroup = ReadDataManipulationProgramGroup.class)
 @DocumentedFeature
-@BetaFeature
 public final class PrintReadsSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
