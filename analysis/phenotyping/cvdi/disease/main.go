@@ -80,8 +80,6 @@ func main() {
 	}
 	defer BQ.Client.Close()
 
-	// fmt.Printf("%+v\n", tabs)
-
 	query, err := BuildQuery(BQ, tabs, displayQuery)
 	if err != nil {
 		log.Fatalln(diseaseName, err)
