@@ -92,8 +92,9 @@ class TensorMap(object):
                  loss_weight=1.0,
                  channel_map=None,
                  hd5_override=None,
-                 dependent_map=None,
                  normalization=None,
+                 dependent_map=None,
+                 required_inputs=None,
                  annotation_units=32):
         """TensorMap constructor
 
@@ -109,6 +110,7 @@ class TensorMap(object):
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
         :param hd5_override: Override default behavior of tensor_from_file
         :param dependent_map: TensorMap that depends on or is determined by this one
+        :param required_inputs: List of TensorMaps that are required by this one, used by hidden layer TensorMaps
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         """
@@ -123,8 +125,9 @@ class TensorMap(object):
         self.loss_weight = loss_weight
         self.channel_map = channel_map
         self.hd5_override = hd5_override
-        self.dependent_map = dependent_map
         self.normalization = normalization
+        self.dependent_map = dependent_map
+        self.required_inputs = required_inputs
         self.annotation_units = annotation_units
         self.initialization = None  # Not yet implemented
 
@@ -276,7 +279,6 @@ class TensorMap(object):
 
         return np_tensor
 
-
     def rescale(self, np_tensor):
         if self.normalization is None:
             return np_tensor
@@ -425,6 +427,24 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 'end_systole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvesv = float(hd5['continuous/end_systole_volume'][0])
+            continuous_data[0] = -3.8 + (lvesv * 0.87)
+            return self.normalize(continuous_data)
+        elif self.name == 'end_diastole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvedv = float(hd5['continuous/end_diastole_volume'][0])
+            continuous_data[0] = 16.8 + (lvedv * 0.88)
+            return self.normalize(continuous_data)
+        elif self.name == 'ejection_fraction_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvesv = float(hd5['continuous/end_systole_volume'][0])
+            lvesv_corrected = -3.8 + (lvesv * 0.87)
+            lvedv = float(hd5['continuous/end_diastole_volume'][0])
+            lvedv_corrected = 16.8 + (lvedv * 0.88)
+            continuous_data[0] = (lvedv_corrected - lvesv_corrected) / lvedv_corrected
+            return self.normalize(continuous_data)
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:
@@ -520,8 +540,10 @@ class TensorMap(object):
                 window_offset += 1
             return tensor
         elif self.is_hidden_layer():
-            dependents[self.dependent_map] = np.expand_dims(self.dependent_map.tensor_from_file(hd5), axis=0)
-            return self.model.predict(dependents[self.dependent_map])
+            input_dict = {}
+            for tm in self.required_inputs:
+                input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
+            return self.model.predict(input_dict)
         elif self.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals
             dataset_key = np.random.choice(list(self.dependent_map.channel_map.keys()))
             one_hot = np.zeros(self.dependent_map.shape)

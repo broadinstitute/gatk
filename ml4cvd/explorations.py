@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.models import make_hidden_layer_model
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
@@ -254,6 +255,31 @@ def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray],
                 burn_in[0, window_size-j-1, ECG_CHAR_2_IDX[c]] = 1.0
             count += 1
         logging.info(f"Model text:{sentence}")
+
+
+def tensors_to_label_dictionary(categorical_labels: List,
+                                continuous_labels: List,
+                                gene_labels: List,
+                                samples2genes: Dict[str, str],
+                                test_paths: List) -> Dict[str, np.ndarray]:
+    label_dict = {k: np.zeros((len(test_paths))) for k in categorical_labels + continuous_labels + gene_labels}
+    for i, tp in enumerate(test_paths):
+        hd5 = h5py.File(tp, 'r')
+        for k in categorical_labels:
+            if k in hd5['categorical']:
+                label_dict[k][i] = 1
+            elif k in hd5 and hd5[k][0] == 1:
+                label_dict[k][i] = 1
+        for mk in continuous_labels:
+            for k in mk.split('|'):
+                if k in hd5['continuous']:
+                    label_dict[mk][i] = hd5['continuous'][k][0]
+        for k in gene_labels:
+            if tp in samples2genes and samples2genes[tp] == k:
+                label_dict[k][i] = 1
+
+    return label_dict
+
 
 
 def _sample_with_heat(preds, temperature=1.0):
