@@ -3,27 +3,27 @@
 # Description of inputs:
 #
 #   Required:
-#     String gatk_docker                  - GATK Docker image in which to run
-#     File ref_fasta                      - Reference FASTA file.
-#     File ref_fasta_index                - Reference FASTA file index.
-#     File ref_fasta_dict                 - Reference FASTA file sequence dictionary.
-#     File variant_vcf_to_funcotate       - Variant Context File (VCF) containing the variants to annotate.
-#     File variant_vcf_to_funcotate_index - Index file corresponding to the input Variant Context File (VCF) containing the variants to annotate.
-#     String reference_version            - Version of the reference being used.  Either `hg19` or `hg38`.
-#     String output_file_name             - Path to desired output file.
-#     String output_format                - Output file format (either VCF or MAF).
-#     Boolean compress				      - Whether to compress the resulting output file.
-#     Boolean use_gnomad                  - If true, will enable the gnomAD data sources in the data source tar.gz, if they exist.
+#     String gatk_docker                       - GATK Docker image in which to run
+#     File ref_fasta                           - Reference FASTA file.
+#     File ref_fasta_index                     - Reference FASTA file index.
+#     File ref_fasta_dict                      - Reference FASTA file sequence dictionary.
+#     File variant_vcf_to_funcotate            - Variant Context File (VCF) containing the variants to annotate.
+#     File variant_vcf_to_funcotate_index      - Index file corresponding to the input Variant Context File (VCF) containing the variants to annotate.
+#     String reference_version                 - Version of the reference being used.  Either `hg19` or `hg38`.
+#     String output_file_name                  - Path to desired output file.
+#     String output_format                     - Output file format (either VCF or MAF).
+#     Boolean compress				           - Whether to compress the resulting output file.
+#     Boolean use_gnomad                       - If true, will enable the gnomAD data sources in the data source tar.gz, if they exist.
 #
 #   Optional:
-#     interval_list                       - Intervals to be used for traversal.  If specified will only traverse the given intervals.
-#     data_sources_tar_gz                 - Path to tar.gz containing the data sources for Funcotator to create annotations.
-#     transcript_selection_mode           - Method of detailed transcript selection.  This will select the transcript for detailed annotation (either `CANONICAL` or `BEST_EFFECT`).
-#     transcript_selection_list           - Set of transcript IDs to use for annotation to override selected transcript.
-#     annotation_defaults                 - Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present.
-#     annotation_overrides                - Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
-#     gatk4_jar_override                  - Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
-#     funcotator_extra_args               - Extra command-line arguments to pass through to Funcotator.  (e.g. " --exclude-field foo_field --exclude-field bar_field ")
+#     File? interval_list                      - Intervals to be used for traversal.  If specified will only traverse the given intervals.
+#     File? data_sources_tar_gz                - Path to tar.gz containing the data sources for Funcotator to create annotations.
+#     String? transcript_selection_mode        - Method of detailed transcript selection.  This will select the transcript for detailed annotation (either `CANONICAL` or `BEST_EFFECT`).
+#     Array[String]? transcript_selection_list - Set of transcript IDs to use for annotation to override selected transcript.
+#     Array[String]? annotation_defaults       - Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present.
+#     Array[String]? annotation_overrides      - Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
+#     File? gatk4_jar_override                 - Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
+#     String? funcotator_extra_args            - Extra command-line arguments to pass through to Funcotator.  (e.g. " --exclude-field foo_field --exclude-field bar_field ")
 #
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
@@ -165,8 +165,9 @@ task Funcotate {
      # Calculate disk size:
      Float ref_size_gb = size(ref_fasta, "GiB") + size(ref_fasta_index, "GiB") + size(ref_dict, "GiB")
      Float vcf_size_gb = size(input_vcf, "GiB") + size(input_vcf_idx, "GiB")
+     Float ds_size_gb = size(data_sources_tar_gz, "GiB")
 
-     Int default_disk_space_gb = ceil( ref_size_gb + (vcf_size_gb * 10) ) + 20
+     Int default_disk_space_gb = ceil( ref_size_gb + (ds_size_gb * 2) + (vcf_size_gb * 10) ) + 20
 
      # Silly hack to allow us to use the dollar sign in the command section:
      String dollar = "$"
