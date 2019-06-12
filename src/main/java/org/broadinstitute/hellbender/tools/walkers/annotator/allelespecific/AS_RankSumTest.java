@@ -4,6 +4,7 @@ import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -294,7 +295,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
             if (!perAltRankSumResults.containsKey(a)) {
                 logger.warn("ERROR: VC allele not found in annotation alleles -- maybe there was trimming?");
             } else {
-                annotationString += String.format("%.3f", perAltRankSumResults.get(a));
+                annotationString += perAltRankSumResults.get(a) == null ? VCFConstants.MISSING_VALUE_v4 : String.format("%.3f", perAltRankSumResults.get(a));
             }
         }
         return annotationString;
