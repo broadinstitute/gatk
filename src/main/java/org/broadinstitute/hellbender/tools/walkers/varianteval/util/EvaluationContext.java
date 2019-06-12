@@ -10,13 +10,14 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.Varian
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-public final class EvaluationContext {
+public class EvaluationContext {
     // NOTE: must be hashset to avoid O(log n) cost of iteration in the very frequently called apply function
     final VariantEval walker;
-    private final ArrayList<VariantEvaluator> evaluationInstances;
+    private final List<VariantEvaluator> evaluationInstances;
     private final Set<Class<? extends VariantEvaluator>> evaluationClasses;
 
     public EvaluationContext(final VariantEval walker, final Set<Class<? extends VariantEvaluator>> evaluationClasses) {
@@ -26,7 +27,7 @@ public final class EvaluationContext {
     private EvaluationContext(final VariantEval walker, final Set<Class<? extends VariantEvaluator>> evaluationClasses, final boolean doInitialize) {
         this.walker = walker;
         this.evaluationClasses = evaluationClasses;
-        this.evaluationInstances = new ArrayList<VariantEvaluator>(evaluationClasses.size());
+        this.evaluationInstances = new ArrayList<>(evaluationClasses.size());
 
         for ( final Class<? extends VariantEvaluator> c : evaluationClasses ) {
             try {
@@ -42,12 +43,30 @@ public final class EvaluationContext {
     }
 
     /**
+     * Return a list of instances of each VariantEvaluator (see getEvaluationClasses).  Note: elements of this list can be null.
+     *
+     * @return The list of VariantEvaluator instances
+     */
+    public List<VariantEvaluator> getEvaluationInstances() {
+        return evaluationInstances;
+    }
+
+    /**
+     * Returns a set of VariantEvaluator classes to be used
+     *
+     * @return The set of VariantEvaluator classes to be used
+     */
+    public Set<Class<? extends VariantEvaluator>> getEvaluationClasses() {
+        return evaluationClasses;
+    }
+
+    /**
      * Returns a sorted set of VariantEvaluators
      *
-     * @return
+     * @return A sorted set of VariantEvaluator instances
      */
     public final TreeSet<VariantEvaluator> getVariantEvaluators() {
-        return new TreeSet<VariantEvaluator>(evaluationInstances);
+        return new TreeSet<>(evaluationInstances);
     }
 
     public final void apply(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, VariantContext eval) {
