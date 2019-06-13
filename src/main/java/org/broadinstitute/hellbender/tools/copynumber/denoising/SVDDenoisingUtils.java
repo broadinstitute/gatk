@@ -497,7 +497,7 @@ public final class SVDDenoisingUtils {
         return (int) Math.ceil(numTotalCounts * percentage / 100.0);
     }
 
-    private static double safeLog2(final double x) {
+    static double safeLog2(final double x) {
         return x < EPSILON ? LN2_EPSILON : Math.log(x) * MathUtils.INV_LOG_2;
     }
 }

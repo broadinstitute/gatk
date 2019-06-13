@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -37,15 +38,25 @@ public final class SVDDenoisedCopyRatioResult {
                 "Number of intervals and columns in standardized copy-ratio values must match.");
         Utils.validateArg(intervals.size() == denoisedCopyRatioValues.getColumnDimension(),
                 "Number of intervals and columns in denoised copy-ratio values must match.");
+        final double standardizedCopyRatioValuesNormalizationFactor = SVDDenoisingUtils.safeLog2(
+                Arrays.stream(standardizedCopyRatioValues.getRow(0))
+                        .map(x -> Math.pow(2., x))
+                        .average()
+                        .getAsDouble());
         this.standardizedCopyRatios = new CopyRatioCollection(
                 metadata,
                 IntStream.range(0, intervals.size())
-                        .mapToObj(i -> new CopyRatio(intervals.get(i), standardizedCopyRatioValues.getEntry(0, i)))
+                        .mapToObj(i -> new CopyRatio(intervals.get(i), standardizedCopyRatioValues.getEntry(0, i) - standardizedCopyRatioValuesNormalizationFactor))
                         .collect(Collectors.toList()));
+        final double denoisedCopyRatioValuesNormalizationFactor = SVDDenoisingUtils.safeLog2(
+                Arrays.stream(denoisedCopyRatioValues.getRow(0))
+                        .map(x -> Math.pow(2., x))
+                        .average()
+                        .getAsDouble());
         this.denoisedCopyRatios = new CopyRatioCollection(
                 metadata,
                 IntStream.range(0, intervals.size())
-                        .mapToObj(i -> new CopyRatio(intervals.get(i), denoisedCopyRatioValues.getEntry(0, i)))
+                        .mapToObj(i -> new CopyRatio(intervals.get(i), denoisedCopyRatioValues.getEntry(0, i) - denoisedCopyRatioValuesNormalizationFactor))
                         .collect(Collectors.toList()));
     }
 

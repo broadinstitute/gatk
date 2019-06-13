@@ -88,7 +88,6 @@ import java.util.stream.IntStream;
 public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOfNormals {
     private static final Logger logger = LogManager.getLogger(HDF5SVDReadCountPanelOfNormals.class);
 
-    private static final int CHUNK_DIVISOR = 16;    //limits number of intervals to 16777215
     private static final int NUM_SLICES_FOR_SPARK_MATRIX_CONVERSION = 100;
     private static final double EPSILON = 1E-9;
 
