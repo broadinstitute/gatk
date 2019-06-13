@@ -189,7 +189,7 @@ task Funcotate {
          # Handle our data sources:
 
          # Extract the tar.gz:
-         echo "Extracting data sources zip file..."
+         echo "Extracting data sources tar/gzip file..."
          mkdir datasources_dir
          tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
          DATA_SOURCES_FOLDER="$PWD/datasources_dir"
