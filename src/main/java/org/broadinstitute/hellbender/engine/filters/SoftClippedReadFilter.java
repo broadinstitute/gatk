@@ -26,7 +26,7 @@ public final class SoftClippedReadFilter extends ReadFilter {
     private final Logger logger = LogManager.getLogger(this.getClass());
 
     @VisibleForTesting
-    @Argument(fullName = ReadFilterArgumentDefinitions.INVERT_FILTER,
+    @Argument(fullName = ReadFilterArgumentDefinitions.INVERT_SOFT_CLIP_RATIO_FILTER,
             doc = "Inverts the results from this filter, causing all variants that would pass to fail and visa-versa.",
             optional = true
     )
