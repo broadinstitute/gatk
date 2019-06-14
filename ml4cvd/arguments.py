@@ -17,6 +17,7 @@ import operator
 import datetime
 import numpy as np
 
+from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
 from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 from ml4cvd.tensor_maps_by_script import TMAPS
@@ -112,6 +113,10 @@ def parse_args():
         help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
     parser.add_argument('--include_heart_zoom', default=False, action='store_true',
         help='Include the heart zoom')
+    parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
+        help='Include missing channels in continuous tensors')
+    parser.add_argument('--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
+                        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN])
 
     # Model Architecture Parameters
     parser.add_argument('--x', default=256, type=int,
@@ -227,11 +232,13 @@ def parse_args():
 
 
 def _process_args(args):
+    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
-        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors] + [multi_field_tensor_map]
-    else:
-        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors,
+                                                                                 args.include_missing_continuous_channel,
+                                                                                 args.imputation_method_for_continuous_fields)]
+        args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
+
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 

@@ -50,3 +50,8 @@ CODING_TABLE = SQL_DATASET+".coding"
 PHENOTYPE_TABLE = SQL_DATASET+".phenotype"
 
 GCS_BUCKET = 'ml4cvd'
+
+TENSOR_MAP_GROUP_CONTINUOUS = 'multi_field_no_missing_channel_continuous'
+TENSOR_MAP_GROUP_MISSING_CONTINUOUS = 'multi_field_continuous'
+IMPUTATION_RANDOM = 'random'
+IMPUTATION_MEAN = 'mean'

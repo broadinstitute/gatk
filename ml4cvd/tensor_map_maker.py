@@ -6,7 +6,8 @@ from typing.io import TextIO
 
 from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
-from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
+from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, \
+    DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
@@ -234,7 +235,13 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
         filtered = filtered[filtered.Field.str.contains(keyword, case=False)]
     return filtered
 
-def generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> TensorMap:
+def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], include_missing: bool, imputation_method: str) -> TensorMap:
+    if include_missing:
+        multiplier = 2
+        group = TENSOR_MAP_GROUP_MISSING_CONTINUOUS
+    else:
+        multiplier = 1
+        group = TENSOR_MAP_GROUP_CONTINUOUS
     channel_map = {}
     normalization_map = {}
     counter = 0
@@ -249,9 +256,10 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> Ten
             counter += 1
             normalization_map[k] = [TMAPS[tm].normalization['mean'], TMAPS[tm].normalization['std']]
 
-    multi_field_continuous_tensor_map = TensorMap('generated-from-input-continuous-tensors', group='multi_field_continuous',
+    multi_field_continuous_tensor_map = TensorMap('generated-from-input-continuous-tensors', group=group,
                                                   channel_map=channel_map,
-                                                  annotation_units=len(channel_map) * 2,
-                                                  normalization=normalization_map)
+                                                  annotation_units=len(channel_map) * multiplier,
+                                                  normalization=normalization_map,
+                                                  imputation=imputation_method)
 
     return multi_field_continuous_tensor_map
