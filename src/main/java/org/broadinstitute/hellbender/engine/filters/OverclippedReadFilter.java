@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
@@ -20,26 +23,32 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * <p>Note: Consecutive soft-clipped blocks are treated as a single block. For example, 1S2S10M1S2S is treated as 3S10M3S</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads that are over-soft-clipped")
-public final class OverclippedReadFilter extends ReadFilter{
-
+public final class OverclippedReadFilter extends ReadFilter {
     static final long serialVersionUID = 1L;
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(fullName = ReadFilterArgumentDefinitions.FILTER_TOO_SHORT_NAME,
             doc = "Minimum number of aligned bases",
             optional = true)
-    public int minimumSequenceLength = 30;
+    private int minAlignedBases = 30;
 
     @Argument(fullName = ReadFilterArgumentDefinitions.DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME,
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
                     "have a soft-clipped block, setting this flag requires only 1 soft-clipped block",
             optional = true)
-    public boolean doNotRequireSoftClipsOnBothEnds;
+    private boolean doNotRequireSoftClipsOnBothEnds;
 
     // Command line parser requires a no-arg constructor
     public OverclippedReadFilter() {}
 
-    public OverclippedReadFilter(final int minimumSequenceLength, final boolean doNotRequireSoftClipsOnBothEnds) {
-        this.minimumSequenceLength = minimumSequenceLength;
+    @VisibleForTesting
+    OverclippedReadFilter(final int minAlignedBases) {
+        this.minAlignedBases = minAlignedBases;
+    }
+
+    @VisibleForTesting
+    OverclippedReadFilter(final int minAlignedBases, final boolean doNotRequireSoftClipsOnBothEnds) {
+        this.minAlignedBases = minAlignedBases;
         this.doNotRequireSoftClipsOnBothEnds = doNotRequireSoftClipsOnBothEnds;
     }
 
@@ -47,7 +56,7 @@ public final class OverclippedReadFilter extends ReadFilter{
     public boolean test(final GATKRead read) {
         int alignedLength = 0;
         int softClipBlocks = 0;
-        int minSoftClipBlocks = doNotRequireSoftClipsOnBothEnds ? 1 : 2;
+        final int minSoftClipBlocks = doNotRequireSoftClipsOnBothEnds ? 1 : 2;
         CigarOperator prevOperator = null;
 
         for ( final CigarElement element : read.getCigarElements() ) {
@@ -63,6 +72,6 @@ public final class OverclippedReadFilter extends ReadFilter{
             prevOperator = element.getOperator();
         }
 
-        return(alignedLength >= minimumSequenceLength || softClipBlocks < minSoftClipBlocks);
+        return (alignedLength >= minAlignedBases || softClipBlocks < minSoftClipBlocks);
     }
 }

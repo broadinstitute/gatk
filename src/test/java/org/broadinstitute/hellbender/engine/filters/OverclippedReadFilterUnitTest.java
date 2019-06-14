@@ -24,22 +24,22 @@ public class OverclippedReadFilterUnitTest extends GATKBaseTest {
 
     private final SAMFileHeader header= ArtificialReadUtils.createArtificialSamHeaderWithGroups(CHR_COUNT, CHR_START, CHR_SIZE, GROUP_COUNT);
 
-
-    @Test(dataProvider= "OverclippedDataProvider")
-    public void testOverclippedFilter(final String cigarString, boolean doNotRequireSoftClipsOnBothEnds, final boolean expectedResult) {
-
-        final OverclippedReadFilter filter = new OverclippedReadFilter(30, false);
-        filter.doNotRequireSoftClipsOnBothEnds = doNotRequireSoftClipsOnBothEnds;
-        final GATKRead read = buildSAMRead(cigarString);
-        Assert.assertEquals(filter.test(read), expectedResult, cigarString);
-    }
-
     private GATKRead buildSAMRead(final String cigarString) {
         final Cigar cigar = TextCigarCodec.decode(cigarString);
         return ArtificialReadUtils.createArtificialRead(header, cigar);
     }
 
-    @DataProvider(name= "OverclippedDataProvider")
+    @Test(dataProvider= "OverclippedDataProvider")
+    public void testOverclippedFilter(final String cigarString,
+                                      final boolean doNotRequireSoftClipsOnBothEnds,
+                                      final boolean expectedResult) {
+
+        final OverclippedReadFilter filter = new OverclippedReadFilter(30, doNotRequireSoftClipsOnBothEnds);
+        final GATKRead read = buildSAMRead(cigarString);
+        Assert.assertEquals(filter.test(read), expectedResult, cigarString);
+    }
+
+    @DataProvider(name = "OverclippedDataProvider")
     public Iterator<Object[]> overclippedDataProvider() {
         final List<Object[]> result = new LinkedList<>();
 
