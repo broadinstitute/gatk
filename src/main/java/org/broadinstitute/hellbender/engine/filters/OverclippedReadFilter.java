@@ -35,8 +35,7 @@ public final class OverclippedReadFilter extends ReadFilter {
     @Argument(fullName = ReadFilterArgumentDefinitions.DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME,
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
                     "have a soft-clipped block, setting this flag requires only 1 soft-clipped block",
-            optional = true,
-            mutex = {"soft-clipped-ratio-threshold", "leading-trailing-soft-clipped-ratio"})
+            optional = true)
     private boolean doNotRequireSoftClipsOnBothEnds;
 
     // Command line parser requires a no-arg constructor
