@@ -51,6 +51,16 @@
   }, 
   {
     "mode": "NULLABLE", 
+    "name": "lost_to_followup_date", 
+    "type": "DATE"
+  }, 
+  {
+    "mode": "NULLABLE", 
+    "name": "lost_to_followup_age", 
+    "type": "FLOAT"
+  }, 
+  {
+    "mode": "NULLABLE", 
     "name": "computed_date", 
     "type": "DATE"
   },
