@@ -145,7 +145,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
     :return: a tuple of the compiled keras model and the character emitting sub-model
     """
-    char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in[0], base_model)
+    char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, base_model)
     tensor_maps_in.extend(char_maps_in)
     tensor_maps_out.extend(char_maps_out)
     char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate)
@@ -174,9 +174,9 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     return m, char_model
 
 
-def _get_tensor_maps_for_characters(embed_dependent_map, base_model: Model):
-    embed_model = make_hidden_layer_model(base_model, embed_dependent_map.input_name(), 'embed')
-    tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', dependent_map=embed_dependent_map, model=embed_model)
+def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
+    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, 'embed')
+    tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', required_inputs=tensor_maps_in.copy(), model=embed_model)
     tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=10.0)
     tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
     return [tm_embed, tm_burn_in], [tm_char]
@@ -237,15 +237,17 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_hidden_layer_model_from_file(parent_file: str, input_layer_name: str, output_layer_name: str, tensor_maps_out: List[TensorMap]):
+def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[TensorMap], output_layer_name: str, tensor_maps_out: List[TensorMap]):
     parent_model = load_model(parent_file, custom_objects=get_metric_dict(tensor_maps_out))
-    return make_hidden_layer_model(parent_model, input_layer_name, output_layer_name)
+    return make_hidden_layer_model(parent_model, tensor_maps_in, output_layer_name)
 
 
-def make_hidden_layer_model(parent_model: Model, input_layer_name: str, output_layer_name: str):
-    intermediate_layer_model = Model(inputs=parent_model.get_layer(input_layer_name).input, outputs=parent_model.get_layer(output_layer_name).output)
+def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str):
+    parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[1:]) for tm in tensor_maps_in}
+    intermediate_layer_model = Model(inputs=parent_inputs, outputs=parent_model.get_layer(output_layer_name).output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
-    intermediate_layer_model.predict(np.zeros((1,) + parent_model.get_layer(input_layer_name).input_shape[1:]))
+    intermediate_layer_model.predict(dummy_input)
     return intermediate_layer_model
 
 
@@ -274,7 +276,8 @@ def make_multimodal_to_multilabel_model(model_file: str,
                                         pool_y: int,
                                         pool_z: int,
                                         padding: str,
-                                        learning_rate: float) -> Model:
+                                        learning_rate: float,
+                                        ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
 	This model factory can be used to make networks for classification, regression, and segmentation
@@ -391,15 +394,6 @@ def make_multimodal_to_multilabel_model(model_file: str,
                     last_convolution3d = upsampler(last_convolution3d)
             conv_label = Conv3D(tm.shape[channel_axis], (1, 1, 1), activation="linear")(last_convolution3d)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
-            sx = _conv_block3d(conv_label, [], conv_layers, max_pools, res_layers, activation, conv_bn,
-                               (conv_x, conv_y, conv_z), conv_dropout, padding)
-            # sx = _dense_block3d(sx, [], dense_blocks, block_size, activation, conv_bn, (conv_x, conv_y, conv_z),
-            #                     (pool_x, pool_y, pool_z), conv_dropout, padding)
-            flat_activation = Flatten()(sx)
-            for hidden_units in dense_layers:
-                flat_activation = Dense(units=hidden_units, activation=activation)(flat_activation)
-                if dropout > 0:
-                    flat_activation = Dropout(dropout)(flat_activation)
         elif len(tm.shape) == 3:
             for x, up_conv, upsampler in reversed(upsamplers):
                 if u_connect:
@@ -520,6 +514,16 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
     ]
 
     return callbacks
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~ Predicting ~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
+    embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
+    embed_model.summary()
+    print(list(test_data.keys()))
+    return embed_model.predict(test_data, batch_size=batch_size)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -880,12 +884,15 @@ def get_model_inputs_outputs(model_files: List[str],
                     model_inputs_outputs[output_prefix].append(output_tensor_map)
             if not got_tensor_maps_for_characters and 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
                 m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
-                char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in[0], m)
+                char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, m)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)
                 model_inputs_outputs[output_prefix].extend(char_maps_out)
                 tensor_maps_out.extend(char_maps_out)
                 got_tensor_maps_for_characters = True
+                logging.info(f"Doing char model dance:{[tm.input_name() for tm in tensor_maps_in]}")
+                logging.info(f"Doing char model dance out:{[tm.output_name() for tm in tensor_maps_out]}")
+
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs

@@ -6,7 +6,9 @@ from dateutil import relativedelta
 
 from keras.utils import to_categorical
 
-from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING
+from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, \
+    CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, \
+    TENSOR_MAP_GROUP_CONTINUOUS, IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -93,8 +95,10 @@ class TensorMap(object):
                  channel_map=None,
                  hd5_override=None,
                  dependent_map=None,
+                 required_inputs=None,
                  normalization=None,
-                 annotation_units=32):
+                 annotation_units=32,
+                 imputation=None):
         """TensorMap constructor
 
         :param name: String name of the tensor mapping
@@ -109,8 +113,10 @@ class TensorMap(object):
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
         :param hd5_override: Override default behavior of tensor_from_file
         :param dependent_map: TensorMap that depends on or is determined by this one
+        :param required_inputs: List of TensorMaps that are required by this one, used by hidden layer TensorMaps
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
+        :param imputation: Method of imputation for missing values. Options are mean or random.
         """
         self.name = name
         self.loss = loss
@@ -123,13 +129,15 @@ class TensorMap(object):
         self.loss_weight = loss_weight
         self.channel_map = channel_map
         self.hd5_override = hd5_override
-        self.dependent_map = dependent_map
         self.normalization = normalization
+        self.dependent_map = dependent_map
+        self.required_inputs = required_inputs
         self.annotation_units = annotation_units
+        self.imputation = imputation
         self.initialization = None  # Not yet implemented
 
         if self.shape is None:
-            if self.is_multi_field_continuous():
+            if self.is_multi_field_continuous_with_missing_channel():
                 self.shape = (len(channel_map) * 2,)
             else:
                 self.shape = (len(channel_map),)
@@ -210,7 +218,10 @@ class TensorMap(object):
         return self.group == 'continuous'
 
     def is_multi_field_continuous(self):
-        return self.group == 'multi_field_continuous'
+        return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS or self.group == TENSOR_MAP_GROUP_CONTINUOUS
+
+    def is_multi_field_continuous_with_missing_channel(self):
+        return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS
 
     def is_diagnosis_time(self):
         return self.group == 'diagnosis_time'
@@ -232,6 +243,12 @@ class TensorMap(object):
 
     def is_categorical_any_with_shape_len(self, length):
         return self.is_categorical_any() and len(self.shape) == length
+
+    def is_imputation_random(self):
+        return self.is_multi_field_continuous() and self.imputation == IMPUTATION_RANDOM
+
+    def is_imputation_mean(self):
+        return self.is_multi_field_continuous() and self.imputation == IMPUTATION_MEAN
 
     def zero_mean_std1(self, np_tensor):
         np_tensor -= np.mean(np_tensor)
@@ -269,13 +286,36 @@ class TensorMap(object):
             idx = self.channel_map[k] * 2
             # If both the value (at idx) and not-missing channel (at idx + 1) are 0 then impute the value.
             if np_tensor[idx + 1] == 0 and np_tensor[idx] == 0:
-                np_tensor[idx] = np.random.normal(1)
+                np_tensor[idx] = self.impute()
             else:
                 np_tensor[idx] -= self.normalization[k][MEAN_IDX]
                 np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
 
         return np_tensor
 
+    def normalize_multi_field_continuous_no_missing_channels(self, np_tensor, missing_array):
+        if self.normalization is None:
+            return np_tensor
+
+        for k in self.channel_map:
+            idx = self.channel_map[k]
+            if missing_array[idx]:
+                np_tensor[idx] = self.impute()
+            else:
+                np_tensor[idx] -= self.normalization[k][MEAN_IDX]
+                np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
+
+        return np_tensor
+
+    def impute(self):
+        if self.normalization is None:
+            return ValueError('Imputation requires normalization.')
+        if self.is_imputation_random():
+            return np.random.normal(1)
+        elif self.is_imputation_mean():
+            return 0
+        else:
+            return ValueError('Imputation method unknown.')
 
     def rescale(self, np_tensor):
         if self.normalization is None:
@@ -425,6 +465,24 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 'end_systole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvesv = float(hd5['continuous/end_systole_volume'][0])
+            continuous_data[0] = -3.8 + (lvesv * 0.87)
+            return self.normalize(continuous_data)
+        elif self.name == 'end_diastole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvedv = float(hd5['continuous/end_diastole_volume'][0])
+            continuous_data[0] = 16.8 + (lvedv * 0.88)
+            return self.normalize(continuous_data)
+        elif self.name == 'ejection_fraction_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvesv = float(hd5['continuous/end_systole_volume'][0])
+            lvesv_corrected = -3.8 + (lvesv * 0.87)
+            lvedv = float(hd5['continuous/end_diastole_volume'][0])
+            lvedv_corrected = 16.8 + (lvedv * 0.88)
+            continuous_data[0] = (lvedv_corrected - lvesv_corrected) / lvedv_corrected
+            return self.normalize(continuous_data)
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:
@@ -459,6 +517,11 @@ class TensorMap(object):
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
         elif self.is_multi_field_continuous():
+            if self.is_multi_field_continuous_with_missing_channel():
+                multiplier = 2
+            else:
+                multiplier = 1
+            missing_array = [False] * len(self.channel_map)
             continuous_data = np.zeros(self.shape, dtype=np.float32)
             for k in self.channel_map:
                 missing = True
@@ -474,9 +537,15 @@ class TensorMap(object):
                             missing = True
                     # Put value at index k (times 2 to make space for the not-missing channels), and put whether or not
                     # this value is not missing in the following element.
-                    continuous_data[self.channel_map[k] * 2] = value
-                continuous_data[self.channel_map[k] * 2 + 1] = not missing
-            return self.normalize_multi_field_continuous(continuous_data)
+                    continuous_data[self.channel_map[k] * multiplier] = value
+                if self.is_multi_field_continuous_with_missing_channel():
+                    continuous_data[self.channel_map[k] * multiplier + 1] = not missing
+                else:
+                    missing_array[self.channel_map[k]] = missing
+            if self.is_multi_field_continuous_with_missing_channel():
+                return self.normalize_multi_field_continuous(continuous_data)
+            else:
+                return self.normalize_multi_field_continuous_no_missing_channels(continuous_data, missing_array)
         elif self.is_ecg_rest():
             tensor = np.zeros(self.shape, dtype=np.float32)
             if self.dependent_map is not None:
@@ -520,8 +589,10 @@ class TensorMap(object):
                 window_offset += 1
             return tensor
         elif self.is_hidden_layer():
-            dependents[self.dependent_map] = np.expand_dims(self.dependent_map.tensor_from_file(hd5), axis=0)
-            return self.model.predict(dependents[self.dependent_map])
+            input_dict = {}
+            for tm in self.required_inputs:
+                input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
+            return self.model.predict(input_dict)
         elif self.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals
             dataset_key = np.random.choice(list(self.dependent_map.channel_map.keys()))
             one_hot = np.zeros(self.dependent_map.shape)

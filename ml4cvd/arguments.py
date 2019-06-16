@@ -17,6 +17,7 @@ import operator
 import datetime
 import numpy as np
 
+from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
 from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 from ml4cvd.tensor_maps_by_script import TMAPS
@@ -52,9 +53,9 @@ def parse_args():
     parser.add_argument('--bigquery_dataset',
                         default='broad-ml4cvd.ukbb7089_r10data',
                         help='BigQuery dataset containing tables we want to query.')
-    parser.add_argument('--xml_folder', default='/mnt/disks/data/raw/ecgs/',
+    parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/',
         help='Path to folder of XMLs of ECG data.')
-    parser.add_argument('--zip_folder', default='/mnt/disks/data/raw/mris/cardiac/',
+    parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/',
         help='Path to folder of zipped dicom images.')
     parser.add_argument('--phenos_folder', default='/mnt/disks/data/raw/phenotypes/',
         help='Path to folder of phenotype defining CSVs.')    
@@ -92,6 +93,10 @@ def parse_args():
         help='Include instances for UKBB phenotypes.')
     parser.add_argument('--min_values', default=10, type=int,
         help='Per feature size minimum.')
+    parser.add_argument('--min_samples', default=3, type=int,
+        help='Min number of samples to require for calculating correlations.')
+    parser.add_argument('--max_samples', type=int, default=None,
+        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
     parser.add_argument('--mri_field_ids', default=['20208', '20209'], nargs='*',
         help='Field id for MR images.')
     parser.add_argument('--xml_field_ids', default=['20205', '6025'], nargs='*',
@@ -108,6 +113,10 @@ def parse_args():
         help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
     parser.add_argument('--include_heart_zoom', default=False, action='store_true',
         help='Include the heart zoom')
+    parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
+        help='Include missing channels in continuous tensors')
+    parser.add_argument('--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
+                        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN])
 
     # Model Architecture Parameters
     parser.add_argument('--x', default=256, type=int,
@@ -214,8 +223,6 @@ def parse_args():
         help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true',
         help='Plot model architecture with labels for each layer.')
-    parser.add_argument('--num_samples', type=int, default=None,
-        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
 
     args = parser.parse_args()
 
@@ -225,11 +232,13 @@ def parse_args():
 
 
 def _process_args(args):
+    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
-        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors] + [multi_field_tensor_map]
-    else:
-        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors,
+                                                                                 args.include_missing_continuous_channel,
+                                                                                 args.imputation_method_for_continuous_fields)]
+        args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
+
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 

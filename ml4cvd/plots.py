@@ -16,10 +16,13 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
+from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
+from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
+from ml4cvd.TensorMap import TensorMap
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -31,46 +34,62 @@ COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
 
 
-def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[], scatters=[]):
+def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str]=None,
+                         max_melt: int=5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]]=[],
+                         scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]]=[]) -> Dict[str, float]:
+    """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
+    Accumulates data in the rocs and scatters lists to facilitate subplotting.
+
+    :param tm: The TensorMap predictions to evaluate
+    :param y_predictions: The predictions
+    :param y_truth: The truth
+    :param title: A title for the plots
+    :param folder: The folder to save the plots at
+    :param test_paths: The tensor paths that were predicted
+    :param max_melt: For multi-dimensional prediction the maximum number of prediction to allow in the flattened array
+    :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
+    :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
+    :return: Dictionary of performance metrics with string keys for labels and float values
+    """
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
-        logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
-        logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(test_labels[tm.output_name()], axis=0), np.sum(y, axis=0)))
-        performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, title, folder))
-        rocs.append((y, test_labels[tm.output_name()], tm.channel_map))
+        logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
+        logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
-        melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
+        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
+        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical() and len(tm.shape) == 3:
-        melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
+        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
+        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
-        melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
+        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
+        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
-        logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y.shape, test_labels[tm.output_name()].shape))
+        logging.info(f"a dist has y shape:{y_predictions.shape} and test labels has shape:{y_truth.shape}")
     elif len(tm.shape) > 1:
-        prediction_flat = tm.rescale(y).flatten()
-        truth_flat = tm.rescale(test_labels[tm.output_name()]).flatten()
+        prediction_flat = tm.rescale(y_predictions).flatten()
+        truth_flat = tm.rescale(y_truth[tm.output_name()]).flatten()
         performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
-        performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
-        scatters.append((tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, test_paths))
+        performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
+        scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
-    if tm.name == 'median':
-        plot_waves(y, test_labels[tm.output_name()], 'median_waves_' + title, folder)
-        plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
+    # if tm.name == 'median':
+    #     plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
+    #     plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
 
     return performance_metrics
 
@@ -580,7 +599,7 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
             if col >= cols:
                 break
 
-    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'rocs_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -684,6 +703,52 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     plt.savefig(figure_path)
     plt.clf()
     logging.info("Saved waves at: {}".format(figure_path))
+
+
+def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
+    n_components = 2
+    rows = min(24, len(label_dict))
+    perplexities = [16, 25, 95]
+    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    plt.rcParams.update({'font.size': 22})
+
+    p2y = {}
+    for i, perplexity in enumerate(perplexities):
+        tsne = manifold.TSNE(n_components=n_components, init='random', random_state=0, perplexity=perplexity)
+        p2y[perplexity] = tsne.fit_transform(x_embed)
+
+    j = -1
+    for k in label_dict:
+        j += 1
+        if j == rows:
+            break
+        if k in categorical_labels + gene_labels:
+            red = label_dict[k] == 1.0
+            green = label_dict[k] != 1.0
+        elif k in continuous_labels:
+            colors = label_dict[k]
+        print('process key:', k)
+        for i, perplexity in enumerate(perplexities):
+            ax = subplots[j, i]
+            ax.set_title(k)  # +", Perplexity=%d" % perplexity)
+            if k in categorical_labels+gene_labels:
+                ax.scatter(p2y[perplexity][green, 0], p2y[perplexity][green, 1], c="g", alpha=0.5)
+                ax.scatter(p2y[perplexity][red, 0], p2y[perplexity][red, 1], c="r", alpha=0.5)
+                ax.legend(['no_' + k, k], loc='lower left')
+            elif k in continuous_labels:
+                points = ax.scatter(p2y[perplexity][:, 0], p2y[perplexity][:, 1], c=colors, alpha=0.5, cmap='jet')
+                if i == len(perplexities) - 1:
+                    fig.colorbar(points, ax=ax)
+
+            ax.xaxis.set_major_formatter(NullFormatter())
+            ax.yaxis.set_major_formatter(NullFormatter())
+            ax.axis('tight')
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+    logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
 def _hash_string_to_color(string):
