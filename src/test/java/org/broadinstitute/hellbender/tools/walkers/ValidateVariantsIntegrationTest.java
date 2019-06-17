@@ -69,6 +69,55 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         spec.executeTest("test good file", this);
     }
 
+    //Test 1 - default (no exclusion -> ALL), no ref, no dbsnp
+    @Test
+    public void testBadEverythingDefaultNoRefNoDBNSP() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestStringWithoutReference(false, "validationExampleBad.vcf", false, ALL),
+                0,
+                UserException.FailsStrictValidation.class
+        );
+
+        spec.executeTest("test that validation occurs w/o dbsnp or ref files", this);
+    }
+
+
+    //Test 2 - default, no ref, yes dbsnp
+    @Test
+    public void testBadEverythingDefaultNoRefYesDBSNP() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestStringWithoutReference(false, "validationExampleBad.vcf", false, ALL) + " --dbsnp " + hg19_chr1_1M_dbSNP_modified,
+                0,
+                UserException.FailsStrictValidation.class
+        );
+
+        spec.executeTest("test that validation occurs w/o ref, w/ dbsnp", this);
+    }
+
+    //Test 3 - default, yes ref, no dbsnp
+    @Test
+    public void testBadEverythingDefaultYesRefNoDBSNP() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "validationExampleBad.vcf", false, ALL),
+                0,
+                UserException.FailsStrictValidation.class
+        );
+
+        spec.executeTest("test that validation occurs w/ ref, w/o dbsnp", this);
+    }
+
+    //Test 4 - default, yes ref, yes dbsnp
+    @Test
+    public void testBadEverythingDefaultYesRefYesDBSNP() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "validationExampleBad.vcf", false, ALL)  + " --dbsnp " + hg19_chr1_1M_dbSNP_modified,
+                0,
+                UserException.FailsStrictValidation.class
+        );
+
+        spec.executeTest("test that validation occurs w/ ref, w/ dbsnp", this);
+    }
+
     @Test
     public void testBadRefBase1() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -124,6 +173,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         spec.executeTest("test bad chr counts #2", this);
     }
 
+    //note - validationExampleBadRSID.vcf also has faulty CHR_COUNTS
     @Test
     public void testBadID() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
