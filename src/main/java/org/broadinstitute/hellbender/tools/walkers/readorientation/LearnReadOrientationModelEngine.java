@@ -173,11 +173,13 @@ public class LearnReadOrientationModelEngine {
 
         final OrientationBiasParameter posteriorAltF1R2 = new OrientationBiasParameter(referenceContext, numExamples, numAltExamples);
 
+        // Do the M-step for the posterior beta for the F1R2 fraction. Ignore the alt-depth-1 sites.
+        double[] altF1R2Counts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltF1R2).toArray();
+        double[] altCounts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltCount).toArray();
         for (final ArtifactState state: ArtifactState.getArtifactStates()) {
             // Get the f1r2 frequency
             double[] responsibilities = altResponsibilities.getColumn(state.ordinal());
-            double[] altF1R2Counts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltF1R2).toArray();
-            double[] altCounts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltCount).toArray();
+
             double effectiveAltF1R2Sum = MathUtils.dotProduct(responsibilities, altF1R2Counts);
             double effectiveAltSum = MathUtils.dotProduct(responsibilities, altCounts);
             // +1 comes from a flat prior
@@ -355,11 +357,6 @@ public class LearnReadOrientationModelEngine {
     @VisibleForTesting
     public double[] getAltResonsibilities(final int rowNum){
         return altResponsibilities.getRow(rowNum);
-    }
-
-    @VisibleForTesting
-    public double[] getAltDepth1Resonsibilities(final int rowNum){
-        return null;
     }
 
     @VisibleForTesting
