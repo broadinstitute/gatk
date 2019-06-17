@@ -116,9 +116,9 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final Pair<LearnedParameter, LearnedParameter> learnedParameters = engine.learnPriorForArtifactStates();
-        final LearnedParameter learnedParameter = learnedParameters.getLeft();
-        final LearnedParameter posteriorBetaMean = learnedParameters.getRight();
+        final Pair<OrientationBiasParameter, OrientationBiasParameter> learnedParameters = engine.learnPriorForArtifactStates();
+        final OrientationBiasParameter orientationBiasParameter = learnedParameters.getLeft();
+        final OrientationBiasParameter posteriorBetaMean = learnedParameters.getRight();
 
         final double epsilon = 1e-3;
         IntStream.range(0, F1R2FilterConstants.DEFAULT_MAX_DEPTH).mapToDouble(i -> MathUtils.sum(engine.getRefResonsibilities(i)))
@@ -130,8 +130,8 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         Assert.assertEquals(engine.getEffectiveCounts(artifactState), (double) numAltExamples, EPSILON);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.HOM_REF), (double) numRefExamples, EPSILON);
 
-        Assert.assertEquals(learnedParameter.getParameter(artifactState), (double) numAltExamples/numExamples, EPSILON);
-        Assert.assertEquals(learnedParameter.getParameter(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
+        Assert.assertEquals(orientationBiasParameter.getParameter(artifactState), (double) numAltExamples/numExamples, EPSILON);
+        Assert.assertEquals(orientationBiasParameter.getParameter(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
 
         Assert.assertEquals(posteriorBetaMean.getParameter(artifactState), 1.0, 1e-2);
     }
@@ -190,8 +190,8 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final Pair<LearnedParameter, LearnedParameter> learnedParameters = engine.learnPriorForArtifactStates();
-        final LearnedParameter artifactPrior = learnedParameters.getLeft();
+        final Pair<OrientationBiasParameter, OrientationBiasParameter> learnedParameters = engine.learnPriorForArtifactStates();
+        final OrientationBiasParameter artifactPrior = learnedParameters.getLeft();
 
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_T), (double) numArtifactExamples, epsilon);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_A), (double) numArtifactExamples, epsilon);
@@ -206,7 +206,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
             Assert.assertEquals(artifactPrior.getParameter(state), 0.0);
         }
 
-        final LearnedParameter meanF1R2Fraction = learnedParameters.getRight();
+        final OrientationBiasParameter meanF1R2Fraction = learnedParameters.getRight();
         Assert.assertEquals(meanF1R2Fraction.getParameter(ArtifactState.F1R2_A), 1, 1e-2);
         Assert.assertEquals(meanF1R2Fraction.getParameter(ArtifactState.F1R2_T), 1, 1e-2);
     }
@@ -267,20 +267,23 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final File inputTarGz = createTempFile("input", ".tar.gz");
         IOUtils.writeTarGz(inputTarGz.getAbsolutePath(), f1r2Dir.listFiles());
 
-        START HERE add a test (do I need a new directory for the f1r2fractioni?)
-        final File artifactPriorTarGz = createTempFile("prior", ".tar.gz");
+        final File parameterTarGz = createTempFile("prior", ".tar.gz");
         new Main().instanceMain(makeCommandLineArgs(
                 Arrays.asList(
                         "-I", inputTarGz.getAbsolutePath(),
-                        "-O", artifactPriorTarGz.getAbsolutePath()),
+                        "-O", parameterTarGz.getAbsolutePath()),
                 LearnReadOrientationModel.class.getSimpleName()));
 
         final File extractedDir = createTempDir("extracted");
-        IOUtils.extractTarGz(artifactPriorTarGz.toPath(), extractedDir.toPath());
+        IOUtils.extractTarGz(parameterTarGz.toPath(), extractedDir.toPath());
+        final File artifactPriorFile = Arrays.stream(extractedDir.listFiles()).
+                filter(f -> OrientationBiasParameter.getParameterTypeOfFile(f) == ParameterType.ARTIFACT_PRIOR).findAny().get();
+        final OrientationBiasParameterCollection artifactPriors = OrientationBiasParameterCollection.readParameters(artifactPriorFile, ParameterType.ARTIFACT_PRIOR);
+        final File f1r2FractionFile =  Arrays.stream(extractedDir.listFiles()).
+                filter(f -> OrientationBiasParameter.getParameterTypeOfFile(f) == ParameterType.MEAN_ALT_F1R2_FRACTION).findAny().get();
+        final OrientationBiasParameterCollection f1r2Fractions = OrientationBiasParameterCollection.readParameters(f1r2FractionFile, ParameterType.MEAN_ALT_F1R2_FRACTION);
 
-        final LearnedParameterCollection artifactPrior = LearnedParameterCollection.readArtifactPriors(Arrays.stream(extractedDir.listFiles()).findFirst().get(), ParameterType.ARTIFACT_PRIOR);
-
-        Assert.assertEquals(artifactPrior.getNumUniqueContexts(), expectedNumUniqueContexts);
+        Assert.assertEquals(artifactPriors.getNumUniqueContexts(), expectedNumUniqueContexts);
 
         final double expectedRefFraction = (double) numRefExamples/(numArtifactExamples + numRefExamples);
         final double expectedArtifactFraction = (double) numArtifactExamples/(numArtifactExamples + numRefExamples);
@@ -291,9 +294,13 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
             final ReadOrientation f1r2 = transition.getRight();
             final ArtifactState state = f1r2 == ReadOrientation.F1R2 ? ArtifactState.getF1R2StateForAlt(altAllele) :
                     ArtifactState.getF2R1StateForAlt(altAllele);
-            final LearnedParameter learnedParameter = artifactPrior.get(refContext).get();
-            Assert.assertEquals(learnedParameter.getParameter(state), expectedArtifactFraction, epsilon);
-            Assert.assertEquals(learnedParameter.getParameter(ArtifactState.HOM_REF), expectedRefFraction, epsilon);
+            final OrientationBiasParameter artifactPrior = artifactPriors.get(refContext).get();
+            Assert.assertEquals(artifactPrior.getParameter(state), expectedArtifactFraction, epsilon);
+            Assert.assertEquals(artifactPrior.getParameter(ArtifactState.HOM_REF), expectedRefFraction, epsilon);
+
+            final OrientationBiasParameter f1r2Fraction = f1r2Fractions.get(refContext).get();
+            final double expectedAltF1R2Fraction = f1r2 == ReadOrientation.F1R2 ? 1.0 : 0.0;
+            Assert.assertEquals(f1r2Fraction.getParameter(state), expectedAltF1R2Fraction, 1e-2);
         }
     }
 

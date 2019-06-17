@@ -110,8 +110,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                 sample -> sumHistogramsFromFiles(altHistogramMetricsFilesBySample.get(sample), false)));
 
         final Map<String, List<AltSiteRecord>> recordsBySample = gatherAltSiteRecords(altTableFiles);
-        final Map<String, LearnedParameterCollection> artifactPriorCollectionBySample = new HashMap<>();
-        final Map<String, LearnedParameterCollection> posteriorAltF1R2BySample = new HashMap<>();
+        final Map<String, OrientationBiasParameterCollection> artifactPriorCollectionBySample = new HashMap<>();
+        final Map<String, OrientationBiasParameterCollection> posteriorAltF1R2BySample = new HashMap<>();
 
         for (final Map.Entry<String, List<AltSiteRecord>> entry : recordsBySample.entrySet()) {
             final String sample = entry.getKey();
@@ -120,8 +120,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
             final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = records.stream()
                     .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
 
-            final LearnedParameterCollection learnedParameterCollection = new LearnedParameterCollection(sample);
-            final LearnedParameterCollection posteriorAltF1R2 = new LearnedParameterCollection(sample);
+            final OrientationBiasParameterCollection artifactPriors = new OrientationBiasParameterCollection(sample);
+            final OrientationBiasParameterCollection posteriorAltF1R2 = new OrientationBiasParameterCollection(sample);
 
             // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
             for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS) {
@@ -168,28 +168,28 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                         maxEMIterations,
                         maxDepth,
                         logger);
-                final Pair<LearnedParameter, LearnedParameter> learnedParameters = engine.learnPriorForArtifactStates();
-                learnedParameterCollection.set(learnedParameters.getLeft());
-                posteriorAltF1R2.set(learnedParameters.getRight());
+                final Pair<OrientationBiasParameter, OrientationBiasParameter> learnedParameters = engine.learnPriorForArtifactStates();
+                artifactPriors.set(learnedParameters.getLeft(), ParameterType.ARTIFACT_PRIOR);
+                posteriorAltF1R2.set(learnedParameters.getRight(), ParameterType.MEAN_ALT_F1R2_FRACTION);
             }
 
             posteriorAltF1R2BySample.put(sample, posteriorAltF1R2);
-            artifactPriorCollectionBySample.put(sample, learnedParameterCollection);
+            artifactPriorCollectionBySample.put(sample, artifactPriors);
         }
 
-        final File tmpPriorDir = IOUtils.createTempDir("priors");
+        final File tmpParameterDir = IOUtils.createTempDir("priors");
         for (final String sample : artifactPriorCollectionBySample.keySet()) {
-            final LearnedParameterCollection artifactPrior = artifactPriorCollectionBySample.get(sample);
-            final File destination = new File(tmpPriorDir, IOUtils.urlEncode(sample) + ARTIFACT_PRIOR_EXTENSION);
-            artifactPrior.writeArtifactPriors(destination, ParameterType.ARTIFACT_PRIOR);
+            final OrientationBiasParameterCollection artifactPrior = artifactPriorCollectionBySample.get(sample);
+            final File destination = new File(tmpParameterDir, IOUtils.urlEncode(sample) + ARTIFACT_PRIOR_EXTENSION);
+            artifactPrior.writeParameters(destination, ParameterType.ARTIFACT_PRIOR);
 
-            final File altF1R2Destination = new File(tmpPriorDir, IOUtils.urlEncode(sample) + POSTERIOR_F1R2_FRACTION_EXTENSION);
-            final LearnedParameterCollection posteriorAltF1R2 = posteriorAltF1R2BySample.get(sample);
-            posteriorAltF1R2.writeArtifactPriors(altF1R2Destination, ParameterType.MEAN_ALT_F1R2_FRACTION);
+            final File altF1R2Destination = new File(tmpParameterDir, IOUtils.urlEncode(sample) + POSTERIOR_F1R2_FRACTION_EXTENSION);
+            final OrientationBiasParameterCollection posteriorAltF1R2 = posteriorAltF1R2BySample.get(sample);
+            posteriorAltF1R2.writeParameters(altF1R2Destination, ParameterType.MEAN_ALT_F1R2_FRACTION);
         }
 
         try {
-            IOUtils.writeTarGz(outputTarGz.getAbsolutePath(), tmpPriorDir.listFiles());
+            IOUtils.writeTarGz(outputTarGz.getAbsolutePath(), tmpParameterDir.listFiles());
         } catch (IOException ex) {
             throw new UserException.CouldNotCreateOutputFile("Could not create output .tar.gz file.", ex);
         }

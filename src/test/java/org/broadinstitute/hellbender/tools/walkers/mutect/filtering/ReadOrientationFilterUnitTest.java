@@ -78,10 +78,10 @@ public class ReadOrientationFilterUnitTest extends GATKBaseTest {
         int numRefExamples = 1_000_000;
         int numAltExamples = 1000;
 
-        final LearnedParameterCollection priors = new LearnedParameterCollection(sampleName);
-        priors.set(new LearnedParameter(refContext, pi, numRefExamples, numAltExamples));
+        final OrientationBiasParameterCollection priors = new OrientationBiasParameterCollection(sampleName);
+        priors.set(new OrientationBiasParameter(refContext, pi, numRefExamples, numAltExamples), ParameterType.ARTIFACT_PRIOR);
         final File table = File.createTempFile("prior", "table");
-        priors.writeArtifactPriors(table, ParameterType.ARTIFACT_PRIOR);
+        priors.writeParameters(table, ParameterType.ARTIFACT_PRIOR);
 
         final ReadOrientationFilter filter = new ReadOrientationFilter(Collections.singletonList(table));
 

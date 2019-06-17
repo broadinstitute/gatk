@@ -18,13 +18,13 @@ import java.io.File;
 import java.util.*;
 
 public class ReadOrientationFilter extends Mutect2VariantFilter {
-    private Map<String, LearnedParameterCollection> artifactPriorCollections = new HashMap<>();
+    private Map<String, OrientationBiasParameterCollection> artifactPriorCollections = new HashMap<>();
 
     public ReadOrientationFilter(final List<File> readOrientationPriorTables) {
         readOrientationPriorTables.stream()
                 .forEach(file -> {
-                    final LearnedParameterCollection learnedParameterCollection = LearnedParameterCollection.readArtifactPriors(file, ParameterType.ARTIFACT_PRIOR);
-                    artifactPriorCollections.put(learnedParameterCollection.getSample(), learnedParameterCollection);
+                    final OrientationBiasParameterCollection orientationBiasParameterCollection = OrientationBiasParameterCollection.readParameters(file, ParameterType.ARTIFACT_PRIOR);
+                    artifactPriorCollections.put(orientationBiasParameterCollection.getSample(), orientationBiasParameterCollection);
                 });
     }
 
@@ -102,7 +102,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
         final int altF1R2 = f1r2[indexOfMaxTumorLod + 1];
         final int altF2R1 = f2r1[indexOfMaxTumorLod + 1];
         final int altCount = altF1R2 + altF2R1;
-        final Optional<LearnedParameter> artifactPrior = artifactPriorCollections.get(g.getSampleName()).get(refContext);
+        final Optional<OrientationBiasParameter> artifactPrior = artifactPriorCollections.get(g.getSampleName()).get(refContext);
 
         if (! artifactPrior.isPresent()){
             return 0;

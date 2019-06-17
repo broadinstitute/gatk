@@ -90,7 +90,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
         IOUtils.extractTarGz(priorTarGz.toPath(), extractedPriorDir.toPath());
 
 
-        final LearnedParameterCollection learnedParameterCollection = LearnedParameterCollection.readArtifactPriors(extractedPriorDir.listFiles()[0], ParameterType.ARTIFACT_PRIOR);
+        final OrientationBiasParameterCollection orientationBiasParameterCollection = OrientationBiasParameterCollection.readParameters(extractedPriorDir.listFiles()[0], ParameterType.ARTIFACT_PRIOR);
 
         // Step 4: Mutect 2
         final File unfilteredVcf = GATKBaseTest.createTempFile("unfiltered", ".vcf");

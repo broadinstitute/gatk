@@ -15,7 +15,7 @@ import static org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2Fi
 
 import static org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactState.*;
 
-public class LearnedParameterUnitTest {
+public class OrientationBiasParameterUnitTest {
     private static final double EPSILON = 1e-4;
 
     @Test
@@ -35,26 +35,26 @@ public class LearnedParameterUnitTest {
         final String referenceContext2 = "GTA";
         final String referenceContext3 = "CCC";
 
-        final LearnedParameterCollection learnedParameterCollectionBefore = new LearnedParameterCollection("sample");
-        learnedParameterCollectionBefore.set(new LearnedParameter(referenceContext1, pi, numExamples1, numAltExamples1));
-        learnedParameterCollectionBefore.set(new LearnedParameter(referenceContext2, pi, numExamples2, numAltExamples2));
-        learnedParameterCollectionBefore.set(new LearnedParameter(referenceContext3, pi, numExamples3, numAltExamples3));
+        final OrientationBiasParameterCollection artifactPriorsBefore = new OrientationBiasParameterCollection("sample");
+        artifactPriorsBefore.set(new OrientationBiasParameter(referenceContext1, pi, numExamples1, numAltExamples1), ParameterType.ARTIFACT_PRIOR);
+        artifactPriorsBefore.set(new OrientationBiasParameter(referenceContext2, pi, numExamples2, numAltExamples2), ParameterType.ARTIFACT_PRIOR);
+        artifactPriorsBefore.set(new OrientationBiasParameter(referenceContext3, pi, numExamples3, numAltExamples3), ParameterType.ARTIFACT_PRIOR);
 
         final File table = File.createTempFile("prior", ".tsv");
-        learnedParameterCollectionBefore.writeArtifactPriors(table, ParameterType.ARTIFACT_PRIOR);
-        final LearnedParameterCollection learnedParameterCollectionAfter = LearnedParameterCollection.readArtifactPriors(table, ParameterType.ARTIFACT_PRIOR);
+        artifactPriorsBefore.writeParameters(table, ParameterType.ARTIFACT_PRIOR);
+        final OrientationBiasParameterCollection artifactPriorsAfter = OrientationBiasParameterCollection.readParameters(table, ParameterType.ARTIFACT_PRIOR);
 
-        final LearnedParameter ap1 = learnedParameterCollectionAfter.get(referenceContext1).get();
+        final OrientationBiasParameter ap1 = artifactPriorsAfter.get(referenceContext1).get();
         ArrayAsserts.assertArrayEquals(ap1.getParameters(), pi, EPSILON);
         Assert.assertEquals(ap1.getNumExamples(), numExamples1);
         Assert.assertEquals(ap1.getNumAltExamples(), numAltExamples1);
 
-        LearnedParameter ap2 = learnedParameterCollectionAfter.get(referenceContext2).get();
+        OrientationBiasParameter ap2 = artifactPriorsAfter.get(referenceContext2).get();
         ArrayAsserts.assertArrayEquals(ap2.getParameters(), pi, EPSILON);
         Assert.assertEquals(ap2.getNumExamples(), numExamples2);
         Assert.assertEquals(ap2.getNumAltExamples(), numAltExamples2);
 
-        LearnedParameter ap3 = learnedParameterCollectionAfter.get(referenceContext3).get();
+        OrientationBiasParameter ap3 = artifactPriorsAfter.get(referenceContext3).get();
         ArrayAsserts.assertArrayEquals(ap3.getParameters(), pi, EPSILON);
         Assert.assertEquals(ap3.getNumExamples(), numExamples3);
         Assert.assertEquals(ap3.getNumAltExamples(), numAltExamples3);
@@ -75,24 +75,24 @@ public class LearnedParameterUnitTest {
         ArtifactState.setStatePrior(pi2, 0.8, HOM_REF);
         ArtifactState.setStatePrior(pi2, 0.15, SOMATIC_HET);
 
-        final LearnedParameterCollection learnedParameterCollectionBefore = new LearnedParameterCollection("sample");
-        learnedParameterCollectionBefore.set(new LearnedParameter(referenceContext1, pi1, numExamples, numAltExamples));
-        learnedParameterCollectionBefore.set(new LearnedParameter(referenceContext2, pi2, numExamples, numAltExamples));
+        final OrientationBiasParameterCollection artifactPriorsBefore = new OrientationBiasParameterCollection("sample");
+        artifactPriorsBefore.set(new OrientationBiasParameter(referenceContext1, pi1, numExamples, numAltExamples), ParameterType.ARTIFACT_PRIOR);
+        artifactPriorsBefore.set(new OrientationBiasParameter(referenceContext2, pi2, numExamples, numAltExamples), ParameterType.ARTIFACT_PRIOR);
 
         final File table = File.createTempFile("prior", ".tsv");
-        learnedParameterCollectionBefore.writeArtifactPriors(table, ParameterType.ARTIFACT_PRIOR);
+        artifactPriorsBefore.writeParameters(table, ParameterType.ARTIFACT_PRIOR);
 
-        final LearnedParameterCollection learnedParameterCollectionAfter = LearnedParameterCollection.readArtifactPriors(table, ParameterType.ARTIFACT_PRIOR);
-        final LearnedParameter ap1 = learnedParameterCollectionAfter.get(referenceContext1).get();
-        final LearnedParameter ap1rc = learnedParameterCollectionAfter.get(SequenceUtil.reverseComplement(referenceContext1)).get();
+        final OrientationBiasParameterCollection artifactPriorsAfter = OrientationBiasParameterCollection.readParameters(table, ParameterType.ARTIFACT_PRIOR);
+        final OrientationBiasParameter ap1 = artifactPriorsAfter.get(referenceContext1).get();
+        final OrientationBiasParameter ap1rc = artifactPriorsAfter.get(SequenceUtil.reverseComplement(referenceContext1)).get();
 
         Assert.assertEquals(ap1.getReferenceContext(), SequenceUtil.reverseComplement(ap1rc.getReferenceContext()));
         for (ArtifactState state : ArtifactState.values()){
             Assert.assertEquals(ap1.getParameter(state), ap1rc.getParameter(state.getRevCompState()));
         }
 
-        final LearnedParameter ap2 = learnedParameterCollectionAfter.get(referenceContext2).get();
-        final LearnedParameter ap2rc = learnedParameterCollectionAfter.get(SequenceUtil.reverseComplement(referenceContext2)).get();
+        final OrientationBiasParameter ap2 = artifactPriorsAfter.get(referenceContext2).get();
+        final OrientationBiasParameter ap2rc = artifactPriorsAfter.get(SequenceUtil.reverseComplement(referenceContext2)).get();
 
         Assert.assertEquals(ap2.getReferenceContext(), SequenceUtil.reverseComplement(ap2rc.getReferenceContext()));
         for (ArtifactState state : ArtifactState.values()){
@@ -135,9 +135,9 @@ public class LearnedParameterUnitTest {
         final String context = "ATG";
         final String revComp = "CAT";
 
-        final LearnedParameterCollection priors = new LearnedParameterCollection("sample");
-        priors.set(new LearnedParameter(context, pi, 100, 10));
-        Optional<LearnedParameter> priorRevComp = priors.get(revComp);
+        final OrientationBiasParameterCollection priors = new OrientationBiasParameterCollection("sample");
+        priors.set(new OrientationBiasParameter(context, pi, 100, 10), ParameterType.ARTIFACT_PRIOR);
+        Optional<OrientationBiasParameter> priorRevComp = priors.get(revComp);
 
         ArrayAsserts.assertArrayEquals(expectedRevCompPi, priorRevComp.get().getParameters(), epsilon);
     }

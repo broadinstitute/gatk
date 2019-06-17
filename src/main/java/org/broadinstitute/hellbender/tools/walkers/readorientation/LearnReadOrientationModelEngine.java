@@ -142,7 +142,7 @@ public class LearnReadOrientationModelEngine {
     }
 
     // Learn the prior probabilities for the artifact states by the EM algorithm
-    public Pair<LearnedParameter, LearnedParameter> learnPriorForArtifactStates() {
+    public Pair<OrientationBiasParameter, OrientationBiasParameter> learnPriorForArtifactStates() {
         // Initialize the prior for artifact
         double[] statePrior = getFlatPrior(refAllele);
         double l2Distance;
@@ -169,23 +169,23 @@ public class LearnReadOrientationModelEngine {
                     referenceContext, numRefExamples, numAltExamples, numIterations.intValue()));
         }
 
-        final LearnedParameter artifacPrior = new LearnedParameter(referenceContext, statePrior, numExamples, numAltExamples);
+        final OrientationBiasParameter artifactPrior = new OrientationBiasParameter(referenceContext, statePrior, numExamples, numAltExamples);
 
-        final LearnedParameter posteriorAltF1R2 = new LearnedParameter(referenceContext, numExamples, numAltExamples);
+        final OrientationBiasParameter posteriorAltF1R2 = new OrientationBiasParameter(referenceContext, numExamples, numAltExamples);
 
         for (final ArtifactState state: ArtifactState.getArtifactStates()) {
             // Get the f1r2 frequency
-            double[] responsibility = altResponsibilities.getColumn(state.ordinal());
+            double[] responsibilities = altResponsibilities.getColumn(state.ordinal());
             double[] altF1R2Counts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltF1R2).toArray();
             double[] altCounts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltCount).toArray();
-            double effectiveAltF1R2Sum = MathUtils.dotProduct(responsibility, altF1R2Counts);
-            double effectiveAltSum = MathUtils.dotProduct(responsibility, altCounts);
+            double effectiveAltF1R2Sum = MathUtils.dotProduct(responsibilities, altF1R2Counts);
+            double effectiveAltSum = MathUtils.dotProduct(responsibilities, altCounts);
             // +1 comes from a flat prior
             final BetaDistributionShape betaShape = new BetaDistributionShape(effectiveAltF1R2Sum + 1, effectiveAltSum - effectiveAltF1R2Sum + 1);
             posteriorAltF1R2.setParameter(state, betaShape.getMean());
         }
 
-        return new ImmutablePair<>(artifacPrior, posteriorAltF1R2);
+        return new ImmutablePair<>(artifactPrior, posteriorAltF1R2);
     }
 
     /**

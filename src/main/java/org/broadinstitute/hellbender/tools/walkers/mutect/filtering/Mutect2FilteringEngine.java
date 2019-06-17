@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.MutectStats;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClusteringModel;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.OrientationBiasParameter;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.ParameterType;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -217,7 +219,7 @@ public class Mutect2FilteringEngine {
                 final File extractDir = IOUtils.createTempDir("extract");
                 IOUtils.extractTarGz(tarGz.toPath(), extractDir.toPath());
                 return Arrays.stream(extractDir.listFiles());
-            }).collect(Collectors.toList());
+            }).filter(f -> OrientationBiasParameter.getParameterTypeOfFile(f) == ParameterType.ARTIFACT_PRIOR).collect(Collectors.toList());
 
             filters.add(new ReadOrientationFilter(artifactTables));
         }
