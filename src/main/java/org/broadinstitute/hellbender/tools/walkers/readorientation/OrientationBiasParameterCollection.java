@@ -52,10 +52,10 @@ public class OrientationBiasParameterCollection {
         map.put(revCompRefContext, revCompOrientationBiasParameter);
     }
 
-    public void writeParameters(final File output, ParameterType type){
+    public void writeParameters(final File output, final ParameterType type){
         final List<OrientationBiasParameter> priors = new ArrayList<>(map.values());
 
-        try (OrientationBiasParameter.LearnedParameterTableWriter writer = new OrientationBiasParameter.LearnedParameterTableWriter(
+        try (OrientationBiasParameter.ParameterTableWriter writer = new OrientationBiasParameter.ParameterTableWriter(
             IOUtils.fileToPath(output), sample, type)) {
             writer.writeAllRecords(priors);
         } catch (IOException e) {
@@ -66,12 +66,12 @@ public class OrientationBiasParameterCollection {
     /**
      * Contract: only read from the file created by {@code writeParameters}
      */
-    public static OrientationBiasParameterCollection readParameters(final File input, ParameterType type){
+    public static OrientationBiasParameterCollection readParameters(final File input, final ParameterType type){
         final List<OrientationBiasParameter> parameters;
         final String sample;
         final String parameterType;
 
-        try (OrientationBiasParameter.LearnedParameterTableReader reader = new OrientationBiasParameter.LearnedParameterTableReader(IOUtils.fileToPath(input))) {
+        try (OrientationBiasParameter.ParameterTableReader reader = new OrientationBiasParameter.ParameterTableReader(IOUtils.fileToPath(input))) {
             parameters = reader.toList();
             sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
             parameterType = reader.getMetadata().get(OrientationBiasParameter.PARAMETER_TYPE_TAG);

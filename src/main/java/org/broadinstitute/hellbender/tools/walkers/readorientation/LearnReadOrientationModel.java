@@ -168,9 +168,9 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                         maxEMIterations,
                         maxDepth,
                         logger);
-                final Pair<OrientationBiasParameter, OrientationBiasParameter> learnedParameters = engine.learnPriorForArtifactStates();
-                artifactPriors.set(learnedParameters.getLeft(), ParameterType.ARTIFACT_PRIOR);
-                posteriorAltF1R2.set(learnedParameters.getRight(), ParameterType.MEAN_ALT_F1R2_FRACTION);
+                final Pair<OrientationBiasParameter, OrientationBiasParameter> parameters = engine.learnPriorForArtifactStates();
+                artifactPriors.set(parameters.getLeft(), ParameterType.ARTIFACT_PRIOR);
+                posteriorAltF1R2.set(parameters.getRight(), ParameterType.MEAN_ALT_F1R2_FRACTION);
             }
 
             posteriorAltF1R2BySample.put(sample, posteriorAltF1R2);

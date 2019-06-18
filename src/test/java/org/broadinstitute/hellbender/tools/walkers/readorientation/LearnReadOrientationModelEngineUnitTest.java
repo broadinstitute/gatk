@@ -116,9 +116,9 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final Pair<OrientationBiasParameter, OrientationBiasParameter> learnedParameters = engine.learnPriorForArtifactStates();
-        final OrientationBiasParameter orientationBiasParameter = learnedParameters.getLeft();
-        final OrientationBiasParameter posteriorBetaMean = learnedParameters.getRight();
+        final Pair<OrientationBiasParameter, OrientationBiasParameter> parameters = engine.learnPriorForArtifactStates();
+        final OrientationBiasParameter artifactPrior = parameters.getLeft();
+        final OrientationBiasParameter posteriorBetaMean = parameters.getRight();
 
         final double epsilon = 1e-3;
         IntStream.range(0, F1R2FilterConstants.DEFAULT_MAX_DEPTH).mapToDouble(i -> MathUtils.sum(engine.getRefResonsibilities(i)))
@@ -130,8 +130,8 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         Assert.assertEquals(engine.getEffectiveCounts(artifactState), (double) numAltExamples, EPSILON);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.HOM_REF), (double) numRefExamples, EPSILON);
 
-        Assert.assertEquals(orientationBiasParameter.getParameter(artifactState), (double) numAltExamples/numExamples, EPSILON);
-        Assert.assertEquals(orientationBiasParameter.getParameter(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
+        Assert.assertEquals(artifactPrior.getParameter(artifactState), (double) numAltExamples/numExamples, EPSILON);
+        Assert.assertEquals(artifactPrior.getParameter(ArtifactState.HOM_REF), (double) numRefExamples/numExamples, EPSILON);
 
         Assert.assertEquals(posteriorBetaMean.getParameter(artifactState), 1.0, 1e-2);
     }
@@ -190,8 +190,8 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
-        final Pair<OrientationBiasParameter, OrientationBiasParameter> learnedParameters = engine.learnPriorForArtifactStates();
-        final OrientationBiasParameter artifactPrior = learnedParameters.getLeft();
+        final Pair<OrientationBiasParameter, OrientationBiasParameter> parameters = engine.learnPriorForArtifactStates();
+        final OrientationBiasParameter artifactPrior = parameters.getLeft();
 
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_T), (double) numArtifactExamples, epsilon);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.F1R2_A), (double) numArtifactExamples, epsilon);
@@ -206,7 +206,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
             Assert.assertEquals(artifactPrior.getParameter(state), 0.0);
         }
 
-        final OrientationBiasParameter meanF1R2Fraction = learnedParameters.getRight();
+        final OrientationBiasParameter meanF1R2Fraction = parameters.getRight();
         Assert.assertEquals(meanF1R2Fraction.getParameter(ArtifactState.F1R2_A), 1, 1e-2);
         Assert.assertEquals(meanF1R2Fraction.getParameter(ArtifactState.F1R2_T), 1, 1e-2);
     }

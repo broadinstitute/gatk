@@ -170,16 +170,13 @@ public class LearnReadOrientationModelEngine {
         }
 
         final OrientationBiasParameter artifactPrior = new OrientationBiasParameter(referenceContext, statePrior, numExamples, numAltExamples);
-
         final OrientationBiasParameter posteriorAltF1R2 = new OrientationBiasParameter(referenceContext, numExamples, numAltExamples);
 
         // Do the M-step for the posterior beta for the F1R2 fraction. Ignore the alt-depth-1 sites.
         double[] altF1R2Counts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltF1R2).toArray();
         double[] altCounts = altDesignMatrix.stream().mapToDouble(AltSiteRecord::getAltCount).toArray();
         for (final ArtifactState state: ArtifactState.getArtifactStates()) {
-            // Get the f1r2 frequency
             double[] responsibilities = altResponsibilities.getColumn(state.ordinal());
-
             double effectiveAltF1R2Sum = MathUtils.dotProduct(responsibilities, altF1R2Counts);
             double effectiveAltSum = MathUtils.dotProduct(responsibilities, altCounts);
             // +1 comes from a flat prior

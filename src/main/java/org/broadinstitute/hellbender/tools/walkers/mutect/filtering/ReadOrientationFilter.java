@@ -23,8 +23,8 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
     public ReadOrientationFilter(final List<File> readOrientationPriorTables) {
         readOrientationPriorTables.stream()
                 .forEach(file -> {
-                    final OrientationBiasParameterCollection orientationBiasParameterCollection = OrientationBiasParameterCollection.readParameters(file, ParameterType.ARTIFACT_PRIOR);
-                    artifactPriorCollections.put(orientationBiasParameterCollection.getSample(), orientationBiasParameterCollection);
+                    final OrientationBiasParameterCollection artifactPriorCollection = OrientationBiasParameterCollection.readParameters(file, ParameterType.ARTIFACT_PRIOR);
+                    artifactPriorCollections.put(artifactPriorCollection.getSample(), artifactPriorCollection);
                 });
     }
 
