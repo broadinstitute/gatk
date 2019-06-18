@@ -78,10 +78,11 @@ public class MapTestReadWalker extends ReadWalker {
     }
 
     private void processReads(final List<GATKRead> reads) {
-        boolean wasReadTweaked = false;
+
         final List<byte[]> tweakedReads = new ArrayList<>();
         final Map<byte[], GATKRead> tweakedReadToOriginalRead = new HashMap<>();
         for (final GATKRead read : reads) {
+            boolean wasReadTweaked = false;
             final byte[] bases = read.getBasesNoCopy();
             final byte[] tweakedbases = new byte[bases.length];
             for (int i = 0; i < bases.length; i++) {
@@ -128,7 +129,6 @@ public class MapTestReadWalker extends ReadWalker {
                 logger.info("Difference!");
             }
         }
-        bwaMemAligner.close();
     }
 
     private SimpleInterval incrementCountMap(final BwaMemAlignment bwaAlignment, final String contig, final Map<SimpleInterval, Integer> intervalToCountMap) {
