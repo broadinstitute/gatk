@@ -119,6 +119,7 @@ public class MapTestReadWalker extends ReadWalker {
             final BwaMemAlignment firstBwaMemAlignment = bwaAlignmentsForThisRead.get(0);
             if (firstBwaMemAlignment.getMapQual() < 30) {
                 numTweakedReadsFailMQ++;
+                incrementCountMap(tweakedReadToOriginalRead.get(tweakedReads.get(i)), preTweakedCounts);
                 return;
             }
             final String contig = getBestAvailableSequenceDictionary().getSequences().get(firstBwaMemAlignment.getRefId()).getSequenceName();
