@@ -85,8 +85,6 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     }
 
     /**
-     * Note there is no raw annotation data for AS_QualByDepth and thus data cannot be combined
-     *
      * @param allelesList   The merged allele list across all variants being combined/merged
      * @param listOfRawData The raw data for all the variants being combined/merged
      * @return
@@ -94,9 +92,58 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> combineRawData(List<Allele> allelesList, List<ReducibleAnnotationData<?>>  listOfRawData) {
-        return null;
+        //VC already contains merged alleles from ReferenceConfidenceVariantContextMerger
+        ReducibleAnnotationData<Integer> combinedData = new AlleleSpecificAnnotationData(allelesList, null);
+
+        for (final ReducibleAnnotationData<?> currentValue : listOfRawData) {
+            ReducibleAnnotationData<Integer> value = (ReducibleAnnotationData<Integer>)currentValue;
+            parseRawDataString(value);
+            combineAttributeMap(value, combinedData);
+        }
+        final Map<String, Object> annotations = new HashMap<>();
+        String annotationString = makeRawAnnotationString(allelesList, combinedData.getAttributeMap());
+        annotations.put(getRawKeyName(), annotationString);
+        return annotations;
     }
 
+    protected void parseRawDataString(final ReducibleAnnotationData<Integer> myData) {
+        final String rawDataString = myData.getRawData();
+        //get per-allele data by splitting on allele delimiter
+        final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
+        for (int i=0; i<rawDataPerAllele.length; i++) {
+            final String alleleData = rawDataPerAllele[i];
+            myData.putAttribute(myData.getAlleles().get(i), (alleleData.isEmpty() || alleleData.equals(AnnotationUtils.MISSING_VALUE)) ? null : Integer.parseInt(alleleData));
+        }
+    }
+
+    public void combineAttributeMap(final ReducibleAnnotationData<Integer> toAdd, final ReducibleAnnotationData<Integer> combined) {
+        //check that alleles match
+        for (final Allele currentAllele : combined.getAlleles()){
+            //combined is initialized with all alleles, but toAdd might have only a subset
+            if (toAdd.getAttribute(currentAllele) != null) {
+                if (toAdd.getAttribute(currentAllele) != null && combined.getAttribute(currentAllele) != null) {
+                    combined.putAttribute(currentAllele, (int)combined.getAttribute(currentAllele) + (int)toAdd.getAttribute(currentAllele));
+                } else {
+                    combined.putAttribute(currentAllele, toAdd.getAttribute(currentAllele));
+                }
+            }
+        }
+    }
+
+    private String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, Integer> perAlleleValues) {
+        String annotationString = "";
+        for (final Allele current : vcAlleles) {
+            if (!annotationString.isEmpty()) {
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
+            }
+            if(perAlleleValues.get(current) != null) {
+                annotationString += String.format("%d", perAlleleValues.get(current));
+            } else {
+                annotationString += String.format("%d", 0);
+            }
+        }
+        return annotationString;
+    }
 
     /**
      * Uses the "AS_QUAL" key, which must be computed by the genotyping engine in GenotypeGVCFs, to
@@ -218,7 +265,10 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
             String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
-            if (values.length != vc.getNAlleles()+1) {  //plus one because the non-ref place holder is still around
+            // We may or may not still have a placeholder value for NON_REF at this point, so we must
+            // tolerate both values.length == vc.getNAlleles() and values.length == vc.getNAlleles() + 1.
+            // Either way, we only add values up to vc.getNAlleles() to our alleleQualList below.
+            if (values.length != vc.getNAlleles() && values.length != vc.getNAlleles() + 1) {  //plus one because the non-ref place holder is still around
                 throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
             }
             for (int i = 1; i < vc.getNAlleles(); i++) {
