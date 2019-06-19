@@ -464,6 +464,50 @@ public final class IntervalUtils {
     }
 
     /**
+     * Sorts and merges an interval list.  Multiple techniques are available for merging: ALL, which combines
+     * all overlapping and abutting intervals into an interval that spans the union of all covered bases, and
+     * OVERLAPPING_ONLY, which unions overlapping intervals but keeps abutting intervals separate.
+     *
+     * NOTE: Sorts contigs by lexicographic order.
+     *
+     * @param intervals A collection of intervals to merge.
+     * @param mergingRule A descriptor for the type of merging to perform.
+     * @return A sorted, merged version of the intervals passed in.
+     */
+    public static List<SimpleInterval> sortAndMergeIntervals(List<SimpleInterval> intervals, final IntervalMergingRule mergingRule) {
+        // Make a copy of the (potentially unmodifiable) list to be sorted
+        intervals = new ArrayList<>(intervals);
+
+        // sort raw interval list
+        intervals.sort((a,b) -> {
+            if ( a == b ) { return 0; }
+            if ( a.getContig().equals(b.getContig()) ) {
+                if ( a.getStart() == b.getStart() ) {
+                    if ( a.getEnd() < b.getEnd() ) {
+                        return -1;
+                    }
+                    else {
+                        return 1;
+                    }
+                }
+                else if ( a.getStart() < b.getStart() ) {
+                    return -1;
+                }
+                else {
+                    return 1;
+                }
+            }
+            else {
+                return a.getContig().compareTo(b.getContig());
+            }
+
+        });
+
+        // now merge raw interval list
+        return mergeSimpleIntervals(intervals, mergingRule);
+    }
+
+    /**
      * computes whether the test interval list is equivalent to master.  To be equivalent, test must
      * contain GenomeLocs covering every base in master, exactly once.  Note that this algorithm
      * assumes that master genomelocs are all discontiguous (i.e., we don't have locs like 1-3 and 4-6 but
@@ -919,6 +963,37 @@ public final class IntervalUtils {
                     prev = prev.merge(curr);
                 } else if (prev.contiguousP(curr) && (rule == null || rule == IntervalMergingRule.ALL)) {
                     prev = prev.merge(curr);
+                } else {
+                    merged.add(prev);
+                    prev = curr;
+                }
+            }
+            merged.add(prev);
+            return Collections.unmodifiableList(merged);
+        }
+    }
+
+    /**
+     * merge a list of genome locs that may be overlapping, returning the list of unique genomic locations
+     *
+     * @param raw the unchecked genome loc list
+     * @param rule the merging rule we're using
+     *
+     * @return the list of merged locations
+     */
+    public static List<SimpleInterval> mergeSimpleIntervals(final List<SimpleInterval> raw, final IntervalMergingRule rule) {
+        if (raw.size() <= 1) {
+            return Collections.unmodifiableList(raw);
+        } else {
+            final ArrayList<SimpleInterval> merged = new ArrayList<>();
+            final Iterator<SimpleInterval> it = raw.iterator();
+            SimpleInterval prev = it.next();
+            while (it.hasNext()) {
+                final SimpleInterval curr = it.next();
+                if (prev.overlaps(curr)) {
+                    prev = new SimpleInterval( prev.getContig(), prev.getStart(), curr.getEnd() );
+                } else if (prev.contiguous(curr) && (rule == null || rule == IntervalMergingRule.ALL)) {
+                    prev = prev.mergeWithContiguous(curr);
                 } else {
                     merged.add(prev);
                     prev = curr;
