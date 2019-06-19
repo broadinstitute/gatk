@@ -192,7 +192,7 @@ class EvoquerEngine {
         // and will instead expect to be given URIs to precomputed results.
         this.precomputedResultsMode = true;
         this.useOptimizedQuery = false;
-        
+
         this.doLocalSort = false;
         this.localSortMaxRecordsInRam = 0;
 

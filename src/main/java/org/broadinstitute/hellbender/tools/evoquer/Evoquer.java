@@ -63,7 +63,7 @@ public class Evoquer extends GATKTool {
     public static final String DEFAULT_PROJECT_ID = "broad-dsp-spec-ops";
 
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
-    
+
     //==================================================================================================================
     // Private Static Members:
 
@@ -221,7 +221,7 @@ public class Evoquer extends GATKTool {
                 logger.info("Disabling index creation on the output VCF, since this tool writes an unsorted VCF");
                 createOutputVariantIndex = false;
             }
-            
+
             vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
             // Set up our EvoquerEngine:
