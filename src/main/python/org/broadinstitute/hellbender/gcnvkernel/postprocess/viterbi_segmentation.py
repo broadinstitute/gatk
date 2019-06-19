@@ -135,6 +135,9 @@ class ViterbiSegmentationEngine:
                 self.calling_config.num_copy_number_states,
                 self.calling_config.p_alt,
                 np.asarray([contig_baseline_copy_number], dtype=types.med_uint))
+            delta_ref_jc = HHMMClassAndCopyNumberBasicCaller.get_baseline_state_kronecker_delta_for_sample_jc(
+                self.calling_config.num_copy_number_states,
+                np.asarray([contig_baseline_copy_number], dtype=types.med_uint))
 
             # contig interval list and indices
             contig_interval_list = self.contig_interval_lists[contig]
@@ -151,7 +154,7 @@ class ViterbiSegmentationEngine:
 
             # get HMM specs
             hmm_specs = self.get_copy_number_hmm_specs(
-                pi_jkc, self.cnv_stay_prob_t_j[contig], log_q_tau_tk, t_to_j_map)
+                pi_jkc, self.cnv_stay_prob_t_j[contig], log_q_tau_tk, delta_ref_jc, t_to_j_map)
             log_prior_c = hmm_specs[0]
             log_trans_contig_tcc = hmm_specs[1]
 
