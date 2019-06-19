@@ -25,6 +25,24 @@ public final class SWNativeAlignerWrapper implements SmithWatermanAligner {
         this.aligner = aligner;
     }
 
+
+    //methods for printing out number of SW/non-SW alignments. not needed
+    public int getNumOfAlignments()
+    {
+        System.out.println("SW native wrapper being used");
+        return 0;
+    }
+    public int noSW()
+    {
+        System.out.println("native SW being used");
+        return 0;
+    }
+    public int yesSW()
+    {
+        System.out.println("native SW being used");
+        return 0;
+    }
+
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy){
         long startTime = System.nanoTime();

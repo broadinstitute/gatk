@@ -28,6 +28,11 @@ public interface SmithWatermanAligner extends Closeable {
      */
     SmithWatermanAlignment align(final byte[] ref, final byte[] alt, SWParameters parameters, SWOverhangStrategy overhangStrategy);
 
+    //methods for printing out number of SW/non-SW alignments
+    int getNumOfAlignments();
+    int noSW();
+    int yesSW();
+
     /**
      * Implementations may optionally implement close in order to release any resources that they are holding.
      *

@@ -699,6 +699,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public void shutdown() {
         likelihoodCalculationEngine.close();
+
+        //print out alignments
+        System.out.println("TOTAL NUMBER OF ALIGNMENTS:" + aligner.getNumOfAlignments());
+        System.out.println("NO SW:" + aligner.noSW());
+        System.out.println("YES SW:" + aligner.yesSW());
+
         aligner.close();
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
@@ -710,8 +716,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 throw new RuntimeIOException(e);
             }
         }
-
-
     }
 
     private Set<GATKRead> filterNonPassingReads( final AssemblyRegion activeRegion ) {

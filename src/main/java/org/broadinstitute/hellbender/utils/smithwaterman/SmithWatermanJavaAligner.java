@@ -24,6 +24,8 @@ import java.util.List;
 public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
     private long totalComputeTime = 0;
+    private long totalHeuristicTime = 0;
+    private long totalMismatchHeuristicTime = 0;
 
     /**
      * return the stateless singleton instance of SmithWatermanJavaAligner
@@ -42,6 +44,27 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         CLIP
     }
 
+    private int numOfAlignments = 0;
+    private int noSW = 0;
+    private int yesSW = 0;
+
+    //methods for printing out number of SW/non-SW alignments
+    public int getNumOfAlignments()
+    {
+        return numOfAlignments;
+    }
+
+    public int noSW()
+    {
+        return noSW;
+    }
+
+    public int yesSW()
+    {
+        return yesSW;
+    }
+
+
     /**
      * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
      * accessible via {@link #getInstance}
@@ -58,6 +81,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         long startTime = System.nanoTime();
 
+        numOfAlignments++;
+
         if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
         }
@@ -69,29 +94,55 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
+            long startHeuristic = System.nanoTime();
             matchIndex = Utils.lastIndexOf(reference, alternate);
+            totalHeuristicTime += System.nanoTime() - startHeuristic;
         }
 
         final SmithWatermanAlignment alignmentResult;
 
+        //if exact match
         if (matchIndex != -1) {
+
+            noSW++;
+
             // generate the alignment result when the substring search was successful
             final List<CigarElement> lce = new ArrayList<>(alternate.length);
             lce.add(makeElement(State.MATCH, alternate.length));
             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
         }
         else {
-            // run full Smith-Waterman
-            final int n = reference.length+1;
-            final int m = alternate.length+1;
-            final int[][] sw = new int[n][m];
-            final int[][] btrack=new int[n][m];
+            //look for one mismatch
+            long startOneMismatchHeuristic = System.nanoTime();
+            matchIndex = Utils.lastIndexOfOneMismatch(reference, alternate);
+            totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
 
-            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+            if (matchIndex != -1)
+            {
+                noSW++;
+
+                // generate the alignment result when the substring search was successful
+                final List<CigarElement> lce = new ArrayList<>(alternate.length);
+                lce.add(makeElement(State.MATCH, alternate.length));
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+            }
+            else{
+                // run full Smith-Waterman
+
+                yesSW++;
+
+                final int n = reference.length+1;
+                final int m = alternate.length+1;
+                final int[][] sw = new int[n][m];
+                final int[][] btrack=new int[n][m];
+
+                calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+            }
         }
 
         totalComputeTime += System.nanoTime() - startTime;
+
         return alignmentResult;
     }
 
@@ -389,5 +440,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     @Override
     public void close() {
         logger.info(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
+        logger.info(String.format("Total compute time in heuristic : %.2f sec", totalHeuristicTime * 1e-9));
+        logger.info(String.format("Total compute time in oneMismatch heuristic : %.2f sec", totalMismatchHeuristicTime * 1e-9));
     }
 }

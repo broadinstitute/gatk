@@ -613,6 +613,75 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result, expected);
     }
 
+    @Test
+    public void testLastIndexOfOneMismatchLastBoundaries() {
+        final String reference = "AAAACCCCTTTTGGGG";
+
+        // match right boundary of reference
+        String query = "TGAGG";
+        int result = Utils.lastIndexOfOneMismatch(reference.getBytes(), query.getBytes());
+        int expected = 11;
+        Assert.assertEquals(result, expected);
+
+        // match left boundary of reference
+        query = "AAGAC";
+        result = Utils.lastIndexOfOneMismatch(reference.getBytes(), query.getBytes());
+        expected = 0;
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testLastIndexOfOneMismatchRandom() {
+        final int num_tests = 100;
+        final int referenceLength = 1000;
+        final int queryLength = 100;
+
+        byte [] reference = new byte[referenceLength];
+        byte [] query = new byte[queryLength];
+
+        final Random rng = Utils.getRandomGenerator();
+
+        for (int i = 0; i < num_tests; i++) {
+            randomByteString(rng, reference);
+            randomByteString(rng, query);
+
+            int index = -1;
+            // add one-off query to reference at a random location for 75% of the tests
+            if (i % 4 > 0) {
+                index = rng.nextInt(referenceLength - queryLength);
+                int mismatch = index + rng.nextInt(queryLength);
+                for (int j = 0; j < queryLength; j++) {
+                    if (index + j == mismatch)
+                    {
+                        if ((char)(query[j] & 0xFF) == 'A')
+                        {
+                            reference[index + j] = (byte)'G';
+                        }
+                        if ((char)(query[j] & 0xFF) == 'G')
+                        {
+                            reference[index + j] = (byte)'C';
+                        }
+                        if ((char)(query[j] & 0xFF) == 'C')
+                        {
+                            reference[index + j] = (byte)'T';
+                        }
+                        if ((char)(query[j] & 0xFF) == 'T')
+                        {
+                            reference[index + j] = (byte)'A';
+                        }
+                    }
+                    else {
+                        reference[index + j] = query[j];
+                    }
+                }
+            }
+
+            final int result = Utils.lastIndexOfOneMismatch(reference, query);
+            final int expected = index;
+            Assert.assertEquals(result, expected);
+        }
+    }
+
     private void randomByteString(Random rng, byte[] bytes) {
         for (int i = 0; i < bytes.length; i++) {
             bytes[i] = (byte)(rng.nextInt(94) + 32);

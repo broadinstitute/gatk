@@ -1042,12 +1042,37 @@ public final class Utils {
      * @param query the query sequence
      */
     public static int lastIndexOf(final byte[] reference, final byte[] query) {
+
         int queryLength = query.length;
 
         // start search from the last possible matching position and search to the left
         for (int r = reference.length - queryLength; r >= 0; r--) {
             int q = 0;
             while (q < queryLength && reference[r+q] == query[q]) {
+                q++;
+            }
+            if (q == queryLength) {
+                return r;
+            }
+        }
+        return -1;
+    }
+
+    public static int lastIndexOfOneMismatch(final byte[] reference, final byte[] query)
+    {
+        int queryLength = query.length;
+
+        boolean oneMismatch;
+
+        // start search from the last possible matching position and search to the left
+        for (int r = reference.length - queryLength; r >= 0; r--) {
+            oneMismatch = false;
+            int q = 0;
+            while (q < queryLength && (reference[r+q] == query[q] || oneMismatch == false)) {
+                if (reference[r+q] != query[q])
+                {
+                    oneMismatch = true;
+                }
                 q++;
             }
             if (q == queryLength) {
