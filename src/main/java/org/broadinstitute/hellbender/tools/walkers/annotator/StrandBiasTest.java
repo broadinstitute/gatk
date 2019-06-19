@@ -78,7 +78,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         boolean foundData = false;
 
         for( final Genotype g : genotypes ) {
-            if( g.isNoCall() || ! g.hasAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY) ) {
+            if( ! g.hasAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY) ) {
                 continue;
             }
 
@@ -102,7 +102,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             final String sbbsString = (String)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
             data = encodeSBBS(sbbsString);
         } else if (g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(ArrayList.class)) {
-           if (((ArrayList<Object>)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)).get(0) instanceof Integer) {
+            if (((ArrayList<Object>)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)).get(0) instanceof Integer) {
                 data = encodeSBBS((ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
             }
             else if (((ArrayList<Object>)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)).get(0) instanceof String) {
@@ -238,7 +238,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
      * @param array the array used by the per-sample Strand Bias annotation
      * @return the table used by the StrandBiasTest annotation
      */
-    private static int[][] decodeSBBS( final int[] array ) {
+    public static int[][] decodeSBBS( final int[] array ) {
         if(array.length != ARRAY_SIZE) {
             return null;
         }

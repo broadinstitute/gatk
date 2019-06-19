@@ -171,7 +171,7 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertEquals(annotate.size(), 1, "size");
         Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), "annots");
         final double rms= MathUtils.sumOfSquares(MQsListOK); //only those are MQ0
-        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
+        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AnnotationUtils.AS_SPLIT_REGEX);
         Assert.assertEquals(split.length, 2);
         Assert.assertEquals(split[0], String.format("%.2f", rms));
         Assert.assertEquals(split[1], String.format("%.2f", 0.0));
@@ -188,7 +188,7 @@ public final class RMSMappingQualityUnitTest {
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
         final Map<String, Object> annotate = new AS_RMSMappingQuality().annotateRawData(referenceContext, vc, likelihoods);
-        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
+        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AnnotationUtils.AS_SPLIT_REGEX);
         Assert.assertEquals(split.length, 2);
         Assert.assertEquals(split[0], String.format("%.2f", 0.0));
         Assert.assertEquals(split[1], String.format("%.2f", 0.0));

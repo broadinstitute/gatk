@@ -1,0 +1,9 @@
+{
+  "Evoquer.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+  "Evoquer.gatk4_jar_override": "gs://broad-dsde-methods-jonn/gatk_builds/gatk-package-4.1.1.0-44-g01b2b6b-SNAPSHOT-local.jar",
+
+  "Evoquer.ref_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+
+  "Evoquer.intervals": [ "chr20:60000-65000" ],
+  "Evoquer.output_file_base_name": "evoked_variants"
+}

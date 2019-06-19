@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -48,9 +49,6 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
     private static final OneShotLogger allele_logger = new OneShotLogger(AS_RMSMappingQuality.class);
     private static final OneShotLogger genotype_logger = new OneShotLogger(AS_RMSMappingQuality.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
-    public static final String PRINT_DELIM = "|";
-
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -141,7 +139,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     protected void parseRawDataString(final ReducibleAnnotationData<Double> myData) {
         final String rawDataString = myData.getRawData();
         //get per-allele data by splitting on allele delimiter
-        final String[] rawDataPerAllele = rawDataString.split(SPLIT_DELIM);
+        final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.AS_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
             myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
@@ -198,7 +196,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         String annotationString = "";
         for (final Allele current : vcAlleles) {
             if (!annotationString.isEmpty()) {
-                annotationString += PRINT_DELIM;
+                annotationString += AnnotationUtils.PRINT_DELIM;
             }
             if(perAlleleValues.get(current) != null) {
                 annotationString += String.format(printFormat, perAlleleValues.get(current));

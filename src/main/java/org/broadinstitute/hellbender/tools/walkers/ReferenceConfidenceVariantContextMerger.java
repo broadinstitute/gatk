@@ -594,7 +594,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                     }
                 }
             }
-            genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).name(name);
+            // genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).name(name);
             mergedGenotypes.add(genotypeBuilder.make());
         }
 
