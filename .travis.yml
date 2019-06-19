@@ -21,6 +21,7 @@ env:
   - SCALA_VERSION=2.11 RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
   global:
   #gradle needs this
+  - NO_GCE_CHECK=true
   - TERM=dumb
   #limit gradle jvm memory and disable daemon
   - GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"

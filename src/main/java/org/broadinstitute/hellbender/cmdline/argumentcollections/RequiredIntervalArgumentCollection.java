@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -14,6 +15,12 @@ import java.util.List;
  */
 public final class RequiredIntervalArgumentCollection extends IntervalArgumentCollection {
     private static final long serialVersionUID = 1L;
+
+    public RequiredIntervalArgumentCollection() {}
+
+    public RequiredIntervalArgumentCollection(final IntervalMergingRule defaultIntervalMergingRule) {
+        super(defaultIntervalMergingRule);
+    }
 
     // Interval list files such as Picard interval lists are structured and require specialized parsing that
     // is handled by IntervalUtils, so use suppressFileExpansion to bypass command line parser auto-expansion.
