@@ -43,7 +43,7 @@ import java.util.*;
  * <p><b>InbreedingCoeff</b> also describes the heterozygosity of the called samples, though without explicitly taking into account the number of samples</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Phred-scaled p-value for exact test of excess heterozygosity (ExcessHet)")
-public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation {
+public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation, ReducibleAnnotation {
 
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
     private static final boolean ROUND_GENOTYPE_COUNTS = true;
@@ -209,10 +209,16 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
         return Collections.singletonList(GATKVCFConstants.EXCESS_HET_KEY);
     }
 
-    //@Override
-    public String getRawKeyName() {
+    @Override
+    public String getPrimaryRawKey() {
         return GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY;
     }
+
+    @Override
+    public boolean hasSecondaryRawKeys() { return false; }
+
+    @Override
+    public List<String> getSecondaryRawKeys() { return null; }
 
     /**
      * Generate the raw data necessary to calculate the annotation. Raw data is the final endpoint for gVCFs.
@@ -248,10 +254,10 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
      */
    //@Override
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
-        if (vc.hasAttribute(getRawKeyName())) {
-            List<Integer> counts = vc.getAttributeAsIntList(getRawKeyName(), 0);
+        if (vc.hasAttribute(getPrimaryRawKey())) {
+            List<Integer> counts = vc.getAttributeAsIntList(getPrimaryRawKey(), 0);
             if (counts.size() != NUMBER_OF_GENOTYPE_COUNTS) {
-                throw new IllegalStateException("Genotype counts for ExcessHet (" + getRawKeyName() + ") should have three values: homozygous reference, heterozygous with one ref allele, and homozygous variant/heterozygous non-reference");
+                throw new IllegalStateException("Genotype counts for ExcessHet (" + getPrimaryRawKey() + ") should have three values: homozygous reference, heterozygous with one ref allele, and homozygous variant/heterozygous non-reference");
             }
             final GenotypeCounts t = new GenotypeCounts(counts.get(0), counts.get(1), counts.get(2));
             final Pair<Integer, Double> sampleCountEH = calculateEH(vc, t, counts.get(0)+counts.get(1)+counts.get(2));

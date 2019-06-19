@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import org.apache.commons.math.special.Beta;
+import org.apache.commons.math3.special.Beta;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.testng.Assert;

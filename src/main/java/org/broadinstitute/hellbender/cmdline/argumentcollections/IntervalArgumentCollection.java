@@ -30,6 +30,12 @@ public abstract class IntervalArgumentCollection implements Serializable {
     public static final String INTERVAL_EXCLUSION_PADDING_LONG_NAME = "interval-exclusion-padding";
     public static final String INTERVAL_MERGING_RULE_LONG_NAME = "interval-merging-rule";
 
+    public IntervalArgumentCollection() {}
+
+    public IntervalArgumentCollection(final IntervalMergingRule defaultIntervalMergingRule) {
+        this.intervalMergingRule = defaultIntervalMergingRule;
+    }
+
     /**
      * Subclasses must provide a -L argument and override this to return the results of that argument.
      *
