@@ -304,7 +304,13 @@ public final class SimpleInterval implements Locatable, Serializable {
          return new SimpleInterval(contig, Math.min(start, other.getStart()), Math.max(end, other.getEnd()));
      }
 
-     private boolean contiguous(final Locatable that) {
+     /**
+      * Determines whether this interval is contiguous with the provided locatable.
+      *
+      * @param that interval to check
+      * @return true if this interval abuts that, otherwise false
+      */
+     public boolean contiguous(final Locatable that) {
          Utils.nonNull(that);
          return this.getContig().equals(that.getContig()) && this.getStart() <= that.getEnd() + 1 && that.getStart() <= this.getEnd() + 1;
      }
@@ -339,4 +345,6 @@ public final class SimpleInterval implements Locatable, Serializable {
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
      }
+
+
  }

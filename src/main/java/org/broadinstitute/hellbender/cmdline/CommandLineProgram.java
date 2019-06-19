@@ -410,6 +410,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * May be overridden by subclasses to specify a different set of settings to output.
      */
     protected void printSettings() {
+        logger.info("Java temp directory: " + tmpDir);
+
         if ( VERBOSITY != Log.LogLevel.DEBUG ) {
             logger.info("HTSJDK Defaults.COMPRESSION_LEVEL : " + Defaults.COMPRESSION_LEVEL);
             logger.info("HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS);
