@@ -536,7 +536,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             if (!doSomaticMerge) {
                 if (g.hasPL()) {
                     // lazy initialization of the genotype index map by ploidy.
-                    int[]  perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
+                    int[] perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
                     final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
                             ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
                             : genotypeIndexMapsByPloidy[ploidy];
@@ -544,6 +544,10 @@ public final class ReferenceConfidenceVariantContextMerger {
                     final int[] AD = g.hasAD() ? generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
                     genotypeBuilder.PL(PLs).AD(AD);
                 }
+
+                final List<Allele> remappedGTAlleles = g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList());
+                genotypeBuilder.alleles(remappedGTAlleles);
+                genotypeBuilder.name(name);
             }
             else {
                 genotypeBuilder.noAttributes();

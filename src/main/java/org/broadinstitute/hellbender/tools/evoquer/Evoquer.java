@@ -99,7 +99,7 @@ public class Evoquer extends GATKTool {
             fullName = "run-query-only",
             doc = "If true, just do the query against BigQuery and retrieve the resulting records, but don't write a VCF",
             optional = true)
-    private boolean runQueryOnly = true;
+    private boolean runQueryOnly = false;
 
     @Argument(
             fullName = "disable-gnarly-genotyper",
