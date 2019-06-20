@@ -3,6 +3,7 @@
   "CNVSomaticPairWorkflow.gatk_docker": "__GATK_DOCKER__",
   "CNVSomaticPairWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/ice_targets_sample-chr20.interval_list",
   "CNVSomaticPairWorkflow.is_run_funcotator": "true",
+  "CNVSomaticPairWorkflow.is_removing_untared_datasources": "true",
   "CNVSomaticPairWorkflow.funcotator_data_sources_tar_gz": "/home/travis/build/broadinstitute/ds.tar.gz",
   "CNVSomaticPairWorkflow.normal_bam": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.cram",
   "CNVSomaticPairWorkflow.normal_bam_idx": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.cram.crai",

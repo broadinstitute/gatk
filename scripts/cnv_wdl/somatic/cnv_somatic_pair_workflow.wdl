@@ -151,6 +151,14 @@ workflow CNVSomaticPairWorkflow {
     Int? mem_gb_for_funcotator
     File? funcotator_transcript_selection_list
     File? funcotator_data_sources_tar_gz
+    String? funcotator_transcript_selection_mode
+    Array[String]? funcotator_annotation_defaults
+    Array[String]? funcotator_annotation_overrides
+    Array[String]? funcotator_excluded_fields
+    Boolean? funcotator_is_removing_untared_datasources
+    Int? funcotator_disk_space_gb
+    Boolean? funcotator_use_ssd
+    Int? funcotator_cpu
 
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_fasta_dict, "GB") + size(ref_fasta_fai, "GB"))
     Int read_count_pon_size = ceil(size(read_count_pon, "GB"))
@@ -465,7 +473,15 @@ workflow CNVSomaticPairWorkflow {
                  gatk4_jar_override = gatk4_jar_override,
                  gatk_docker = gatk_docker,
                  mem_gb = mem_gb_for_funcotator,
-                 preemptible_attempts = preemptible_attempts
+                 preemptible_attempts = preemptible_attempts,
+                 transcript_selection_mode = funcotator_transcript_selection_mode,
+                 annotation_defaults = funcotator_annotation_defaults,
+                 annotation_overrides = funcotator_annotation_overrides,
+                 funcotator_excluded_fields = funcotator_excluded_fields,
+                 is_removing_untared_datasources = funcotator_is_removing_untared_datasources,
+                 disk_space_gb = funcotator_disk_space_gb,
+                 use_ssd = funcotator_use_ssd,
+                 cpu = funcotator_cpu
         }
     }
 
@@ -536,6 +552,8 @@ workflow CNVSomaticPairWorkflow {
 
         File oncotated_called_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_file, "null"])
         File oncotated_called_gene_list_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_gene_list_file, "null"])
+        File funcotated_called_file_tumor = select_first([CNVFuncotateSegmentsWorkflow.funcotated_seg_simple_tsv, "null"])
+        File funcotated_called_gene_list_file_tumor = select_first([CNVFuncotateSegmentsWorkflow.funcotated_gene_list_tsv, "null"])
     }
 }
 
