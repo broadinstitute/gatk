@@ -36,6 +36,7 @@ sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_T
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_somatic_pair_wgs_do-gc_workflow.json >cnv_somatic_pair_wgs_do-gc_workflow_mod.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_somatic_pair_wgs_do-gc_tumor_only_workflow.json > cnv_somatic_pair_wgs_do-gc_tumor_only_workflow_mod.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_somatic_pair_wes_no-gc_tumor_only_workflow.json > cnv_somatic_pair_wes_no-gc_tumor_only_workflow_mod.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_somatic_pair_wes_do-gc_workflow_funcotator.json > cnv_somatic_pair_wes_do-gc_workflow_funcotator_mod.json
 
 echo "Running ========"
 
@@ -60,3 +61,16 @@ java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv
 java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_do-gc_tumor_only_workflow_mod.json
 # Tumor only WES w/o explicit GC correction
 java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_no-gc_tumor_only_workflow_mod.json
+
+#### Test FuncotateSegments on a small run.
+#  Must tar up test datasources for the WDL
+echo "Preparing small gencode-only datasource dir for funcotator test..."
+pushd .
+cd /home/travis/build/broadinstitute/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/
+tar zcvf /home/travis/build/broadinstitute/ds.tar.gz small_cntn4_ds/gencode_cntn4/
+popd
+
+# Pair WES with funcotator
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl \
+  -i cnv_somatic_pair_wes_do-gc_workflow_funcotator_mod.json
+#####
