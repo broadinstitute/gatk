@@ -414,7 +414,7 @@ public class VariantEval extends MultiVariantWalker {
             for ( Class<? extends VariantEvaluator> ec : evaluationClasses )
                 if ( vs.getIncompatibleEvaluators().contains(ec) )
                     throw new CommandLineException.BadArgumentValue("ST and ET",
-                            "The selected stratification " + vs.getName() + 
+                            "The selected stratification " + vs.getName() +
                                     " and evaluator " + ec.getSimpleName() +
                                     " are incompatible due to combinatorial memory requirements." +
                                     " Please disable one");
@@ -427,9 +427,19 @@ public class VariantEval extends MultiVariantWalker {
 
         logger.info("Creating " + stratManager.size() + " combinatorial stratification states");
         for ( int i = 0; i < stratManager.size(); i++ ) {
-            EvaluationContext ec = new EvaluationContext(this, evaluationObjects);
+            EvaluationContext ec = createEvaluationContext(evaluationObjects);
             stratManager.set(i, ec);
         }
+    }
+
+    /**
+     * Create the EvaluationContext (new instance) for the provided set of VariantEvaluators.
+     *
+     * @param evaluationObjects The list of VariantEvaluator classes
+     * @return The EvaluationContext for this set of VariantEvaluator classes
+     */
+    protected EvaluationContext createEvaluationContext(final Set<Class<? extends VariantEvaluator>> evaluationObjects) {
+        return new EvaluationContext(this, evaluationObjects);
     }
 
     private class PositionAggregator {

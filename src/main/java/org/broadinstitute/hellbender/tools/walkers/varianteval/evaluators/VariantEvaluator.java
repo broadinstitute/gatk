@@ -11,6 +11,10 @@ public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
     private VariantEval walker;
     private final String simpleName;
 
+    protected VariantEvaluator(String simpleName) {
+        this.simpleName = simpleName;
+    }
+
     protected VariantEvaluator() {
         this.simpleName = getClass().getSimpleName();
     }
