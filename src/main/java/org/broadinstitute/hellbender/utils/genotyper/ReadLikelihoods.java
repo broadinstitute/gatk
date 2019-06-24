@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -1364,6 +1365,44 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      */
     public Map<String, List<PileupElement>> getStratifiedPileups(final Locatable loc) {
         return null;
+    }
+
+
+    public <B extends Allele> ReadLikelihoods<B> transform(final AlleleList<B> outAlleles, final RealMatrix realMatrix) {
+        if (realMatrix == null) {
+            throw new IllegalArgumentException("the input matrix cannot be null");
+        } else if (realMatrix.getColumnDimension() != numberOfAlleles()) {
+            throw new IllegalArgumentException("the input matrix must contain the same number of columns and rows as the number of alleles");
+        } else if (realMatrix.getRowDimension() != outAlleles.numberOfAlleles()) {
+            throw new IllegalArgumentException("the input matrix must contain the same number of rows as allele in the output collection");
+        }
+
+        final int sampleCount = samples.numberOfSamples();
+        final int outAlleleCount = outAlleles.numberOfAlleles();
+        final GATKRead[][] outputReads = new GATKRead[sampleCount][];
+        @SuppressWarnings("unchecked")
+        final Object2IntMap<GATKRead>[] outputReadIndeces = new Object2IntMap[sampleCount];
+        final double[][][] likelihoods = new double[sampleCount][outAlleleCount][];
+        final int alleleCount = outAlleles.numberOfAlleles();
+        final int thisAlleleCount = alleles.numberOfAlleles();
+        final double[] likelihoodComponents = new double[thisAlleleCount];
+        final double[][] coefficients = realMatrix.getData();
+        for (int s = 0; s < sampleCount; s++) {
+            outputReads[s] = readsBySampleIndex[s].clone();
+            final int readCount = outputReads[s].length;
+            likelihoods[s] = new double[alleleCount][];
+            final double[][] thisLikelihoods = valuesBySampleIndex[s];
+            for (int b = 0; b < alleleCount; b++) {
+                likelihoods[s][b] = new double[readCount];
+                for (int r = 0; r < readCount; r++) {
+                    for (int a = 0; a < thisAlleleCount; a++) {
+                        likelihoodComponents[a] = coefficients[b][a] + thisLikelihoods[a][r];
+                    }
+                    likelihoods[s][b][r] = MathUtils.log10sumLog10(likelihoodComponents);
+                }
+            }
+        }
+        return new ReadLikelihoods<>(outAlleles, this.samples, outputReads, outputReadIndeces, likelihoods);
     }
 
     /**
