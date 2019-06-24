@@ -13,7 +13,7 @@ public class EvoquerIntegrationTest extends CommandLineProgramTest {
     public void testChr20Dalio3Exomes() throws IOException {
         final String projectID = "broad-dsp-spec-ops";
         final String datasetMapString = "chr20   joint_genotyping_chr20_dalio_3  pet vet";
-        final String interval = "chr20:100000-500000"; //"chr20:157484";
+        final String interval = "chr20:157484"; // "chr20:100000-500000";
         final String outputVCF = "/Users/droazen/src/hellbender/evoquer_testChr20Dalio3Exomes.vcf";
 
         final File datasetMapFile = createTempFile("testChr20Dalio3Exomes", ".dataset_map");

@@ -475,7 +475,7 @@ class EvoquerEngine {
             unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
         }
 
-        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int)start, (int)start), refAllele.getBases()[0], true, true);
+        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int)start, (int)start), refAllele.getBases()[0], true, false);
         final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
 
         if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
