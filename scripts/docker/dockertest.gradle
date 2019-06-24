@@ -62,7 +62,7 @@ task testOnPackagedReleaseJar(type: Test){
     }
 
     classpath = files( gatkJar, testDependencyJar, testClassesJar)
-    testClassesDir = file(testClassesUnpacked)
+    testClassesDirs = files(testClassesUnpacked)
 }
 
 // Task intended to collect coverage data from testOnPackagedReleaseJar executed inside the docker image
