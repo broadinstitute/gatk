@@ -69,7 +69,7 @@ final testNGVersion = '6.11'
 // Using the shaded version to avoid conflicts between its protobuf dependency
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
 // provided by dataproc).
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.81.0-alpha:shaded'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.81.0-alpha'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -148,7 +148,7 @@ ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequ
 configurations.all {
     resolutionStrategy {
         // the snapshot folder contains a dev version of guava, we don't want to use that.
-        force 'com.google.guava:guava:18.0'
+        force 'com.google.guava:guava:27.1-jre'
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
         // later versions explode Hadoop
@@ -208,6 +208,9 @@ configurations {
         exclude module: 'spark-mllib_2.11'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
+        exclude group: 'javax.jms'
+        exclude group: 'com.sun.jdmk'
+        exclude group: 'com.sun.jmx'
     }
 }
 
@@ -235,7 +238,7 @@ dependencies {
         exclude module: 'protobuf-java'
     }
     compile 'com.opencsv:opencsv:3.4'
-    compile 'com.google.guava:guava:18.0'
+    compile 'com.google.guava:guava:27.1-jre'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
     compile googleCloudNioDependency
 
@@ -244,7 +247,7 @@ dependencies {
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
-    compile 'com.google.cloud.bigdataoss:gcs-connector:1.6.3-hadoop2'
+    compile 'com.google.cloud.bigdataoss:gcs-connector:hadoop2-1.9.17'
 
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
