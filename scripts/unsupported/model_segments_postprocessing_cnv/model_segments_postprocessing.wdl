@@ -81,7 +81,7 @@ workflow ModelSegmentsPostProcessingWorkflow {
     Array[String]? annotations_on_which_to_merge
     Int? min_hets_acs_results
     Float? maf90_threshold
-    Float maf90_threshold_final = select_first([maf90_threshold, 0.47])
+    Float maf90_threshold_final = select_first([maf90_threshold, 0.485])
     Boolean? is_ignore_cnloh_in_matched_normal
     Boolean is_ignore_cnloh_in_matched_normal_final = select_first([is_ignore_cnloh_in_matched_normal, true])
     Int? cnloh_check_max_size
@@ -524,6 +524,14 @@ task PrototypeACSConversion {
     String output_skew_filename = output_filename + ".skew"
     Int? min_hets_acs_results
     Int min_hets_acs_results_final = select_first([min_hets_acs_results, 0])
+    String? log2_cr_col_10 = "LOG2_COPY_RATIO_POSTERIOR_10_1"
+    String? log2_cr_col_50 = "LOG2_COPY_RATIO_POSTERIOR_50_1"
+    String? log2_cr_col_90 = "LOG2_COPY_RATIO_POSTERIOR_90_1"
+    String? maf_col_10 = "MINOR_ALLELE_FRACTION_POSTERIOR_10_1"
+    String? maf_col_50 = "MINOR_ALLELE_FRACTION_POSTERIOR_50_1"
+    String? maf_col_90 = "MINOR_ALLELE_FRACTION_POSTERIOR_90_1"
+    String? num_points_maf_col = "NUM_POINTS_ALLELE_FRACTION_1"
+    String? num_points_cr_col = "NUM_POINTS_COPY_RATIO"
 
     command <<<
         set -e
@@ -581,8 +589,8 @@ model_segments_seg_pd = pd.read_csv(model_segments_seg_input_file,
 model_segments_af_param_pd = pd.read_csv(model_segments_af_param_input_file, sep='\t', comment='@')
 
 def simple_determine_allelic_fraction(model_segments_seg_pd):
-    result = model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_50_1']
-    result[model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90_1'] > HAM_FIST_THRESHOLD] = 0.5
+    result = model_segments_seg_pd['${maf_col_50}']
+    result[model_segments_seg_pd['${maf_col_90}'] > HAM_FIST_THRESHOLD] = 0.5
     return result
 
 def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
@@ -593,9 +601,9 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
     alleliccapseg_seg_pd['Chromosome'] = model_segments_seg_pd['CONTIG']
     alleliccapseg_seg_pd['Start.bp'] = model_segments_seg_pd['START']
     alleliccapseg_seg_pd['End.bp'] = model_segments_seg_pd['END']
-    alleliccapseg_seg_pd['n_probes'] = model_segments_seg_pd['NUM_POINTS_COPY_RATIO']
+    alleliccapseg_seg_pd['n_probes'] = model_segments_seg_pd['${num_points_cr_col}']
     alleliccapseg_seg_pd['length'] = alleliccapseg_seg_pd['End.bp'] - alleliccapseg_seg_pd['Start.bp']
-    alleliccapseg_seg_pd['n_hets'] = model_segments_seg_pd['NUM_POINTS_ALLELE_FRACTION_1']
+    alleliccapseg_seg_pd['n_hets'] = model_segments_seg_pd['${num_points_maf_col}']
 
     #ModelSegments estimates posterior credible intervals, while AllelicCapSeg performs maximum a posteriori (MAP) estimation.
     #The copy-ratio and allele-fraction models fit by both also differ.
@@ -603,9 +611,9 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
 
     alleliccapseg_seg_pd['f'] = simple_determine_allelic_fraction(model_segments_seg_pd)
 
-    alleliccapseg_seg_pd['tau'] = 2. * 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_50_1']
-    alleliccapseg_seg_pd['sigma.tau'] = 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_90_1'] - 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_10_1']
-    sigma_f = (model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90_1'].values - model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_10_1'].values) / 2.
+    alleliccapseg_seg_pd['tau'] = 2. * 2**model_segments_seg_pd['${log2_cr_col_50}']
+    alleliccapseg_seg_pd['sigma.tau'] = 2**model_segments_seg_pd['${log2_cr_col_90}'] - 2**model_segments_seg_pd['${log2_cr_col_10}']
+    sigma_f = (model_segments_seg_pd['${maf_col_90}'].values - model_segments_seg_pd['${maf_col_10}'].values) / 2.
     sigma_mu = np.sqrt(sigma_f**2 + alleliccapseg_seg_pd['sigma.tau']**2) #we propagate errors in the products f * tau and (1 - f) * tau in the usual way
     alleliccapseg_seg_pd['mu.minor'] = alleliccapseg_seg_pd['f'] * alleliccapseg_seg_pd['tau']
     alleliccapseg_seg_pd['sigma.minor'] = sigma_mu
@@ -678,6 +686,7 @@ EOF
 }
 
 # Merge the model segments and the called file.
+#  Calls `CombineSegmentBreakpoints`
 task PrepareForACSConversion {
 	File called_seg
 	File modeled_seg
