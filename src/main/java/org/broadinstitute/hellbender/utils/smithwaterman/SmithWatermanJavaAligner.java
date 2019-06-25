@@ -49,18 +49,15 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private int yesSW = 0;
 
     //methods for printing out number of SW/non-SW alignments
-    public int getNumOfAlignments()
-    {
+    public int getNumOfAlignments() {
         return numOfAlignments;
     }
 
-    public int noSW()
-    {
+    public int noSW() {
         return noSW;
     }
 
-    public int yesSW()
-    {
+    public int yesSW() {
         return yesSW;
     }
 
@@ -107,28 +104,24 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             noSW++;
 
             // generate the alignment result when the substring search was successful
-            final List<CigarElement> lce = new ArrayList<>(alternate.length);
-            lce.add(makeElement(State.MATCH, alternate.length));
+            final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
         }
         else {
             //look for one mismatch
             long startOneMismatchHeuristic = System.nanoTime();
-            matchIndex = Utils.lastIndexOfOneMismatch(reference, alternate);
+            matchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
             totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
 
-            if (matchIndex != -1)
-            {
+            if (matchIndex != -1) {
                 noSW++;
 
                 // generate the alignment result when the substring search was successful
-                final List<CigarElement> lce = new ArrayList<>(alternate.length);
-                lce.add(makeElement(State.MATCH, alternate.length));
+                final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
                 alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
             }
             else{
                 // run full Smith-Waterman
-
                 yesSW++;
 
                 final int n = reference.length+1;
