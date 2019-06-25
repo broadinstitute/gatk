@@ -654,7 +654,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         //will catch first match it encounters from the right
         int expected = reference.length() - query1.length();
         Assert.assertEquals(result, expected);
-        }
+    }
 
     @Test
     public void testLastIndexOfAtMostOneMismatchRandom() {
