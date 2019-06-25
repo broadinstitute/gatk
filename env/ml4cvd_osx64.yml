@@ -86,6 +86,7 @@ dependencies:
       - pytz==2017.3
       - pyyaml==3.12
       - pyzmq==17.1.2
+      - seaborn==0.9.0
       - scikit-learn==0.19.1
       - scipy==1.0.0
       - tensorboard==1.11.0

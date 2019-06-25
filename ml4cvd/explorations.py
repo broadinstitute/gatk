@@ -18,12 +18,10 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_hidden_layer_model
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 CSV_EXT = '.csv'
@@ -147,6 +145,24 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
     plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
 
+def plot_heatmap_from_tensor_files(id: str,
+                                   tensor_folder: str,
+                                   output_folder: str,
+                                   min_samples: int,
+                                   max_samples: int = None) -> None:
+    """
+    :param id: name for the plotting run
+    :param tensor_folder: directory with tensor files to plot histograms from
+    :param output_folder: folder containing the output plot
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
+    :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
+    """
+
+    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples, ['0'], 0)
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...")
+    plot_heatmap(stats, id, min_samples, output_folder)
+
+
 def tabulate_correlations_from_tensor_files(id: str,
                                             tensor_folder: str,
                                             output_folder: str,
@@ -162,7 +178,7 @@ def tabulate_correlations_from_tensor_files(id: str,
 
     stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...")
-    tabulate_correlations(stats, id, min_samples, output_folder)
+    _tabulate_correlations(stats, id, min_samples, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
@@ -281,7 +297,6 @@ def tensors_to_label_dictionary(categorical_labels: List,
     return label_dict
 
 
-
 def _sample_with_heat(preds, temperature=1.0):
     # helper function to sample an index from a probability array
     preds = np.asarray(preds).astype('float64')
@@ -292,10 +307,10 @@ def _sample_with_heat(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
-                          output_file_name: str,
-                          min_samples: int,
-                          output_folder_path: str) -> None:
+def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
+                           output_file_name: str,
+                           min_samples: int,
+                           output_folder_path: str) -> None:
 
     """
     Tabulate in pdf correlations of field values given in 'stats'
@@ -369,7 +384,9 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
 
 
 def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
-                                                max_samples: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
+                                                max_samples: int = None,
+                                                instances: List[str] = ['0', '1', '2'],
+                                                max_arr_idx: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
     if not os.path.exists(tensor_folder):
         raise ValueError('Source directory does not exist: ', tensor_folder)
     all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
@@ -389,7 +406,7 @@ def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
     stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
     file_count = 0
     for tensor_file in tensor_files:
-        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
+        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats, instances, max_arr_idx)
         file_count += 1
         if file_count % 1000 == 0:
             logging.debug(f"Collected continuous stats from {file_count}.")
@@ -399,7 +416,9 @@ def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
 
 def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                                                tensor_file: str,
-                                               stats: DefaultDict[str, DefaultDict[str, List[float]]]) -> None:
+                                               stats: DefaultDict[str, DefaultDict[str, List[float]]],
+                                               instances: List[str],
+                                               max_arr_idx) -> None:
     # Inlining the method below to be able to reference more from the scope than the arguments of the function
     # 'h5py.visititems()' expects. It expects a func(<name>, <object>) => <None or return value>).
     def _field_meaning_to_values_dict(_, obj):
@@ -415,7 +434,9 @@ def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                 field_meaning = dataset_name_parts[1]
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
-                stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
+                if instance in instances:
+                    if max_arr_idx is None or (max_arr_idx is not None and int(array_idx) <= max_arr_idx):
+                        stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
             else:  # e.g. /continuous/VentricularRate
                 field_meaning = dataset_name_parts[0]
                 stats[field_meaning][sample_id].append(field_value)

@@ -3,8 +3,8 @@
 # This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
 # and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 #
-# It assumes 'gcloud' has been installed and Docker has been configured to use 'gcloud' as a credential helper
-# by running 'gcloud auth configure-docker'.
+# It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
+# by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
 
 # Stop the execution if any of the commands fails
 set -e
@@ -38,8 +38,8 @@ usage()
     This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
     and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 
-    It assumes 'gcloud' has been installed and Docker has been configured to use 'gcloud' as a credential helper
-    by running 'gcloud auth configure-docker'.
+    It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
+    by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
 
     Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-chp]
 
