@@ -69,7 +69,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
      * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
      * accessible via {@link #getInstance}
      */
-    private SmithWatermanJavaAligner(){}
+    public SmithWatermanJavaAligner(){}
 
     /**
      * Aligns the alternate sequence to the reference sequence
