@@ -644,6 +644,18 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result2, -1);
     }
 
+     @Test
+    public void testLastIndexOfAtMostOneMismatchOneMismatchTwice() {
+        final String reference = "AGGCCCCCTTTTGGGG";
+
+        //matches both boundaries of reference
+        final String query1 = "AGGG";
+        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes());
+        //will catch first match it encounters from the right
+        int expected = reference.length() - query1.length();
+        Assert.assertEquals(result, expected);
+        }
+
     @Test
     public void testLastIndexOfAtMostOneMismatchRandom() {
         final int numTests = 100;
