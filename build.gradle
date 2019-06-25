@@ -511,7 +511,7 @@ jacocoTestReport {
 
     group = "Reporting"
     description = "Generate Jacoco coverage reports after running tests."
-    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+    getAdditionalSourceDirs().from(sourceSets.main.allJava.srcDirs)
 
     reports {
         xml.enabled = true
