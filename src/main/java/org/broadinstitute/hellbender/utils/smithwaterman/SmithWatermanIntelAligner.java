@@ -45,23 +45,6 @@ public final class SmithWatermanIntelAligner implements SmithWatermanAligner {
         return alignerWrapper.align(reference, alternate, parameters, overhangStrategy);
     }
 
-    //methods for printing out number of SW/non-SW alignments. not needed for now
-    public int getNumOfAlignments()
-    {
-        System.out.println("Intel SW being used");
-        return 0;
-    }
-    public int noSW()
-    {
-        System.out.println("Intel SW being used");
-        return 0;
-    }
-    public int yesSW()
-    {
-        System.out.println("Intel SW being used");
-        return 0;
-    }
-
     /**
      * Close the aligner
      */

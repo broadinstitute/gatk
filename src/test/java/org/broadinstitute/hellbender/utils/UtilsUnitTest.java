@@ -630,6 +630,35 @@ public final class UtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testLastIndexOfAtMostOneMismatchRandomExactMatch() {
+        final int numTests = 100;
+        final int referenceLength = 100;
+        final int queryLength = 10;
+
+        byte[] reference = new byte[referenceLength];
+        byte[] query = new byte[queryLength];
+
+        final Random rng = Utils.getRandomGenerator();
+
+        for (int i = 0; i < numTests; i++) {
+            randomByteString(rng, reference);
+            randomByteString(rng, query);
+
+            int index = -1;
+
+            //add query to reference at a random lo cation for 75% of the tests
+            if (i % 4 > 0) {
+                index = rng.nextInt(referenceLength - queryLength);
+                System.arraycopy(query,0, reference, index, queryLength);
+            }
+
+            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query);
+            final int expected = index;
+            Assert.assertEquals(result, expected);
+        }
+    }
+
+    @Test
     public void testLastIndexOfAtMostOneMismatchTwoMismatches() {
         final String reference = "AAAACCCCTTTTGGGG";
 
@@ -679,35 +708,6 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 System.arraycopy(query,0, reference, index, queryLength);
                 int mismatchPosition = rng.nextInt(queryLength);
                 reference[index + mismatchPosition] = BaseUtils.simpleComplement(query[mismatchPosition]);
-            }
-
-            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query);
-            final int expected = index;
-            Assert.assertEquals(result, expected);
-        }
-    }
-
-    @Test
-    public void testLastIndexOfAtMostOneMismatchRandomExactMatch() {
-        final int numTests = 100;
-        final int referenceLength = 100;
-        final int queryLength = 10;
-
-        byte[] reference = new byte[referenceLength];
-        byte[] query = new byte[queryLength];
-
-        final Random rng = Utils.getRandomGenerator();
-
-        for (int i = 0; i < numTests; i++) {
-            randomByteString(rng, reference);
-            randomByteString(rng, query);
-
-            int index = -1;
-
-            //add query to reference at a random lo cation for 75% of the tests
-            if (i % 4 > 0) {
-                index = rng.nextInt(referenceLength - queryLength);
-                System.arraycopy(query,0, reference, index, queryLength);
             }
 
             final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query);

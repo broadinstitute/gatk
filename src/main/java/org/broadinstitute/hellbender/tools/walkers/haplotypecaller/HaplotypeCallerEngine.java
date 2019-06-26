@@ -97,8 +97,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private SmithWatermanAligner aligner;
 
-    private SmithWatermanAligner alignerHaplotypeToRef;
-
     public static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
 
     /**
@@ -157,7 +155,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.referenceReader = Utils.nonNull(referenceReader);
         this.annotationEngine = Utils.nonNull(annotationEngine);
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
-        this.alignerHaplotypeToRef = new SmithWatermanJavaAligner();
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
@@ -543,7 +540,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, alignerHaplotypeToRef, !hcArgs.doNotCorrectOverlappingBaseQualities);
+        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
         
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
 
@@ -704,17 +701,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     public void shutdown() {
         likelihoodCalculationEngine.close();
 
-        //print out alignments
-        System.out.println("TOTAL NUMBER OF ALIGNMENTS (reads to ref):" + aligner.getNumOfAlignments());
-        System.out.println("NO SW:" + aligner.noSW());
-        System.out.println("YES SW:" + aligner.yesSW());
-
-        System.out.println("TOTAL NUMBER OF ALIGNMENTS (haplotypes to ref):" + alignerHaplotypeToRef.getNumOfAlignments());
-        System.out.println("NO SW:" + alignerHaplotypeToRef.noSW());
-        System.out.println("YES SW:" + alignerHaplotypeToRef.yesSW());
-
         aligner.close();
-        alignerHaplotypeToRef.close();
 
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
