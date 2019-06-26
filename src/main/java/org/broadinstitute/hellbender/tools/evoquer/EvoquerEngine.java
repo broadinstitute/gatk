@@ -15,6 +15,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -104,10 +105,15 @@ class EvoquerEngine {
 
     private final boolean disableGnarlyGenotyper;
 
+    private final boolean skipMalformedASAnnotations;
+
     private final boolean printDebugInformation;
 
     private final ProgressMeter progressMeter;
 
+    private int numberOfSkippedVariants = 0;
+    private int totalNumberOfVariants = 0;
+    private int totalNumberOfSites = 0;
 
     EvoquerEngine( final String projectID,
                    final Map<String, Evoquer.EvoquerDataset> datasetMap,
@@ -118,6 +124,7 @@ class EvoquerEngine {
                    final ReferenceDataSource refSource,
                    final boolean runQueryOnly,
                    final boolean disableGnarlyGenotyper,
+                   final boolean skipMalformedASAnnotations,
                    final boolean printDebugInformation,
                    final ProgressMeter progressMeter ) {
 
@@ -127,6 +134,7 @@ class EvoquerEngine {
         this.queryRecordLimit = queryRecordLimit;
         this.runQueryOnly = runQueryOnly;
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
+        this.skipMalformedASAnnotations = skipMalformedASAnnotations;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
 
@@ -192,7 +200,11 @@ class EvoquerEngine {
     VCFHeader getHeader() {
         return vcfHeader;
     }
-    
+
+    int getNumberOfSkippedVariants() { return numberOfSkippedVariants; }
+    int getTotalNumberOfVariants() { return totalNumberOfVariants; }
+    int getTotalNumberOfSites() { return totalNumberOfSites; }
+
     //==================================================================================================================
     // Private Instance Methods:
 
@@ -303,7 +315,9 @@ class EvoquerEngine {
             if ( runQueryOnly ) {
                 continue;
             }
-            
+
+            ++totalNumberOfSites;
+
             final long currentPosition = Long.parseLong(row.get(POSITION_FIELD_NAME).toString());
             final List<VariantContext> unmergedCalls = new ArrayList<>();
             final Set<String> currentPositionSamplesSeen = new HashSet<>();
@@ -327,8 +341,20 @@ class EvoquerEngine {
 
                 switch (sampleRecord.get(STATE_FIELD_NAME).toString()) {
                     case "v":   // Variant
-                        currentPositionHasVariant = true;
-                        unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName));
+                        ++totalNumberOfVariants;
+                        final VariantContext sampleVariant = createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName);
+
+                        // HACK to get around corrupt AS annotations in our test dataset:
+                        // replace malformed variant records with MISSING
+                        if ( skipMalformedASAnnotations && alleleSpecificAnnotationsAreMalformed(sampleVariant) ) {
+                            ++numberOfSkippedVariants;
+                            logger.warn(String.format("Skipping variant record for sample %s at %s:%d due to malformed allele-specific annotations",
+                                    sampleName, contig, currentPosition));
+                        } else {
+                            unmergedCalls.add(sampleVariant);
+                            currentPositionHasVariant = true;
+                        }
+
                         break;
                     case "0":   // Non Variant Block with GQ < 10
                         unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 0));
@@ -475,27 +501,40 @@ class EvoquerEngine {
             unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
         }
 
-        // HACK for now to get around incorrect allele-specific annotation values in our dalio exome dataset
-        VariantContext mergedVC = null;
-        boolean skipSite = false;
-        try {
-            mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], true, false);
-        } catch ( IndexOutOfBoundsException e ) {
-            skipSite = true;
-            logger.warn(String.format("***WARNING: skipping site %s:%d due to IndexOutOfBoundsException in ReferenceConfidenceVariantContextMerger.merge()", contig, start));
+        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], true, false);
+        final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
+
+        if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
+            vcfWriter.add(finalizedVC);
+            progressMeter.update(finalizedVC);
+        }
+        else {
+            logger.warn(String.format("GnarlyGenotyper returned null for site %s:%s", contig, start));
+            progressMeter.update(mergedVC);
+        }
+    }
+
+    // HACK to deal with malformed allele-specific annotations in our test dataset
+    private boolean alleleSpecificAnnotationsAreMalformed( final VariantContext vc ) {
+        // AS_RAW_MQ  AS_RAW_MQRankSum  AS_QUALapprox  AS_RAW_ReadPosRankSum  AS_SB_TABLE  AS_VarDP
+        final int AS_RAW_MQ_values = StringUtils.countMatches(vc.getAttributeAsString("AS_RAW_MQ", ""), "|") + 1;
+        final int AS_RAW_MQRankSum_values = StringUtils.countMatches(vc.getAttributeAsString("AS_RAW_MQRankSum", ""), "|") + 1;
+        final int AS_QUALapprox_values = StringUtils.countMatches(vc.getAttributeAsString("AS_QUALapprox", ""), "|") + 1;
+        final int AS_RAW_ReadPosRankSum_values = StringUtils.countMatches(vc.getAttributeAsString("AS_RAW_ReadPosRankSum", ""), "|") + 1;
+        final int AS_SB_TABLE_values = StringUtils.countMatches(vc.getAttributeAsString("AS_SB_TABLE", ""), "|") + 1;
+        final int AS_VarDP_values = StringUtils.countMatches(vc.getAttributeAsString("AS_VarDP", ""), "|") + 1;
+
+        if ( AS_RAW_MQ_values != vc.getNAlleles() ||
+             AS_RAW_MQRankSum_values != vc.getNAlleles() ||
+             AS_QUALapprox_values != vc.getNAlleles() - 1 ||
+             AS_RAW_ReadPosRankSum_values != vc.getNAlleles() ||
+             AS_SB_TABLE_values != vc.getNAlleles() ||
+             AS_VarDP_values != vc.getNAlleles() ) {
+
+            return true;
         }
 
-        if ( ! skipSite ) {
-            final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
-
-            if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
-                vcfWriter.add(finalizedVC);
-                progressMeter.update(finalizedVC);
-            }
-            else {
-                progressMeter.update(mergedVC);
-            }
-        }
+        return false;
     }
 
     private void populateSampleNames() {
