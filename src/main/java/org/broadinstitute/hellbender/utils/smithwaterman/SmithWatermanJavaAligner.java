@@ -106,19 +106,65 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             // generate the alignment result when the substring search was successful
             final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+
+
+            //the following code checks to see if the output produced by the heuristic is identical to the output that SW would've produced
+            Cigar cigar3 = alignmentResult.getCigar();
+
+            final int n = reference.length+1;
+            final int m = alternate.length+1;
+            final int[][] sw = new int[n][m];
+            final int[][] btrack=new int[n][m];
+
+            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+            SmithWatermanAlignment alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
+            Cigar cigar4 = alignmentResult2.getCigar();
+
+            if(!cigar3.equals(cigar4)){
+                System.out.println("Cigars for exact match aren't equal!!");
+                System.out.println(cigar3.toString());
+                System.out.println(cigar4.toString());
+            }
         }
         else {
-            //look for one mismatch
-            long startOneMismatchHeuristic = System.nanoTime();
-            matchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
-            totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
-
-            if (matchIndex != -1) {
+            int matchIndex2 = -1;
+            if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                // Use a substring search to find a one-off match of the alternate in the reference
+                // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
+                //look for one mismatch
+                long startOneMismatchHeuristic = System.nanoTime();
+                matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
+                totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
+            }
+            if (matchIndex2 != -1) {
                 noSW++;
 
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
-                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex2);
+                Cigar cigar1 = alignmentResult.getCigar();
+
+                //run SW to see if it produces the same alignment as heuristic
+                final int n = reference.length+1;
+                final int m = alternate.length+1;
+                final int[][] sw = new int[n][m];
+                final int[][] btrack=new int[n][m];
+
+                calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                SmithWatermanAlignment alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
+                Cigar cigar2 = alignmentResult2.getCigar();
+
+                if(!cigar1.equals(cigar2)){
+                    System.out.println("Cigars aren't equal!!");
+                    System.out.println(cigar1.toString());
+                    System.out.println(cigar2.toString());
+                    System.out.println(new String(reference));
+                    System.out.println(new String(alternate));
+                    System.out.println("Match Index: " + matchIndex2);
+                    System.out.println("Alignment offset: " + alignmentResult2.getAlignmentOffset());
+                    System.out.println(Utils.lastIndexOf(reference, alternate));
+                    System.out.println(overhangStrategy.toString());
+                }
             }
             else{
                 // run full Smith-Waterman
