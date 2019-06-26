@@ -83,13 +83,16 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
         }
         else {
-            //look for one mismatch
-            matchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
+            int matchIndex2 = -1;
+            if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                //look for one mismatch
+                matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
+            }
 
-            if (matchIndex != -1) {
+            if (matchIndex2 != -1) {
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
-                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex2);
             }
             else{
                 // run full Smith-Waterman
