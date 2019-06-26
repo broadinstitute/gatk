@@ -453,3 +453,98 @@ task PostprocessGermlineCNVCalls {
         File genotyped_segments_vcf = genotyped_segments_vcf_filename
     }
 }
+
+task CollectSampleQualityMetrics {
+    Array[File] genotyped_segments_vcf
+    Array[String] entity_ids
+
+    Int? maximum_number_events = 120
+
+    # Runtime parameters
+    String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 1]) * 1000
+
+    String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+
+    command <<<
+        set -e 
+
+        genotyped_segments_vcfs_array=(${sep=" " genotyped_segments_vcf})
+        entity_ids=(${sep=" " entity_ids})
+        for index in ${dollar}{!genotyped_segments_vcfs_array[@]}; do
+            NUM_SEGMENTS=$(grep -v '@' ${dollar}{genotyped_segments_vcfs_array[$index]} | wc -l)
+            if [ $NUM_SEGMENTS -lt ${maximum_number_events} ]; then
+                echo "PASS" >> ./${dollar}{entity_ids[$index]}.qcStatus.txt
+            else 
+                echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ./${dollar}{entity_ids[$index]}.qcStatus.txt
+            fi
+        done
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        Array[File] qc_status_files = glob("*.qcStatus.txt")
+    }
+}
+
+task CollectModelQualityMetrics {
+    Array[File] gcnv_model_tars
+
+    # Runtime parameters
+    String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 1]) * 1000
+
+    String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+
+    command <<<
+        sed -e 
+        qc_status="PASS"
+
+        gcnv_model_tar_array=(${sep=" " gcnv_model_tars})
+        for index in ${dollar}{!gcnv_model_tar_array[@]}; do
+            gcnv_model_tar=${dollar}{gcnv_model_tar_array[$index]}
+            mkdir MODEL_$index
+            tar xzf $gcnv_model_tar -C MODEL_$index
+            ard_file=MODEL_$index/mu_ard_u_log__.tsv
+
+            #check whether all values for ARD components are negative
+            NUM_POSITIVE_VALUES=$(awk '{ if (index($0, "@") == 0) {if ($1 > 0.0) {print $1} }}' MODEL_$index/mu_ard_u_log__.tsv | wc -l)
+            if [ $NUM_POSITIVE_VALUES -eq 0 ]; then
+                qc_status="ALL_PRINCIPAL_COMPONENTS_USED"
+                break
+            fi
+        done
+        echo $qc_status >> qcStatus.txt
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File qc_status = "qcStatus.txt"
+    }
+}

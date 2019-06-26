@@ -191,6 +191,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
         Array[Array[File]] gcnv_tracking_tars = CNVGermlineCaseWorkflow.gcnv_tracking_tars
         Array[Array[File]] genotyped_intervals_vcf = CNVGermlineCaseWorkflow.genotyped_intervals_vcf
         Array[Array[File]] genotyped_segments_vcf = CNVGermlineCaseWorkflow.genotyped_segments_vcf
+        Array[Array[File]] qc_status_files = CNVGermlineCaseWorkflow.qc_status_files
     }
 }
 

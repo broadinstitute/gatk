@@ -326,6 +326,21 @@ workflow CNVGermlineCohortWorkflow {
         }
     }
 
+    call CNVTasks.CollectSampleQualityMetrics {
+        input:
+            genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
+            entity_ids = CollectCounts.entity_id,
+            gatk_docker = gatk_docker,
+            preemptible_attempts = preemptible_attempts
+    }
+
+    call CNVTasks.CollectModelQualityMetrics {
+        input:
+            gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
+            gatk_docker = gatk_docker,
+            preemptible_attempts = preemptible_attempts
+    }
+
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
         Array[File] read_counts_entity_ids = CollectCounts.entity_id
@@ -339,6 +354,8 @@ workflow CNVGermlineCohortWorkflow {
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_files
+        File model_qc_status = CollectModelQualityMetrics.qc_status
     }
 }
 
