@@ -475,14 +475,26 @@ class EvoquerEngine {
             unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
         }
 
-        final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int)start, (int)start), refAllele.getBases()[0], true, false);
-        final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
+        // HACK for now to get around incorrect allele-specific annotation values in our dalio exome dataset
+        VariantContext mergedVC = null;
+        boolean skipSite = false;
+        try {
+            mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], true, false);
+        } catch ( IndexOutOfBoundsException e ) {
+            skipSite = true;
+            logger.warn(String.format("***WARNING: skipping site %s:%d due to IndexOutOfBoundsException in ReferenceConfidenceVariantContextMerger.merge()", contig, start));
+        }
 
-        if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
-            vcfWriter.add(finalizedVC);
-            progressMeter.update(finalizedVC);
-        } else {
-            progressMeter.update(mergedVC);
+        if ( ! skipSite ) {
+            final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
+
+            if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
+                vcfWriter.add(finalizedVC);
+                progressMeter.update(finalizedVC);
+            }
+            else {
+                progressMeter.update(mergedVC);
+            }
         }
     }
 
