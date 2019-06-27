@@ -718,7 +718,6 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
  *This specifies what artifacts will be built and uploaded when performing a maven upload.
  */
 artifacts {
-    archives jar
     archives javadocJar
     archives sourcesJar
     archives testUtilsJar
