@@ -752,6 +752,24 @@ public final class UtilsUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test
+    public void atMostOneIndel(){
+        //deletion
+        String reference = "AGGATTTGGGATTAC";
+        String query =     "ATTTGGGATTAC";
+
+        int result = Utils.atMostOneIndel(reference.getBytes(), query.getBytes());
+        int expected = 1;
+        Assert.assertEquals(result, expected);
+
+        //insertion
+        String reference2 = "ATTTAGTGGGATTA";
+        String query2 =     "ATTTAGTGGGATATA";
+        int result2 = Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes());
+        int expected2 = 12;
+        Assert.assertEquals(result2, expected2);
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testListFromPrimitivesNull() throws Exception {
         Utils.listFromPrimitives(null);

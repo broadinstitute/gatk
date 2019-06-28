@@ -1076,6 +1076,80 @@ public final class Utils {
         return -1;
     }
 
+    //right now this method will only be used for haplotype-ref alignment
+    public static int atMostOneIndel(final byte[] reference, final byte[] query){
+        int referenceLength = reference.length;
+        int queryLength = query.length;
+
+        if (queryLength < referenceLength){
+            //search for deletion
+            for(int i = 0; i < queryLength; i++){
+                //mismatch represents the beginning of the potential indel
+                if (reference[i] != query[i]){
+                    //look for exact match between non-traversed query and reference
+                    byte[] newReference = new byte[referenceLength - i - 1];
+                    System.arraycopy(reference, i + 1, newReference, 0, referenceLength - i - 1);
+                    byte[] newQuery = new byte[queryLength - i];
+                    System.arraycopy(query, i, newQuery, 0, queryLength - i);
+
+                    int matchIndex = Utils.lastIndexOf(newReference, newQuery);
+
+                    if(matchIndex != -1){
+                        int endOfIndel = i + matchIndex;
+                        int lengthOfIndel = endOfIndel - i + 1;
+                        /*
+                        System.out.println("Length of Indel: " + lengthOfIndel);
+                        System.out.println(new String(newReference));
+                        System.out.println(new String(newQuery));
+                        */
+                        return i;
+                    }
+                    else{
+                        return -1;
+                    }
+                }
+                //exact match between entire query and reference
+                if (i == queryLength - 1){
+                    return i + 1;
+                }
+            }
+        }
+        if(queryLength > referenceLength){
+            //search for insertion
+            for(int i = 0; i < referenceLength; i++){
+                //mismatch represents the beginning of the potential indel
+                if (reference[i] != query[i]){
+                    //look for exact match between non-traversed query and reference
+                    byte[] newQuery = new byte[queryLength - i - 1];
+                    System.arraycopy(query, i + 1, newQuery, 0, queryLength - i - 1);
+                    byte[] newReference = new byte[referenceLength - i];
+                    System.arraycopy(reference, i, newReference, 0, referenceLength - i);
+
+                    int matchIndex = Utils.lastIndexOf(newQuery, newReference);
+
+                    if(matchIndex != -1){
+                        int endOfIndel = i + matchIndex;
+                        int lengthOfIndel = endOfIndel - i + 1;
+                        /*
+                        System.out.println("Length of Indel: " + lengthOfIndel);
+                        System.out.println(new String(newReference));
+                        System.out.println(new String(newQuery));
+                        */
+                        return i;
+                    }
+                    else{
+                        return -1;
+                    }
+                }
+                //exact match between entire query and reference
+                if (i == referenceLength - 1){
+                    return i + 1;
+                }
+            }
+        }
+        return -1;
+    }
+
     /**
      * Simple wrapper for sticking elements of a int[] array into a List<Integer>
      * @param ar - the array whose elements should be listified

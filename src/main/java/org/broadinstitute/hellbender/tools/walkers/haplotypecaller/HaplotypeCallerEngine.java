@@ -157,7 +157,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.referenceReader = Utils.nonNull(referenceReader);
         this.annotationEngine = Utils.nonNull(annotationEngine);
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
-        this.alignerHaplotypeToRef = new SmithWatermanJavaAligner();
+        boolean haplotypeToRef = true;
+        this.alignerHaplotypeToRef = new SmithWatermanJavaAligner(haplotypeToRef);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 

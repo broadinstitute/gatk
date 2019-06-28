@@ -26,6 +26,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private long totalComputeTime = 0;
     private long totalHeuristicTime = 0;
     private long totalMismatchHeuristicTime = 0;
+    private long totalIndelHeuristicTime = 0;
+    private boolean haplotypeToref = false;
 
     /**
      * return the stateless singleton instance of SmithWatermanJavaAligner
@@ -47,6 +49,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private int numOfAlignments = 0;
     private int noSW = 0;
     private int yesSW = 0;
+    private int indelCount = 0;
 
     //methods for printing out number of SW/non-SW alignments
     public int getNumOfAlignments() {
@@ -54,6 +57,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     }
 
     public int noSW() {
+        System.out.println("Indel count: " + indelCount);
         return noSW;
     }
 
@@ -61,12 +65,15 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         return yesSW;
     }
 
-
     /**
      * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
      * accessible via {@link #getInstance}
      */
     public SmithWatermanJavaAligner(){}
+
+    public SmithWatermanJavaAligner(boolean haplotypeToref){
+        this.haplotypeToref = haplotypeToref;
+    }
 
     /**
      * Aligns the alternate sequence to the reference sequence
@@ -109,6 +116,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
 
             //the following code checks to see if the output produced by the heuristic is identical to the output that SW would've produced
+            /*
             Cigar cigar3 = alignmentResult.getCigar();
 
             final int n = reference.length+1;
@@ -125,6 +133,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 System.out.println(cigar3.toString());
                 System.out.println(cigar4.toString());
             }
+             */
         }
         else {
             int matchIndex2 = -1;
@@ -142,6 +151,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
                 alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex2);
+                /*
                 Cigar cigar1 = alignmentResult.getCigar();
 
                 //run SW to see if it produces the same alignment as heuristic
@@ -165,18 +175,71 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                     System.out.println(Utils.lastIndexOf(reference, alternate));
                     System.out.println(overhangStrategy.toString());
                 }
+                 */
             }
             else{
-                // run full Smith-Waterman
-                yesSW++;
+                if(haplotypeToref){
+                    //check for one indel
+                    int matchIndex3 = -1;
 
-                final int n = reference.length+1;
-                final int m = alternate.length+1;
-                final int[][] sw = new int[n][m];
-                final int[][] btrack=new int[n][m];
+                    //if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                    long startOneIndelHeuristic = System.nanoTime();
+                    matchIndex3 = Utils.atMostOneIndel(reference, alternate);
+                    totalIndelHeuristicTime += System.nanoTime() - startOneIndelHeuristic;
+                    // }
 
-                calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-                alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+
+                    if (matchIndex3 != -1){
+                        //noSW++;
+                        indelCount++;
+
+                        //System.out.println(new String(reference));
+                        //System.out.println(new String(alternate));
+
+                        //this is the wrong code - do not leave it
+                    /*
+                    final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
+                    alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+                     */
+
+                        final int n = reference.length+1;
+                        final int m = alternate.length+1;
+                        final int[][] sw = new int[n][m];
+                        final int[][] btrack=new int[n][m];
+
+                        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                        alignmentResult = calculateCigar(sw, btrack, overhangStrategy);
+                        //System.out.println(alignmentResult.getCigar().toString());
+
+                    }
+                    else{
+                        // run full Smith-Waterman
+                        yesSW++;
+
+                        final int n = reference.length+1;
+                        final int m = alternate.length+1;
+                        final int[][] sw = new int[n][m];
+                        final int[][] btrack=new int[n][m];
+
+                        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                        alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+                    }
+                }
+                else{
+                    // run full Smith-Waterman
+                    yesSW++;
+
+                    final int n = reference.length+1;
+                    final int m = alternate.length+1;
+                    final int[][] sw = new int[n][m];
+                    final int[][] btrack=new int[n][m];
+
+                    calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                    alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+                }
+
+
+
             }
         }
 
@@ -481,5 +544,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         logger.info(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
         logger.info(String.format("Total compute time in heuristic : %.2f sec", totalHeuristicTime * 1e-9));
         logger.info(String.format("Total compute time in oneMismatch heuristic : %.2f sec", totalMismatchHeuristicTime * 1e-9));
+        logger.info(String.format("Total compute time in indel heuristic : %.2f sec", totalIndelHeuristicTime * 1e-9));
     }
 }
