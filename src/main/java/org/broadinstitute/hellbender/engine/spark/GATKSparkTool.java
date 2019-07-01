@@ -98,7 +98,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             optional = true)
     protected long bamPartitionSplitSize = 0;
 
-    @Argument(doc = "Whether to use NIO or the Hadoop filesystem (default) for reading files.",
+    @Argument(doc = "Whether to use NIO or the Hadoop filesystem (default) for reading files. " +
+            "(Note that the Hadoop filesystem is always used for writing files.)",
             fullName = USE_NIO,
             optional = true)
     protected boolean useNio = false;
