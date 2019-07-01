@@ -27,7 +27,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 /**
  * Apply tranche filtering to VCF based on scores from an annotation in the INFO field.
- * The annotation can come from the {@link CNNScoreVariants} tool, VQSR,
+ * The annotation can come from the {@link CNNScoreVariants} tool (CNNLOD), VQSR (VQSLOD),
  * or any other variant scoring tool which adds numeric annotations in a VCF's INFO field.
  *
  * Tranches are specified in percent sensitivity to the variants in the resource files.
@@ -70,8 +70,8 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *   --resource hapmap.vcf \
  *   --resource mills.vcf \
  *   --info-key CNN_1D \
- *   --snp-tranche 99.9 \
- *   --indel-tranche 99.5 \
+ *   --snp-tranche 99.95 \
+ *   --indel-tranche 99.4 \
  *   -O filtered.vcf
  * </pre>
  *
@@ -83,8 +83,8 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *   --resource hapmap.vcf \
  *   --resource mills.vcf \
  *   --info-key CNN_2D \
- *   --snp-tranche 99.9 \
- *   --indel-tranche 99.5 \
+ *   --snp-tranche 99.95 \
+ *   --indel-tranche 99.4 \
  *   --invalidate-previous-filters \
  *   -O filtered.vcf
  * </pre>
@@ -101,7 +101,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *   --resource mills.vcf \
  *   --info-key CNN_2D \
  *   --snp-tranche 99.9 --snp-tranche 99.95 \
- *   --indel-tranche 99.0 --indel-tranche 99.5 \
+ *   --indel-tranche 99.0 --indel-tranche 99.4 \
  *   -O filtered.vcf
  * </pre>
  */
