@@ -9,10 +9,12 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.tools.AbstractPrintReadsIntegrationTest;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 @Test(groups = "spark")
 public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsIntegrationTest {
@@ -45,7 +47,7 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
      */
     @Test(dataProvider = "gcsTestingData", groups = "bucket")
     public void testGCSInputsAndOutputsWithSparkNio(final String gcsInput, final String outputExtension,
-                                        final boolean outputToGCS, final File expectedOutput) {
+                                        final boolean outputToGCS, final File expectedOutput) throws IOException {
         final String gcsInputPath = getGCPTestInputPath() + gcsInput;
         final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
         final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
@@ -55,6 +57,8 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
                 .addArgument("output", outputPath)
                 .addBooleanArgument(GATKSparkTool.USE_NIO, true);
         runCommandLine(argBuilder);
+
+        SamAssertionUtils.assertSamsEqual(IOUtils.getPath(outputPath), IOUtils.getPath(gcsInputPath), null);
     }
 
 }
