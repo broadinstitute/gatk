@@ -20,10 +20,11 @@ public abstract class MultiplePassReadWalker extends ReadWalker {
     private SAMSequenceDictionary dictionary;
     private CountingReadFilter countedFilter;
     private SamReaderFactory samReaderFactory;
+    protected long nReadsProcessed;
 
     @FunctionalInterface
     public interface GATKApply {
-        void apply( GATKRead read, ReferenceContext reference, FeatureContext features );
+        void apply( GATKRead read, ReferenceContext reference, FeatureContext features, long nReadsProcessed );
     }
 
     public abstract void traverseReads();
@@ -43,12 +44,14 @@ public abstract class MultiplePassReadWalker extends ReadWalker {
 
             final ReadTransformer preTransformer = makePreReadFilterTransformer();
             final ReadTransformer postTransformer = makePostReadFilterTransformer();
+            nReadsProcessed = 0;
             Utils.stream(readsSource).map(preTransformer).filter(countedFilter).map(postTransformer).forEach( read -> {
                 final SimpleInterval readInterval = getReadInterval(read);
                 func.apply(
                         read,
                         new ReferenceContext(reference, readInterval), // will be empty if reference or readInterval is null
-                        new FeatureContext(features, readInterval));   // will be empty if features or readInterval is null
+                        new FeatureContext(features, readInterval),    // will be empty if features or readInterval is null
+                        nReadsProcessed++);
                 progressMeter.update(readInterval); });
         }
     }
