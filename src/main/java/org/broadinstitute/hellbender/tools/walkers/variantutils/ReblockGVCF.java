@@ -498,6 +498,9 @@ public final class ReblockGVCF extends VariantWalker {
                     if (alt.isReference()) {
                         continue;
                     }
+                    if (alt.equals(Allele.NON_REF_ALLELE)) {
+                        quals.add("0");
+                    }
                     final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
                             HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt),
                             GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
