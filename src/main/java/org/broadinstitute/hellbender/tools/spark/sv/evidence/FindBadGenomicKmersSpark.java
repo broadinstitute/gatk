@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMapSpark;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import scala.Tuple2;
@@ -147,7 +147,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
         final int hashSize = 2*REF_RECORDS_PER_PARTITION;
         return refRDD
                 .mapPartitions(seqItr -> {
-                    final HopscotchMap<SVKmer, Integer, KmerAndCount> kmerCounts = new HopscotchMap<>(hashSize);
+                    final HopscotchMapSpark<SVKmer, Integer, KmerAndCount> kmerCounts = new HopscotchMapSpark<>(hashSize);
                     while ( seqItr.hasNext() ) {
                         final byte[] seq = seqItr.next();
                         SVDUSTFilteredKmerizer.canonicalStream(seq, kSize, maxDUSTScore, new SVKmerLong())
@@ -162,7 +162,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                 .mapToPair(entry -> new Tuple2<>(entry.getKey(), entry.getValue()))
                 .partitionBy(new HashPartitioner(nPartitions))
                 .mapPartitions(pairItr -> {
-                    final HopscotchMap<SVKmer, Integer, KmerAndCount> kmerCounts = new HopscotchMap<>(hashSize);
+                    final HopscotchMapSpark<SVKmer, Integer, KmerAndCount> kmerCounts = new HopscotchMapSpark<>(hashSize);
                     while ( pairItr.hasNext() ) {
                         final Tuple2<SVKmer, Integer> pair = pairItr.next();
                         final SVKmer kmer = pair._1();

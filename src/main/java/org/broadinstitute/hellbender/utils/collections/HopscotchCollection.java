@@ -1,13 +1,11 @@
-package org.broadinstitute.hellbender.tools.spark.utils;
-
-import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
+package org.broadinstitute.hellbender.utils.collections;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Multiset implementation that provides low memory overhead with a high load factor by using the hopscotch algorithm.
@@ -26,7 +24,6 @@ import java.util.function.Function;
  * characteristics.  The ones you see recommended everywhere that add in the final piece of state, don't have good
  * avalanche.  We try to take care of this common defect with the SPREADER, but that's not a perfect solution.
  */
-@DefaultSerializer(HopscotchCollection.Serializer.class)
 public class HopscotchCollection<T> extends AbstractCollection<T> {
     // For power-of-2 table sizes add this line
     //private static final int maxCapacity = Integer.MAX_VALUE/2 + 1;
@@ -45,7 +42,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
     // "end of chain" instead.  we use Byte.MAX_VALUE (i.e., 0x7f) to pick off these bits.
     private byte[] status;
 
-    private static final double LOAD_FACTOR = .85;
+    protected static final double LOAD_FACTOR = .85;
     private static final int NO_ELEMENT_INDEX = -1;
     private static final int SPREADER = 241;
 
@@ -68,63 +65,17 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         addAll(collection);
     }
 
-    @SuppressWarnings("unchecked")
-    protected HopscotchCollection( final Kryo kryo, final Input input ) {
-        final boolean oldReferences = kryo.getReferences();
-        kryo.setReferences(false);
-
-        capacity = input.readInt();
-        size = 0;
-        buckets = (T[])new Object[capacity];
-        status = new byte[capacity];
-        int nElements = input.readInt();
-        while ( nElements-- > 0 ) {
-            add((T)kryo.readClassAndObject(input));
-        }
-
-        kryo.setReferences(oldReferences);
-    }
-
-    protected void serialize( final Kryo kryo, final Output output ) {
-        final boolean oldReferences = kryo.getReferences();
-        kryo.setReferences(false);
-
-        output.writeInt(capacity);
-        output.writeInt(size);
-
-        // write the chain heads, and then the squatters
-        int count = 0;
-        for ( int idx = 0; idx != capacity; ++idx ) {
-            if ( isChainHead(idx) ) {
-                kryo.writeClassAndObject(output, buckets[idx]);
-                count += 1;
-            }
-        }
-        for ( int idx = 0; idx != capacity; ++idx ) {
-            final T val = buckets[idx];
-            if ( val != null && !isChainHead(idx) ) {
-                kryo.writeClassAndObject(output, val);
-                count += 1;
-            }
-        }
-
-        kryo.setReferences(oldReferences);
-
-        if ( count != size ) {
-            throw new IllegalStateException("Failed to serialize the expected number of objects: expected="+size+" actual="+count+".");
-        }
-    }
-
     @Override
     public final boolean add( final T entry ) {
         if ( entry == null ) throw new UnsupportedOperationException("This collection cannot contain null.");
         if ( size == capacity ) resize();
         final BiPredicate<T, T> collision = entryCollides();
+        final int bucketIndex = hashToIndex(toKey().apply(entry));
         try {
-            return insert(entry, collision);
+            return insert(entry, bucketIndex, collision);
         } catch ( final IllegalStateException ise ) {
             resize();
-            return insert(entry, collision);
+            return insert(entry, bucketIndex, collision);
         }
     }
 
@@ -156,6 +107,47 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             if ( equivalent(entry, key) ) return entry;
         }
         return null;
+    }
+
+    /** find an entry equivalent to the key, or use producer to add a new value */
+    public final T findOrAdd( final Object key, final Function<Object, T> producer ) {
+        try {
+            return findOrAddInternal(key, producer);
+        } catch ( final IllegalStateException ise ) {
+            resize();
+            return findOrAddInternal(key, producer);
+        }
+    }
+
+    private final T findOrAddInternal( final Object key, Function<Object, T> producer ) {
+        final int bucketIndex = hashToIndex(key);
+        if ( !isChainHead(bucketIndex) ) {
+            final T entry = producer.apply(key);
+            if ( entry != null ) {
+                insert(entry, bucketIndex, entryCollides());
+            }
+            return entry;
+        }
+
+        T entry = buckets[bucketIndex];
+        if ( equivalent(entry, key) ) return entry;
+
+        int endOfChainIndex = bucketIndex;
+        while ( true ) {
+            entry = buckets[endOfChainIndex];
+            if ( equivalent(entry, key) ) return entry;
+            final int offset = getOffset(endOfChainIndex);
+            if ( offset == 0 ) break;
+            endOfChainIndex = getIndex(endOfChainIndex, offset);
+        }
+
+        entry = producer.apply(key);
+        if ( entry != null ) {
+            final int emptyBucketIndex = insertIntoChain(bucketIndex, endOfChainIndex);
+            buckets[emptyBucketIndex] = entry;
+            size += 1;
+        }
+        return entry;
     }
 
     /** get an iterator over each of the elements equivalent to the key */
@@ -209,6 +201,15 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
     @Override
     public final int size() { return size; }
 
+    // next two methods are to allow efficient serialization
+    public Stream<T> chainHeads() {
+        return IntStream.range(0, capacity).filter(this::isChainHead).mapToObj(idx -> buckets[idx]);
+    }
+
+    public Stream<T> squatters() {
+        return IntStream.range(0, capacity)
+                .filter(idx -> !isChainHead(idx) && buckets[idx] != null).mapToObj(idx -> buckets[idx]);
+    }
 
     /** in a general multiset there is no uniqueness criterion, so there is never a collision */
     protected BiPredicate<T, T> entryCollides() { return (t1, t2) -> false; }
@@ -222,7 +223,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         return Objects.equals(toKey().apply(entry), key);
     }
 
-    private int hashToIndex( final Object entry ) {
+    protected int hashToIndex( final Object entry ) {
         // For power-of-2 table sizes substitute this line
         // return (SPREADER*hashVal)&(capacity-1);
         int result = entry == null ? 0 : ((SPREADER * entry.hashCode()) % capacity);
@@ -230,9 +231,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         return result;
     }
 
-    private boolean insert( final T entry, final BiPredicate<T, T> collision ) {
-        final int bucketIndex = hashToIndex(toKey().apply(entry));
-
+    private boolean insert( final T entry, final int bucketIndex, final BiPredicate<T, T> collision ) {
         // if there's a squatter where the new entry should go, move it elsewhere and put the entry there
         if ( buckets[bucketIndex] != null && !isChainHead(bucketIndex) ) evict(bucketIndex);
 
@@ -405,7 +404,8 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         throw new IllegalStateException("Hopscotching failed at load factor "+(1.*size/capacity));
     }
 
-    private void move( int predecessorBucketIndex, final int bucketToMoveIndex, final int emptyBucketIndex ) {
+    private void move( final int predecessorBucketIndexArg, final int bucketToMoveIndex, final int emptyBucketIndex ) {
+        int predecessorBucketIndex = predecessorBucketIndexArg;
         int toEmptyDistance = getIndexDiff(bucketToMoveIndex, emptyBucketIndex);
         int nextOffset = getOffset(bucketToMoveIndex);
         if ( nextOffset == 0 || nextOffset > toEmptyDistance ) {
@@ -443,11 +443,12 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         buckets = (T[])new Object[capacity];
         status = new byte[capacity];
 
+        final Function<T, Object> keyFunc = toKey();
         try {
             int idx = 0;
             do {
                 final T entry = oldBuckets[idx];
-                if ( entry != null ) insert(entry, (t1, t2) -> false );
+                if ( entry != null ) insert(entry, hashToIndex(keyFunc.apply(entry)), (t1, t2) -> false );
             }
             while ( (idx = (idx+127)%oldCapacity) != 0 );
         } catch ( final IllegalStateException ise ) {
@@ -518,7 +519,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
 
         ElementIterator( final Object key ) {
             this.key = key;
-            int bucketIndex = hashToIndex(key);
+            final int bucketIndex = hashToIndex(key);
             if ( !isChainHead(bucketIndex) ) return;
             currentIndex = bucketIndex;
             ensureEquivalence();
@@ -612,19 +613,6 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
                 }
             }
             bucketHeadIndex = NO_ELEMENT_INDEX;
-        }
-    }
-
-    public static final class Serializer<T> extends com.esotericsoftware.kryo.Serializer<HopscotchCollection<T>> {
-        @Override
-        public void write( final Kryo kryo, final Output output, final HopscotchCollection<T> hopscotchCollection ) {
-            hopscotchCollection.serialize(kryo, output);
-        }
-
-        @Override
-        public HopscotchCollection<T> read( final Kryo kryo, final Input input,
-                                            final Class<HopscotchCollection<T>> klass ) {
-            return new HopscotchCollection<>(kryo, input);
         }
     }
 }

@@ -1,6 +1,7 @@
-package org.broadinstitute.hellbender.tools.spark.utils;
+package org.broadinstitute.hellbender.utils.collections;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.collections.SetSizeUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

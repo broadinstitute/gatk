@@ -57,7 +57,7 @@ public abstract class ReadWalker extends WalkerBase {
      */
     void setReadTraversalBounds() {
         if ( hasUserSuppliedIntervals() ) {
-            reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
+            reads.setTraversalBounds(userIntervals);
         }
     }
 

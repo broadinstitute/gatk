@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -15,7 +15,7 @@ import java.util.List;
 public final class ReadsForQNamesFinder implements Iterable<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> {
     private final List<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> fastQRecords;
 
-    public ReadsForQNamesFinder( final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
+    public ReadsForQNamesFinder( final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap,
                                  final int nIntervals, final boolean includeMappingLocation,
                                  final Iterator<GATKRead> unfilteredReadItr, final SVReadFilter filter ) {
         final int nReadsPerInterval = 2 * qNamesMultiMap.size() / nIntervals;

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -18,9 +18,9 @@ import java.util.function.Function;
  */
 public final class QNameIntervalFinder implements Function<GATKRead,Iterator<QNameAndInterval>> {
     private final int kSize;
-    private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap;
+    private final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMap;
 
-    public QNameIntervalFinder( final int kSize, final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap ) {
+    public QNameIntervalFinder( final int kSize, final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMap ) {
         this.kSize = kSize;
         this.kmerMap = kmerMap;
     }
