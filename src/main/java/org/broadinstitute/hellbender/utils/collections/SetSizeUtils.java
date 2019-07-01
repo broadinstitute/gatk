@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.utils;
+package org.broadinstitute.hellbender.utils.collections;
 
 /**
  * Set size utility

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
@@ -57,7 +58,10 @@ public abstract class ReadWalker extends WalkerBase {
      */
     void setReadTraversalBounds() {
         if ( hasUserSuppliedIntervals() ) {
-            reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
+            final SAMSequenceDictionary dict = getHeaderForReads().getSequenceDictionary();
+            final boolean traverseUnmapped =
+                    intervalArgumentCollection.getTraversalParameters(dict).traverseUnmappedReads();
+            reads.setTraversalBounds(new TraversalParameters(userIntervals, traverseUnmapped));
         }
     }
 

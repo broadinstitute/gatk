@@ -1,10 +1,12 @@
-package org.broadinstitute.hellbender.tools.spark.utils;
+package org.broadinstitute.hellbender.utils.collections;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
+import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
