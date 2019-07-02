@@ -756,16 +756,16 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void atMostOneIndel(){
         //deletion
         String reference = "AGGATTTGGGATTAC";
-        String query =     "ATTTGGGATTAC";
+        String query =     "AGGATTTGGGATTACATTAC";
 
-        int result = Utils.atMostOneIndel(reference.getBytes(), query.getBytes());
-        int expected = 1;
+        int result = (Utils.atMostOneIndel(reference.getBytes(), query.getBytes()))[0];
+        int expected = 15;
         Assert.assertEquals(result, expected);
 
         //insertion
         String reference2 = "ATTTAGTGGGATTA";
         String query2 =     "ATTTAGTGGGATATA";
-        int result2 = Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes());
+        int result2 = (Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes()))[0];
         int expected2 = 12;
         Assert.assertEquals(result2, expected2);
     }

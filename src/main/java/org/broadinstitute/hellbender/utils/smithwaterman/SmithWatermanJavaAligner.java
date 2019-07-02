@@ -113,34 +113,13 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             // generate the alignment result when the substring search was successful
             final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
-
-
-            //the following code checks to see if the output produced by the heuristic is identical to the output that SW would've produced
-            /*
-            Cigar cigar3 = alignmentResult.getCigar();
-
-            final int n = reference.length+1;
-            final int m = alternate.length+1;
-            final int[][] sw = new int[n][m];
-            final int[][] btrack=new int[n][m];
-
-            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-            SmithWatermanAlignment alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
-            Cigar cigar4 = alignmentResult2.getCigar();
-
-            if(!cigar3.equals(cigar4)){
-                System.out.println("Cigars for exact match aren't equal!!");
-                System.out.println(cigar3.toString());
-                System.out.println(cigar4.toString());
-            }
-             */
         }
         else {
+            // avoid running full Smith-Waterman if there is only one mismatch of alternate in reference
             int matchIndex2 = -1;
             if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
                 // Use a substring search to find a one-off match of the alternate in the reference
                 // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
-                //look for one mismatch
                 long startOneMismatchHeuristic = System.nanoTime();
                 matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
                 totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
@@ -151,57 +130,41 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
                 alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex2);
-                /*
-                Cigar cigar1 = alignmentResult.getCigar();
-
-                //run SW to see if it produces the same alignment as heuristic
-                final int n = reference.length+1;
-                final int m = alternate.length+1;
-                final int[][] sw = new int[n][m];
-                final int[][] btrack=new int[n][m];
-
-                calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-                SmithWatermanAlignment alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
-                Cigar cigar2 = alignmentResult2.getCigar();
-
-                if(!cigar1.equals(cigar2)){
-                    System.out.println("Cigars aren't equal!!");
-                    System.out.println(cigar1.toString());
-                    System.out.println(cigar2.toString());
-                    System.out.println(new String(reference));
-                    System.out.println(new String(alternate));
-                    System.out.println("Match Index: " + matchIndex2);
-                    System.out.println("Alignment offset: " + alignmentResult2.getAlignmentOffset());
-                    System.out.println(Utils.lastIndexOf(reference, alternate));
-                    System.out.println(overhangStrategy.toString());
-                }
-                 */
             }
             else{
                 if(haplotypeToref){
                     //check for one indel
                     int matchIndex3 = -1;
+                    int[] indelStartAndSize = null;
 
-                    //if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
-                    long startOneIndelHeuristic = System.nanoTime();
-                    matchIndex3 = Utils.atMostOneIndel(reference, alternate);
-                    totalIndelHeuristicTime += System.nanoTime() - startOneIndelHeuristic;
-                    // }
-
+                    if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                        long startOneIndelHeuristic = System.nanoTime();
+                        indelStartAndSize = Utils.atMostOneIndel(reference, alternate);
+                        matchIndex3 = indelStartAndSize[0];
+                        totalIndelHeuristicTime += System.nanoTime() - startOneIndelHeuristic;
+                    }
 
                     if (matchIndex3 != -1){
-                        //noSW++;
                         indelCount++;
 
-                        //System.out.println(new String(reference));
-                        //System.out.println(new String(alternate));
+                        //wrong code - produce cigar string in a different way!
+                        //requires 2 things: location of indel, size of indel
+                        int indelLength = indelStartAndSize[1];
 
-                        //this is the wrong code - do not leave it
-                    /*
-                    final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
-                    alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
-                     */
+                        State state = null;
+                        if(alternate.length < reference.length){
+                            state = State.DELETION;
+                        }
+                        if(alternate.length > reference.length){
+                            state = State.INSERTION;
+                        }
 
+                        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, matchIndex),
+                                makeElement(state, indelLength), makeElement(State.MATCH, alternate.length - matchIndex3));
+                        alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
+
+
+                        /*
                         final int n = reference.length+1;
                         final int m = alternate.length+1;
                         final int[][] sw = new int[n][m];
@@ -209,11 +172,10 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
                         calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
                         alignmentResult = calculateCigar(sw, btrack, overhangStrategy);
-                        //System.out.println(alignmentResult.getCigar().toString());
-
+                         */
                     }
                     else{
-                        // run full Smith-Waterman
+                        //run full Smith-Waterman
                         yesSW++;
 
                         final int n = reference.length+1;
@@ -237,9 +199,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                     calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
                     alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
                 }
-
-
-
             }
         }
 

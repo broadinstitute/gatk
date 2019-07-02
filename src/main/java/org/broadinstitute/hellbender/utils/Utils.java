@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -14,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1077,77 +1081,67 @@ public final class Utils {
     }
 
     //right now this method will only be used for haplotype-ref alignment
-    public static int atMostOneIndel(final byte[] reference, final byte[] query){
+    public static int[] atMostOneIndel(final byte[] reference, final byte[] query){
         int referenceLength = reference.length;
         int queryLength = query.length;
 
-        if (queryLength < referenceLength){
-            //search for deletion
+        int indelStart = -1;
+        int[] indelStartAndSize = {-1,0};
+
+        if(queryLength < referenceLength){
+            int lengthOfIndel = referenceLength - queryLength;
+
             for(int i = 0; i < queryLength; i++){
-                //mismatch represents the beginning of the potential indel
-                if (reference[i] != query[i]){
-                    //look for exact match between non-traversed query and reference
-                    byte[] newReference = new byte[referenceLength - i - 1];
-                    System.arraycopy(reference, i + 1, newReference, 0, referenceLength - i - 1);
-                    byte[] newQuery = new byte[queryLength - i];
-                    System.arraycopy(query, i, newQuery, 0, queryLength - i);
+                if(query[i] != reference[i]){
+                    indelStart = i;
 
-                    int matchIndex = Utils.lastIndexOf(newReference, newQuery);
+                    for(i = queryLength - 1; i >= indelStart; i--){
+                        if(query[i] != reference[i + lengthOfIndel]){
+                            return indelStartAndSize;
+                        }
+                    }
 
-                    if(matchIndex != -1){
-                        int endOfIndel = i + matchIndex;
-                        int lengthOfIndel = endOfIndel - i + 1;
-                        /*
-                        System.out.println("Length of Indel: " + lengthOfIndel);
-                        System.out.println(new String(newReference));
-                        System.out.println(new String(newQuery));
-                        */
-                        return i;
-                    }
-                    else{
-                        return -1;
-                    }
-                }
-                //exact match between entire query and reference
-                if (i == queryLength - 1){
-                    return i + 1;
+                    //traversed entire query, indel but no mismatches found
+                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[1] = lengthOfIndel;
+                    return indelStartAndSize;
                 }
             }
+
+            //deletion located at the end of the query
+            indelStartAndSize[0] = queryLength;
+            indelStartAndSize[1] = referenceLength - queryLength;
+            return indelStartAndSize;
         }
-        if(queryLength > referenceLength){
-            //search for insertion
+        if(referenceLength < queryLength){
+            int lengthOfIndel = queryLength - referenceLength;
+
             for(int i = 0; i < referenceLength; i++){
-                //mismatch represents the beginning of the potential indel
-                if (reference[i] != query[i]){
-                    //look for exact match between non-traversed query and reference
-                    byte[] newQuery = new byte[queryLength - i - 1];
-                    System.arraycopy(query, i + 1, newQuery, 0, queryLength - i - 1);
-                    byte[] newReference = new byte[referenceLength - i];
-                    System.arraycopy(reference, i, newReference, 0, referenceLength - i);
+                if(reference[i] != query[i]){
+                    indelStart = i;
 
-                    int matchIndex = Utils.lastIndexOf(newQuery, newReference);
+                    for(i = referenceLength - 1; i >= indelStart; i--){
+                        if(reference[i] != query[i + lengthOfIndel]){
+                            return indelStartAndSize;
+                        }
+                    }
 
-                    if(matchIndex != -1){
-                        int endOfIndel = i + matchIndex;
-                        int lengthOfIndel = endOfIndel - i + 1;
-                        /*
-                        System.out.println("Length of Indel: " + lengthOfIndel);
-                        System.out.println(new String(newReference));
-                        System.out.println(new String(newQuery));
-                        */
-                        return i;
-                    }
-                    else{
-                        return -1;
-                    }
-                }
-                //exact match between entire query and reference
-                if (i == referenceLength - 1){
-                    return i + 1;
+                    //traversed entire query, one indel and no mismatches found
+                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[1] = lengthOfIndel;
+                    return indelStartAndSize;
+
                 }
             }
+
+            //insertion located at end of query
+            indelStartAndSize[0] = referenceLength;
+            indelStartAndSize[1] = queryLength - referenceLength;
+            return indelStartAndSize;
         }
-        return -1;
+
+        //lengths are equal, no one indel
+        return indelStartAndSize;
     }
 
     /**
