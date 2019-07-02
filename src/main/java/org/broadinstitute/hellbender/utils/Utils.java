@@ -15,6 +15,7 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
@@ -1080,7 +1081,7 @@ public final class Utils {
         return -1;
     }
 
-    public static int[] atMostOneIndel(final byte[] reference, final byte[] query){
+    public static int[] atMostOneIndel(final byte[] reference, final byte[] query, int allowedLengthOfIndel){
         int referenceLength = reference.length;
         int queryLength = query.length;
 
@@ -1089,6 +1090,9 @@ public final class Utils {
 
         if(queryLength < referenceLength){
             int lengthOfIndel = referenceLength - queryLength;
+            if(lengthOfIndel > 13){
+                return indelStartAndSize;
+            }
 
             //traverse until you hit mismatch/start of indel
             for(int i = 0; i < queryLength; i++){
@@ -1103,9 +1107,15 @@ public final class Utils {
                     }
 
                     //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelStart;
-                    indelStartAndSize[1] = lengthOfIndel;
-                    return indelStartAndSize;
+                    if (lengthOfIndel <= allowedLengthOfIndel){
+                        indelStartAndSize[0] = indelStart;
+                        indelStartAndSize[1] = lengthOfIndel;
+                        return indelStartAndSize;
+                    }
+                    else{
+                        return indelStartAndSize;
+                    }
+
                 }
             }
 
@@ -1116,6 +1126,9 @@ public final class Utils {
         }
         if(referenceLength < queryLength){
             int lengthOfIndel = queryLength - referenceLength;
+            if(lengthOfIndel > 13){
+                return indelStartAndSize;
+            }
 
             for(int i = 0; i < referenceLength; i++){
                 if(reference[i] != query[i]){
@@ -1128,9 +1141,14 @@ public final class Utils {
                     }
 
                     //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelStart;
-                    indelStartAndSize[1] = lengthOfIndel;
-                    return indelStartAndSize;
+                    if (lengthOfIndel <= allowedLengthOfIndel){
+                        indelStartAndSize[0] = indelStart;
+                        indelStartAndSize[1] = lengthOfIndel;
+                        return indelStartAndSize;
+                    }
+                    else{
+                        return indelStartAndSize;
+                    }
 
                 }
             }
