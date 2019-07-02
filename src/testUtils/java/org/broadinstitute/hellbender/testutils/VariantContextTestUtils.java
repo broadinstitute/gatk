@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
@@ -34,6 +35,7 @@ import org.apache.logging.log4j.Logger;
 
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -428,6 +430,12 @@ public final class VariantContextTestUtils {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
+    public static void assertAlleleSpecificAnnotationLengthsCorrect(VariantContext actual, String annotation, VCFHeaderLineCount expectedCount) {
+        List<Allele> alleles = actual.getAlleles();
+        String[] actualAnnotation = actual.getAttributeAsString(annotation, "").split("\\|",-1);
+        Assert.assertEquals(actualAnnotation.length, expectedCount == VCFHeaderLineCount.R ? alleles.size() : alleles.size() - 1);
+    }
+
     // Method that determines whether two variant contexts have equivalent allele specific annotations regardless of allele ordering
     public static Boolean alleleSpecificAnnotationEquals(VariantContext actual, VariantContext expected, String annotation) {
         List<Allele> Aalleles = actual.getAlleles();
@@ -632,5 +640,19 @@ public final class VariantContextTestUtils {
         gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(PPs));
         gb.GQ(MathUtils.secondSmallestMinusSmallest(PPs, gq));
         return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
+    }
+
+    /**
+     * Returns a list of VariantContext records from a VCF file
+     *
+     * @param vcfFile VCF file
+     * @return list of VariantContext records
+     * @throws IOException if the file does not exist or can not be opened
+     */
+    @SuppressWarnings({"unchecked"})
+    public static List<VariantContext> getVariantContexts(final File vcfFile) {
+        try(final FeatureDataSource<VariantContext> variantContextFeatureDataSource = new FeatureDataSource<>(vcfFile)) {
+            return IteratorUtils.toList(variantContextFeatureDataSource.iterator());
+        }
     }
 }

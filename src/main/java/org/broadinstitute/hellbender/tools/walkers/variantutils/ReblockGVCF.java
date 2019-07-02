@@ -237,7 +237,8 @@ public final class ReblockGVCF extends VariantWalker {
 
         //don't need to calculate quals for sites with no data whatsoever or sites already genotyped homRef,
         // but if STAND_CALL_CONF > 0 we need to drop low quality alleles and regenotype
-        if (result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 && !isHomRefCall(result)) {
+         //Note that spanning deletion star alleles will be considered low quality
+        if (result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 && !isHomRefCall(result) && dropLowQuals) {
             final GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
                     ? GenotypeLikelihoodsCalculationModel.INDEL
                     : GenotypeLikelihoodsCalculationModel.SNP;
@@ -370,10 +371,10 @@ public final class ReblockGVCF extends VariantWalker {
         final Genotype genotype = result.getGenotype(0);
         VariantContextBuilder builder = new VariantContextBuilder(result);
 
-        boolean allelesNeedSubsetting = false;
+        boolean allelesNeedSubsetting = result.getNAlleles() != originalVC.getNAlleles();
         List<Allele> allelesToDrop = new ArrayList<>();
         if (dropLowQuals) {
-            //drop low quality alleles iff we're dropping low quality variants (mostly because this can introduce GVCF gaps if deletion alleles are dropped)
+            //drop alleles that aren't called iff we're dropping low quality variants (mostly because this can introduce GVCF gaps if deletion alleles are dropped)
             for (final Allele currAlt : result.getAlternateAlleles()) {
                 boolean foundMatch = false;
                 for (final Allele gtAllele : genotype.getAlleles()) {
@@ -452,7 +453,7 @@ public final class ReblockGVCF extends VariantWalker {
                 builder.genotypes(gc);
             }
             g = gc.get(0);
-            relevantIndices = newAlleleSet.stream().mapToInt(a -> result.getAlleles().indexOf(a)).toArray();
+            relevantIndices = newAlleleSet.stream().mapToInt(a -> originalVC.getAlleles().indexOf(a)).toArray();
         }
 
         //copy over info annotations
@@ -496,19 +497,23 @@ public final class ReblockGVCF extends VariantWalker {
                      final List<String> quals = new ArrayList<>();
                 for (final Allele alt : newAlleleSet) {
                     if (alt.isReference()) {
+                        quals.add(VCFConstants.MISSING_VALUE_v4);
                         continue;
                     }
                     if (alt.equals(Allele.NON_REF_ALLELE)) {
                         quals.add("0");
+                        continue;
                     }
                     final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
                             HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt),
                             GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
                     if (gc.get(0).hasPL()) {
                         quals.add(Integer.toString(gc.get(0).getPL()[0]));
+                    } else {  //AlleleSubsettingUtils can no-call genotypes with super duper low GQs
+                        quals.add("0");
                     }
                 }
-                attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM+String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, quals));
+                attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, quals));
                 List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
                         HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet,
                         GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));

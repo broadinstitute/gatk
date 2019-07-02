@@ -9,11 +9,9 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -267,8 +265,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         //Note that if this isn't working it will take *FOREVER*
         // runs in 0.06 minutes with no input intervals specfied
-        final List<VariantContext> expectedVC = getVariantContexts(expected);
-        final List<VariantContext> actualVC = getVariantContexts(output);
+        final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
         assertForEachElementInLists(actualVC, expectedVC, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes);
 
     }
@@ -333,23 +331,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        final List<VariantContext> expectedVC = getVariantContexts(expected);
-        final List<VariantContext> actualVC = getVariantContexts(output);
+        final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
         assertForEachElementInLists(actualVC, expectedVC, assertion);
-    }
-
-    /**
-     * Returns a list of VariantContext records from a VCF file
-     *
-     * @param vcfFile VCF file
-     * @return list of VariantContext records
-     * @throws IOException if the file does not exist or can not be opened
-     */
-    @SuppressWarnings({"unchecked"})
-    private static List<VariantContext> getVariantContexts(final File vcfFile) {
-        try(final FeatureDataSource<VariantContext> variantContextFeatureDataSource = new FeatureDataSource<>(vcfFile)) {
-            return IteratorUtils.toList(variantContextFeatureDataSource.iterator());
-        }
     }
 
     @Test
@@ -399,7 +383,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         //compared with the combined GVCF, this output should have called GTs and no alts with LODs less than TLOD_THRESHOLD
         //uncalled alleles should be removed
 
-        final List<VariantContext> results = getVariantContexts(output);
+        final List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
 
         //qualitative match
         for (final VariantContext vc : results) {
@@ -446,7 +430,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         //exact match
         final File expectedFile = getTestFile("threeSamples.MT.vcf");
-        final List<VariantContext> expected = getVariantContexts(expectedFile);
+        final List<VariantContext> expected = VariantContextTestUtils.getVariantContexts(expectedFile);
         final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expectedFile.getAbsolutePath())));
         assertForEachElementInLists(results, expected,
                 (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header));
@@ -465,7 +449,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addInterval(new SimpleInterval("MT:73"));
         runCommandLine(args);
 
-        List<VariantContext> results = getVariantContexts(output);
+        List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
         //MT:302 originally had 5 alts
         for (final VariantContext vc : results) {
             Assert.assertTrue(vc.getNAlleles() <= 3);  //NAlleles includes ref
