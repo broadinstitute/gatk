@@ -1087,7 +1087,7 @@ public final class Utils {
     /**
      * Finds the location of one indel in the query sequence in relation to the reference sequence
      *
-     * Returns the index and size of the indel or -1 and 0 if an indel less than 13 bases is not found
+     * Returns the index and size of the indel (as a 2 element int array) or -1 and 0 if an indel less than 4 bases is not found
      *
      * @param reference the reference sequence
      * @param query the query sequence
