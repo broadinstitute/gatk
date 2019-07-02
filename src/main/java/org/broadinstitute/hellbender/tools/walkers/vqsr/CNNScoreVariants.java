@@ -59,6 +59,10 @@ import com.intel.gkl.IntelGKLUtils;
  * {@link CNNVariantWriteTensors} and {@link CNNVariantTrain}.
  * CNNVariantTrain will create a json architecture file and an hd5 weights file, which you can use with this tool.
  *
+ * The advanced argument `info-annotation-keys` is available for models trained with different sets info field annotations.
+ * In order to do this you must first train your own model with the tools {@link CNNVariantWriteTensors} and {@link CNNVariantTrain}.
+ * Otherwise, providing this argument with anything but the standard set of annotations will result in an error.
+ *
  *
  * <h3>1D Model with pre-trained architecture</h3>
  *
@@ -140,6 +144,8 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private static final String ANNOTATION_SEPARATOR = ";"; // If changed make change in defines.py
     private static final String ANNOTATION_SET_STRING = "=";// If changed make change in defines.py
 
+    private List<String> defaultAnnotationKeys = new ArrayList<>(Arrays.asList("MQ", "DP", "SOR", "FS", "QD", "MQRankSum", "ReadPosRankSum"));
+
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file")
@@ -164,8 +170,8 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private boolean filterSymbolicAndSV = false;
 
     @Advanced
-    @Argument(fullName="info-annotation-keys", shortName="info-annotation-keys", doc="The VCF info fields to send to python.", optional=true)
-    private List<String> annotationKeys = new ArrayList<>(Arrays.asList("MQ", "DP", "SOR", "FS", "QD", "MQRankSum", "ReadPosRankSum"));
+    @Argument(fullName="info-annotation-keys", shortName="info-annotation-keys", doc="The VCF info fields to send to python.  This should only be changed if a new model has been trained which expects the annotations provided here.", optional=true)
+    private List<String> annotationKeys = defaultAnnotationKeys;
 
     @Advanced
     @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 4096, optional = true)
@@ -284,8 +290,12 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         }
 
         final VCFHeader inputHeader = getHeaderForVariants();
-        if(inputHeader.getGenotypeSamples().size() > 1) {
+        if (inputHeader.getGenotypeSamples().size() > 1) {
             logger.warn("CNNScoreVariants is a single sample tool but the input VCF has more than 1 sample.");
+        }
+
+        if (!annotationKeys.equals(defaultAnnotationKeys)){
+            logger.warn("Annotation keys are not the default you must also provide a trained model that expects these annotations.");
         }
 
         // Start the Python process and initialize a stream writer for streaming data to the Python code
