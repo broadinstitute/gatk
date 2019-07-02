@@ -754,20 +754,31 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void atMostOneIndel(){
-        //deletion
+        //deletion in middle of query
         String reference = "AGGATTTGGGATTAC";
-        String query =     "AGGATTTGGGATTACATTAC";
-
+        String query =     "AGGAGGGATTAC";
         int result = (Utils.atMostOneIndel(reference.getBytes(), query.getBytes()))[0];
-        int expected = 15;
-        Assert.assertEquals(result, expected);
+        Assert.assertEquals(result, 4);
 
-        //insertion
-        String reference2 = "ATTTAGTGGGATTA";
-        String query2 =     "ATTTAGTGGGATATA";
+        //deletion in end of query
+        String reference2 = "AGGATTTGGGATTAC";
+        String query2 =     "AGGATTTGGGAT";
         int result2 = (Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes()))[0];
-        int expected2 = 12;
+        int expected2 = query2.length();
         Assert.assertEquals(result2, expected2);
+
+        //insertion in middle of query
+        String reference3 = "ATTTAGTGGGATTA";
+        String query3 =     "ATTTAGTAGTGGGATTA";
+        int result3 = (Utils.atMostOneIndel(reference3.getBytes(), query3.getBytes()))[0];
+        Assert.assertEquals(result3, 7);
+
+        //insertion in end of query
+        String reference4 = "AGTAGTGTGCGTCA";
+        String query4 =     "AGTAGTGTGCGTCAACT";
+        int result4 = (Utils.atMostOneIndel(reference4.getBytes(), query4.getBytes()))[0];
+        int expected4 = reference4.length();
+        Assert.assertEquals(result4, expected4);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

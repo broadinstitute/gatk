@@ -1080,7 +1080,6 @@ public final class Utils {
         return -1;
     }
 
-    //right now this method will only be used for haplotype-ref alignment
     public static int[] atMostOneIndel(final byte[] reference, final byte[] query){
         int referenceLength = reference.length;
         int queryLength = query.length;
@@ -1091,17 +1090,19 @@ public final class Utils {
         if(queryLength < referenceLength){
             int lengthOfIndel = referenceLength - queryLength;
 
+            //traverse until you hit mismatch/start of indel
             for(int i = 0; i < queryLength; i++){
                 if(query[i] != reference[i]){
                     indelStart = i;
 
+                    //traverse backwards until you hit end of indel
                     for(i = queryLength - 1; i >= indelStart; i--){
                         if(query[i] != reference[i + lengthOfIndel]){
                             return indelStartAndSize;
                         }
                     }
 
-                    //traversed entire query, indel but no mismatches found
+                    //traversed entire query, one indel and no mismatches found
                     indelStartAndSize[0] = indelStart;
                     indelStartAndSize[1] = lengthOfIndel;
                     return indelStartAndSize;
