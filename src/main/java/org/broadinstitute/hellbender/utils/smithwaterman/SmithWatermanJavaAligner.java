@@ -67,32 +67,32 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         Utils.nonNull(overhangStrategy);
 
         // avoid running full Smith-Waterman if there is an exact match of alternate in reference
-        int matchIndex = -1;
+        int exactMatchIndex = -1;
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
-            matchIndex = Utils.lastIndexOf(reference, alternate);
+            exactMatchIndex = Utils.lastIndexOf(reference, alternate);
         }
 
         final SmithWatermanAlignment alignmentResult;
 
         //if exact match
-        if (matchIndex != -1) {
+        if (exactMatchIndex != -1) {
             // generate the alignment result when the substring search was successful
             final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
-            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), exactMatchIndex);
         }
         else {
-            int matchIndex2 = -1;
+            int singleMismatchIndex = -1;
             if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
                 //look for one mismatch
-                matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
+                singleMismatchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
             }
 
-            if (matchIndex2 != -1) {
+            if (singleMismatchIndex != -1) {
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
-                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex2);
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), singleMismatchIndex);
             }
             else{
                 // run full Smith-Waterman

@@ -1057,6 +1057,14 @@ public final class Utils {
         return -1;
     }
 
+    /**
+     * Find the last one-off occurrence of the query sequence in the reference sequence
+     *
+     * Returns the index of the last occurrence or -1 if the query sequence is not found
+     *
+     * @param reference the reference sequence
+     * @param query the query sequence
+     */
     public static int lastIndexOfAtMostOneMismatch(final byte[] reference, final byte[] query) {
         int queryLength = query.length;
 
