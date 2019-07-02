@@ -141,7 +141,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         //calculate allowed length for indel to be less of a penalty than one indel and one mismatch
                         int mismatchScore = parameters.getMismatchPenalty();
                         int indelExtendScore = parameters.getGapExtendPenalty();
-                        int allowedLengthOfIndel = mismatchScore/indelExtendScore;
+                        int indelOpenScore = parameters.getGapOpenPenalty();
+                        int allowedLengthOfIndel = ((2 * mismatchScore) - indelOpenScore)/indelExtendScore;
 
                         long startOneIndelHeuristic = System.nanoTime();
                         indelStartAndSize = Utils.atMostOneIndel(reference, alternate, allowedLengthOfIndel);

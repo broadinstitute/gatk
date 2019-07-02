@@ -757,28 +757,34 @@ public final class UtilsUnitTest extends GATKBaseTest {
         //deletion in middle of query
         String reference = "AGGATTTGGGATTAC";
         String query =     "AGGAGGGATTAC";
-        int result = (Utils.atMostOneIndel(reference.getBytes(), query.getBytes(), 13))[0];
+        int result = (Utils.atMostOneIndel(reference.getBytes(), query.getBytes(), 3))[0];
         Assert.assertEquals(result, 4);
 
         //deletion in end of query
         String reference2 = "AGGATTTGGGATTAC";
         String query2 =     "AGGATTTGGGAT";
-        int result2 = (Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes(), 13))[0];
+        int result2 = (Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes(), 3))[0];
         int expected2 = query2.length();
         Assert.assertEquals(result2, expected2);
 
         //insertion in middle of query
         String reference3 = "ATTTAGTGGGATTA";
         String query3 =     "ATTTAGTAGTGGGATTA";
-        int result3 = (Utils.atMostOneIndel(reference3.getBytes(), query3.getBytes(), 13))[0];
+        int result3 = (Utils.atMostOneIndel(reference3.getBytes(), query3.getBytes(), 3))[0];
         Assert.assertEquals(result3, 7);
 
         //insertion in end of query
         String reference4 = "AGTAGTGTGCGTCA";
         String query4 =     "AGTAGTGTGCGTCAACT";
-        int result4 = (Utils.atMostOneIndel(reference4.getBytes(), query4.getBytes(), 13))[0];
+        int result4 = (Utils.atMostOneIndel(reference4.getBytes(), query4.getBytes(), 3))[0];
         int expected4 = reference4.length();
         Assert.assertEquals(result4, expected4);
+
+        //too long of an indel
+        String reference5 = "AGTAGTGTGCGTCA";
+        String query5 =     "AGTAGTGTGCGTCAACTA";
+        int result5 = (Utils.atMostOneIndel(reference5.getBytes(), query5.getBytes(), 3))[0];
+        Assert.assertEquals(result5, -1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

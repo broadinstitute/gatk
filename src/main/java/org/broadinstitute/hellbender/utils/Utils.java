@@ -1081,6 +1081,15 @@ public final class Utils {
         return -1;
     }
 
+    /**
+     * Finds the location of one indel in the query sequence in relation to the reference sequence
+     *
+     * Returns the index and size of the indel or -1 and 0 if an indel less than 13 bases is not found
+     *
+     * @param reference the reference sequence
+     * @param query the query sequence
+     * @param allowedLengthOfIndel the maximum size of the indel before 2 mismatches becomes less penalized
+     */
     public static int[] atMostOneIndel(final byte[] reference, final byte[] query, int allowedLengthOfIndel){
         int referenceLength = reference.length;
         int queryLength = query.length;
@@ -1090,7 +1099,7 @@ public final class Utils {
 
         if(queryLength < referenceLength){
             int lengthOfIndel = referenceLength - queryLength;
-            if(lengthOfIndel > 13){
+            if(lengthOfIndel > allowedLengthOfIndel){
                 return indelStartAndSize;
             }
 
@@ -1107,15 +1116,9 @@ public final class Utils {
                     }
 
                     //traversed entire query, one indel and no mismatches found
-                    if (lengthOfIndel <= allowedLengthOfIndel){
-                        indelStartAndSize[0] = indelStart;
-                        indelStartAndSize[1] = lengthOfIndel;
-                        return indelStartAndSize;
-                    }
-                    else{
-                        return indelStartAndSize;
-                    }
-
+                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[1] = lengthOfIndel;
+                    return indelStartAndSize;
                 }
             }
 
@@ -1126,7 +1129,7 @@ public final class Utils {
         }
         if(referenceLength < queryLength){
             int lengthOfIndel = queryLength - referenceLength;
-            if(lengthOfIndel > 13){
+            if(lengthOfIndel > allowedLengthOfIndel){
                 return indelStartAndSize;
             }
 
@@ -1141,15 +1144,9 @@ public final class Utils {
                     }
 
                     //traversed entire query, one indel and no mismatches found
-                    if (lengthOfIndel <= allowedLengthOfIndel){
-                        indelStartAndSize[0] = indelStart;
-                        indelStartAndSize[1] = lengthOfIndel;
-                        return indelStartAndSize;
-                    }
-                    else{
-                        return indelStartAndSize;
-                    }
-
+                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[1] = lengthOfIndel;
+                    return indelStartAndSize;
                 }
             }
 
