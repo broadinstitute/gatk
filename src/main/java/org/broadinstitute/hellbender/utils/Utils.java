@@ -1085,6 +1085,85 @@ public final class Utils {
     }
 
     /**
+     * Finds the location of one indel in the query sequence in relation to the reference sequence
+     *
+     * Returns the index and size of the indel or -1 and 0 if an indel less than 13 bases is not found
+     *
+     * @param reference the reference sequence
+     * @param query the query sequence
+     * @param allowedLengthOfIndel the maximum size of the indel before 2 mismatches becomes less penalized
+     */
+    public static int[] atMostOneIndel(final byte[] reference, final byte[] query, int allowedLengthOfIndel){
+        int referenceLength = reference.length;
+        int queryLength = query.length;
+
+        int indelStart = -1;
+        int[] indelStartAndSize = {-1,0};
+
+        if(queryLength < referenceLength){
+            int lengthOfIndel = referenceLength - queryLength;
+            if(lengthOfIndel > allowedLengthOfIndel){
+                return indelStartAndSize;
+            }
+
+            //traverse until you hit mismatch/start of indel
+            for(int i = 0; i < queryLength; i++){
+                if(query[i] != reference[i]){
+                    indelStart = i;
+
+                    //traverse backwards until you hit end of indel
+                    for(i = queryLength - 1; i >= indelStart; i--){
+                        if(query[i] != reference[i + lengthOfIndel]){
+                            return indelStartAndSize;
+                        }
+                    }
+
+                    //traversed entire query, one indel and no mismatches found
+                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[1] = lengthOfIndel;
+                    return indelStartAndSize;
+                }
+            }
+
+            //deletion located at the end of the query
+            indelStartAndSize[0] = queryLength;
+            indelStartAndSize[1] = referenceLength - queryLength;
+            return indelStartAndSize;
+        }
+        if(referenceLength < queryLength){
+            int lengthOfIndel = queryLength - referenceLength;
+            if(lengthOfIndel > allowedLengthOfIndel){
+                return indelStartAndSize;
+            }
+
+            for(int i = 0; i < referenceLength; i++){
+                if(reference[i] != query[i]){
+                    indelStart = i;
+
+                    for(i = referenceLength - 1; i >= indelStart; i--){
+                        if(reference[i] != query[i + lengthOfIndel]){
+                            return indelStartAndSize;
+                        }
+                    }
+
+                    //traversed entire query, one indel and no mismatches found
+                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[1] = lengthOfIndel;
+                    return indelStartAndSize;
+                }
+            }
+
+            //insertion located at end of query
+            indelStartAndSize[0] = referenceLength;
+            indelStartAndSize[1] = queryLength - referenceLength;
+            return indelStartAndSize;
+        }
+
+        //lengths are equal, no one indel
+        return indelStartAndSize;
+    }
+
+    /**
      * Simple wrapper for sticking elements of a int[] array into a List<Integer>
      * @param ar - the array whose elements should be listified
      * @return - a List<Integer> where each element has the same value as the corresponding index in @ar
