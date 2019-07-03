@@ -134,11 +134,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             else{
                 if(haplotypeToref){
                     //check for one indel
-                    int matchIndex3 = -1;
+                    int oneIndelIndex = -1;
                     int[] indelStartAndSize = null;
 
                     if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
-                        //calculate allowed length for indel to be less of a penalty than one indel and one mismatch
+                        //calculate allowed length for indel to be less of a penalty than 2 mismatches
                         int mismatchScore = parameters.getMismatchPenalty();
                         int indelExtendScore = parameters.getGapExtendPenalty();
                         int indelOpenScore = parameters.getGapOpenPenalty();
@@ -146,11 +146,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
                         long startOneIndelHeuristic = System.nanoTime();
                         indelStartAndSize = Utils.atMostOneIndel(reference, alternate, allowedLengthOfIndel);
-                        matchIndex3 = indelStartAndSize[0];
+                        oneIndelIndex = indelStartAndSize[0];
                         totalIndelHeuristicTime += System.nanoTime() - startOneIndelHeuristic;
                     }
 
-                    if (matchIndex3 != -1){
+                    if (oneIndelIndex != -1){
                         indelCount++;
 
                         int indelLength = indelStartAndSize[1];
@@ -162,8 +162,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                             state = State.INSERTION;
                         }
 
-                        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, matchIndex3),
-                                makeElement(state, indelLength), makeElement(State.MATCH, alternate.length - matchIndex3));
+                        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
+                                makeElement(state, indelLength), makeElement(State.MATCH, alternate.length - oneIndelIndex));
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
                     }
                     else{
