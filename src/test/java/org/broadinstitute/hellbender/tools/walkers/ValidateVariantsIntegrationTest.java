@@ -355,4 +355,36 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
                 Collections.emptyList());
         spec.executeTest("tests capture of non-complete region, on BP_RESOLUTION gvcf", this);
     }
+
+    @Test
+    public void testGoodVariantsOrderTwoContigs() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "goodGVCF.inOrderTwoContigs.g.vcf", true, ALLELES, null, hg38Reference) + " -gvcf  ",
+                Collections.emptyList());
+        spec.executeTest("tests the variants order validation for a valid file including two contigs", this);
+    }
+
+    @Test
+    public void testBadVariantsOrderTwoContigs() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "badGVCF.outOfOrderTwoContigs.g.vcf", true, ALLELES, null, hg38Reference) + " -gvcf  ",
+                0, UserException.class);
+        spec.executeTest("tests the variants order validation for an invalid file including two contigs", this);
+    }
+
+    @Test
+    public void testGoodVariantsOrderThreeContigs() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "goodGVCF.inOrderThreeContigs.g.vcf", true, ALLELES, null, hg38Reference) + " -gvcf  ",
+                Collections.emptyList());
+        spec.executeTest("tests the variants order validation for a valid file including three contigs", this);
+    }
+
+    @Test
+    public void testBadVariantsOrderThreeContigs() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "badGVCF.outOfOrderThreeContigs.g.vcf", true, ALLELES, null, hg38Reference) + " -gvcf  ",
+                0, UserException.class);
+        spec.executeTest("tests the variants order validation for an invalid file including three contigs", this);
+    }
 }
