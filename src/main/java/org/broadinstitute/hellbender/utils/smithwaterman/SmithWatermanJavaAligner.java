@@ -27,6 +27,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private long totalHeuristicTime = 0;
     private long totalMismatchHeuristicTime = 0;
     private long totalIndelHeuristicTime = 0;
+    private long totalTwoMismatchHeuristicTime = 0;
     private boolean haplotypeToref = false;
 
     /**
@@ -99,7 +100,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
             long startHeuristic = System.nanoTime();
-            matchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate, 0);
+            matchIndex = Utils.lastIndexOfAtMostTwoMismatch(reference, alternate, 0);
             totalHeuristicTime += System.nanoTime() - startHeuristic;
         }
 
@@ -121,7 +122,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 // Use a substring search to find a one-off match of the alternate in the reference
                 // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
                 long startOneMismatchHeuristic = System.nanoTime();
-                matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate, 1);
+                matchIndex2 = Utils.lastIndexOfAtMostTwoMismatch(reference, alternate, 1);
                 totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
             }
             if (matchIndex2 != -1) {
@@ -169,30 +170,59 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
                                 makeElement(state, indelLength), makeElement(State.MATCH, cigarThirdElementLength));
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
-
-                        //test to see if SW output and indel heurisitic output are the same
-                        Cigar cigar1 = alignmentResult.getCigar();
-
-                        final int n = reference.length+1;
-                        final int m = alternate.length+1;
-                        final int[][] sw = new int[n][m];
-                        final int[][] btrack=new int[n][m];
-
-                        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-                        SmithWatermanAlignment alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
-                        Cigar cigar2 = alignmentResult2.getCigar();
-
-                        if(!cigar1.equals(cigar2)){
-                            System.out.println("CIGARS NOT EQUAL");
-                            System.out.println(new String(reference));
-                            System.out.println("");
-                            System.out.println(new String(alternate));
-                            System.out.println("heuristic: " + cigar1.toString());
-                            System.out.println("SW       : " + cigar2.toString());
-                        }
                     }
                     else{
-                        //run full Smith-Waterman
+                        //check for two mismatches
+                        // avoid running full Smith-Waterman if there is only 2 mismatches of alternate in reference
+                        int twoMisMatchIndex = -1;
+                        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                            // Use a substring search to find a one-off match of the alternate in the reference
+                            // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
+                            long startTwoMismatchHeuristic = System.nanoTime();
+                            twoMisMatchIndex = Utils.lastIndexOfAtMostTwoMismatch(reference, alternate, 2);
+                            totalTwoMismatchHeuristicTime += System.nanoTime() - startTwoMismatchHeuristic;
+                        }
+                        if (twoMisMatchIndex != -1){
+                            noSW++;
+
+                            // generate the alignment result when the substring search was successful
+                            final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
+                            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), twoMisMatchIndex);
+                        }
+                        else{
+                            //run full Smith-Waterman
+                            yesSW++;
+
+                            final int n = reference.length+1;
+                            final int m = alternate.length+1;
+                            final int[][] sw = new int[n][m];
+                            final int[][] btrack=new int[n][m];
+
+                            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+                        }
+                    }
+                }
+                else{
+                    //check for two mismatches
+                    // avoid running full Smith-Waterman if there is only one mismatch of alternate in reference
+                    int twoMismatchIndex = -1;
+                    if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                        // Use a substring search to find a one-off match of the alternate in the reference
+                        // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
+                        long startTwoMismatchHeuristic = System.nanoTime();
+                        twoMismatchIndex = Utils.lastIndexOfAtMostTwoMismatch(reference, alternate, 2);
+                        totalTwoMismatchHeuristicTime += System.nanoTime() - startTwoMismatchHeuristic;
+                    }
+                    if (twoMismatchIndex != -1) {
+                        noSW++;
+
+                        // generate the alignment result when the substring search was successful
+                        final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
+                        alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), twoMismatchIndex);
+                    }
+                    else{
+                        // run full Smith-Waterman
                         yesSW++;
 
                         final int n = reference.length+1;
@@ -203,18 +233,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
                         alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
                     }
-                }
-                else{
-                    // run full Smith-Waterman
-                    yesSW++;
-
-                    final int n = reference.length+1;
-                    final int m = alternate.length+1;
-                    final int[][] sw = new int[n][m];
-                    final int[][] btrack=new int[n][m];
-
-                    calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-                    alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
                 }
             }
         }
@@ -521,5 +539,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         logger.info(String.format("Total compute time in heuristic : %.2f sec", totalHeuristicTime * 1e-9));
         logger.info(String.format("Total compute time in oneMismatch heuristic : %.2f sec", totalMismatchHeuristicTime * 1e-9));
         logger.info(String.format("Total compute time in indel heuristic : %.2f sec", totalIndelHeuristicTime * 1e-9));
+        logger.info(String.format("Total compute time in twoMismatch heuristic : %.2f sec", totalTwoMismatchHeuristicTime * 1e-9));
     }
 }

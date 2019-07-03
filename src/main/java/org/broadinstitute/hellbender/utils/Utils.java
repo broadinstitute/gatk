@@ -1046,7 +1046,7 @@ public final class Utils {
      * @param reference the reference sequence
      * @param query the query sequence
      */
-    public static int lastIndexOfAtMostOneMismatch(final byte[] reference, final byte[] query, final int allowedMismatches) {
+    public static int lastIndexOfAtMostTwoMismatch(final byte[] reference, final byte[] query, final int allowedMismatches) {
         int queryLength = query.length;
 
         // start search from the last possible matching position and search to the left
