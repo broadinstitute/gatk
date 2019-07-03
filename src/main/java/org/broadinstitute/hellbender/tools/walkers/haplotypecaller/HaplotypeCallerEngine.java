@@ -97,6 +97,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private SmithWatermanAligner aligner;
 
+    private SmithWatermanAligner alignerHaplotypeToRef;
+
     public static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
 
     /**
@@ -155,6 +157,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.referenceReader = Utils.nonNull(referenceReader);
         this.annotationEngine = Utils.nonNull(annotationEngine);
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
+        boolean haplotypeToRef = true;
+        this.alignerHaplotypeToRef = new SmithWatermanJavaAligner(haplotypeToRef);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
@@ -540,7 +544,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
+        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, alignerHaplotypeToRef, !hcArgs.doNotCorrectOverlappingBaseQualities);
         
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
 
@@ -702,6 +706,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         likelihoodCalculationEngine.close();
 
         aligner.close();
+        alignerHaplotypeToRef.close();
 
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();

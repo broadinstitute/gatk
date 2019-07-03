@@ -24,8 +24,7 @@ import java.util.List;
 public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
     private long totalComputeTime = 0;
-    private long totalHeuristicTime = 0;
-    private long totalMismatchHeuristicTime = 0;
+    private boolean haplotypeToref = false;
 
     /**
      * return the stateless singleton instance of SmithWatermanJavaAligner
@@ -49,6 +48,10 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
      * accessible via {@link #getInstance}
      */
     private SmithWatermanJavaAligner(){}
+
+    public SmithWatermanJavaAligner(boolean haplotypeToref){
+        this.haplotypeToref = haplotypeToref;
+    }
 
     /**
      * Aligns the alternate sequence to the reference sequence
@@ -95,14 +98,59 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), singleMismatchIndex);
             }
             else{
-                // run full Smith-Waterman
-                final int n = reference.length+1;
-                final int m = alternate.length+1;
-                final int[][] sw = new int[n][m];
-                final int[][] btrack=new int[n][m];
+                if(haplotypeToref){
+                    //check for one indel
+                    int oneIndelIndex = -1;
+                    int[] indelStartAndSize = null;
 
-                calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-                alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+                    if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+                        //calculate allowed length for indel to be less of a penalty than 2 mismatches
+                        int mismatchScore = parameters.getMismatchPenalty();
+                        int indelExtendScore = parameters.getGapExtendPenalty();
+                        int indelOpenScore = parameters.getGapOpenPenalty();
+                        int allowedLengthOfIndel = ((2 * mismatchScore) - indelOpenScore)/indelExtendScore;
+
+                        indelStartAndSize = Utils.atMostOneIndel(reference, alternate, allowedLengthOfIndel);
+                        oneIndelIndex = indelStartAndSize[0];
+
+                    }
+
+                    if (oneIndelIndex != -1){
+                        int indelLength = indelStartAndSize[1];
+                        State state = null;
+                        if(alternate.length < reference.length){
+                            state = State.DELETION;
+                        }
+                        if(alternate.length > reference.length){
+                            state = State.INSERTION;
+                        }
+
+                        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
+                                makeElement(state, indelLength), makeElement(State.MATCH, alternate.length - oneIndelIndex));
+                        alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
+                    }
+                    else{
+                        //run full Smith-Waterman
+
+                        final int n = reference.length+1;
+                        final int m = alternate.length+1;
+                        final int[][] sw = new int[n][m];
+                        final int[][] btrack=new int[n][m];
+
+                        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                        alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+                    }
+                }
+                else{
+                    // run full Smith-Waterman
+                    final int n = reference.length+1;
+                    final int m = alternate.length+1;
+                    final int[][] sw = new int[n][m];
+                    final int[][] btrack=new int[n][m];
+
+                    calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                    alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+                }
             }
         }
 
