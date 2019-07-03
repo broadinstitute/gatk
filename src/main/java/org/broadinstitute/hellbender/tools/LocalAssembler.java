@@ -39,7 +39,7 @@ public class LocalAssembler extends MultiplePassReadWalker {
         forEachRead( (read, ref, feature, nReadsProcessed) -> {
             final byte[] calls = read.getBasesNoCopy();
             final byte[] quals = read.getBaseQualitiesNoCopy();
-            KmerAdjacency.kmerize(calls, quals, 0, QMIN, kmerAdjacencySet); });
+            KmerAdjacency.kmerize(calls, quals, QMIN, kmerAdjacencySet); });
 
         final List<ContigImpl> contigs = buildContigs(kmerAdjacencySet);
         connectContigs(contigs);
@@ -47,11 +47,13 @@ public class LocalAssembler extends MultiplePassReadWalker {
         weldPipes(contigs);
         final Map<Contig, String> contigNames = nameContigs(contigs);
 
+        final List<Error> errors = new ArrayList<>();
         final KmerSet<KmerAdjacency> discoveredKmerSet = new KmerSet<>(1000);
         forEachRead( (read, ref, feature, nReadsProcessed) -> {
-            final Path path =
-                    new Path(read.getBasesNoCopy(), read.getBaseQualitiesNoCopy(), kmerAdjacencySet, discoveredKmerSet);
-            final int nErrors = path.getErrors().size();
+            final int nErrorsToStart = errors.size();
+            final Path path = new Path(read.getBasesNoCopy(), read.getBaseQualitiesNoCopy(),
+                    kmerAdjacencySet, discoveredKmerSet, errors);
+            final int nErrors = errors.size() - nErrorsToStart;
             final String readIdx = (nReadsProcessed + 1) + ": ";
             final String pathDesc = path.toString(contigNames);
             if ( nErrors == 0 ) {
@@ -61,8 +63,16 @@ public class LocalAssembler extends MultiplePassReadWalker {
             }
         });
 
+        final List<ContigImpl> gapFills = buildContigs(discoveredKmerSet);
+        connectContigs(gapFills);
+        removeThinContigs(gapFills, discoveredKmerSet);
+        weldPipes(gapFills);
+        System.out.println("Gap Fill contigs:");
+        writeContigs(gapFills, nameContigs(gapFills));
+
         markComponents(contigs);
         dumpDOT(contigs, contigNames, "assembly.dot");
+        System.out.println("Graph contigs:");
         writeContigs(contigs, contigNames);
     }
 
@@ -394,7 +404,6 @@ public class LocalAssembler extends MultiplePassReadWalker {
             }
         }
     }
-*/
 
     private static int commonCount( final List<Long> list1, final List<Long> list2 ) {
         final Iterator<Long> itr2 = list2.iterator();
@@ -410,6 +419,7 @@ public class LocalAssembler extends MultiplePassReadWalker {
         }
         return result;
     }
+*/
 
     private static Map<Contig, String> nameContigs( final List<ContigImpl> contigs ) {
         final Map<Contig, String> contigNames = new HashMap<>(contigs.size() * 3);
@@ -976,14 +986,13 @@ public class LocalAssembler extends MultiplePassReadWalker {
 
         public static void kmerize( final byte[] calls,
                                     final byte[] quals,
-                                    final int start,
                                     final byte qMin,
                                     final KmerSet<KmerAdjacency> kmerSet ) {
             int currentCount = 0;
             long currentKVal = 0;
             KmerAdjacency prevAdjacency = null;
             KmerAdjacency currentAdjacency = null;
-            for ( int idx = start; idx < calls.length; ++idx ) {
+            for ( int idx = 0; idx < calls.length; ++idx ) {
                 if ( quals[idx] <  qMin ) {
                     if ( currentAdjacency != null ) {
                         currentAdjacency.observe(prevAdjacency, null);
@@ -1006,10 +1015,7 @@ public class LocalAssembler extends MultiplePassReadWalker {
                 }
                 if ( ++currentCount >= KSIZE ) {
                     final long nextKVal = currentKVal & KMASK;
-                    final KmerAdjacency nextAdjacency =
-                            isCanonical(nextKVal) ?
-                                    kmerSet.findOrAdd(nextKVal, KmerAdjacency::new) :
-                                    kmerSet.findOrAdd(reverseComplement(nextKVal), KmerAdjacency::new).rc();
+                    final KmerAdjacency nextAdjacency = findOrAdd(nextKVal, kmerSet);
                     if ( currentAdjacency != null ) {
                         currentAdjacency.observe(prevAdjacency, nextAdjacency);
                     }
@@ -1022,12 +1028,17 @@ public class LocalAssembler extends MultiplePassReadWalker {
             }
         }
 
-        private static KmerAdjacency find( final long kVal, final KmerSet<KmerAdjacency> kmerAdjacencySet ) {
+        public static KmerAdjacency find( final long kVal, final KmerSet<KmerAdjacency> kmerAdjacencySet ) {
             if ( isCanonical(kVal) ) return kmerAdjacencySet.find(kVal & KMASK);
             final KmerAdjacency result = kmerAdjacencySet.find(reverseComplement(kVal));
             return result == null ? null : result.rc();
         }
 
+        public static KmerAdjacency findOrAdd( final long kVal, final KmerSet<KmerAdjacency> kmerAdjacencySet ) {
+            if ( isCanonical(kVal) ) return kmerAdjacencySet.findOrAdd(kVal & KMASK, KmerAdjacency::new);
+            return kmerAdjacencySet.findOrAdd(reverseComplement(kVal), KmerAdjacency::new).rc();
+        }
+/*
         private static long kVal( final byte[] calls, final int start ) {
             long kVal = 0;
             final int end = start + KSIZE;
@@ -1044,6 +1055,7 @@ public class LocalAssembler extends MultiplePassReadWalker {
             }
             return kVal;
         }
+*/
 
         // Lookup table for reverse-complementing each possible byte value.
         // Each pair of bits represents a base, so you have to reverse bits pairwise and then invert all bits.
@@ -1222,7 +1234,7 @@ public class LocalAssembler extends MultiplePassReadWalker {
             @Override public CharSequence subSequence( final int start, final int end ) {
                 return new StringBuilder(end - start).append(this, start, end);
             }
-            @Override public String toString() { return "" + this; }
+            @Override public String toString() { return new StringBuilder(this).toString(); }
         }
 
         public static final class ListRC extends AbstractList<Contig> {
@@ -1289,7 +1301,6 @@ public class LocalAssembler extends MultiplePassReadWalker {
 
     public static final class Path {
         private final List<PathPart> parts;
-        private final List<Error> errors;
 
         // odd RCing constructor
         private Path( final Path that ) {
@@ -1298,18 +1309,18 @@ public class LocalAssembler extends MultiplePassReadWalker {
             for ( int idx = thoseParts.size() - 1; idx >= 0; --idx ) {
                 parts.add(thoseParts.get(idx).rc());
             }
-            errors = that.errors; // errors are canonicalized, so we can just borrow the list wholesale
         }
 
         public Path( final byte[] calls,
                      final byte[] quals,
                      final KmerSet<KmerAdjacency> kmerAdjacencySet,
-                     final KmerSet<KmerAdjacency> discoveredKmerSet ) {
+                     final KmerSet<KmerAdjacency> discoveredKmerSet,
+                     final List<Error> errors ) {
             parts = new ArrayList<>();
-            errors = new ArrayList<>();
             long kVal = 0;
             int count = 0;
             PathPart currentPathPart = null;
+            List<Long> discoveredKVals = null;
             for ( int idx = 0; idx != calls.length; ++idx ) {
                 final byte call = calls[idx];
                 kVal <<= 2;
@@ -1333,6 +1344,9 @@ public class LocalAssembler extends MultiplePassReadWalker {
                         } else if ( (contig = currentPathPart.getContig()) == null ) {
                             // if the current path part is NoKmer, just extend it
                             currentPathPart.extendPath();
+                            if ( discoveredKVals != null ) {
+                                discoveredKVals.add(kVal);
+                            }
                         } else if ( (contigOffset = currentPathPart.getStop() + KSIZE -1) < contig.size() ) {
                             // if the current path part is on some contig, note the mismatch and extend it
                             errors.add(new Error(contig, contigOffset, call, quals[idx]));
@@ -1361,59 +1375,78 @@ public class LocalAssembler extends MultiplePassReadWalker {
                             // current path part is at the end of its contig -- create a new NoKmer path part
                             currentPathPart = new PathPart();
                             parts.add(currentPathPart);
+                            if ( contig.getSuccessors().size() == 0 ) {
+                                discoveredKVals = new ArrayList<>();
+                                discoveredKVals.add(kVal);
+                            }
                         }
-                    } else if ( currentPathPart == null ) {
-                        // we've looked up a kmer, but don't have a current path part -- create one
-                        currentPathPart = new PathPart(contig, kmer.getContigOffset());
-                        parts.add(currentPathPart);
-                    } else if ( contig == currentPathPart.getContig() ) {
-                        // our lookup is on the current path part's contig -- extend it
-                        if ( kmer.getContigOffset() == currentPathPart.getStop() ) {
-                            currentPathPart.extendPath();
-                        } else {
-                            // weird:  kmer is non-contiguous.  start a new path part
+                    } else {
+                        discoveredKVals = null;
+                        if ( currentPathPart == null ) {
+                            // we've looked up a kmer, but don't have a current path part -- create one
                             currentPathPart = new PathPart(contig, kmer.getContigOffset());
                             parts.add(currentPathPart);
+                        } else if ( contig == currentPathPart.getContig() ) {
+                            // our lookup is on the current path part's contig -- extend it
+                            if ( kmer.getContigOffset() == currentPathPart.getStop() ) {
+                                currentPathPart.extendPath();
+                            } else {
+                                // weird:  kmer is non-contiguous.  start a new path part
+                                currentPathPart = new PathPart(contig, kmer.getContigOffset());
+                                parts.add(currentPathPart);
+                            }
+                        } else if ( currentPathPart.getContig() != null ) {
+                            // we're jumping to a new contig.  start a new path part
+                            currentPathPart = new PathPart(contig, kmer.getContigOffset());
+                            parts.add(currentPathPart);
+//                        } else if ( kmer.getContigOffset() == 0 ) {
+                            // we got our 1st good kmer lookup at the start of a contig after a chunk of NoKmers
+                            // just add a new path part for it
+//                            currentPathPart = new PathPart(contig, 0);
+//                            parts.add(currentPathPart);
+                        } else {
+                            // we got our 1st good kmer lookup after a chunk of NoKmers, and we're not at the very start
+                            // of the contig, so there's an upstream error to fix.
+                            // we don't know how to fix errors in reverse, so rc the chunk in question,
+                            // path it in the forward direction recursively, and RC that path.
+                            parts.remove( parts.size() - 1);
+                            final int end = idx + 1;
+                            final int start = end - KSIZE - currentPathPart.getStop();
+                            final byte[] rcCalls = Arrays.copyOfRange(calls, start, end);
+                            SequenceUtil.reverseComplement(rcCalls);
+                            final byte[] rQuals = Arrays.copyOfRange(quals, start, end);
+                            SequenceUtil.reverseQualities(rQuals);
+                            final Path rcPath = new Path(rcCalls, rQuals, kmerAdjacencySet, discoveredKmerSet, errors).rc();
+                            parts.addAll(rcPath.getParts());
+                            currentPathPart = parts.get(parts.size() - 1);
                         }
-                    } else if ( currentPathPart.getContig() != null ) {
-                        // we're jumping to a new contig.  start a new path part
-                        currentPathPart = new PathPart(contig, kmer.getContigOffset());
-                        parts.add(currentPathPart);
-                    } else if ( kmer.getContigOffset() == 0 ) {
-                        // we got our 1st good kmer lookup at the start of a contig after a chunk of NoKmers
-                        // just add a new path part for it
-                        currentPathPart = new PathPart(contig, 0);
-                        parts.add(currentPathPart);
-                    } else {
-                        // we got our 1st good kmer lookup after a chunk of NoKmers, and we're not at the very start
-                        // of the contig, so there's an upstream error to fix.
-                        // we don't know how to fix errors in reverse, so rc the chunk in question,
-                        // path it in the forward direction recursively, and RC that path.
-                        parts.remove( parts.size() - 1);
-                        final int end = idx + 1;
-                        final int start = end - KSIZE - currentPathPart.getStop();
-                        final byte[] rcCalls = Arrays.copyOfRange(calls, start, end);
-                        SequenceUtil.reverseComplement(rcCalls);
-                        final byte[] rQuals = Arrays.copyOfRange(quals, start, end);
-                        SequenceUtil.reverseQualities(rQuals);
-                        final Path rcPath = new Path(rcCalls, rQuals, kmerAdjacencySet, discoveredKmerSet).rc();
-                        parts.addAll(rcPath.getParts());
-                        currentPathPart = parts.get(parts.size() - 1);
-                        errors.addAll(rcPath.getErrors());
                     }
                 }
             }
 
-            //TODO: this is broken -- it's not fixing the read errors before kmerizing
-            if ( parts.size() > 1 && currentPathPart.getContig() == null ) {
-                // if there's a trailing sequence of kmers that didn't look up
-                final int start = calls.length - currentPathPart.getStop() - KSIZE;
-                KmerAdjacency.kmerize(calls, quals, start, (byte)0, discoveredKmerSet);
+            if ( discoveredKVals != null ) {
+                final Iterator<Long> itr = discoveredKVals.iterator();
+                KmerAdjacency lastKmer = null;
+                KmerAdjacency currentKmer = KmerAdjacency.findOrAdd(itr.next(), discoveredKmerSet);
+                while ( itr.hasNext() ) {
+                    final KmerAdjacency nextKmer = KmerAdjacency.findOrAdd(itr.next(), discoveredKmerSet);
+                    currentKmer.observe(lastKmer, nextKmer);
+                    lastKmer = currentKmer;
+                    currentKmer = nextKmer;
+                }
+                currentKmer.observe(lastKmer, null);
+                discoveredKmerSet.add(currentKmer);
+/*
+                final StringBuilder sb = new StringBuilder(discoveredKVals.size());
+                for ( final long kkk : discoveredKVals ) {
+                    sb.append("ACGT".charAt((int)(kkk & 3)));
+                }
+                System.out.println(sb);
+*/
             }
         }
 
         public List<PathPart> getParts() { return parts; }
-        public List<Error> getErrors() { return errors; }
         public Path rc() { return new Path(this); }
 
         public String toString( final Map<Contig, String> contigNames ) {
