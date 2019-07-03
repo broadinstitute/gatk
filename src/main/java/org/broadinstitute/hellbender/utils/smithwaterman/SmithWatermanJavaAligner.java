@@ -117,16 +117,41 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                     if (oneIndelIndex != -1){
                         int indelLength = indelStartAndSize[1];
                         State state = null;
+                        int cigarThirdElementLength = 0;
+
                         if(alternate.length < reference.length){
                             state = State.DELETION;
+                            cigarThirdElementLength = alternate.length - oneIndelIndex;
                         }
                         if(alternate.length > reference.length){
                             state = State.INSERTION;
+                            cigarThirdElementLength = alternate.length - indelLength - oneIndelIndex;
                         }
-                        //produce cigar string of 3 elements
+
                         final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
-                                makeElement(state, indelLength), makeElement(State.MATCH, alternate.length - oneIndelIndex));
+                                makeElement(state, indelLength), makeElement(State.MATCH, cigarThirdElementLength));
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
+
+                        //test to see if SW output and indel heurisitic output are the same
+                        Cigar cigar1 = alignmentResult.getCigar();
+
+                        final int n = reference.length+1;
+                        final int m = alternate.length+1;
+                        final int[][] sw = new int[n][m];
+                        final int[][] btrack=new int[n][m];
+
+                        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                        SmithWatermanAlignment alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
+                        Cigar cigar2 = alignmentResult2.getCigar();
+
+                        if(!cigar1.equals(cigar2)){
+                            System.out.println("CIGARS NOT EQUAL");
+                            System.out.println(new String(reference));
+                            System.out.println("");
+                            System.out.println(new String(alternate));
+                            System.out.println("heuristic: " + cigar1.toString());
+                            System.out.println("SW       : " + cigar2.toString());
+                        }
                     }
                     else{
                         //run full Smith-Waterman

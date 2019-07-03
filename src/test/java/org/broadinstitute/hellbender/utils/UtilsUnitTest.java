@@ -770,7 +770,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         String reference3 = "ATTTAGTGGGATTA";
         String query3 =     "ATTTAGTAGTGGGATTA";
         int result3 = (Utils.atMostOneIndel(reference3.getBytes(), query3.getBytes(), 3))[0];
-        Assert.assertEquals(result3, 7);
+        Assert.assertEquals(result3, 3);
 
         //insertion in end of query
         String reference4 = "AGTAGTGTGCGTCA";
