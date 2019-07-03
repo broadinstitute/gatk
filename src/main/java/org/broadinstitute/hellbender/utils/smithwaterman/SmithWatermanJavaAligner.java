@@ -109,10 +109,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         int indelExtendScore = parameters.getGapExtendPenalty();
                         int indelOpenScore = parameters.getGapOpenPenalty();
                         int allowedLengthOfIndel = ((2 * mismatchScore) - indelOpenScore)/indelExtendScore;
-
+                        //returns int array of 2 elements - location, size
                         indelStartAndSize = Utils.atMostOneIndel(reference, alternate, allowedLengthOfIndel);
                         oneIndelIndex = indelStartAndSize[0];
-
                     }
 
                     if (oneIndelIndex != -1){
@@ -124,7 +123,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         if(alternate.length > reference.length){
                             state = State.INSERTION;
                         }
-
+                        //produce cigar string of 3 elements
                         final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
                                 makeElement(state, indelLength), makeElement(State.MATCH, alternate.length - oneIndelIndex));
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
