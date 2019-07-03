@@ -1078,7 +1078,7 @@ public final class Utils {
         int referenceLength = reference.length;
         int queryLength = query.length;
 
-        int indelStart = -1;
+        int indelEnd = -1;
         int[] indelStartAndSize = {-1,0};
 
         if(queryLength < referenceLength){
@@ -1087,20 +1087,20 @@ public final class Utils {
                 return indelStartAndSize;
             }
 
-            //traverse until you hit mismatch/start of indel
-            for(int i = 0; i < queryLength; i++){
-                if(query[i] != reference[i]){
-                    indelStart = i;
+            //traverse backwards until you hit mismatch/end of indel
+            for(int i = queryLength - 1; i >= 0; i--){
+                if(query[i] != reference[i + lengthOfIndel]){
+                    indelEnd = i + 1;
 
-                    //traverse backwards until you hit end of indel
-                    for(i = queryLength - 1; i >= indelStart; i--){
-                        if(query[i] != reference[i + lengthOfIndel]){
+                    //traverse forwards until you hit start of indel
+                    for(i = 0; i < indelEnd; i++){
+                        if(query[i] != reference[i]){
                             return indelStartAndSize;
                         }
                     }
 
                     //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[0] = indelEnd;
                     indelStartAndSize[1] = lengthOfIndel;
                     return indelStartAndSize;
                 }
@@ -1117,24 +1117,26 @@ public final class Utils {
                 return indelStartAndSize;
             }
 
-            for(int i = 0; i < referenceLength; i++){
-                if(reference[i] != query[i]){
-                    indelStart = i;
+            //traverse backwards until you hit mismatch/end of indel
+            for(int i = referenceLength - 1; i >= 0; i--){
+                if(reference[i] != query[i + lengthOfIndel]){
+                    indelEnd = i + 1;
 
-                    for(i = referenceLength - 1; i >= indelStart; i--){
-                        if(reference[i] != query[i + lengthOfIndel]){
+                    //traverse forwards until you hit start of indel
+                    for(i = 0; i < indelEnd; i++){
+                        if(reference[i] != query[i]){
                             return indelStartAndSize;
                         }
                     }
 
                     //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelStart;
+                    indelStartAndSize[0] = indelEnd;
                     indelStartAndSize[1] = lengthOfIndel;
                     return indelStartAndSize;
                 }
             }
 
-            //insertion located at end of query
+            //deletion located at the end of the query
             indelStartAndSize[0] = referenceLength;
             indelStartAndSize[1] = queryLength - referenceLength;
             return indelStartAndSize;
