@@ -1046,35 +1046,19 @@ public final class Utils {
      * @param reference the reference sequence
      * @param query the query sequence
      */
-    public static int lastIndexOf(final byte[] reference, final byte[] query) {
-        int queryLength = query.length;
-
-        // start search from the last possible matching position and search to the left
-        for (int r = reference.length - queryLength; r >= 0; r--) {
-            int q = 0;
-            while (q < queryLength && reference[r+q] == query[q]) {
-                q++;
-            }
-            if (q == queryLength) {
-                return r;
-            }
-        }
-        return -1;
-    }
-
-    public static int lastIndexOfAtMostOneMismatch(final byte[] reference, final byte[] query) {
+    public static int lastIndexOfAtMostOneMismatch(final byte[] reference, final byte[] query, final int allowedMismatches) {
         int queryLength = query.length;
 
         // start search from the last possible matching position and search to the left
         for (int refIndex = reference.length - queryLength; refIndex >= 0; refIndex--) {
             int mismatchCount = 0;
-            for (int queryIndex = 0; queryIndex < queryLength && mismatchCount < 2; queryIndex++) {
+            for (int queryIndex = 0; queryIndex < queryLength && mismatchCount <= allowedMismatches; queryIndex++) {
                 if (reference[refIndex+queryIndex] != query[queryIndex]) {
                     mismatchCount++;
                 }
             }
 
-            if (mismatchCount < 2) {
+            if (mismatchCount <= allowedMismatches) {
                 return refIndex;
             }
         }

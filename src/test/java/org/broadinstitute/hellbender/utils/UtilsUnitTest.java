@@ -591,7 +591,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference = "AAAA";
         final String query     = "AAAAAAA";
 
-        final int result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        final int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query.getBytes(), 0);
         final int expected = reference.lastIndexOf(query);
         Assert.assertEquals(result, expected);
     }
@@ -602,13 +602,13 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // match right boundary of reference
         String query = "TGGGG";
-        int result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query.getBytes(), 0);
         int expected = reference.lastIndexOf(query);
         Assert.assertEquals(result, expected);
 
         // match left boundary of reference
         query = "AAAAC";
-        result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query.getBytes(), 0);
         expected = reference.lastIndexOf(query);
         Assert.assertEquals(result, expected);
     }
@@ -619,13 +619,13 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // match right boundary of reference
         final String query1 = "TGAGG";
-        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes());
+        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes(), 1);
         int expected = reference.length() - query1.length();
         Assert.assertEquals(result, expected);
 
         // match left boundary of reference
         final String query2 = "AAGAC";
-        result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query2.getBytes());
+        result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query2.getBytes(), 1);
         Assert.assertEquals(result, 0);
     }
 
@@ -635,12 +635,12 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // match right boundary of reference
         final String query1 = "AGAGG";
-        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes());
+        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes(), 1);
         Assert.assertEquals(result, -1);
 
         // match right boundary of reference
         final String query2 = "GGAAC";
-        int result2 = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query2.getBytes());
+        int result2 = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query2.getBytes(), 1);
         Assert.assertEquals(result2, -1);
     }
 
@@ -650,7 +650,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // matches both boundaries of reference
         final String query1 = "AGGG";
-        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes());
+        int result = Utils.lastIndexOfAtMostOneMismatch(reference.getBytes(), query1.getBytes(), 1);
         //will catch first match it encounters from the right
         int expected = reference.length() - query1.length();
         Assert.assertEquals(result, expected);
@@ -682,7 +682,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 reference[index + mismatchPosition] = BaseUtils.simpleComplement(query[mismatchPosition]);
             }
 
-            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query);
+            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query, 1);
             final int expected = index;
             Assert.assertEquals(result, expected);
         }
@@ -711,7 +711,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 System.arraycopy(query,0, reference, index, queryLength);
             }
 
-            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query);
+            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query, 1);
             final int expected = index;
             Assert.assertEquals(result, expected);
         }
@@ -746,7 +746,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 }
             }
             
-            final int result = Utils.lastIndexOf(reference, query);
+            final int result = Utils.lastIndexOfAtMostOneMismatch(reference, query, 0);
             final int expected = new String(reference).lastIndexOf(new String(query));
             Assert.assertEquals(result, expected);
         }

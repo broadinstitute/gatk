@@ -99,7 +99,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
             long startHeuristic = System.nanoTime();
-            matchIndex = Utils.lastIndexOf(reference, alternate);
+            matchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate, 0);
             totalHeuristicTime += System.nanoTime() - startHeuristic;
         }
 
@@ -121,7 +121,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 // Use a substring search to find a one-off match of the alternate in the reference
                 // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
                 long startOneMismatchHeuristic = System.nanoTime();
-                matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
+                matchIndex2 = Utils.lastIndexOfAtMostOneMismatch(reference, alternate, 1);
                 totalMismatchHeuristicTime += System.nanoTime() - startOneMismatchHeuristic;
             }
             if (matchIndex2 != -1) {
