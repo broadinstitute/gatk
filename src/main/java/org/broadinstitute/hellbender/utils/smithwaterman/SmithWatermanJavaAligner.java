@@ -74,7 +74,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
-            exactMatchIndex = Utils.lastIndexOf(reference, alternate);
+            exactMatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0);
         }
 
         final SmithWatermanAlignment alignmentResult;
@@ -89,7 +89,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             int singleMismatchIndex = -1;
             if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
                 //look for one mismatch
-                singleMismatchIndex = Utils.lastIndexOfAtMostOneMismatch(reference, alternate);
+                singleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1);
             }
 
             if (singleMismatchIndex != -1) {

@@ -37,7 +37,7 @@ public final class SWNativeAlignerWrapper implements SmithWatermanAligner {
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
-            matchIndex = Utils.lastIndexOf(reference, alternate);
+            matchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0);
         }
 
         final SmithWatermanAlignment alignmentResult;
