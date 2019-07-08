@@ -8,6 +8,7 @@ import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
@@ -1034,7 +1035,7 @@ public final class Utils {
     }
 
     /**
-     * Find the last one-off occurrence of the query sequence in the reference sequence
+     * Find the last occurrence, whether it be an exact match, off-by-one, or off-by-two, of the query sequence in the reference sequence
      *
      * Returns the index of the last occurrence or -1 if the query sequence is not found
      *
@@ -1062,83 +1063,56 @@ public final class Utils {
 
     /**
      * Finds the location of one indel in the query sequence in relation to the reference sequence
+     * Global Alignment
      *
      * Returns the index and size of the indel (as a 2 element int array) or -1 and 0 if an indel less than 4 bases is not found
      *
      * @param reference the reference sequence
      * @param query the query sequence
-     * @param allowedLengthOfIndel the maximum size of the indel before 2 mismatches becomes less penalized
+     * @param maxIndelLength the maximum length indel we look for
      */
-    public static int[] atMostOneIndel(final byte[] reference, final byte[] query, int allowedLengthOfIndel){
-        int referenceLength = reference.length;
-        int queryLength = query.length;
+    public static ImmutablePair<Integer, Integer> atMostOneIndel(final byte[] reference, final byte[] query, int maxIndelLength){
+        int lengthOfIndel = Math.abs(reference.length - query.length);
+
+        if(lengthOfIndel > maxIndelLength){
+            return new ImmutablePair<Integer, Integer>(-1,0);
+        }
+        //deletion
+        if(query.length < reference.length){
+            return findIndel(query, reference, lengthOfIndel);
+        }
+        //insertion
+        else if(query.length > reference.length){
+            return findIndel(reference, query, lengthOfIndel);
+        }
+        //lengths are equal, no one indel
+        else{
+            return new ImmutablePair<Integer, Integer>(-1,0);
+        }
+    }
+
+    private static ImmutablePair<Integer, Integer> findIndel(final byte[] shorter, final byte[] longer, int lengthOfIndel){
 
         int indelEnd = -1;
-        int[] indelStartAndSize = {-1,0};
-
-        if(queryLength < referenceLength){
-            int lengthOfIndel = referenceLength - queryLength;
-            if(lengthOfIndel > allowedLengthOfIndel){
-                return indelStartAndSize;
+        //traverse backwards until you hit mismatch/end of indel
+        for(int i = shorter.length - 1; i >= 0; i--){
+            if(shorter[i] != longer[i + lengthOfIndel]){
+                indelEnd = i + 1;
+                break;
             }
-
-            //traverse backwards until you hit mismatch/end of indel
-            for(int i = queryLength - 1; i >= 0; i--){
-                if(query[i] != reference[i + lengthOfIndel]){
-                    indelEnd = i + 1;
-
-                    //traverse forwards until you hit start of indel
-                    for(i = 0; i < indelEnd; i++){
-                        if(query[i] != reference[i]){
-                            return indelStartAndSize;
-                        }
-                    }
-
-                    //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelEnd;
-                    indelStartAndSize[1] = lengthOfIndel;
-                    return indelStartAndSize;
-                }
-            }
-
-            //deletion located at the end of the query
-            indelStartAndSize[0] = queryLength;
-            indelStartAndSize[1] = referenceLength - queryLength;
-            return indelStartAndSize;
         }
-        if(referenceLength < queryLength){
-            int lengthOfIndel = queryLength - referenceLength;
-            if(lengthOfIndel > allowedLengthOfIndel){
-                return indelStartAndSize;
-            }
-
-            //traverse backwards until you hit mismatch/end of indel
-            for(int i = referenceLength - 1; i >= 0; i--){
-                if(reference[i] != query[i + lengthOfIndel]){
-                    indelEnd = i + 1;
-
-                    //traverse forwards until you hit start of indel
-                    for(i = 0; i < indelEnd; i++){
-                        if(reference[i] != query[i]){
-                            return indelStartAndSize;
-                        }
-                    }
-
-                    //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelEnd;
-                    indelStartAndSize[1] = lengthOfIndel;
-                    return indelStartAndSize;
-                }
-            }
-
-            //deletion located at the end of the query
-            indelStartAndSize[0] = referenceLength;
-            indelStartAndSize[1] = queryLength - referenceLength;
-            return indelStartAndSize;
+        if(indelEnd == -1){
+            //deletion located at beginning of the query
+            return new ImmutablePair<Integer, Integer>(0, lengthOfIndel);
         }
-
-        //lengths are equal, no one indel
-        return indelStartAndSize;
+        //traverse forwards until you hit start of indel
+        for(int i = 0; i < indelEnd; i++){
+            if(shorter[i] != longer[i]){
+                return new ImmutablePair<Integer, Integer>(-1,0);
+            }
+        }
+        //traversed entire query, one indel and no mismatches found
+        return new ImmutablePair<Integer, Integer>(indelEnd, lengthOfIndel);
     }
 
     /**

@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.smithwaterman;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import jdk.nashorn.internal.ir.annotations.Immutable;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -101,7 +103,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 if(haplotypeToref){
                     //check for one indel
                     int oneIndelIndex = -1;
-                    int[] indelStartAndSize = null;
+                    ImmutablePair<Integer,Integer> indelStartAndSize = null;
 
                     if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
                         //calculate allowed length for indel to be less of a penalty than 2 mismatches
@@ -111,11 +113,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         int allowedLengthOfIndel = ((2 * mismatchScore) - indelOpenScore)/indelExtendScore;
                         //returns int array of 2 elements - location, size
                         indelStartAndSize = Utils.atMostOneIndel(reference, alternate, allowedLengthOfIndel);
-                        oneIndelIndex = indelStartAndSize[0];
+                        oneIndelIndex = indelStartAndSize.getLeft();
                     }
 
                     if (oneIndelIndex != -1){
-                        int indelLength = indelStartAndSize[1];
+                        int indelLength = indelStartAndSize.getRight();
                         State state = null;
                         int cigarThirdElementLength = 0;
 
