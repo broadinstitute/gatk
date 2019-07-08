@@ -1092,7 +1092,6 @@ public final class Utils {
     }
 
     private static ImmutablePair<Integer, Integer> findIndel(final byte[] shorter, final byte[] longer, int lengthOfIndel){
-
         int indelEnd = -1;
         //traverse backwards until you hit mismatch/end of indel
         for(int i = shorter.length - 1; i >= 0; i--){
