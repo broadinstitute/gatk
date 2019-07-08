@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.smithwaterman;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
@@ -105,8 +104,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
                     if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
                         //calculate allowed length for indel to be less of a penalty than 2 mismatches
-                        int allowedLengthOfIndel = calculateAllowedLengthOfIndel(parameters);
-                        indelStartAndSize = Utils.atMostOneIndel(reference, alternate, allowedLengthOfIndel);
+                        int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
+                        indelStartAndSize = Utils.atMostOneIndel(reference, alternate, maxIndelLength);
                         oneIndelIndex = indelStartAndSize.getLeft();
                     }
                     //if one indel
@@ -133,13 +132,14 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         return alignmentResult;
     }
 
-    private static int calculateAllowedLengthOfIndel(final SWParameters parameters){
+    //will likely have to be modified to incorporate reads and more complex indel cases
+    private static int calculateAllowedLengthOfIndelHapToRef(final SWParameters parameters){
         //calculate allowed length for indel to be less of a penalty than 2 mismatches
         int mismatchScore = parameters.getMismatchPenalty();
         int indelExtendScore = parameters.getGapExtendPenalty();
         int indelOpenScore = parameters.getGapOpenPenalty();
-        int allowedLengthOfIndel = ((2 * mismatchScore) - indelOpenScore)/indelExtendScore;
-        return allowedLengthOfIndel;
+        int maxIndelLength = (((2 * mismatchScore) - indelOpenScore)/indelExtendScore) + 1;
+        return maxIndelLength;
     }
 
     private static SWPairwiseAlignmentResult calculateOneIndelCigar(int indelLength, final byte[] reference, final byte[] alternate, int oneIndelIndex){
