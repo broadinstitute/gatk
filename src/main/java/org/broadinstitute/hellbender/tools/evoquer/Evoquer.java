@@ -105,13 +105,13 @@ public class Evoquer extends GATKTool {
             fullName = "disable-gnarly-genotyper",
             doc = "If true, don't run the Gnarly Genotyper after combining variant records for each site",
             optional = true)
-    private boolean disableGnarlyGenotyper = true;
+    private boolean disableGnarlyGenotyper = false;
 
     @Argument(
             fullName = "skip-malformed-as-annotations",
             doc = "If true, treat sample records with malformed allele-specific annotations as missing",
             optional = true)
-    private boolean skipMalformedASAnnotations = true;
+    private boolean skipMalformedASAnnotations = false;
 
     @Argument(
             fullName = "print-debug-information",

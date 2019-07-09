@@ -19,6 +19,7 @@ public final class AnnotationUtils {
 
     public static final String AS_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";
+    public static final String MISSING_VALUE = ".";
 
     /**
      * Helper function to parse the list into the annotation string

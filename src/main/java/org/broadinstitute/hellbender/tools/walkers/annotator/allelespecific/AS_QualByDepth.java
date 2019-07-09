@@ -111,7 +111,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.AS_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
-            myData.putAttribute(myData.getAlleles().get(i), ! alleleData.isEmpty() ? Integer.parseInt(alleleData) : null);
+            myData.putAttribute(myData.getAlleles().get(i), (alleleData.isEmpty() || alleleData.equals(AnnotationUtils.MISSING_VALUE)) ? null : Integer.parseInt(alleleData));
         }
     }
 
@@ -188,7 +188,10 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
             String[] values = asQuals.split(AnnotationUtils.AS_SPLIT_REGEX);
-            if (values.length != vc.getNAlleles()+1) {  //plus one because the non-ref place holder is still around
+            // We may or may not still have a placeholder value for NON_REF at this point, so we must
+            // tolerate both values.length == vc.getNAlleles() and values.length == vc.getNAlleles() + 1.
+            // Either way, we only add values up to vc.getNAlleles() to our alleleQualList below.
+            if (values.length != vc.getNAlleles() && values.length != vc.getNAlleles() + 1) {  //plus one because the non-ref place holder is still around
                 throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
             }
             for (int i = 1; i < vc.getNAlleles(); i++) {
