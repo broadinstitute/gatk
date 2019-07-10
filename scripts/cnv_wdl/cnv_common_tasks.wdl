@@ -455,13 +455,11 @@ task PostprocessGermlineCNVCalls {
 }
 
 task CollectSampleQualityMetrics {
-    Array[File] genotyped_segments_vcf
-    Array[String] entity_ids
-
-    Int? maximum_number_events = 120
+    File genotyped_segments_vcf
+    String entity_id
+    Int maximum_number_events
 
     # Runtime parameters
-    String gatk_docker
     Int? mem_gb
     Int? disk_space_gb
     Boolean use_ssd = false
@@ -474,29 +472,24 @@ task CollectSampleQualityMetrics {
 
     command <<<
         set -e 
-
-        genotyped_segments_vcfs_array=(${sep=" " genotyped_segments_vcf})
-        entity_ids=(${sep=" " entity_ids})
-        for index in ${dollar}{!genotyped_segments_vcfs_array[@]}; do
-            NUM_SEGMENTS=$(grep -v '@' ${dollar}{genotyped_segments_vcfs_array[$index]} | wc -l)
-            if [ $NUM_SEGMENTS -lt ${maximum_number_events} ]; then
-                echo "PASS" >> ./${dollar}{entity_ids[$index]}.qcStatus.txt
-            else 
-                echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ./${dollar}{entity_ids[$index]}.qcStatus.txt
-            fi
-        done
+        NUM_SEGMENTS=$(gunzip -c ${genotyped_segments_vcf} | grep -v '#' | wc -l)
+        if [ $NUM_SEGMENTS -lt ${maximum_number_events} ]; then
+            echo "PASS" >> ${entity_id}.qcStatus.txt
+        else 
+            echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ${entity_id}.qcStatus.txt
+        fi
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 20]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
-        Array[File] qc_status_files = glob("*.qcStatus.txt")
+        File qc_status_file = "${entity_id}.qcStatus.txt"
+        String qc_status_string = read_string("${entity_id}.qcStatus.txt")
     }
 }
 
@@ -504,7 +497,6 @@ task CollectModelQualityMetrics {
     Array[File] gcnv_model_tars
 
     # Runtime parameters
-    String gatk_docker
     Int? mem_gb
     Int? disk_space_gb
     Boolean use_ssd = false
@@ -537,7 +529,6 @@ task CollectModelQualityMetrics {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
@@ -545,6 +536,7 @@ task CollectModelQualityMetrics {
     }
 
     output {
-        File qc_status = "qcStatus.txt"
+        File qc_status_file = "qcStatus.txt"
+        String qc_status_string = read_string("qcStatus.txt")
     }
 }

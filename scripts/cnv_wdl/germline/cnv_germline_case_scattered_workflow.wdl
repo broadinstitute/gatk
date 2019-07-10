@@ -103,6 +103,11 @@ workflow CNVGermlineCaseScatteredWorkflow {
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
+    ##########################
+    #### arguments for QC ####
+    ##########################
+    Int maximum_number_events_per_sample
+
     call SplitInputArray as SplitInputBamsList {
         input:
             input_array = normal_bams,
@@ -178,7 +183,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 gcnv_caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
                 gcnv_disable_annealing = gcnv_disable_annealing,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
-                allosomal_contigs = allosomal_contigs 
+                allosomal_contigs = allosomal_contigs,
+                maximum_number_events_per_sample = maximum_number_events_per_sample
         }
     }
 
@@ -192,6 +198,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
         Array[Array[File]] genotyped_intervals_vcf = CNVGermlineCaseWorkflow.genotyped_intervals_vcf
         Array[Array[File]] genotyped_segments_vcf = CNVGermlineCaseWorkflow.genotyped_segments_vcf
         Array[Array[File]] qc_status_files = CNVGermlineCaseWorkflow.qc_status_files
+        Array[Array[String]] qc_status_strings = CNVGermlineCaseWorkflow.qc_status_strings
     }
 }
 

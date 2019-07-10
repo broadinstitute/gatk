@@ -150,6 +150,11 @@ workflow CNVGermlineCohortWorkflow {
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
+    ##########################
+    #### arguments for QC ####
+    ##########################
+    Int maximum_number_events_per_sample
+
     Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
 
     call CNVTasks.PreprocessIntervals {
@@ -324,20 +329,19 @@ workflow CNVGermlineCohortWorkflow {
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
-    }
 
-    call CNVTasks.CollectSampleQualityMetrics {
-        input:
-            genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
-            entity_ids = CollectCounts.entity_id,
-            gatk_docker = gatk_docker,
-            preemptible_attempts = preemptible_attempts
+        call CNVTasks.CollectSampleQualityMetrics {
+            input:
+                genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
+                entity_id = CollectCounts.entity_id[sample_index],
+                maximum_number_events = maximum_number_events_per_sample,
+                preemptible_attempts = preemptible_attempts
+        }
     }
 
     call CNVTasks.CollectModelQualityMetrics {
         input:
             gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
-            gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -354,8 +358,9 @@ workflow CNVGermlineCohortWorkflow {
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
-        Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_files
-        File model_qc_status = CollectModelQualityMetrics.qc_status
+        Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
+        File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
+        String model_qc_string = CollectModelQualityMetrics.qc_status_string
     }
 }
 
