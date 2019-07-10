@@ -28,9 +28,13 @@
 workflow Evoquer {
     String gatk_docker
 
-    File ref_dict
+    File reference
 
-    Array[String] intervals
+    String project_id
+
+    File dataset_map
+
+    File interval_file
     String output_file_base_name
 
     Boolean compress = false
@@ -44,9 +48,11 @@ workflow Evoquer {
 
     call EvoquerTask {
         input:
-            ref_dict              = ref_dict,
-            intervals             = intervals,
+            reference             = reference,
+            intervals             = read_lines(interval_file),
             output_file_base_name = output_file_base_name,
+            project_id            = project_id,
+            dataset_map           = dataset_map,
             compress              = compress,
 
             gatk_docker           = gatk_docker,
@@ -60,7 +66,6 @@ workflow Evoquer {
 
     output {
         File genotyped_variant_calls_file = EvoquerTask.evoked_variants
-        File genotyped_variant_calls_file_idx = EvoquerTask.evoked_variants_index
     }
 }
 
@@ -70,10 +75,14 @@ task EvoquerTask {
 
     # ------------------------------------------------
     # Input args:
-    File ref_dict
+    File reference
 
     Array[String] intervals
     String output_file_base_name
+
+    String project_id
+
+    File dataset_map
 
     Boolean compress
 
@@ -95,7 +104,6 @@ task EvoquerTask {
 
     # Output Names:
     String output_file = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
-    String output_file_index = output_file +  if compress then ".tbi" else ".idx"
 
     # Timing info:
     String timing_output_file = "Evoquer.timingInformation.txt"
@@ -127,9 +135,11 @@ task EvoquerTask {
         # Run Evoquer:
         gatk --java-options "-Xmx${command_mem}m" \
             Evoquer \
-                --intervals ${default="" sep=" --intervals " intervals} \
-                --sequence-dictionary ${ref_dict} \
-                -O ${output_file}
+                -R ${reference} \
+                -O ${output_file} \
+                --project-id ${project_id} \
+                --dataset-map ${dataset_map} \
+                -L ${default="" sep=" -L " intervals}
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> ${timing_output_file}
@@ -152,6 +162,5 @@ task EvoquerTask {
     # Outputs:
     output {
         File evoked_variants = "${output_file}"
-        File evoked_variants_index = "${output_file_index}"
     }
  }
