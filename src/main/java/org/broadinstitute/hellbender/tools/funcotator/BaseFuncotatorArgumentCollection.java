@@ -107,4 +107,20 @@ abstract class BaseFuncotatorArgumentCollection implements Serializable {
     )
     public int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.REFERENCE_CONTEXT_WINDOW_SIZE_NAME,
+            optional = true,
+            minValue = 1,
+            doc = "Number of base-pairs to include in the reference context annotations before on both sides of the variant."
+    )
+    public int referenceContextWindowSize = FuncotatorArgumentDefinitions.REFERENCE_CONTEXT_WINDOW_SIZE_DEFAULT_VALUE;
+
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.GC_CONTENT_WINDOW_SIZE_NAME,
+            optional = true,
+            minValue = 1,
+            doc = "Number of bases to the left and right of a variant in which to calculate the GC content."
+    )
+    public int gcContentWindowSize = FuncotatorArgumentDefinitions.GC_CONTENT_WINDOW_SIZE_DEFAULT_VALUE;
+
 }

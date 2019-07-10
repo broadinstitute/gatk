@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.compositeoutput.CompositeOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.genelistoutput.GeneListOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
@@ -41,7 +42,7 @@ import java.util.stream.Stream;
 /**
  * Class that performs functional annotation of variants.
  *
- * Requires a set of data sources ({@link DataSourceFuncotationFactory}) from which to create {@link Funcotation}s.
+ * Requires a set of data sources ({@link FuncotationFactory}) from which to create {@link Funcotation}s.
  */
 public final class FuncotatorEngine implements AutoCloseable {
 
@@ -58,9 +59,9 @@ public final class FuncotatorEngine implements AutoCloseable {
     private final FuncotationMetadata inputMetadata;
 
     /**
-     * The {@link DataSourceFuncotationFactory} that will create {@link Funcotation}s for this {@link FuncotatorEngine}.
+     * The {@link FuncotationFactory} that will create {@link Funcotation}s for this {@link FuncotatorEngine}.
      */
-    private final List<DataSourceFuncotationFactory> dataSourceFactories;
+    private final List<FuncotationFactory> funcotationFactories;
 
     /**
      * The arguments given to the instance of the {@link GATKTool} running this {@link FuncotatorEngine}.
@@ -91,33 +92,33 @@ public final class FuncotatorEngine implements AutoCloseable {
      * respectively.
      * @param metadata {@link FuncotationMetadata} containing information on the kinds of {@link Funcotation}s this {@link FuncotatorEngine} will create to represent the input file.
      *          For example, this could be based on the existing annotations for an input VCF.
-     * @param funcotationFactories A {@link List<DataSourceFuncotationFactory>} which can create the desired {@link Funcotation}s.
+     * @param funcotationFactories A {@link List<FuncotationFactory>} which can create the desired {@link Funcotation}s.
      */
     public FuncotatorEngine(final BaseFuncotatorArgumentCollection funcotatorArgs,
                             final SAMSequenceDictionary sequenceDictionaryForDrivingVariants,
                             final FuncotationMetadata metadata,
-                            final List<DataSourceFuncotationFactory> funcotationFactories) {
+                            final List<FuncotationFactory> funcotationFactories) {
 
         this.sequenceDictionaryForDrivingVariants = sequenceDictionaryForDrivingVariants;
         this.funcotatorArgs = funcotatorArgs;
         inputMetadata = metadata;
 
-        dataSourceFactories = funcotationFactories;
-        // Note: The dataSourceFactories must be sorted to ensure that as we iterate through them
+        this.funcotationFactories = funcotationFactories;
+        // Note: The FuncotationFactories must be sorted to ensure that as we iterate through them
         // to create funcotations, the inherent dependencies between different funcotation types are preserved.
         // For example, most FuncotationFactories require that a GencodeFuncotation is present before they can
         // create their annotations.   This sorting enables such dependencies.
-        dataSourceFactories.sort(DataSourceUtils::datasourceComparator);
+        funcotationFactories.sort(DataSourceUtils::funcotationFactoryComparator);
 
         // Determine whether we have to convert given variants from B37 to HG19:
         mustConvertInputContigsToHg19 = determineReferenceAndDatasourceCompatibility();
     }
 
     /**
-     * @return An unmodifiable {@link List<DataSourceFuncotationFactory>} being used by this {@link FuncotatorEngine} to create {@link Funcotation}s.
+     * @return An unmodifiable {@link List<FuncotationFactory>} being used by this {@link FuncotatorEngine} to create {@link Funcotation}s.
      */
-    List<DataSourceFuncotationFactory> getFuncotationFactories() {
-        return Collections.unmodifiableList(dataSourceFactories);
+    List<FuncotationFactory> getFuncotationFactories() {
+        return Collections.unmodifiableList(funcotationFactories);
     }
 
     /**
@@ -140,7 +141,7 @@ public final class FuncotatorEngine implements AutoCloseable {
         // First create only the transcript (Gencode) funcotations:
 
         if (retrieveGencodeFuncotationFactoryStream().count() > 1) {
-            logger.warn("Attempting to annotate with more than one GENCODE datasource.  If these have overlapping transcript IDs, errors may occur.");
+            logger.warn("Attempting to annotate with more than one GENCODE datasource. If these have overlapping transcript IDs, errors may occur.");
         }
 
         final List<GencodeFuncotation> transcriptFuncotations = retrieveGencodeFuncotationFactoryStream()
@@ -162,26 +163,22 @@ public final class FuncotatorEngine implements AutoCloseable {
         // Create a place to keep our funcotations:
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(transcriptFuncotations);
 
-        // Perform the rest of the annotation.  Note that this code manually excludes the Gencode Funcotations.
-        for (final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
-
-            // Note that this guarantees that we do not add GencodeFuncotations a second time.
-            if (!funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE)) {
-                final List<String> txIds = funcotationMap.getTranscriptList();
-
-                for (final String txId: txIds) {
-                    funcotationMap.add(txId, funcotationFactory.createFuncotations(variantContext, referenceContext,
-                            featureContext, funcotationMap.getGencodeFuncotations(txId)));
-                }
-            }
-        }
-
-        //==============================================================================================================
-        // Create the funcotations for the input and add to all txID mappings.
 
         final List<String> txIds = funcotationMap.getTranscriptList();
 
         for (final String txId: txIds) {
+
+            // Perform the rest of the annotation.  Note that this code manually excludes the Gencode Funcotations.
+            for (final FuncotationFactory funcotationFactory : funcotationFactories ) {
+
+                // Note that this guarantees that we do not add GencodeFuncotations a second time.
+                if (!(funcotationFactory instanceof GencodeFuncotationFactory)) {
+                    funcotationMap.add(txId, funcotationFactory.createFuncotations(variantContext, referenceContext,
+                            featureContext, funcotationMap.getGencodeFuncotations(txId)));
+                }
+            }
+
+            // Create the funcotations for the input and add to all txID mappings.
             funcotationMap.add(txId, FuncotatorUtils.createFuncotations(variantContext, inputMetadata, FuncotatorConstants.DATASOURCE_NAME_FOR_INPUT_VCFS));
         }
 
@@ -213,8 +210,8 @@ public final class FuncotatorEngine implements AutoCloseable {
             throw new UserException.BadInput("Attempting to funcotate segments with more than one GENCODE datasource.  This is currently not supported.  Please post to the forum if you would like to see support for this.");
         }
 
-        final List<Funcotation> funcotations = dataSourceFactories.stream()
-                .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
+        final List<Funcotation> funcotations = funcotationFactories.stream()
+                .filter(FuncotationFactory::isSupportingSegmentFuncotation)
                 .map(ff -> ff.createFuncotations(segmentAsVariantContext, referenceContext,
                         featureContext))
                 .flatMap(List::stream)
@@ -333,11 +330,8 @@ public final class FuncotatorEngine implements AutoCloseable {
      * Shutdown the engine.  Closes all datasource factories.
      */
     public void close() {
-        for ( final DataSourceFuncotationFactory factory : dataSourceFactories ) {
-            if ( factory != null ) {
-                factory.close();
-            }
-        }
+        retrieveDataSourceFuncotationFactoryStream()
+                .forEach(f -> f.close());
     }
 
     /**
@@ -417,19 +411,19 @@ public final class FuncotatorEngine implements AutoCloseable {
     // =================================================================================================================
 
     /**
-     * Creates a {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
-     * @param dataSourceFactories {@link List} of {@link DataSourceFuncotationFactory} to check for whether each annotation in the {@code annotationMap} is handled.
+     * Creates a {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code funcotationFactories}.
+     * @param funcotationFactories {@link List} of {@link FuncotationFactory} to check for whether each annotation in the {@code annotationMap} is handled.
      * @param annotationMap {@link Map} (of ANNOTATION_NAME : ANNOTATION_VALUE) to check
-     * @return A {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
+     * @return A {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code funcotationFactories}.
      */
-    private LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<DataSourceFuncotationFactory> dataSourceFactories,
+    private LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<FuncotationFactory> funcotationFactories,
                                                                         final Map<String, String> annotationMap ) {
         final LinkedHashMap<String, String> outAnnotations = new LinkedHashMap<>();
 
         // Check each field in each factory:
         for ( final String field : annotationMap.keySet() ) {
             boolean accountedFor = false;
-            for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
+            for ( final FuncotationFactory funcotationFactory : funcotationFactories ) {
 
                 if ( funcotationFactory.getSupportedFuncotationFields().contains(field) ) {
                     accountedFor = true;
@@ -494,8 +488,15 @@ public final class FuncotatorEngine implements AutoCloseable {
         return mustConvertInputContigsToHg19;
     }
 
-    private Stream<DataSourceFuncotationFactory> retrieveGencodeFuncotationFactoryStream() {
-        return dataSourceFactories.stream()
-                .filter(f -> f.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE));
+    private Stream<GencodeFuncotationFactory> retrieveGencodeFuncotationFactoryStream() {
+        return funcotationFactories.stream()
+                .filter(f -> f instanceof GencodeFuncotationFactory)
+                .map(f -> (GencodeFuncotationFactory)f);
+    }
+
+    private Stream<DataSourceFuncotationFactory> retrieveDataSourceFuncotationFactoryStream() {
+        return funcotationFactories.stream()
+                .filter(f -> f instanceof DataSourceFuncotationFactory)
+                .map(f -> (DataSourceFuncotationFactory)f);
     }
 }

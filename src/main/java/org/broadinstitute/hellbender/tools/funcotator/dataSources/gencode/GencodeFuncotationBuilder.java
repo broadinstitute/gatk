@@ -280,27 +280,6 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the GC Content {@link Double} in the {@link GencodeFuncotation}.
-     * @param gcContent The {@link Double} containing the GC Content for the {@link GencodeFuncotation}.
-     * @return {@code this} {@link GencodeFuncotationBuilder}
-     */
-    public GencodeFuncotationBuilder setGcContent( final Double gcContent ) {
-        gencodeFuncotation.setGcContent( gcContent );
-        return this;
-    }
-
-    /**
-     * Set the Reference Context {@link String} in the {@link GencodeFuncotation}.
-     * The Reference Context string should always be for the bases on the + strand.
-     * @param referenceContext The {@link String} containing the ReferenceContext for the {@link GencodeFuncotation}.
-     * @return {@code this} {@link GencodeFuncotationBuilder}
-     */
-    public GencodeFuncotationBuilder setReferenceContext(final String referenceContext) {
-        gencodeFuncotation.setReferenceContext( referenceContext );
-        return this;
-    }
-
-    /**
      * Set the Version {@link String} in the {@link GencodeFuncotation}.
      * @param version The {@link String} containing the Version for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}

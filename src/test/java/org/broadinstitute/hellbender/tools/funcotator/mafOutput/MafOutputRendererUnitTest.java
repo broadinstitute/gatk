@@ -112,7 +112,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                         Collections.singletonList(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER)
                 );
         
-        final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
+        final List<FuncotationFactory> funcotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
                 configData,
                 new LinkedHashMap<>(),
                 TranscriptSelectionMode.BEST_EFFECT,
@@ -122,12 +122,12 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 new FlankSettings(0, 0), false
         );
 
-        // Sort the datasources to ensure the same order every time:
-        dataSourceFuncotationFactories.sort( Comparator.comparing(DataSourceFuncotationFactory::getName) );
+        // Sort the funcotationFactories to ensure the same order every time:
+        funcotationFactories.sort( Comparator.comparing(FuncotationFactory::getName) );
 
         return new MafOutputRenderer(
                 IOUtils.getPath(outputFile.toURI().toString()),
-                dataSourceFuncotationFactories,
+                funcotationFactories,
                 new VCFHeader(),
                 new LinkedHashMap<>(),
                 new LinkedHashMap<>(),

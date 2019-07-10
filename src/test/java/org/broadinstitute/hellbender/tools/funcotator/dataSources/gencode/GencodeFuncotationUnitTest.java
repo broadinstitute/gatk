@@ -31,8 +31,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                                                final Integer transcriptStartPos,
                                                                final Integer transcriptEndPos,
                                                                final String cDnaChange, final String codonChange,
-                                                               final String proteinChange, final Double gcContent,
-                                                               final String referenceContext,
+                                                               final String proteinChange,
                                                                final List<String> otherTranscripts) {
 
         final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
@@ -60,8 +59,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         gencodeFuncotation.setcDnaChange( cDnaChange );
         gencodeFuncotation.setCodonChange( codonChange );
         gencodeFuncotation.setProteinChange( proteinChange );
-        gencodeFuncotation.setGcContent( gcContent );
-        gencodeFuncotation.setReferenceContext( referenceContext );
         gencodeFuncotation.setOtherTranscripts( otherTranscripts );
 
         return gencodeFuncotation;
@@ -89,7 +86,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
-                                "3'", 1, 1, 1, "A", "ATC", "Lys", 1.0, null, Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
                         new LinkedHashSet<>(
                                 Arrays.asList("Gencode_TEST_VERSION_hugoSymbol",
                                         "Gencode_TEST_VERSION_ncbiBuild",
@@ -110,8 +107,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                         "Gencode_TEST_VERSION_cDnaChange",
                                         "Gencode_TEST_VERSION_codonChange",
                                         "Gencode_TEST_VERSION_proteinChange",
-                                        "Gencode_TEST_VERSION_gcContent",
-                                        "Gencode_TEST_VERSION_referenceContext",
                                         "Gencode_TEST_VERSION_otherTranscripts")
                         )
                 },
@@ -125,7 +120,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         final GencodeFuncotation gencodeFuncotation = createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                 "A", "T", "big_%20_changes", "T1",
-                "3'", 1, 1, 1,"A", "ATC", "Lys", 1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE"));
+                "3'", 1, 1, 1,"A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE"));
 
         return new Object[][] {
                 {
@@ -325,26 +320,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                 },
                 {
                         gencodeFuncotation,
-                        "gcContent",
-                        "1.0"
-                },
-                {
-                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_gcContent", "OVERRIDE"),
-                        "gcContent",
-                        "OVERRIDE"
-                },
-                {
-                        gencodeFuncotation,
-                        "referenceContext",
-                        "ATGCGCAT"
-                },
-                {
-                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_referenceContext", "OVERRIDE"),
-                        "referenceContext",
-                        "OVERRIDE"
-                },
-                {
-                        gencodeFuncotation,
                         "otherTranscripts",
                         "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
@@ -363,7 +338,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         final GencodeFuncotation gencodeFuncotation = createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                 "A", "T", "big_%20_changes", "T1",
-                "3'", 1, 1, 1, "A", "ATC", "Lys", 1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE"));
+                "3'", 1, 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE"));
 
 
         return new Object[][] {

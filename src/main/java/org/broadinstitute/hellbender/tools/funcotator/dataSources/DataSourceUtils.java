@@ -231,7 +231,7 @@ final public class DataSourceUtils {
     }
 
     /**
-     * Create a {@link List} of {@link DataSourceFuncotationFactory} based on meta data on the data sources, overrides, and transcript reporting priority information.
+     * Create a {@link List} of {@link FuncotationFactory} based on meta data on the data sources, overrides, and transcript reporting priority information.
      * @param dataSourceMetaData {@link Map} of {@link Path}->{@link Properties} containing metadata about each data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap} of {@link String}->{@link String} containing any annotation overrides to include in data sources.  Must not be {@code null}.
      * @param transcriptSelectionMode {@link TranscriptSelectionMode} to use when choosing the transcript for detailed reporting.  Must not be {@code null}.
@@ -243,9 +243,9 @@ final public class DataSourceUtils {
      *                                                            be annotated with a gencode/transcript datasource.
      *                                                            Not all datasources support this flag and it is
      *                                                            ignored for those that don't.
-     * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
+     * @return A {@link List} of {@link FuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
-    public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
+    public static List<FuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
                                                                                                         final LinkedHashMap<String, String> annotationOverridesMap,
                                                                                                         final TranscriptSelectionMode transcriptSelectionMode,
                                                                                                         final Set<String> userTranscriptIdSet,
@@ -260,7 +260,7 @@ final public class DataSourceUtils {
         Utils.nonNull(gatkToolInstance);
         Utils.nonNull(flankSettings);
 
-        final List<DataSourceFuncotationFactory> dataSourceFactories = new ArrayList<>(dataSourceMetaData.size());
+        final List<FuncotationFactory> funcotationFactories = new ArrayList<>(dataSourceMetaData.size());
 
         // Now we know we have unique and valid data.
         // Now we must instantiate our data sources:
@@ -302,12 +302,34 @@ final public class DataSourceUtils {
             }
 
             // Add in our factory:
-            dataSourceFactories.add(funcotationFactory);
+            funcotationFactories.add(funcotationFactory);
         }
 
         logger.debug("All Data Sources have been created.");
-        return dataSourceFactories;
+        return funcotationFactories;
     }
+
+
+
+    /**
+     * Create a {@link List} of {@link FuncotationFactory} which generate computed funcotations.
+     * @param gcContentWindowSize Number of bases to the left and right of a variant in which to calculate the GC content.
+     * @param referenceContextWindowSize Number of base-pairs to include in the reference context annotations before on both sides of the variant.
+     * @return A {@link List} of {@link FuncotationFactory} which generate computed funcotations.
+     */
+    public static List<FuncotationFactory> createComputedFuncotationFactories(final int gcContentWindowSize, final int referenceContextWindowSize) {
+        ArrayList<FuncotationFactory> funcotationFactories = new ArrayList<>();
+
+        logger.debug("Creating Funcotation Factory for " + GCContentFuncotationFactory.DEFAULT_NAME + " ...");
+        funcotationFactories.add(new GCContentFuncotationFactory(GCContentFuncotationFactory.DEFAULT_VERSION, GCContentFuncotationFactory.DEFAULT_NAME, gcContentWindowSize));
+
+        logger.debug("Creating Funcotation Factory for " + ReferenceContextFuncotationFactory.DEFAULT_NAME + " ...");
+        funcotationFactories.add(new ReferenceContextFuncotationFactory(ReferenceContextFuncotationFactory.DEFAULT_VERSION, ReferenceContextFuncotationFactory.DEFAULT_NAME, referenceContextWindowSize));
+
+        logger.debug("All computed funcotation factories have been created.");
+        return funcotationFactories;
+    }
+
 
     private static FeatureInput<? extends Feature> createAndRegisterFeatureInputs(final Path configFilePath,
                                                                                   final Properties dataSourceProperties,
@@ -867,18 +889,19 @@ final public class DataSourceUtils {
     }
 
     /**
-     * Sort by putting gencode datasources first and then non-gencode in alphabetical order.
+     * Sort by putting gencode datasource funcotation factories first and then non-gencode in alphabetical order.
      *
      * Note that this must match how the datasources are being rendered in the {@link Funcotator#apply(VariantContext, ReadsContext, ReferenceContext, FeatureContext)}
-     * @param f1 datasource to compare.  Never {@code null}
-     * @param f2 datasource to compare.  Never {@code null}
+     * @param f1 funcotationFactory to compare.  Never {@code null}
+     * @param f2 funcotationFactory to compare.  Never {@code null}
      * @return -1 if f1 should be put first, 1 if f2 should be put first.
      */
-    public static int datasourceComparator(final DataSourceFuncotationFactory f1, final DataSourceFuncotationFactory f2) {
+    public static int funcotationFactoryComparator(final FuncotationFactory f1, final FuncotationFactory f2) {
         Utils.nonNull(f1);
         Utils.nonNull(f2);
-        final boolean isF1Gencode = f1.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE);
-        final boolean isF2Gencode = f2.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE);
+
+        final boolean isF1Gencode = f1 instanceof GencodeFuncotationFactory;
+        final boolean isF2Gencode = f2 instanceof GencodeFuncotationFactory;
         if (isF1Gencode == isF2Gencode) {
             return f1.getInfoString().compareTo(f2.getInfoString());
         } else {

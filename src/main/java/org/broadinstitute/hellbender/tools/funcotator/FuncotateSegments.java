@@ -136,7 +136,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
         // This will also create and register the FeatureInputs (created by the Data Sources)
         // with the GATK Engine, so we do not have to plumb them in after the fact.
         //  Only take datasources that support the annotation of segments.
-        final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
+        final List<FuncotationFactory> funcotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
                 configData,
                 annotationOverridesMap,
                 funcotatorArgs.transcriptSelectionMode,
@@ -144,12 +144,12 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                 this,
                 funcotatorArgs.lookaheadFeatureCachingInBp, new FlankSettings(0,0), true)
                 .stream()
-                .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
+                .filter(FuncotationFactory::isSupportingSegmentFuncotation)
                 .collect(Collectors.toList());
 
         // Log the datasources
         logger.info("The following datasources support funcotation on segments: ");
-        dataSourceFuncotationFactories.forEach(ff -> logger.info(" " + ff.getInfoString()));
+        funcotationFactories.forEach(ff -> logger.info(" " + ff.getInfoString()));
 
         // Initialize a funcotator engine to handle segments.
         funcotatorEngine = new FuncotatorEngine(funcotatorArgs,
@@ -160,7 +160,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                                         VCFHeaderLineType.Integer, "End coordinate of the variant")
                         )
                 ),
-                dataSourceFuncotationFactories
+                funcotationFactories
         );
 
         aliasToKeyMapping = FuncotatorEngine.splitAnnotationArgsIntoMap(aliasToKeyMappingAsString);
