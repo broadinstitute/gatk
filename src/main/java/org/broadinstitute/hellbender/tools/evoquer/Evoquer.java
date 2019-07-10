@@ -201,9 +201,11 @@ public class Evoquer extends GATKTool {
     protected void onShutdown() {
         super.onShutdown();
 
-        logger.info(String.format("***Processed %s total sites", evoquerEngine.getTotalNumberOfSites()));
-        logger.info(String.format("***Skipped %d/%d total variant records due to malformed allele-specific annotations", evoquerEngine.getNumberOfSkippedVariants(), evoquerEngine.getTotalNumberOfVariants()));
-
+        if ( evoquerEngine != null ) {
+            logger.info(String.format("***Processed %s total sites", evoquerEngine.getTotalNumberOfSites()));
+            logger.info(String.format("***Skipped %d/%d total variant records due to malformed allele-specific annotations", evoquerEngine.getNumberOfSkippedVariants(), evoquerEngine.getTotalNumberOfVariants()));
+        }
+        
         // Close up our writer if we have to:
         if ( vcfWriter != null ) {
             vcfWriter.close();
