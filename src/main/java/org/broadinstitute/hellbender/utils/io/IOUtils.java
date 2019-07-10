@@ -1,13 +1,9 @@
 package org.broadinstitute.hellbender.utils.io;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
-import htsjdk.samtools.BAMIndex;
-import htsjdk.samtools.BamFileIoUtils;
-import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.Tribble;
-import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
@@ -35,12 +31,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
@@ -80,14 +73,14 @@ public final class IOUtils {
      * Returns true if the file's extension is CRAM.
      */
     public static boolean isCramFileName(final String inputFileName) {
-        return CramIO.CRAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+        return FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
     }
 
     /**
      * Returns true if the file's extension is BAM.
      */
     public static boolean isBamFileName(final String inputFileName) {
-        return BamFileIoUtils.BAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+        return FileExtensions.BAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
     }
 
     /**
@@ -702,8 +695,8 @@ public final class IOUtils {
             file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
-            new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
-            new File(file.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION).deleteOnExit();
+            new File(file.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX).deleteOnExit();
+            new File(file.getAbsolutePath() + FileExtensions.TABIX_INDEX).deleteOnExit();
             new File(file.getAbsolutePath() + ".bai").deleteOnExit();
             new File(file.getAbsolutePath() + ".md5").deleteOnExit();
             new File(file.getAbsolutePath().replaceAll(extension + "$", ".bai")).deleteOnExit();
@@ -736,9 +729,9 @@ public final class IOUtils {
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
             final String filename = path.getFileName().toString();
-            IOUtils.deleteOnExit(path.resolveSibling(filename + Tribble.STANDARD_INDEX_EXTENSION));
-            IOUtils.deleteOnExit(path.resolveSibling(filename + TabixUtils.STANDARD_INDEX_EXTENSION));
-            IOUtils.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAI_INDEX_SUFFIX));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + FileExtensions.TRIBBLE_INDEX));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + FileExtensions.TABIX_INDEX));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + FileExtensions.BAI_INDEX));
             IOUtils.deleteOnExit(path.resolveSibling(filename.replaceAll(extension + "$", ".bai")));
             IOUtils.deleteOnExit(path.resolveSibling(filename + ".md5"));
 

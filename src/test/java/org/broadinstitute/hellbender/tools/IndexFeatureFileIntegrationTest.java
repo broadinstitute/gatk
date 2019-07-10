@@ -1,19 +1,17 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.tribble.Tribble;
-import htsjdk.tribble.TribbleException;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.linear.LinearIndex;
 import htsjdk.tribble.index.tabix.TabixIndex;
-import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -101,7 +99,8 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testVCFGZIndex_tabix() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
-        final File outName = createTempFile("test_variants_for_index.blockgz.gz.", TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File outName = createTempFile("test_variants_for_index.blockgz.gz.",
+            FileExtensions.TABIX_INDEX);
 
         final String[] args = {
                 "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
@@ -124,7 +123,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File tempDir = createTempDir("testVCFGZLargeHeaderIndex");
         final File inputCopy = new File(tempDir, inputVCF.getName());
         Files.copy(inputVCF.toPath(), inputCopy.toPath());
-        final File outIndexFile = new File(tempDir, inputCopy.getName() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File outIndexFile = new File(tempDir, inputCopy.getName() + FileExtensions.TABIX_INDEX);
 
         final String[] args = {
                 "--feature-file" ,  inputCopy.getAbsolutePath(),
@@ -157,7 +156,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
                 "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
-        final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + FileExtensions.TABIX_INDEX);
         Assert.assertEquals(res, tabixIndex.getAbsolutePath());
         tabixIndex.deleteOnExit();
 
@@ -280,7 +279,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
 
     private void testBedIndex(final File ORIG_FILE, final Class<? extends Index> indexClass) {
         final File outName = createTempFile(ORIG_FILE.getName(), (indexClass == TabixIndex.class) ?
-                TabixUtils.STANDARD_INDEX_EXTENSION : ".idx");
+            FileExtensions.TABIX_INDEX : ".idx");
         final String[] args = {
                 "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
@@ -317,7 +316,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSAMPileupGZIndex() {
         final File ORIG_FILE = getTestFile("test_sampileup_for_index.pileup.gz"); // made with bgzip
-        final File outName = createTempFile(ORIG_FILE.getName(), TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File outName = createTempFile(ORIG_FILE.getName(), FileExtensions.TABIX_INDEX);
 
         final String[] args = {
                 "--feature-file" ,  ORIG_FILE.getAbsolutePath(),

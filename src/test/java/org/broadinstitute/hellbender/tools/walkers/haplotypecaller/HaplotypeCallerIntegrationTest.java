@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SamFiles;
-import htsjdk.tribble.Tribble;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -561,7 +561,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(vcfOutput.exists(), "No VCF output file was created");
 
         // validate vcfout companion files
-        final File vcfOutFileIndex = new File(vcfOutput.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION);
+        final File vcfOutFileIndex = new File(vcfOutput.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX);
         final File vcfOutFileMD5 = new File(vcfOutput.getAbsolutePath() + ".md5");
         Assert.assertEquals(vcfOutFileIndex.exists(), createVCFOutIndex, "The index file argument was not honored");
         Assert.assertEquals(vcfOutFileMD5.exists(), createVCFOutMD5, "The md5 file argument was not honored");

@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.FeatureReader;
-import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -191,7 +191,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testApplyRecalibrationAlleleSpecificINDELmodeGZIP", this);
 
         // make sure we got a tabix index
-        final File tabixIndexFile = new File(tempGZIPOut.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File tabixIndexFile = new File(tempGZIPOut.getAbsolutePath() + FileExtensions.TABIX_INDEX);
         Assert.assertTrue(tabixIndexFile.exists());
         Assert.assertTrue(tabixIndexFile.length() > 0);
 

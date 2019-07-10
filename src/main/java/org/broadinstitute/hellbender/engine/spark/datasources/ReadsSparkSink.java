@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.cram.build.CramIO;
-import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.FileExtensions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
@@ -113,9 +111,9 @@ public final class ReadsSparkSink {
             TempPartsDirectoryWriteOption tempPartsDirectoryWriteOption = new TempPartsDirectoryWriteOption(outputPartsDirectory);
             BaiWriteOption baiWriteOption = BaiWriteOption.fromBoolean(writeBai);
             SbiWriteOption sbiWriteOption = SbiWriteOption.fromBoolean(writeSbi);
-            if (absoluteOutputFile.endsWith(BamFileIoUtils.BAM_FILE_EXTENSION) ||
-                    absoluteOutputFile.endsWith(CramIO.CRAM_FILE_EXTENSION) ||
-                    absoluteOutputFile.endsWith(IOUtil.SAM_FILE_EXTENSION)) {
+            if (absoluteOutputFile.endsWith(FileExtensions.BAM) ||
+                    absoluteOutputFile.endsWith(FileExtensions.CRAM) ||
+                    absoluteOutputFile.endsWith(FileExtensions.SAM)) {
                 // don't specify a write option for format since it is inferred from the extension in the path
                 writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header, numReducers,
                         fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);

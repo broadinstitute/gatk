@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.util.FileExtensions;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -56,7 +56,7 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
     }
 
     private static boolean isFasta(String reference) {
-        for (final String ext : ReferenceSequenceFileFactory.FASTA_EXTENSIONS) {
+        for (final String ext : FileExtensions.FASTA) {
             if (reference.endsWith(ext)) {
                 return true;
             }

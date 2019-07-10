@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.Tribble;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -357,7 +357,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testIndexIsCreated(){
         final File output = createTempFile("test", ".vcf");
-        final File index = new File(output.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION);
+        final File index = new File(output.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX);
         Assert.assertFalse(index.exists());
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(getTestFile(BASE_PAIR_GVCF))

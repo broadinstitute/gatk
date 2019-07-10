@@ -5,7 +5,6 @@ import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.*;
-import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.*;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.FeatureReader;
@@ -501,13 +500,13 @@ public class RevertSamSpark extends GATKSparkTool {
     @VisibleForTesting
     static String getDefaultExtension(final String input, final FileType setting) {
         if (setting == FileType.dynamic) {
-            if (input.endsWith(IOUtil.SAM_FILE_EXTENSION)) {
-                return IOUtil.SAM_FILE_EXTENSION;
+            if (input.endsWith(FileExtensions.SAM)) {
+                return FileExtensions.SAM;
             }
-            if (input.endsWith(CramIO.CRAM_FILE_EXTENSION)) {
+            if (input.endsWith(FileExtensions.CRAM)) {
                 throw new UserException.UnimplementedFeature("Input file is a cram. This is currently unsupported for this tool");
             }
-            return BamFileIoUtils.BAM_FILE_EXTENSION;
+            return FileExtensions.BAM;
         } else {
             return "." + setting.toString();
         }

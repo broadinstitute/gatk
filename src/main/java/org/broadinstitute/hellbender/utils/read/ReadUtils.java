@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.cram.build.CramIO;
+import htsjdk.samtools.util.FileExtensions;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -1208,7 +1208,7 @@ public final class ReadUtils {
         Utils.nonNull(outputPath);
         Utils.nonNull(header);
 
-        if (null == referenceFile && outputPath.toString().endsWith(CramIO.CRAM_FILE_EXTENSION)) {
+        if (null == referenceFile && outputPath.toString().endsWith(FileExtensions.CRAM)) {
             throw new UserException("A reference file is required for writing CRAM files");
         }
 
