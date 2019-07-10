@@ -26,21 +26,13 @@ import java.util.*;
  *  createFuncotationsOnSegment(...)
  *
  */
-public abstract class DataSourceFuncotationFactory implements Closeable {
+public abstract class DataSourceFuncotationFactory extends FuncotationFactory implements Closeable {
 
     //==================================================================================================================
 
     /** Standard Logger.  */
     protected static final Logger logger = LogManager.getLogger(DataSourceFuncotationFactory.class);
 
-    /** Default version string for this {@link DataSourceFuncotationFactory}. */
-    @VisibleForTesting
-    public static final String DEFAULT_VERSION_STRING = "UNKNOWN_VERSION";
-
-    /**
-     * Version number of this {@link DataSourceFuncotationFactory}.
-     */
-    protected String version = DEFAULT_VERSION_STRING;
 
     /**
      * Map of ANNOTATION_NAME -> OVERRIDE_VALUE.
@@ -103,15 +95,9 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
     //==================================================================================================================
 
     /**
-     * @return A {@link String} containing information about this {@link DataSourceFuncotationFactory}.
-     */
-    public String getInfoString() {
-        return getName() + " " + getVersion();
-    }
-
-    /**
      * Perform cleanup tasks for this {@link DataSourceFuncotationFactory}.
      */
+    @Override
     public void close() {}
 
     /**
@@ -125,22 +111,11 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         }
     }
 
-    /**
-     * @return The name of the data source corresponding to this {@link DataSourceFuncotationFactory}.
-     */
-    public abstract String getName();
 
     /**
      * @return The {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions.DataSourceType} of this {@link DataSourceFuncotationFactory}.
      */
     public abstract FuncotatorArgumentDefinitions.DataSourceType getType();
-
-    /**
-     * @return The version of the data source corresponding to this {@link DataSourceFuncotationFactory}.
-     */
-    public String getVersion() {
-        return version;
-    }
 
     /**
      * @return {@code True} if this {@link DataSourceFuncotationFactory} requires features to create {@link Funcotation}s.  {@code False} otherwise.
@@ -149,27 +124,11 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
     public boolean requiresFeatures() { return true; }
 
     /**
-     * @return An ordered {@link LinkedHashSet} of the names of annotations that this Data Source supports.
-     */
-    public abstract LinkedHashSet<String> getSupportedFuncotationFields();
-
-    /**
      * @return An ordered {@link LinkedHashSet} of the names of annotations that this Data Source supports when annotating segments.
      */
+    @Override
     public LinkedHashSet<String> getSupportedFuncotationFieldsForSegments() {
         return new LinkedHashSet<>();
-    }
-
-    /**
-     * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, and {@code featureContext}.
-     * Accounts for override values passed into the constructor as well.
-     * @param variant {@link VariantContext} to annotate.
-     * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
-     * @param featureContext {@link FeatureContext} corresponding to the variant.  Never {@code null}.
-     * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
-     */
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        return createFuncotations(variant, referenceContext, featureContext, null);
     }
 
     /**
@@ -183,8 +142,8 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      *   {@code null} is acceptable if there are no corresponding gencode funcotations.
      * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
      */
+    @Override
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext, final List<GencodeFuncotation> gencodeFuncotations) {
-
         Utils.nonNull(variant);
         Utils.nonNull(referenceContext);
         Utils.nonNull(featureContext);
@@ -349,15 +308,11 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
                                                                   final List<Feature> featureList,
                                                                   final List<GencodeFuncotation> gencodeFuncotations);
 
-    /**
-     * @return Get the {@link Class} of the feature type that can be used to create annotations by this {@link DataSourceFuncotationFactory}.
-     */
-    @VisibleForTesting
-    public abstract Class<? extends Feature> getAnnotationFeatureClass();
 
     /**
      * @return Whether this funcotation factory can support creating funcotations from segments.
      */
+    @Override
     public boolean isSupportingSegmentFuncotation() {
         return false;
     }

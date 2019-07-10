@@ -155,7 +155,7 @@ public class MafOutputRenderer extends OutputRenderer {
      * Create a {@link MafOutputRenderer}.  Usage for germline use cases is unsupported.
      *
      * @param outputFilePath {@link Path} to output file (must not be null).
-     * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
+     * @param funcotationFactories {@link List} of {@link FuncotationFactory} to back our annotations (must not be null).
      * @param inputFileHeader {@link VCFHeader} of input VCF file to preserve (must not be null).
      * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added (must not be null).
      * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added (must not be null).
@@ -165,7 +165,7 @@ public class MafOutputRenderer extends OutputRenderer {
      * @param toolVersion The version number of the tool used to produce the MAF file (must not be null).
      */
     public MafOutputRenderer(final Path outputFilePath,
-                             final List<DataSourceFuncotationFactory> dataSources,
+                             final List<FuncotationFactory> funcotationFactories,
                              final VCFHeader inputFileHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
@@ -176,7 +176,7 @@ public class MafOutputRenderer extends OutputRenderer {
         super(toolVersion);
 
         Utils.nonNull(outputFilePath);
-        Utils.nonNull(dataSources);
+        Utils.nonNull(funcotationFactories);
         Utils.nonNull(inputFileHeader);
         Utils.nonNull(unaccountedForDefaultAnnotations);
         Utils.nonNull(unaccountedForOverrideAnnotations);
@@ -188,7 +188,7 @@ public class MafOutputRenderer extends OutputRenderer {
         this.outputFilePath = outputFilePath;
         this.toolHeaderLines = new LinkedHashSet<>(toolHeaderLines);
         this.inputFileHeader = inputFileHeader;
-        this.dataSourceFactories = dataSources;
+        this.funcotationFactories = funcotationFactories;
         this.referenceVersion = referenceVersion;
 
         this.tnPairs = SamplePairExtractor.extractPossibleTumorNormalPairs(this.inputFileHeader);
@@ -217,8 +217,8 @@ public class MafOutputRenderer extends OutputRenderer {
         initializeOutputFieldNameMap();
 
         // TODO: Make this FASTER!
-        // Update our defaultMap with the dataSourceFactories:
-        for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
+        // Update our defaultMap with the funcotationFactories:
+        for ( final FuncotationFactory funcotationFactory : funcotationFactories ) {
             for ( final String field : funcotationFactory.getSupportedFuncotationFields() ) {
 
                 // Check if it's in our output map already:
