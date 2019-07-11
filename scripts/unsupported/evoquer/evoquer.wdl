@@ -5,14 +5,13 @@
 #  Required:
 #    String gatk_docker                 - GATK Docker image in which to run
 #
-#    File ref_fasta_dict                - HG38 Reference sequence dictionary.
+#    File reference                     - Reference fasta
 #
 #    Array[String] intervals            - Variant Context File (VCF) containing the variants to annotate.
-#    String output_file_base_name       - Base name of desired output file WITHOUT extension.
+#
+#    String output_file                 - Base name of desired output file WITHOUT extension.
 #
 #  Optional:
-#
-#     Boolean compress (default: false) - if true, will compress resulting VCF output.
 #
 #     File gatk4_jar_override           -  Override Jar file containing GATK 4.  Use this when overriding the docker JAR or when using a backend without docker.
 #     Int  mem_gb                       -  Amount of memory to give to the machine running each task in this workflow (in gb).
@@ -35,9 +34,8 @@ workflow Evoquer {
     File dataset_map
 
     File interval_file
-    String output_file_base_name
 
-    Boolean compress = false
+    String output_file
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -50,10 +48,9 @@ workflow Evoquer {
         input:
             reference             = reference,
             intervals             = read_lines(interval_file),
-            output_file_base_name = output_file_base_name,
+            output_file           = output_file,
             project_id            = project_id,
             dataset_map           = dataset_map,
-            compress              = compress,
 
             gatk_docker           = gatk_docker,
             gatk_override         = gatk4_jar_override,
@@ -78,13 +75,11 @@ task EvoquerTask {
     File reference
 
     Array[String] intervals
-    String output_file_base_name
+    String output_file
 
     String project_id
 
     File dataset_map
-
-    Boolean compress
 
     # Runtime Options:
     String gatk_docker
@@ -101,9 +96,6 @@ task EvoquerTask {
 
     # ------------------------------------------------
     # Process input args:
-
-    # Output Names:
-    String output_file = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
 
     # Timing info:
     String timing_output_file = "Evoquer.timingInformation.txt"
@@ -135,10 +127,10 @@ task EvoquerTask {
         # Run Evoquer:
         gatk --java-options "-Xmx${command_mem}m" \
             Evoquer \
-                -R ${reference} \
-                -O ${output_file} \
-                --project-id ${project_id} \
-                --dataset-map ${dataset_map} \
+                -R "${reference}" \
+                -O "${output_file}" \
+                --project-id "${project_id}" \
+                --dataset-map "${dataset_map}" \
                 -L ${default="" sep=" -L " intervals}
 
         endTime=`date +%s.%N`
