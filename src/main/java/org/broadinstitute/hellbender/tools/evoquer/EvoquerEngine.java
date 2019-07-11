@@ -515,7 +515,11 @@ class EvoquerEngine {
             unmergedCalls.add(createRefSiteVariantContext(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
         }
 
+        // Note that we remove NON_REF in our variantContextMerger if the GnarlyGenotyper is disabled, but
+        // keep NON_REF around if the GnarlyGenotyper is enabled. This is because the GnarlyGenotyper expects
+        // the NON_REF allele to still be present, and will give incorrect results if it's not.
         final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], disableGnarlyGenotyper, false);
+
         final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
 
         if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
