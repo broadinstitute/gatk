@@ -70,64 +70,53 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         Utils.nonNull(parameters);
         Utils.nonNull(overhangStrategy);
 
-        // avoid running full Smith-Waterman if there is an exact match of alternate in reference
-        int exactMatchIndex = -1;
-        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
-            // Use a substring search to find an exact match of the alternate in the reference
-            // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
-            exactMatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0);
-        }
-
         final SmithWatermanAlignment alignmentResult;
 
-        //if exact match
-        if (exactMatchIndex != -1) {
-            // generate the alignment result when the substring search was successful
-            final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
-            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), exactMatchIndex);
-        }
-        else {
-            int singleMismatchIndex = -1;
-            if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
-                singleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1);
+        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE){
+            //exact match
+            int exactMatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0);
+            if (exactMatchIndex != -1) {
+                // generate the alignment result when the substring search was successful
+                final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), exactMatchIndex);
+                totalComputeTime += System.nanoTime() - startTime;
+                return alignmentResult;
             }
-            //if off-by-one
+
+            //one mismatch
+            int singleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1);
             if (singleMismatchIndex != -1) {
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
                 alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), singleMismatchIndex);
+                totalComputeTime += System.nanoTime() - startTime;
+                return alignmentResult;
             }
-            else{
-                if(haplotypeToref){
-                    int oneIndelIndex = -1;
-                    ImmutablePair<Integer,Integer> indelStartAndSize = null;
 
-                    if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
-                        //calculate allowed length for indel to be less of a penalty than 2 mismatches
-                        int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
-                        indelStartAndSize = Utils.atMostOneIndel(reference, alternate, maxIndelLength);
-                        oneIndelIndex = indelStartAndSize.getLeft();
-                    }
-                    //if one indel
-                    if (oneIndelIndex != -1){
-                        int indelLength = indelStartAndSize.getRight();
-                        alignmentResult = calculateOneIndelCigar(indelLength, reference, alternate, oneIndelIndex);
-
-                        totalComputeTime += System.nanoTime() - startTime;
-                        return alignmentResult;
-                    }
+            //one indel
+            if(haplotypeToref){
+                //calculate allowed length for indel to be less of a penalty than 2 mismatches
+                int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
+                ImmutablePair<Integer,Integer> indelStartAndSize = Utils.atMostOneIndel(reference, alternate, maxIndelLength);
+                int oneIndelIndex = indelStartAndSize.getLeft();
+                //if one indel
+                if (oneIndelIndex != -1){
+                    int indelLength = indelStartAndSize.getRight();
+                    alignmentResult = calculateOneIndelCigar(indelLength, reference, alternate, oneIndelIndex);
+                    totalComputeTime += System.nanoTime() - startTime;
+                    return alignmentResult;
                 }
-                // run full Smith-Waterman
-                final int n = reference.length+1;
-                final int m = alternate.length+1;
-                final int[][] sw = new int[n][m];
-                final int[][] btrack=new int[n][m];
-
-                calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-                alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
             }
         }
 
+        // run full Smith-Waterman
+        final int n = reference.length+1;
+        final int m = alternate.length+1;
+        final int[][] sw = new int[n][m];
+        final int[][] btrack=new int[n][m];
+
+        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+        alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
         totalComputeTime += System.nanoTime() - startTime;
         return alignmentResult;
     }
