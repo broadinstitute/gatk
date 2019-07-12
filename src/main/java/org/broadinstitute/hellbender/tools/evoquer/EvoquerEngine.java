@@ -71,6 +71,8 @@ class EvoquerEngine {
      */
     public static final int MISSING_CONF_THRESHOLD = 60;
 
+    private final boolean precomputedResultsMode;
+
     private final VariantContextWriter vcfWriter;
 
     private final VCFHeader vcfHeader;
@@ -105,13 +107,10 @@ class EvoquerEngine {
 
     private final boolean disableGnarlyGenotyper;
 
-    private final boolean skipMalformedASAnnotations;
-
     private final boolean printDebugInformation;
 
     private final ProgressMeter progressMeter;
 
-    private int numberOfSkippedVariants = 0;
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
 
@@ -124,9 +123,11 @@ class EvoquerEngine {
                    final ReferenceDataSource refSource,
                    final boolean runQueryOnly,
                    final boolean disableGnarlyGenotyper,
-                   final boolean skipMalformedASAnnotations,
                    final boolean printDebugInformation,
                    final ProgressMeter progressMeter ) {
+
+        // We were given a dataset map, so we're going to do live queries against BigQuery
+        this.precomputedResultsMode = false;
 
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
@@ -134,7 +135,6 @@ class EvoquerEngine {
         this.queryRecordLimit = queryRecordLimit;
         this.runQueryOnly = runQueryOnly;
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
-        this.skipMalformedASAnnotations = skipMalformedASAnnotations;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
 
@@ -156,25 +156,69 @@ class EvoquerEngine {
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
     }
-    
+
+    EvoquerEngine( final List<String> sampleNames,
+                   final VariantContextWriter vcfWriter,
+                   final Set<VCFHeaderLine> toolDefaultVCFHeaderLines,
+                   final VariantAnnotatorEngine annotationEngine,
+                   final ReferenceDataSource refSource,
+                   final boolean disableGnarlyGenotyper,
+                   final boolean printDebugInformation,
+                   final ProgressMeter progressMeter ) {
+
+        // We weren't given a dataset map, so we're not going to do any live queries against BigQuery,
+        // and will instead expect to be given URIs to precomputed results.
+        this.precomputedResultsMode = true;
+
+        this.vcfWriter = vcfWriter;
+        this.refSource = refSource;
+        this.disableGnarlyGenotyper = disableGnarlyGenotyper;
+        this.printDebugInformation = printDebugInformation;
+        this.progressMeter = progressMeter;
+
+        this.projectID = null;
+        this.contigToPositionTableMap = null;
+        this.contigToVariantTableMap = null;
+        this.contigToSampleTableMap = null;
+        this.queryRecordLimit = 0;
+        this.runQueryOnly = false;
+
+        this.sampleNames.addAll(sampleNames);
+        this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
+        this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
+    }
+
     /**
      * Connects to the BigQuery table for the given interval and pulls out the information on the samples that
      * contain variants.
      * @param interval {@link SimpleInterval} over which to query the BigQuery table.
      */
     void evokeInterval(final SimpleInterval interval) {
+        if ( precomputedResultsMode ) {
+            throw new GATKException("Cannot do live queries in precomputedResultsMode");
+        }
+
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
             final String variantQueryString = getVariantQueryString(interval);
 
             // Execute the query:
-            final BigQueryUtils.StorageAPIAvroReader tableReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString);
+            final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString);
 
-            createVariantsFromTableResult(tableReader, interval.getContig());
+            createVariantsFromTableResult(storageAPIAvroReader, interval.getContig());
         }
         else {
             logger.warn("Contig missing from contigPositionExpandedTableMap, ignoring interval: " + interval.toString());
         }
+    }
+
+    void evokeAvroResult(final String avroResultFile, final String contig) {
+        if ( ! precomputedResultsMode ) {
+            throw new GATKException("Must be in precomputed results mode to accept precomputed avro inputs");
+        }
+
+        final GATKAvroReader avroReader = new GCSAvroReader(avroResultFile);
+        createVariantsFromTableResult(avroReader, contig);
     }
 
     /**
@@ -201,7 +245,6 @@ class EvoquerEngine {
         return vcfHeader;
     }
 
-    int getNumberOfSkippedVariants() { return numberOfSkippedVariants; }
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
     int getTotalNumberOfSites() { return totalNumberOfSites; }
 
@@ -314,9 +357,9 @@ class EvoquerEngine {
         return getFQTableName(getVariantTableForContig( interval.getContig() ));
     }
 
-    private void createVariantsFromTableResult( final BigQueryUtils.StorageAPIAvroReader tableIterator, final String contig) {
+    private void createVariantsFromTableResult( final GATKAvroReader avroReader, final String contig) {
 
-        final org.apache.avro.Schema schema = tableIterator.getSchema();
+        final org.apache.avro.Schema schema = avroReader.getSchema();
 
         final Set<String> columnNames = new HashSet<>();
         if ( schema.getField(POSITION_FIELD_NAME) == null || schema.getField(VALUES_ARRAY_FIELD_NAME) == null ) {
@@ -325,7 +368,7 @@ class EvoquerEngine {
         schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
         validateSchema(columnNames);
 
-        for ( final GenericRecord row : tableIterator ) {
+        for ( final GenericRecord row : avroReader ) {
             if ( runQueryOnly ) {
                 continue;
             }
@@ -356,19 +399,8 @@ class EvoquerEngine {
                 switch (sampleRecord.get(STATE_FIELD_NAME).toString()) {
                     case "v":   // Variant
                         ++totalNumberOfVariants;
-                        final VariantContext sampleVariant = createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName);
-
-                        // HACK to get around corrupt AS annotations in our test dataset:
-                        // replace malformed variant records with MISSING
-                        if ( skipMalformedASAnnotations && alleleSpecificAnnotationsAreMalformed(sampleVariant) ) {
-                            ++numberOfSkippedVariants;
-                            logger.warn(String.format("Skipping variant record for sample %s at %s:%d due to malformed allele-specific annotations",
-                                    sampleName, contig, currentPosition));
-                        } else {
-                            unmergedCalls.add(sampleVariant);
-                            currentPositionHasVariant = true;
-                        }
-
+                        unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName));
+                        currentPositionHasVariant = true;
                         break;
                     case "0":   // Non Variant Block with GQ < 10
                         unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 0));

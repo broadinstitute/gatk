@@ -78,16 +78,31 @@ public class Evoquer extends GATKTool {
     @Argument(
             fullName = "project-id",
             doc = "ID of the Google Cloud project containing the dataset and tables from which to pull variant data",
-            optional = false
+            optional = true
     )
     private String projectID = null;
     
     @Argument(
             fullName = "dataset-map",
             doc = "Path to a file containing a mapping from contig name to BigQuery dataset name. Each line should consist of a contig name, followed by a tab, followed by a dataset name.",
-            optional = false
+            optional = true
     )
     private String datasetMapFile = null;
+
+    @Argument(
+            fullName = "precomputed-query-results",
+            doc = "A file containing a list of URIs (one per line) pointing to Avro-format query results that use the same schema as our standard query. " +
+                  "If specified, we will use the provided precomputed query results and not query BigQuery directly.",
+            optional = true
+    )
+    private String precomputedQueryResultsFile = null;
+
+    @Argument(
+            fullName = "sample-list-file",
+            doc = "A list of sample names in the dataset (one per line). Should only be specified when --precomputed-query-results is also specified",
+            optional = true
+    )
+    private String sampleListFile = null;
 
     @Argument(
             fullName = "query-record-limit",
@@ -108,12 +123,6 @@ public class Evoquer extends GATKTool {
     private boolean disableGnarlyGenotyper = false;
 
     @Argument(
-            fullName = "skip-malformed-as-annotations",
-            doc = "If true, treat sample records with malformed allele-specific annotations as missing",
-            optional = true)
-    private boolean skipMalformedASAnnotations = false;
-
-    @Argument(
             fullName = "print-debug-information",
             doc = "If true, print extra debugging output",
             optional = true)
@@ -121,6 +130,7 @@ public class Evoquer extends GATKTool {
 
     private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
+    private boolean precomputedResultsMode;
 
     //==================================================================================================================
     // Constructors:
@@ -162,28 +172,49 @@ public class Evoquer extends GATKTool {
     protected void onStartup() {
         super.onStartup();
 
-        final Map<String, EvoquerDataset> datasetMap = loadDatasetMapFile(datasetMapFile);
-
-        logger.info("Disabling index creation on the output VCF, since this tool writes an unsorted VCF");
-        createOutputVariantIndex = false;
-        
-        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
-
         final VariantAnnotatorEngine annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
-        // Set up our EvoquerEngine:
-        evoquerEngine = new EvoquerEngine(projectID,
-                                          datasetMap,
-                                          queryRecordLimit,
-                                          vcfWriter,
-                                          getDefaultToolVCFHeaderLines(),
-                                          annotationEngine,
-                                          reference,
-                                          runQueryOnly,
-                                          disableGnarlyGenotyper,
-                                          skipMalformedASAnnotations,
-                                          printDebugInformation,
-                                          progressMeter);
+        if ( projectID != null && datasetMapFile != null ) {
+            precomputedResultsMode = false;
+
+            final Map<String, EvoquerDataset> datasetMap = loadDatasetMapFile(datasetMapFile);
+
+            logger.info("Disabling index creation on the output VCF, since this tool writes an unsorted VCF");
+            createOutputVariantIndex = false;
+            vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
+
+            // Set up our EvoquerEngine:
+            evoquerEngine = new EvoquerEngine(projectID,
+                    datasetMap,
+                    queryRecordLimit,
+                    vcfWriter,
+                    getDefaultToolVCFHeaderLines(),
+                    annotationEngine,
+                    reference,
+                    runQueryOnly,
+                    disableGnarlyGenotyper,
+                    printDebugInformation,
+                    progressMeter);
+        } else if ( precomputedQueryResultsFile != null && sampleListFile != null ) {
+            precomputedResultsMode = true;
+
+            final List<String> sampleNames = loadAllLines(sampleListFile);
+
+            vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
+
+            // Set up our EvoquerEngine:
+            evoquerEngine = new EvoquerEngine(sampleNames,
+                    vcfWriter,
+                    getDefaultToolVCFHeaderLines(),
+                    annotationEngine,
+                    reference,
+                    disableGnarlyGenotyper,
+                    printDebugInformation,
+                    progressMeter);
+        } else {
+            throw new UserException("You must either specify both --project-id and --dataset-map, " +
+            " or both --precomputed-query-results and --sample-list-file");
+        }
 
         vcfWriter.writeHeader(evoquerEngine.getHeader());
     }
@@ -192,8 +223,15 @@ public class Evoquer extends GATKTool {
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
-        for (final SimpleInterval interval : getTraversalIntervals()) {
-            evoquerEngine.evokeInterval(interval);
+        if ( ! precomputedResultsMode ) {
+            for ( final SimpleInterval interval : getTraversalIntervals() ) {
+                evoquerEngine.evokeInterval(interval);
+            }
+        } else {
+            final List<String> precomputedResultsURIs = loadAllLines(precomputedQueryResultsFile);
+            for ( final String precomputedResultsURI : precomputedResultsURIs ) {
+                evoquerEngine.evokeAvroResult(precomputedResultsURI, "chr20");
+            }
         }
     }
 
@@ -202,8 +240,8 @@ public class Evoquer extends GATKTool {
         super.onShutdown();
 
         if ( evoquerEngine != null ) {
-            logger.info(String.format("***Processed %s total sites", evoquerEngine.getTotalNumberOfSites()));
-            logger.info(String.format("***Skipped %d/%d total variant records due to malformed allele-specific annotations", evoquerEngine.getNumberOfSkippedVariants(), evoquerEngine.getTotalNumberOfVariants()));
+            logger.info(String.format("***Processed %d total sites", evoquerEngine.getTotalNumberOfSites()));
+            logger.info(String.format("***Processed %d total variants", evoquerEngine.getTotalNumberOfVariants()));
         }
         
         // Close up our writer if we have to:
@@ -246,6 +284,19 @@ public class Evoquer extends GATKTool {
         }
 
         return datasetMap;
+    }
+
+    private List<String> loadAllLines(final String uri) {
+        if ( uri == null ) {
+            return null;
+        }
+        
+        try {
+            final Path path = IOUtils.getPath(uri);
+            return Files.readAllLines(path);
+        } catch ( IOException e ) {
+            throw new UserException.CouldNotReadInputFile(uri, e);
+        }
     }
 
     public static final class EvoquerDataset {

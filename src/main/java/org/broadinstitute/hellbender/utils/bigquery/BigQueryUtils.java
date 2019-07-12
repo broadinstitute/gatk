@@ -5,6 +5,8 @@ import com.google.cloud.bigquery.*;
 import com.google.cloud.bigquery.storage.v1beta1.*;
 import com.google.common.base.Preconditions;
 import htsjdk.samtools.util.CloseableIterator;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -15,8 +17,12 @@ import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.evoquer.GATKAvroReader;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -353,8 +359,7 @@ public class BigQueryUtils {
         return new StorageAPIAvroReader(tempTableProject, tempTableDataset, tempTableName, allResultFields);
     }
 
-
-    public static class StorageAPIAvroReader implements CloseableIterator<GenericRecord>, Iterable<GenericRecord> {
+    public static class StorageAPIAvroReader implements GATKAvroReader {
 
         private static int rowCount = 0;
 
@@ -456,6 +461,7 @@ public class BigQueryUtils {
             }
         }
 
+        @Override
         public org.apache.avro.Schema getSchema() {
             return schema;
         }
