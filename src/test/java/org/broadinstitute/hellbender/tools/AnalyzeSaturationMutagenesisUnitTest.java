@@ -548,7 +548,11 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         Arrays.fill(quals, QUAL_30);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
                                                                           bases, quals, "17M");
+        read.setMappingQuality(0);
         reference = new Reference(refSeq);
+        Assert.assertEquals(getReadReport(read).getRefCoverage(), Collections.emptyList());
+
+        read.setMappingQuality(60);
         final ReadReport readReport = getReadReport(read);
         Assert.assertEquals(readReport.getRefCoverage(), Collections.singletonList(new Interval(0, 17)));
         Assert.assertEquals(readReport.getVariations().size(), 0);
