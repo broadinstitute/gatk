@@ -455,8 +455,8 @@ public final class ReadThreadingAssembler {
         // and unnecessarily abort assembly
         chainPruner.pruneLowWeightChains(rtgraph);
 
-        // sanity check: make sure there are no cycles in the graph
-        if ( rtgraph.hasCycles() ) {
+        // sanity check: make sure there are no cycles in the graph, unless we are in experimental mode
+        if ( !generateSeqGraph && rtgraph.hasCycles() ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
             }
