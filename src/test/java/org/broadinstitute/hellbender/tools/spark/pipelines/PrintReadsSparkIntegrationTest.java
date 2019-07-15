@@ -4,13 +4,17 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.tools.AbstractPrintReadsIntegrationTest;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 @Test(groups = "spark")
 public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsIntegrationTest {
@@ -33,6 +37,28 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(outBam, inBam);
+    }
+
+    /**
+     * Test GCS access using Spark NIO.
+     *
+     * For this to work, the settings in src/main/resources/core-site.xml must be correct,
+     * and the project name and credential file it points to must be present.
+     */
+    @Test(dataProvider = "gcsTestingData", groups = "bucket")
+    public void testGCSInputsAndOutputsWithSparkNio(final String gcsInput, final String outputExtension,
+                                        final boolean outputToGCS, final File expectedOutput) throws IOException {
+        final String gcsInputPath = getGCPTestInputPath() + gcsInput;
+        final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
+        final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+        argBuilder.addArgument("input", gcsInputPath)
+                .addArgument("output", outputPath)
+                .addBooleanArgument(GATKSparkTool.USE_NIO, true);
+        runCommandLine(argBuilder);
+
+        SamAssertionUtils.assertSamsEqual(IOUtils.getPath(outputPath), IOUtils.getPath(gcsInputPath), null);
     }
 
 }

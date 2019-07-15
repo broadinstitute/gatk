@@ -80,6 +80,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public static final String SHARDED_OUTPUT_LONG_NAME = "sharded-output";
     public static final String OUTPUT_SHARD_DIR_LONG_NAME = "output-shard-tmp-dir";
     public static final String CREATE_OUTPUT_BAM_SPLITTING_INDEX_LONG_NAME = "create-output-bam-splitting-index";
+    public static final String USE_NIO = "use-nio";
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
@@ -97,6 +98,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             optional = true)
     protected long bamPartitionSplitSize = 0;
 
+    @Argument(doc = "Whether to use NIO or the Hadoop filesystem (default) for reading files. " +
+            "(Note that the Hadoop filesystem is always used for writing files.)",
+            fullName = USE_NIO,
+            optional = true)
+    protected boolean useNio = false;
 
     @ArgumentCollection
     protected SequenceDictionaryValidationArgumentCollection sequenceDictionaryValidationArguments = getSequenceDictionaryValidationArgumentCollection();
@@ -334,7 +340,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
             final String refPath = hasReference() ?  referenceArguments.getReferenceFileName() : null;
-            output = source.getParallelReads(input, refPath, traversalParameters, bamPartitionSplitSize);
+            output = source.getParallelReads(input, refPath, traversalParameters, bamPartitionSplitSize, useNio);
         }
         return output;
     }
