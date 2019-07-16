@@ -179,20 +179,20 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }
 
-            mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
+            VariantContext culledVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
 
-            ReadLikelihoods<Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper, new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
+            ReadLikelihoods<Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper, new SimpleInterval(culledVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
 
             if (emitReferenceConfidence) {
-                mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
+                culledVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(culledVC);
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
 
-            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), header);
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, culledVC, noCallAlleles);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(culledVC).genotypes(genotypes).make(), getGLModel(culledVC), header);
             if( call != null ) {
 
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -374,7 +374,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
-        return GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
+        return call.getAlleles().size() == mergedVC.getAlleles().size() ? untrimmedResult
+                : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
     }
 
     /**
@@ -427,10 +428,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @return never {@code null} but perhaps an empty list if there is no variants to report.
      */
     private TreeSet<Integer> decomposeHaplotypesIntoVariantContexts(final List<Haplotype> haplotypes,
-                                                                      final byte[] ref,
-                                                                      final SimpleInterval refLoc,
-                                                                      final List<VariantContext> activeAllelesToGenotype,
-                                                                      final int maxMnpDistance) {
+                                                                    final byte[] ref,
+                                                                    final SimpleInterval refLoc,
+                                                                    final List<VariantContext> activeAllelesToGenotype,
+                                                                    final int maxMnpDistance) {
         final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
 
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
