@@ -123,6 +123,13 @@ public class Evoquer extends GATKTool {
     private boolean disableGnarlyGenotyper = false;
 
     @Argument(
+            fullName = "run-query-in-batch-mode",
+            doc = "If true, run all queries against BigQuery in batch mode, which is lower priority but doesn't have a limit on parallel queries",
+            optional = true
+    )
+    private boolean runQueryInBatchMode = false;
+
+    @Argument(
             fullName = "print-debug-information",
             doc = "If true, print extra debugging output",
             optional = true)
@@ -193,6 +200,7 @@ public class Evoquer extends GATKTool {
                     reference,
                     runQueryOnly,
                     disableGnarlyGenotyper,
+                    runQueryInBatchMode,
                     printDebugInformation,
                     progressMeter);
         } else if ( precomputedQueryResultsFile != null && sampleListFile != null ) {

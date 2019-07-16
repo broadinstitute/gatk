@@ -54,7 +54,19 @@ public class BigQueryUtils {
      * @return A {@link TableResult} object containing the results of the query executed.
      */
     public static TableResult executeQuery(final String queryString) {
-        return executeQuery( getBigQueryEndPoint(), queryString );
+        return executeQuery(getBigQueryEndPoint(), queryString, false);
+    }
+
+    /**
+     * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
+     * Will block until results are returned.
+     * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
+     * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
+     * @return A {@link TableResult} object containing the results of the query executed.
+     */
+    public static TableResult executeQuery(final String queryString, final boolean runQueryInBatchMode) {
+        return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode);
     }
 
     /**
@@ -63,14 +75,16 @@ public class BigQueryUtils {
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param bigQuery The {@link BigQuery} instance against which to execute the given {@code queryString}.
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @return A {@link TableResult} object containing the results of the query executed.
      */
-    public static TableResult executeQuery(final BigQuery bigQuery, final String queryString) {
+    public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode) {
 
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
+                        .setPriority(runQueryInBatchMode ? QueryJobConfiguration.Priority.BATCH : QueryJobConfiguration.Priority.INTERACTIVE)
                         .build();
 
         logger.info("Executing Query: \n\n" + queryString);
@@ -339,8 +353,12 @@ public class BigQueryUtils {
         return result;
     }
 
-
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString) {
+
+        return executeQueryWithStorageAPI(queryString, false);
+    }
+
+    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final boolean runQueryInBatchMode) {
         final String tempTableProject = "broad-dsp-spec-ops";
         final String tempTableDataset = "temp_tables";
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
@@ -352,7 +370,7 @@ public class BigQueryUtils {
                 ") AS\n" +
                 queryString;
 
-        final TableResult result = executeQuery(queryStringIntoTempTable);
+        final TableResult result = executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
 
         final List<String> allResultFields = Arrays.asList("position", "values");
 

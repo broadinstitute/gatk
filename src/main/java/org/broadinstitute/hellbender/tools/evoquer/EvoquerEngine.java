@@ -107,6 +107,8 @@ class EvoquerEngine {
 
     private final boolean disableGnarlyGenotyper;
 
+    private final boolean runQueryInBatchMode;
+
     private final boolean printDebugInformation;
 
     private final ProgressMeter progressMeter;
@@ -123,6 +125,7 @@ class EvoquerEngine {
                    final ReferenceDataSource refSource,
                    final boolean runQueryOnly,
                    final boolean disableGnarlyGenotyper,
+                   final boolean runQueryInBatchMode,
                    final boolean printDebugInformation,
                    final ProgressMeter progressMeter ) {
 
@@ -135,6 +138,7 @@ class EvoquerEngine {
         this.queryRecordLimit = queryRecordLimit;
         this.runQueryOnly = runQueryOnly;
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
+        this.runQueryInBatchMode = runQueryInBatchMode;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
 
@@ -182,6 +186,7 @@ class EvoquerEngine {
         this.contigToSampleTableMap = null;
         this.queryRecordLimit = 0;
         this.runQueryOnly = false;
+        this.runQueryInBatchMode = false;
 
         this.sampleNames.addAll(sampleNames);
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
@@ -203,7 +208,7 @@ class EvoquerEngine {
             final String variantQueryString = getVariantQueryString(interval);
 
             // Execute the query:
-            final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString);
+            final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString, runQueryInBatchMode);
 
             createVariantsFromTableResult(storageAPIAvroReader, interval.getContig());
         }
