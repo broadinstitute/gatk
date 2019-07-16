@@ -1,15 +1,22 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.base.Strings;
+import htsjdk.samtools.SAMTestUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -299,6 +306,30 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
 
         Assert.assertEquals(reducedVC.getNAlleles(), 3);
         Assert.assertTrue(reducedVC.getAlleles().containsAll(Arrays.asList(Allele.create("A", true), Allele.create("T", false), Allele.create("C", false))));
+    }
+
+    @Test
+    public void testMakeAnnotatedCallTrimmingAlleles(){
+        List<Allele> alleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false));
+        ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods(SampleList.EMPTY_LIST, new IndexedAlleleList(alleles), new HashMap<>());
+
+        // Both a deletion and SNPs are present at this site
+        final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000009, alleles).make();
+
+        final List<FeatureInput<VariantContext>> features = Collections.emptyList();
+
+        VariantContext reducedVC = HaplotypeCallerGenotypingEngine.makeAnnotatedCall("AGGGGGGGGG".getBytes(),
+                new SimpleInterval(originalVC),
+                new FeatureContext(),
+                ArtificialReadUtils.createArtificialSamHeader(),
+                originalVC,
+                likelihoods,
+                originalVC,
+                new VariantAnnotatorEngine(Collections.emptyList(), null, features, false, true));
+
+        // Asserting that the two alleles were trimmed after calling removeExcessAltAlleles
+        Assert.assertEquals(reducedVC.getNAlleles(), 2);
+        Assert.assertTrue(reducedVC.getAlleles().containsAll(Arrays.asList(Allele.create("A", true), Allele.create("T", false))));
     }
 
     @Test
