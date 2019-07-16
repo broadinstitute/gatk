@@ -502,7 +502,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> expectedVC = getVariantContexts(output2);
         final List<VariantContext> actualVC = getVariantContexts(output);
         final VCFHeader header = getHeaderFromFile(output);
-        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Collections.emptyList(), header));
     }
 
     @Test
