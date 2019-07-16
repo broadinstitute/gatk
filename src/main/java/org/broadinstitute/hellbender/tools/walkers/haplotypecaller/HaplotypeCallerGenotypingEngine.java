@@ -168,6 +168,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                             loc);
 
             VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced);
+            int mergedAlleles = mergedVC.getAlleles().size();
 
             if( mergedVC == null ) {
                 continue;
@@ -179,26 +180,27 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }
 
-            VariantContext culledVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
+            mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
 
-            ReadLikelihoods<Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper, new SimpleInterval(culledVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
+            ReadLikelihoods<Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper, new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
             if (configuration.isSampleContaminationPresent()) {
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
 
             if (emitReferenceConfidence) {
-                culledVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(culledVC);
+                mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
+                mergedAlleles++;
             }
 
-            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, culledVC, noCallAlleles);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(culledVC).genotypes(genotypes).make(), getGLModel(culledVC), header);
+            final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), header);
             if( call != null ) {
 
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call);
 
-                final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, readAlleleLikelihoods, call, annotationEngine);
+                final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAlleles, readAlleleLikelihoods, call, annotationEngine);
                 returnCalls.add( annotatedCall );
 
                 if (withBamOut) {
@@ -367,14 +369,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     @VisibleForTesting
-    static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, ReadLikelihoods<Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine) {
+    static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, int mergedAllelesSize, ReadLikelihoods<Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine) {
         final SimpleInterval locus = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getEnd());
         final SimpleInterval refLocInterval= new SimpleInterval(refLoc);
         final ReferenceDataSource refData = new ReferenceMemorySource(new ReferenceBases(ref, refLocInterval), header.getSequenceDictionary());
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
-        return call.getAlleles().size() == mergedVC.getAlleles().size() ? untrimmedResult
+        return call.getAlleles().size() == mergedAllelesSize ? untrimmedResult
                 : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
     }
 

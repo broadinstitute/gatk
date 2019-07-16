@@ -311,6 +311,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     @Test
     public void testMakeAnnotatedCallTrimmingAlleles(){
         List<Allele> alleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false));
+        List<Allele> mergedAlleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false), Allele.create("A", false));
         ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods(SampleList.EMPTY_LIST, new IndexedAlleleList(alleles), new HashMap<>());
 
         // Both a deletion and SNPs are present at this site
@@ -323,6 +324,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
                 new FeatureContext(),
                 ArtificialReadUtils.createArtificialSamHeader(),
                 originalVC,
+                mergedAlleles.size(),
                 likelihoods,
                 originalVC,
                 new VariantAnnotatorEngine(Collections.emptyList(), null, features, false, true));
