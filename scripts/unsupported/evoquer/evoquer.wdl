@@ -35,7 +35,9 @@ workflow Evoquer {
 
     File interval_file
 
-    String output_file
+    String output_file_base_name
+
+    String batch_mode
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -44,21 +46,26 @@ workflow Evoquer {
     Int?  cpu
     Int?  boot_disk_size_gb
 
-    call EvoquerTask {
-        input:
-            reference             = reference,
-            intervals             = read_lines(interval_file),
-            output_file           = output_file,
-            project_id            = project_id,
-            dataset_map           = dataset_map,
+    Array[String] intervals = read_lines(interval_file)
 
-            gatk_docker           = gatk_docker,
-            gatk_override         = gatk4_jar_override,
-            mem                   = mem_gb,
-            preemptible_attempts  = preemptible_attempts,
-            disk_space_gb         = disk_space_gb,
-            cpu                   = cpu,
-            boot_disk_size_gb     = boot_disk_size_gb
+    scatter(interval in intervals) {
+        call EvoquerTask {
+            input:
+                reference             = reference,
+                interval              = interval
+                output_file           = "${output_file_base_name}_${interval}.vcf.gz",
+                project_id            = project_id,
+                dataset_map           = dataset_map,
+                batch_mode            = batch_mode,
+
+                gatk_docker           = gatk_docker,
+                gatk_override         = gatk4_jar_override,
+                mem                   = mem_gb,
+                preemptible_attempts  = preemptible_attempts,
+                disk_space_gb         = disk_space_gb,
+                cpu                   = cpu,
+                boot_disk_size_gb     = boot_disk_size_gb
+        }
     }
 
     output {
@@ -74,12 +81,14 @@ task EvoquerTask {
     # Input args:
     File reference
 
-    Array[String] intervals
+    String interval
     String output_file
 
     String project_id
 
     File dataset_map
+
+    String batch_mode
 
     # Runtime Options:
     String gatk_docker
@@ -131,7 +140,10 @@ task EvoquerTask {
                 -O "${output_file}" \
                 --project-id "${project_id}" \
                 --dataset-map "${dataset_map}" \
-                -L ${default="" sep=" -L " intervals}
+                -L "${interval}" \
+                --run-query-in-batch-mode "${batch_mode}"
+
+        # -L ${default="" sep=" -L " intervals}
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> ${timing_output_file}
