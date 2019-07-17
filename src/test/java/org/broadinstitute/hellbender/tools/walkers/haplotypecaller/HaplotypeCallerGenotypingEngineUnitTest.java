@@ -309,10 +309,11 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testMakeAnnotatedCallTrimmingAlleles(){
         List<Allele> alleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false));
         List<Allele> mergedAlleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false), Allele.create("A", false));
-        ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods(SampleList.EMPTY_LIST, new IndexedAlleleList(alleles), new HashMap<>());
+        ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<Allele>(SampleList.EMPTY_LIST, new IndexedAlleleList<Allele>(alleles), new HashMap<>());
 
         // Both a deletion and SNPs are present at this site
         final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000009, alleles).make();
