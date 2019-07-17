@@ -53,7 +53,7 @@ final class GnarlyGenotyperEngine {
     private static final double  INDEL_QUAL_THRESHOLD   = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
     private static final double  SNP_QUAL_THRESHOLD     = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
     private static final int     ASSUMED_PLOIDY         = GATKVariantContextUtils.DEFAULT_PLOIDY;
-    private static final int     PIPELINE_MAX_ALT_COUNT = 6;
+    private static final int     PIPELINE_MAX_ALT_COUNT = 50;
 
     private static final boolean SUMMARIZE_PLs          = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
     private static final boolean stripASAnnotations     = false;
