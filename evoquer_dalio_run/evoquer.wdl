@@ -41,6 +41,8 @@ workflow Evoquer {
 
     String batch_mode
 
+    String disable_gnarly_genotyper
+
     File? gatk4_jar_override
     Int?  mem_gb
     Int?  preemptible_attempts
@@ -61,7 +63,7 @@ workflow Evoquer {
                 project_id            = project_id,
                 dataset_map           = dataset_map,
                 batch_mode            = batch_mode,
-
+                disable_gnarly_genotyper = disable_gnarly_genotyper,
                 gatk_docker           = gatk_docker,
                 gatk_override         = gatk4_jar_override,
                 mem                   = mem_gb,
@@ -96,6 +98,8 @@ task EvoquerTask {
     File dataset_map
 
     String batch_mode
+
+    String disable_gnarly_genotyper
 
     # Runtime Options:
     String gatk_docker
@@ -147,7 +151,8 @@ task EvoquerTask {
                 --project-id "${project_id}" \
                 --dataset-map "${dataset_map}" \
                 -L "${interval}" \
-                --run-query-in-batch-mode "${batch_mode}"
+                --run-query-in-batch-mode "${batch_mode}" \
+                --disable-gnarly-genotyper "${disable_gnarly_genotyper}"
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> ${timing_output_file}
