@@ -47,6 +47,9 @@ public final class HelpConstants {
     public final static String DOC_CAT_SV_DISCOVERY = "Structural Variant Discovery";
     public final static String DOC_CAT_SV_DISCOVERY_SUMMARY = "Tools that detect structural variants";
 
+    public final static String DOC_CAT_LR_ANALYSIS = "Long read analysis";
+    public final static String DOC_CAT_LR_ANALYSIS_SUMMARY = "Tools that performs analysis on long reads";
+
     public final static String DOC_CAT_TEST = "Test Tools";
     public final static String DOC_CAT_TEST_SUMMARY = "Tools for internal test purposes";
 
