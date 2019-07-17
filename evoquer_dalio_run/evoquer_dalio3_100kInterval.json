@@ -7,7 +7,7 @@
 
   "Evoquer.project_id": "broad-dsp-spec-ops",
   "Evoquer.dataset_map": "gs://droazen-testing/evoquer/evoquer_dalio3_dataset_map",
-  "Evoquer.interval_file": "gs://droazen-testing/evoquer/evoquer_chr20_10000000-10100000.intervals",
+  "Evoquer.interval_file": "gs://droazen-testing/evoquer/evoquer_chr20_10000000-11000000.intervals",
 
   "Evoquer.output_file_base_name": "evoked_variants",
 
