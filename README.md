@@ -32,11 +32,15 @@ from [here](https://conda.io/en/latest/miniconda.html), and run it. If you insta
 such as `Homebrew`, you may want to uninstall that first, to avoid potential conflicts.
 * On your laptop, at the root directory of your `ml4cvd` GitHub clone, load the `ml4cvd` environment via
     ```
-    conda env create -f envs/ml4cvd_osx64.yml
+    conda env create -f env/ml4cvd_osx64.yml
     ``` 
     If you get an error, try updating your `Conda` via
     ```
     sudo conda update -n base -c defaults conda
+    ```
+    If you have get an error while installing gmpy, try installing gmp:
+    ```
+    brew install gmp
     ```
     The version used at the time of this writing was `4.6.1`.
     
@@ -97,7 +101,7 @@ git clone git@github.com:broadinstitute/ml.git
 
 Because we don't know everyone's username, you need to run one more script to make sure that you are added as a docker user and that you have permission to pull down our docker instances from GCP's gcr.io. Run this while you're logged into your VM:
 ```
-./ml/scripts/vm_launch/run-once.sh
+./ml/scripts/vm_launch/run_once.sh
 ```
 
 Note that you may see warnings like below, but these are expected:
