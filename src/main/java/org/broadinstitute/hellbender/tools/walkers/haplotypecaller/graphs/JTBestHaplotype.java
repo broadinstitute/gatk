@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ExperimentalReadThreadingGraph;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,13 +41,19 @@ public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends K
     //TODO this needs to be the same logic as the blow method, this is temporary
     // returns true if there is a symbolic edge pointing to the reference end or if there is insufficient node data
     public boolean hasStoppingEvidence(final int weightThreshold) {
-        ExperimentalReadThreadingGraph.ThreadingNode eldestTree = activeNodes.isEmpty() ? null : activeNodes.get(0);
+        int currentActiveNodeIndex = 0;
+        ExperimentalReadThreadingGraph.ThreadingNode eldestTree = activeNodes.isEmpty() ? null : activeNodes.get(currentActiveNodeIndex);
         int totalOut = getTotalOutForBranch(eldestTree);
 
         // Keep removing trees until we find one under our threshold TODO this should be in a helper method
         while (eldestTree != null && totalOut < weightThreshold) {
-            activeNodes.remove(0);
-            eldestTree = activeNodes.isEmpty() ? null : activeNodes.get(0);
+            // We remove old branches from the tree only if they no longer have any evidence, otherwise we look at younger branches
+            if (totalOut <= 0) {
+                activeNodes.remove(0);
+            } else { // Otherwise look at the next tree in the list
+                currentActiveNodeIndex++;
+            }
+            eldestTree = currentActiveNodeIndex >= activeNodes.size() ? null : activeNodes.get(currentActiveNodeIndex);
             totalOut = getTotalOutForBranch(eldestTree);
         }
 
@@ -87,19 +94,26 @@ public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends K
      */
     //TODO for reviewer - is this the best way to structure this? I'm not sure how to decide about end nodes based on this, passing them back seesm wrong
     @SuppressWarnings({"unchecked"})
-    public List<JTBestHaplotype<T, E>> getApplicableNextEdgesBasedOnJunctionTrees(final List<E> chain, final int weightThreshold) {
+    public List<JTBestHaplotype<T, E>> getApplicableNextEdgesBasedOnJunctionTrees(final List<E> chain, final Set<E> outgoingEdges, final int weightThreshold) {
+        Set<MultiSampleEdge> edgesAccountedFor = new HashSet<>(); // Since we check multiple junction trees for paths, make sure we are getting
         List<JTBestHaplotype<T, E>> output = new ArrayList<>();
-        ExperimentalReadThreadingGraph.ThreadingNode eldestTree = activeNodes.isEmpty() ? null : activeNodes.get(0);
+        int currentActiveNodeIndex = 0;
+        ExperimentalReadThreadingGraph.ThreadingNode eldestTree = activeNodes.isEmpty() ? null : activeNodes.get(currentActiveNodeIndex);
         while (eldestTree != null) {
             //TODO this can be better, need to create a tree "view" object that tracks the current node more sanely
             int totalOut = getTotalOutForBranch(eldestTree);
-            // This right here is what handles dealing with weight thresholds
-            // TODO for the reviewer - Perhaps the approach here is to check younger trees as well but don't throw out informative older trees
+
+            // If the total evidence emerging from a given branch
             if (totalOut >= weightThreshold) {
                 //TODO add SOME sanity check to ensure that the vertex we stand on and the edges we are polling line up
                 for (Map.Entry<MultiSampleEdge, ExperimentalReadThreadingGraph.ThreadingNode> childNode : eldestTree.getChildrenNodes().entrySet()) {
+                    if (!outgoingEdges.contains(childNode.getKey())) {
+                        throw new GATKException("While constructing graph, there was an incongruity between a JunctionTree edge and the edge present on graph traversal");
+                    }
+
                     // Don't add edges to the symbolic end vertex here at all, thats handled elsewhere
-                    if (!childNode.getValue().isSymbolicEnd()) {
+                    if (!childNode.getValue().isSymbolicEnd() && !edgesAccountedFor.contains(childNode.getKey())) {
+                        edgesAccountedFor.add(childNode.getKey());
                         ExperimentalReadThreadingGraph.ThreadingNode child = childNode.getValue();
                         List<E> chainCopy = new ArrayList<>(chain);
                         chainCopy.add((E) childNode.getKey());
@@ -108,10 +122,32 @@ public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends K
                 }
                 return output;
 
-            // If there aren't enough outgoing nodes we just remove
+            // If there isn't enough outgoing evidence, then we
             } else {
-                activeNodes.remove(0);
-                eldestTree = activeNodes.isEmpty() ? null : activeNodes.get(0);
+                // We remove old branches from the tree only if they no longer have any evidence, otherwise we look at younger branches
+                if (totalOut <= 0) {
+                    activeNodes.remove(0);
+                } else { // Otherwise look at the next tree in the list
+                    currentActiveNodeIndex++;
+                }
+                eldestTree = currentActiveNodeIndex >= activeNodes.size() ? null : activeNodes.get(currentActiveNodeIndex);
+            }
+        }
+        // If we hit this point, then eldestTree == null, suggesting that none of the nodes exceeded our threshold for evidence (though some may have found evidence)
+        // Standard behavior from the old GraphBasedKBestHaplotypeFinder, base our next path on the edge weights instead
+        int totalOutgoingMultiplicity = 0;
+        for (final BaseEdge edge : outgoingEdges) {
+            totalOutgoingMultiplicity += edge.getMultiplicity();
+        }
+
+        // Add all valid edges to the graph
+        for (final E edge : outgoingEdges) {
+            // Don't traverse an edge if it only has reference evidence supporting it (unless there is no other evidence whatsoever)
+            if (!edgesAccountedFor.contains((MultiSampleEdge) edge) &&
+                    totalOutgoingMultiplicity != 0 && edge.getMultiplicity() != 0) {
+                List<E> chainCopy = new ArrayList<>(chain);
+                chainCopy.add(edge);
+                output.add(new JTBestHaplotype<>(this, chainCopy, edge.getMultiplicity(), totalOutgoingMultiplicity));
             }
         }
         return output;
@@ -130,4 +166,9 @@ public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends K
     public void addJunctionTree(final ExperimentalReadThreadingGraph.ThreadingTree junctionTreeForNode) {
         activeNodes.add(junctionTreeForNode.getRootNode());
     }
+
+    /**
+     * A helper clas
+     */
+    public class JunctionTreeView
 }

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ExperimentalReadThreadingGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -127,6 +128,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                 pathToExtend.addJunctionTree(experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
             }
 
+            //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat
             // If we are at a reference end then we close out the path TODO this isn't adequate for non-unique reference sinks
             if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(weightThresholdToUse)) {
                 //TODO this will probably be resolved using a junction tree on that node and treating it as an edge to extend
@@ -141,26 +143,11 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             // We must be at a point where the path diverges, use junction trees to resolve if possible
             if (outgoingEdges.size() > 1) {
-                List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, weightThresholdToUse);
-                if (jTPaths.isEmpty()) {
-                    // Standard behavior from the old GraphBasedKBestHaplotypeFinder
-                    int totalOutgoingMultiplicity = 0;
-                    for (final BaseEdge edge : outgoingEdges) {
-                        totalOutgoingMultiplicity += edge.getMultiplicity();
-                    }
-
-                    // Add all valid edges to the graph
-                    for (final E edge : outgoingEdges) {
-                        // Don't traverse an edge if it only has reference evidence supporting it (unless there is no other evidence whatsoever)
-                        if (totalOutgoingMultiplicity != 0 && edge.getMultiplicity() != 0) {
-                            List<E> chainCopy = new ArrayList<>(chain);
-                            chainCopy.add(edge);
-                            queue.add(new JTBestHaplotype<>(pathToExtend, chainCopy, edge.getMultiplicity(), totalOutgoingMultiplicity));
-                        }
-                    }
-                } else {
-                    queue.addAll(jTPaths);
+                List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, outgoingEdges, weightThresholdToUse);
+                if (jTPaths.isEmpty() && !sinks.contains(vertexToExtend)) {
+                    throw new GATKException("Found no path based on the junction trees or exisiting paths, this should not have happened");
                 }
+                queue.addAll(jTPaths);
 
             // Otherwise just take the next node forward
             } else {
