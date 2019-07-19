@@ -279,7 +279,7 @@ public final class CigarUtils {
      * @param refSeq the reference sequence that all of the bases in this path should align to
      * @return a Cigar mapping this path to refSeq, or null if no reasonable alignment could be found
      */
-    public static Cigar calculateCigar(final byte[] refSeq, final byte[] altSeq, final SmithWatermanAligner aligner) {
+    public static Cigar calculateCigar(final byte[] refSeq, final byte[] altSeq, final SmithWatermanAligner aligner, final SWOverhangStrategy strategy) {
         Utils.nonNull(refSeq, "refSeq");
         Utils.nonNull(altSeq, "altSeq");
         if ( altSeq.length == 0 ) {
@@ -308,7 +308,7 @@ public final class CigarUtils {
 
         final String paddedRef = SW_PAD + new String(refSeq) + SW_PAD;
         final String paddedPath = SW_PAD + new String(altSeq) + SW_PAD;
-        final SmithWatermanAlignment alignment = aligner.align(paddedRef.getBytes(), paddedPath.getBytes(), NEW_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+        final SmithWatermanAlignment alignment = aligner.align(paddedRef.getBytes(), paddedPath.getBytes(), NEW_SW_PARAMETERS, strategy);
 
         if ( isSWFailure(alignment) ) {
             return null;
