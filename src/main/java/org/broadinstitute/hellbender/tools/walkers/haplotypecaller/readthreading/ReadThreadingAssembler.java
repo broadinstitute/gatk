@@ -153,7 +153,7 @@ public final class ReadThreadingAssembler {
                 nonRefGraphs.add(result.getGraph());
 
                 if (debugHaplotypeFinding) {
-                    haplotypeHistogram.add((double)result.getKmerSize());
+                    kmersUsedHistogram.add((double)result.getKmerSize());
                 }
             }
         }
@@ -529,8 +529,7 @@ public final class ReadThreadingAssembler {
     public void printDebugHistograms() {
         if (graphHaplotypeHistogramPath != null) {
 
-
-            try (final PrintStream histogramWriter = new PrintStream(graphOutputPath)) {
+            try (final PrintStream histogramWriter = new PrintStream(graphHaplotypeHistogramPath)) {
                 histogramWriter.println("Histogram over the number of haplotypes recovered per active region:");
                 histogramWriter.println(haplotypeHistogram.toString());
 
@@ -538,7 +537,7 @@ public final class ReadThreadingAssembler {
                 histogramWriter.println(kmersUsedHistogram.toString());
 
             } catch (IOException e) {
-                throw new UserException.CouldNotCreateOutputFile(graphOutputPath, e);
+                throw new UserException.CouldNotCreateOutputFile(graphHaplotypeHistogramPath, e);
             }
         }
     }
