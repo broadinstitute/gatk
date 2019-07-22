@@ -67,7 +67,7 @@ else
     fi
 fi
 
-ZONE=${CLOUDSDK_COMPUTE_ZONE:-"us-central1-a"}
+ZONE=${CLOUDSDK_COMPUTE_ZONE:-"us-central1-c"}
 if [ "${CLOUDSDK_COMPUTE_ZONE:-""}" == "" ]; then
     echo "Using zone=${ZONE} because CLOUDSDK_COMPUTE_ZONE is not set"
 else
@@ -82,8 +82,8 @@ NUM_SV_WORKERS=${NUM_SV_WORKERS:-10}
 # make *no* preemptible workers by default, but allow overload by
 # setting env variable
 NUM_SV_PREEMPTIBLE_WORKERS=${NUM_SV_PREEMPTIBLE_WORKERS:-0}
-SV_MASTER_BOOT_DISK_SIZE=${SV_MASTER_BOOT_DISK_SIZE:-500}
-SV_WORKER_BOOT_DISK_SIZE=${SV_WORKER_BOOT_DISK_SIZE:-500}
+SV_MASTER_BOOT_DISK_SIZE=${SV_MASTER_BOOT_DISK_SIZE:-1000}
+SV_WORKER_BOOT_DISK_SIZE=${SV_WORKER_BOOT_DISK_SIZE:-1000}
 SV_BOOT_DISK_TYPE=${SV_BOOT_DISK_TYPE:-"pd-standard"}
 
 gcloud beta dataproc clusters create ${CLUSTER_NAME} \
