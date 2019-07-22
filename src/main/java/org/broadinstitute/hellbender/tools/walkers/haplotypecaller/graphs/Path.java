@@ -19,23 +19,23 @@ import java.util.stream.Collectors;
  * class to keep track of paths
  *
  */
-public class Path<T extends BaseVertex, E extends BaseEdge> {
+public class Path<V extends BaseVertex, E extends BaseEdge> {
 
     // the last vertex seen in the path
-    private final T lastVertex;
+    private final V lastVertex;
 
     // the list of edges comprising the path
     private final List<E> edgesInOrder;
 
     // the graph from which this path originated
-    private final BaseGraph<T, E> graph;
+    private final BaseGraph<V, E> graph;
 
     /**
      * Create a new Path containing no edges and starting at initialVertex
      * @param initialVertex the starting vertex of the path
      * @param graph the graph this path will follow through
      */
-    public Path(final T initialVertex, final BaseGraph<T, E> graph) {
+    public Path(final V initialVertex, final BaseGraph<V, E> graph) {
         lastVertex = Utils.nonNull(initialVertex, "initialVertex cannot be null");
         this.graph = Utils.nonNull(graph, "graph cannot be null");
         Utils.validateArg(graph.containsVertex(initialVertex), () -> "Vertex " + initialVertex + " must be part of graph " + graph);
@@ -46,7 +46,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
     /**
      * Constructor that does not check arguments' validity i.e. doesn't check that edges are in order
      */
-    public Path(final List<E> edgesInOrder, final T lastVertex, final BaseGraph<T,E> graph) {
+    public Path(final List<E> edgesInOrder, final V lastVertex, final BaseGraph<V,E> graph) {
         this.lastVertex = lastVertex;
         this.graph = graph;
         this.edgesInOrder = edgesInOrder;
@@ -61,7 +61,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * @throws IllegalArgumentException if {@code p} or {@code edge} are {@code null}, or {@code edge} is
      * not part of {@code p}'s graph, or {@code edge} does not have as a source the last vertex in {@code p}.
      */
-    public Path(final Path<T,E> p, final E edge) {
+    public Path(final Path<V,E> p, final E edge) {
         Utils.nonNull(p, "Path cannot be null");
         Utils.nonNull(edge, "Edge cannot be null");
         Utils.validateArg(p.graph.containsEdge(edge), () -> "Graph must contain edge " + edge + " but it doesn't");
@@ -83,7 +83,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * @throws IllegalArgumentException if {@code p} or {@code edges} are {@code null} or empty, or {@code edges} is
      * not part of {@code p}'s graph, or {@code edges} does not have as a source the last vertex in {@code p}.
      */
-    public Path(final Path<T,E> p, final List<E> edges) {
+    public Path(final Path<V,E> p, final List<E> edges) {
         Utils.nonNull(p, "Path cannot be null");
         Utils.nonEmpty(edges, "Edge cannot be null");
         edges.forEach(edge -> Utils.validateArg(p.graph.containsEdge(edge), () -> "Graph must contain edge " + edge + " but it doesn't"));
@@ -116,7 +116,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * @throws IllegalArgumentException if {@code p} or {@code edge} are {@code null}, or {@code edge} is
      * not part of {@code p}'s graph, or {@code edge} does not have as a target the first vertex in {@code p}.
      */
-    public Path(final E edge, final Path<T,E> p) {
+    public Path(final E edge, final Path<V,E> p) {
         Utils.nonNull(p, "Path cannot be null");
         Utils.nonNull(edge, "Edge cannot be null");
         Utils.validateArg(p.graph.containsEdge(edge), () -> "Graph must contain edge " + edge + " but it doesn't");
@@ -129,7 +129,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
     }
 
     @VisibleForTesting
-    boolean pathsAreTheSame(final Path<T,E> path) {
+    boolean pathsAreTheSame(final Path<V,E> path) {
         return edgesInOrder.equals(path.edgesInOrder);
     }
 
@@ -139,7 +139,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * @param v a non-null vertex
      * @return true if v occurs within this path, false otherwise
      */
-    public boolean containsVertex(final T v) {
+    public boolean containsVertex(final V v) {
         Utils.nonNull(v, "Vertex cannot be null");
         return v.equals(getFirstVertex()) || edgesInOrder.stream().map(graph::getEdgeTarget).anyMatch(v::equals);
     }
@@ -154,7 +154,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * Get the graph of this path
      * @return a non-null graph
      */
-    public BaseGraph<T, E> getGraph() {
+    public BaseGraph<V, E> getGraph() {
         return graph;
     }
 
@@ -171,8 +171,8 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * Get the list of vertices in this path in order defined by the edges of the path
      * @return a non-null, non-empty list of vertices
      */
-    public List<T> getVertices() {
-        final List<T> result = new ArrayList<>(edgesInOrder.size()+1);
+    public List<V> getVertices() {
+        final List<V> result = new ArrayList<>(edgesInOrder.size()+1);
         result.add(getFirstVertex());
         result.addAll(edgesInOrder.stream().map(graph::getEdgeTarget).collect(Collectors.toList()));
         return result;
@@ -182,13 +182,13 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      * Get the final vertex of the path
      * @return a non-null vertex
      */
-    public T getLastVertex() { return lastVertex; }
+    public V getLastVertex() { return lastVertex; }
 
     /**
      * Get the first vertex in this path
      * @return a non-null vertex
      */
-    public T getFirstVertex() {
+    public V getFirstVertex() {
         if (edgesInOrder.isEmpty()) {
             return lastVertex;
         } else {

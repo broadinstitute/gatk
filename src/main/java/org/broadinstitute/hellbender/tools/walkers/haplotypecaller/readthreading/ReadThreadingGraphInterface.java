@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
  *
  */
 public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruijnVertex, MultiSampleEdge> implements KmerSearchableGraph<MultiDeBruijnVertex,MultiSampleEdge> {
+    private static final long serialVersionUID = 1l;
     private static final String ANONYMOUS_SAMPLE = "XXX_UNNAMED_XXX";
     private static final boolean WRITE_GRAPH = false;
     private static final boolean DEBUG_NON_UNIQUE_CALC = false;

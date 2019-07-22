@@ -10,19 +10,19 @@ import java.util.List;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class KBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends Path<T, E>{
+public class KBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends Path<V, E>{
     private double score;
     private boolean isReference;
 
     public double score() { return score; }
     public boolean isReference() { return isReference; }
 
-    public KBestHaplotype(final T initialVertex, final BaseGraph<T,E> graph) {
+    public KBestHaplotype(final V initialVertex, final BaseGraph<V,E> graph) {
         super(initialVertex, graph);
         score = 0;
     }
 
-    public KBestHaplotype(final KBestHaplotype p, final E edge, final int totalOutgoingMultiplicity) {
+    public KBestHaplotype(final KBestHaplotype<V, E> p, final E edge, final int totalOutgoingMultiplicity) {
         super(p, edge);
         score = p.score + computeLogPenaltyScore( edge.getMultiplicity(), totalOutgoingMultiplicity);
         isReference &= edge.isRef();
