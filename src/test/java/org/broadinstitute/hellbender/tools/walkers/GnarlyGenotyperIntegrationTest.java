@@ -37,44 +37,50 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                 // Simple Test, spanning deletions; standard calling confidence
                 //No variants outside requested intervals; no SNPs with QUAL < 60, no INDELs with QUAL < 69?; has star alleles after deletion at chr20:263497; has AC, AF, AN, DP, ExcessHet, FS, MQ, (MQRankSum), (ReadPosRankSum), SOR, QD; has called genotypes
                  {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                         getTestFile("fiveSampleTest.vcf"), Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
+                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
 
                 //lower calling confidence
                 //same as above except (different intervals and) with SNPs with 40 < QUAL < 60 and INDELs with 49 < QUAL < 69
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                         getTestFile("fiveSampleTest.lowerCallThreshold.vcf"), Arrays.asList(new SimpleInterval("chr20", 250865, 348163)), Arrays.asList("-stand-call-conf 10"), b38_reference_20_21},
+                         getTestFile("fiveSampleTest.lowerCallThreshold.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 250865, 348163)), Arrays.asList("-stand-call-conf 10"), b38_reference_20_21},
 
                 //using latest reblocking output with allele-specific annotations
                 //has all of the above plus AS_AltDP, AS_FS, AS_MQ, AS_MQRankSum, AS_QD, AS_ReadPosRankSum
                 {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
                          new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
-                         getTestFile("twoSampleAS.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21},
+                         getTestFile("twoSampleAS.vcf"), getTestFile("twoSampleASDB.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21},
 
                 //using legacy reblocking data with no raw GT count values
                 //has ExcessHet, calculated from genotypes
                 {new File[]{new File(getToolTestDataDir() + "noGTCount.sample1.chr20snippet.vcf"),
                         new File(getToolTestDataDir() + "noGTCount.sample2.chr20snippet.vcf")},
-                        getTestFile("noGTCount.expected.chr20snippet.vcf"), Arrays.asList(new SimpleInterval("chr20")), NO_EXTRA_ARGS, hg38Reference
+                        getTestFile("noGTCount.expected.chr20snippet.vcf"), null, Arrays.asList(new SimpleInterval("chr20")), NO_EXTRA_ARGS, hg38Reference
                 }
         };
     }
 
 
     @Test (dataProvider = "VCFdata")
-    public void testUsingGenomicsDB(File[] inputs, File expected, List<SimpleInterval> intervals, List<String> additionalArguments, String reference) throws IOException {
+    public void testUsingGenomicsDB(File[] inputs, File expected, File expectedDb, List<SimpleInterval> intervals, List<String> additionalArguments, String reference) throws IOException {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(inputs), IntervalUtils.getSpanningInterval(intervals));
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
 
-        File output = runTool(genomicsDBUri, intervals, reference, additionalArguments);
+        final File output = createTempFile("GnarlyGenotyper", ".vcf");
+        final File outputDatabase = createTempFile("GnarlyGenotyper.annotationDatabase", ".vcf");
+
+        runTool(genomicsDBUri, intervals, reference, output, outputDatabase, additionalArguments);
 
         final List<VariantContext> expectedVC = getVariantContexts(expected);
         final List<VariantContext> actualVC = getVariantContexts(output);
         VariantContextTestUtils.assertEqualVariants(actualVC, expectedVC);
+        if (expectedDb != null) {
+            final List<VariantContext> expectedDB = getVariantContexts(expectedDb);
+            final List<VariantContext> actualDB = getVariantContexts(outputDatabase);
+            VariantContextTestUtils.assertEqualVariants(actualDB, expectedDB);
+        }
     }
 
-    protected File runTool(String input, List<SimpleInterval> intervals, String reference, List<String> additionalArguments) {
-        final File output = createTempFile("GnarlyGenotyper", ".vcf");
-        final File outputDatabase = createTempFile("GnarlyGenotyper.annotationDatabase", ".vcf");
+    protected void runTool(String input, List<SimpleInterval> intervals, String reference, File output, File outputDatabase, List<String> additionalArguments) {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
@@ -86,7 +92,6 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         additionalArguments.forEach(args::add);
 
         runCommandLine(args);
-        return output;
     }
 
     @Test
