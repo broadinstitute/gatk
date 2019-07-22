@@ -24,6 +24,7 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
                 dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, disableAdaptivePruning ? minPruneFactor : 0,
                 !disableAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants, !disableSeqGraphConstruciton);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
+        assemblyEngine.setDebugHaplotypeMode(debugHaplotypeDiscovery);
         assemblyEngine.setRecoverDanglingBranches(true);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
@@ -31,6 +32,11 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
         if ( graphOutput != null ) {
             assemblyEngine.setGraphWriter(new File(graphOutput));
         }
+        if ( haplotypeHistogramOutput != null ) {
+            assemblyEngine.setDebugHistogramOutput(new File(haplotypeHistogramOutput));
+        }
+
+
 
         return assemblyEngine;
     }

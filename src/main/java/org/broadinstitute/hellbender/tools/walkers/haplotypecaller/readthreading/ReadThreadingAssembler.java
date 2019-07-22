@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
+import org.broadinstitute.hellbender.utils.Histogram;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -52,6 +54,7 @@ public final class ReadThreadingAssembler {
 
     private boolean debug = false;
     private boolean debugGraphTransformations = false;
+    private boolean debugHaplotypeFinding = false;
     private boolean recoverDanglingBranches = true;
     private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
@@ -62,6 +65,9 @@ public final class ReadThreadingAssembler {
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
+    private File graphHaplotypeHistogramPath = null;
+    private Histogram haplotypeHistogram = null;
+    private Histogram kmersUsedHistogram = null;
 
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
@@ -156,6 +162,10 @@ public final class ReadThreadingAssembler {
                     nonRefRTGraphs.add(result.getThreadingGraph());
                 }
 
+                if (debugHaplotypeFinding) {
+                    haplotypeHistogram.add((double)result.getKmerSize());
+                }
+
             }
         }
 
@@ -168,6 +178,7 @@ public final class ReadThreadingAssembler {
 
         // print the graphs if the appropriate debug option has been turned on
         if ( graphOutputPath != null ) { printGraphs(nonRefSeqGraphs); }
+        if ( debugHaplotypeFinding ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
 
         return resultSet;
     }
@@ -568,6 +579,26 @@ public final class ReadThreadingAssembler {
         }
     }
 
+    /**
+     * Print the generated graphs to the graphWriter
+     */
+    public void printDebugHistograms() {
+        if (graphHaplotypeHistogramPath != null) {
+
+
+            try (final PrintStream histogramWriter = new PrintStream(graphOutputPath)) {
+                histogramWriter.println("Histogram over the number of haplotypes recovered per active region:");
+                histogramWriter.println(haplotypeHistogram.toString());
+
+                histogramWriter.println("\nHistogram over the average kmer size used for assembly:");
+                histogramWriter.println(kmersUsedHistogram.toString());
+
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile(graphOutputPath, e);
+            }
+        }
+    }
+
     // -----------------------------------------------------------------------------------------------
     //
     // getter / setter routines for generic assembler properties
@@ -600,8 +631,14 @@ public final class ReadThreadingAssembler {
 
     public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
 
-    public void setDebugGraphTransformations(final boolean debugGraphTransformations) {
-        this.debugGraphTransformations = debugGraphTransformations;
+    public void setDebugHaplotypeMode(final boolean debugGraphTransformations) {
+        this.debugHaplotypeFinding = debugGraphTransformations;
+        this.haplotypeHistogram = new Histogram(1.0);
+        this.kmersUsedHistogram = new Histogram(1.0);
+    }
+
+    public void setDebugGraphTransformations(final boolean debugHaplotypeFinding) {
+        this.debugGraphTransformations = debugHaplotypeFinding;
     }
 
     /**
@@ -631,5 +668,9 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
+    }
+
+    public void setDebugHistogramOutput(final File file) {
+        this.graphHaplotypeHistogramPath = file;
     }
 }

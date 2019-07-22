@@ -46,12 +46,16 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
                 dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, useAdaptivePruning ? 0 : minPruneFactor,
                 useAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants, !disableSeqGraphConstruciton);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
+        assemblyEngine.setDebugHaplotypeMode(debugHaplotypeDiscovery);
         assemblyEngine.setRecoverDanglingBranches(!doNotRecoverDanglingBranches);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
 
         if ( graphOutput != null ) {
             assemblyEngine.setGraphWriter(new File(graphOutput));
+        }
+        if ( haplotypeHistogramOutput != null ) {
+            assemblyEngine.setDebugHistogramOutput(new File(haplotypeHistogramOutput));
         }
 
         return assemblyEngine;
