@@ -30,8 +30,6 @@ public final class GnarlyGenotyperEngine {
 
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
-    public static final int PIPELINE_MAX_ALT_COUNT = 6;
-
     private static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
     private static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
 
@@ -40,7 +38,7 @@ public final class GnarlyGenotyperEngine {
     private static final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
 
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of PIPELINE_MAX_ALT_COUNT
-    private static final int[] likelihoodSizeCache = new int[PIPELINE_MAX_ALT_COUNT + 1];
+    private static int[] likelihoodSizeCache;
     private static final ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
 
     private static int maxAltAllelesToOutput;
@@ -52,16 +50,17 @@ public final class GnarlyGenotyperEngine {
     private static final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = new HashSet<>();
 
     public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean stripASAnnotations) {
-        this.maxAltAllelesToOutput = maxAltAllelesToOutput;
-        this.summarizePls = summarizePls;
-        this.keepAllSites = keepAllSites;
-        this.stripASAnnotations = stripASAnnotations;
+        GnarlyGenotyperEngine.maxAltAllelesToOutput = maxAltAllelesToOutput;
+        GnarlyGenotyperEngine.summarizePls = summarizePls;
+        GnarlyGenotyperEngine.keepAllSites = keepAllSites;
+        GnarlyGenotyperEngine.stripASAnnotations = stripASAnnotations;
 
         if (!summarizePls) {
             GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
 
             //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
-            for (final int numAlleles : IntStream.rangeClosed(1, PIPELINE_MAX_ALT_COUNT + 1).boxed().collect(Collectors.toList())) {
+            likelihoodSizeCache = new int[maxAltAllelesToOutput + 1];
+            for (final int numAlleles : IntStream.rangeClosed(1, maxAltAllelesToOutput + 1).boxed().collect(Collectors.toList())) {
                 likelihoodSizeCache[numAlleles - 1] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
                 glcCache.add(numAlleles - 1, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
             }
@@ -261,7 +260,7 @@ public final class GnarlyGenotyperEngine {
         if (!summarizePLs) {
             final int maximumAlleleCount = inputAllelesWithNonRef.size();
             final int numConcreteAlts = maximumAlleleCount - 2; //-1 for NON_REF and -1 for ref
-            if (maximumAlleleCount <= PIPELINE_MAX_ALT_COUNT) {
+            if (maximumAlleleCount <= maxAltAllelesToOutput) {
                 newPLsize = likelihoodSizeCache[numConcreteAlts]; //-1 for zero-indexed array
             } else {
                 newPLsize = GenotypeLikelihoods.numLikelihoods(maximumAlleleCount, ASSUMED_PLOIDY);
@@ -337,7 +336,7 @@ public final class GnarlyGenotyperEngine {
     }
 
     /**
-     *
+     * For a genotype with likelihoods that has a no-call GT, determine the most likely genotype from PLs and set it
      * @param gb
      * @param genotypeLikelihoods
      * @param allelesToUse

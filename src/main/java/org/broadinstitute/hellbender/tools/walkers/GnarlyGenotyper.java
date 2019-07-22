@@ -1,40 +1,44 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
-import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.*;
-import org.apache.commons.lang3.tuple.Pair;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.tools.evoquer.GnarlyGenotyperEngine;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
-import org.broadinstitute.hellbender.tools.evoquer.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.reflections.Reflections;
 
 import java.io.File;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Perform "quick and dirty" joint genotyping on one or more samples pre-called with HaplotypeCaller
@@ -85,11 +89,6 @@ public final class GnarlyGenotyper extends VariantWalker {
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
 
     public static final int PIPELINE_MAX_ALT_COUNT = 6;
-
-    private double INDEL_QUAL_THRESHOLD;
-    private double SNP_QUAL_THRESHOLD;
-
-    private static final int ASSUMED_PLOIDY = GATKVariantContextUtils.DEFAULT_PLOIDY;
 
     private static GnarlyGenotyperEngine genotyperEngine;
 
@@ -187,22 +186,14 @@ public final class GnarlyGenotyper extends VariantWalker {
         intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
-        final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
+        final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
 
         setupVCFWriter(inputVCFHeader, samples);
-
-        //we don't apply the prior to the QUAL approx in ReblockGVCF, so do it here
-        INDEL_QUAL_THRESHOLD = genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING - 10*Math.log10(genotypeArgs.indelHeterozygosity);
-        SNP_QUAL_THRESHOLD = genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING - 10*Math.log10(genotypeArgs.snpHeterozygosity);
-
-        if(IOUtils.isGenomicsDBPath(getDrivingVariantsFeatureInput().getFeaturePath())) {
-
-        }
 
         genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.MAX_ALTERNATE_ALLELES, SUMMARIZE_PLs, stripASAnnotations);
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
-        //allASAnnotations.addAll(reflections.getSubTypesOf(InfoFieldAnnotation.class));  //we don't want AS_InbreedingCoeff
+        //not InfoFieldAnnotation.class because we don't want AS_InbreedingCoeff
         allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
         allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
         allASAnnotations.add(AS_RMSMappingQuality.class);
@@ -280,7 +271,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         }
 
         final VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
-        final VariantContext finalizedVC = genotyperEngine.finalizeGenotype(variant, annotationDBBuilder);
+        final VariantContext finalizedVC = GnarlyGenotyperEngine.finalizeGenotype(variant, annotationDBBuilder);
         if (finalizedVC != null && (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             vcfWriter.add(finalizedVC);
         }
