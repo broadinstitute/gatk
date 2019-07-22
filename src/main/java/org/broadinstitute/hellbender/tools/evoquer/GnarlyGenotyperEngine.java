@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.evoquer;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.GnarlyGenotyper;
@@ -118,21 +119,7 @@ public final class GnarlyGenotyperEngine {
             removeNonRef = false;
         }
 
-        //TODO: do allele subsetting if we have an appropriate AS_QUAL key
-        if (maxAltAllelesToOutput > 0) {
-            final List<Allele> alleleSubset;
-            if (!variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY) && ! variant.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
-                warning.warn("Alleles cannot be subset without " + GATKVCFConstants.AS_QUAL_KEY +
-                        " or " + GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY + " info field key.  Retaining all alternate alleles.");
-            }
-            else {
-                if (variant.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
-
-                }
-            }
-        }
-
-        final Map<Allele, Integer> alleleCountMap = new HashMap<>();
+             final Map<Allele, Integer> alleleCountMap = new HashMap<>();
         //initialize the count map
         for (final Allele a : targetAlleles) {
             alleleCountMap.put(a, 0);
@@ -183,6 +170,8 @@ public final class GnarlyGenotyperEngine {
             Pair<Integer, Double> eh = ExcessHet.calculateEH(variant, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles / 2);
             vcfBuilder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.4f", eh.getRight()));
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
+            //replace db copy with updated hom ref count
+            annotationDBBuilder.attribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, StringUtils.join(gtCounts, AnnotationUtils.LIST_DELIMITER));
         }
 
         vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));

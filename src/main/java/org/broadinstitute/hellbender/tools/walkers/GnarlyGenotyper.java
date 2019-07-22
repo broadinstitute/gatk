@@ -233,13 +233,14 @@ public final class GnarlyGenotyper extends VariantWalker {
         }
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
-        final VCFHeader dbHeader = new VCFHeader(headerLines);
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
         if (SUMMARIZE_PLs) {
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALLELE_BALANCE));
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALT_CONFIDENCE));
         }
         final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
+        final VCFHeader dbHeader = new VCFHeader(headerLines);
         vcfWriter.writeHeader(vcfHeader);
         if (outputDbName != null) {
             annotationDatabaseWriter.writeHeader(dbHeader);
