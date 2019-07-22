@@ -167,6 +167,17 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public String graphOutput = null;
 
     @Hidden
+    @Argument(fullName="debug-haplotype-discovery", doc="Write debug histogram for haplotype discovery", optional = true)
+    public boolean debugHaplotypeDiscovery = false;
+
+    /**
+     * This argument is meant for debugging and is not immediately useful for normal analysis use.
+     */
+    @Hidden
+    @Argument(fullName="haplotype-debug-histogram-output", doc="Write debug assembly graph information to this file", optional = true)
+    public String haplotypeHistogramOutput = null;
+
+    @Hidden
     @Argument(fullName = CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME, doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
     public boolean captureAssemblyFailureBAM = false;
 
