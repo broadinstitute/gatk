@@ -15,17 +15,17 @@ import java.util.stream.Collectors;
  * of cloned path objects corresponding to each path present in the eldest tree. This method handles popping old trees with insufficient
  * data off of the list as well as incrementing all of the trees in the list to point at the next element based on the chosen path.
  */
-public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<T, E> {
+public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
     private JunctionTreeView treesInQueue; // An object for storing and managing operations on the queue of junction trees active for this path
 
-    public JTBestHaplotype(final JTBestHaplotype p, final List<E> edgesToExtend, final double edgePenalty) {
+    public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend, edgePenalty);
         treesInQueue = p.treesInQueue.clone();
 //        edgesTaken = new HashSet<>(edgesTaken);
     }
 
     // Constructor to be used for internal calls from {@link #getApplicableNextEdgesBasedOnJunctionTrees()}
-    public JTBestHaplotype(final JTBestHaplotype p, final List<E> chain, final int edgeMultiplicity, final int totalOutgoingMultiplicity) {
+    public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> chain, final int edgeMultiplicity, final int totalOutgoingMultiplicity) {
         super(p, chain, computeLogPenaltyScore( edgeMultiplicity, totalOutgoingMultiplicity));
         treesInQueue = p.treesInQueue.clone();
         // Ensure that the relevant edge has been traversed
@@ -33,7 +33,7 @@ public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends K
 //        edgesTaken =  new HashSet<>(edgesTaken);
     }
 
-    public JTBestHaplotype(final T initialVertex, final BaseGraph<T,E> graph) {
+    public JTBestHaplotype(final V initialVertex, final BaseGraph<V,E> graph) {
         super(initialVertex, graph);
         treesInQueue = new JunctionTreeView();
 //        edgesTaken = new HashSet<>();
@@ -95,9 +95,9 @@ public class JTBestHaplotype<T extends BaseVertex, E extends BaseEdge> extends K
      */
     //TODO for reviewer - is this the best way to structure this? I'm not sure how to decide about end nodes based on this, passing them back seesm wrong
     @SuppressWarnings({"unchecked"})
-    public List<JTBestHaplotype<T, E>> getApplicableNextEdgesBasedOnJunctionTrees(final List<E> chain, final Set<E> outgoingEdges, final int weightThreshold) {
+    public List<JTBestHaplotype<V, E>> getApplicableNextEdgesBasedOnJunctionTrees(final List<E> chain, final Set<E> outgoingEdges, final int weightThreshold) {
         Set<MultiSampleEdge> edgesAccountedForByJunctionTrees = new HashSet<>(); // Since we check multiple junction trees for paths, make sure we are getting
-        List<JTBestHaplotype<T, E>> output = new ArrayList<>();
+        List<JTBestHaplotype<V, E>> output = new ArrayList<>();
         int currentActiveNodeIndex = 0;
         ExperimentalReadThreadingGraph.ThreadingNode eldestTree = treesInQueue.isEmpty() ? null : treesInQueue.get(currentActiveNodeIndex);
         while (eldestTree != null) {

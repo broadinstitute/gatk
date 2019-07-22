@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
  * to
  */
 public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface {
+    private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
 

@@ -32,7 +32,7 @@ public class KBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends Pa
         return MathUtils.log10(edgeMultiplicity) - MathUtils.log10(totalOutgoingMultiplicity);
     }
 
-    public KBestHaplotype(final KBestHaplotype p, final List<E> edgesToExtend, final double edgePenalty) {
+    public KBestHaplotype(final KBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend);
         score = p.score() + edgePenalty;
         isReference &= edgesToExtend.get(edgesToExtend.size() - 1).isRef();
