@@ -250,7 +250,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         }
         //TODO handle misformatted annotation field more gracefully
         //rawDataPerAllele is a per-sample list of the rank sum statistic for each allele
-        final String[] rawDataPerAllele = rawDataNoBrackets.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_DELIM);
+        final String[] rawDataPerAllele = rawDataNoBrackets.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
             final Histogram alleleList = perAlleleValues.get(myData.getAlleles().get(i));

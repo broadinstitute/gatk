@@ -208,7 +208,7 @@ public final class FeatureManager implements AutoCloseable {
             if ( featureInput != null ) {
                 final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
                 addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                        toolInstance instanceof GATKTool ? ((GATKTool) toolInstance).getGenomicsDBOptions() : null);
+                        toolInstance instanceof VariantWalker ? ((VariantWalker) toolInstance).getGenomicsDBOptions() : null);
             }
         }
     }

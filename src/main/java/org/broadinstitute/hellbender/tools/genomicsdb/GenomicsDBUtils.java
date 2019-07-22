@@ -103,7 +103,7 @@ public class GenomicsDBUtils {
         //Update combine operations for GnarlyGenotyper
         //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.MAPPING_QUALITY_DEPTH, "sum");
+                GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, "sum");
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_QUAL_APPROX_KEY, "sum");
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,

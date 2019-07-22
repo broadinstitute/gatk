@@ -55,6 +55,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     private static final int NUM_LIST_ENTRIES = 2;
     private static final int SUM_OF_SQUARES_INDEX = 0;
     private static final int TOTAL_DEPTH_INDEX = 1;
+    private static final String OUTPUT_PRECISION = "%.2f";
 
     @Override
     public String getRawKeyName() { return GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY;}   //new key for the two-value MQ data to prevent version mismatch catastrophes
@@ -126,10 +127,10 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         else if (vc.hasAttribute(getDeprecatedRawKeyName())) {
             rawMQdata = vc.getAttributeAsString(getDeprecatedRawKeyName(), null);
             //the original version of ReblockGVCF produces a different MQ format -- try to handle that gracefully here just in case those files go through GenotypeGVCFs
-            if (vc.hasAttribute("MQ_DP")) {
-                logger.warn("Presence of MQ_DP key indicates that this tool may be running on an older output of ReblockGVCF " +
+            if (vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
+                logger.warn("Presence of " + GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED + " key indicates that this tool may be running on an older output of ReblockGVCF " +
                         "that may not have compatible annotations with this GATK version. Attempting to reformat MQ data.");
-                final String rawMQdepth = vc.getAttributeAsString("MQ_DP",null);
+                final String rawMQdepth = vc.getAttributeAsString(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED,null);
                 if (rawMQdepth == null) {
                     throw new UserException.BadInput("MQ annotation data is not properly formatted. This version expects a " +
                             "long tuple of sum of squared MQ values and total reads over variant genotypes.");
@@ -159,7 +160,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     }
 
     private String makeFinalizedAnnotationString(final long numOfReads, final long sumOfSquaredMQs) {
-        return String.format("%.2f", Math.sqrt(sumOfSquaredMQs/(double)numOfReads));
+        return String.format(OUTPUT_PRECISION, Math.sqrt(sumOfSquaredMQs/(double)numOfReads));
     }
 
 
@@ -216,7 +217,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
     @VisibleForTesting
     static String formattedValue(double rms) {
-        return String.format("%.2f", rms);
+        return String.format(OUTPUT_PRECISION, rms);
     }
 
     /**
@@ -229,11 +230,11 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     public VariantContext finalizeRawMQ(final VariantContext vc) {
         final String rawMQdata = vc.getAttributeAsString(getRawKeyName(), null);
         if (rawMQdata == null) {
-            if (!vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH)) {
+            if (!vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
                 return vc;
             }
-            if (vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH)) {
-                final int numOfReads = vc.getAttributeAsInt(GATKVCFConstants.MAPPING_QUALITY_DEPTH, getNumOfReads(vc));  //MQ_DP is an undocumented hack for the Gnarly Pipeline -- improved version uses RAW_MQ_and_DP tuple format (see #4969)
+            if (vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
+                final int numOfReads = vc.getAttributeAsInt(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, getNumOfReads(vc));  //MQ_DP is an undocumented hack for the Gnarly Pipeline -- improved version uses RAW_MQ_and_DP tuple format (see #4969)
                 final String deprecatedRawMQdata = vc.getAttributeAsString(getDeprecatedRawKeyName(), null);
                 final double squareSum = parseDeprecatedRawDataString(deprecatedRawMQdata);
                 final double rms = Math.sqrt(squareSum / (double)numOfReads);
@@ -265,7 +266,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     //TODO once the AS annotations have been added genotype gvcfs this can be removed for a more generic approach
     private static List<Long> parseRawDataString(String rawDataString) {
         try {
-            final String[] parsed = rawDataString.trim().replaceAll("\\[|\\]", "").split(", *");
+            final String[] parsed = rawDataString.trim().replaceAll(AnnotationUtils.BRACKET_REGEX, "").split(", *");
             if (parsed.length != NUM_LIST_ENTRIES) {
                 throw new UserException.BadInput("Raw value for annotation has " + parsed.length + " values, expected " + NUM_LIST_ENTRIES);
             }
@@ -300,8 +301,8 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
      */
     @VisibleForTesting
     private static int getNumOfReads(final VariantContext vc) {
-        if(vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH)) {
-            int mqDP = vc.getAttributeAsInt(GATKVCFConstants.MAPPING_QUALITY_DEPTH, 0);
+        if(vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
+            int mqDP = vc.getAttributeAsInt(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, 0);
             if (mqDP > 0) {
                 return mqDP;
             }
@@ -356,9 +357,9 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     static long getNumOfReads(final VariantContext vc,
                              final ReadLikelihoods<Allele> likelihoods) {
         if(vc.hasAttribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
-            List<Long> MQtuple = getAttributeAsLongList(vc, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,0L);
-            if (MQtuple.get(TOTAL_DEPTH_INDEX) > 0) {
-                return MQtuple.get(TOTAL_DEPTH_INDEX);
+            List<Long> mqTuple = getAttributeAsLongList(vc, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,0L);
+            if (mqTuple.get(TOTAL_DEPTH_INDEX) > 0) {
+                return mqTuple.get(TOTAL_DEPTH_INDEX);
             }
         }
 

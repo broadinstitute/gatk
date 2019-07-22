@@ -70,8 +70,10 @@ import java.util.*;
  * </pre>
  *
  * <h3>Caveats</h3>
- * <p><ul><li>Only GenomicsDB instances can be used as input for this tool.</li>
- * <li>To generate all the annotations necessary for VQSR, input variants must include the QUALapprox, VarDP and MQ_DP
+ * <p><ul>
+ * <li>This tool does not subset to the best alternate alleles and can return highly, highly multialleic variants (>1000 alts for cohorts in the 10s of thousands). Only
+ * GenomicsDB instances should be used as input for this tool, because GenomicsDB will drop PLs for such sites to avoid excessive vcf size.</li>
+ * <li>To generate all the annotations necessary for VQSR, input variants must include the QUALapprox, VarDP and MQ_DP annotations
  * </ul></p>
  *
  * <h3>Special note on ploidy</h3>
@@ -82,6 +84,7 @@ import java.util.*;
         oneLineSummary = "Perform \"quick and dirty\" joint genotyping on one or more samples pre-called with HaplotypeCaller",
         programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
+@BetaFeature
 public final class GnarlyGenotyper extends VariantWalker {
 
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
@@ -89,13 +92,6 @@ public final class GnarlyGenotyper extends VariantWalker {
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
 
     public static final int PIPELINE_MAX_ALT_COUNT = 6;
-
-    private static GnarlyGenotyperEngine genotyperEngine;
-
-    private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
-
-    private final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = new HashSet<>();
-
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -141,7 +137,10 @@ public final class GnarlyGenotyper extends VariantWalker {
     private final DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
     private VariantContextWriter vcfWriter;
-    private VariantContextWriter annotationDBwriter = null;
+    private VariantContextWriter annotationDatabaseWriter = null;
+    private GnarlyGenotyperEngine genotyperEngine;
+    private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
+    private final Set<Class<? extends InfoFieldAnnotation>> allAlleleSpecificAnnotations = new HashSet<>();
 
     /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
@@ -194,10 +193,10 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         //not InfoFieldAnnotation.class because we don't want AS_InbreedingCoeff
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
-        allASAnnotations.add(AS_RMSMappingQuality.class);
-        allASAnnotations.add(AS_QualByDepth.class);
+        allAlleleSpecificAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
+        allAlleleSpecificAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
+        allAlleleSpecificAnnotations.add(AS_RMSMappingQuality.class);
+        allAlleleSpecificAnnotations.add(AS_QualByDepth.class);
     }
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
@@ -230,7 +229,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         vcfWriter = createVCFWriter(outputFile);
         if (outputDbName != null) {
-            annotationDBwriter = createVCFWriter(new File(outputDbName));
+            annotationDatabaseWriter = createVCFWriter(new File(outputDbName));
         }
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
@@ -243,7 +242,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
         vcfWriter.writeHeader(vcfHeader);
         if (outputDbName != null) {
-            annotationDBwriter.writeHeader(dbHeader);
+            annotationDatabaseWriter.writeHeader(dbHeader);
         }
     }
 
@@ -271,12 +270,12 @@ public final class GnarlyGenotyper extends VariantWalker {
         }
 
         final VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
-        final VariantContext finalizedVC = GnarlyGenotyperEngine.finalizeGenotype(variant, annotationDBBuilder);
+        final VariantContext finalizedVC = genotyperEngine.finalizeGenotype(variant, annotationDBBuilder);
         if (finalizedVC != null && (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             vcfWriter.add(finalizedVC);
         }
-        if (annotationDBwriter != null) {
-            annotationDBwriter.add(annotationDBBuilder.make());  //we don't seem to have a sites-only option anymore, so do it manually
+        if (annotationDatabaseWriter != null) {
+            annotationDatabaseWriter.add(annotationDBBuilder.make());  //we don't seem to have a sites-only option anymore, so do it manually
         }
     }
 
@@ -285,8 +284,8 @@ public final class GnarlyGenotyper extends VariantWalker {
         if ( vcfWriter != null) {
             vcfWriter.close();
         }
-        if (annotationDBwriter != null) {
-            annotationDBwriter.close();
+        if (annotationDatabaseWriter != null) {
+            annotationDatabaseWriter.close();
         }
     }
 }

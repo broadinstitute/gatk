@@ -68,7 +68,7 @@ public final class GnarlyGenotyperEngine {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static VariantContext finalizeGenotype(final VariantContext variant, final VariantContextBuilder annotationDBBuilder) {
+    public VariantContext finalizeGenotype(final VariantContext variant, final VariantContextBuilder annotationDBBuilder) {
         //GenomicsDB or Evoquer merged all the annotations, but we still need to finalize MQ and QD annotations
         //return a VC with the finalized annotations and dbBuilder gets the raw annotations for the database
 
@@ -245,7 +245,7 @@ public final class GnarlyGenotyperEngine {
      * @param vc the input variant with NON_REF
      * @return a GenotypesContext
      */
-    private static GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
+    private GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
                                                 final boolean nonRefReturned, final boolean summarizePLs,
                                                 final int[] rawGenotypeCounts) {

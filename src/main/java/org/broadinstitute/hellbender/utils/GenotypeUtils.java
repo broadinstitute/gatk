@@ -33,13 +33,13 @@ public final class GenotypeUtils {
         Utils.nonNull(vc, "vc");
         Utils.nonNull(genotypes, "genotypes");
 
-        int idxAA = 0;
-        int idxAB = 1;
-        int idxBB = 2;
+        final int idxAA = 0;
+        final int idxAB = 1;
+        final int idxBB = 2;
 
-        double refCount = 0;
-        double hetCount = 0;
-        double varCount = 0;
+        double genotypeWithTwoRefsCount = 0;  //i.e. 0/0
+        double genotypesWithOneRefCount = 0;  //e.g. 0/1, 0/2, etc.
+        double genotypesWithNoRefsCount = 0;  //e.g. 1/1, 1/2, 2/2, etc.
 
         for (final Genotype g : genotypes) {
             if (! isDiploidWithLikelihoods(g)){
@@ -56,8 +56,8 @@ public final class GenotypeUtils {
                 int maxInd = MathUtil.indexOfMax(normalizedLikelihoods);
                 GenotypeLikelihoods.GenotypeLikelihoodsAllelePair alleles = GenotypeLikelihoods.getAllelePair(maxInd);
                 if (alleles.alleleIndex1 != 0 && alleles.alleleIndex2 != 0) {
-                    //all likelihoods go to varCount because no ref allele is called
-                    varCount++;
+                    //all likelihoods go to genotypesWithNoRefsCount because no ref allele is called
+                    genotypesWithNoRefsCount++;
                     continue;
                 }
 
@@ -85,19 +85,19 @@ public final class GenotypeUtils {
 
             //NOTE: rounding is special cased for [0,0,X] and [X,0,0] PLs because likelihoods can come out as [0.5, 0.5, 0] and both counts round up
             if( roundContributionFromEachGenotype ) {
-                refCount += MathUtils.fastRound(refLikelihood);
+                genotypeWithTwoRefsCount += MathUtils.fastRound(refLikelihood);
                 if (refLikelihood != hetLikelihood) {   //if GQ = 0 (specifically [0,0,X] PLs) count as homRef and don't add to the other counts
-                    hetCount += MathUtils.fastRound(hetLikelihood);
+                    genotypesWithOneRefCount += MathUtils.fastRound(hetLikelihood);
                 }
                 if (varLikelihood != hetLikelihood) {  //if GQ = 0 (specifically [X,0,0] PLs) count as het and don't count as variant
-                    varCount += MathUtils.fastRound(varLikelihood); //need specific varCount (rather than complement of the others) for PL[0,0,0] case
+                    genotypesWithNoRefsCount += MathUtils.fastRound(varLikelihood); //need specific genotypesWithNoRefsCount (rather than complement of the others) for PL[0,0,0] case
                 }
             } else {
-                refCount += refLikelihood;
-                hetCount += hetLikelihood;
-                varCount += varLikelihood;
+                genotypeWithTwoRefsCount += refLikelihood;
+                genotypesWithOneRefCount += hetLikelihood;
+                genotypesWithNoRefsCount += varLikelihood;
             }
         }
-        return new GenotypeCounts(refCount, hetCount, varCount);
+        return new GenotypeCounts(genotypeWithTwoRefsCount, genotypesWithOneRefCount, genotypesWithNoRefsCount);
     }
 }

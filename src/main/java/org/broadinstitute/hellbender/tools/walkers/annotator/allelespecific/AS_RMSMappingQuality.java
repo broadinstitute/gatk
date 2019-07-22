@@ -139,7 +139,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     protected void parseRawDataString(final ReducibleAnnotationData<Double> myData) {
         final String rawDataString = myData.getRawData();
         //get per-allele data by splitting on allele delimiter
-        final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.AS_SPLIT_REGEX);
+        final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
             myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
@@ -196,7 +196,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         String annotationString = "";
         for (final Allele current : vcAlleles) {
             if (!annotationString.isEmpty()) {
-                annotationString += AnnotationUtils.PRINT_DELIM;
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
             }
             if(perAlleleValues.get(current) != null) {
                 annotationString += String.format(printFormat, perAlleleValues.get(current));

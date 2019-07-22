@@ -23,7 +23,7 @@ public final class GenomicsDBOptions {
     /**
      *
      * @param reference     Path to a reference. May be null. Needed only for reading from GenomicsDB.
-     * @param callGenotypes Indicated whether GenomicsDB should return called genotypes
+     * @param callGenotypes Indicates whether GenomicsDB should return called genotypes
      */
     public GenomicsDBOptions(final Path reference, final boolean callGenotypes, final int maxAlternateAlleles) {
         this.reference = reference;

@@ -7,10 +7,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.nio.file.Path;
 import java.util.Spliterator;
 
 /**
@@ -145,13 +143,5 @@ public abstract class VariantWalker extends VariantWalkerBase {
 
         if ( drivingVariants != null )
             drivingVariants.close();
-    }
-
-    /**
-     * Does this tool need sample genotypes to be called if reading from a GenomicsDB?
-     * @return if false, GTs remain no-calls, as in CombineGVCFs
-     */
-    protected boolean doGenotypeCalling() {
-        return false;
     }
 }

@@ -120,7 +120,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         final List<Integer> standardDepth;
         if (originalVC.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
             standardDepth = Arrays.stream(originalVC.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "")
-                    .split(AnnotationUtils.AS_SPLIT_REGEX)).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
+                    .split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX)).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
         } else {
             standardDepth = getAlleleDepths(genotypes);
         }
@@ -192,7 +192,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         if (rawAnnotationListWithNonRef == null) {
             return null;
         }
-        List<String> dpValues = Arrays.asList(rawAnnotationListWithNonRef.split(AnnotationUtils.AS_SPLIT_REGEX));
+        List<String> dpValues = Arrays.asList(rawAnnotationListWithNonRef.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX));
         if (dpValues.size() != expectedFinalAlleleCount + 1) {  //we expect a nonRef allele
             return null;
         }
@@ -216,7 +216,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         }
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
-            String[] values = asQuals.split(AnnotationUtils.AS_SPLIT_REGEX);
+            String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
             if (values.length != vc.getNAlleles()+1) {  //plus one because the non-ref place holder is still around
                 throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
             }

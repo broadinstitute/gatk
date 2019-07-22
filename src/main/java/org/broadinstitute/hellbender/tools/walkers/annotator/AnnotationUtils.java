@@ -15,16 +15,13 @@ import javax.sound.sampled.Line;
 import java.util.*;
 
 public final class AnnotationUtils {
-    public static final String ALLELE_SPECIFIC_SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String ALLELE_SPECIFIC_PRINT_DELIM = "|";
     public static final String ALLELE_SPECIFIC_REDUCED_DELIM = ",";
-
-    private AnnotationUtils(){}
-
+    public static final String ALLELE_SPECIFIC_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
+    public static final String BRACKET_REGEX = "\\[|\\]";
     public static final String LIST_DELIMITER = ",";
 
-    public static final String AS_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
-    public static final String PRINT_DELIM = "|";
+    private AnnotationUtils(){}
 
     /**
      * Helper function to parse the list into the annotation string
@@ -54,7 +51,7 @@ public final class AnnotationUtils {
      * @return a comma-separated String
      */
     public static String encodeAnyASList( final List<?> somethingList) {
-        return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll("\\[|\\]", "");  //Who actually wants brackets at the ends of their string?  Who???
+        return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
     }
 
     /**
@@ -90,6 +87,6 @@ public final class AnnotationUtils {
         if (rawDataString.startsWith("[")) {
             rawDataString = rawDataString.substring(1, rawDataString.length() - 1).replaceAll("\\s", "");
         }
-        return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_DELIM));
+        return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_REGEX));
     }
 }
