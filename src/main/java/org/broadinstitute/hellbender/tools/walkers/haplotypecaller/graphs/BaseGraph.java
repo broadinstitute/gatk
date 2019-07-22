@@ -258,7 +258,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @param includeStop   should the ending vertex be included in the path
      * @return              byte[] array holding the reference bases, this can be null if there are no nodes between the starting and ending vertex (insertions for example)
      */
-    public final byte[] getReferenceBytes( final V fromVertex, final V toVertex, final boolean includeStart, final boolean includeStop ) {
+    public byte[] getReferenceBytes( final V fromVertex, final V toVertex, final boolean includeStart, final boolean includeStop ) {
         Utils.nonNull(fromVertex, "Starting vertex in requested path cannot be null.");
         Utils.nonNull(toVertex, "From vertex in requested path cannot be null.");
 

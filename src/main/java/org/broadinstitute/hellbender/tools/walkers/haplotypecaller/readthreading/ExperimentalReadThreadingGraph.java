@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.collections.ListUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
@@ -584,6 +585,38 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
                 childrenNodes.put(edge, nextNode);
             }
             return nextNode;
+        }
+
+        /**
+         * Walk along the reference path in the graph and pull out the corresponding bases
+         *
+         * NOTE: this attempts to generate the longest sequence of refernce bases in the event that fromVertex or toVertex are non-unique
+         *
+         * @param fromVertex    starting vertex
+         * @param toVertex      ending vertex
+         * @param includeStart  should the starting vertex be included in the path
+         * @param includeStop   should the ending vertex be included in the path
+         * @return              byte[] array holding the reference bases, this can be null if there are no nodes between the starting and ending vertex (insertions for example)
+         */
+        public byte[] getReferenceBytes( final MultiDeBruijnVertex fromVertex, final MultiDeBruijnVertex toVertex, final boolean includeStart, final boolean includeStop ) {
+            Utils.nonNull(fromVertex, "Starting vertex in requested path cannot be null.");
+            Utils.nonNull(toVertex, "From vertex in requested path cannot be null.");
+
+            byte[] bytes = null;
+            int fromIndex = referencePath.indexOf(fromVertex);
+            int toIndex = referencePath.lastIndexOf(toVertex);
+
+            if( includeStart ) {
+                bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(fromVertex));
+            }
+            for (int i = fromIndex + 1; i < toIndex; i++) {
+                bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(referencePath.get(i)));
+            }
+            
+            if( includeStop ) {
+                bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(toVertex));
+            }
+            return bytes;
         }
 
         /**
