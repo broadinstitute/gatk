@@ -107,7 +107,7 @@ workflow CNVSomaticPairWorkflow {
     Float? kernel_variance_allele_fraction
     Float? kernel_scaling_allele_fraction
     Int? kernel_approximation_dimension
-    Array[Int]+? window_sizes = [8, 16, 32, 64, 128, 256]
+    Array[Int]+? window_sizes
     Float? num_changepoints_penalty_factor
     Float? minor_allele_fraction_prior_alpha
     Int? num_samples_copy_ratio
@@ -615,7 +615,7 @@ task ModelSegments {
     Float? kernel_variance_allele_fraction
     Float? kernel_scaling_allele_fraction
     Int? kernel_approximation_dimension
-    Array[Int]+? window_sizes = [8, 16, 32, 64, 128, 256]
+    Array[Int]+? window_sizes
     Float? num_changepoints_penalty_factor
     Float? minor_allele_fraction_prior_alpha
     Int? num_samples_copy_ratio
@@ -649,6 +649,9 @@ task ModelSegments {
     Int default_min_total_allele_count = if defined(normal_allelic_counts) then 0 else 30
     Int min_total_allele_count_ = select_first([min_total_allele_count, default_min_total_allele_count])
 
+    Array[Int] default_window_sizes = [8, 16, 32, 64, 128, 256]
+    Array[Int] window_sizes_ = select_first([window_sizes, default_window_sizes])
+
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
@@ -666,7 +669,7 @@ task ModelSegments {
             --kernel-variance-allele-fraction ${default="0.025" kernel_variance_allele_fraction} \
             --kernel-scaling-allele-fraction ${default="1.0" kernel_scaling_allele_fraction} \
             --kernel-approximation-dimension ${default="100" kernel_approximation_dimension} \
-            --window-size ${sep=" --window-size " window_sizes} \
+            --window-size ${sep=" --window-size " window_sizes_} \
             --number-of-changepoints-penalty-factor ${default="1.0" num_changepoints_penalty_factor} \
             --minor-allele-fraction-prior-alpha ${default="25.0" minor_allele_fraction_prior_alpha} \
             --number-of-samples-copy-ratio ${default="100" num_samples_copy_ratio} \
