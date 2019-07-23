@@ -452,14 +452,21 @@ public abstract class GATKTool extends CommandLineProgram {
                 factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
             }
 
-            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
-                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
+            createReadsDataSource(factory);
         }
         else {
             reads = null;
         }
     }
 
+    /**
+     * Create the {@link ReadsDataSource} for this {@link GATKTool}.
+     * @param factory {@link SamReaderFactory} used to create the raw reads.
+     */
+    void createReadsDataSource(final SamReaderFactory factory) {
+        reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+            (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer), false, Collections.emptyList());
+    }
 
     private boolean bamIndexCachingShouldBeEnabled() {
         return intervalArgumentCollection.intervalsSpecified() && !disableBamIndexCaching;

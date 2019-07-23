@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SamReaderFactory;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
@@ -26,6 +28,11 @@ import java.util.List;
  */
 public abstract class ReadWalker extends WalkerBase {
 
+    @Argument(fullName = "reads-must-start-within-intervals",
+            shortName = "reads-must-start-within-intervals",
+            doc="If true, will only output reads that start within the given intervals.  If no intervals are given this argument has no meaning.")
+    public Boolean filterReadsToStartInGivenIntervals = false;
+
     @Override
     public boolean requiresReads() {
         return true;
@@ -48,7 +55,6 @@ public abstract class ReadWalker extends WalkerBase {
     @Override
     protected final void onStartup() {
         super.onStartup();
-
         setReadTraversalBounds();
     }
 
@@ -69,6 +75,19 @@ public abstract class ReadWalker extends WalkerBase {
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }
+    }
+
+    @Override
+    void createReadsDataSource(final SamReaderFactory factory) {
+
+        boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
+        if ( filterReadsToStartInGivenIntervals && (!hasUserSuppliedIntervals() || userIntervals.isEmpty()) ) {
+            isReadStartFilteringEnabled = false;
+        }
+
+        reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer),
+                isReadStartFilteringEnabled, userIntervals);
     }
 
     /**
