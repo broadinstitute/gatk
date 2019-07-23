@@ -6,7 +6,7 @@ git:
   depth: 9999999
   lfs_skip_smudge: true
 jdk:
-- openjdk8
+  - openjdk11
 env:
   matrix:
   - TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
@@ -44,7 +44,6 @@ env:
 matrix:
   fast_finish: true
   include:
-     - jdk: oraclejdk8
        env: TEST_TYPE=integration TEST_VERBOSITY=minimal TEST_REQUIRE_GCLOUD=true
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock

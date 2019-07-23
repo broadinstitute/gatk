@@ -23,7 +23,7 @@ plugins {
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 
-import javax.tools.ToolProvider
+import java.util.spi.ToolProvider
 import java.time.format.DateTimeFormatter
 import java.time.ZonedDateTime
 
@@ -129,7 +129,7 @@ def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessag
 // resource files that are needed to run the build but are still lfs stub files.
 def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequisitesMessage) {
     // Make sure we can get a ToolProvider class loader. If not we may have just a JRE, or a JDK from the future.
-    if (ToolProvider.getSystemToolClassLoader() == null) {
+    if (ToolProvider.findFirst("javadoc").isEmpty()) {
         throw new GradleException(
                 "The ClassLoader obtained from the Java ToolProvider is null. "
                 + "A Java $requiredJavaVersion JDK must be installed. $buildPrerequisitesMessage")
@@ -168,7 +168,7 @@ configurations.all {
 }
 
 tasks.withType(JavaCompile) {
-  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
+  options.compilerArgs = ['-proc:none', '-Xlint:all', /*'-Werror', */ '-Xdiags:verbose']
   options.encoding = 'UTF-8'
 }
 
@@ -214,12 +214,12 @@ configurations {
 // Get the jdk files we need to run javaDoc. We need to use these during compile, testCompile,
 // test execution, and gatkDoc generation, but we don't want them as part of the runtime
 // classpath and we don't want to redistribute them in the uber jar.
-final javadocJDKFiles = files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
+//final javadocJDKFiles = files(((ToolProvider.findFirst("javadoc").get().getClass().getClassLoader())).getURLs())
 
 dependencies {
     // javadoc utilities; compile/test only to prevent redistribution of sdk jars
-    compileOnly(javadocJDKFiles)
-    testCompile(javadocJDKFiles)
+  //compileOnly(javadocJDKFiles)
+   // testCompile(javadocJDKFiles)
 
     compile 'org.broadinstitute:barclay:' + barclayVersion
     // Library for configuration:
@@ -644,7 +644,7 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
     // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
-    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    classpath = sourceSets.main.runtimeClasspath //+ javadocJDKFiles
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
 
@@ -680,7 +680,7 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
     // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives, and Picard.
-    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    classpath = sourceSets.main.runtimeClasspath //+ javadocJDKFiles
 
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
