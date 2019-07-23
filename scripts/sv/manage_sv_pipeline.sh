@@ -11,7 +11,7 @@ cat << EOF
 Manage the SV discovery pipeline on Google Cloud Services (GCS) cluster
 Syntax
   manage_sv_pipeline.sh [Options] GATK_Folder Project_Name \\
-                        GCS_BAM_File GCS_REFERENCE_File \\
+                        GCS_BAM_File GCS_REFERENCE_FASTA_GZ_File \\
                         [args to SV discovery pipeline]
   Options:
     -h or --help:
@@ -44,7 +44,7 @@ Syntax
     Project_Name: name of GCS project
     GCS_BAM_File: path to .bam file hosted in GCS
                   (e.g. gs://bucket/path/to/file.bam)
-    GCS_REFERENCE_File: path to reference .2bit file hosted in GCS
+    GCS_REFERENCE_FASTA_GZ_File: path to reference .fasta.gz file hosted in GCS
 
   Optional Positional Arguments:
     [args to SV discovery pipeline]: additional arguments will be passed
@@ -202,7 +202,7 @@ fi
 GATK_DIR="$1"
 PROJECT_NAME="$2"
 GCS_BAM="$3"
-GCS_REFERENCE_2BIT="$4"
+GCS_REFERENCE_FASTA_GZ="$4"
 shift $(($# < 4 ? $# : 4))
 SV_ARGS=${*:-${SV_ARGS:-""}} && SV_ARGS=${SV_ARGS:+" ${SV_ARGS}"}
 
@@ -221,11 +221,11 @@ source sanity_checks.sh
 ##############################################
 # paths on google bucket
 GCS_BAM_DIR="$(dirname ${GCS_BAM})"
-GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_2BIT})"
+GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_FASTA_GZ})"
 
 # for now assume the reference image is just the reference fasta + ".img"
-GCS_REFERENCE_IMAGE="$(echo "${GCS_REFERENCE_2BIT}" | sed 's/.2bit$/.fasta.img/')"
-if [ "$(dirname ${GCS_REFERENCE_2BIT})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]; then
+GCS_REFERENCE_IMAGE="$(echo "${GCS_REFERENCE_FASTA_GZ}" | sed 's/.fasta.gz$/.fasta.img/')"
+if [ "$(dirname ${GCS_REFERENCE_FASTA_GZ})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]; then
     echo "Reference and reference image must be in same folder"
     exit -1
 fi
@@ -238,7 +238,7 @@ export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/st
 ##############################################
 # paths on cluster (HDFS, except for reference image which must be regular FS)
 CLUSTER_BAM="/data/$(basename ${GCS_BAM})"
-CLUSTER_REFERENCE_2BIT="/reference/$(basename ${GCS_REFERENCE_2BIT})"
+CLUSTER_REFERENCE_FAGZ="/reference/$(basename ${GCS_REFERENCE_FASTA_GZ})"
 CLUSTER_REFERENCE_IMAGE="/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 
 ##############################################
@@ -305,8 +305,8 @@ while true; do
     fi
     case $yn in
         [Yy]*)  SECONDS=0
-                echo "GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                echo "GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_FAGZ} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_FAGZ} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 printf 'Pipeline completed in %02dh:%02dm:%02ds\n' $((${SECONDS}/3600)) $((${SECONDS}%3600/60)) $((${SECONDS}%60))
                 break
                 ;;
