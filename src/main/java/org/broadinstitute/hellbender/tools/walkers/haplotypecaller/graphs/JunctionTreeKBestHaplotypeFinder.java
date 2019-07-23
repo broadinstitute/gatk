@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotypeFinder<V, E> {
     public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
+    public static final int DEFAULT_MAX_ACCEPTABLE_BASES_WITHOUT_JT_GUIDANCE = 100;
     private int weightThresholdToUse = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
@@ -145,7 +146,8 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             if (outgoingEdges.size() > 1) {
                 List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, outgoingEdges, weightThresholdToUse);
                 if (jTPaths.isEmpty() && !sinks.contains(vertexToExtend)) {
-                    throw new GATKException("Found no path based on the junction trees or exisiting paths, this should not have happened");
+//                    throw new GATKException("Found no path based on the junction trees or exisiting paths, this should not have happened");
+                    System.out.println("Found nothing Queue has this many: "+queue.size()+"\nPath that failed to extend was junction tree: "+pathToExtend.getVertices());
                 }
                 queue.addAll(jTPaths);
 

@@ -6,9 +6,12 @@ import com.google.common.collect.Maps;
 import org.apache.commons.collections.ListUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -16,6 +19,10 @@ import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.lang.annotation.Target;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -137,7 +144,8 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     @Override
     protected MultiDeBruijnVertex extendChainByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
-        final int countToUse = isRef ? 0 : count; //NOTE we do not count reference multiplicity in the graph now
+        //final int countToUse = isRef ? 0 : count; //NOTE we do not count reference multiplicity in the graph now
+        final int countToUse = count; // Adding reference weight to paths back in...
 
         final int nextPos = kmerStart + kmerSize - 1;
         for ( final MultiSampleEdge outgoingEdge : outgoingEdges ) {
@@ -379,6 +387,146 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         throw new UnsupportedOperationException("Cannot construct a sequence graph using ExperimentalReadThreadingGraph");
     }
 
+
+    /**
+     * Print out the graph in the dot language for visualization for the graph after merging the graph into a seq graph.
+     * Junction trees will naively add junction trees to the corresponding zipped SeqGraph node for its root vertex.
+     *
+     * NOTE: this is intended for debugging complex assembly graphs while preserving junction tree data.
+     * @param destination File to write to
+     */
+    public final void printSimplifiedGraph(final File destination, final int pruneFactor) {
+        try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
+            printSimplifiedGraph(stream, true, pruneFactor);
+        } catch ( final FileNotFoundException e ) {
+            throw new UserException.CouldNotReadInputFile(destination, e);
+        }
+    }
+    private final void printSimplifiedGraph(final PrintStream graphWriter, final boolean writeHeader, final int pruneFactor) {
+
+        /// LOCAL CLASS TO MANAGE PRINTING THE JUNCTION TREES ONTO THE SEQ GRAPH
+        class PrintingSeqGraph extends SeqGraph {
+            private PrintingSeqGraph(int kmerSize) {
+                super(kmerSize);
+            }
+            private Map<MultiDeBruijnVertex, SeqVertex> vertexToOrigionalSeqVertex;
+            private Map<SeqVertex, SeqVertex> originalSeqVertexToMergedVerex;
+            @Override
+            // Extendable method intended to allow for adding extra material to the graph
+            public List<String> getExtraGraphFileLines() {
+                List<String> output = new ArrayList<>();
+                for( Map.Entry<MultiDeBruijnVertex, ThreadingTree> entry : readThreadingJunctionTrees.entrySet()) {
+                    // Resolving the chain of altered vertexes
+                    SeqVertex mergedSeqVertex = originalSeqVertexToMergedVerex.get(vertexToOrigionalSeqVertex.get(entry.getKey()));
+
+                    // adding the root node to the graph
+                    output.add(String.format("\t%s -> %s ", mergedSeqVertex.toString(), entry.getValue().rootNode.getDotName()) +
+                            String.format("[color=blue];"));
+                    output.add(String.format("\t%s [shape=point];", entry.getValue().rootNode.getDotName()));
+
+                    output.addAll(edgesForNodeRecursive(entry.getValue().rootNode));
+                }
+                return output;
+            }
+            private Map<SeqVertex, SeqVertex> zipLinearChainsWithVertexMapping() {
+                Map<SeqVertex, SeqVertex> vertexMapping = new HashMap<>();
+                // create the list of start sites [doesn't modify graph yet]
+                final Collection<SeqVertex> zipStarts = new LinkedList<>();
+                for ( final SeqVertex source : vertexSet() ) {
+                    if ( isLinearChainStart(source) ) {
+                        zipStarts.add(source);
+                    }
+                }
+
+                if ( zipStarts.isEmpty() ) // nothing to do, as nothing could start a chain
+                {
+                    return vertexMapping;
+                }
+
+                // At this point, zipStarts contains all of the vertices in this graph that might start some linear
+                // chain of vertices.  We walk through each start, building up the linear chain of vertices and then
+                // zipping them up with mergeLinearChain, if possible
+                for ( final SeqVertex zipStart : zipStarts ) {
+                    final LinkedList<SeqVertex> linearChain = traceLinearChain(zipStart);
+
+                    SeqVertex mergedOne = mergeLinearChainVertex(linearChain);
+
+                    // Add all of the mapped vertexes to the map.
+                    if (mergedOne != null) {
+                        for (SeqVertex v : linearChain) {
+                            vertexMapping.put(v, mergedOne);
+                        }
+                    } else {
+                        // otherwise we indicate that nothing has changed
+                        for (SeqVertex v : linearChain) {
+                            vertexMapping.put(v, v);
+                        }
+                    }
+                }
+                return vertexMapping;
+            }
+        };
+
+        PrintingSeqGraph printingSeqGraph = new PrintingSeqGraph(kmerSize);
+
+        final Map<MultiDeBruijnVertex, SeqVertex> vertexToOrigionalSeqVertex = new HashMap<>();
+
+        // create all of the equivalent seq graph vertices
+        for ( final MultiDeBruijnVertex dv : vertexSet() ) {
+            final SeqVertex sv = new SeqVertex(dv.getAdditionalSequence(isSource(dv)));
+            sv.setAdditionalInfo(dv.getAdditionalInfo());
+            vertexToOrigionalSeqVertex.put(dv, sv);
+            printingSeqGraph.addVertex(sv);
+        }
+
+        // walk through the nodes and connect them to their equivalent seq vertices
+        for( final MultiSampleEdge e : edgeSet() ) {
+            final SeqVertex seqInV = vertexToOrigionalSeqVertex.get(getEdgeSource(e));
+            final SeqVertex seqOutV = vertexToOrigionalSeqVertex.get(getEdgeTarget(e));
+            printingSeqGraph.addEdge(seqInV, seqOutV, new BaseEdge(e.isRef(), e.getMultiplicity()));
+        }
+
+        final Map<SeqVertex, SeqVertex> originalSeqVertexToMergedVerex = printingSeqGraph.zipLinearChainsWithVertexMapping();
+        printingSeqGraph.originalSeqVertexToMergedVerex = originalSeqVertexToMergedVerex;
+        printingSeqGraph.vertexToOrigionalSeqVertex = vertexToOrigionalSeqVertex;
+
+
+        printingSeqGraph.printGraph(graphWriter, writeHeader, pruneFactor);
+    }
+
+    /**
+     * Walk along the reference path in the graph and pull out the corresponding bases
+     *
+     * NOTE: this attempts to generate the longest sequence of refernce bases in the event that fromVertex or toVertex are non-unique
+     *
+     * @param fromVertex    starting vertex
+     * @param toVertex      ending vertex
+     * @param includeStart  should the starting vertex be included in the path
+     * @param includeStop   should the ending vertex be included in the path
+     * @return              byte[] array holding the reference bases, this can be null if there are no nodes between the starting and ending vertex (insertions for example)
+     */
+    @Override
+    public byte[] getReferenceBytes( final MultiDeBruijnVertex fromVertex, final MultiDeBruijnVertex toVertex, final boolean includeStart, final boolean includeStop ) {
+        Utils.nonNull(fromVertex, "Starting vertex in requested path cannot be null.");
+        Utils.nonNull(toVertex, "From vertex in requested path cannot be null.");
+
+        byte[] bytes = null;
+        int fromIndex = referencePath.indexOf(fromVertex);
+        int toIndex = referencePath.lastIndexOf(toVertex);
+
+        if( includeStart ) {
+            bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(fromVertex, true));
+        }
+        for (int i = fromIndex + 1; i < toIndex; i++) {
+            bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(referencePath.get(i)));
+        }
+
+        if( includeStop ) {
+            bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(toVertex));
+        }
+        return bytes;
+    }
+
     // Generate threading trees
     public void generateJunctionTrees() {
         buildGraphIfNecessary();
@@ -425,7 +573,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
                 vertex = uniqueKmers.get(kmer);
                 // TODO this might cause problems
                 if (vertex != null) {
-                   nodesUpdated.addAll(attemptToResolveThreadingBetweenVertexes(lastVertex , vertex));
+                   nodesUpdated.addAll(attemptToResolveThreadingBetweenVertexes(lastVertex, nodesUpdated, vertex));
                 }
             }
             // If for whatever reason vertex = null, then we have fallen off the corrected graph so we don't update anything
@@ -476,7 +624,8 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
     // TODO this needs to be filled out and resolved
     // TODO as an extension, this should be made to intelligently pick nodes if there is a fork (possibly an expensive step)
-    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex , MultiDeBruijnVertex vertex) {
+    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, List<ThreadingNode> threadingNodes, MultiDeBruijnVertex vertex) {
+        threadingNodes.clear(); // Clear the nodes currently as they might cause issues down the line.
         return Collections.emptyList();
     }
 
@@ -585,38 +734,6 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
                 childrenNodes.put(edge, nextNode);
             }
             return nextNode;
-        }
-
-        /**
-         * Walk along the reference path in the graph and pull out the corresponding bases
-         *
-         * NOTE: this attempts to generate the longest sequence of refernce bases in the event that fromVertex or toVertex are non-unique
-         *
-         * @param fromVertex    starting vertex
-         * @param toVertex      ending vertex
-         * @param includeStart  should the starting vertex be included in the path
-         * @param includeStop   should the ending vertex be included in the path
-         * @return              byte[] array holding the reference bases, this can be null if there are no nodes between the starting and ending vertex (insertions for example)
-         */
-        public byte[] getReferenceBytes( final MultiDeBruijnVertex fromVertex, final MultiDeBruijnVertex toVertex, final boolean includeStart, final boolean includeStop ) {
-            Utils.nonNull(fromVertex, "Starting vertex in requested path cannot be null.");
-            Utils.nonNull(toVertex, "From vertex in requested path cannot be null.");
-
-            byte[] bytes = null;
-            int fromIndex = referencePath.indexOf(fromVertex);
-            int toIndex = referencePath.lastIndexOf(toVertex);
-
-            if( includeStart ) {
-                bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(fromVertex));
-            }
-            for (int i = fromIndex + 1; i < toIndex; i++) {
-                bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(referencePath.get(i)));
-            }
-            
-            if( includeStop ) {
-                bytes = ArrayUtils.addAll(bytes, getAdditionalSequence(toVertex));
-            }
-            return bytes;
         }
 
         /**

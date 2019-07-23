@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
  */
 public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
     private JunctionTreeView treesInQueue; // An object for storing and managing operations on the queue of junction trees active for this path
+    private int edgesTakenSinceLastJunctionTreeEvidence = 0;
 
     public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend, edgePenalty);
@@ -101,7 +102,6 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         int currentActiveNodeIndex = 0;
         ExperimentalReadThreadingGraph.ThreadingNode eldestTree = treesInQueue.isEmpty() ? null : treesInQueue.get(currentActiveNodeIndex);
         while (eldestTree != null) {
-            //TODO this can be better, need to create a tree "view" object that tracks the current node more sanely
             int totalOut = getTotalOutForBranch(eldestTree);
 
             // If the total evidence emerging from a given branch
@@ -192,13 +192,15 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         }
 
         // method to handle incrementing all of the nodes in the tree simultaniously
-        public void takeEdge(E edgeTaken) {
+        // returns true if there are still junction trees with evidence left
+        public boolean takeEdge(E edgeTaken) {
             activeNodes = activeNodes.stream().map(node -> {
                 if (!node.getChildrenNodes().containsKey(edgeTaken)) {
                     return null;
                 }
                 return node.getChildrenNodes().get(edgeTaken);
             }).filter(Objects::nonNull).collect(Collectors.toList());
+            return !activeNodes.isEmpty();
         }
 
         private ExperimentalReadThreadingGraph.ThreadingNode get(int i) {
