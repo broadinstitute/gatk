@@ -186,7 +186,9 @@ script:
   fi;
 
 after_success:
-- bash <(curl -s https://codecov.io/bash)
+- if [[ ${TRAVIS_EVENT_TYPE} != push ]]; then 
+   bash <(curl -s https://codecov.io/bash);
+  fi;
 - if [[ $TRAVIS_BRANCH == master && $UPLOAD == true ]]; then ./gradlew uploadArchives; fi;
 # if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $UPLOAD == true ]]; then
