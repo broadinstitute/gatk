@@ -771,6 +771,11 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             return Collections.unmodifiableMap(childrenNodes);
         }
 
+        // Returns true if there are no paths eminating from this node
+        public boolean isEmpty() {
+            return childrenNodes.isEmpty();
+        }
+
         // Return the count of total evidence supporting this node in the tree
         public int getCount() {
             return count;

@@ -72,10 +72,9 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test (enabled = false)
-    //TODO this case fails because without reference weight we might end up looping forever in some gross structure and never stopping....
-    //TODO either restrict paths based onthe reference or do something smarter to prevent infinite loops....
+    @Test
     // Asserting that for a very degenerate looping case (the only weight resides in the loop (which could happen due to non-unique kmers for unmerged dangling ends)
+    // note that this particular case is recovered by virtue of the fact that the reference path itself has weight
     public void testDegenerateLoopingCase() {
         final String ref = "GACACTCACGCACGG";
         final int kmerSize = 3;
@@ -96,9 +95,41 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         // For all of these loops we expect to recover at least the reference haplotype
         Assert.assertTrue(bestPaths.contains(ref));
 
-        Assert.assertEquals(bestPaths.size(), 1);
+        Assert.assertEquals(bestPaths.size(), 5);
 
     }
+
+    @Test
+    // Asserting that for a very degenerate looping case (the only weight resides in the loop (which could happen due to non-unique kmers for unmerged dangling ends)
+    // note that this particular case is recovered by virtue of the fact that the reference path itself has weight
+    public void testDegernerateLoopingDanglingEnd() {
+        final String ref = "GACACTCACGCACGGCC";
+        final String alt = "GACACTCACCCCCCCCC"; // the alt ends with a looping and un-escpaed string that is repetative, this will make a path that has no hope of escape (RUN!)
+        final int kmerSize = 5;
+        final int readlength = 8;
+
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(kmerSize);
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        // Add "reads" to the graph
+        for (int i = 0; i + readlength < ref.length(); i ++) {
+            assembler.addSequence("anonymous", Arrays.copyOfRange(getBytes(alt), i, i + readlength), false);
+        }
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThresholdToUse(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+
+        // For this graph strucutre, there is no evidence whatsoever that a path follow the reference, unfortunately this means we can currently not recover the loop in the alt
+        Assert.assertTrue(bestPaths.isEmpty());
+
+    }
+
+    // TODO add another test that checks edge cases and alerts future generations to the risks of the "days since last JT node" risk
+//    @Test
+//    public void testPathTerminationBasedOnDistanceFromLastHaplotype() {
+//        alsdkfja;ldfjks
+//    }
 
     @Test
     // This is a test enforcing that the behavior around nodes are both outDegree > 1 while also having downstream children with inDegree > 1.

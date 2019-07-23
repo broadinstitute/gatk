@@ -17,27 +17,30 @@ import java.util.stream.Collectors;
  */
 public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
     private JunctionTreeView treesInQueue; // An object for storing and managing operations on the queue of junction trees active for this path
-    private int edgesTakenSinceLastJunctionTreeEvidence = 0;
+    private int edgesTakenSinceLastJunctionTreeEvidence;
 
+    // NOTE, this constructor is used by JJunctionTreeKBestHaplotypeFinder, in both cases paths are chosen by non-junction tree paths
     public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend, edgePenalty);
         treesInQueue = p.treesInQueue.clone();
-//        edgesTaken = new HashSet<>(edgesTaken);
+        edgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + edgesToExtend.size();
     }
 
     // Constructor to be used for internal calls from {@link #getApplicableNextEdgesBasedOnJunctionTrees()}
-    public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> chain, final int edgeMultiplicity, final int totalOutgoingMultiplicity) {
+    public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> chain, final int edgeMultiplicity, final int totalOutgoingMultiplicity, final boolean thisPathBasedOnJT) {
         super(p, chain, computeLogPenaltyScore( edgeMultiplicity, totalOutgoingMultiplicity));
         treesInQueue = p.treesInQueue.clone();
         // Ensure that the relevant edge has been traversed
-        treesInQueue.takeEdge(chain.get(chain.size() - 1));
-//        edgesTaken =  new HashSet<>(edgesTaken);
+        final boolean hasMoreEdgeEvidence = treesInQueue.takeEdge(chain.get(chain.size() - 1));
+        // I'm aware that the chain is only an estimate of the proper length, especially if we got here due to being under the weight threshold for a given tree... the chain lenght is a heuristic as it is...
+        edgesTakenSinceLastJunctionTreeEvidence = thisPathBasedOnJT || hasMoreEdgeEvidence ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + chain.size();
     }
 
+    // JTBestHaplotype constructore for construction an entirely new haplotype builder.
     public JTBestHaplotype(final V initialVertex, final BaseGraph<V,E> graph) {
         super(initialVertex, graph);
         treesInQueue = new JunctionTreeView();
-//        edgesTaken = new HashSet<>();
+        edgesTakenSinceLastJunctionTreeEvidence = 0;
     }
 
     //TODO this needs to be the same logic as the blow method, this is temporary
@@ -118,7 +121,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
                         ExperimentalReadThreadingGraph.ThreadingNode child = childNode.getValue();
                         List<E> chainCopy = new ArrayList<>(chain);
                         chainCopy.add((E) childNode.getKey());
-                        output.add(new JTBestHaplotype<>(this, chainCopy, child.getCount(), totalOut));
+                        output.add(new JTBestHaplotype<>(this, chainCopy, child.getCount(), totalOut, true));
                     }
                 }
                 return output;
@@ -150,10 +153,14 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
 
                 List<E> chainCopy = new ArrayList<>(chain);
                 chainCopy.add(edge);
-                output.add(new JTBestHaplotype<>(this, chainCopy, edge.getMultiplicity(), totalOutgoingMultiplicity));
+                output.add(new JTBestHaplotype<>(this, chainCopy, edge.getMultiplicity(), totalOutgoingMultiplicity, false));
             }
         }
         return output;
+    }
+
+    public int getEdgesTakenSinceLastJunctionTreeEvidence() {
+        return edgesTakenSinceLastJunctionTreeEvidence;
     }
 
     /**
@@ -185,10 +192,13 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
             return new JunctionTreeView(new HashSet<>(visitedTrees), new ArrayList<>(activeNodes));
         }
 
-        // Add a junction tree, ensuring that there is a valid tree in ordre to check.
+        // Add a junction tree, ensuring that there is a valid tree in order to check.
+        // NOTE: this method filters out empty trees or trees that have already been visited on this path
         public void addJunctionTree(final ExperimentalReadThreadingGraph.ThreadingTree junctionTreeForNode) {
-            visitedTrees.add(junctionTreeForNode);
-            activeNodes.add(junctionTreeForNode.getRootNode());
+            if (!visitedTrees.contains(junctionTreeForNode) && !junctionTreeForNode.getRootNode().isEmpty()) {
+                visitedTrees.add(junctionTreeForNode);
+                activeNodes.add(junctionTreeForNode.getRootNode());
+            }
         }
 
         // method to handle incrementing all of the nodes in the tree simultaniously
@@ -199,7 +209,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
                     return null;
                 }
                 return node.getChildrenNodes().get(edgeTaken);
-            }).filter(Objects::nonNull).collect(Collectors.toList());
+            }).filter(Objects::nonNull).filter(node -> !node.isEmpty()).collect(Collectors.toList());
             return !activeNodes.isEmpty();
         }
 
@@ -217,6 +227,10 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
 
         private void removeEldestTree() {
             activeNodes.remove(0);
+        }
+
+        public boolean hasJunctionTreeEvidence() {
+            return !activeNodes.isEmpty();
         }
     }
 }

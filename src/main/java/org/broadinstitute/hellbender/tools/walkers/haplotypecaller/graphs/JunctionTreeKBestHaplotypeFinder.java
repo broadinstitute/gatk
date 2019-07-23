@@ -96,6 +96,12 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
         // Iterate over paths in the queue, unless we are out of paths of maxHaplotypes to find
         while (!queue.isEmpty() && result.size() < maxNumberOfHaplotypes) {
             final JTBestHaplotype<V, E> pathToExtend = queue.poll();
+
+            // This safeguards against infinite loops and degenerate excessively long paths
+            if (pathToExtend.getEdgesTakenSinceLastJunctionTreeEvidence() > DEFAULT_MAX_ACCEPTABLE_BASES_WITHOUT_JT_GUIDANCE) {
+                break;
+            }
+
             V vertexToExtend = pathToExtend.getLastVertex();
             Set<E> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
 
