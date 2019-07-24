@@ -1,16 +1,18 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 /**
  * Write reads from SAM format file (SAM/BAM/CRAM) that pass criteria to a new file.
@@ -91,14 +93,33 @@ public final class PrintReads extends ReadWalker {
     public String output;
     private SAMFileGATKReadWriter outputWriter;
 
+    @Argument(fullName = "reads-must-start-within-intervals",
+            shortName = "reads-must-start-within-intervals",
+            doc="If true, will only output reads that start within the given intervals.  If no intervals are given this argument has no meaning.")
+    public Boolean filterReadsToStartInGivenIntervals = false;
+    private OverlapDetector<SimpleInterval> overlapDetector;
+
     @Override
     public void onTraversalStart() {
         outputWriter = createSAMWriter(IOUtils.getPath(output), true);
+
+        if ( filterReadsToStartInGivenIntervals && hasUserSuppliedIntervals() ) {
+            overlapDetector = OverlapDetector.create(getTraversalIntervals());
+        }
     }
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputWriter.addRead(read);
+
+        if (filterReadsToStartInGivenIntervals && hasUserSuppliedIntervals()) {
+            final SimpleInterval readStart = new SimpleInterval(read.getContig(), read.getStart(), read.getStart());
+            if ( overlapDetector.overlapsAny(readStart) ) {
+                outputWriter.addRead(read);
+            }
+        }
+        else {
+            outputWriter.addRead(read);
+        }
     }
 
     @Override
