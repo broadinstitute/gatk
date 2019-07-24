@@ -73,7 +73,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
  *   -I gs://cloud-bucket/input.bam \
  *   -L 20 \
  *   -O chr20.bam
- * </pre>
+ * </pre> 
  *
  * {@GATK.walkertype ReadWalker}
  */
