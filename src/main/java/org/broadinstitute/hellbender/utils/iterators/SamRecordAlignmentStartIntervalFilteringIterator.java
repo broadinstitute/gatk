@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.iterators;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.CloseableIterator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -20,6 +22,8 @@ import java.util.NoSuchElementException;
  * Created by jonn on 7/23/19.
  */
 public class SamRecordAlignmentStartIntervalFilteringIterator implements CloseableIterator<SAMRecord> {
+
+    protected static final Logger logger = LogManager.getLogger(SamRecordAlignmentStartIntervalFilteringIterator.class);
 
     final private CloseableIterator<SAMRecord> samRecordIterator;
     final private Iterator<SimpleInterval> intervalIterator;
@@ -44,7 +48,12 @@ public class SamRecordAlignmentStartIntervalFilteringIterator implements Closeab
         this.intervalIterator = intervalIterator;
         this.samRecordIterator = samRecordIterator;
 
+        logger.warn("INITIALIZING FILTER ITERATOR");
+
         if (samRecordIterator.hasNext()) {
+
+            logger.warn("HAS NEXT!");
+
             advanceCurrentInterval();
             advanceIterators();
         }
@@ -91,6 +100,11 @@ public class SamRecordAlignmentStartIntervalFilteringIterator implements Closeab
         // While we are not in an interval that contains the current samRecord, advance the sam records.
         // If the sam records jump contigs, we jump contigs and try again.
         while ( (currentInterval != null) && (!currentInterval.overlaps( recordStart )) ) {
+
+            logger.warn("next = " + next);
+            logger.warn("samRecord = " + samRecord);
+            logger.warn("currentInterval = " + currentInterval.toString());
+            logger.warn("");
 
             // If our interval no longer can align with our record, we increment the interval:
             if ( mustAdvanceIntervals(samRecord) ) {

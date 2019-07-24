@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -56,6 +55,13 @@ public abstract class ReadWalker extends WalkerBase {
     protected final void onStartup() {
         super.onStartup();
         setReadTraversalBounds();
+
+        // Set up whether we're filtering by read start in intervals:
+        boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
+        if ( filterReadsToStartInGivenIntervals && (!hasUserSuppliedIntervals() || userIntervals.isEmpty()) ) {
+            isReadStartFilteringEnabled = false;
+        }
+        reads.setFilterReadsToStartInGivenIntervals(isReadStartFilteringEnabled, userIntervals);
     }
 
     /**
@@ -75,19 +81,6 @@ public abstract class ReadWalker extends WalkerBase {
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }
-    }
-
-    @Override
-    void createReadsDataSource(final SamReaderFactory factory) {
-
-        boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
-        if ( filterReadsToStartInGivenIntervals && (!hasUserSuppliedIntervals() || userIntervals.isEmpty()) ) {
-            isReadStartFilteringEnabled = false;
-        }
-
-        reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
-                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer),
-                isReadStartFilteringEnabled, userIntervals);
     }
 
     /**

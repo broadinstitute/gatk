@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -65,6 +66,8 @@ public class SamReaderQueryingIterator implements CloseableIterator<SAMRecord>, 
 
         this.currentIterator = loadNextIterator();
         this.nextRecord = loadNextRecord();
+
+        logger.warn("NEXT RECORD = " + this.nextRecord);
     }
 
     /**
@@ -120,7 +123,11 @@ public class SamReaderQueryingIterator implements CloseableIterator<SAMRecord>, 
             currentIterator.close();
         }
 
+        logger.warn("hasQueryIntervals() = " + hasQueryIntervals());
+        logger.warn("intervalQueryPerformed = " + intervalQueryPerformed);
+
         if ( hasQueryIntervals() && ! intervalQueryPerformed ) {
+            logger.warn("queryIntervals = " + Arrays.toString(queryIntervals));
             intervalQueryPerformed = true;
             return reader.queryOverlapping(queryIntervals);
         }

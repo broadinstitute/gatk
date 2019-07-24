@@ -51,14 +51,14 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * This flag is used to enable filtering to only process reads that start in the given user interval list.
      * Such filtering will avoid double-counting reads that span adjacent intervals.
      */
-    private final boolean filterReadsToStartInGivenIntervals;
+    private boolean filterReadsToStartInGivenIntervals = false;
 
     /**
      * List of intervals supplied by the user.
      * This list is used to enable filtering to only process reads that start in the given user interval list.
      * Such filtering will avoid double-counting reads that span adjacent intervals.
      */
-    private final List<SimpleInterval> userIntervals;
+    private List<SimpleInterval> userIntervals;
 
     /**
      * Hang onto the input files so that we can print useful errors about them
@@ -131,7 +131,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      */
     public ReadsDataSource( final List<Path> samPaths, SamReaderFactory customSamReaderFactory ) {
-        this(samPaths, null, customSamReaderFactory, 0, 0, false, Collections.emptyList());
+        this(samPaths, null, customSamReaderFactory, 0, 0);
     }
 
     /**
@@ -142,7 +142,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                   in which case index paths are inferred automatically.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices ) {
-        this(samPaths, samIndices, null, 0, 0, false, Collections.emptyList());
+        this(samPaths, samIndices, null, 0, 0);
     }
 
     /**
@@ -157,7 +157,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
         SamReaderFactory customSamReaderFactory) {
-        this(samPaths, samIndices, customSamReaderFactory, 0, 0, false, Collections.emptyList());
+        this(samPaths, samIndices, customSamReaderFactory, 0, 0);
     }
 
     /**
@@ -171,41 +171,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
-     * @param filterReadsToStartInGivenIntervals If {@code true} will filter the reads from this {@link ReadsDataSource} to only include those that start within the given {@code userIntervals}.  If {@code false} will not change the behavior of this {@link ReadsDataSource}.     * @param userIntervals {@link List<SimpleInterval>} of the intervals supplied by the user.  Empty if no such intervals were given.
-     * @param userIntervals {@link List<SimpleInterval>} of the intervals supplied by the user.  Empty if no such intervals were given.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
             SamReaderFactory customSamReaderFactory,
-            int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer,
-            boolean filterReadsToStartInGivenIntervals,
-            final List<SimpleInterval> userIntervals) {
+            int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
         this(samPaths, samIndices, customSamReaderFactory,
             (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is)
                                      : Function.identity()),
             (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is)
-                : Function.identity()),
-                filterReadsToStartInGivenIntervals,
-                userIntervals);
-    }
-
-    /**
-     * Initialize this data source with multiple SAM/BAM/CRAM files, explicit indices for those files,
-     * and a custom SamReaderFactory.
-     *
-     * @param samPaths paths to SAM/BAM/CRAM files, not null
-     * @param samIndices indices for all of the SAM/BAM/CRAM files, in the same order as samPaths. May be null,
-     *                   in which case index paths are inferred automatically.
-     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
-     *                               stringency SILENT is used.
-     * @param cloudWrapper caching/prefetching wrapper f=or the data, if on Google Cloud.
-     * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
-     */
-    public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
-                            final SamReaderFactory customSamReaderFactory,
-                            final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
-                            final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
-        this(samPaths, samIndices, customSamReaderFactory, cloudWrapper, cloudIndexWrapper,
-                false, Collections.emptyList());
+                : Function.identity()));
     }
 
     /**
@@ -219,15 +193,11 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud.
      * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
-     * @param filterReadsToStartInGivenIntervals If {@code true} will filter the reads from this {@link ReadsDataSource} to only include those that start within the given {@code userIntervals}.  If {@code false} will not change the behavior of this {@link ReadsDataSource}.
-     * @param userIntervals {@link List<SimpleInterval>} of the intervals supplied by the user.  Empty if no such intervals were given.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
                             final SamReaderFactory customSamReaderFactory,
                             final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
-                            final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
-                            boolean filterReadsToStartInGivenIntervals,
-                            final List<SimpleInterval> userIntervals) {
+                            final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
 
@@ -236,8 +206,6 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                                                   samPaths.size(), samIndices.size()));
         }
 
-        this.filterReadsToStartInGivenIntervals = filterReadsToStartInGivenIntervals;
-        this.userIntervals = userIntervals;
         readers = new LinkedHashMap<>(samPaths.size() * 2);
         backingPaths = new LinkedHashMap<>(samPaths.size() * 2);
         indicesAvailable = true;
@@ -293,6 +261,25 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
         // Prepare a header merger only if we have multiple readers
         headerMerger = samPaths.size() > 1 ? createHeaderMerger() : null;
+    }
+
+    /**
+     * Set this {@link ReadsDataSource} to only process reads that start in the given user interval list.
+     *
+     * This method is designed to be called before calls to any of the following:
+     *     {@link #prepareIteratorsForTraversal(List)}
+     *     {@link #prepareIteratorsForTraversal(List, boolean)}
+     *     {@link #iterator()}
+     *     {@link #query(SimpleInterval)}
+     *     {@link #queryUnmapped()}
+     *
+     * @param filterReadsToStartInGivenIntervals {@code true} if the reads should be filtered to only include those starting in the given user interval list.  {@code false} otherwise.
+     * @param userIntervals {@link List<SimpleInterval>} containing user-defined intervals in which reads must start to be processed.
+     */
+    public void setFilterReadsToStartInGivenIntervals(final boolean filterReadsToStartInGivenIntervals,
+                                                      final List<SimpleInterval> userIntervals) {
+        this.filterReadsToStartInGivenIntervals = filterReadsToStartInGivenIntervals;
+        this.userIntervals = userIntervals;
     }
 
     /**
@@ -436,6 +423,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @return Iterator over all reads in this data source, limited to overlap with the supplied intervals
      */
     private Iterator<GATKRead> prepareIteratorsForTraversal( final List<SimpleInterval> queryIntervals, final boolean queryUnmapped ) {
+
         // htsjdk requires that only one iterator be open at a time per reader, so close out
         // any previous iterations
         closePreviousIterationsIfNecessary();
@@ -456,6 +444,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
                 // Add our filter iterator if we should filter by start position:
                 if ( filterReadsToStartInGivenIntervals ) {
+
                     readerEntry.setValue(
                         new SamRecordAlignmentStartIntervalFilteringIterator(
                             getSequenceDictionary(),
