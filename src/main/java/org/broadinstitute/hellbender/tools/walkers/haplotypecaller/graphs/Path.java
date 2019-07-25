@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import joptsimple.internal.Strings;
 import org.apache.commons.lang3.ArrayUtils;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -196,7 +197,7 @@ public class Path<T extends BaseVertex, E extends BaseEdge> {
      */
     public  Cigar calculateCigar(final byte[] refSeq, final SmithWatermanAligner aligner) {
         //Note: CigarUtils.calculateCigar already checks for null
-        return CigarUtils.calculateCigar(refSeq, getBases(), aligner);
+        return CigarUtils.calculateCigar(refSeq, getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
     }
 
 }

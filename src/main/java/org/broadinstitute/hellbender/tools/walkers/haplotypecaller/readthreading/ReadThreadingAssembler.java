@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
@@ -177,7 +178,7 @@ public final class ReadThreadingAssembler {
                     if (kBestHaplotype.isReference()) {
                         refHaplotype.setScore(kBestHaplotype.score());
                     }
-                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner);
+                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
 
                     if ( cigar == null ) {
                         failedCigars++; // couldn't produce a meaningful alignment of haplotype to reference, fail quietly
