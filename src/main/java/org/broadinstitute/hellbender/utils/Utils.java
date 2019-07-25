@@ -13,6 +13,7 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
@@ -1034,19 +1035,27 @@ public final class Utils {
         return x != y;
     }
 
+    //overload method which calls lasIndexOf with the refIndexBoun param being 0
+    public static int lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches) {
+        return lastIndexOfAtMostTwoMismatches(reference, query, allowedMismatches, 0);
+    }
+
     /**
-     * Find the last occurrence, whether it be an exact match, off-by-one, or off-by-two, of the query sequence in the reference sequence
+     * Find the last occurrence of the query sequence in the reference sequence
      *
      * Returns the index of the last occurrence or -1 if the query sequence is not found
      *
      * @param reference the reference sequence
      * @param query the query sequence
      */
-    public static int lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches) {
+    public static int lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches, int refIndexBound) {
         int queryLength = query.length;
+        if(refIndexBound < 0){
+            refIndexBound = 0;
+        }
 
         // start search from the last possible matching position and search to the left
-        for (int refIndex = reference.length - queryLength; refIndex >= 0; refIndex--) {
+        for (int refIndex = reference.length - queryLength; refIndex >= refIndexBound; refIndex--) {
             int mismatchCount = 0;
             for (int queryIndex = 0; queryIndex < queryLength && mismatchCount <= allowedMismatches; queryIndex++) {
                 if (reference[refIndex+queryIndex] != query[queryIndex]) {
@@ -1071,7 +1080,7 @@ public final class Utils {
      * @param query the query sequence
      * @param maxIndelLength the maximum length indel we look for
      */
-    public static ImmutablePair<Integer, Integer> atMostOneIndel(final byte[] reference, final byte[] query, int maxIndelLength){
+    public static ImmutablePair<Integer, Integer> oneIndelHapToRef(final byte[] reference, final byte[] query, int maxIndelLength){
         int lengthOfIndel = Math.abs(reference.length - query.length);
 
         if(lengthOfIndel > maxIndelLength){
@@ -1112,6 +1121,261 @@ public final class Utils {
         }
         //traversed entire query, one indel and no mismatches found
         return new ImmutablePair<Integer, Integer>(indelEnd, lengthOfIndel);
+    }
+
+
+    /**
+     * Finds the location of one indel in the query sequence in relation to the reference sequence
+     * local Alignment
+     *
+     * Returns an Indel object that contains all the necessary information for generating a cigar string
+     *
+     * @param reference the reference sequence
+     * @param query the query sequence
+     * @param parameters the SW parameters
+     * @param maxInsertionSize allowed size of insertion so that we can confidently say nothing can beat it
+     * @param maxDeletionSize allowed size of deletion so that we can confidently say nothing can beat it
+     */
+    public static Indel oneIndelReadToHap(final byte[] reference, final byte[] query, SWParameters parameters, int maxInsertionSize, int maxDeletionSize){
+
+        Indel insertion = new Indel(-1, -1, maxInsertionSize, true);
+        Indel deletion = new Indel(-1, -1, maxDeletionSize, false);
+
+        //set bounds for indices that are eligible to have indels
+        int refBackInsertionBound = query.length - 1 - maxInsertionSize;
+        int refBackDeletionBound = query.length;
+
+        int refIndexBack = reference.length - 1;
+
+        //traverse ref up to insertion bound
+        while(refIndexBack >= refBackInsertionBound){
+            boolean skipDeletion = false;
+
+            int queryIndexBack = query.length - 1;
+
+            //iterate until you hit a match
+            while(reference[refIndexBack] != query[queryIndexBack] && refIndexBack >= refBackInsertionBound){
+                if(refIndexBack < refBackDeletionBound){
+                    skipDeletion = true;
+                }
+                refIndexBack--;
+            }
+
+            //keep track of potential starting position for alignment. this is needed in case the "traverse until mismatch found" step iterates over the correct alignment location
+            /*
+            e.g - the 1st while loop takes you to index 74, and the 2nd while loop takes you to index 41, so you passed over the index in the ref that represents the canonical alignment end position, 68
+                                                                 41               68    74
+ ref        AACCCCTAACCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCCTAACCCTAACCCTAACCCTAACCCTCGCGGT
+
+ read       AACCCCTAACCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAA       CCCTAACCCTAACCCTAACCCTAA           - happens if you don't use queue
+
+ read       AACCCCTAACCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAA CCCTAACCCTAACCCTAA
+
+             */
+            Queue<Integer> startingPositions = new LinkedList<>();
+            startingPositions.add(refIndexBack);
+            byte startingLetter = reference[refIndexBack];
+            boolean inListOfStartingPositions = false;
+            int queryIndex = queryIndexBack;
+
+            //while there are still potential starting indices, attempt alignments at each index
+            while(!startingPositions.isEmpty()){
+
+                //if element in queue is the last, begin new StartingPositionList
+                if (inListOfStartingPositions == true && startingPositions.size() == 1){
+                    inListOfStartingPositions = false;
+                }
+                refIndexBack = startingPositions.remove();
+                if(refIndexBack < refBackInsertionBound){
+                    break;
+                }
+                queryIndexBack = queryIndex;
+
+                //iterate until you hit mismatch
+                while(reference[refIndexBack] == query[queryIndexBack]){
+
+                    if(refIndexBack == 1 || queryIndexBack == 2){
+                        refIndexBack--;
+                        queryIndexBack--;
+                        break;
+                    }
+
+                    refIndexBack--;
+                    queryIndexBack--;
+
+                    //if you've found a potential alignment starting position, add it to the queue
+                    if(!inListOfStartingPositions){
+                        if(reference[refIndexBack] == startingLetter){
+                            startingPositions.add(refIndexBack);
+                        }
+                    }
+                }
+
+                //once you've filled your queue, set this to true to make sure you don't create additional queues for the elements already in a queue
+                inListOfStartingPositions = true;
+
+                //check for deletion code
+                //************************************
+                if(!skipDeletion){
+                    byte[] ref = new byte[refIndexBack + 1];
+                    System.arraycopy(reference,0, ref, 0, refIndexBack + 1);
+                    byte[] que = new byte[queryIndexBack + 1];
+                    System.arraycopy(query, 0, que, 0, queryIndexBack + 1);
+                    int matchIndex = lastIndexOfAtMostTwoMismatches(ref, que, 0, ref.length - que.length - maxDeletionSize);
+                    if(matchIndex != -1){
+                        int alignmentOffset = matchIndex;
+                        int matchingBases = queryIndexBack + 1;
+                        int indelSize = refIndexBack - matchIndex + 1 - matchingBases;
+                        if(indelSize <= deletion.getIndelSize()){
+                            deletion.setAlignmentOffset(alignmentOffset);
+                            deletion.setMatchingBases(matchingBases);
+                            deletion.setIndelSize(indelSize);
+                            deletion.setIndelType(false);
+                        }
+                    }
+                }
+                //************************************
+
+                int queryIndexFront = queryIndexBack - 1;
+                //set bound. this ensures that you don't look for insertions greater than the maxInsertionSize
+                int queryFrontBound = queryIndexBack - maxInsertionSize;
+
+                //repeat the process, but this time you're determining the bases on the left side of the insertion
+                while(queryIndexFront >= queryFrontBound){
+
+                    int refIndexFront = refIndexBack;
+
+                    //look for match
+                    while(reference[refIndexFront] != query[queryIndexFront] && queryIndexFront >= queryFrontBound){
+                        queryIndexFront--;
+
+                        if(queryIndexFront < queryFrontBound){
+                            break;
+                        }
+                    }
+
+                    if(queryIndexFront < queryFrontBound){
+                        break;
+                    }
+
+                    Queue<Integer> overlap2 = new LinkedList<>();
+                    overlap2.add(queryIndexFront);
+                    byte repeatLetter2 = query[queryIndexFront];
+                    boolean inListOfStartingPositions2 = false;
+                    int refIndex = refIndexFront;
+
+                    while(!overlap2.isEmpty()){
+
+                        queryIndexFront = overlap2.remove();
+                        if(queryIndexFront < queryFrontBound){
+                            break;
+                        }
+                        refIndexFront = refIndex;
+
+                        //iterate until mismatch or insertion is found
+                        while(queryIndexFront >= 0 && refIndexFront >= 0 && reference[refIndexFront] == query[queryIndexFront]){
+                            queryIndexFront--;
+                            refIndexFront--;
+
+                            //you've reached the end of the query, which means you have an insertion
+                            if(queryIndexFront == -1){
+                                int alignmentOffset = refIndexFront + 1;
+                                int matchingBases = refIndexBack - alignmentOffset + 1;
+                                int indelSize = queryIndexBack - matchingBases + 1;
+                                if(indelSize <= insertion.getIndelSize()){
+                                    insertion.setAlignmentOffset(alignmentOffset);
+                                    insertion.setMatchingBases(matchingBases);
+                                    insertion.setIndelSize(indelSize);
+                                    insertion.setIndelType(true);
+                                }
+                            }
+
+                            if(!inListOfStartingPositions2 && queryIndexFront != -1){
+                                if(query[queryIndexFront] == repeatLetter2){
+                                    overlap2.add(queryIndexFront);
+                                }
+                            }
+                        }
+
+                        inListOfStartingPositions2 = true;
+
+                        if(queryIndexFront == -1){
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if(insertion.getAlignmentOffset() != -1 && deletion.getAlignmentOffset() == -1){
+            return insertion;
+        }
+        else if(insertion.getAlignmentOffset() == -1 && deletion.getAlignmentOffset() != -1){
+            return deletion;
+        }
+        else if(insertion.getAlignmentOffset() == -1 && deletion.getAlignmentOffset() == -1){
+            return insertion;
+        }
+        else{
+            int insertionBases = query.length - insertion.getIndelSize();
+            int inScore = (insertionBases * parameters.getMatchValue()) + parameters.getGapOpenPenalty() + ((insertion.getIndelSize() - 1) * parameters.getGapExtendPenalty());
+
+            int delScore = (query.length * parameters.getMatchValue()) + parameters.getGapOpenPenalty() + ((deletion.getIndelSize() - 1) * parameters.getGapExtendPenalty());
+            if(delScore == inScore){
+                //tiebreaker is number of ref bases consumed - will need to be changed
+                return insertionBases > (query.length + deletion.getIndelSize()) ? insertion: deletion;
+            }
+            else{
+                return delScore > inScore ? deletion : insertion;
+            }
+        }
+    }
+
+    //inner class that stores all necessary information to produce cigar string
+    public static class Indel{
+        int alignmentOffset;
+        int matchingBases;
+        int indelSize;
+        boolean insertion;
+
+        public Indel(int alignmentOffset, int matchingBases, int indelSize, boolean insertion){
+            this.alignmentOffset = alignmentOffset;
+            this.indelSize = indelSize;
+            this.matchingBases = matchingBases;
+            this.insertion = insertion;
+        }
+
+        public int getIndelSize(){
+            return indelSize;
+        }
+
+        public int getAlignmentOffset(){
+            return alignmentOffset;
+        }
+
+        public int getMatchingBases(){
+            return matchingBases;
+        }
+
+        public boolean getIndelType(){
+            return insertion;
+        }
+
+        public void setIndelSize(int indelSize){
+            this.indelSize = indelSize;
+        }
+
+        public void setAlignmentOffset(int alignmentOffset){
+            this.alignmentOffset = alignmentOffset;
+        }
+
+        public void setMatchingBases(int matchingBases){
+            this.matchingBases = matchingBases;
+        }
+
+        public void setIndelType(boolean insertion){
+            this.insertion = insertion;
+        }
     }
 
     /**
