@@ -108,7 +108,7 @@ public abstract class ReadWalker extends WalkerBase {
      * Note: some walkers must be able to work on any read, including those whose coordinates do not form a valid SimpleInterval.
      * So here we check this condition and create null intervals for such reads.
      */
-    SimpleInterval getReadInterval(final GATKRead read) {
+    public SimpleInterval getReadInterval(final GATKRead read) {
         return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
     }
 
