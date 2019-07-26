@@ -61,13 +61,21 @@ public abstract class ReadWalker extends WalkerBase {
      * Initialize traversal bounds if intervals are specified
      */
     void setReadTraversalBounds() {
-        if ( hasUserSuppliedIntervals() ) {
 
-            // Set up whether we're filtering by read start in intervals:
-            boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
-            if ( filterReadsToStartInGivenIntervals && userIntervals.isEmpty() ) {
+        // Validate filter input:
+        boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
+        if ( filterReadsToStartInGivenIntervals ) {
+            if ( !hasUserSuppliedIntervals() ) {
+                logger.warn("Specified that reads should start in given intervals, but no intervals were specified.");
                 isReadStartFilteringEnabled = false;
             }
+            else if ( userIntervals.isEmpty() ) {
+                logger.warn("Specified that reads should start in given intervals, but intervals are empty.");
+                isReadStartFilteringEnabled = false;
+            }
+        }
+
+        if ( hasUserSuppliedIntervals() ) {
 
             // Get traversal parameters:
             final TraversalParameters traversalParameters =
