@@ -724,11 +724,16 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
             // if it has too low a weight, don't use it (or previous vertexes) for the path
             if ( edge.getPruningMultiplicity() < pruneFactor ) {
                 path.clear();
-            }// otherwise it is safe to use
+            }
             else {
                 path.addFirst(v);
             }
             v = nextNode.apply(edge);
+            // Check that we aren't stuck in a loop
+            if ( path.contains(v) ) {
+                System.err.println("Dangling End recovery killed because of a loop (findPath)");
+                return null;
+            }
         }
         path.addFirst(v);
 

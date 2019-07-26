@@ -353,6 +353,13 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             final List<MultiSampleEdge> edges = outgoingEdges.stream().filter(e -> !blacklistedEdgeSet.contains(e)).limit(2).collect(Collectors.toList());
 
             vert = edges.size() == 1 ? getEdgeTarget(edges.get(0)) : null;
+
+            // Defense against loops, kill the attempt if we are stuck in a loop
+            if (extraSequence.contains(vert)) {
+                System.err.println("Dangling End recovery killed because of a loop (getReferencePathForwardFromKmer)");
+                vert = null;
+            }
+
             finalIndex = vert == null ? -1 : referencePath.lastIndexOf(vert);
         }
 
@@ -406,6 +413,8 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
         /// LOCAL CLASS TO MANAGE PRINTING THE JUNCTION TREES ONTO THE SEQ GRAPH
         class PrintingSeqGraph extends SeqGraph {
+            private static final long serialVersionUID = 1l;
+
             private PrintingSeqGraph(int kmerSize) {
                 super(kmerSize);
             }
