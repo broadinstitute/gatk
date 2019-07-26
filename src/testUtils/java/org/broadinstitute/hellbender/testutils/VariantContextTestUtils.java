@@ -47,8 +47,6 @@ import java.util.stream.StreamSupport;
 import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
 
 public final class VariantContextTestUtils {
-
-    private static final Pattern EMPTY_LIST_REGEX = Pattern.compile("(\.,)+\.");
     private VariantContextTestUtils() {}
 
     /** Standard Logger.  */
@@ -365,10 +363,6 @@ public final class VariantContextTestUtils {
             final Object value = expected.get(missingExpected);
             Assert.assertTrue(isMissing(value), "Attribute " + missingExpected + " missing in one but not in other" );
         }
-    }
-
-    private boolean isNullList(String value){
-        if(string.)
     }
 
     private static boolean isMissing(final Object value) {
