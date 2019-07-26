@@ -256,8 +256,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         if (originalAlleleCount > practicalAlleleCount) {
             final List<Allele> allelesToKeep = whichAllelesToKeepBasedonHapScores(alleleMapper, practicalAlleleCount);
             alleleMapper.keySet().retainAll(allelesToKeep);
-            logger.warn(String.format("Removed alt alleles where ploidy is %d and original allele count is %d, whereas after trimming the allele count becomes %d. Alleles kept are:%s",
-                    ploidy, originalAlleleCount, practicalAlleleCount, allelesToKeep));
+            logger.warn(String.format("At position %s removed alt alleles where ploidy is %d and original allele count is %d, whereas after trimming the allele count becomes %d. Alleles kept are:%s",
+                    new SimpleInterval(mergedVC).toString(), ploidy, originalAlleleCount, practicalAlleleCount, allelesToKeep));
             return removeExcessAltAllelesFromVC(mergedVC, allelesToKeep);
         } else {
             return mergedVC;

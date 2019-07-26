@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotypeFinder<V, E> {
     public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
-    public static final int DEFAULT_MAX_ACCEPTABLE_BASES_WITHOUT_JT_GUIDANCE = 100;
+    public static final int DEFAULT_MAX_ACCEPTABLE_BASES_WITHOUT_JT_GUIDANCE = 300;
     private int weightThresholdToUse = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
