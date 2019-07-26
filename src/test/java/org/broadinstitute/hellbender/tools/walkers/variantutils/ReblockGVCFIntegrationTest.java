@@ -119,10 +119,10 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 Arrays.asList(getToolTestDataDir() + "expected.NA12892.AS.chr20snippet.reblocked.g.vcf"));
         spec2.executeTest("testASAnnotationsAndSubsetting2", this);
 
+        //big test for as we ran for gnomADv3
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("V", getToolTestDataDir() + "spanDel.exome.chr20.vcf")
-                //.addArgument("L", "chr1:31414420")
+        args.addArgument("V", "src/test/resources/large/ReblockGVCF/spanDel.exome.chr20.vcf")
                 .addBooleanArgument("do-qual-approx", true)
                 .addBooleanArgument("drop-low-quals", true)
                 .addArgument("rgq-threshold", "10")

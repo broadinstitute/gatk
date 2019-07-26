@@ -224,7 +224,7 @@ public class QualByDepthUnitTest extends GATKBaseTest {
     @Test
     public void testDescriptions_AS() throws Exception {
         final AS_QualByDepth cov = new AS_QualByDepth();
-        Assert.assertEquals(cov.getRawKeyName(), GATKVCFConstants.AS_QUAL_KEY);
+        Assert.assertEquals(cov.getRawKeyName(), GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY);
         Assert.assertEquals(cov.getDescriptions().size(), 1);
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY);
     }
