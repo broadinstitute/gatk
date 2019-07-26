@@ -696,11 +696,13 @@ public class SegmentedCpxVariantSimpleVariantExtractorUnitTest extends GATKBaseT
                                      final List<Integer> refSegmentLengths, final List<String> altArrangement,
                                      final boolean shouldIncreaseInsLenByOne,
                                      final VariantContext expected) {
+
+        final NotSoSimpleInterval insPosAndEnd = new NotSoSimpleInterval(insertionStartAndStop);
         if (expected != null) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(getInsFromOneEnd(fromFront, idxFirstMatch, insertionStartAndStop, anchorBaseRefAllele, refSegmentLengths, altArrangement, shouldIncreaseInsLenByOne).make(),
+            VariantContextTestUtils.assertVariantContextsAreEqual(getInsFromOneEnd(fromFront, idxFirstMatch, insPosAndEnd, anchorBaseRefAllele, refSegmentLengths, altArrangement, shouldIncreaseInsLenByOne).make(),
                                                                     expected, Collections.emptyList(), Collections.emptyList());
         } else {
-            Assert.assertNull(getInsFromOneEnd(fromFront, idxFirstMatch, insertionStartAndStop, anchorBaseRefAllele, refSegmentLengths, altArrangement, shouldIncreaseInsLenByOne));
+            Assert.assertNull(getInsFromOneEnd(fromFront, idxFirstMatch, insPosAndEnd, anchorBaseRefAllele, refSegmentLengths, altArrangement, shouldIncreaseInsLenByOne));
         }
     }
 

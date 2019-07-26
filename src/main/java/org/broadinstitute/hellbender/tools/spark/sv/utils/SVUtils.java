@@ -84,14 +84,6 @@ public final class SVUtils {
     }
 
     /**
-     * Given chromosome name and requested position (1-based coordinate system),
-     * return a 1 bp long interval that spans only the requested base.
-     */
-    public static SimpleInterval makeOneBpInterval(final String chr, final int pos) {
-        return new SimpleInterval(chr, pos, pos);
-    }
-
-    /**
      * Canonical chromosomes are defined, for homo sapiens, as chromosomes 1-22, chromosome X and Y.
      */
     public static Set<String> getCanonicalChromosomes(final String nonCanonicalContigNamesFile,
