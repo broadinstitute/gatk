@@ -220,7 +220,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
         // The reference source vertex warrants a junction tree
         if (getReferenceSourceVertex() == vertex) {
-            return true;
+            return false;
         }
 
         for (MultiSampleEdge edge : outgoingEdgesOf(vertex)) {

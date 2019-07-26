@@ -132,7 +132,10 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             // In the event we have a junction tree on top of a vertex with outDegree > 1, we add this first before we traverse paths
             if ( experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) != null) { //TODO make the condition for this actually based on the relevant junction tree
                 // TODO chain can be null but we still need to inherit a thing, probably happens whenever we pick up a tree.
-                pathToExtend.addJunctionTree(experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
+                // ignore starting junciton tree
+//                if (!sources.contains(vertexToExtend)) {
+                    pathToExtend.addJunctionTree(experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
+//                }
             }
 
             //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat
