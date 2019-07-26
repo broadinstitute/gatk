@@ -47,18 +47,12 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
     /**
      * If {@code true} will filter the reads from this {@link ReadsDataSource} to only include those that start within
-     * the given {@link #userIntervals}.  If {@code false} will not change the behavior of this {@link ReadsDataSource}.
+     * the given {@link #intervalsForTraversal}.  If {@code false} will not change the behavior of this
+     * {@link ReadsDataSource}.
      * This flag is used to enable filtering to only process reads that start in the given user interval list.
      * Such filtering will avoid double-counting reads that span adjacent intervals.
      */
     private boolean filterReadsToStartInGivenIntervals = false;
-
-    /**
-     * List of intervals supplied by the user.
-     * This list is used to enable filtering to only process reads that start in the given user interval list.
-     * Such filtering will avoid double-counting reads that span adjacent intervals.
-     */
-    private List<SimpleInterval> userIntervals;
 
     /**
      * Hang onto the input files so that we can print useful errors about them
@@ -264,25 +258,6 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     }
 
     /**
-     * Set this {@link ReadsDataSource} to only process reads that start in the given user interval list.
-     *
-     * This method is designed to be called before calls to any of the following:
-     *     {@link #prepareIteratorsForTraversal(List)}
-     *     {@link #prepareIteratorsForTraversal(List, boolean)}
-     *     {@link #iterator()}
-     *     {@link #query(SimpleInterval)}
-     *     {@link #queryUnmapped()}
-     *
-     * @param filterReadsToStartInGivenIntervals {@code true} if the reads should be filtered to only include those starting in the given user interval list.  {@code false} otherwise.
-     * @param userIntervals {@link List<SimpleInterval>} containing user-defined intervals in which reads must start to be processed.
-     */
-    public void setFilterReadsToStartInGivenIntervals(final boolean filterReadsToStartInGivenIntervals,
-                                                      final List<SimpleInterval> userIntervals) {
-        this.filterReadsToStartInGivenIntervals = filterReadsToStartInGivenIntervals;
-        this.userIntervals = userIntervals;
-    }
-
-    /**
      * Are indices available for all files?
      */
     public boolean indicesAvailable() {
@@ -330,6 +305,39 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
         if ( traversalIsBounded() && ! indicesAvailable ) {
             raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
+        }
+    }
+
+    /**
+     * Restricts a traversal of this data source via {@link #iterator} to only return reads that overlap the given intervals,
+     * and to unmapped reads if specified.
+     *
+     * Calls to {@link #query} are not affected by this method.
+     *
+     * @param intervals Our next full traversal will return reads overlapping these intervals
+     * @param traverseUnmapped Our next full traversal will return unmapped reads (this affects only unmapped reads that
+     *                         have no position -- unmapped reads that have the position of their mapped mates will be
+     *                         included if the interval overlapping that position is included).
+     * @param requireReadsToStartInIntervals If {@code true} this {@link ReadsDataSource} will only produce reads that
+     *                                       START in the given intervals.  If {@code false}, this parameter does
+     *                                       nothing.
+     */
+    public void setTraversalBounds( final List<SimpleInterval> intervals,
+                                    final boolean traverseUnmapped,
+                                    final boolean requireReadsToStartInIntervals ) {
+        // Set intervalsForTraversal to null if intervals is either null or empty
+        this.intervalsForTraversal = intervals != null && ! intervals.isEmpty() ? intervals : null;
+        this.traverseUnmapped = traverseUnmapped;
+
+        if ( traversalIsBounded() && ! indicesAvailable ) {
+            raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
+        }
+
+        // Set our filter status:
+        this.filterReadsToStartInGivenIntervals = requireReadsToStartInIntervals;
+        if ( requireReadsToStartInIntervals ) {
+            Utils.nonNull(intervals);
+            Utils.validate( !intervals.isEmpty(), "Specified intervals must not be empty!" );
         }
     }
 
@@ -448,7 +456,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                     readerEntry.setValue(
                         new SamRecordAlignmentStartIntervalFilteringIterator(
                             getSequenceDictionary(),
-                            userIntervals.iterator(),
+                            intervalsForTraversal.iterator(),
                             samReaderQueryingIterator
                         )
                     );

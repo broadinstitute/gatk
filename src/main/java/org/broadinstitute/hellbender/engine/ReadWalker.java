@@ -55,13 +55,6 @@ public abstract class ReadWalker extends WalkerBase {
     protected final void onStartup() {
         super.onStartup();
         setReadTraversalBounds();
-
-        // Set up whether we're filtering by read start in intervals:
-        boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
-        if ( filterReadsToStartInGivenIntervals && (!hasUserSuppliedIntervals() || userIntervals.isEmpty()) ) {
-            isReadStartFilteringEnabled = false;
-        }
-        reads.setFilterReadsToStartInGivenIntervals(isReadStartFilteringEnabled, userIntervals);
     }
 
     /**
@@ -69,7 +62,23 @@ public abstract class ReadWalker extends WalkerBase {
      */
     void setReadTraversalBounds() {
         if ( hasUserSuppliedIntervals() ) {
-            reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
+
+            // Set up whether we're filtering by read start in intervals:
+            boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
+            if ( filterReadsToStartInGivenIntervals && userIntervals.isEmpty() ) {
+                isReadStartFilteringEnabled = false;
+            }
+
+            // Get traversal parameters:
+            final TraversalParameters traversalParameters =
+                    intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
+
+            // Call the correct setTraversalBounds method:
+            reads.setTraversalBounds(
+                    traversalParameters.getIntervalsForTraversal(),
+                    traversalParameters.traverseUnmappedReads(),
+                    isReadStartFilteringEnabled
+            );
         }
     }
 
