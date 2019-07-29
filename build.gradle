@@ -416,6 +416,7 @@ tasks.withType(ShadowJar) {
 apply from: "testsettings.gradle"
 
 shadowJar {
+    minimize{}
     configurations = [project.configurations.runtime]
     classifier = 'local'
     mergeServiceFiles('reference.conf')
@@ -430,6 +431,7 @@ shadowJar {
 task localJar{ dependsOn shadowJar }
 
 task sparkJar(type: ShadowJar) {
+    minimize{}
     group = "Shadow"
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
