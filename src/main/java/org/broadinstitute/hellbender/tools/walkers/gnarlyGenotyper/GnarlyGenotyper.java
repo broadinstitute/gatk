@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers;
+package org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.tools.evoquer.GnarlyGenotyperEngine;
+import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
@@ -34,6 +34,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.reflections.Reflections;
 
@@ -87,11 +88,12 @@ import java.util.*;
 @BetaFeature
 public final class GnarlyGenotyper extends VariantWalker {
 
+    public static final int PIPELINE_MAX_ALT_COUNT = GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES;
+
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
-
-    public static final int PIPELINE_MAX_ALT_COUNT = 6;
+    private static final boolean CALL_GENOTYPES = true;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -104,8 +106,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
-    @Argument(fullName = "keep-all-sites", shortName = "keep-all",
-            doc="Retain low quality and non-variant sites, applying appropriate filters", optional=true)
+    @Argument(fullName = "keep-all-sites", doc="Retain low quality and non-variant sites, applying appropriate filters", optional=true)
     private boolean keepAllSites = false;
 
     /**
@@ -168,7 +169,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
-            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), true, PIPELINE_MAX_ALT_COUNT);
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), CALL_GENOTYPES, PIPELINE_MAX_ALT_COUNT);
         }
         return genomicsDBOptions;
     }
@@ -252,7 +253,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         SimpleInterval variantStart = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getStart());
         //return early if there's no non-symbolic ALT since GDB already did the merging
-        if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant)
+        if ( !variant.isVariant() || !GATKVariantContextUtils.isProperlyPolymorphic(variant)
                 || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
                 || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             if (keepAllSites) {
@@ -264,19 +265,26 @@ public final class GnarlyGenotyper extends VariantWalker {
             return;
         }
 
-        //return early if variant doesn't meet QUAL threshold
+        //return early if variant can't be genotyped
         if (!variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
-            warning.warn("Variant will not be output because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY + "key assigned by the ReblockGVCFs tool -- if the input did come from ReblockGVCFs, check the GenomicsDB vidmap.json annotation info");
+            warning.warn("At least one variant cannot be genotyped because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY +
+                    "key assigned by the ReblockGVCFs tool. GnarlyGenotyper output may be empty. If the input did come from ReblockGVCFs, " +
+                    "check the GenomicsDB vidmap.json annotation info");
             return;
         }
 
-        final VariantContextBuilder annotationDBBuilder = new VariantContextBuilder(variant);
-        final VariantContext finalizedVC = genotyperEngine.finalizeGenotype(variant, annotationDBBuilder);
+        final VariantContext finalizedVC;
+        final VariantContextBuilder annotationDBBuilder;
+        if (annotationDatabaseWriter != null) {
+            annotationDBBuilder = new VariantContextBuilder(variant);
+            finalizedVC = genotyperEngine.finalizeGenotype(variant, annotationDBBuilder);
+            annotationDatabaseWriter.add(annotationDBBuilder.make());
+        } else {
+            finalizedVC = genotyperEngine.finalizeGenotype(variant);
+        }
+        //could return null if the variant didn't pass the genotyping arg calling/emission threshold
         if (finalizedVC != null && (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             vcfWriter.add(finalizedVC);
-        }
-        if (annotationDatabaseWriter != null) {
-            annotationDatabaseWriter.add(annotationDBBuilder.make());  //we don't seem to have a sites-only option anymore, so do it manually
         }
     }
 

@@ -22,7 +22,7 @@
 ##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
 ##INFO=<ID=AS_ReadPosRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt vs. Ref read position bias">
 ##INFO=<ID=AS_SOR,Number=A,Type=Float,Description="Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias">
-##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes; effectively sum of ADs">
+##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes -- including ref, RAW format">
 ##INFO=<ID=BLOCK_SIZE,Number=1,Type=Integer,Description="Size of the homozygous reference GVCF block">
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
@@ -44,13 +44,4 @@
 ##contig=<ID=chr20,length=64444167,assembly=Homo_sapiens_assembly38.fasta>
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1
-chr20	69485	.	G	<NON_REF>	.	.	END=69510	GT:DP:GQ:MIN_DP:PL	0/0:94:99:94:0,120,1800
-chr20	69511	.	A	G,<NON_REF>	2270.03	.	BaseQRankSum=1.169;DP=82;MQ=31.05;MQRankSum=-0.866;MQ_DP=82;RAW_GT_COUNT=0,0,1;RAW_MQandDP=79056,82;ReadPosRankSum=1.689	GT:AD:DP:GQ:PL:SB	1/1:1,79,0:80:99:2284,207,0,2287,237,2316:0,1,46,33
-chr20	69512	.	A	<NON_REF>	.	.	END=69521	GT:DP:GQ:MIN_DP:PL	0/0:96:99:96:0,120,1800
-chr20	69522	.	A	<NON_REF>	.	.	END=69635	GT:DP:GQ:MIN_DP:PL	0/0:7:0:6:0,0,0
-chr20	69762	.	A	<NON_REF>	.	.	END=69762	GT:DP:GQ:MIN_DP:PL	0/0:7:18:7:0,18,270
-chr20	69763	.	A	<NON_REF>	.	.	END=69766	GT:DP:GQ:MIN_DP:PL	0/0:7:21:7:0,21,253
-chr20	69767	.	A	<NON_REF>	.	.	END=69770	GT:DP:GQ:MIN_DP:PL	0/0:7:12:7:0,12,180
-chr20	69771	.	TAAAAA	T,<NON_REF>	12.59	.	BaseQRankSum=0.937;DP=7;MQ=34.15;MQRankSum=1.300;MQ_DP=7;RAW_GT_COUNT=0,1,0;RAW_MQandDP=8164,7;ReadPosRankSum=1.754	GT:AD:DP:GQ:PL:SB	0/1:0,0,0:0:20:20,0,119,101,128,229:0,4,0,3
-chr20	69777	.	G	<NON_REF>	.	.	END=69783	GT:DP:GQ:MIN_DP:PL	0/0:7:0:7:0,0,0
-chr20	69785	.	T	G,<NON_REF>	2270.03	.	BaseQRankSum=1.169;DP=82;MQ=31.05;MQRankSum=-0.866;MQ_DP=82;RAW_GT_COUNT=0,0,1;RAW_MQandDP=79056,82;ReadPosRankSum=1.689	GT:DP:GQ:PL:SB	1/1:80:99:2284,207,0,2287,237,2316:0,1,46,33
+chr20	69771	.	TAAAAA	T,<NON_REF>	60.77	.	BaseQRankSum=0.937;DP=7;MQ=34.15;MQRankSum=1.300;MQ_DP=7;RAW_GT_COUNT=0,1,0;RAW_MQandDP=8164,7;ReadPosRankSum=1.754	GT:AD:DP:GQ:PL:SB	0/1:0,0,0:0:20:20,0,119,101,128,229:0,4,0,3

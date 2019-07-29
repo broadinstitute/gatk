@@ -149,7 +149,7 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getVariantsForIsProperlyPolymorphic")
     public void testIsProperlyPolymorphic(VariantContext vc, boolean expected){
-        Assert.assertEquals(GenotypeGVCFs.isProperlyPolymorphic(vc), expected);
+        Assert.assertEquals(GATKVariantContextUtils.isProperlyPolymorphic(vc), expected);
     }
 
     @DataProvider

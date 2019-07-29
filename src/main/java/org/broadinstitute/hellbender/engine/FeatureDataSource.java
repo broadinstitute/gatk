@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -394,7 +393,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
-                    createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
+                    createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
             return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);

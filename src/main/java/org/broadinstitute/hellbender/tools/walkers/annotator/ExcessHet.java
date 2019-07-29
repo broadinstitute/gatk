@@ -48,6 +48,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
     private static final boolean ROUND_GENOTYPE_COUNTS = true;
     
     public static final double PHRED_SCALED_MIN_P_VALUE = -10.0 * Math.log10(MIN_NEEDED_VALUE);
+    public static final int NUMBER_OF_GENOTYPE_COUNTS = 3;
 
     public ExcessHet(final Set<String> founderIds){
         super(founderIds);
@@ -248,7 +249,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
         if (vc.hasAttribute(getRawKeyName())) {
             List<Integer> counts = vc.getAttributeAsIntList(getRawKeyName(), 0);
-            if (counts.size() != 3) {
+            if (counts.size() != NUMBER_OF_GENOTYPE_COUNTS) {
                 throw new IllegalStateException("Genotype counts for ExcessHet (" + getRawKeyName() + ") should have three values: homozygous reference, heterozygous with one ref allele, and homozygous variant/heterozygous non-reference");
             }
             final GenotypeCounts t = new GenotypeCounts(counts.get(0), counts.get(1), counts.get(2));

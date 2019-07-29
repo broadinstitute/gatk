@@ -52,7 +52,6 @@ public abstract class VariantWalker extends VariantWalkerBase {
     protected void initializeDrivingVariants() {
         drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
-        //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
         // Create a FeatureDataSource for the driving variants FeatureInput, using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,

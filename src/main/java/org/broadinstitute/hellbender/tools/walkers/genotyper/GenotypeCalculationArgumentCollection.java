@@ -20,6 +20,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String MAX_ALTERNATE_ALLELES_LONG_NAME = "max-alternate-alleles";
 
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
+    public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
@@ -136,7 +137,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Advanced
     @Argument(fullName = MAX_ALTERNATE_ALLELES_LONG_NAME, doc = "Maximum number of alternate alleles to genotype", optional = true)
-    public int MAX_ALTERNATE_ALLELES = 6;
+    public int MAX_ALTERNATE_ALLELES = DEFAULT_MAX_ALTERNATE_ALLELES;
 
     /**
      * If there are more than this number of genotypes at a locus presented to the genotyper, then only this many genotypes will be used.

@@ -1,7 +1,8 @@
-package org.broadinstitute.hellbender.tools.evoquer;
+package org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper;
 
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

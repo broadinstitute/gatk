@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 import com.googlecode.protobuf.format.JsonFormat;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -29,9 +29,16 @@ import java.util.Map;
  */
 public class GenomicsDBUtils {
 
+    private static final String ELEMENT_WISE_SUM = "element_wise_sum";
+    private static final String ELEMENT_WISE_FLOAT_SUM = "element_wise_float_sum";
+    private static final String SUM = "sum";
+    private static final String HISTOGRAM_SUM = "histogram_sum";
+    private static final String STRAND_BIAS_TABLE_COMBINE = "strand_bias_table";
+    private static final String GDB_TYPE_FLOAT = "float";
+    private static final String GDB_TYPE_INT = "int";
+
     /**
      *
-     * @param reference reference sequence
      * @param workspace path to the GenomicsDB workspace
      * @param callsetJson path to the GenomicsDB callset JSON
      * @param vidmapJson path to the GenomicsDB vidmap JSON
@@ -39,13 +46,13 @@ public class GenomicsDBUtils {
      * @param genomicsDBOptions genotyping parameters to read from a GenomicsDB
      * @return a configuration to determine the output format when the GenomicsDB is queried
      */
-    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
-                                                                                               final String callsetJson, final String vidmapJson,
-                                                                                               final String vcfHeader, final GenomicsDBOptions genomicsDBOptions) {
+    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final String workspace,
+                                                                                              final String callsetJson, final String vidmapJson,
+                                                                                              final String vcfHeader, final GenomicsDBOptions genomicsDBOptions) {
         final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace)
-                        .setReferenceGenome(reference.getAbsolutePath())
+                        .setReferenceGenome(genomicsDBOptions.getReference().toAbsolutePath().toString())
                         .setVidMappingFile(vidmapJson)
                         .setCallsetMappingFile(callsetJson)
                         .setVcfHeaderFilename(vcfHeader)
@@ -95,23 +102,23 @@ public class GenomicsDBUtils {
                 getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
 
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
+                GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, ELEMENT_WISE_SUM);
 
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                "AS_RAW_MQ", "element_wise_float_sum");
+                GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
 
         //Update combine operations for GnarlyGenotyper
         //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, "sum");
+                GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, SUM);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.RAW_QUAL_APPROX_KEY, "sum");
+                GATKVCFConstants.RAW_QUAL_APPROX_KEY, SUM);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.VARIANT_DEPTH_KEY, "sum");
+                GATKVCFConstants.VARIANT_DEPTH_KEY, SUM);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, "element_wise_sum");
+                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "element_wise_float_sum");
+                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_FLOAT_SUM);
 
 
         if (vidMapPB != null) {
@@ -125,10 +132,10 @@ public class GenomicsDBUtils {
         return exportConfigurationBuilder.build();
     }
 
-    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
-                                                                                               final String callsetJson, final String vidmapJson,
-                                                                                               final String vcfHeader) {
-        return createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader, null);
+    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final String workspace,
+                                                                                              final String callsetJson, final String vidmapJson,
+                                                                                              final String vcfHeader) {
+        return createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, null);
     }
 
     /**
@@ -224,20 +231,20 @@ public class GenomicsDBUtils {
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            infoBuilder.addVcfDelimiter("|");
-            infoBuilder.addVcfDelimiter(",");
+            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM);
+            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
 
-            if (newCombineOperation.equals("histogram_sum")) {
+            if (newCombineOperation.equals(HISTOGRAM_SUM)) {
                 //Each element of the vector is a tuple <float, int>
-                infoBuilder.addType("float");
-                infoBuilder.addType("int");
-                infoBuilder.setVCFFieldCombineOperation("histogram_sum");
+                infoBuilder.addType(GDB_TYPE_FLOAT);
+                infoBuilder.addType(GDB_TYPE_INT);
+                infoBuilder.setVCFFieldCombineOperation(HISTOGRAM_SUM);
             } else {
-                infoBuilder.setVCFFieldCombineOperation("element_wise_sum");
-                if (newCombineOperation.equals("element_wise_float_sum")) {
-                    infoBuilder.addType("float");
-                } else if (newCombineOperation.equals("strand_bias_table")) {
-                    infoBuilder.addType("int");
+                infoBuilder.setVCFFieldCombineOperation(ELEMENT_WISE_SUM);
+                if (newCombineOperation.equals(ELEMENT_WISE_FLOAT_SUM)) {
+                    infoBuilder.addType(GDB_TYPE_FLOAT);
+                } else if (newCombineOperation.equals(STRAND_BIAS_TABLE_COMBINE)) {
+                    infoBuilder.addType(GDB_TYPE_INT);
                 }
             }
 

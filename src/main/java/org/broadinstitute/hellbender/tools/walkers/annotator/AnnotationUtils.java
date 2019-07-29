@@ -1,17 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
-import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-
-import javax.sound.sampled.Line;
 import java.util.*;
 
 public final class AnnotationUtils {

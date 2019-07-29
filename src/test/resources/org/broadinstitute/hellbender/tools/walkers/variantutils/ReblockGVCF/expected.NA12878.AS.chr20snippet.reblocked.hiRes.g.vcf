@@ -26,7 +26,6 @@
 ##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="allele specific heterozygosity as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation; relate to inbreeding coefficient">
 ##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
 ##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
-##INFO=<ID=AS_QD,Number=1,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
 ##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
 ##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
 ##INFO=<ID=AS_RAW_BaseQRankSum,Number=1,Type=String,Description="raw data for allele specific rank sum test of base qualities">
@@ -154,7 +153,7 @@
 20	10433322	.	A	AT,<NON_REF>	116.64	.	AS_QUALapprox=|124|0;AS_RAW_BaseQRankSum=|2.5,1|NaN;AS_RAW_MQ=14418.00|9723.00|0.00;AS_RAW_MQRankSum=|1.1,1|NaN;AS_RAW_ReadPosRankSum=|2.0,1|NaN;AS_SB_TABLE=5,6|2,3|0,0;AS_VarDP=11|5|0;BaseQRankSum=2.564;DP=35;MQRankSum=1.122;MQ_DP=35;QUALapprox=124;RAW_GT_COUNT=0,1,0;RAW_MQ=67710.00;RAW_MQandDP=67710,35;ReadPosRankSum=2.044;VarDP=16	GT:AD:GQ:PL:SB	0/1:11,5,0:99:124,0,369,158,384,542:5,6,2,3
 20	10433324	.	A	T,<NON_REF>	220.60	.	AS_QUALapprox=|228|0;AS_RAW_BaseQRankSum=|2.2,1|NaN;AS_RAW_MQ=11895.00|10564.00|0.00;AS_RAW_MQRankSum=|0.5,1|NaN;AS_RAW_ReadPosRankSum=|1.5,1|NaN;AS_SB_TABLE=2,6|2,4|0,0;AS_VarDP=8|6|0;BaseQRankSum=2.279;DP=33;MQRankSum=0.584;MQ_DP=33;QUALapprox=228;RAW_GT_COUNT=0,1,0;RAW_MQ=60510.00;RAW_MQandDP=60510,33;ReadPosRankSum=1.543;VarDP=14	GT:AD:GQ:PGT:PID:PL:SB	0/1:8,6,0:99:0|1:10433324_A_T:228,0,275,252,294,546:2,6,2,4
 20	10433326	.	A	T,<NON_REF>	220.60	.	AS_QUALapprox=|228|0;AS_RAW_BaseQRankSum=|0.8,1|NaN;AS_RAW_MQ=11895.00|10564.00|0.00;AS_RAW_MQRankSum=|0.5,1|NaN;AS_RAW_ReadPosRankSum=|1.4,1|NaN;AS_SB_TABLE=2,6|2,4|0,0;AS_VarDP=8|6|0;BaseQRankSum=0.874;DP=31;MQRankSum=0.584;MQ_DP=31;QUALapprox=228;RAW_GT_COUNT=0,1,0;RAW_MQ=53310.00;RAW_MQandDP=53310,31;ReadPosRankSum=1.403;VarDP=14	GT:AD:GQ:PGT:PID:PL:SB	0/1:8,6,0:99:0|1:10433324_A_T:228,0,275,252,293,546:2,6,2,4
-20	10433328	.	A	T,ATATAT,<NON_REF>	902.06	.	AS_QUALapprox=|742|499|243;AS_RAW_BaseQRankSum=|||;AS_RAW_MQ=0.00|10564.00|2523.00|0.00;AS_RAW_MQRankSum=|||;AS_RAW_ReadPosRankSum=|||;AS_SB_TABLE=0,0|2,4|1,2|0,0;AS_VarDP=0|6|3|0;DP=30;MQ_DP=30;QUALapprox=919;RAW_GT_COUNT=0,0,1;RAW_MQ=49710.00;RAW_MQandDP=49710,30;VarDP=9	GT:AD:GQ:PL:SB	1/2:0,6,3,0:99:919,177,246,420,0,500,676,211,530,804:0,0,3,6
+20	10433328	.	A	T,ATATAT,<NON_REF>	902.06	.	AS_QUALapprox=|742|499|0;AS_RAW_BaseQRankSum=|||;AS_RAW_MQ=0.00|10564.00|2523.00|0.00;AS_RAW_MQRankSum=|||;AS_RAW_ReadPosRankSum=|||;AS_SB_TABLE=0,0|2,4|1,2|0,0;AS_VarDP=0|6|3|0;DP=30;MQ_DP=30;QUALapprox=919;RAW_GT_COUNT=0,0,1;RAW_MQ=49710.00;RAW_MQandDP=49710,30;VarDP=9	GT:AD:GQ:PL:SB	1/2:0,6,3,0:99:919,177,246,420,0,500,676,211,530,804:0,0,3,6
 20	10433330	.	T	<NON_REF>	.	.	END=10433330	GT:DP:GQ	0/0:27:10
 20	10433331	.	A	<NON_REF>	.	.	END=10433331	GT:DP:GQ	0/0:26:40
 20	10433332	.	T	<NON_REF>	.	.	END=10433337	GT:DP:GQ	0/0:26:50

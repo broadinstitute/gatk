@@ -292,6 +292,25 @@ public final class GATKVariantContextUtils {
         return overlaps;
     }
 
+    /**
+     * Determines whether the provided VariantContext has real alternate alleles.
+     *
+     * @param vc  the VariantContext to evaluate
+     * @return true if it has proper alternate alleles, false otherwise
+     */
+    public static boolean isProperlyPolymorphic(final VariantContext vc) {
+        //obvious cases
+        if (vc == null || vc.getAlternateAlleles().isEmpty()) {
+            return false;
+        } else if (vc.isBiallelic()) {
+            return !(GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0)) || vc.isSymbolic());
+        } else if (GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0)) && vc.getAlternateAllele(1).equals(Allele.NON_REF_ALLELE)){
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     public enum GenotypeMergeType {
         /**
          * Make all sample genotypes unique by file. Each sample shared across RODs gets named sample.ROD.
