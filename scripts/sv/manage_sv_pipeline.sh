@@ -58,7 +58,7 @@ This script manages the SV discovery pipeline by calling other scripts
 a) ensure that the gcloud utility is up to date
 b) ensure that local GATK .git hash matches local GATK .jar file.
 c) create a Google Dataproc cluster used for running the GATK-SV
-   pipeline (call create_cluster.sh)
+   pipeline (call create_cluster_and_prep_data.sh)
 d) run the analysis (call runWholePipeline.sh)
 e) copy results to a datetime and git-version stamped directory
    on GCS, along with logged console output (call copy_sv_results.sh)
@@ -247,7 +247,7 @@ TMPDIR=${TMPDIR:-/tmp/} # $TMPDIR is defined by default on OSX, not linux
 LOCAL_LOG_FILE=${SV_LOCAL_LOG_FILE:-"${TMPDIR}sv-discovery-${SANITIZED_BAM}.log"}
 
 ########################################################################################################################
-# call create_cluster, using default_init
+# call create_cluster_and_prep_data.sh, using default_init
 CLUSTER_MAX_LIFE_HOURS=${CLUSTER_MAX_LIFE_HOURS:-4h}
 CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
 INIT_SCRIPT=${INIT_SCRIPT:-"${GATK_DIR}/scripts/sv/default_init.sh"}
@@ -277,8 +277,8 @@ while true; do
                     INIT_ARGS="${INIT_SCRIPT} gs://${GCS_SAVE_PATH}/init/"
                 fi
 
-                echo "create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${CLUSTER_MAX_LIFE_HOURS} ${CLUSTER_MAX_IDLE_MINUTES} ${GCS_REFERENCE_DIR} ${GCS_BAM} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${CLUSTER_MAX_LIFE_HOURS} ${CLUSTER_MAX_IDLE_MINUTES} ${GCS_REFERENCE_DIR} ${GCS_BAM} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                echo "create_cluster_and_prep_data.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${CLUSTER_MAX_LIFE_HOURS} ${CLUSTER_MAX_IDLE_MINUTES} ${GCS_REFERENCE_DIR} ${GCS_BAM} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                create_cluster_and_prep_data.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${CLUSTER_MAX_LIFE_HOURS} ${CLUSTER_MAX_IDLE_MINUTES} ${GCS_REFERENCE_DIR} ${GCS_BAM} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 break
                 ;;
         [Nn]*)  break
@@ -353,9 +353,8 @@ while true; do
       read -p "Delete cluster? (yes/no/cancel)" yn
     fi
     case $yn in
-        [Yy]*)  echo "gcloud dataproc clusters delete ${CLUSTER_NAME} --project=${PROJECT_NAME} --async --quiet"
-                gcloud dataproc clusters delete ${CLUSTER_NAME} --project=${PROJECT_NAME} --async --quiet
-                echo
+        [Yy]*)  echo "delete_cluster.sh ${CLUSTER_NAME} ${PROJECT_NAME}"
+                delete_cluster.sh ${CLUSTER_NAME} ${PROJECT_NAME}
                 break
                 ;;
         [Nn]*)  break

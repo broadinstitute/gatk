@@ -86,6 +86,19 @@ SV_MASTER_BOOT_DISK_SIZE=${SV_MASTER_BOOT_DISK_SIZE:-1000}
 SV_WORKER_BOOT_DISK_SIZE=${SV_WORKER_BOOT_DISK_SIZE:-1000}
 SV_BOOT_DISK_TYPE=${SV_BOOT_DISK_TYPE:-"pd-standard"}
 
+# some custom dataproc properties
+DATAPROC_CUSTOM_PROPERTIES="yarn:yarn.resourcemanager.am.max-attempts=5"
+DATAPROC_CUSTOM_PROPERTIES+=",mapred:mapreduce.map.maxattempts=8"
+DATAPROC_CUSTOM_PROPERTIES+=",mapred:mapreduce.reduce.maxattempts=8"
+DATAPROC_CUSTOM_PROPERTIES+=",spark:spark.task.maxFailures=8"
+DATAPROC_CUSTOM_PROPERTIES+=",spark:spark.stage.maxConsecutiveAttempts=8"
+DATAPROC_CUSTOM_PROPERTIES+=",hdfs:dfs.client.use.datanode.hostname=true"
+
+DATAPROC_IMAGE_VERSION="1.3"
+if [[ "1.4" == "${DATAPROC_IMAGE_VERSION}" ]]; then
+  DATAPROC_CUSTOM_PROPERTIES+=",hdfs:dfs.blocksize=134217728" # this special number was returned when creating a dataproc cluster using image 1.4 and run `hdfs getconf -confKey dfs.blocksize`
+fi
+
 gcloud beta dataproc clusters create ${CLUSTER_NAME} \
     --zone ${ZONE} \
     --master-machine-type n1-highmem-8 \
@@ -101,13 +114,13 @@ gcloud beta dataproc clusters create ${CLUSTER_NAME} \
     --num-worker-local-ssds 1 \
     --metadata "reference=$REF_DIR" \
     --metadata "sample=$SAMP_INPUT" \
-    --image-version 1.3 \
+    --image-version ${DATAPROC_IMAGE_VERSION} \
     --project ${PROJECT} \
     --initialization-actions ${INIT_ACTION} \
     --initialization-action-timeout 10m \
     --max-age ${MAX_LIFE_HOURS} \
     --max-idle ${MAX_IDLE_MINUTES} \
-    --properties yarn:yarn.resourcemanager.am.max-attempts=5,mapred:mapreduce.map.maxattempts=8,mapred:mapreduce.reduce.maxattempts=8,spark:spark.task.maxFailures=8,spark:spark.stage.maxConsecutiveAttempts=8
+    --properties "${DATAPROC_CUSTOM_PROPERTIES}"
 
 MASTER_NODE="hdfs://""$CLUSTER_NAME""-m:8020"
 

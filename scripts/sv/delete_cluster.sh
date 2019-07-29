@@ -11,4 +11,4 @@ fi
 CLUSTER_NAME=$1
 PROJECT=$2
 
-gcloud dataproc clusters delete --project $PROJECT "$CLUSTER_NAME" --async
+gcloud dataproc clusters delete --project $PROJECT "$CLUSTER_NAME" --async --quiet
