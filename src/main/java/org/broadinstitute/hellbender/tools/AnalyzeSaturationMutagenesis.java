@@ -103,6 +103,9 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
     @Argument(doc = "minimum number of wt calls flanking variant", fullName = "min-flanking-length")
     @VisibleForTesting static int minFlankingLength = 2;
 
+    @Argument(doc = "minimum map quality for read alignment.  reads having alignments with MAPQs less than this are treated as unmapped.", fullName = "min-mapq")
+    private static int minMapQ = 4;
+
     @Argument(doc = "reference interval(s) of the ORF (1-based, inclusive), for example, '134-180,214-238' (no spaces)",
             fullName = "orf")
     private static String orfCoords;
@@ -286,14 +289,20 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         }
     }
 
+    // interpret the effects of the SNVs on the ORF
     private static void describeVariantsAsCodons( final BufferedWriter writer, final List<SNV> snvs )
             throws IOException {
         final List<CodonVariation> codonVariations = codonTracker.encodeSNVsAsCodons(snvs);
-        final int[] refCodonValues = codonTracker.getRefCodonValues();
+        if ( codonVariations.size() == 0 ) {
+            writer.write("\t0");
+            return;
+        }
 
         writer.write('\t');
-        writer.write(Long.toString(codonVariations.size()));
+        writer.write(Integer.toString(codonVariations.size()));
+        final int[] refCodonValues = codonTracker.getRefCodonValues();
 
+        // write a column describing each altered codon as DNA
         String sep = "\t";
         for ( final CodonVariation variation : codonVariations ) {
             writer.write(sep);
@@ -310,6 +319,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             }
         }
 
+        // write a column describing each altered codon as an amino acid
         sep = "\t";
         for ( final CodonVariation variation : codonVariations ) {
             writer.write(sep);
@@ -323,7 +333,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             } else if ( variation.isDeletion() ) {
                 writer.write("D:");
                 writer.write(codonTranslation.charAt(refCodonValues[codonId]));
-                writer.write(":-");
+                writer.write(">-");
             } else {
                 final char fromAA = codonTranslation.charAt(refCodonValues[codonId]);
                 final char toAA = codonTranslation.charAt(variation.getCodonValue());
@@ -335,6 +345,37 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                 writer.write(toAA);
             }
         }
+
+        // write one final column describing the total effect in HGVS standard nomenclature
+        // this involves grouping together codon variations that can be described together
+        sep = "\t";
+        CodonVariationGroup codonVariationGroup = null;
+        for ( final CodonVariation variation : codonVariations ) {
+            if ( codonVariationGroup == null ) {
+                if ( !isSynonymous(variation, refCodonValues) ) {
+                    codonVariationGroup = new CodonVariationGroup(refCodonValues, variation);
+                }
+            } else if ( !codonVariationGroup.addVariation(variation) ) {
+                writer.write(sep);
+                sep = ";";
+                writer.write(codonVariationGroup.asHGVSString());
+                codonVariationGroup = null;
+                if ( !isSynonymous(variation, refCodonValues) ) {
+                    codonVariationGroup = new CodonVariationGroup(refCodonValues, variation);
+                }
+            }
+        }
+        if ( codonVariationGroup != null && !codonVariationGroup.isEmpty() ) {
+            writer.write(sep);
+            writer.write(codonVariationGroup.asHGVSString());
+        }
+    }
+
+    // does the variation describe a "silent" mutation that doesn't cause a change in the amino acid?
+    private static boolean isSynonymous( final CodonVariation variation, final int[] refCodonValues ) {
+        return variation.getVariationType() == CodonVariationType.MODIFICATION &&
+                codonTranslation.charAt(variation.getCodonValue()) ==
+                        codonTranslation.charAt(refCodonValues[variation.getCodonId()]);
     }
 
     private static void writeRefCoverage() {
@@ -577,6 +618,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         }
     }
 
+    // categories for interpretation of reads
     enum ReportType {
         UNMAPPED("unmapped", "Unmapped Reads"),
         LOW_QUALITY("lowQ", "LowQ Reads"),
@@ -591,7 +633,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         public final String attributeValue; // value for tagging rejected reads.  when null, don't tag the read.
         public final String label;
 
-        private ReportType( final String attributeValue, final String label ) {
+        ReportType( final String attributeValue, final String label ) {
             this.attributeValue = attributeValue;
             this.label = label;
         }
@@ -599,8 +641,9 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         public final static String REPORT_TYPE_ATTRIBUTE_KEY = "XX";
     }
 
+    // counts of the reporting categories
     public final static class ReportTypeCounts {
-        private long[] counts = new long[ReportType.values().length];
+        private final long[] counts = new long[ReportType.values().length];
 
         public void bumpCount( final ReportType reportType ) {
             counts[reportType.ordinal()] += 1;
@@ -613,6 +656,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         }
     }
 
+    // a description of the wild type amplicon and its coverage
     @VisibleForTesting final static class Reference {
         // the amplicon -- all bytes are converted to upper-case 'A', 'C', 'G', or 'T', no nonsense
         private final byte[] refSeq;
@@ -885,6 +929,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         MODIFICATION
     }
 
+    // a description of a codon that varies from wild type
     @VisibleForTesting static final class CodonVariation {
         private final int codonId;
         private final int codonValue; // ignored for FRAMESHIFT and DELETION
@@ -931,6 +976,117 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         }
         public static CodonVariation createModification( final int codonId, final int codonValue ) {
             return new CodonVariation(codonId, codonValue, CodonVariationType.MODIFICATION);
+        }
+    }
+
+    // one or more codon variations that can be described together in standard nomenclature
+    @VisibleForTesting static final class CodonVariationGroup {
+        private final int[] refCodonValues;
+        private final StringBuilder altCalls;
+        private int startingCodon;
+        private int endingCodon;
+        private boolean isFrameShift;
+        private int insCount;
+        private int delCount;
+        private int subCount;
+
+        // start a new group with a first variation
+        public CodonVariationGroup( final int[] refCodonValues, final CodonVariation codonVariation ) {
+            this.refCodonValues = refCodonValues;
+            altCalls = new StringBuilder();
+            insCount = delCount = subCount = 0;
+            switch ( codonVariation.getVariationType() ) {
+                case FRAMESHIFT:
+                    isFrameShift = true;
+                    break;
+                case INSERTION:
+                    insCount = 1;
+                    altCalls.append(codonTranslation.charAt(codonVariation.getCodonValue()));
+                    break;
+                case DELETION:
+                    delCount = 1;
+                    break;
+                case MODIFICATION:
+                    subCount = 1;
+                    altCalls.append(codonTranslation.charAt(codonVariation.getCodonValue()));
+                    break;
+            }
+            startingCodon = endingCodon = codonVariation.getCodonId();
+        }
+
+        // attempt to add more variations
+        // returns false if the presented variation cannot be added to the group
+        public boolean addVariation( final CodonVariation codonVariation ) {
+            final int codonId = codonVariation.getCodonId();
+            // if we're skipping a codon, start a new group (except for frameshift groups)
+            if ( codonId > endingCodon + 1 && !isFrameShift ) return false;
+            switch ( codonVariation.getVariationType() ) {
+                case FRAMESHIFT:
+                    return false; // start new group for the frameshift
+                case INSERTION:
+                    insCount += 1;
+                    altCalls.append(codonTranslation.charAt(codonVariation.getCodonValue()));
+                    if ( isFrameShift && isEmpty() ) startingCodon = codonId;
+                    break;
+                case DELETION:
+                    delCount += 1;
+                    break;
+                case MODIFICATION:
+                    final char aa = codonTranslation.charAt(codonVariation.getCodonValue());
+                    if ( aa == codonTranslation.charAt(refCodonValues[codonId]) ) {
+                        if ( isFrameShift ) {
+                            if ( !isEmpty() ) altCalls.append(aa);
+                            break;
+                        }
+                        // synonymous codon -- start new group
+                        return false;
+                    }
+                    if ( isFrameShift && isEmpty() ) startingCodon = codonId;
+                    subCount += 1;
+                    altCalls.append(aa);
+                    break;
+            }
+            endingCodon = codonId;
+            return true;
+        }
+
+        // sometimes when starting with a frame shift you end up with nothing because the variants are all synonymous
+        public boolean isEmpty() { return subCount + insCount + delCount == 0; }
+
+        @Override public String toString() { return asHGVSString(); }
+
+        // translate the group into standard nomenclature
+        public String asHGVSString() {
+            final String alts = altCalls.toString();
+            final StringBuilder sb = new StringBuilder();
+            sb.append(codonTranslation.charAt(refCodonValues[startingCodon])).append(startingCodon + 1);
+            if ( isFrameShift && !alts.isEmpty() ) {
+                sb.append(alts.charAt(0));
+                final int len = endingCodon - startingCodon + 1;
+                if ( len > 1 ) {
+                    sb.append("fs*");
+                    if ( alts.charAt(alts.length() - 1) == 'X' ) sb.append(len);
+                    else sb.append('?');
+                }
+            } else {
+                // pure inserts need to have the ending codon fixed up
+                if ( insCount != 0 && delCount == 0 && subCount == 0 ) {
+                    endingCodon = startingCodon + 1;
+                }
+                // suppress printing range and type when there is a single variation
+                if ( startingCodon != endingCodon ) {
+                    sb.append('_').append(codonTranslation.charAt(refCodonValues[endingCodon])).append(endingCodon + 1);
+                }
+                if ( subCount == 0 && insCount == 0 ) {
+                    sb.append("del");
+                } else if ( subCount == 0 && delCount == 0 ) {
+                    sb.append("ins");
+                } else if ( subCount + delCount + insCount > 1 ) {
+                    sb.append("insdel");
+                }
+                sb.append(alts);
+            }
+            return sb.toString();
         }
     }
 
@@ -1270,6 +1426,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         }
     }
 
+    // describes the SNVs found in a read, and the reference covered by the read
     @VisibleForTesting static final class ReadReport {
         final List<Interval> refCoverage;
         final List<SNV> snvList;
@@ -1546,11 +1703,12 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
     @VisibleForTesting static ReadReport getReadReport( final GATKRead read ) {
         totalBaseCalls += read.getLength();
 
-        if ( read.isUnmapped() || read.isDuplicate() || read.failsVendorQualityCheck() ) {
+        if ( read.isUnmapped() || read.isDuplicate() || read.failsVendorQualityCheck() ||
+                read.getMappingQuality() < minMapQ ) {
             return rejectRead(read, ReportType.UNMAPPED);
         }
 
-        Interval trim = calculateTrim(read);
+        final Interval trim = calculateTrim(read);
         if ( trim.size() < minLength ) {
             return rejectRead(read, ReportType.LOW_QUALITY);
         }
