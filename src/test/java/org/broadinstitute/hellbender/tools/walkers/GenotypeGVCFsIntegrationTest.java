@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
+import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -326,6 +327,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
                 .addArgument("V", input)
+                .addArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT)
                 .addOutput(output);
 
         additionalArguments.forEach(args::add);
