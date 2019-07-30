@@ -215,18 +215,19 @@ public final class GnarlyGenotyperEngine {
             }
         }
         //since AS_FS and AS_SOR share the same raw key, we have to wait to remove raw keys until all the finalized values are added
-        for (final Class c : allASAnnotations) {
-            try {
-                final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
-                if (annotation instanceof AS_StandardAnnotation  && annotation instanceof ReducibleAnnotation) {
-                    final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
-                    if (variant.hasAttribute(ann.getRawKeyName())) {
-                        vcfBuilder.rmAttribute(ann.getRawKeyName());
+        if (!keepAllSites) {
+            for (final Class c : allASAnnotations) {
+                try {
+                    final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
+                    if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
+                        final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
+                        if (variant.hasAttribute(ann.getRawKeyName())) {
+                            vcfBuilder.rmAttribute(ann.getRawKeyName());
+                        }
                     }
+                } catch (final Exception e) {
+                    throw new IllegalStateException("Something went wrong: ", e);
                 }
-            }
-            catch (final Exception e) {
-                throw new IllegalStateException("Something went wrong: ", e);
             }
         }
         if (variant.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
