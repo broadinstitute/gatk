@@ -84,7 +84,7 @@ import java.io.IOException;
  *   --executor-memory 32G \
  *   --num-executors 4 \
  *   --executor-cores 30 \
- *   --conf spark.yarn.executor.memoryOverhead=132000
+ *   --conf spark.executor.memoryOverhead=132000
  * </pre>
  *
  * <p>Note that the microbe BWA image must be copied to the same path on every worker node. The microbe FASTA

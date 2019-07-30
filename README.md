@@ -245,7 +245,7 @@ You can download and run pre-built versions of GATK4 from the following places:
       -- \
       --spark-runner SPARK --spark-master <master_url> \
       --num-executors 5 --executor-cores 2 --executor-memory 4g \
-      --conf spark.yarn.executor.memoryOverhead=600
+      --conf spark.executor.memoryOverhead=600
     ```
 
 * You can also omit the "--num-executors" argument to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructions).
