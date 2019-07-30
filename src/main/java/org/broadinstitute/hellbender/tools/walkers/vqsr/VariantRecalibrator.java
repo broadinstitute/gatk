@@ -25,7 +25,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.collections.ExpandingArrayList;
+import org.broadinstitute.hellbender.utils.collections.ExpandingArrayList;//another example of extra not needed...
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
@@ -381,7 +381,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     final private ArrayList<Double> replicate = new ArrayList<>(REPLICATE * 2);
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final VariantRecalibratorEngine engine = new VariantRecalibratorEngine( VRAC );
-    final private ExpandingArrayList<VariantDatum> reduceSum = new ExpandingArrayList<>(2000);
+    final private ExpandingArrayList<VariantDatum> reduceSum = new ExpandingArrayList<>(2000);//another possibly neccesary
     final private List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>();
     private long counter = 0;
     private GATKReportTable nmcTable;
@@ -587,7 +587,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * @param variants is modified by having a new VariantDatum added to it
      */
     private void addDatum(
-            final ExpandingArrayList<VariantDatum> variants,
+            final ExpandingArrayList<VariantDatum> variants,//another
             final boolean isInput,
             final FeatureContext featureContext,
             final VariantContext vc,
@@ -1027,7 +1027,7 @@ private GATKReportTable makeVectorTable(final String tableName,
             for( int jjj = iii + 1; jjj < annotationKeys.length; jjj++) {
                 logger.info( "Building " + annotationKeys[iii] + " x " + annotationKeys[jjj] + " plot...");
 
-                final List<VariantDatum> fakeData = new ExpandingArrayList<>();
+                final List<VariantDatum> fakeData = new ExpandingArrayList<>();//another
                 double minAnn1 = 100.0, maxAnn1 = -100.0, minAnn2 = 100.0, maxAnn2 = -100.0;
                 for( final VariantDatum datum : randomData ) {
                     minAnn1 = Math.min(minAnn1, datum.annotations[iii]);
