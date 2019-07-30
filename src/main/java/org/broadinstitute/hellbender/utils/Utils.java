@@ -3,22 +3,18 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
+import shapeless.ops.hlist;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1038,6 +1034,65 @@ public final class Utils {
         return x != y;
     }
 
+
+
+    public static class Alignment{
+        int index;
+        int numOfSoftclips;
+        String typeOfSoftclip;
+        Indel indel;
+
+        public Alignment(int index, int numOfSoftclips, String typeOfSoftclip){
+            this.index = index;
+            this.numOfSoftclips = numOfSoftclips;
+            this.typeOfSoftclip = typeOfSoftclip;
+            this.indel = new Indel(-1, 0, 0, false);
+        }
+
+        public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, Indel indel){
+            this.index = index;
+            this.numOfSoftclips = numOfSoftclips;
+            this.typeOfSoftclip = typeOfSoftclip;
+            this.indel = indel;
+        }
+
+        public int getIndex(){
+            return index;
+        }
+
+        public int getNumOfSoftclips(){
+            return numOfSoftclips;
+        }
+
+        public String getTypeOfSoftclip(){
+            return typeOfSoftclip;
+        }
+
+        public void setIndex(int index) {
+            this.index = index;
+        }
+
+        public void setNumOfSoftclips(int numOfSoftclips) {
+            this.numOfSoftclips = numOfSoftclips;
+        }
+
+        public void setTypeOfSoftclip(String typeOfSoftclip) {
+            this.typeOfSoftclip = typeOfSoftclip;
+        }
+
+        public void setIndel(Indel indel){
+            this.indel = indel;
+        }
+
+        public Indel getIndel() {
+            return indel;
+        }
+    }
+
+    public static Alignment lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches) {
+        return lastIndexOfAtMostTwoMismatches(reference, query, allowedMismatches, 0, false, 0);
+    }
+
     /**
      * Find the last occurrence of the query sequence in the reference sequence
      *
@@ -1046,11 +1101,45 @@ public final class Utils {
      * @param reference the reference sequence
      * @param query the query sequence
      */
-    public static int lastIndexOfAtMostTwoMismatch(final byte[] reference, final byte[] query, final int allowedMismatches) {
+    public static Alignment lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches, int refIndexBound, boolean lookForSoftclips, int allowedSoftclips) {
+        int queryLength = query.length;
+        if(refIndexBound < 0){
+            refIndexBound = 0;
+        }
+
+        // start search from the last possible matching position and search to the left
+        for (int refIndex = reference.length - queryLength; refIndex >= refIndexBound; refIndex--) {
+            int mismatchCount = 0;
+            for (int queryIndex = 0; queryIndex < queryLength && mismatchCount <= allowedMismatches; queryIndex++) {
+                if (reference[refIndex+queryIndex] != query[queryIndex]) {
+                    mismatchCount++;
+                }
+            }
+            if (mismatchCount <= allowedMismatches) {
+                return new Alignment(refIndex, 0, "");
+            }
+        }
+
+        //look for exact matches with Softclips(1-5)
+        if(lookForSoftclips){
+            for(int size = 1; size < allowedSoftclips; size++){
+                Alignment alignment = Utils.softclip(reference, query, size, 0, false, false);
+                if(alignment.getIndex() != -1){
+                    return alignment;
+                }
+            }
+        }
+
+
+        //no exact match or softlcips are found
+        return new Alignment(-1, 0, "");
+    }
+
+    public static int firstIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches, int refBound) {
         int queryLength = query.length;
 
         // start search from the last possible matching position and search to the left
-        for (int refIndex = reference.length - queryLength; refIndex >= 0; refIndex--) {
+        for (int refIndex = 0; refIndex <= refBound; refIndex++) {
             int mismatchCount = 0;
             for (int queryIndex = 0; queryIndex < queryLength && mismatchCount <= allowedMismatches; queryIndex++) {
                 if (reference[refIndex+queryIndex] != query[queryIndex]) {
@@ -1065,85 +1154,510 @@ public final class Utils {
         return -1;
     }
 
+
+    public static Alignment softclip(final byte[] reference, final byte[] query, int size, int allowedMismatches, boolean lookForDeletion, boolean lookForInsertion){
+
+        int aligner;
+        int front;
+        int back;
+        int mismatches = 0;
+        if(reference.length == query.length - size){
+            aligner = 0;
+        }
+        else if(reference.length > query.length || reference.length == query.length){
+            aligner = reference.length - query.length + size;
+        }
+        else{
+            return new Alignment(-1, 0, "");
+        }
+
+        for(front = size; front < query.length; front++){
+            if(reference[front - size] != query[front]) {
+                if (lookForDeletion){
+                    byte[] ref = new byte[reference.length - (front - size)];
+                    System.arraycopy(reference, front - size, ref, 0, reference.length - (front - size));
+                    byte[] que = new byte[query.length - front];
+                    System.arraycopy(query, front, que, 0, query.length - front);
+                    int del = firstIndexOfAtMostTwoMismatches(ref, que, 0, front - size + 3);
+                    if (del != -1) {
+                        int matchingBases = query.length - que.length - size;
+                        Indel deletion = new Indel(0, matchingBases, del, false);
+                        //may need to shift cigar here left
+                        return new Alignment(0, size, "front", deletion);
+                    }
+                }
+                if(lookForInsertion){
+                    int insFront;
+                    for(insFront = front + 1; insFront < query.length; insFront++){
+                        if(reference[insFront - size - 1] != query[insFront]){
+                            break;
+                        }
+                    }
+                    if(insFront == query.length){
+                        Indel insertion = new Indel(0, front - size, 1, true);
+                        return new Alignment(0, size, "front", insertion);
+                    }
+                }
+                mismatches++;
+                if(mismatches > allowedMismatches){
+                    mismatches = 0;
+                    for(back = query.length - 1 - size; back >= 0; back--){
+                        if(reference[aligner + back] != query[back]){
+                            if(lookForDeletion){
+                                byte[] ref = new byte[aligner + back + 1];
+                                System.arraycopy(reference, 0, ref, 0, aligner + back + 1);
+                                byte[] que = new byte[back + 1];
+                                System.arraycopy(query, 0, que, 0, back + 1);
+                                int del = lastIndexOfAtMostTwoMismatches(ref, que, 0, ref.length - 5, false, 0).getIndex();
+                                if (del != -1) {
+                                    int matchingBases = ref.length - 1- del;
+                                    int indelSize = ref.length - del - que.length;
+                                    Indel deletion = new Indel(reference.length - query.length + size - indelSize, matchingBases, indelSize, false);
+                                    return new Alignment(reference.length - query.length + size - indelSize, size, "back", deletion);
+                                }
+                            }
+                            if(lookForInsertion){
+                                int insBack;
+                                for(insBack = back - 1; insBack >= 0; insBack--){
+                                    if(reference[insBack + aligner + 1] != query[insBack]){
+                                        break;
+                                    }
+                                }
+                                if(insBack == -1){
+                                    int matchingBases = back;
+                                    int indelSize = 1;
+                                    Indel insertion = new Indel(aligner - indelSize, matchingBases, indelSize, true);
+                                    return new Alignment(aligner, size, "front", insertion);
+                                }
+
+                            }
+                            mismatches++;
+                            if(mismatches > allowedMismatches){
+                                return new Alignment(-1, 0, "");
+                            }
+                        }
+                    }
+                    return new Alignment(reference.length - query.length + size, size, "back");
+                }
+            }
+        }
+        return new Alignment(0, size, "front");
+    }
+
     /**
      * Finds the location of one indel in the query sequence in relation to the reference sequence
+     * Global Alignment
      *
-     * Returns the index and size of the indel or -1 and 0 if an indel less than 13 bases is not found
+     * Returns the index and size of the indel (as a 2 element int array) or -1 and 0 if an indel less than 4 bases is not found
      *
      * @param reference the reference sequence
      * @param query the query sequence
-     * @param allowedLengthOfIndel the maximum size of the indel before 2 mismatches becomes less penalized
+     * @param maxIndelLength the maximum length indel we look for
      */
-    public static int[] atMostOneIndel(final byte[] reference, final byte[] query, int allowedLengthOfIndel){
-        int referenceLength = reference.length;
-        int queryLength = query.length;
+    public static ImmutablePair<Integer, Integer> oneIndelHapToRef(final byte[] reference, final byte[] query, int maxIndelLength){
+        int lengthOfIndel = Math.abs(reference.length - query.length);
 
-        int indelEnd = -1;
-        int[] indelStartAndSize = {-1,0};
-
-        if(queryLength < referenceLength){
-            int lengthOfIndel = referenceLength - queryLength;
-            if(lengthOfIndel > allowedLengthOfIndel){
-                return indelStartAndSize;
-            }
-
-            //traverse backwards until you hit mismatch/end of indel
-            for(int i = queryLength - 1; i >= 0; i--){
-                if(query[i] != reference[i + lengthOfIndel]){
-                    indelEnd = i + 1;
-
-                    //traverse forwards until you hit start of indel
-                    for(i = 0; i < indelEnd; i++){
-                        if(query[i] != reference[i]){
-                            return indelStartAndSize;
-                        }
-                    }
-
-                    //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelEnd;
-                    indelStartAndSize[1] = lengthOfIndel;
-                    return indelStartAndSize;
-                }
-            }
-
-            //deletion located at the end of the query
-            indelStartAndSize[0] = queryLength;
-            indelStartAndSize[1] = referenceLength - queryLength;
-            return indelStartAndSize;
+        if(lengthOfIndel > maxIndelLength){
+            return new ImmutablePair<Integer, Integer>(-1,0);
         }
-        if(referenceLength < queryLength){
-            int lengthOfIndel = queryLength - referenceLength;
-            if(lengthOfIndel > allowedLengthOfIndel){
-                return indelStartAndSize;
-            }
-
-            //traverse backwards until you hit mismatch/end of indel
-            for(int i = referenceLength - 1; i >= 0; i--){
-                if(reference[i] != query[i + lengthOfIndel]){
-                    indelEnd = i + 1;
-
-                    //traverse forwards until you hit start of indel
-                    for(i = 0; i < indelEnd; i++){
-                        if(reference[i] != query[i]){
-                            return indelStartAndSize;
-                        }
-                    }
-
-                    //traversed entire query, one indel and no mismatches found
-                    indelStartAndSize[0] = indelEnd;
-                    indelStartAndSize[1] = lengthOfIndel;
-                    return indelStartAndSize;
-                }
-            }
-
-            //deletion located at the end of the query
-            indelStartAndSize[0] = referenceLength;
-            indelStartAndSize[1] = queryLength - referenceLength;
-            return indelStartAndSize;
+        //deletion
+        if(query.length < reference.length){
+            return findIndel(query, reference, lengthOfIndel);
         }
-
+        //insertion
+        else if(query.length > reference.length){
+            return findIndel(reference, query, lengthOfIndel);
+        }
         //lengths are equal, no one indel
-        return indelStartAndSize;
+        else{
+            return new ImmutablePair<Integer, Integer>(-1,0);
+        }
+    }
+
+    private static ImmutablePair<Integer, Integer> findIndel(final byte[] shorter, final byte[] longer, int lengthOfIndel){
+        int indelEnd = -1;
+        //traverse backwards until you hit mismatch/end of indel
+        for(int i = shorter.length - 1; i >= 0; i--){
+            if(shorter[i] != longer[i + lengthOfIndel]){
+                indelEnd = i + 1;
+                break;
+            }
+        }
+        if(indelEnd == -1){
+            //deletion located at beginning of the query
+            return new ImmutablePair<Integer, Integer>(0, lengthOfIndel);
+        }
+        //traverse forwards until you hit start of indel
+        for(int i = 0; i < indelEnd; i++){
+            if(shorter[i] != longer[i]){
+                return new ImmutablePair<Integer, Integer>(-1,0);
+            }
+        }
+        //traversed entire query, one indel and no mismatches found
+        return new ImmutablePair<Integer, Integer>(indelEnd, lengthOfIndel);
+    }
+
+
+    /**
+     * Finds the location of one indel in the query sequence in relation to the reference sequence
+     * local Alignment
+     *
+     * Returns an Indel object that contains all the necessary information for generating a cigar string
+     *
+     * @param reference the reference sequence
+     * @param query the query sequence
+     * @param parameters the SW parameters
+     * @param maxInsertionSize allowed size of insertion so that we can confidently say nothing can beat it
+     * @param maxDeletionSize allowed size of deletion so that we can confidently say nothing can beat it
+     */
+    public static Alignment oneIndelReadToHap(final byte[] reference, final byte[] query, SWParameters parameters, int maxInsertionSize, int maxDeletionSize){
+
+        Indel insertion = new Indel(-1, -1, maxInsertionSize, true);
+        Indel deletion = new Indel(-1, -1, maxDeletionSize, false);
+
+        //set bounds for indices that are eligible to have indels
+        int refBackInsertionBound = query.length - 1 - maxInsertionSize;
+        if(refBackInsertionBound < 0){
+            refBackInsertionBound = 0;
+        }
+        int refBackDeletionBound = query.length;
+
+        int refIndexBack = reference.length - 1;
+
+        //traverse ref up to insertion bound
+        while(refIndexBack >= refBackInsertionBound){
+            boolean skipDeletion = false;
+
+            int queryIndexBack = query.length - 1;
+
+            //iterate until you hit a match
+            while(refIndexBack >= refBackInsertionBound && reference[refIndexBack] != query[queryIndexBack]){
+                if(refIndexBack < refBackDeletionBound){
+                    skipDeletion = true;
+                }
+                refIndexBack--;
+            }
+            if(refIndexBack < refBackInsertionBound){
+                break;
+            }
+
+            //keep track of potential starting position for alignment. this is needed in case the "traverse until mismatch found" step iterates over the correct alignment location
+            /*
+            e.g - the 1st while loop takes you to index 74, and the 2nd while loop takes you to index 41, so you passed over the index in the ref that represents the canonical alignment end position, 68
+                                                                 41               68    74
+ ref        AACCCCTAACCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCCTAACCCTAACCCTAACCCTAACCCTCGCGGT
+
+ read       AACCCCTAACCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAA       CCCTAACCCTAACCCTAACCCTAA           - happens if you don't use queue
+
+ read       AACCCCTAACCCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAA CCCTAACCCTAACCCTAA
+
+             */
+            Queue<Integer> startingPositions = new LinkedList<>();
+            startingPositions.add(refIndexBack);
+            byte startingLetter = reference[refIndexBack];
+            boolean inListOfStartingPositions = false;
+            int queryIndex = queryIndexBack;
+
+            //while there are still potential starting indices, attempt alignments at each index
+            while(!startingPositions.isEmpty()){
+
+                //if element in queue is the last, begin new StartingPositionList
+                if (inListOfStartingPositions == true && startingPositions.size() == 1){
+                    inListOfStartingPositions = false;
+                }
+                refIndexBack = startingPositions.remove();
+                if(refIndexBack < refBackInsertionBound){
+                    break;
+                }
+                queryIndexBack = queryIndex;
+
+                //iterate until you hit mismatch
+                while(reference[refIndexBack] == query[queryIndexBack]){
+
+                    if(refIndexBack == 1 || queryIndexBack == 2){
+                        refIndexBack--;
+                        queryIndexBack--;
+                        break;
+                    }
+
+                    refIndexBack--;
+                    queryIndexBack--;
+
+                    //if you've found a potential alignment starting position, add it to the queue
+                    if(!inListOfStartingPositions){
+                        if(reference[refIndexBack] == startingLetter){
+                            startingPositions.add(refIndexBack);
+                        }
+                    }
+                }
+
+                //once you've filled your queue, set this to true to make sure you don't create additional queues for the elements already in a queue
+                inListOfStartingPositions = true;
+
+                //check for deletion code
+                //************************************
+                if(!skipDeletion){
+                    int matchIndex = delReadToBestHap(refIndexBack, reference, queryIndexBack, query, maxDeletionSize);
+                    if(matchIndex != -1){
+                        int alignmentOffset = matchIndex;
+                        int matchingBases = queryIndexBack + 1;
+                        int indelSize = refIndexBack - matchIndex + 1 - matchingBases;
+                        if(indelSize <= deletion.getIndelSize() && indelSize > 0){
+                            deletion.setAlignmentOffset(alignmentOffset);
+                            deletion.setMatchingBases(matchingBases);
+                            deletion.setIndelSize(indelSize);
+                            deletion.setIndelType(false);
+                        }
+                    }
+                }
+                //************************************
+
+                int queryIndexFront = queryIndexBack - 1;
+                //set bound. this ensures that you don't look for insertions greater than the maxInsertionSize
+                int queryFrontBound = queryIndexBack - maxInsertionSize;
+                if(queryFrontBound < 0){
+                    queryFrontBound = 0;
+                }
+
+                //repeat the process, but this time you're determining the bases on the left side of the insertion
+                while(queryIndexFront >= queryFrontBound){
+
+                    int refIndexFront = refIndexBack;
+
+                    //look for match
+                    while(reference[refIndexFront] != query[queryIndexFront] && queryIndexFront >= queryFrontBound){
+                        queryIndexFront--;
+
+                        if(queryIndexFront < queryFrontBound){
+                            break;
+                        }
+                    }
+
+                    if(queryIndexFront < queryFrontBound){
+                        break;
+                    }
+
+                    Queue<Integer> overlap2 = new LinkedList<>();
+                    overlap2.add(queryIndexFront);
+                    byte repeatLetter2 = query[queryIndexFront];
+                    boolean inListOfStartingPositions2 = false;
+                    int refIndex = refIndexFront;
+
+                    while(!overlap2.isEmpty()){
+
+                        queryIndexFront = overlap2.remove();
+                        if(queryIndexFront < queryFrontBound){
+                            break;
+                        }
+                        refIndexFront = refIndex;
+
+                        //iterate until mismatch or insertion is found
+                        while(queryIndexFront >= 0 && refIndexFront >= 0 && reference[refIndexFront] == query[queryIndexFront]){
+                            queryIndexFront--;
+                            refIndexFront--;
+
+                            //you've reached the end of the query, which means you have an insertion
+                            if(queryIndexFront == -1){
+                                int alignmentOffset = refIndexFront + 1;
+                                int matchingBases = refIndexBack - alignmentOffset + 1;
+                                int indelSize = queryIndexBack - matchingBases + 1;
+                                if(indelSize <= insertion.getIndelSize() && indelSize > 0){
+                                    insertion.setAlignmentOffset(alignmentOffset);
+                                    insertion.setMatchingBases(matchingBases);
+                                    insertion.setIndelSize(indelSize);
+                                    insertion.setIndelType(true);
+                                }
+                            }
+
+                            if(!inListOfStartingPositions2 && queryIndexFront != -1){
+                                if(query[queryIndexFront] == repeatLetter2){
+                                    overlap2.add(queryIndexFront);
+                                }
+                            }
+                        }
+
+                        inListOfStartingPositions2 = true;
+
+                        if(queryIndexFront == -1){
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //no del, yes ins
+        if(insertion.getAlignmentOffset() != -1 && deletion.getAlignmentOffset() == -1){
+            Alignment ins = new Alignment(insertion.getAlignmentOffset(), 0, "", insertion);
+            //look for 1S+del(1)
+            Alignment del = Utils.softclip(reference, query, 1, 0, true, false);
+            if(del.getIndex() != -1){
+                return compareIndels(ins, del, query, parameters);
+            }
+            return ins;
+        }
+        //no ins, yes del(0)
+        else if(insertion.getAlignmentOffset() == -1 && deletion.getAlignmentOffset() != -1){
+            Alignment del = new Alignment(deletion.getAlignmentOffset(), 0, "", deletion);
+            //look for 1S+ins(1) if size is del(5)
+            if(deletion.getIndelSize() == 1 || deletion.getIndelSize() == 2){
+                return del;
+            }
+            if(deletion.getIndelSize() > 2 && deletion.getIndelSize() < 5){
+                Alignment del1 = softclip(reference, query, 1, 0, true, false);
+                if(del1.getIndex() != -1){
+                    return compareIndels(del, del1, query, parameters);
+                }
+                else{
+                    return del;
+                }
+            }
+            if(deletion.getIndelSize() == 5){
+                Alignment del1 = softclip(reference, query, 1, 0, true, false);
+                Alignment del2 = softclip(reference, query, 2, 0, true, false);
+                Alignment ins1 = softclip(reference, query, 1, 0, false, true);
+
+                Alignment semi1 = compareIndels(del, del1, query, parameters);
+                Alignment semi2 = compareIndels(del2, ins1, query, parameters);
+                return compareIndels(semi1, semi2, query, parameters);
+            }
+        }
+        //no ins or del
+        else if(insertion.getAlignmentOffset() == -1 && deletion.getAlignmentOffset() == -1){
+            //look for 1S+del(3), 2S+del(1), 1S+ins(1)
+            Alignment del1 = softclip(reference, query, 1, 0, true, false);
+            Alignment del2 = softclip(reference, query, 2, 0, true, false);
+            Alignment ins1 = softclip(reference, query, 1, 0, false, true);
+
+            Alignment semi1 = compareIndels(del1, del2, query, parameters);
+            return compareIndels(semi1, ins1, query, parameters);
+        }
+        //yes ins and del
+        else{
+            //if deletion is better, return deletion
+            Alignment del = new Alignment(deletion.getAlignmentOffset(), 0, "", deletion);
+            if(deletion.getIndelSize() <= 2){
+                return del;
+            }
+            Alignment ins = new Alignment(insertion.getAlignmentOffset(), 0, "", insertion);
+
+            //else, look for 1S+del(1)
+            Alignment del1 = softclip(reference, query, 1, 0, true, false);
+            Alignment semi1 = compareIndels(del, ins, query, parameters);
+            return compareIndels(semi1, del1, query, parameters);
+        }
+        //not sure what the error is here???
+        return new Alignment(-1, 0, "");
+    }
+
+    private static Alignment compareIndels(Alignment alignment1, Alignment alignment2, byte[] query, SWParameters parameters){
+        if(alignment1.getIndex() == -1 && alignment2.getIndex() == -1){
+            return new Alignment(-1, 0, "", null);
+        }
+        if(alignment1.getIndex() == -1 && alignment2.getIndex() != -1){
+            return alignment2;
+        }
+        if(alignment1.getIndex() != -1 && alignment2.getIndex() == -1){
+            return alignment1;
+        }
+
+        Indel indel1 = alignment1.getIndel();
+        Indel indel2 = alignment2.getIndel();
+        int softclips1 = alignment1.getNumOfSoftclips();
+        int softclips2 = alignment2.getNumOfSoftclips();
+        int indel1Score;
+        int indel2Score;
+        int indel1refBases;
+        int indel2refBases;
+        if(indel1.getIndelType()){
+            indel1Score = ((query.length - indel1.getIndelSize() - softclips1) * parameters.getMatchValue()) + parameters.getGapOpenPenalty() + ((indel1.getIndelSize() - 1) * parameters.getGapExtendPenalty());
+            indel1refBases = indel1.getAlignmentOffset() + query.length - indel1.getIndelSize() - softclips1;
+        }
+        else{
+            indel1Score = ((query.length - softclips1)* parameters.getMatchValue()) + parameters.getGapOpenPenalty() + ((indel1.getIndelSize() - 1) * parameters.getGapExtendPenalty());
+            indel1refBases = indel1.getAlignmentOffset() + query.length - softclips1 - indel1.getIndelSize();
+        }
+
+        if(indel2.getIndelType()){
+            indel2Score = ((query.length - softclips2 - indel2.getIndelSize()) * parameters.getMatchValue()) + parameters.getGapOpenPenalty() + ((indel2.getIndelSize() - 1) * parameters.getGapExtendPenalty());
+            indel2refBases = indel2.getAlignmentOffset() + query.length - softclips2 - indel2.getIndelSize();
+        }
+        else{
+            indel2Score = ((query.length - softclips2)* parameters.getMatchValue()) + parameters.getGapOpenPenalty() + ((indel2.getIndelSize() - 1) * parameters.getGapExtendPenalty());
+            indel2refBases = indel2.getAlignmentOffset() + query.length - softclips2 - indel2.getIndelSize();
+
+        }
+
+        if(indel1Score > indel2Score){
+            return alignment1;
+        }
+        else if(indel1Score < indel2Score){
+            return alignment2;
+        }
+        else{
+            if(indel1refBases == indel2refBases){
+                return indel1.getIndelType() ? alignment1 : alignment2;
+            }
+            else{
+                return indel1refBases > indel2refBases ? alignment1 : alignment2;
+            }
+        }
+    }
+
+    private static int delReadToBestHap(int refIndexBack, byte[] reference, int queryIndexBack, byte[] query, int maxDeletionSize){
+        byte[] ref = new byte[refIndexBack + 1];
+        System.arraycopy(reference,0, ref, 0, refIndexBack + 1);
+        byte[] que = new byte[queryIndexBack + 1];
+        System.arraycopy(query, 0, que, 0, queryIndexBack + 1);
+        Alignment alignment = lastIndexOfAtMostTwoMismatches(ref, que, 0, ref.length - que.length - maxDeletionSize, false, 0);
+        return alignment.getIndex();
+    }
+
+    //inner class that stores all necessary information to produce cigar string
+    public static class Indel{
+        int alignmentOffset;
+        int matchingBases;
+        int indelSize;
+        boolean insertion;
+
+        public Indel(int alignmentOffset, int matchingBases, int indelSize, boolean insertion){
+            this.alignmentOffset = alignmentOffset;
+            this.indelSize = indelSize;
+            this.matchingBases = matchingBases;
+            this.insertion = insertion;
+        }
+
+        public int getIndelSize(){
+            return indelSize;
+        }
+
+        public int getAlignmentOffset(){
+            return alignmentOffset;
+        }
+
+        public int getMatchingBases(){
+            return matchingBases;
+        }
+
+        public boolean getIndelType(){
+            return insertion;
+        }
+
+        public void setIndelSize(int indelSize){
+            this.indelSize = indelSize;
+        }
+
+        public void setAlignmentOffset(int alignmentOffset){
+            this.alignmentOffset = alignmentOffset;
+        }
+
+        public void setMatchingBases(int matchingBases){
+            this.matchingBases = matchingBases;
+        }
+
+        public void setIndelType(boolean insertion){
+            this.insertion = insertion;
+        }
     }
 
     /**

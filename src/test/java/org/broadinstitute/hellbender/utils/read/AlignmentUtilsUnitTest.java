@@ -828,6 +828,44 @@ public final class AlignmentUtilsUnitTest {
     //////////////////////////////////////////
 
 
+    protected enum State {
+        MATCH,
+        INSERTION,
+        DELETION,
+        CLIP
+    }
+
+    @Test
+    public void testLeftIndelAlign(){
+        final byte[] reference = "TCAATAATTTATTTATATGCTTACAAATCCATGGACATTCATTTTATTCTTTGGGGCATAATCCGATTTGTGTGTGTGTGTGTGTGTATGTCTGTGTGAGTGTGTGTGCACTCAAATCATTGTAGCTGTGGCCACT".getBytes();
+        final byte[] alternate = "CAAATCCATGGACATTCATTTTATTCTTTGGGGCATAATCCGATTTGTGTGTGTGTGTGTGTGTGTATGTCTGTGTGAGTGTGTGTGCACTCAAATCATTGTAGCTGTGGCCACT".getBytes();
+
+        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, 64),
+                makeElement(State.INSERTION, 2), makeElement(State.MATCH, 49));
+        Cigar afterShift = AlignmentUtils.leftAlignSingleIndel(new Cigar(lce), reference, alternate, 0, 0,0,  true);
+
+        final List<CigarElement> lce2 = Arrays.asList(makeElement(State.MATCH, 45),
+                makeElement(State.INSERTION, 2), makeElement(State.MATCH, 68));
+
+        Cigar expected = new Cigar(lce2);
+        System.out.println(afterShift.equals(expected));
+        Assert.assertEquals(afterShift, expected);
+    }
+
+    private static CigarElement makeElement(final State state, final int length) {
+        CigarOperator op = null;
+        switch (state) {
+            case MATCH: op = CigarOperator.M; break;
+            case INSERTION: op = CigarOperator.I; break;
+            case DELETION: op = CigarOperator.D; break;
+            case CLIP: op = CigarOperator.S; break;
+        }
+        return new CigarElement(length, op);
+    }
+
+
+
+
 
     @DataProvider(name = "LeftAlignIndelDataProvider")
     public Object[][] makeLeftAlignIndelDataProvider() {

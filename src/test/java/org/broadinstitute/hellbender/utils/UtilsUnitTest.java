@@ -9,6 +9,7 @@ import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -587,13 +588,13 @@ public final class UtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testLastIndexOfQueryTooLong() {
+    public void testLastIndexOfAtMostTwoMismatchQueryTooLong() {
         final String reference = "AAAA";
         final String query     = "AAAAAAA";
 
-        final int result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query.getBytes(), 0);
+        final Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
         final int expected = reference.lastIndexOf(query);
-        Assert.assertEquals(result, expected);
+        Assert.assertEquals(result.getIndex(), expected);
     }
 
     @Test
@@ -602,31 +603,31 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // match right boundary of reference
         String query = "TGGGG";
-        int result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query.getBytes(), 0);
+        Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
         int expected = reference.lastIndexOf(query);
-        Assert.assertEquals(result, expected);
+        Assert.assertEquals(result.getIndex(), expected);
 
         // match left boundary of reference
         query = "AAAAC";
-        result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query.getBytes(), 0);
+        result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
         expected = reference.lastIndexOf(query);
-        Assert.assertEquals(result, expected);
+        Assert.assertEquals(result.getIndex(), expected);
     }
 
     @Test
-    public void testLastIndexOfAtMostOneMismatchLastBoundaries() {
+    public void testLastIndexOfAtMostTwoMismatchLastBoundaries() {
         final String reference = "AAAACCCCTTTTGGGG";
 
         // match right boundary of reference
         final String query1 = "TGAGG";
-        int result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query1.getBytes(), 1);
+        Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
         int expected = reference.length() - query1.length();
-        Assert.assertEquals(result, expected);
+        Assert.assertEquals(result.getIndex(), expected);
 
         // match left boundary of reference
         final String query2 = "AAGAC";
-        result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query2.getBytes(), 1);
-        Assert.assertEquals(result, 0);
+        result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query2.getBytes(), 1);
+        Assert.assertEquals(result.getIndex(), 0);
     }
 
     @Test
@@ -635,13 +636,13 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // match right boundary of reference
         final String query1 = "AGAGG";
-        int result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query1.getBytes(), 1);
-        Assert.assertEquals(result, -1);
+        Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
+        Assert.assertEquals(result.getIndex(), -1);
 
         // match right boundary of reference
         final String query2 = "GGAAC";
-        int result2 = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query2.getBytes(), 1);
-        Assert.assertEquals(result2, -1);
+        Utils.Alignment result2 = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query2.getBytes(), 1);
+        Assert.assertEquals(result2.getIndex(), -1);
     }
 
     @Test
@@ -650,10 +651,10 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // matches both boundaries of reference
         final String query1 = "AGGG";
-        int result = Utils.lastIndexOfAtMostTwoMismatch(reference.getBytes(), query1.getBytes(), 1);
+        Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
         //will catch first match it encounters from the right
         int expected = reference.length() - query1.length();
-        Assert.assertEquals(result, expected);
+        Assert.assertEquals(result.getIndex(), expected);
     }
 
 
@@ -682,9 +683,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 reference[index + mismatchPosition] = BaseUtils.simpleComplement(query[mismatchPosition]);
             }
 
-            final int result = Utils.lastIndexOfAtMostTwoMismatch(reference, query, 1);
+            final Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference, query, 1);
             final int expected = index;
-            Assert.assertEquals(result, expected);
+            Assert.assertEquals(result.getIndex(), expected);
         }
     }
 
@@ -711,9 +712,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 System.arraycopy(query,0, reference, index, queryLength);
             }
 
-            final int result = Utils.lastIndexOfAtMostTwoMismatch(reference, query, 1);
+            final Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference, query, 1);
             final int expected = index;
-            Assert.assertEquals(result, expected);
+            Assert.assertEquals(result.getIndex(), expected);
         }
     }
 
@@ -746,9 +747,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 }
             }
             
-            final int result = Utils.lastIndexOfAtMostTwoMismatch(reference, query, 0);
+            final Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference, query, 0);
             final int expected = new String(reference).lastIndexOf(new String(query));
-            Assert.assertEquals(result, expected);
+            Assert.assertEquals(result.getIndex(), expected);
         }
     }
 
@@ -757,35 +758,231 @@ public final class UtilsUnitTest extends GATKBaseTest {
         //deletion in middle of query
         String reference = "AGGATTTGGGATTAC";
         String query =     "AGGAGGGATTAC";
-        int result = (Utils.atMostOneIndel(reference.getBytes(), query.getBytes(), 3))[0];
+        int result = (Utils.oneIndelHapToRef(reference.getBytes(), query.getBytes(), 3)).getLeft();
         Assert.assertEquals(result, 4);
 
         //deletion in end of query
         String reference2 = "AGGATTTGGGATTAC";
         String query2 =     "AGGATTTGGGAT";
-        int result2 = (Utils.atMostOneIndel(reference2.getBytes(), query2.getBytes(), 3))[0];
+        int result2 = (Utils.oneIndelHapToRef(reference2.getBytes(), query2.getBytes(), 3)).getLeft();
         int expected2 = query2.length();
         Assert.assertEquals(result2, expected2);
 
         //insertion in middle of query
         String reference3 = "ATTTAGTGGGATTA";
         String query3 =     "ATTTAGTAGTGGGATTA";
-        int result3 = (Utils.atMostOneIndel(reference3.getBytes(), query3.getBytes(), 3))[0];
-        Assert.assertEquals(result3, 7);
+        int result3 = (Utils.oneIndelHapToRef(reference3.getBytes(), query3.getBytes(), 3)).getLeft();
+        Assert.assertEquals(result3, 3);
 
         //insertion in end of query
         String reference4 = "AGTAGTGTGCGTCA";
         String query4 =     "AGTAGTGTGCGTCAACT";
-        int result4 = (Utils.atMostOneIndel(reference4.getBytes(), query4.getBytes(), 3))[0];
+        int result4 = (Utils.oneIndelHapToRef(reference4.getBytes(), query4.getBytes(), 3)).getLeft();
         int expected4 = reference4.length();
         Assert.assertEquals(result4, expected4);
 
         //too long of an indel
         String reference5 = "AGTAGTGTGCGTCA";
         String query5 =     "AGTAGTGTGCGTCAACTA";
-        int result5 = (Utils.atMostOneIndel(reference5.getBytes(), query5.getBytes(), 3))[0];
+        int result5 = (Utils.oneIndelHapToRef(reference5.getBytes(), query5.getBytes(), 3)).getLeft();
         Assert.assertEquals(result5, -1);
+
+        //deletion in beginning of query
+        String reference6 = "AGTACCGTTTGAC";
+        String query6 =     "TACCGTTTGAC";
+        int result6 = (Utils.oneIndelHapToRef(reference6.getBytes(), query6.getBytes(), 3)).getLeft();
+        Assert.assertEquals(result6, 0);
     }
+
+    @Test
+    public void testLastIndexOfAtMostTwoMismatchTwoMismatches() {
+        final String reference = "AAAACCCCTTTTGGGG";
+
+        // match right boundary of reference
+        final String query1 = "AGAGG";
+        Utils.Alignment alignment = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 2);
+        Assert.assertEquals(alignment.getIndex(), 11);
+
+        // match right boundary of reference
+        final String query2 = "GGAAC";
+        Utils.Alignment alignment1 = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query2.getBytes(), 2);
+        Assert.assertEquals(alignment1.getIndex(), 0);
+    }
+
+    @Test
+    public void testLastIndexOfAtMostTwoMismatchTwoMismatchesTwice() {
+        final String reference = "AAGGCCCCCCCAATT";
+
+        // matches both boundaries of reference by two mismatches
+        final String query1 = "AAAA";
+        Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 2);
+        Assert.assertEquals(result.getIndex(), 11);
+    }
+
+    @Test
+    public void testIndel(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference = "CTTCAGTCCGGGTACG";
+        final String query =     "CCATTTCAGT";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5).getIndel().getMatchingBases();
+        int expected = 1;
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testIndel2(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference = "TTTTTTTT";
+        final String query =     "TTATTT";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5).getIndel().getAlignmentOffset();
+        int expected = 0;
+        Assert.assertEquals(result, expected);
+    }
+
+
+    @Test
+    public void testIndel3(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference = "CTTCAGTCCGGGTACG";
+        final String query =        "CAGTTACCG";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5).getIndel().getMatchingBases();
+        int expected = 4;
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testIndel4(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference = "CTTCAGTCCGGGTACG";
+        final String query =             "CAG";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5).getIndel().getIndelSize();
+        int expected = 1;
+        Assert.assertEquals(result, expected);
+    }
+
+
+    @Test
+    public void testIndel5(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference ="GCTTACACTCATATTTGTGTGTGTGTGTGTAT";
+        final String query =         "CACTCATATTTGTGTGTGTGTGTGTGTAT";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5).getIndel().getIndelSize();
+        int expected = 2;
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void softClipEnd(){
+        final String reference = "CGATTCCAAGTC";
+        final String query =            "AAGTCA";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, false, false);
+        String expected = "back";
+        Assert.assertEquals(result.getTypeOfSoftclip(), expected);
+    }
+
+
+    @Test
+    public void softClipFront(){
+        final String reference = "CGATTCCAAGTC";
+        final String query =   "AACGAT";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 2, 0, false, false);
+        String expected = "front";
+        Assert.assertEquals(result.getTypeOfSoftclip(), expected);
+    }
+
+
+    @Test
+    public void softClipFrontQueryLargerNoSoftClip(){
+        final String reference ="CATGCTCCCAAGCCATGCTTCCTGTATGGCCTGTGGAACATAGAGTCAATTAAACATCTTTCTTTTTTTTTTTTTTTTTTTTGAGATGGAGTCTCGCTCTGTCACTCAGGCTGGAGTGCAGTGGT";
+        final String query =    "CATGCTCCCAAGCCATGCTTCCTGTATGGCCTGTGGAACATAGAGTCAATTAAACATCTTTCTTTTTTTTTTTTTTTTTTTTTGAGATGGAGTCTCGCTCTGTCACTCAGGCTGGAGTGCAGTGGT";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, false, false);
+        String expected = "";
+        Assert.assertEquals(result.getTypeOfSoftclip(), expected);
+    }
+
+
+    @Test
+    public void softClipBackQueryAndRefEqualSizes(){
+        final String reference ="CTAATTTTCGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
+        final String query =     "TAATTTTCGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, false, false);
+        String expected = "back";
+        Assert.assertEquals(result.getTypeOfSoftclip(), expected);
+    }
+
+
+    @Test
+    public void softClipandSNP(){
+        final String reference ="ATTTTTTTTTTTTTTTTTTTGAGATGGATTCTCACTCCTCT";
+        final String query =   "ATTTTTTTTTTTTTTTTTTTTGAGATGGATTCTCACTCCTCT";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 1, false, false);
+        String expected = "front";
+        Assert.assertEquals(result.getTypeOfSoftclip(), expected);
+
+        final String reference2 ="CTTTTTTTTTTTTTTTTTTTGGTTATTGATTCTTTTTATGTTTTG";
+        final String query2 =   "CTTTTTTTTTTTTTTTTTTTTGG";
+        Utils.Alignment result2 = Utils.softclip(reference2.getBytes(), query2.getBytes(), 1, 1, false, false);
+        String expected2 = "front";
+        Assert.assertEquals(result2.getTypeOfSoftclip(), expected2);
+
+        final String reference3 = "GCACTTTGGGAGGCCGAGGCGGGTGGATCATGAGGTCAGGAGATCGAGACCATCCTGGCTAACACGGTGAAACCCCGTCTCTACTAAAAATACAAA";
+        final String query3 =                                        "TCAGGAGATCGAGACCATCCTGGCTAACACGGTGAAACCCCGTCTCTACTAAAAATACCAAA";
+        Utils.Alignment result3 = Utils.softclip(reference3.getBytes(), query3.getBytes(), 1, 1, false, false);
+        String expected3 = "back";
+        Assert.assertEquals(result3.getTypeOfSoftclip(), expected3);
+    }
+
+
+    @Test
+    public void softClipandDelFront(){
+        final String reference ="AATTTCTGGAATGGATTATTAAACAGAGAGTCTGTAAGCACTTAGAAAAGGCCGCGGTGAGTCCCAGGGGCCAGCACTGCTCGAAATGTACAGCATTTCTCTTTGTAACAGGATTATTAGCCTGCTGTGCCCGGGGAAAACATGCAGCACAGTGCATCTCGAGTCAGCAGGATTTTGACGGCTTCTAACAAAATCTTGTAGACAAGATGGAGCTATGGGGGTTGGAGGAGAGAACATATAGGAAAAATCAGAGCCAAATGAACCACAGCCCCAAAGGGCACAGTTGAACAATGGACTGATTCCAGCCTTGCACGGA";
+        final String query =   "AAATTTTGGAATGGATTATTAAACAGAGAGTCTGTAAGCACTTAGAAAAGGCCGCGGTGAGTCCCAGGGGCCAGCACTGCTCGAAATGTACA";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, true, false);
+        int expected = 1;
+        Assert.assertEquals(result.getIndel().getIndelSize(), expected);
+
+        final String reference2 ="CTTAAGGAACACAAAATGTCTTTGTGAATGGTTACTTGATTCTACTTGGCCCTTTCTATAACTGTAGGTCTTTTTTTAATTTTTTTTGAGACGGAGTCTCGCTCTTTTGCCCAGGCCAGAGTGCAGTGGCGTGATCTCGGCTCACT";
+        final String query2 =   "CCTTAGGAACACAAAATGTCTTTGTGAATGGTTACTTGATTCTACTTGGCCCTTTCTATAACTGTAGGTCTTTTTTTAATTTTTTTTGAGACGGAGTCTCGCTCTTTT";
+        Utils.Alignment result2 = Utils.softclip(reference2.getBytes(), query2.getBytes(), 1, 0, true, false);
+        String expected2 = "front";
+        Assert.assertEquals(result2.getTypeOfSoftclip(), expected2);
+    }
+
+    @Test
+    public void softClipsandInsFront(){
+        final String reference = "CGTATTTAGGGCTAATAAGA";
+        final String query =   "AACGTATTTTAG";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 2, 0, false, true);
+        int expected = 7;
+        Assert.assertEquals(result.getIndel().getMatchingBases(), expected);
+    }
+
+
+    @Test
+    public void softClipandIndelBack(){
+        final String reference3 ="TTATGTAATTTAAAATAAATTTGAAACCATAAAAAGCATGTTTAACTAGATATCCACATGCAAAAGAATGATTTTATGATACCACATAAAAATCTCAGCATAAAATGGATCAAATGCCCAAAGCAACTCATAGAAATCTAAAGCAAA";
+        final String query3 =                     "AAATTTGAAACCATAAAAAGCATGTTTAACTAGATATCCACATGCAAAAGAATGATTTTATGATACCACATAAAAATCTCAGCATAAAATGGATCAAATGCCCAAAGCAACTCATAGAAATCTAAAGAAAC";
+        Utils.Alignment result3 = Utils.softclip(reference3.getBytes(), query3.getBytes(), 1, 0, true, false);
+        String expected3 = "back";
+        Assert.assertEquals(result3.getTypeOfSoftclip(), expected3);
+
+        final String reference4 ="AACCCCACACGCACAGGTGAGCATCTGACAGCCTGGAGCTGCACCCACACCCTCAGGTGAGTCTCTGACAGCCTGGAACAGCACCCTGCACACCCAGGTGAGCATCCGACAGCCTGGAGCAGCACCCACACCCCCAGTTGAGCATCTGATGGTCTGGAGCAGCACCCACAACCACAGGTGAACATCAGAGAGTCTGGAGCAGCGCCCACAA";
+        final String query4 =                     "ATGGTCTGGAGCAGCACCCACAACCACAGGTGAACATCAGAGAGTCTGGAGCAGCGCCCCAAA";
+        Utils.Alignment result4 = Utils.softclip(reference4.getBytes(), query4.getBytes(), 1, 0, true, false);
+        String expected4 = "back";
+        Assert.assertEquals(result4.getTypeOfSoftclip(), expected4);
+    }
+
+    @Test
+    public void softClipsandInsBack(){
+        final String reference = "CGATTCAAGGAATCACTG";
+        final String query =               "ATTCACTGAG";
+        Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 2, 0, false, true);
+        int expected = 1;
+        Assert.assertEquals(result.getIndel().getIndelSize(), expected);
+    }
+
+
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testListFromPrimitivesNull() throws Exception {

@@ -833,6 +833,10 @@ public final class AlignmentUtils {
         return indelCount;
     }
 
+    public static Cigar leftAlignSingleIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final int leftmostAllowedAlignment,final boolean cleanupCigar) {
+        return leftAlignSingleIndel(cigar, refSeq, readSeq, refIndex, readIndex, leftmostAllowedAlignment, cleanupCigar, 0);
+    }
+
     /**
      * See the documentation for AlignmentUtils.leftAlignIndel() for more details.
      *
@@ -846,9 +850,10 @@ public final class AlignmentUtils {
      * @param readIndex 0-based alignment start position on read
      * @param leftmostAllowedAlignment left align indel no further left than this index (0-based)
      * @param cleanupCigar if true, we'll cleanup the resulting cigar element, removing 0 length elements and deletions from the first cigar position
+     * @param alignmentOffset start of alignment between read to ref
      * @return a non-null cigar, in which the single indel is guaranteed to be placed at the leftmost possible position across a repeat (if any)
      */
-    public static Cigar leftAlignSingleIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final int leftmostAllowedAlignment,final boolean cleanupCigar) {
+    public static Cigar leftAlignSingleIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final int leftmostAllowedAlignment,final boolean cleanupCigar, int alignmentOffset) {
         ensureLeftAlignmentHasGoodArguments(cigar, refSeq, readSeq, refIndex, readIndex);
 
         int indexOfIndel = -1;
@@ -871,7 +876,7 @@ public final class AlignmentUtils {
 
         final int indelLength = cigar.getCigarElement(indexOfIndel).getLength();
 
-        byte[] altString = createIndelString(cigar, indexOfIndel, refSeq, readSeq, refIndex, readIndex);
+        byte[] altString = createIndelString(cigar, indexOfIndel, refSeq, readSeq, refIndex, readIndex, alignmentOffset);
         if (altString == null)
             return cigar;
 
@@ -881,7 +886,7 @@ public final class AlignmentUtils {
             if(isIndelAlignedTooFarLeft(newCigar,leftmostAllowedAlignment)) {
                 break;
             }
-            byte[] newAltString = createIndelString(newCigar, indexOfIndel, refSeq, readSeq, refIndex, readIndex);
+            byte[] newAltString = createIndelString(newCigar, indexOfIndel, refSeq, readSeq, refIndex, readIndex, alignmentOffset);
 
             // check to make sure we haven't run off the end of the read
             boolean reachedEndOfRead = cigarHasZeroSizeElement(newCigar);
@@ -1015,7 +1020,7 @@ public final class AlignmentUtils {
      * @param readIndex         the starting read index into readSeq
      * @return non-null byte array which is the indel representation against the reference
      */
-    private static byte[] createIndelString(final Cigar cigar, final int indexOfIndel, final byte[] refSeq, final byte[] readSeq, int refIndex, int readIndex) {
+    private static byte[] createIndelString(final Cigar cigar, final int indexOfIndel, final byte[] refSeq, final byte[] readSeq, int refIndex, int readIndex, int alignmentOffset) {
         CigarElement indel = cigar.getCigarElement(indexOfIndel);
         int indelLength = indel.getLength();
 
@@ -1029,8 +1034,8 @@ public final class AlignmentUtils {
                 case EQ:
                 case X:
                     readIndex += length;
-                    refIndex += length;
-                    totalRefBases += length;
+                    refIndex += (length + alignmentOffset);
+                    totalRefBases += (length + alignmentOffset);
                     break;
                 case S:
                     readIndex += length;
