@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -307,6 +308,20 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "gvcfWithPPs")
     public void assertPPsAreStripped(File input, File expected, List<String> extraArgs, String reference) throws IOException {
         runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypePosteriorsAttributeWasRemoved, reference);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void assertDeprecatedMQThrowsUserException() {
+        final File output = createTempFile("genotypegvcf", ".vcf");
+        // This old gatk3 output file contains the old MQ format
+        final File inputWithOldArgument = getTestFile( "combined.single.sample.pipeline.gatk3.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21))
+                .addArgument("V", inputWithOldArgument.getAbsolutePath())
+                .addOutput(output);
+
+        // This is expected to fail because RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT is not specified to allow old format MQ calculations.
+        runCommandLine(args);
     }
 
     //this test is separate because all the others use old data and ignore the MQ annotations

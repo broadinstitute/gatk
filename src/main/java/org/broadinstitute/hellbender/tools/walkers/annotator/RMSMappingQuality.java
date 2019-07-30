@@ -59,7 +59,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     public static final int TOTAL_DEPTH_INDEX = 1;
     public static final String RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT = "allow-old-rms-mapping-quality-annotation-data";
 
-    @Argument(fullName = RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, doc="Override to allow old RMSMappingQuality annotatated VCFs to function", optional=true)
+    @Argument(fullName = RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, doc="Override to allow old RMSMappingQuality annotated VCFs to function", optional=true)
     public boolean allowOlderRawKeyValues = false;
 
     @Override
@@ -132,7 +132,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         else if (vc.hasAttribute(getDeprecatedRawKeyName())) {
             if (!allowOlderRawKeyValues) {
                 throw new UserException.BadInput("Presence of '-"+getDeprecatedRawKeyName()+"' annotation is detected. This GATK version expects key "
-                        + getRawKeyName() + " with an long tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. This could indicate that the provided input was produced with an older version of GATK. " +
                         "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation.");
             }
@@ -151,7 +151,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             }
             else {
                 logger.warn("MQ annotation data is not properly formatted. This GATK version expects key "
-                        + getRawKeyName() + " with an long tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. Attempting to use deprecated MQ calculation.");
                 final long numOfReads = getNumOfReads(vc, null);
                 rawMQdata = Math.round(Double.parseDouble(rawMQdata)) + "," + numOfReads;   //deprecated format was double so it needs to be converted to long
