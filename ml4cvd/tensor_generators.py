@@ -17,8 +17,8 @@ import logging
 import traceback
 import threading
 import numpy as np
-from typing import List
 from collections import Counter
+from typing import List, Dict, Tuple, Generator, Optional
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -64,7 +64,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     Returns:
         Never!
     """ 
-    assert(len(train_paths) > 0)
+    assert len(train_paths) > 0
 
     stats = Counter()
     paths_in_batch = []
@@ -106,7 +106,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except RuntimeError:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            _log_first_error(stats)
+            _log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
@@ -114,6 +114,8 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             logging.info("{}: {}".format(k, stats[k]))
         logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
         logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
+        if stats['Tensors presented'] == 0:
+            raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
 
 def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths):
@@ -139,7 +141,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     Returns:
         Never!
     """ 
-    assert(len(paths_lists) > 0 and len(paths_lists) == len(weights))
+    assert len(paths_lists) > 0 and len(paths_lists) == len(weights)
 
     stats = Counter()
     paths_in_batch = []
@@ -148,8 +150,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     samples = [int(w*batch_size) for w in weights]
 
     while True:
-        for tlist, num_samples in zip(paths_lists, samples):
-            for tp in np.random.choice(tlist, num_samples):
+        for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
+            for tp in np.random.choice(tensor_list, num_samples):
                 try:
                     with h5py.File(tp, 'r') as hd5:
                         dependents = {}
@@ -164,7 +166,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
 
                         paths_in_batch.append(tp)
                         stats['batch_index'] += 1
-                        stats['Tensors presented'] += 1
+                        stats['Tensors presented from list '+str(i)] += 1
+                        stats['train_paths_' + str(i)] += 1
                         if stats['batch_index'] == batch_size:
                             if keep_paths:
                                 yield in_batch, out_batch, paths_in_batch
@@ -172,27 +175,27 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
-                            for i, num_samples in enumerate(samples):
-                                stats['train_paths_'+str(i)] += num_samples
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
                 except KeyError as e:
+                    stats['Key Problems from list ' + str(i)] += 1
                     stats['KeyError:'+str(e)] += 1
                 except OSError as e:
                     stats['OSError:'+str(e)] += 1
                 except ValueError as e:
                     stats['ValueError:'+str(e)] += 1
-                _log_first_error(stats)
+                except RuntimeError:
+                    stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+                _log_first_error(stats, tp)
         
-        for i, tlist in enumerate(paths_lists):
-            if len(tlist) <= stats['train_paths_'+str(i)]:
+        for i, tensor_list in enumerate(paths_lists):
+            if len(tensor_list) <= stats['train_paths_'+str(i)]:
                 stats['epochs_list_number_'+str(i)] += 1
                 stats['train_paths_'+str(i)] = 0
-                if len(tlist) > 1000 or stats['epochs_list_number_'+str(i)] % 5 == 0:
-                    logging.info("Generator looped over {} tensors from ICD group: {}".format(len(tlist), i))
-                    for k in stats:
-                        logging.info('{} has: {}'.format(k, stats[k]))
+                for k in stats:
+                    logging.info(f"{k} has: {stats[k]}")
+                logging.info(f"Generator looped over {len(tensor_list)} tensors from CSV group {i}.")
 
 
 def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
@@ -235,7 +238,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
         return input_tensors, output_tensors
 
 
-def get_test_train_valid_paths(tensors, valid_ratio, test_ratio):
+def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
     """Return 3 disjoint lists of tensor paths.
 
     The paths are split in training, validation and testing lists
@@ -245,6 +248,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio):
         tensors: directory containing tensors
         valid_ratio: rate of tensors in validation list
         test_ratio: rate of tensors in testing list
+        test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
 
     Returns:
         A tuple of 3 lists of hd5 tensor file paths
@@ -253,68 +257,69 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio):
     train_paths = []
     valid_paths = []
 
-    assert(valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0)
+    assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
 
     for root, dirs, files in os.walk(tensors):
         for name in files:
             if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
                 continue
             dice = np.random.rand()
-            if dice < valid_ratio:
-                valid_paths.append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
+            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths.append(os.path.join(root, name))
+            elif dice < (valid_ratio+test_ratio):
+                valid_paths.append(os.path.join(root, name))
             else:   
                 train_paths.append(os.path.join(root, name))
-    
+
+    logging.info(f"Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
-        my_error = f"Not enough tensors at {tensors}\n"
-        my_error += f"Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing."
-        raise ValueError(my_error)
+        raise ValueError(f"Not enough tensors at {tensors}\n")
 
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio, test_ratio):
-    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    print(list(enumerate(lol[0])))
+def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo):
     stats = Counter()
     sample2group = {}
-    for row in lol[1:]:
-        sample_id = row[0]
-        sample2group[sample_id] = 0
-        for i,icd_index in enumerate(icds):
-            if row[icd_index] == '1':
-                sample2group[sample_id] = i+1 # group 0 means no ICD code
-                stats['group_'+str(i+1)] += 1
-    print(stats)
-    
-    test_paths = [[] for _ in range(len(icds)+1)] 
-    train_paths = [[] for _ in range(len(icds)+1)] 
-    valid_paths = [[] for _ in range(len(icds)+1)]                
+    for i, b_csv in enumerate(balance_csvs):
+        lol = list(csv.reader(open(b_csv, 'r'), delimiter=','))
+        logging.info(f"Class Balance CSV Header: {list(enumerate(lol[0]))}")
+
+        for row in lol[1:]:
+            sample_id = row[0]
+            sample2group[sample_id] = i+1  # group 0 means background class
+            stats['group_'+str(i+1)] += 1
+    logging.info(f"Balancing with CSVs of Sample IDs stats: {stats}")
+
+    test_paths = [[] for _ in range(len(balance_csvs)+1)]
+    train_paths = [[] for _ in range(len(balance_csvs)+1)]
+    valid_paths = [[] for _ in range(len(balance_csvs)+1)]
     for root, dirs, files in os.walk(tensors):
         for name in files:
-            splitted = os.path.splitext(name)
-            if splitted[-1].lower() != TENSOR_EXT:
+            splits = os.path.splitext(name)
+            if splits[-1].lower() != TENSOR_EXT:
                 continue
                 
-            sample_id = os.path.basename(splitted[0])
+            sample_id = os.path.basename(splits[0])
             group = 0
             if sample_id in sample2group:
                 group = sample2group[sample_id]
             dice = np.random.rand()
-            if dice < valid_ratio:
-                valid_paths[group].append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
+            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))
-            else:   
+            elif dice < (valid_ratio+test_ratio):
+                valid_paths[group].append(os.path.join(root, name))
+            else:
                 train_paths[group].append(os.path.join(root, name))
 
-    logging.info('Found {} training {} validation and {} testing tensors without ICD codes.'.format(
-        len(train_paths[0]), len(valid_paths[0]), len(test_paths[0])))
-    for i, icd_group in enumerate(icds):
-        logging.info('For ICD indexes:{} Found {} for training {} for validation and {} for testing'.format(
-            icd_group, len(train_paths[i+1]), len(valid_paths[i+1]), len(test_paths[i+1])))
+    for i in range(len(train_paths)):
+        if len(train_paths[i]) == 0 or len(valid_paths[i]) == 0 or len(test_paths[i]) == 0:
+            my_error = f"Not enough tensors at {tensors}\nGot {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test."
+            raise ValueError(my_error)
+        if i == 0:
+            logging.info(f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.")
+        else:
+            logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
     
     return train_paths, valid_paths, test_paths
 
@@ -325,26 +330,44 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        batch_size: int,
                                        valid_ratio: float,
                                        test_ratio: float,
-                                       icd_csv: str,
-                                       balance_by_icds: List[str],
-                                       keep_paths: bool=False,
-                                       keep_paths_test: bool=True):
-    if len(balance_by_icds) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_icds(tensors, icd_csv, balance_by_icds, valid_ratio, test_ratio)
-        weights = [1.0/len(balance_by_icds) for _ in range(len(balance_by_icds)+1)]
+                                       test_modulo: int,
+                                       balance_csvs: List[str],
+                                       keep_paths: bool = False,
+                                       keep_paths_test: bool = True) -> Tuple[
+        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
+        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
+        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
+    """ Get 3 tensor generator functions for training, validation and testing data.
+
+    :param maps_in: list of TensorMaps that are input names to a model
+    :param maps_out: list of TensorMaps that are output from a model
+    :param tensors: directory containing tensors
+    :param batch_size: number of examples in each mini-batch
+    :param valid_ratio: rate of tensors to use for validation
+    :param test_ratio: rate of tensors to use for testing
+    :param test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
+    :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
+    :param keep_paths: also return the list of tensor files loaded for training and validation tensors
+    :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
+    :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
+    """
+    if len(balance_csvs) > 0:
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
+        weights = [1.0/len(balance_csvs) for _ in range(len(balance_csvs)+1)]
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio)
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
     return generate_train, generate_valid, generate_test
 
 
-def _log_first_error(stats: Counter):
+def _log_first_error(stats: Counter, tensor_path: str):
     for k in stats:
         if 'Error' in k and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
             logging.info(f"Got first error: {k}")
+            logging.info(f"At tensor path: {tensor_path}")

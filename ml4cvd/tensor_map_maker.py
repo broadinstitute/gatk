@@ -1,5 +1,7 @@
 import os
+import csv
 import logging
+import operator
 import numpy as np
 from typing import List
 from typing.io import TextIO
@@ -23,10 +25,12 @@ def write_tensor_maps(args) -> None:
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
         _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        _write_continuous_tensor_maps(f, db_client)
+        _write_continuous_tensor_maps(f, db_client, False)
         _write_disease_tensor_maps(args.phenos_folder, f)
         _write_disease_tensor_maps_time(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
@@ -125,8 +129,8 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO)-> None:
         total = len(status[d])
         diseased = np.sum(list(status[d].values()))
         factor = int(total / (diseased * 2))
-        f.write(f"TMAPS['{d}'] = TensorMap('{d}', group = 'categorical_index', channel_map = {{'no_{d}':0, '{d}':1}}, "
-                f"loss = weighted_crossentropy([1.0, {factor}], '{d}'))\n")
+        f.write(f"TMAPS['{d}'] = TensorMap('{d}', group='categorical_flag', channel_map={{'no_{d}':0, '{d}':1}}, "
+                f"loss=weighted_crossentropy([1.0, {factor}], '{d}'))\n")
 
 
 def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO) -> None:
@@ -149,10 +153,57 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
     f.write(f"\n\n#  TensorMaps for date regression on MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
     for d in sorted(list(disease2tsv.keys())):
-        f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
+        f.write(f"TMAPS['{d}_time'] = TensorMap('{d}', group='diagnosis_time', channel_map={{'{d}_time':0}}, loss='mse')\n")
 
-            
-def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
+
+def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient):
+    # phecode_csv = '/home/sam/phecode_definitions1.2.csv'
+    total_samples = 500000
+    remove_chars = ";.,/()-[]&' "
+    phecode2phenos = {}
+    with open(phecode_csv, 'r') as my_csv:
+        lol = list(csv.reader(my_csv, delimiter=','))
+        for row in lol[1:]:
+            pheno = row[1].strip().replace("'s", "s")
+            for c in remove_chars:
+                pheno = pheno.replace(c, '_')
+            pheno = pheno.lower().strip('_').replace('___', '_').replace('__', '_')
+            phecode2phenos['phecode_'+row[0].lstrip('0').strip()] = pheno
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` GROUP BY disease"
+    count_result = db_client.execute(query)
+    phecode2counts = {}
+    for row in count_result:
+        phecode2counts[row['disease']] = float(row['total'])
+
+    f.write(f"\n\n#  TensorMaps for Phecode disease phenotypes\n")
+    for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
+        if k in phecode2counts:
+            factor = int(total_samples / (1+phecode2counts[k]))
+            f.write(f"TMAPS['{p}_phe'] = TensorMap('{k}', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
+                    f"loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n")
+
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE prevalent_disease=1 GROUP BY disease"
+    count_result = db_client.execute(query)
+    phecode2prevalent = {}
+    for row in count_result:
+        phecode2prevalent[row['disease']] = float(row['total'])
+
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE incident_disease=1 GROUP BY disease"
+    count_result = db_client.execute(query)
+    phecode2incident = {}
+    for row in count_result:
+        phecode2incident[row['disease']] = float(row['total'])
+
+    f.write(f"\n\n#  TensorMaps for prevalent and incident Phecode disease phenotypes\n")
+    for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
+        if k in phecode2incident and k in phecode2prevalent:
+            factor_i = int(total_samples / (1 + phecode2incident[k]))
+            factor_p = int(total_samples / (1 + phecode2prevalent[k]))
+            f.write(f"TMAPS['{p}_phe_pi'] = TensorMap('{k}', group='categorical_date', channel_map={{'no_{p}':0, '{p}_prevalent':1, '{p}_incident':2}}, "
+                    f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{p}_pi'))\n")
+
+
+def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
     group = 'continuous'
 
     # Handle special coding values in continuous variables in order to generate summary statistics (mean and std dev) for
@@ -196,7 +247,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
     WHERE TRUE
         AND ValueType IN ('Integer', 'Continuous') 
         AND NOT missing
-    GROUP BY t.FieldID, Field 
+    GROUP BY t.FieldID, Field ORDER BY t.FieldID
     """
 
     field_data_for_tensor_maps = db_client.execute(query)
@@ -207,11 +258,11 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
         name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
-            channel_map = channel_map + "'" + name + "_0_" + str(i) + "': " + str(i) + ", "
-        channel_map = channel_map + "'not-missing': " + str(row.max_array + 1) + "}"
-        f.write(f"""TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', {channel_map}, 
-                normalization={{'mean': {row.mean}, 'std': {row.std}}}, 
-                annotation_units={row.max_array + 2})\n""")
+            channel_map += f"'{name}_0_{i}': {i}, "
+        if include_missing:
+            channel_map += "'not-missing': " + str(row.max_array + 1)
+        channel_map += "}"
+        f.write(f"TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
 
 
 def _segmented_map(name):
@@ -234,6 +285,7 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
     if keyword is not None:
         filtered = filtered[filtered.Field.str.contains(keyword, case=False)]
     return filtered
+
 
 def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], include_missing: bool, imputation_method: str) -> TensorMap:
     if include_missing:

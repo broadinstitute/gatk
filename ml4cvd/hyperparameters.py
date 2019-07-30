@@ -51,16 +51,17 @@ def run(args):
 
 def optimize_conv_layers_multimodal_multitask(args):
     stats = Counter()
-    generate_train, generate_valid, _ = test_train_valid_tensor_generators(args)
-    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_valid, args.validation_steps, False)
-    
-    dense_blocks_sets = [[16, 16], [32, 32], [32, 24, 16], [64, 32, 16], [32, 32, 32], [16, 16, 16], [64, 48, 32], [128, 64, 32], [48, 32, 24, 16], [24, 24, 24, 24], [128, 96, 64, 48]]
-    conv_layers_sets = [[128], [64], [48], [32], [24],  [16]]
-    dense_layers_sets = [[16, 64], [12, 16], [8, 128], [48], [32], [16], [8]]
-    pool_zs = [1, 2]
-    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_z': pool_zs}
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
+    test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
+
+    dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
+    conv_layers_sets = [[64], [48], [32], [24]]
+    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
+    pool_zs = [1]
+    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets}
     space = {
-        'pool_z': hp.choice('pool_z', pool_zs),
+        'pool_x': hp.loguniform('pool_x', 0, 4),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),      
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
@@ -68,15 +69,21 @@ def optimize_conv_layers_multimodal_multitask(args):
 
     def loss_from_multimodal_multitask(x):
         try:
+            x['pool_x'] = int(x['pool_x'])
             set_args_from_x(args, x)
-            model = make_multimodal_to_multilabel_model(args)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                        args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                        args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                        args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                        args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
             
             if model.count_params() > args.max_parameters:
-                logging.info('Model too big in hyperparameter optimization, max parameters is:{}, this model has:{}. Returning max loss.'.format(args.max_parameters, model.count_params()))
+                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 del model
                 return MAX_LOSS
 
-            model = train_model_from_generators(args, model, generate_train, generate_valid)
+            model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
             logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
@@ -93,39 +100,41 @@ def optimize_conv_layers_multimodal_multitask(args):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-
-    logging.info('bestx: {}'.format(best_x))
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary below) is {}'.format(string_from_best_trials(trials, param_lists)))
-
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT), param_lists)
 
-    # Re-train the best model so it's easy to view it at the end of the logs
-    updated_args = args_from_best_trials(args, trials, param_lists)
-    model = make_multimodal_to_multilabel_model(updated_args)
-    train_model_from_generators(updated_args, model, generate_train, generate_valid)
+    args = args_from_best_trials(args, trials, param_lists)
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
 
 def optimize_dense_layers_multimodal_multitask(args):
     stats = Counter()
-    generate_train, generate_valid, _ = test_train_valid_tensor_generators(args)
-    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_valid, args.validation_steps, False)
-
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
+    test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
     space = {'num_layers': hp.uniform('num_layers', 1, 6),
              'layer_width': hp.loguniform('layer_width', 2, 7)}
 
     def loss_from_multimodal_multitask(x):
         try:
             args.dense_layers = [int(x['layer_width'])] * int(x['num_layers'])
-            model = make_multimodal_to_multilabel_model(args)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                        args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                        args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
+                                                        args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y, args.pool_z,
+                                                        args.padding, args.learning_rate)
 
             if model.count_params() > args.max_parameters:
-                logging.info('Model too big in hyperparameter optimization, max parameters is:{}, this model has:{}. Returning max loss.'.format(args.max_parameters, model.count_params()))
+                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 del model
                 return MAX_LOSS
 
-            model = train_model_from_generators(args, model, generate_train, generate_valid)
+            model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
             logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
@@ -142,37 +151,41 @@ def optimize_dense_layers_multimodal_multitask(args):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-
-    logging.info('bestx: {}'.format(best_x))
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary below) is {}'.format(string_from_best_trials(trials)))
-
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT))
 
     # Re-train the best model so it's easy to view it at the end of the logs
-    updated_args = args_from_best_trials(args, trials)
-    model = make_multimodal_to_multilabel_model(updated_args)
-    train_model_from_generators(updated_args, model, generate_train, generate_valid)
+    args = args_from_best_trials(args, trials)
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
 
 def optimize_lr_multimodal_multitask(args):
     stats = Counter()
-    generate_train, generate_valid, _ = test_train_valid_tensor_generators(args)
-    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_valid, args.validation_steps, False)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
+    test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
     space = {'learning_rate': hp.loguniform('learning_rate', -10, -2)}
 
     def loss_from_multimodal_multitask(x):
         try:
             set_args_from_x(args, x)
-            model = make_multimodal_to_multilabel_model(args)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                        args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                        args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                        args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                        args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
             if model.count_params() > args.max_parameters:
-                logging.info('Model too big in hyperparameter optimization, max parameters is:{}, this model has:{}. Returning max loss.'.format(args.max_parameters, model.count_params()))
+                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 return MAX_LOSS
             
             logging.info('Current parameter set: {} \n'.format(string_from_arch_dict(x)))
-            model = train_model_from_generators(args, model, generate_train, generate_valid)
+            model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
             logging.info('Iteration {} out of maximum {}. Loss: {} Current model size {}.'.format(stats['count'], args.max_models, loss_and_metrics[0], model.count_params()))
@@ -184,23 +197,22 @@ def optimize_lr_multimodal_multitask(args):
     
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary directly above) is {}'.format(string_from_best_trials(trials)))
-    logging.info('bestx: {}'.format(best_x))
-
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT))
 
-    # Re-train the best model so it's easy to view it at the end of the logs
-    set_args_from_nested_x(args, best_x)
-    model = make_multimodal_to_multilabel_model(args)
-    train_model_from_generators(args, model, generate_train, generate_valid)
+    # Rebuild the best model so it's easy to view it at the end of the logs
+    args = args_from_best_trials(args, trials)
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
 
 def optimize_input_tensor_maps(args):
     stats = Counter()
-    generate_train, generate_valid, _ = test_train_valid_tensor_generators(args)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
     input_tensor_map_sets = [['categorical-phenotypes-72'], ['mri-slice'], ['sax_inlinevf_zoom'], ['cine_segmented_sax_inlinevf'], ['ekg-leads']]
     param_lists = {'input_tensor_maps': input_tensor_map_sets}
     space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets),}
@@ -208,14 +220,19 @@ def optimize_input_tensor_maps(args):
     def loss_from_multimodal_multitask(x):
         try:
             set_args_from_x(args, x)
-            model = make_multimodal_to_multilabel_model(args)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                        args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                        args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                        args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                        args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
             if model.count_params() > args.max_parameters:
-                logging.info('Model too big in hyperparameter optimization, max parameters is:{}, this model has:{}. Returning max loss.'.format(args.max_parameters, model.count_params()))
+                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 return MAX_LOSS
             
             logging.info('Current parameter set: {} \n'.format(string_from_arch_dict(x)))
-            model = train_model_from_generators(args, model, generate_train, generate_valid)
-            loss_and_metrics = model.evaluate_generator(generate_valid, steps=args.validation_steps)
+            model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+            loss_and_metrics = model.evaluate_generator(generate_test, steps=args.test_steps)
             stats['count'] += 1
             logging.info('Iteration {} out of maximum {}: Loss: {} Current model size: {}.'.format(stats['count'], args.max_models, loss_and_metrics[0], model.count_params()))
             return loss_and_metrics[0]
@@ -225,60 +242,28 @@ def optimize_input_tensor_maps(args):
             return MAX_LOSS
     
     trials = hyperopt.Trials()
-    best = fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-        
-    args.input_tensors = input_tensor_map_sets[best_x['input_tensor_maps'][0]]
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    model = make_multimodal_to_multilabel_model(args)
-    model = train_model_from_generators(args, model, generate_train, generate_valid)
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary directly above) is {}'.format(string_from_best_trials(trials)), param_lists)
+    fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT), param_lists)
+
+    # Rebuild the best model so it's easy to view it at the end of the logs
+    args = args_from_best_trials(args, trials, param_lists)
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
 
 def set_args_from_x(args, x):
-    if 'conv_x' in x:
-        args.conv_x = int(x['conv_x'])
-    if 'conv_y' in x:
-        args.conv_y = int(x['conv_y'])
-    if 'conv_z' in x:
-        args.conv_z = int(x['conv_z'])
-    if 'pool_z' in x:
-        args.pool_z = x['pool_z']
-    if 'conv_layers' in x:
-        args.conv_layers = x['conv_layers']
-    if 'dense_blocks' in x:
-        args.dense_blocks = x['dense_blocks']
-    if 'dense_layers' in x:
-        args.dense_layers = x['dense_layers']
-    if 'learning_rate' in x:
-        args.learning_rate = x['learning_rate']
-    if 'input_tensor_maps' in x:
-        args.input_tensors = list(x['input_tensor_maps'])                    
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-
-
-def set_args_from_nested_x(args, x):
-    if 'conv_x' in x:
-        args.conv_x = int(x['conv_x'][0])
-    if 'conv_y' in x:
-        args.conv_y = int(x['conv_y'][0])
-    if 'conv_z' in x:
-        args.conv_z = int(x['conv_z'][0])
-    if 'pool_z' in x:
-        args.pool_z = x['pool_z'][0]
-    if 'conv_layers' in x:
-        args.conv_layers = x['conv_layers'][0]
-    if 'dense_blocks' in x:
-        args.dense_blocks = x['dense_blocks'][0]
-    if 'dense_layers' in x:
-        args.dense_layers = x['dense_layers'][0]
-    if 'learning_rate' in x:
-        args.learning_rate = x['learning_rate'][0]
-    if 'input_tensor_maps' in x:
-        args.input_tensors = list(x['input_tensor_maps'][0]) 
+    for k in args.__dict__:
+        if k in x:
+            if isinstance(args.__dict__[k], int):
+                args.__dict__[k] = int(x[k])
+            elif isinstance(args.__dict__[k], float):
+                args.__dict__[k] = float(x[k])
+            else:
+                args.__dict__[k] = x[k]
+    logging.info(f"Set arguments to: {args}")
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
@@ -291,11 +276,21 @@ def string_from_arch_dict(x):
     return s
 
 
-def string_from_best_trials(trials, param_lists={}):
-    s = ''
+def args_from_best_trials(args, trials, param_lists={}):
     best_trial_idx = np.argmin(trials.losses())
-    logging.info('At iteration {} model had the lowest loss of: {}'.format(best_trial_idx, trials.losses()[best_trial_idx]))
-    return string_from_trials(trials, best_trial_idx, param_lists={})
+    x = trials.trials[best_trial_idx]['misc']['vals']
+    logging.info(f"got best x {x} best model is:{string_from_trials(trials, best_trial_idx, param_lists)}")
+    for k in x:
+        v = x[k][0]
+        if k in param_lists:
+            args.__dict__[k] = param_lists[k][int(v)]
+        elif k in ['conv_x', 'conv_y', 'conv_z']:
+            args.__dict__[k] = int(v)
+        else:
+            args.__dict__[k] = v
+    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    return args   
 
 
 def string_from_trials(trials, index, param_lists={}):
@@ -313,27 +308,14 @@ def string_from_trials(trials, index, param_lists={}):
     return s
 
 
-def args_from_best_trials(args, trials, param_lists={}):
-    best_trial_idx = np.argmin(trials.losses())
-    x = trials.trials[best_trial_idx]['misc']['vals']
-    for k in x:
-        v = x[k][0]
-        if k in param_lists:
-            args.__dict__[k] = param_lists[k][int(v)]
-        elif k in ['conv_x', 'conv_y', 'conv_z']:
-            args.__dict__[k] = int(v)
-        else:
-            args.__dict__[k] = v
-    return args   
-
-
 def plot_trials(trials, figure_path, param_lists={}):
     lmax = max([x for x in trials.losses() if x != MAX_LOSS]) + 1 # add to the max to distinguish real losses from max loss
     lplot = [x if x != MAX_LOSS else lmax for x in trials.losses()]
     best_loss = min(lplot)
     worst_loss = max(lplot)
     std = np.std(lplot)
-    plt.figure(figsize=(16, 16))
+    plt.figure(figsize=(64, 64))
+    matplotlib.rcParams.update({'font.size': 9})
     plt.plot(lplot)
     for i in range(len(trials.trials)):
         if best_loss+std > lplot[i]:

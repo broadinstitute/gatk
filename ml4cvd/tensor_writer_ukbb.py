@@ -16,6 +16,7 @@ import zipfile
 import pydicom
 import datetime
 import operator
+import traceback
 import numpy as np
 from typing import Dict, List, Tuple
 from timeit import default_timer as timer
@@ -27,19 +28,27 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
-from scipy.ndimage.morphology import binary_closing  # Morphological operator
+from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
-from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
-from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
+from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
+from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 
+
+MRI_MIN_RADIUS = 2
+MRI_MAX_MYOCARDIUM = 20
+MRI_BIG_RADIUS_FACTOR = 0.9
+MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
                        'cine_segmented_sax_inlinevf']
+MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
+MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
+MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -52,18 +61,13 @@ ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration'
 
 
 def write_tensors(a_id: str,
-                  db: str,
                   xml_folder: str,
                   zip_folder: str,
-                  phenos_folder: str,
                   output_folder: str,
                   tensors: str,
                   dicoms: str,
                   volume_csv: str,
                   lv_mass_csv: str,
-                  icd_csv: str,
-                  categorical_field_ids: List[int],
-                  continuous_field_ids: List[int],
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
                   x: int,
@@ -84,18 +88,13 @@ def write_tensors(a_id: str,
      survey responses, MRI, and ECG.
 
     :param a_id: User chosen string to identify this run
-    :param db: Path to SQL database for UKBB
     :param xml_folder: Path to folder containing ECG XML files
     :param zip_folder: Path to folder containing zipped DICOM files
-    :param phenos_folder: Path to folder containing phenotype CSVs
     :param output_folder: Folder to write outputs to (mostly for debugging)
     :param tensors: Folder to populate with HD5 tensors
     :param dicoms: Folder where zipped DICOM will be decompressed
     :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
     :param lv_mass_csv: CSV containing LV mass and other data from a subset of samples with MRI
-    :param icd_csv: CSV of diagnoses
-    :param categorical_field_ids: List of categorical field IDs from UKBB
-    :param continuous_field_ids: List of continuous field IDs from UKBB
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
     :param x: Maximum x dimension of MRIs
@@ -111,24 +110,12 @@ def write_tensors(a_id: str,
     :param max_sample_id: Maximum sample id to generate, for parallelization
     :param min_values_to_print: Minimum number of samples that have responded to question for it to be included in the
             categorical or continuous dictionaries printed after tensor generation
-    :param ukbb7089_sample_id_to_hail_pkl_path: path to the pkl file containing all available genotypes.
-    :param filtered_genotypes_array_path: path to the filtered genotypes.
 
     :return: None
     """
     stats = Counter()
     continuous_stats = defaultdict(list)
-    conn = sqlite3.connect(db)
-    sql_cursor = conn.cursor()
-
-    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    logging.info('CSV of ICDs header:{}'.format(list(enumerate(lol[0]))))
-    field_meanings, dates, status, lvef, lvesv, lvedv, lv_mass, icds, sample_ids = _load_meta_data_for_tensor_writing(sql_cursor, phenos_folder,
-                                                                                                                      volume_csv, lv_mass_csv,
-                                                                                                                      icd_csv, categorical_field_ids,
-                                                                                                                      continuous_field_ids,
-                                                                                                                      min_sample_id, max_sample_id)
-
+    nested_dictionary, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
@@ -140,13 +127,9 @@ def write_tensors(a_id: str,
             continue
         try:
             with h5py.File(tensor_path, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms,
-                                                  mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
-                _write_tensors_from_sql(sql_cursor, hd5, sample_id, categorical_field_ids, continuous_field_ids, field_meanings, write_pngs,
-                                        continuous_stats, stats)
-                _write_tensors_from_icds(hd5, sample_id, icds, dates, stats)
-                _write_tensors_from_volumes(hd5, sample_id, lv_mass, lvef, lvesv, lvedv, continuous_stats)
+                _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
             logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
@@ -172,106 +155,53 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def _load_meta_data_for_tensor_writing(sql_cursor: sqlite3.Cursor,
-                                       phenos_folder: str,
-                                       volume_csv: str,
-                                       lv_mass_csv: str,
-                                       icd_csv: str,
-                                       categorical_field_ids: List[int],
-                                       continuous_field_ids: List[int],
-                                       min_sample_id: int,
-                                       max_sample_id: int) -> Tuple[Dict[str, str],
-                                                                    Dict[str, Dict[int, List[datetime.date]]],
-                                                                    Dict[str, Dict[int, List[int]]],
-                                                                    Dict[int, float],
-                                                                    Dict[int, float],
-                                                                    Dict[int, float],
-                                                                    Dict[str, Dict[int, List[int]]],
-                                                                    List[int]]:
+def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sample_id: int, max_sample_id: int) -> Tuple[Dict[int, Dict[str, float]], List[int]]:
     """ Gather metadata necessary to write tensors from UK biobank
 
     Loads the field IDs of survey data, dates of assessment, diagnosis of diseases,
     ejection fractions, diastolic volumes, systolic volumes, and sample IDs to make tensors from.
 
-    :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
-    :param phenos_folder: Path to folder containing phenotype CSVs
     :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
     :param lv_mass_csv: TSV containing left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964
-    :param icd_csv: CSV of diagnoses
-    :param categorical_field_ids: List of categorical field IDs from UKBB
-    :param continuous_field_ids: List of continuous field IDs from UKBB
     :param min_sample_id: Minimum sample id to generate, for parallelization
     :param max_sample_id: Maximum sample id to generate, for parallelization
-    :return: Tuple of metadata
-        field_meanings: Dict mapping field IDs (as strings) to their meaning as a string
-        dates: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to the date of their diagnosis or last update
-        status: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to an int (1 if they have the disease, 0 if not)
-        lvef: Dictionary mapping sample IDs (as ints) to left ventricle ejection fraction as a float
-        lvesv: Dictionary mapping sample IDs (as ints) to left ventricle end systole volume as a float
-        lvedv: Dictionary mapping sample IDs (as ints) to left ventricle end diastole volume as a float
-        icds: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to an int (1 if they have the disease, 0 if not)
+    :return: Tuple of metadata containers
+        nested_dictionary: Dictionary mapping sample IDs (as ints) to dictionaries mapping strings to values from the CSV
         sample_ids: List of sample IDs (as ints) to generate tensors for
     """
-    field_meanings = {}
-    for fid in categorical_field_ids + continuous_field_ids:
-        for field_row in sql_cursor.execute("SELECT field FROM dictionary WHERE fieldid=%d" % (fid)):
-            field_meanings[fid] = field_row[0]
-
-    disease2tsv = get_disease2tsv(phenos_folder)
-    logging.info('Got disease TSVs:{}'.format(disease2tsv))
-    dates = _get_disease_censor_dates(disease2tsv, min_sample_id, max_sample_id)
-    logging.info('Got dates for diseases:{}'.format(list(dates.keys())))
-    status = disease_censor_status(disease2tsv, min_sample_id, max_sample_id)
-    logging.info('Got statuses and dates for diseases:{}'.format(list(status.keys())))
-
-    lvef = {}
-    lvesv = {}
-    lvedv = {}
+    nested_dictionary = defaultdict(dict)
     with open(volume_csv, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter='\t'))
-        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
+        logging.info(f"CSV of MRI volumes header:{list(enumerate(lol[0]))}")
+        fields = lol[0][1:]  # Assumes sample id is the first field
         for row in lol[1:]:
             sample_id = int(row[0])
             if min_sample_id <= sample_id <= max_sample_id:
-                lvesv[sample_id] = float(row[2])
-                lvedv[sample_id] = float(row[4])
-                lvef[sample_id] = float(row[6])
+                nested_dictionary[sample_id] = {fields[i].strip().lower(): row[i+1] for i in range(len(fields))}
 
-    lv_mass = {}
     with open(lv_mass_csv, 'r') as lvm:
         lol = list(csv.reader(lvm, delimiter='\t'))
         logging.info('CSV of returned MRI mass, etc, header:{}'.format(list(enumerate(lol[0]))))
         for row in lol[1:]:
             # column 0 is the original app's sample ID. Column 1 is app 7089's sample ID.
             sample_id = int(row[1])
-            if min_sample_id <= sample_id <= max_sample_id and len(row[13]) > 0:
+            if min_sample_id <= sample_id <= max_sample_id and len(row[13]) > 0 and row[13] != 'NA':
                 # Zero-based column #13 is the LV mass
-                lv_mass[sample_id] = float(row[13])
+                nested_dictionary[sample_id]['lv_mass'] = float(row[13])
 
-    sample_ids = []
-    icds = defaultdict(dict)
-    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    logging.info('CSV of ICDs header:{}'.format(list(enumerate(lol[0]))))
-    for row in lol[1:]:
-        sample_id = int(row[0])
-        if min_sample_id <= sample_id <= max_sample_id:
-            sample_ids.append(sample_id)
-            for disease in disease2tsv:
-                if sample_id not in status[disease]:
-                    continue
-                icds[disease][sample_id] = status[disease][sample_id]
-
-    return field_meanings, dates, status, lvef, lvesv, lvedv, lv_mass, icds, sample_ids
+    sample_ids = range(min_sample_id, max_sample_id)
+    return nested_dictionary, sample_ids
 
 
 def _sample_has_mris(zip_folder, sample_id) -> bool:
     sample_str = str(sample_id)
     return os.path.exists(zip_folder + sample_str + '_20209_2_0.zip') or os.path.exists(
         zip_folder + sample_str + '_20209_0_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20209_1_0.zip')
+        zip_folder + sample_str + '_20209_1_0.zip') or os.path.exists(
+        zip_folder + sample_str + '_20203_2_0.zip') or os.path.exists(
+        zip_folder + sample_str + '_20208_2_0.zip') or os.path.exists(
+        zip_folder + sample_str + '_20204_2_0.zip') or os.path.exists(
+        zip_folder + sample_str + '_20254_2_0.zip')
 
 
 def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
@@ -393,8 +323,7 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
     date_query = "SELECT p.instance, p.array_idx, p.value FROM phenotype p "
     date_query += "WHERE p.fieldid=53 and p.sample_id=%d;"
     for data_row in sql_cursor.execute(date_query % sample_id):
-        hd5.create_dataset('assessment-date_{}_{}'.format(data_row[0], data_row[1]), (1,), data=data_row[2],
-                           dtype=h5py.special_dtype(vlen=str))
+        hd5.create_dataset('assessment-date_{}_{}'.format(data_row[0], data_row[1]), (1,), data=data_row[2], dtype=h5py.special_dtype(vlen=str))
     _job_title_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
     _icd10_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
 
@@ -445,35 +374,30 @@ def _icd10_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
         hd5.create_dataset('icd10', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
 
 
-def _write_tensors_from_volumes(hd5: h5py.File,
-                                sample_id: int,
-                                lv_mass: Dict[int, float],
-                                lvef: Dict[int, float],
-                                lvesv: Dict[int, float],
-                                lvedv: Dict[int, float],
-                                continuous_stats: Dict[str, List[float]]) -> None:
+def _write_tensors_from_dictionary_of_scalars(hd5: h5py.File,
+                                              sample_id: int,
+                                              nested_dictionary: Dict[int, Dict[str, float]],
+                                              continuous_stats: Dict[str, List[float]]) -> None:
     """Write volumes of the left ventricle into tensor file of a particular sample if we have them
 
     :param hd5: HD5 File where all tensors for this sample ID are saved
     :param sample_id: The sample ID whose tensor we are currently writing
-    :param lv_mass: Dictionary mapping sample IDs (as ints) to left ventricular mass as a float
-    :param lvef: Dictionary mapping sample IDs (as ints) to left ventricle ejection fraction as a float
-    :param lvesv: Dictionary mapping sample IDs (as ints) to left ventricle end systole volume as a float
-    :param lvedv: Dictionary mapping sample IDs (as ints) to left ventricle end diastole volume as a float
+    :param nested_dictionary: Dictionary mapping sample IDs (as ints) to dictionaries mapping strings to values from the CSV
     :param continuous_stats: Dictionary mapping field meanings to the list of continuous values found for them
     :return: None
     """
-    if sample_id in lvef and sample_id in lvesv and sample_id in lvedv:
-        hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_systole_volume', data=[lvesv[sample_id]])
-        continuous_stats['end_systole_volume'].append(lvesv[sample_id])
-        hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_diastole_volume', data=[lvedv[sample_id]])
-        continuous_stats['end_diastole_volume'].append(lvedv[sample_id])
-        hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'ejection_fraction', data=[lvef[sample_id]])
-        continuous_stats['ejection_fraction'].append(lvef[sample_id])
-
-    if sample_id in lv_mass:
-        hd5.create_dataset('lv_mass', data=[lv_mass[sample_id]])
-        continuous_stats['lv_mass'].append(lv_mass[sample_id])
+    for value_name in nested_dictionary[sample_id]:
+        if value_name == 'annotation':
+            value = nested_dictionary[sample_id][value_name]
+            if value in MRI_ANNOTATION_CHANNEL_MAP:
+                hd5.create_dataset('categorical' + HD5_GROUP_CHAR + MRI_ANNOTATION_NAME, data=[MRI_ANNOTATION_CHANNEL_MAP[value]])
+        elif value_name == MRI_DATE:
+            hd5.create_dataset('dates' + HD5_GROUP_CHAR + value_name, (1,), data=nested_dictionary[sample_id][value_name], dtype=h5py.special_dtype(vlen=str))
+        else:  # assumes if not handled above it should be a float
+            value = _to_float_or_false(nested_dictionary[sample_id][value_name])
+            if value:
+                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + value_name, data=[value])
+                continuous_stats[value_name].append(value)
 
 
 def _write_tensors_from_icds(hd5: h5py.File,
@@ -544,7 +468,7 @@ def _write_tensors_from_zipped_dicoms(x,
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
                 _write_tensors_from_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height,
-                                           write_pngs, tensors, dicom_folder, hd5, stats)
+                                           write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -561,6 +485,7 @@ def _write_tensors_from_dicoms(x,
                                tensors,
                                dicom_folder,
                                hd5,
+                               sample_str,
                                stats) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -575,13 +500,20 @@ def _write_tensors_from_dicoms(x,
 
     """
     views = defaultdict(list)
+    min_ideal_series = 9e9
     for dicom in os.listdir(dicom_folder):
         if os.path.splitext(dicom)[-1] != DICOM_EXT:
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
-        if d.SeriesDescription.lower() in MRI_SERIES_TO_WRITE:
-            views[d.SeriesDescription.lower()].append(d)
-            stats[d.SeriesDescription.lower()] += 1
+        series = d.SeriesDescription.lower().replace(' ', '_')
+        if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
+            views[series + '_12bit'].append(d)
+            stats[series + '_12bit'] += 1
+        elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
+            views[series].append(d)
+            stats[series] += 1
+        if series in MRI_LIVER_IDEAL_PROTOCOL:
+            min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
     diastoles = {}
     diastoles_pix = {}
@@ -590,7 +522,11 @@ def _write_tensors_from_dicoms(x,
 
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
-        stats['mri shape:' + str(mri_shape)] += 1
+        stats[v + ' mri shape:' + str(mri_shape)] += 1
+        if v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            x = views[v][0].Rows
+            y = views[v][0].Columns
+            z = len(views[v])
 
         if v != MRI_TO_SEGMENT:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
@@ -599,56 +535,69 @@ def _write_tensors_from_dicoms(x,
             full_mask = np.zeros((x, y), dtype=np.float32)
 
         for slicer in views[v]:
-            if MRI_PIXEL_WIDTH not in hd5:
+            if MRI_PIXEL_WIDTH not in hd5 and v in MRI_SERIES_TO_WRITE:
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT not in hd5:
+            if MRI_PIXEL_HEIGHT not in hd5 and v in MRI_SERIES_TO_WRITE:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
-            if slicer.pixel_array.shape[0] == mri_shape[0] and slicer.pixel_array.shape[1] == mri_shape[1]:
-                sx = min(slicer.Rows, x)
-                sy = min(slicer.Columns, y)
-                slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-                if v != MRI_TO_SEGMENT:
-                    mri_data[:sx, :sy, slicer.InstanceNumber - 1] = slice_data
-                elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
-                    overlay, mask = _get_overlay_from_dicom(slicer)
-                    ventricle_pixels = np.count_nonzero(mask == 1)
-                    if ventricle_pixels == 0:
-                        continue
-                    cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-                    if not cur_angle in diastoles:
+            if MRI_PIXEL_WIDTH + '_' + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+                hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
+            if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+                hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
+
+            sx = min(slicer.Rows, x)
+            sy = min(slicer.Columns, y)
+            slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+            if v != MRI_TO_SEGMENT:
+                slice_index = slicer.InstanceNumber - 1
+                if v in MRI_LIVER_IDEAL_PROTOCOL:
+                    slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
+
+                if slice_index >= mri_data.shape[2]:
+                    logging.info(f"got fugged up at:{v}, {mri_data.shape}")
+                    slice_index = mri_data.shape[2] - 1
+                mri_data[:sx, :sy, slice_index] = slice_data
+            elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
+                if _is_mitral_valve_segmentation(slicer):
+                    stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
+                    continue
+
+                overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
+                cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
+
+                if write_pngs:
+                    overlayed = np.ma.masked_where(overlay != 0, slicer.pixel_array)
+                    # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlayed)
+
+                if not cur_angle in diastoles:
+                    diastoles[cur_angle] = slicer
+                    diastoles_pix[cur_angle] = ventricle_pixels
+                    systoles[cur_angle] = slicer
+                    systoles_pix[cur_angle] = ventricle_pixels
+                else:
+                    if ventricle_pixels > diastoles_pix[cur_angle]:
                         diastoles[cur_angle] = slicer
                         diastoles_pix[cur_angle] = ventricle_pixels
+                    if ventricle_pixels < systoles_pix[cur_angle]:
                         systoles[cur_angle] = slicer
                         systoles_pix[cur_angle] = ventricle_pixels
-                    else:
-                        if ventricle_pixels > diastoles_pix[cur_angle]:
-                            diastoles[cur_angle] = slicer
-                            diastoles_pix[cur_angle] = ventricle_pixels
-                        if ventricle_pixels < systoles_pix[cur_angle]:
-                            systoles[cur_angle] = slicer
-                            systoles_pix[cur_angle] = ventricle_pixels
 
-                    full_slice[:sx, :sy] = slice_data
-                    full_mask[:sx, :sy] = mask
-                    hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
-                    hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
-                    if MRI_DATE not in hd5:
-                        hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
-                    if include_heart_zoom:
-                        zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                        zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                        hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
-                        hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
+                full_slice[:sx, :sy] = slice_data
+                full_mask[:sx, :sy] = mask
+                hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
+                hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
+
+                if include_heart_zoom:
+                    zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+                    zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+                    hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
+                    hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
                     if write_pngs:
-                        overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
                         # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
-                        if include_heart_zoom:
-                            plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
-                            plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
-                if write_pngs:
-                    plt.imsave(tensors + v + '_' + str(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
+                        plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
+                        plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
 
         if v == MRI_TO_SEGMENT:
             # if len(diastoles) == 0:
@@ -657,7 +606,7 @@ def _write_tensors_from_dicoms(x,
                 sx = min(diastoles[angle].Rows, x)
                 sy = min(diastoles[angle].Columns, y)
                 full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-                overlay, full_mask[:sx, :sy] = _get_overlay_from_dicom(diastoles[angle])
+                overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(diastoles[angle])
                 hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
                 hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
                 if write_pngs:
@@ -667,7 +616,7 @@ def _write_tensors_from_dicoms(x,
                 sx = min(systoles[angle].Rows, x)
                 sy = min(systoles[angle].Columns, y)
                 full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-                overlay, full_mask[:sx, :sy] = _get_overlay_from_dicom(systoles[angle])
+                overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(systoles[angle])
                 hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
                 hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
                 if write_pngs:
@@ -685,7 +634,15 @@ def _has_overlay(d) -> bool:
         return False
 
 
-def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
+def _is_mitral_valve_segmentation(d) -> bool:
+    return d.ImagePositionPatient[0] < 0
+
+
+def _slice_index_from_ideal_protocol(d, min_ideal_series):
+    return 6*(d.InstanceNumber-1) + ((d.SeriesNumber-min_ideal_series)//2)
+
+
+def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
     """Get an overlay from a DICOM file
 
     Morphological operators are used to transform the pixel outline of the myocardium
@@ -714,26 +671,35 @@ def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
     if bits_allocated == 1:
         expected_bit_length = expected_length
         bit = 0
-        arr = np.ndarray(shape=(length_of_pixel_array * 8), dtype=np_dtype)
+        overlay = np.ndarray(shape=(length_of_pixel_array * 8), dtype=np_dtype)
         for byte in overlay_raw:
             for bit in range(bit, bit + 8):
-                arr[bit] = byte & 0b1
+                overlay[bit] = byte & 0b1
                 byte >>= 1
             bit += 1
-        arr = arr[:expected_bit_length]
+        overlay = overlay[:expected_bit_length]
     if overlay_frames == 1:
-        arr = arr.reshape(rows, cols)
-        idx = np.where(arr == 1)
+        overlay = overlay.reshape(rows, cols)
+        idx = np.where(overlay == 1)
         min_pos = (np.min(idx[0]), np.min(idx[1]))
         max_pos = (np.max(idx[0]), np.max(idx[1]))
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
-        small_radius = max(2, short_side * 0.185)
-        big_radius = max(2, short_side * 0.9)
-        myocardium_structure = _unit_disk(small_radius)
-        m1 = binary_closing(arr, myocardium_structure).astype(np.int)
-        ventricle_structure = _unit_disk(big_radius)
-        m2 = binary_closing(arr, ventricle_structure).astype(np.int)
-        return arr, m1 + m2
+        small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
+        big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
+        small_structure = _unit_disk(small_radius)
+        m1 = binary_closing(overlay, small_structure).astype(np.int)
+        big_structure = _unit_disk(big_radius)
+        m2 = binary_closing(overlay, big_structure).astype(np.int)
+        anatomical_mask = m1 + m2
+        ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle']) == 0
+        myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
+        if ventricle_pixels and myocardium_pixels > MRI_MAX_MYOCARDIUM:
+            erode_structure = _unit_disk(small_radius*1.5)
+            anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+            ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
+        if debug:
+            logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
+        return overlay, anatomical_mask, ventricle_pixels
 
 
 def _unit_disk(r) -> np.ndarray:
@@ -942,6 +908,84 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
     return disease2tsv
 
 
+def append_float_csv(tensors, csv_file, group, delimiter):
+    stats = Counter()
+    data_maps = defaultdict(dict)
+    with open(csv_file, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter=delimiter))
+        fields = lol[0][1:]  # Assumes sample id is the first field
+        logging.info(f"CSV of floats header:{fields}")
+        for row in lol[1:]:
+            sample_id = row[0]
+            data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
+
+    logging.info(f"Data maps:{len(data_maps)}")
+    for tp in os.listdir(tensors):
+        if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
+            continue
+        try:
+            with h5py.File(tensors + tp, 'a') as hd5:
+                sample_id = tp.replace(TENSOR_EXT, '')
+                if sample_id in data_maps:
+                    for field in data_maps[sample_id]:
+                        value = _to_float_or_false(data_maps[sample_id][field])
+                        if value:
+                            hd5_key = group + HD5_GROUP_CHAR + field
+                            if field in hd5[group]:
+                                data = hd5[hd5_key]
+                                data[0] = value
+                                stats['updated'] += 1
+                            else:
+                                hd5.create_dataset(hd5_key, data=[value])
+                                stats['created'] += 1
+                else:
+                    stats['sample id missing']
+        except:
+            print('couldnt open', tp, traceback.format_exc())
+            stats['failed'] += 1
+
+    for k in stats:
+        logging.info("{}: {}".format(k, stats[k]))
+
+
+def append_gene_csv(tensors, csv_file, delimiter):
+    stats = Counter()
+    data_maps = defaultdict(dict)
+    with open(csv_file, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter=delimiter))
+        fields = lol[0][1:]  # Assumes sample id is the first field
+        logging.info(f"CSV of genes header:{fields}")
+        for row in lol[1:]:
+            sample_id = row[0]
+            data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
+
+    logging.info(f"Data maps:{len(data_maps)}")
+    hd5_prefix = 'categorical' + HD5_GROUP_CHAR
+    for tp in os.listdir(tensors):
+        if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
+            continue
+        try:
+            with h5py.File(tensors + tp, 'a') as hd5:
+                sample_id = tp.replace(TENSOR_EXT, '')
+                if sample_id in data_maps:
+                    for field in data_maps[sample_id]:
+                        if field in hd5[hd5_prefix]:
+                            data = hd5[data_maps[sample_id][field]]
+                            data[0] = 1.0
+                            stats['updated'] += 1
+                        else:
+                            hd5.create_dataset(hd5_prefix + field, data=[1.0])
+                            stats['created'] += 1
+                else:
+                    stats['sample id missing']
+        except:
+            print('couldnt open', tp, traceback.format_exc())
+            stats['failed'] += 1
+
+    for k in stats:
+        logging.info("{}: {}".format(k, stats[k]))
+
+
 # TODO Use 'with' or explicitly close files opened in this method
 def _ukbb_stats(run_id, output_folder, phenos_folder, volume_csv, icd_csv, app_csv, zip_folder) -> None:
     stats = Counter()
@@ -1047,7 +1091,6 @@ def _print_disease_tensor_maps(phenos_folder) -> None:
         factor = int(total / (diseased * 2))
         print("'{}': TensorMap('{}', group='categorical_index', channel_map={{'no_{}':0, '{}':1}}, loss=weighted_crossentropy([1.0, {}], '{}')),".format(
             d, d, d, d, factor, d))
-
 
 
 def _print_disease_tensor_maps_incident_prevalent(phenos_folder) -> None:

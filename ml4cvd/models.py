@@ -22,9 +22,9 @@ from keras.layers.convolutional import Conv1D, Conv2D, Conv3D, UpSampling1D, UpS
 from keras.layers.convolutional import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D
 
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.metrics import get_metric_dict
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
-from ml4cvd.metrics import sum_pred_loss, get_metric_dict, paired_angle_between_batches
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
@@ -521,8 +521,6 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
     embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
-    embed_model.summary()
-    print(list(test_data.keys()))
     return embed_model.predict(test_data, batch_size=batch_size)
 
 
@@ -577,7 +575,8 @@ def _dense_block3d(x: K.placeholder,
                    kernel: Tuple[int, int, int],
                    pool_size: Tuple[int, int, int],
                    conv_dropout: float,
-                   padding: str):
+                   padding: str,
+                   pool_mode: str='average'):
     for db_filters in dense_blocks:
         for i in range(block_size):
             residual3d = x
@@ -593,7 +592,10 @@ def _dense_block3d(x: K.placeholder,
             if i == 0:
                 up_conv = Conv3D(filters=db_filters, kernel_size=kernel, activation=activation, padding=padding)
                 upsamplers.append((residual3d, up_conv, UpSampling3D(pool_size)))
-                x = AveragePooling3D(pool_size, strides=pool_size)(x)
+                if pool_mode == 'average':
+                    x = AveragePooling3D(pool_size, strides=pool_size)(x)
+                elif pool_mode == 'max':
+                    x = MaxPooling3D(pool_size, strides=pool_size)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]
@@ -648,7 +650,8 @@ def _dense_block2d(x: K.placeholder,
                    kernel: Tuple[int, int],
                    pool_size: Tuple[int, int],
                    conv_dropout: float,
-                   padding: str):
+                   padding: str,
+                   pool_mode: str='average'):
     for db_filters in dense_blocks:
         for i in range(block_size):
             residual2d = x
@@ -664,7 +667,10 @@ def _dense_block2d(x: K.placeholder,
             if i == 0:
                 up_conv = Conv2D(filters=db_filters, kernel_size=kernel, activation=activation, padding=padding)
                 upsamplers.append((residual2d, up_conv, UpSampling2D(pool_size)))
-                x = AveragePooling2D(pool_size, strides=pool_size)(x)
+                if pool_mode == 'average':
+                    x = AveragePooling2D(pool_size, strides=pool_size)(x)
+                elif pool_mode == 'max':
+                    x = MaxPooling2D(pool_size, strides=pool_size)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]
@@ -719,7 +725,8 @@ def _dense_block1d(x: K.placeholder,
                    conv_width: int,
                    conv_dropout: float,
                    pool_x: int,
-                   padding: str):
+                   padding: str,
+                   pool_mode: str='max'):
     for db_filters in dense_blocks:
         for i in range(block_size):
             residual1d = x
@@ -735,7 +742,10 @@ def _dense_block1d(x: K.placeholder,
             if i == 0:
                 up_conv = Conv1D(filters=db_filters, kernel_size=conv_width, activation=activation, padding=padding)
                 upsamplers.append((residual1d, up_conv, UpSampling1D(pool_x)))
-                x = AveragePooling1D(pool_x, strides=pool_x)(x)
+                if pool_mode == 'average':
+                    x = AveragePooling1D(pool_x, strides=pool_x)(x)
+                elif pool_mode == 'max':
+                    x = MaxPooling1D(pool_x, strides=pool_x)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]

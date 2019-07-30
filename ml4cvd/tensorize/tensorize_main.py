@@ -20,7 +20,7 @@ def parse_args():
                              'starting with a letter and ending with a letter or number.')
     parser.add_argument('--tensor_type', default="categorical",
                         help='Type of data to be tensorized',
-                        choices=['categorical', 'continuous', 'icd'])
+                        choices=['categorical', 'continuous', 'icd', 'disease', 'death', 'phecode_disease'])
     parser.add_argument('--bigquery_dataset', default='ukbb_dev',
                         help='BigQuery dataset where the data will be drawn from')
     parser.add_argument('--beam_runner', default='DirectRunner',

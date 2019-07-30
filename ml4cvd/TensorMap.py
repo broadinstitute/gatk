@@ -6,17 +6,20 @@ from dateutil import relativedelta
 
 from keras.utils import to_categorical
 
-from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, \
-    CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, \
-    TENSOR_MAP_GROUP_CONTINUOUS, IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.defines import CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
+from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
+from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'lv_mass',
+CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', #'lv_mass',
+                         'corrected_extracted_lvesv', 'corrected_extracted_lvef', 'corrected_extracted_lvedv',
+                         'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
                          'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
-                         'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0']  # 'PAxis', 'PDuration', 'POffset', 'POnset',
+                         'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0', '22402_Liver-fat-percentage_2_0',
+                         'liver_fat_sentinel_prediction']
 
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
@@ -65,6 +68,8 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '4429_Average-monthly-beer-plus-cider-intake_0_0'
                                        ]
 
+MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef']
+
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
 
@@ -90,6 +95,7 @@ class TensorMap(object):
                  model=None,
                  metrics=None,
                  parents=None,
+                 sentinel=None,
                  activation=None,
                  loss_weight=1.0,
                  channel_map=None,
@@ -108,6 +114,7 @@ class TensorMap(object):
         :param model: Model for hidden layer tensor maps
         :param metrics: List of metric functions of strings
         :param parents: List of tensorMaps which must be attached to the graph before this one
+        :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param activation: String specifying activation function
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
@@ -125,6 +132,7 @@ class TensorMap(object):
         self.group = group
         self.metrics = metrics
         self.parents = parents
+        self.sentinel = sentinel
         self.activation = activation
         self.loss_weight = loss_weight
         self.channel_map = channel_map
@@ -150,7 +158,11 @@ class TensorMap(object):
 
         if self.loss is None and self.is_categorical_any():
             self.loss = 'categorical_crossentropy'
+        elif self.loss is None and self.is_continuous() and self.sentinel is not None:
+            self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
+            self.loss = 'mse'
+        elif self.loss is None:
             self.loss = 'mse'
 
         if self.metrics is None and self.is_categorical_any():
@@ -211,14 +223,20 @@ class TensorMap(object):
     def is_categorical_date(self):
         return self.group == 'categorical_date'
 
+    def is_categorical_flag(self):
+        return self.group == 'categorical_flag'
+
     def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date()
+        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag()
 
     def is_continuous(self):
         return self.group == 'continuous'
 
     def is_multi_field_continuous(self):
         return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS or self.group == TENSOR_MAP_GROUP_CONTINUOUS
+
+    def is_root_array(self):
+        return self.group == 'root_array'
 
     def is_multi_field_continuous_with_missing_channel(self):
         return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS
@@ -262,15 +280,15 @@ class TensorMap(object):
 
         if 'mean' in self.normalization and 'std' in self.normalization:
             not_missing_in_channel_map = NOT_MISSING in self.channel_map
-            if self.is_continuous():
+            if self.is_continuous() and not_missing_in_channel_map:
                 for i in range(0, len(np_tensor)):
-                    if not_missing_in_channel_map and self.channel_map[NOT_MISSING] == i:
+                    if self.channel_map[NOT_MISSING] == i:
                         continue
                     # If the not-missing channel exists in the channel_map and it is marked as "missing" (value of 0)
                     # and the data itself is 0, then overwrite the value with a draw from a N(0,1)
-                    if not_missing_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
+                    if np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
                         np_tensor[i] = np.random.normal(1)
-                    else:
+                    elif np_tensor[i] == 0:
                         np_tensor[i] -= self.normalization['mean']
                         np_tensor[i] /= (self.normalization['std'] + EPS)
             else:
@@ -376,22 +394,48 @@ class TensorMap(object):
             tm: The TensorMap that describes the type of tensor to make
             hd5: The file where the tensor was saved
             dependents: A dict that maps dependent TensorMaps to numpy arrays
-                if tm has a dependent tensor it will be constructed and added here
+                if self has a dependent TensorMap it will be constructed and added here
 
         Returns
             A numpy array whose dimension and type is dictated by tm
         """
         if self.is_categorical_index():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            index = int(hd5[self.name][0])
+            if self.name in hd5:
+                index = int(hd5[self.name][0])
+                categorical_data[index] = 1.0
+            elif self.name in hd5['categorical']:
+                index = int(hd5['categorical'][self.name][0])
+                categorical_data[index] = 1.0
+            else:
+                raise ValueError(f"No categorical index found for tensor map: {self.name}.")
+            return categorical_data
+        elif self.is_categorical_flag():
+            categorical_data = np.zeros(self.shape, dtype=np.float32)
+            index = 0
+            if self.name in hd5 and int(hd5[self.name][0]) != 0:
+                index = 1
+            elif self.name in hd5['categorical']  and int(hd5['categorical'][self.name][0]) != 0:
+                index = 1
             categorical_data[index] = 1.0
             return categorical_data
         elif self.is_categorical_date():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            index = int(hd5[self.name][0])
+            if self.name in hd5:
+                index = int(hd5[self.name][0])
+            elif self.name in hd5['categorical']:
+                index = int(hd5['categorical'][self.name][0])
+            else:
+                index = 0  # Assume no disease if the tensor does not have the dataset
             if index != 0:
-                disease_date = _str2date(str(hd5[self.name + '_date'][0]))
-                assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
+                if self.name + '_date' in hd5:
+                    disease_date = _str2date(str(hd5[self.name + '_date'][0]))
+                    assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
+                elif self.name + '_date' in hd5['dates']:
+                    disease_date = _str2date(str(hd5['dates'][self.name + '_date'][0]))
+                    assess_date = _str2date(str(hd5['dates']['enroll_date'][0]))
+                else:
+                    raise ValueError(f"No date found for tensor map: {self.name}.")
                 index = 1 if disease_date < assess_date else 2
             categorical_data[index] = 1.0
             return categorical_data
@@ -420,6 +464,11 @@ class TensorMap(object):
             return self.zero_mean_std1(tensor)
         elif self.name == 'aligned_distance':
             return np.zeros((1,), dtype=np.float32)
+        elif self.name == 'lms_ideal_optimised_low_flip_6dyn_4slice':
+            whole_liver = np.array(hd5['lms_ideal_optimised_low_flip_6dyn'])
+            cur_index = np.random.randint(whole_liver.shape[2] - self.shape[2])
+            tensor = whole_liver[:, :, cur_index:cur_index+4]
+            return self.zero_mean_std1(tensor)
         elif self.name == 'mri_slice':
             cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
             tensor = np.zeros(self.shape, dtype=np.float32)
@@ -465,23 +514,18 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
-        elif self.name == 'end_systole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+        elif self.is_root_array():
+            tensor = np.zeros(self.shape, dtype=np.float32)
+            tensor[:] = np.array(hd5[self.name], dtype=np.float32)
+            return self.zero_mean_std1(tensor)
+        elif self.name in MRI_ANNOTATION_GOOD_NEEDED:
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            lvesv = float(hd5['continuous/end_systole_volume'][0])
-            continuous_data[0] = -3.8 + (lvesv * 0.87)
-            return self.normalize(continuous_data)
-        elif self.name == 'end_diastole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
-            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            lvedv = float(hd5['continuous/end_diastole_volume'][0])
-            continuous_data[0] = 16.8 + (lvedv * 0.88)
-            return self.normalize(continuous_data)
-        elif self.name == 'ejection_fraction_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
-            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            lvesv = float(hd5['continuous/end_systole_volume'][0])
-            lvesv_corrected = -3.8 + (lvesv * 0.87)
-            lvedv = float(hd5['continuous/end_diastole_volume'][0])
-            lvedv_corrected = 16.8 + (lvedv * 0.88)
-            continuous_data[0] = (lvedv_corrected - lvesv_corrected) / lvedv_corrected
+            if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != [MRI_ANNOTATION_CHANNEL_MAP['good']]:
+                if self.sentinel is not None:
+                    continuous_data[:] = self.sentinel
+                    return continuous_data
+                raise ValueError('MRI Critic annotation not good or unreviewed.')
+            continuous_data[:] = float(hd5['continuous'][self.name][0])
             return self.normalize(continuous_data)
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
@@ -513,7 +557,7 @@ class TensorMap(object):
                     continuous_data[self.channel_map[k]] = value
             if NOT_MISSING in self.channel_map and not missing:
                 continuous_data[self.channel_map[NOT_MISSING]] = 1
-            if continuous_data[0] == 0 and self.name in CONTINUOUS_NEVER_ZERO:
+            if continuous_data[0] == 0 and (self.sentinel == None and self.name in CONTINUOUS_NEVER_ZERO):
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
         elif self.is_multi_field_continuous():

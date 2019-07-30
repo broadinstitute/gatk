@@ -1,30 +1,32 @@
 # explorations.py
 
 # Imports
+import os
+import csv
 import math
 import operator
-import os
-from collections import defaultdict, Counter
+import datetime
 from functools import reduce
 from itertools import combinations
+from collections import defaultdict, Counter
+from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import h5py
 import logging
-import datetime
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
+from keras.models import Model
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap
+from ml4cvd.models import embed_model_predict
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_tsne, evaluate_predictions, subplot_rocs, subplot_scatters
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
-CSV_EXT = '.csv'
+CSV_EXT = '.tsv'
 
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
@@ -41,6 +43,26 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
                                 f.write(f"{tensor_file}\tPrevalent {tm.name}\n")
                             else:
                                 f.write(f"{tensor_file}\tIncident {tm.name}\n")
+
+
+def sort_csv(input_csv_file, volume_csv):
+    lvef = {}
+    with open(volume_csv, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter='\t'))
+        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
+        for row in lol[1:]:
+            sample_id = row[0]
+            if row[5] != 'NA':
+                lvef[sample_id] = float(row[5])
+
+    print('try:', input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT))
+    with open(input_csv_file, mode='r') as input_csv:
+        with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
+            csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csv_reader = csv.reader(input_csv, delimiter='\t')
+            csv_writer.writerow(next(csv_reader)+['discrepancy'])
+            csv_sorted = sorted(csv_reader, key=lambda row: abs(float(lvef[row[0]])-float(row[5])), reverse=True)
+            [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap],
@@ -82,12 +104,16 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
 
 def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
                         generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
-                        data: Dict[str, np.ndarray], labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
-                        training_steps: int, folder: str, run_id: str, write_pngs: bool):
+                        test_data: Dict[str, np.ndarray], test_labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
+                        training_steps: int, folder: str, write_pngs: bool):
+
     if not os.path.exists(folder):
         os.makedirs(folder)
+
     for i in range(epochs):
-        predictions = model.predict(data, batch_size=batch_size)
+        rocs = []
+        scatters = []
+        predictions = model.predict(test_data, batch_size=batch_size)
         for y, tm in zip(predictions, tensor_maps_out):
             if len(tensor_maps_out) == 1:
                 predictions = [predictions]
@@ -96,40 +122,49 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                     for im in tensor_maps_in:
                         if im.dependent_map == tm:
                             break
-                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{labels[tm.output_name()].shape} to folder:{folder}")
+                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
-                        plt.imsave(folder+str(yi)+'_truth_epoch_{0:03d}'.format(i)+IMAGE_EXT, np.argmax(labels[tm.output_name()][yi], axis=-1))
-                        plt.imsave(folder+str(yi)+'_prediction_epoch_{0:03d}'.format(i)+IMAGE_EXT, np.argmax(y[yi], axis=-1))
-                        plt.imsave(folder+str(yi)+'_mri_slice_epoch_{0:03d}'.format(i)+IMAGE_EXT, data[im.input_name()][yi,:,:,0])
+                        plt.imsave(f"{folder}batch_index_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(test_labels[tm.output_name()][yi], axis=-1))
+                        plt.imsave(f"{folder}batch_index_{yi}_prediction_epoch_{i:03d}{IMAGE_EXT}", np.argmax(y[yi], axis=-1))
+                        plt.imsave(f"{folder}batch_index_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, 0])
                 elif tm.is_categorical_any() and len(tm.shape) == 4:
                     for im in tensor_maps_in:
                         if im.dependent_map == tm:
                             break
-                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{labels[tm.output_name()].shape} to folder:{folder}")
+                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
                         for j in range(y.shape[3]):
-                            truth = np.argmax(labels[tm.output_name()][yi,:,:,j,:], axis=-1)
+                            truth = np.argmax(test_labels[tm.output_name()][yi, :, :, j, :], axis=-1)
                             prediction = np.argmax(y[yi,:,:,j,:], axis=-1)
-                            true_donut = np.ma.masked_where(truth == 2, data[im.input_name()][yi,:,:,j,0])
-                            predict_donut = np.ma.masked_where(prediction == 2, data[im.input_name()][yi,:,:,j,0])
-                            plt.imsave(folder+str(yi)+'_slice_{0:03d}_prediction_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, prediction)
-                            plt.imsave(folder+str(yi)+'_slice_{0:03d}_predict_donut_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, predict_donut)
+                            true_donut = np.ma.masked_where(truth == 2, test_data[im.input_name()][yi, :, :, j, 0])
+                            predict_donut = np.ma.masked_where(prediction == 2, test_data[im.input_name()][yi, :, :, j, 0])
+                            plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}", prediction)
+                            plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_predict_donut_epoch_{i:03d}{IMAGE_EXT}", predict_donut)
                             if i == 0:
-                                plt.imsave(folder+str(yi)+'_slice_{0:03d}_truth_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, truth)
-                                plt.imsave(folder+str(yi)+'_slice_{0:03d}_true_donut_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, true_donut)
-                                plt.imsave(folder+str(yi)+'_slice_{0:03d}_mri_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, data[im.input_name()][yi,:,:,j,0])
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth)
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_true_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut)
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, j, 0])
 
             elif write_pngs:
-                title = tm.name+'_epoch_{0:03d}'.format(i)
-                metric_folder = os.path.join(folder, run_id, 'training_metrics/')
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
-                evaluate_predictions(tm, y, labels, data, title, metric_folder)
+                evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
+        if len(rocs) > 1:
+            subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
+        if len(scatters) > 1:
+            subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
+
+        embeddings = embed_model_predict(model, tensor_maps_in, 'embed', test_data, batch_size)
+        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+        label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels_1d, len(test_paths))
+
+        gene_labels = []
+        plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, folder+f"tsne_epoch_{i:03d}_", 0.7)
 
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
-def plot_histograms_from_tensor_files_in_pdf(id: str,
+def plot_histograms_from_tensor_files_in_pdf(run_id: str,
                                              tensor_folder: str,
                                              output_folder: str,
                                              max_samples: int = None) -> None:
@@ -139,10 +174,9 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
     :param output_folder: folder containing the output plot
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
-
     stats, num_tensor_files = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
-    plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
+    plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
 
 def plot_heatmap_from_tensor_files(id: str,
@@ -157,13 +191,12 @@ def plot_heatmap_from_tensor_files(id: str,
     :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
-
     stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples, ['0'], 0)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...")
     plot_heatmap(stats, id, min_samples, output_folder)
 
 
-def tabulate_correlations_from_tensor_files(id: str,
+def tabulate_correlations_from_tensor_files(run_id: str,
                                             tensor_folder: str,
                                             output_folder: str,
                                             min_samples: int,
@@ -175,10 +208,9 @@ def tabulate_correlations_from_tensor_files(id: str,
     :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
-
     stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...")
-    _tabulate_correlations(stats, id, min_samples, output_folder)
+    _tabulate_correlations(stats, run_id, min_samples, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
@@ -295,6 +327,23 @@ def tensors_to_label_dictionary(categorical_labels: List,
                 label_dict[k][i] = 1
 
     return label_dict
+
+
+def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> Tuple[Dict[str, np.ndarray], List[str], List[str]]:
+    label_dict = {tm: np.zeros((examples,)) for tm in test_labels}
+    categorical_labels = []
+    continuous_labels = []
+
+    for tm in test_labels:
+        for i in range(examples):
+            if tm.is_continuous():
+                label_dict[tm][i] = tm.rescale(test_labels[tm][i])
+                continuous_labels.append(tm)
+            else:
+                label_dict[tm][i] = np.argmax(test_labels[tm][i])
+                categorical_labels.append(tm)
+
+    return label_dict, categorical_labels, continuous_labels
 
 
 def _sample_with_heat(preds, temperature=1.0):

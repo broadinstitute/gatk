@@ -18,6 +18,12 @@ def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str,
         query = _get_continuous_query(sql_dataset)
     elif tensor_type == 'icd':
         query = _get_icd_query(sql_dataset)
+    elif tensor_type == 'disease':
+        query = _get_disease_query(sql_dataset)
+    elif tensor_type == 'phecode_disease':
+        query = _get_phecode_query(sql_dataset)
+    elif tensor_type == 'death':
+        query = _get_death_and_censor_query(sql_dataset)
     else:
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
@@ -76,7 +82,18 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                     for row in rows:
                         hd5_dataset_name = dataset_name_from_meaning('continuous', [str(row['fieldid']), row['field'], str(row['instance']), str(row['array_idx'])])
                         _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
-
+                elif tensor_type in ['disease', 'phecode_disease']:
+                    for row in rows:
+                        hd5.create_dataset('categorical' + HD5_GROUP_CHAR + row['disease'].lower(), data=[float(row['has_disease'])])
+                        hd5_date = 'dates' + HD5_GROUP_CHAR + row['disease'].lower() + '_date'
+                        hd5.create_dataset(hd5_date, (1,), data=str(row['censor_date']), dtype=h5py.special_dtype(vlen=str))
+                elif tensor_type == 'death':
+                    for row in rows:
+                        hd5.create_dataset('categorical' + HD5_GROUP_CHAR + 'death', data=[float(row['has_died'])])
+                        d = 'dates' + HD5_GROUP_CHAR
+                        hd5.create_dataset(d+'enroll_date', (1,), data=str(row['enroll_date']), dtype=h5py.special_dtype(vlen=str))
+                        hd5.create_dataset(d+'death_censor', (1,), data=str(row['death_censor_date']), dtype=h5py.special_dtype(vlen=str))
+                        hd5.create_dataset(d+'phenotype_censor', (1,), data=str(row['phenotype_censor_date']), dtype=h5py.special_dtype(vlen=str))
             gcs_blob.upload_from_filename(tensor_path)
     except:
         logging.exception(f"Problem with processing sample id '{sample_id}'")
@@ -140,3 +157,24 @@ def _get_icd_query(dataset):
     return f"""
         SELECT sample_id, value FROM `{dataset}.phenotype` WHERE fieldid IN (41202, 41204, 40001, 40002, 40006);
     """
+
+
+def _get_disease_query(dataset):
+    return f"""
+        SELECT sample_id, disease, has_disease, censor_date FROM `{dataset}.disease` WHERE has_disease=1;
+    """
+
+
+def _get_death_and_censor_query(dataset):
+    return f"""
+        SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date, d.enroll_date
+        FROM `{dataset}.disease` d INNER JOIN `{dataset}.censor` c 
+         ON c.sample_id = d.sample_id ORDER BY d.sample_id;
+    """
+
+
+def _get_phecode_query(dataset):
+    return f"""
+        SELECT sample_id, disease, has_disease, censor_date FROM `{dataset}.phecodes_nonzero` WHERE has_disease=1;
+    """
+

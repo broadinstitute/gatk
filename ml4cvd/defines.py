@@ -14,9 +14,10 @@ MRI_TO_SEGMENT = 'cine_segmented_sax_inlinevf'
 MRI_SEGMENTED = 'cine_segmented_sax_inlinevf_segmented'
 MRI_ZOOM_INPUT = 'sax_inlinevf_zoom'
 MRI_ZOOM_MASK = 'sax_inlinevf_zoom_mask'
-MRI_DATE = 'mri_date'
+MRI_DATE = 'mridate'
+MRI_ANNOTATION_NAME = 'mri_critic_annotation'
 MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
-
+MRI_ANNOTATION_CHANNEL_MAP = {'good': 0, 'included-lvot': 1, 'mistrace': 48, 'phantom-apex': 3}
 CAD_ICDS = ['K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
             'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759']
 

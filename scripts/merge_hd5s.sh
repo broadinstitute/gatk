@@ -7,6 +7,8 @@
 DESTINATION=
 SOURCES=
 NUM_JOBS=96
+INTERSECT=""
+INPLACE=""
 SAMPLE_IDS_START=1000000
 SAMPLE_IDS_END=6030000
 
@@ -35,9 +37,13 @@ usage()
 
         -n      <num>       Number of jobs to run in parallel. Default: 96.
 
+        -i      <str>       Intersect mode (intersect or nothing)
+
+        -p      <str>       Inplace mode (inplace or nothing)
+
         -s      <id>        Smallest sample ID to start with. Default: 1000000.
 
-        -e      <id>        Largest sample ID to start with. Default: 6030000.
+        -e      <id>        Largest sample ID to end with. Default: 6030000.
 
         -h                  Print this help text
 
@@ -65,7 +71,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":d:s:n:e:h" opt ; do
+while getopts ":d:s:n:b:e:hip" opt ; do
     case ${opt} in
         h)
             usage
@@ -80,11 +86,17 @@ while getopts ":d:s:n:e:h" opt ; do
         n)
             NUM_JOBS=$OPTARG
             ;;
-        s)
+        b)
             SAMPLE_IDS_START=$OPTARG
             ;;
         e)
             SAMPLE_IDS_END=$OPTARG
+            ;;
+        i)
+            INTERSECT="--intersect"
+            ;;
+        p)
+            INPLACE="--inplace"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -116,18 +128,20 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
     echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
 
         cat <<LAUNCH_CMDLINE_MESSAGE
-                $HOME/ml/scripts/tf.sh -nt $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+                $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
-		--max_sample_id $MAX_SAMPLE_ID &
+		--max_sample_id $MAX_SAMPLE_ID \
+		$INTERSECT $INPLACE &
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml/scripts/tf.sh -nt $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+    $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
-		--max_sample_id $MAX_SAMPLE_ID &
+		--max_sample_id $MAX_SAMPLE_ID \
+		$INTERSECT $INPLACE &
 
     let COUNTER=COUNTER+1
     let MIN_SAMPLE_ID=MIN_SAMPLE_ID+INCREMENT
