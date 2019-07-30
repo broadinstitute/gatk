@@ -166,10 +166,6 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="graph-output", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
     public String graphOutput = null;
 
-    @Hidden
-    @Argument(fullName="debug-haplotype-discovery", doc="Write debug histogram for haplotype discovery", optional = true)
-    public boolean debugHaplotypeDiscovery = false;
-
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */

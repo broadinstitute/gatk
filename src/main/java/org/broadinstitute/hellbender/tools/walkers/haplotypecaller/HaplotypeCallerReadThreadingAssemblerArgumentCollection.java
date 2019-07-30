@@ -46,7 +46,6 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
                 dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, useAdaptivePruning ? 0 : minPruneFactor,
                 useAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
-        assemblyEngine.setDebugHaplotypeMode(debugHaplotypeDiscovery);
         assemblyEngine.setRecoverDanglingBranches(!doNotRecoverDanglingBranches);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);

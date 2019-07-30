@@ -574,8 +574,9 @@ public final class ReadThreadingAssembler {
 
     public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
 
-    public void setDebugHaplotypeMode(final boolean debugGraphTransformations) {
-        this.debugHaplotypeFinding = debugGraphTransformations;
+    public void setDebugHistogramOutput(final File file) {
+        this.debugHaplotypeFinding = true;
+        this.graphHaplotypeHistogramPath = file;
         this.haplotypeHistogram = new Histogram(1.0);
         this.kmersUsedHistogram = new Histogram(1.0);
     }
@@ -611,9 +612,5 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
-    }
-
-    public void setDebugHistogramOutput(final File file) {
-        this.graphHaplotypeHistogramPath = file;
     }
 }
