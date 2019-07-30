@@ -465,6 +465,8 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 * Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
 
+* If you are still having issues building the GATK you may need to manually set the Gradle JVM. In order to do that find the wrench icon in the gradle tab in intellij and change the "Gradle JVM" argument to point to Java 1.8.
+
 #### <a name="debugging">Setting up debugging in IntelliJ</a>
 
 * Follow the instructions above for creating an IntelliJ project for GATK
