@@ -17,13 +17,13 @@ import java.util.stream.Collectors;
  */
 public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
     private JunctionTreeView treesInQueue; // An object for storing and managing operations on the queue of junction trees active for this path
-    private int edgesTakenSinceLastJunctionTreeEvidence;
+    private int decisionEdgesTakenSinceLastJunctionTreeEvidence;
 
     // NOTE, this constructor is used by JJunctionTreeKBestHaplotypeFinder, in both cases paths are chosen by non-junction tree paths
     public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend, edgePenalty);
         treesInQueue = p.treesInQueue.clone();
-        edgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + 1;
+        decisionEdgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.decisionEdgesTakenSinceLastJunctionTreeEvidence + 1;
     }
 
     // Constructor to be used for internal calls from {@link #getApplicableNextEdgesBasedOnJunctionTrees()}
@@ -31,16 +31,16 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         super(p, chain, computeLogPenaltyScore( edgeMultiplicity, totalOutgoingMultiplicity));
         treesInQueue = p.treesInQueue.clone();
         // Ensure that the relevant edge has been traversed
-        final boolean hasMoreEdgeEvidence = treesInQueue.takeEdge(chain.get(chain.size() - 1));
+        treesInQueue.takeEdge(chain.get(chain.size() - 1));
         // I'm aware that the chain is only an estimate of the proper length, especially if we got here due to being under the weight threshold for a given tree... the chain lenght is a heuristic as it is...
-        edgesTakenSinceLastJunctionTreeEvidence = thisPathBasedOnJT || hasMoreEdgeEvidence ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + 1;
+        decisionEdgesTakenSinceLastJunctionTreeEvidence = thisPathBasedOnJT ? 0 : p.decisionEdgesTakenSinceLastJunctionTreeEvidence + 1;
     }
 
-    // JTBestHaplotype constructore for construction an entirely new haplotype builder.
+    // JTBestHaplotype constructor for construction an entirely new haplotype builder.
     public JTBestHaplotype(final V initialVertex, final BaseGraph<V,E> graph) {
         super(initialVertex, graph);
         treesInQueue = new JunctionTreeView();
-        edgesTakenSinceLastJunctionTreeEvidence = 0;
+        decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
     }
 
     //TODO this needs to be the same logic as the blow method, this is temporary
@@ -159,16 +159,24 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         return output;
     }
 
-    public int getEdgesTakenSinceLastJunctionTreeEvidence() {
-        return edgesTakenSinceLastJunctionTreeEvidence;
+    /**
+     * Return an accounting of how many edge decision (where there is a choice) have consecutively been based on the raw graph weights
+     * (as opposed to being based on junction tree evidence).
+     *
+     * @return number of decision edges
+     */
+    public int getDecisionEdgesTakenSinceLastJunctionTreeEvidence() {
+        return decisionEdgesTakenSinceLastJunctionTreeEvidence;
     }
 
     /**
      * Add a junction tree (corresponding to the current vertex for traversal, note that if a tree has already been visited by this path then it is ignored)
-     * @param junctionTreeForNode
+     * @param junctionTreeForNode Junction tree to add
      */
     public void addJunctionTree(final ExperimentalReadThreadingGraph.ThreadingTree junctionTreeForNode) {
-        treesInQueue.addJunctionTree(junctionTreeForNode);
+        if (treesInQueue.addJunctionTree(junctionTreeForNode)) {
+            decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
+        }
     }
 
     /**
@@ -194,11 +202,14 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
 
         // Add a junction tree, ensuring that there is a valid tree in order to check.
         // NOTE: this method filters out empty trees or trees that have already been visited on this path
-        public void addJunctionTree(final ExperimentalReadThreadingGraph.ThreadingTree junctionTreeForNode) {
+        // Return true if the tree was informative and was actually added
+        public boolean addJunctionTree(final ExperimentalReadThreadingGraph.ThreadingTree junctionTreeForNode) {
             if (!visitedTrees.contains(junctionTreeForNode) && !junctionTreeForNode.getRootNode().isEmpty()) {
                 visitedTrees.add(junctionTreeForNode);
                 activeNodes.add(junctionTreeForNode.getRootNode());
+                return true;
             }
+            return false;
         }
 
         // method to handle incrementing all of the nodes in the tree simultaniously
