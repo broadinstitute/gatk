@@ -586,7 +586,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * @param variants is modified by having a new VariantDatum added to it
      */
     private void addDatum(
-            final ArrayList<VariantDatum> variants,//another
+            final ArrayList<VariantDatum> variants,
             final boolean isInput,
             final FeatureContext featureContext,
             final VariantContext vc,
