@@ -46,7 +46,41 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 //        }
     }
 
-    // TODO test the pruning code
+    @Test
+    public void testGraphPruningSanityCheck() {
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        String ref = "TTTTTAAAAACCCCCGGGGGATATATCGCGCG"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting
+
+        String altRead1 = "TTTTTGAAAACCCTCGGGGGATAAATCGCGCG"; // 3 SNPs
+        String altRead2 = "TTTTTGAAAACCCTCGGGGG";
+        String altRead3 = "TTTTTGAAAACCCTCG";
+        String altRead4 = "TTTTTGAAAA";
+        String altRead5 = "TTTTTG";
+
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(altRead1), false);
+        assembler.addSequence("anonymous", getBytes(altRead2), false);
+        assembler.addSequence("anonymous", getBytes(altRead3), false);
+        assembler.addSequence("anonymous", getBytes(altRead4), false);
+        assembler.addSequence("anonymous", getBytes(altRead5), false);
+
+        // This graph should have generated 3 junction trees (one at GAAAA, one at TCGGG, and one at AATCG)
+        assembler.generateJunctionTrees();
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))) != null);
+
+        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).getPathsPresentAsBaseChoiceStrings().get(0), "TA_");
+
+        // Now we prune requiring at least 2 bases of support (which should kill all but the first graph and then only the first two nodes of the first graph)
+        assembler.pruneJunctionTrees(2);
+
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))) == null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))) == null);
+
+        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).getPathsPresentAsBaseChoiceStrings().get(0), "T");
+    }
 
     @Test
     // The simplest case where we expect two uninformative junction trees to be constructed

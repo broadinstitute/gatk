@@ -539,7 +539,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
      */
     public void pruneJunctionTrees(final int minimumEdgeWeight) {
         readThreadingJunctionTrees.forEach((key, value) -> value.getRootNode().pruneNode(minimumEdgeWeight));
-        readThreadingJunctionTrees = Maps.filterValues( Collections.unmodifiableMap(readThreadingJunctionTrees), ThreadingTree::isEmptyTree);
+        readThreadingJunctionTrees = Maps.filterValues( readThreadingJunctionTrees, ThreadingTree::isEmptyTree);
     }
 
     /**
@@ -766,14 +766,9 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         }
 
         // Recursively prunes nodes based on the provided threshold, removing branches without sufficient support.
-        public void pruneNode(final int threshold) {
-            for (Map.Entry<MultiSampleEdge, ThreadingNode> child : childrenNodes.entrySet()) {
-                if (child.getValue().getCount() < threshold) {
-                    childrenNodes.remove(child.getKey());
-                } else {
-                    child.getValue().pruneNode(threshold);
-                }
-            }
+        private void pruneNode(final int threshold) {
+            childrenNodes = Maps.filterValues( childrenNodes, node -> node.getCount() >= threshold);
+            childrenNodes.forEach((edge, node) -> node.pruneNode(threshold));
         }
 
         // Returns a unique name based on the memory id that conforms to the restrictions placed on .dot file nodes
