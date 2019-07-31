@@ -134,7 +134,8 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
                 throw new UserException.BadInput("Presence of '-"+getDeprecatedRawKeyName()+"' annotation is detected. This GATK version expects key "
                         + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. This could indicate that the provided input was produced with an older version of GATK. " +
-                        "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation.");
+                        "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation. There " +
+                        "may be differences in how newer GATK versions calculate DP and MQ that may result in worse MQ results. Use at your own risk.");
             }
 
             rawMQdata = vc.getAttributeAsString(getDeprecatedRawKeyName(), null);
