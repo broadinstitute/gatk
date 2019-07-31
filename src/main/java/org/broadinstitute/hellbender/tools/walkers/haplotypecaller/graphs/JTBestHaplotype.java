@@ -23,7 +23,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend, edgePenalty);
         treesInQueue = p.treesInQueue.clone();
-        edgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + edgesToExtend.size();
+        edgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + 1;
     }
 
     // Constructor to be used for internal calls from {@link #getApplicableNextEdgesBasedOnJunctionTrees()}
@@ -33,7 +33,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         // Ensure that the relevant edge has been traversed
         final boolean hasMoreEdgeEvidence = treesInQueue.takeEdge(chain.get(chain.size() - 1));
         // I'm aware that the chain is only an estimate of the proper length, especially if we got here due to being under the weight threshold for a given tree... the chain lenght is a heuristic as it is...
-        edgesTakenSinceLastJunctionTreeEvidence = thisPathBasedOnJT || hasMoreEdgeEvidence ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + chain.size();
+        edgesTakenSinceLastJunctionTreeEvidence = thisPathBasedOnJT || hasMoreEdgeEvidence ? 0 : p.edgesTakenSinceLastJunctionTreeEvidence + 1;
     }
 
     // JTBestHaplotype constructore for construction an entirely new haplotype builder.
