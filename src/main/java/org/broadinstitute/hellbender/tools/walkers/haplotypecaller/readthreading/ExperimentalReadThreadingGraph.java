@@ -538,12 +538,8 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
      * @param minimumEdgeWeight minimum edge weight below which branches are removed
      */
     public void pruneJunctionTrees(final int minimumEdgeWeight) {
-        for ( Map.Entry<MultiDeBruijnVertex, ThreadingTree> treeEntry : readThreadingJunctionTrees.entrySet()) {
-            treeEntry.getValue().getRootNode().pruneNode(minimumEdgeWeight); 
-            if (treeEntry.getValue().isEmptyTree()) {
-                readThreadingJunctionTrees.remove(treeEntry.getKey());
-            }
-        }
+        readThreadingJunctionTrees.forEach((key, value) -> value.getRootNode().pruneNode(minimumEdgeWeight));
+        readThreadingJunctionTrees = Maps.filterValues( Collections.unmodifiableMap(readThreadingJunctionTrees), ThreadingTree::isEmptyTree);
     }
 
     /**
