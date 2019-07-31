@@ -8,7 +8,9 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -1070,5 +1072,36 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 3);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(2).getBaseString(), "ATAACCCCGGGGTTTT");
+    }
+
+    @Test
+    public void testGivenAllelesHugeInsertion() {
+        final int assemblyRegionStart = 1;
+        final int maxMnpDistance = 0;
+        final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.FASTEST_AVAILABLE);
+        final AssemblyResultSet assemblyResultSet = new AssemblyResultSet();
+
+        final Haplotype refHaplotype = new Haplotype("AAAACCCCGGGGTTTT".getBytes(), true);
+        final byte[] fullReferenceWithPadding = ("A" + refHaplotype.getBaseString()).getBytes();
+        refHaplotype.setAlignmentStartHapwrtRef(assemblyRegionStart);
+        refHaplotype.setCigar(new Cigar(Collections.singletonList(new CigarElement(refHaplotype.length(), CigarOperator.M))));
+        refHaplotype.setGenomeLocation(new SimpleInterval("chr", assemblyRegionStart, assemblyRegionStart + refHaplotype.length()));
+        assemblyResultSet.setPaddedReferenceLoc(new SimpleInterval("chr", 1, assemblyRegionStart + refHaplotype.length()));
+        assemblyResultSet.add(refHaplotype);
+        assemblyResultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
+
+        Utils.resetRandomGenerator();
+        final byte[] insertedBases = new byte[200];
+        BaseUtils.fillWithRandomBases(insertedBases, 0, insertedBases.length);
+
+
+        // add huge insertion
+        final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
+                Arrays.asList(Allele.create((byte) 'A', true), Allele.create('A' + new String(insertedBases), false))).make();
+
+        AssemblyBasedCallerUtils.addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, refHaplotype, assemblyResultSet);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
+        Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "AA" + new String(insertedBases) + "AACCCCGGGGTTTT");
     }
 }

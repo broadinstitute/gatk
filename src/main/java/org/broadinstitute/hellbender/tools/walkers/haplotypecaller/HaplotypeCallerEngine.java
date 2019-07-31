@@ -713,6 +713,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
+        // Write assembly region debug output if present
+        assemblyEngine.printDebugHistograms();
 
     }
 

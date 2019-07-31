@@ -50,7 +50,7 @@ DEFAULT_SPARK_ARGS = {
     "spark.driver.maxResultSize" : "0",
     "spark.driver.userClassPathFirst" : "false",
     "spark.io.compression.codec" : "lzf",
-    "spark.yarn.executor.memoryOverhead" : "600",
+    "spark.executor.memoryOverhead" : "600",
     "spark.driver.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK,
     "spark.executor.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK
 }

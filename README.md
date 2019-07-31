@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.com/broadinstitute/gatk.svg?branch=master)](https://travis-ci.com/broadinstitute/gatk)
-[![codecov](https://codecov.io/gh/broadinstitute/gatk/branch/master/graph/badge.svg)](https://codecov.io/gh/broadinstitute/gatk)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
 [![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
@@ -50,7 +49,11 @@ releases of the toolkit.
 
 ## <a name="requirements">Requirements</a>
 * To run GATK:
-    * Java 8
+    * Java 8 is needed to run or build GATK. 
+    We recommend either of the following:
+        * OpenJDK 8 with Hotspot from [AdoptOpenJdk](https://adoptopenjdk.net/)
+        * [OracleJDK 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+    which requires an Oracle account to download and comes with restrictive [license conditions](https://www.oracle.com/downloads/licenses/javase-license1.html).
     * Python 2.6 or greater (required to run the `gatk` frontend script)
     * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
       See [Python Dependencies](#python) for more information.
@@ -242,7 +245,7 @@ You can download and run pre-built versions of GATK4 from the following places:
       -- \
       --spark-runner SPARK --spark-master <master_url> \
       --num-executors 5 --executor-cores 2 --executor-memory 4g \
-      --conf spark.yarn.executor.memoryOverhead=600
+      --conf spark.executor.memoryOverhead=600
     ```
 
 * You can also omit the "--num-executors" argument to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructions).
@@ -454,7 +457,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 * Select "Use auto-import" and "Use default gradle wrapper".
 
-* Make sure the Gradle JVM points to Java 1.8 
+* Make sure the Gradle JVM points to Java 1.8. You may need to set this manually after creating the project, to do so find the gradle settings by clicking the wrench icon in the gradle tab on the right bar, from there edit "Gradle JVM" argument to point to Java 1.8.
 
 * Click "Finish"
 

@@ -10,7 +10,9 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
@@ -56,6 +58,10 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     private static final int SUM_OF_SQUARES_INDEX = 0;
     private static final int TOTAL_DEPTH_INDEX = 1;
     private static final String OUTPUT_PRECISION = "%.2f";
+    public static final String RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT = "allow-old-rms-mapping-quality-annotation-data";
+
+    @Argument(fullName = RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, doc="Override to allow old RMSMappingQuality annotated VCFs to function", optional=true)
+    public boolean allowOlderRawKeyValues = false;
 
     @Override
     public String getRawKeyName() { return GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY;}   //new key for the two-value MQ data to prevent version mismatch catastrophes
@@ -125,6 +131,14 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             rawMQdata = vc.getAttributeAsString(getRawKeyName(), null);
         }
         else if (vc.hasAttribute(getDeprecatedRawKeyName())) {
+            if (!allowOlderRawKeyValues) {
+                throw new UserException.BadInput("Presence of '-"+getDeprecatedRawKeyName()+"' annotation is detected. This GATK version expects key "
+                        + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + "genotypes as the value. This could indicate that the provided input was produced with an older version of GATK. " +
+                        "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation. There " +
+                        "may be differences in how newer GATK versions calculate DP and MQ that may result in worse MQ results. Use at your own risk.");
+            }
+
             rawMQdata = vc.getAttributeAsString(getDeprecatedRawKeyName(), null);
             //the original version of ReblockGVCF produces a different MQ format -- try to handle that gracefully here just in case those files go through GenotypeGVCFs
             if (vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
@@ -139,7 +153,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             }
             else {
                 logger.warn("MQ annotation data is not properly formatted. This GATK version expects key "
-                        + getRawKeyName() + " with an long tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. Attempting to use deprecated MQ calculation.");
                 final long numOfReads = getNumOfReads(vc, null);
                 rawMQdata = Math.round(Double.parseDouble(rawMQdata)) + "," + numOfReads;   //deprecated format was double so it needs to be converted to long

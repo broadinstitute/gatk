@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -43,7 +42,6 @@ import java.io.PrintStream;
  *     -O statistics.txt
  * </pre>
  */
-@BetaFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Spark tool to accumulate flag statistics given a BAM file, e.g. total number of reads with QC failure flag set," +

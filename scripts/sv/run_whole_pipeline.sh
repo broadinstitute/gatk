@@ -94,8 +94,6 @@ case ${GATK_SV_TOOL} in
         ;;
 esac
 
-#   --conf spark.yarn.executor.memoryOverhead=5000 \
-
 "${GATK_DIR}/gatk" ${GATK_SV_TOOL} \
     ${TOOL_OPTIONS} ${SV_ARGS} \
     -- \

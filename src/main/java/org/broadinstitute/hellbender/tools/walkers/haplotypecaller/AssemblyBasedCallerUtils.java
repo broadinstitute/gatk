@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -346,7 +347,7 @@ public final class AssemblyBasedCallerUtils {
 
                     final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, activeRegionStart + givenVC.getStart() - assemblyRegionStart, givenVC.getStart());
                     if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
-                        final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner);
+                        final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, SWOverhangStrategy.INDEL);
                         insertedHaplotype.setCigar(cigar);
                         insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
                         insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
