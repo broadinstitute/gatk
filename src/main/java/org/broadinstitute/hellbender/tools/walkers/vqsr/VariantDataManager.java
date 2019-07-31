@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager;
 
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.collections.ExpandingArrayList;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -221,7 +220,7 @@ public class VariantDataManager {
     }
 
     public List<VariantDatum> getTrainingData() {
-        final List<VariantDatum> trainingData = new ExpandingArrayList<>();
+        final List<VariantDatum> trainingData = new ArrayList<>();
         for( final VariantDatum datum : data ) {
             if( datum.atTrainingSite && !datum.failingSTDThreshold ) {
                 trainingData.add( datum );
@@ -239,7 +238,7 @@ public class VariantDataManager {
     }
 
     public List<VariantDatum> selectWorstVariants() {
-        final List<VariantDatum> trainingData = new ExpandingArrayList<>();
+        final List<VariantDatum> trainingData = new ArrayList<>();
 
         for( final VariantDatum datum : data ) {
             if( datum != null && !datum.failingSTDThreshold && !Double.isInfinite(datum.lod) && datum.lod < VRAC.BAD_LOD_CUTOFF ) {
@@ -254,7 +253,7 @@ public class VariantDataManager {
     }
 
     public List<VariantDatum> getEvaluationData() {
-        final List<VariantDatum> evaluationData = new ExpandingArrayList<>();
+        final List<VariantDatum> evaluationData = new ArrayList<>();
 
         for( final VariantDatum datum : data ) {
             if( datum != null && !datum.failingSTDThreshold && !datum.atTrainingSite && !datum.atAntiTrainingSite ) {
@@ -279,7 +278,7 @@ public class VariantDataManager {
     }
 
     public List<VariantDatum> getRandomDataForPlotting( final int numToAdd, final List<VariantDatum> trainingData, final List<VariantDatum> antiTrainingData, final List<VariantDatum> evaluationData ) {
-        final List<VariantDatum> returnData = new ExpandingArrayList<>();
+        final List<VariantDatum> returnData = new ArrayList<>();
         Collections.shuffle(trainingData, Utils.getRandomGenerator());
         Collections.shuffle(antiTrainingData, Utils.getRandomGenerator());
         Collections.shuffle(evaluationData, Utils.getRandomGenerator());
