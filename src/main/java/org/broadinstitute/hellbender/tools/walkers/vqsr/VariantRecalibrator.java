@@ -380,7 +380,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     final private ArrayList<Double> replicate = new ArrayList<>(REPLICATE * 2);
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final VariantRecalibratorEngine engine = new VariantRecalibratorEngine( VRAC );
-    final private ArrayList<VariantDatum> reduceSum = new ArrayList<>(2000);//another possibly neccesary
+    final private ArrayList<VariantDatum> reduceSum = new ArrayList<>(2000);
     final private List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>();
     private long counter = 0;
     private GATKReportTable nmcTable;
@@ -1026,7 +1026,7 @@ private GATKReportTable makeVectorTable(final String tableName,
             for( int jjj = iii + 1; jjj < annotationKeys.length; jjj++) {
                 logger.info( "Building " + annotationKeys[iii] + " x " + annotationKeys[jjj] + " plot...");
 
-                final List<VariantDatum> fakeData = new ArrayList<>();//another
+                final List<VariantDatum> fakeData = new ArrayList<>();
                 double minAnn1 = 100.0, maxAnn1 = -100.0, minAnn2 = 100.0, maxAnn2 = -100.0;
                 for( final VariantDatum datum : randomData ) {
                     minAnn1 = Math.min(minAnn1, datum.annotations[iii]);
