@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -46,7 +47,6 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
 
                 //using latest reblocking output with allele-specific annotations
                 //has all of the above plus AS_AltDP, AS_FS, AS_MQ, AS_MQRankSum, AS_QD, AS_ReadPosRankSum
-                //FIXME: right now this one doesn't match Travis because of random number generation in fixTooHighQD
                 {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
                          new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
                          getTestFile("twoSampleAS.vcf"), getTestFile("twoSampleASDB.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21},
@@ -63,6 +63,9 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
 
     @Test (dataProvider = "VCFdata")
     public void testUsingGenomicsDB(File[] inputs, File expected, File expectedDb, List<SimpleInterval> intervals, List<String> additionalArguments, String reference) throws IOException {
+        Utils.resetRandomGenerator();
+        //we need this for reproducibility because of random number generation in fixTooHighQD
+
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(Arrays.asList(inputs), IntervalUtils.getSpanningInterval(intervals));
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
 
@@ -104,7 +107,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg38Reference))
                 .addArgument("V", input)
-                .addArgument("L", "chr20:10000000-11000000")
+                .addArgument("L", "chr20:10000000-10030000")
                 .addBooleanArgument("only-output-calls-starting-in-intervals", true)
                 .addBooleanArgument("keep-all-sites", true)
                 .addOutput(output);
