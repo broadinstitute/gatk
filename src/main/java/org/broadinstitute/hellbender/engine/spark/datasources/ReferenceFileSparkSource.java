@@ -50,7 +50,7 @@ public class ReferenceFileSparkSource implements ReferenceSparkSource, Serializa
 
     private synchronized Path getReferencePath() {
         if (null == referencePath) {
-            this.referencePath = Paths.get(referenceUri);
+            this.referencePath = IOUtils.getPath(referenceUri.toString());
         }
         return referencePath;
     }
