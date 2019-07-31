@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.smithwaterman;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -24,6 +25,7 @@ import java.util.List;
 public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
     private long totalComputeTime = 0;
+    private boolean haplotypeToref = false;
 
     /**
      * return the stateless singleton instance of SmithWatermanJavaAligner
@@ -48,6 +50,10 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
      */
     private SmithWatermanJavaAligner(){}
 
+    public SmithWatermanJavaAligner(boolean haplotypeToref){
+        this.haplotypeToref = haplotypeToref;
+    }
+
     /**
      * Aligns the alternate sequence to the reference sequence
      *
@@ -64,35 +70,146 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         Utils.nonNull(parameters);
         Utils.nonNull(overhangStrategy);
 
-        // avoid running full Smith-Waterman if there is an exact match of alternate in reference
-        int matchIndex = -1;
-        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
-            // Use a substring search to find an exact match of the alternate in the reference
-            // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
-            matchIndex = Utils.lastIndexOf(reference, alternate);
-        }
-
         final SmithWatermanAlignment alignmentResult;
 
-        if (matchIndex != -1) {
-            // generate the alignment result when the substring search was successful
-            final List<CigarElement> lce = new ArrayList<>(alternate.length);
-            lce.add(makeElement(State.MATCH, alternate.length));
-            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
-        }
-        else {
-            // run full Smith-Waterman
-            final int n = reference.length+1;
-            final int m = alternate.length+1;
-            final int[][] sw = new int[n][m];
-            final int[][] btrack=new int[n][m];
+        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE){
+            //exact match
+            int exactMatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0);
+            if (exactMatchIndex != -1) {
+                // generate the alignment result when the substring search was successful
+                final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), exactMatchIndex);
+                totalComputeTime += System.nanoTime() - startTime;
+                return alignmentResult;
+            }
 
-            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+            //one mismatch
+            int singleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1);
+            if (singleMismatchIndex != -1) {
+                final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
+                alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), singleMismatchIndex);
+                totalComputeTime += System.nanoTime() - startTime;
+                return alignmentResult;
+            }
+
+            //one indel
+            if(this.haplotypeToref){
+                int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
+                ImmutablePair<Integer,Integer> indelStartAndSize = Utils.oneIndelHapToRef(reference, alternate, maxIndelLength);
+                int oneIndelIndex = indelStartAndSize.getLeft();
+                if (oneIndelIndex != -1){
+                    int indelLength = indelStartAndSize.getRight();
+                    alignmentResult = calculateOneIndelCigar(indelLength, reference, alternate, oneIndelIndex);
+                    totalComputeTime += System.nanoTime() - startTime;
+                    return alignmentResult;
+                }
+            }
+            else{
+                int maxInsertionSize = calculateMaxInsertionSizeReadToHap(parameters);
+                int maxDeletionSize = calculateMaxDeletionSizeReadToHap(parameters);
+                Utils.Indel indel = Utils.oneIndelReadToHap(reference, alternate, parameters, maxInsertionSize, maxDeletionSize);
+                int alignmentOffset = indel.getAlignmentOffset();
+                if(alignmentOffset != -1){
+                    int matchingBases = indel.getMatchingBases();
+                    int indelSize = indel.getIndelSize();
+                    //construct cigar
+                    State state;
+                    int length;
+                    if(indel.getIndelType()){
+                        state = State.INSERTION;
+                        length = alternate.length - indelSize - matchingBases;
+                    }
+                    else{
+                        state = State.DELETION;
+                        length = alternate.length - matchingBases;
+
+                    }
+                    final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, matchingBases),
+                            makeElement(state, indelSize), makeElement(State.MATCH, length));
+                    alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), alignmentOffset);
+
+                    Cigar cigar1 = alignmentResult.getCigar();
+                    final int n = reference.length+1;
+                    final int m = alternate.length+1;
+                    final int[][] sw = new int[n][m];
+                    final int[][] btrack=new int[n][m];
+                    calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+                    SWPairwiseAlignmentResult alignmentResult2 = calculateCigar(sw, btrack, overhangStrategy);
+                    Cigar cigar2 = alignmentResult2.getCigar();
+                    if(!cigar1.equals(cigar2) && !cigar2.containsOperator(CigarOperator.S)){
+                        System.out.println("CIGARS NOT EQUAL");
+                        System.out.println(new String(reference));
+                        System.out.println("");
+                        System.out.println(new String(alternate));
+                        System.out.println("Heuristic:" + cigar1);
+                        System.out.println("SW:       " + cigar2);
+                    }
+                    
+                    totalComputeTime += System.nanoTime() - startTime;
+                    return alignmentResult;
+                }
+            }
+
         }
 
+        // run full Smith-Waterman
+        final int n = reference.length+1;
+        final int m = alternate.length+1;
+        final int[][] sw = new int[n][m];
+        final int[][] btrack=new int[n][m];
+
+        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+        alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
         totalComputeTime += System.nanoTime() - startTime;
         return alignmentResult;
+    }
+
+    private static SWPairwiseAlignmentResult calculateOneIndelCigar(int indelLength, final byte[] reference, final byte[] alternate, int oneIndelIndex){
+        State state = null;
+        int cigarThirdElementLength = 0;
+
+        if(alternate.length < reference.length){
+            state = State.DELETION;
+            cigarThirdElementLength = alternate.length - oneIndelIndex;
+        }
+        if(alternate.length > reference.length){
+            state = State.INSERTION;
+            cigarThirdElementLength = alternate.length - indelLength - oneIndelIndex;
+        }
+
+        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
+                makeElement(state, indelLength), makeElement(State.MATCH, cigarThirdElementLength));
+        return new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), 0);
+    }
+
+    private static int calculateAllowedLengthOfIndelHapToRef(final SWParameters parameters){
+        //calculate allowed length for indel to be less of a penalty than 2 mismatches
+        int mismatchScore = parameters.getMismatchPenalty();
+        int indelExtendScore = parameters.getGapExtendPenalty();
+        int indelOpenScore = parameters.getGapOpenPenalty();
+        int maxIndelLength = (((2 * mismatchScore) - indelOpenScore)/indelExtendScore) + 1;
+        return maxIndelLength;
+    }
+
+    //calculates insertion size whose score is better than any other scenario
+    private static int calculateMaxInsertionSizeReadToHap(final SWParameters parameters){
+        int matchScore = parameters.getMatchValue();
+        int mismatchPenalty = -1 * parameters.getMismatchPenalty();
+        int gapOpenPenalty = -1 * parameters.getGapOpenPenalty();
+        int gapExtensionPenalty = -1 * parameters.getGapExtendPenalty();
+
+        int insertionCapSize = (2*matchScore + 2*mismatchPenalty - gapOpenPenalty + gapExtensionPenalty - 1) / (matchScore + gapExtensionPenalty);
+        return insertionCapSize;
+    }
+
+    private static int calculateMaxDeletionSizeReadToHap(final SWParameters parameters){
+        int matchScore = parameters.getMatchValue();
+        int mismatchPenalty = -1*parameters.getMismatchPenalty();
+        int gapOpenPenalty = -1*parameters.getGapOpenPenalty();
+        int gapExtensionPenalty = -1*parameters.getGapExtendPenalty();
+
+        int deletionCapSize = (2*matchScore + 2*mismatchPenalty - gapOpenPenalty + gapExtensionPenalty - 1) / (gapExtensionPenalty);
+        return deletionCapSize;
     }
 
     /**

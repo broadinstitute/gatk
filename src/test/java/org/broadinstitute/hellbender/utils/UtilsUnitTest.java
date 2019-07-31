@@ -591,7 +591,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference = "AAAA";
         final String query     = "AAAAAAA";
 
-        final int result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        final int result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
         final int expected = reference.lastIndexOf(query);
         Assert.assertEquals(result, expected);
     }
@@ -602,15 +602,118 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // match right boundary of reference
         String query = "TGGGG";
-        int result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        int result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
         int expected = reference.lastIndexOf(query);
         Assert.assertEquals(result, expected);
 
         // match left boundary of reference
         query = "AAAAC";
-        result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
         expected = reference.lastIndexOf(query);
         Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testLastIndexOfAtMostOneMismatchLastBoundaries() {
+        final String reference = "AAAACCCCTTTTGGGG";
+
+        // match right boundary of reference
+        final String query1 = "TGAGG";
+        int result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
+        int expected = reference.length() - query1.length();
+        Assert.assertEquals(result, expected);
+
+        // match left boundary of reference
+        final String query2 = "AAGAC";
+        result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query2.getBytes(), 1);
+        Assert.assertEquals(result, 0);
+    }
+
+    @Test
+    public void testLastIndexOfAtMostOneMismatchRandomExactMatch() {
+        final int numTests = 100;
+        final int referenceLength = 100;
+        final int queryLength = 10;
+
+        byte[] reference = new byte[referenceLength];
+        byte[] query = new byte[queryLength];
+
+        final Random rng = Utils.getRandomGenerator();
+
+        for (int i = 0; i < numTests; i++) {
+            randomByteString(rng, reference);
+            randomByteString(rng, query);
+
+            int index = -1;
+
+            //add query to reference at a random lo cation for 75% of the tests
+            if (i % 4 > 0) {
+                index = rng.nextInt(referenceLength - queryLength);
+                System.arraycopy(query,0, reference, index, queryLength);
+            }
+
+            final int result = Utils.lastIndexOfAtMostTwoMismatches(reference, query, 1);
+            final int expected = index;
+            Assert.assertEquals(result, expected);
+        }
+    }
+
+    @Test
+    public void testLastIndexOfAtMostOneMismatchTwoMismatches() {
+        final String reference = "AAAACCCCTTTTGGGG";
+
+        // match right boundary of reference
+        final String query1 = "AGAGG";
+        int result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
+        Assert.assertEquals(result, -1);
+
+        // match right boundary of reference
+        final String query2 = "GGAAC";
+        int result2 = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query2.getBytes(), 1);
+        Assert.assertEquals(result2, -1);
+    }
+
+     @Test
+    public void testLastIndexOfAtMostOneMismatchOneMismatchTwice() {
+        final String reference = "AGGCCCCCTTTTGGGG";
+
+        //matches both boundaries of reference
+        final String query1 = "AGGG";
+        int result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
+        //will catch first match it encounters from the right
+        int expected = reference.length() - query1.length();
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testLastIndexOfAtMostOneMismatchRandom() {
+        final int numTests = 100;
+        final int referenceLength = 100;
+        final int queryLength = 10;
+
+        byte[] reference = new byte[referenceLength];
+        byte[] query = new byte[queryLength];
+
+        final Random rng = Utils.getRandomGenerator();
+
+        for (int i = 0; i < numTests; i++) {
+            randomByteString(rng, reference);
+            randomByteString(rng, query);
+
+            int index = -1;
+
+            // add one-off query to reference at a random location for 75% of the tests
+            if (i % 4 > 0) {
+                index = rng.nextInt(referenceLength - queryLength);
+                System.arraycopy(query,0, reference, index, queryLength);
+                int mismatchPosition = rng.nextInt(queryLength);
+                reference[index + mismatchPosition] = BaseUtils.simpleComplement(query[mismatchPosition]);
+            }
+
+            final int result = Utils.lastIndexOfAtMostTwoMismatches(reference, query, 1);
+            final int expected = index;
+            Assert.assertEquals(result, expected);
+        }
     }
 
     private void randomByteString(Random rng, byte[] bytes) {
@@ -642,10 +745,51 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 }
             }
             
-            final int result = Utils.lastIndexOf(reference, query);
+            final int result = Utils.lastIndexOfAtMostTwoMismatches(reference, query, 0);
             final int expected = new String(reference).lastIndexOf(new String(query));
             Assert.assertEquals(result, expected);
         }
+    }
+
+    @Test
+    public void atMostOneIndel(){
+        //deletion in middle of query
+        String reference = "AGGATTTGGGATTAC";
+        String query =     "AGGAGGGATTAC";
+        int result = (Utils.oneIndelHapToRef(reference.getBytes(), query.getBytes(), 3)).getLeft();
+        Assert.assertEquals(result, 4);
+
+        //deletion in end of query
+        String reference2 = "AGGATTTGGGATTAC";
+        String query2 =     "AGGATTTGGGAT";
+        int result2 = (Utils.oneIndelHapToRef(reference2.getBytes(), query2.getBytes(), 3)).getLeft();
+        int expected2 = query2.length();
+        Assert.assertEquals(result2, expected2);
+
+        //insertion in middle of query
+        String reference3 = "ATTTAGTGGGATTA";
+        String query3 =     "ATTTAGTAGTGGGATTA";
+        int result3 = (Utils.oneIndelHapToRef(reference3.getBytes(), query3.getBytes(), 3)).getLeft();
+        Assert.assertEquals(result3, 3);
+
+        //insertion in end of query
+        String reference4 = "AGTAGTGTGCGTCA";
+        String query4 =     "AGTAGTGTGCGTCAACT";
+        int result4 = (Utils.oneIndelHapToRef(reference4.getBytes(), query4.getBytes(), 3)).getLeft();
+        int expected4 = reference4.length();
+        Assert.assertEquals(result4, expected4);
+
+        //too long of an indel
+        String reference5 = "AGTAGTGTGCGTCA";
+        String query5 =     "AGTAGTGTGCGTCAACTA";
+        int result5 = (Utils.oneIndelHapToRef(reference5.getBytes(), query5.getBytes(), 3)).getLeft();
+        Assert.assertEquals(result5, -1);
+
+        //deletion in beginning of query
+        String reference6 = "AGTACCGTTTGAC";
+        String query6 =     "TACCGTTTGAC";
+        int result6 = (Utils.oneIndelHapToRef(reference6.getBytes(), query6.getBytes(), 3)).getLeft();
+        Assert.assertEquals(result6, 0);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
