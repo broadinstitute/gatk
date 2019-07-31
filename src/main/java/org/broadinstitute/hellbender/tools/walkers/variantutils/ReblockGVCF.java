@@ -214,9 +214,6 @@ public final class ReblockGVCF extends VariantWalker {
     // get VariantContexts from input gVCFs and regenotype
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
-        if (variant.getStart() == 1133569) {
-            System.out.println("debug");
-        }
         final VariantContext newVC = regenotypeVC(variant);
         if (newVC != null) {
             vcfWriter.add(newVC);

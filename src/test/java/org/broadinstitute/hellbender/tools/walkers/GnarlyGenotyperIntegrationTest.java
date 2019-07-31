@@ -46,9 +46,10 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
 
                 //using latest reblocking output with allele-specific annotations
                 //has all of the above plus AS_AltDP, AS_FS, AS_MQ, AS_MQRankSum, AS_QD, AS_ReadPosRankSum
+                //FIXME: right now this one doesn't match Travis because of random number generation in fixTooHighQD
                 {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
                          new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
-                         getTestFile("twoSampleAS.vcf"), getTestFile("twoSampleASDB.vcf"), Arrays.asList(new SimpleInterval("20")), Arrays.asList("--keep-all-sites"), b37_reference_20_21},
+                         getTestFile("twoSampleAS.vcf"), getTestFile("twoSampleASDB.vcf"), Arrays.asList(new SimpleInterval("20")), NO_EXTRA_ARGS, b37_reference_20_21},
 
                 //using legacy reblocking data with no raw GT count values
                 //has ExcessHet, calculated from genotypes
