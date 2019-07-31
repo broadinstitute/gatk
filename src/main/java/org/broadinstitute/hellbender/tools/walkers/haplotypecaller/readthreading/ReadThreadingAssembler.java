@@ -55,7 +55,6 @@ public final class ReadThreadingAssembler {
 
     private boolean debug = false;
     private boolean debugGraphTransformations = false;
-    private boolean debugHaplotypeFinding = false;
     private boolean recoverDanglingBranches = true;
     private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
@@ -152,7 +151,7 @@ public final class ReadThreadingAssembler {
                 assemblyResultByGraph.put(result.getGraph(),result);
                 nonRefGraphs.add(result.getGraph());
 
-                if (debugHaplotypeFinding) {
+                if (graphHaplotypeHistogramPath != null) {
                     kmersUsedHistogram.add((double)result.getKmerSize());
                 }
             }
@@ -163,7 +162,7 @@ public final class ReadThreadingAssembler {
 
         // print the graphs if the appropriate debug option has been turned on
         if ( graphOutputPath != null ) { printGraphs(nonRefGraphs); }
-        if ( debugHaplotypeFinding ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
+        if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
 
         return resultSet;
     }
@@ -575,7 +574,6 @@ public final class ReadThreadingAssembler {
     public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
 
     public void setDebugHistogramOutput(final File file) {
-        this.debugHaplotypeFinding = true;
         this.graphHaplotypeHistogramPath = file;
         this.haplotypeHistogram = new Histogram(1.0);
         this.kmersUsedHistogram = new Histogram(1.0);
