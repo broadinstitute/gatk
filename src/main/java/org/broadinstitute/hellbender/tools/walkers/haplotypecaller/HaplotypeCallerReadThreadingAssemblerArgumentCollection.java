@@ -53,6 +53,9 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
         if ( graphOutput != null ) {
             assemblyEngine.setGraphWriter(new File(graphOutput));
         }
+        if ( haplotypeHistogramOutput != null ) {
+            assemblyEngine.setDebugHistogramOutput(new File(haplotypeHistogramOutput));
+        }
 
         return assemblyEngine;
     }
