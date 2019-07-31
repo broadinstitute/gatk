@@ -1,35 +1,62 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 
+import java.util.Arrays;
+
 /**
- * Information about the number of chromosome per sample at a given location.
- *
+ * General heterogeneous ploidy model.
  */
-public interface PloidyModel extends SampleList {
+public final class PloidyModel implements SampleList {
 
-    /**
-     * Return the assumed ploidy for a sample given its index.
-     *
-     * @param sampleIndex target sample index.
-     * @return 0 or greater.
-     */
-    public int samplePloidy(final int sampleIndex);
+    private final SampleList sampleList;
 
-    /**
-     * Checks whether the ploidy is homogeneous across all samples.
-     *
-     * @return {@code true} if all samples has the same ploidy.
-     */
-    public boolean isHomogeneous();
+    private final int[] ploidies;
 
-    /**
-     * Sum of all ploidy across all samples.
-     * <p>
-     *     It must match the sum of all ploidies across samples.
-     * </p>
-     *
-     * @return 0 or greater.
-     */
-    public int totalPloidy();
+    private final int ploidySum;
+
+    private final boolean isHomogeneous;
+
+    public PloidyModel(final SampleList sampleList, final int[] ploidies) {
+        this.sampleList = Utils.nonNull(sampleList, "the sample list cannot be null");
+        this.ploidies = Utils.nonNull(ploidies, "the ploidies cannot be null").clone();
+        Utils.validateArg(sampleList.numberOfSamples() == ploidies.length, "sample-list and ploidy array length must match");
+        Arrays.stream(ploidies).forEach(p -> Utils.validateArg(p >= 0, "no ploidy can be less than 0"));
+        ploidySum = (int) MathUtils.sum(ploidies);
+        isHomogeneous = ploidies.length == 0 || Arrays.stream(ploidies).allMatch(p -> p == ploidies[0]);
+    }
+
+    public PloidyModel(final SampleList sampleList, final int ploidy) {
+        this.sampleList = Utils.nonNull(sampleList);
+        Utils.validateArg(ploidy > 0, "does not support negative ploidy");
+        ploidies = new int[sampleList.numberOfSamples()];
+        Arrays.fill(ploidies,ploidy);
+        ploidySum = ploidy*ploidies.length;
+        isHomogeneous = true;
+    }
+
+
+    public int samplePloidy(final int sampleIndex) {
+        Utils.validIndex(sampleIndex, ploidies.length);
+        return ploidies[sampleIndex];
+    }
+
+
+    public int numberOfSamples() {
+        return ploidies.length;
+    }
+
+
+    public int indexOfSample(final String sample) {
+        Utils.nonNull(sample);
+        return sampleList.indexOfSample(sample);
+    }
+
+
+    public String getSample(final int sampleIndex) {
+        Utils.validIndex(sampleIndex, numberOfSamples());
+        return sampleList.getSample(sampleIndex);
+    }
 }

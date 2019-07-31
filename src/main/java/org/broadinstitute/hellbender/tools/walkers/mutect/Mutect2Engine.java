@@ -22,7 +22,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
@@ -264,7 +264,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 // output variant containing region.
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        readLikelihoods, new HomogeneousPloidyModel(samplesList, 2), calledHaplotypes.getCalls()));
+                        readLikelihoods, new PloidyModel(samplesList, 2), calledHaplotypes.getCalls()));
                 // output right-flanking non-variant section:
                 if (trimmingResult.hasRightFlankingRegion()) {
                     result.addAll(referenceModelForNoVariation(trimmingResult.nonVariantRightFlankRegion()));
@@ -448,7 +448,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
         return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                 paddedLoc, region, AssemblyBasedCallerUtils.createDummyStratifiedReadMap(refHaplotype, samplesList, header, region),
-                new HomogeneousPloidyModel(samplesList, 2), Collections.emptyList(), false, Collections.emptyList()); //TODO: clean up args
+                new PloidyModel(samplesList, 2), Collections.emptyList(), false, Collections.emptyList()); //TODO: clean up args
     }
 
     private static int getCurrentOrFollowingIndelLength(final PileupElement pe) {

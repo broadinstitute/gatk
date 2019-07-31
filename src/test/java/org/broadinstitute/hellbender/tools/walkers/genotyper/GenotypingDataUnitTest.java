@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Test {@link org.broadinstitute.gatk.tools.walkers.genotyper.InfiniteRandomMatingPopulationModel}
+ * Test {@link org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingData}
  */
 public final class GenotypingDataUnitTest {
 
@@ -21,7 +21,7 @@ public final class GenotypingDataUnitTest {
     public void testInstantiation(final int[] ploidies, final int[] readCounts) {
         final ReadLikelihoods<Allele> likelihoods = ReadLikelihoodsUnitTester.readLikelihoods(2, readCounts);
         final SampleList sampleList = likelihoods;
-        final PloidyModel ploidyModel = new HeterogeneousPloidyModel(sampleList, ploidies);
+        final PloidyModel ploidyModel = new PloidyModel(sampleList, ploidies);
         final GenotypingData<Allele> data = new GenotypingData<>(ploidyModel, likelihoods);
         Assert.assertEquals(data.asListOfAlleles(), likelihoods.asListOfAlleles());
         Assert.assertEquals(data.asListOfSamples(), likelihoods.asListOfSamples());
