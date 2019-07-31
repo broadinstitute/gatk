@@ -457,7 +457,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 * Select "Use auto-import" and "Use default gradle wrapper".
 
-* Make sure the Gradle JVM points to Java 1.8 
+* Make sure the Gradle JVM points to Java 1.8. You may need to set this manually after creating the project, to do so find the gradle settings by clicking the wrench icon in the gradle tab on the right bar, from there edit "Gradle JVM" argument to point to Java 1.8.
 
 * Click "Finish"
 
