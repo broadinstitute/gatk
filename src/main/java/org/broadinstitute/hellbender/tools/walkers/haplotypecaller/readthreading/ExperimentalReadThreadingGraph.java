@@ -8,10 +8,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -375,19 +372,6 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
         return Lists.reverse(referencePath.subList(0, firstIndex + 1));
     }
 
-
-    /**
-     * Filters empty or uninformative junction trees from the graph.
-     *
-     * @return
-     */
-    public void pruneJunctionTrees(final int pruneFactor) {
-        if (pruneFactor > 0) {
-            throw new UnsupportedOperationException("Currently pruning based JT evidence is not supported.");
-        }
-        readThreadingJunctionTrees = Maps.filterValues( Collections.unmodifiableMap(readThreadingJunctionTrees), ThreadingTree::isEmptyTree);
-    }
-
     // Generate a SeqGraph that is special
     @Override
     public SeqGraph toSequenceGraph() {
@@ -545,6 +529,21 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
         readThreadingJunctionTrees = new HashMap<>();
         pending.values().stream().flatMap(Collection::stream).forEach(this::threadSequenceForJuncitonTree);
+    }
+
+    /**
+     * Traverse all of the junction trees in the graph and remove branches supported by < minimumEdgeWeight edges recursively.
+     * This will also handle pruning of trees that are uninformative (i.e. empty roots).
+     *
+     * @param minimumEdgeWeight minimum edge weight below which branches are removed
+     */
+    public void pruneJunctionTrees(final int minimumEdgeWeight) {
+        for ( Map.Entry<MultiDeBruijnVertex, ThreadingTree> treeEntry : readThreadingJunctionTrees.entrySet()) {
+            treeEntry.getValue().getRootNode().pruneNode(minimumEdgeWeight); 
+            if (treeEntry.getValue().isEmptyTree()) {
+                readThreadingJunctionTrees.remove(treeEntry.getKey());
+            }
+        }
     }
 
     /**
@@ -768,6 +767,17 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             }
 
             return paths;
+        }
+
+        // Recursively prunes nodes based on the provided threshold, removing branches without sufficient support.
+        public void pruneNode(final int threshold) {
+            for (Map.Entry<MultiSampleEdge, ThreadingNode> child : childrenNodes.entrySet()) {
+                if (child.getValue().getCount() < threshold) {
+                    childrenNodes.remove(child.getKey());
+                } else {
+                    child.getValue().pruneNode(threshold);
+                }
+            }
         }
 
         // Returns a unique name based on the memory id that conforms to the restrictions placed on .dot file nodes

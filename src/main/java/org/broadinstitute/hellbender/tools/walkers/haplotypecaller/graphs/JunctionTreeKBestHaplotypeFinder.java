@@ -9,7 +9,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotypeFinder<V, E> {
-    public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
+    public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 4;
+    public static final int DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED = 2;
     public static final int DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE = 4;
     private int weightThresholdToUse = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
@@ -96,7 +97,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
         while (!queue.isEmpty() && result.size() < maxNumberOfHaplotypes) {
             final JTBestHaplotype<V, E> pathToExtend = queue.poll();
 
-            // This safeguards against infinite loops and degenerate excessively long paths, only allow 4 decisions without junction tree guidance 
+            // This safeguards against infinite loops and degenerate excessively long paths, only allow 4 decisions without junction tree guidance
             if (pathToExtend.getDecisionEdgesTakenSinceLastJunctionTreeEvidence() > DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE) {
                 break;
             }

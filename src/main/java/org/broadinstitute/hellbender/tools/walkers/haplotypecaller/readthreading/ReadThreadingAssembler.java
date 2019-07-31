@@ -157,6 +157,7 @@ public final class ReadThreadingAssembler {
                 } else {
                     sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
                     ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).generateJunctionTrees();
+                    ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
                     // add it to graphs with meaningful non-reference features
                     assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
                     nonRefRTGraphs.add(result.getThreadingGraph());

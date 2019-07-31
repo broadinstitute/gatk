@@ -73,7 +73,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         return true;
     }
 
-
+    // Tally the total outgoing weight for a particular branch
     private int getTotalOutForBranch(ExperimentalReadThreadingGraph.ThreadingNode eldestTree) {
         int totalOut = 0;
         if (eldestTree != null) {
@@ -108,26 +108,26 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
             int totalOut = getTotalOutForBranch(eldestTree);
 
             // If the total evidence emerging from a given branch
-            if (totalOut >= weightThreshold) {
-                //TODO add SOME sanity check to ensure that the vertex we stand on and the edges we are polling line up
-                for (Map.Entry<MultiSampleEdge, ExperimentalReadThreadingGraph.ThreadingNode> childNode : eldestTree.getChildrenNodes().entrySet()) {
-                    if (!outgoingEdges.contains(childNode.getKey())) {
-                        throw new GATKException("While constructing graph, there was an incongruity between a JunctionTree edge and the edge present on graph traversal");
-                    }
 
-                    // Don't add edges to the symbolic end vertex here at all, thats handled elsewhere
-                    if (!childNode.getValue().isSymbolicEnd() && !edgesAccountedForByJunctionTrees.contains(childNode.getKey())) {
-                        edgesAccountedForByJunctionTrees.add(childNode.getKey());
-                        ExperimentalReadThreadingGraph.ThreadingNode child = childNode.getValue();
-                        List<E> chainCopy = new ArrayList<>(chain);
-                        chainCopy.add((E) childNode.getKey());
-                        output.add(new JTBestHaplotype<>(this, chainCopy, child.getCount(), totalOut, true));
-                    }
+            //TODO add SOME sanity check to ensure that the vertex we stand on and the edges we are polling line up
+            for (Map.Entry<MultiSampleEdge, ExperimentalReadThreadingGraph.ThreadingNode> childNode : eldestTree.getChildrenNodes().entrySet()) {
+                if (!outgoingEdges.contains(childNode.getKey())) {
+                    throw new GATKException("While constructing graph, there was an incongruity between a JunctionTree edge and the edge present on graph traversal");
                 }
-                return output;
+
+                // Don't add edges to the symbolic end vertex here at all, thats handled elsewhere, also don't add the same edge again if we pulled it in from a younger tree.
+                if (!childNode.getValue().isSymbolicEnd() && // ignore symbolic end branches, those are handled elsewhere
+                        !edgesAccountedForByJunctionTrees.contains(childNode.getKey())) {
+                    edgesAccountedForByJunctionTrees.add(childNode.getKey());
+                    ExperimentalReadThreadingGraph.ThreadingNode child = childNode.getValue();
+                    List<E> chainCopy = new ArrayList<>(chain);
+                    chainCopy.add((E) childNode.getKey());
+                    output.add(new JTBestHaplotype<>(this, chainCopy, child.getCount(), totalOut, true));
+                }
+            }
 
             // If there isn't enough outgoing evidence, then we
-            } else {
+            if (totalOut < weightThreshold){
                 // We remove old branches from the tree only if they no longer have any evidence, otherwise we look at younger branches
                 if (totalOut <= 0) {
                     treesInQueue.removeEldestTree();
@@ -135,6 +135,9 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
                     currentActiveNodeIndex++;
                 }
                 eldestTree = currentActiveNodeIndex >= treesInQueue.size() ? null : treesInQueue.get(currentActiveNodeIndex);
+            } else {
+                // We know that the eldest tree had enough weight to ignore younger trees
+                return output;
             }
         }
         // If we hit this point, then eldestTree == null, suggesting that none of the nodes exceeded our threshold for evidence (though some may have found evidence)

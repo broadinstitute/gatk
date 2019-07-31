@@ -46,6 +46,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 //        }
     }
 
+    // TODO test the pruning code
 
     @Test
     // The simplest case where we expect two uninformative junction trees to be constructed
