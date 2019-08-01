@@ -1010,11 +1010,12 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testAlignInsAndSBack(){
         SmithWatermanJavaAligner aligner = SmithWatermanJavaAligner.getInstance();
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
-        String reference = "CGATTCTAGTCAA";
-        String query =            "TAGTTCAAG";
+        String reference = "TGGTCCAGGTACTCAGCAGTGGAGGTGGGGAGGAAGACACCAACACACATACACATGCACACACACACATGCACACACACACACATGCACACACATGCATGCACACATGCACACACATGCACACACACATGCATGTACGCATGCACACACATGCACATGCACACCCACAGGTTACATAAAAATCCTTAGAACTGTATAGTAACTCCTGCCATGT";
+        String query =                      "ACACATGCACACACATGCACACACACATGCATGTACGCATGCACACACATGCACATGCACACCCACAGGTTACATAAAAATCCTTAGAACTGTATAGTAACTCCTGCCATTG";
         SmithWatermanAlignment alignment = aligner.align(reference.getBytes(), query.getBytes(), parameters, SWOverhangStrategy.SOFTCLIP);
         int result = alignment.getAlignmentOffset();
-        int expected = 5;
+        int expected = 102;
+        System.out.println(alignment.getCigar().toString());
         Assert.assertEquals(result, expected);
     }
 

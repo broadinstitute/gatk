@@ -11,6 +11,7 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,6 +75,11 @@ public final class SWNativeAlignerWrapper implements SmithWatermanAligner {
 
         totalComputeTime += System.nanoTime() - startTime;
         return alignmentResult;
+    }
+
+    @Override
+    public void filePathName(String fileName) throws FileNotFoundException {
+
     }
 
     /**

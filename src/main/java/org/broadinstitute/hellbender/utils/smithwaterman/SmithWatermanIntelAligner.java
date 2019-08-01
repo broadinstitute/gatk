@@ -6,6 +6,9 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWAlignerNativeBinding;
 import org.broadinstitute.hellbender.exceptions.UserException;
+
+import java.io.FileNotFoundException;
+
 /**
  * SmithWatermanIntelAligner class that converts instance of {@link SWAlignerNativeBinding} into a {@link SmithWatermanIntelAligner}
  * This is optimized for Intel Architectures and can fail if Machine does not support AVX and will throw {@link UserException}
@@ -43,6 +46,11 @@ public final class SmithWatermanIntelAligner implements SmithWatermanAligner {
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         return alignerWrapper.align(reference, alternate, parameters, overhangStrategy);
+    }
+
+    @Override
+    public void filePathName(String fileName) throws FileNotFoundException {
+
     }
 
     //methods for printing out number of SW/non-SW alignments. not needed for now

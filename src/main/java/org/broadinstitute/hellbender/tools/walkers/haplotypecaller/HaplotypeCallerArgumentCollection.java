@@ -45,6 +45,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = StandardArgumentDefinitions.SAMPLE_NAME_LONG_NAME, shortName = StandardArgumentDefinitions.SAMPLE_ALIAS_SHORT_NAME, doc = "Name of single sample to use from a multi-sample bam", optional = true)
     public String sampleNameToUse = null;
 
+    @Argument(fullName = "SW-HeuristicOutputHapToRef", doc = "Name of single sample to use from a multi-sample bam", optional = true)
+    public String fileNameHapToRef = null;
+
+    @Argument(fullName = "SW-HeuristicOutputReadToBestHap", doc = "Name of single sample to use from a multi-sample bam", optional = true)
+    public String fileNameReadToBestHap = null;
     /**
      * rsIDs from this file are used to populate the ID column of the output. Also, the DB INFO flag will be set when appropriate.
      * dbSNP is not used in any way for the calculations themselves.

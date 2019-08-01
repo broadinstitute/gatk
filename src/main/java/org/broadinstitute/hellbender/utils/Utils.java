@@ -1130,20 +1130,25 @@ public final class Utils {
 
         public Alignment compareAlignments(Alignment alignment){
             if(this.generateAlignmentScore() == alignment.generateAlignmentScore()){
-                if(this.getRefBasesConsumed() == alignment.getRefBasesConsumed()){
-                    return this.getIndel().getAlignmentOffset() == -1 ? this : alignment;
+                if(this.getNumOfSoftclips() > 0 && this.getTypeOfSoftclip() == "back"){
+                    return alignment;
+                }
+                else if(alignment.getNumOfSoftclips() > 0 && alignment.getTypeOfSoftclip() == "back"){
+                    return this;
                 }
                 else{
-                    return this.getRefBasesConsumed() > alignment.getRefBasesConsumed() ? this : alignment;
+                    if(this.getRefBasesConsumed() == alignment.getRefBasesConsumed()){
+                        return this.getIndel().getAlignmentOffset() == -1 ? this : alignment;
+                    }
+                    else{
+                        return this.getRefBasesConsumed() > alignment.getRefBasesConsumed() ? this : alignment;
+                    }
                 }
             }
             else{
                 return this.generateAlignmentScore() < alignment.generateAlignmentScore() ? this : alignment;
             }
         }
-
-
-
     }
 
     public static Alignment lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches) {
@@ -1510,6 +1515,7 @@ public final class Utils {
         }
 
         //before returning anything, should check if alignmentOffset is better or worse
+        //compareALignments, not indel!!!!!
 
         //no del, yes ins
         if(insertion.getAlignmentOffset() != -1 && deletion.getAlignmentOffset() == -1){
@@ -1620,11 +1626,19 @@ public final class Utils {
             return alignment2;
         }
         else{
-            if(indel1refBases == indel2refBases){
-                return indel1.getIndelType() ? alignment1 : alignment2;
+            if(alignment1.getNumOfSoftclips() > 0 && alignment1.getTypeOfSoftclip() == "back"){
+                return alignment2;
+            }
+            else if(alignment2.getNumOfSoftclips() > 0 && alignment2.getTypeOfSoftclip() == "back"){
+                return alignment1;
             }
             else{
-                return indel1refBases > indel2refBases ? alignment1 : alignment2;
+                if(indel1refBases == indel2refBases){
+                    return indel1.getIndelType() ? alignment1 : alignment2;
+                }
+                else{
+                    return indel1refBases > indel2refBases ? alignment1 : alignment2;
+                }
             }
         }
     }

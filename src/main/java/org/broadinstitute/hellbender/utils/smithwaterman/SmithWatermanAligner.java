@@ -6,6 +6,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.io.Closeable;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.function.Supplier;
 
 /**
@@ -27,6 +29,8 @@ public interface SmithWatermanAligner extends Closeable {
      * @param overhangStrategy how to treat overhangs during alignment
      */
     SmithWatermanAlignment align(final byte[] ref, final byte[] alt, SWParameters parameters, SWOverhangStrategy overhangStrategy);
+
+    void filePathName(String fileName) throws FileNotFoundException;
 
     //methods for printing out number of SW/non-SW alignments
     int getNumOfAlignments();

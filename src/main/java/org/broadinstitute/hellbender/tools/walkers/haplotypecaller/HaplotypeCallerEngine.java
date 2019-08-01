@@ -46,6 +46,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -159,6 +160,14 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
         boolean haplotypeToRef = true;
         this.alignerHaplotypeToRef = new SmithWatermanJavaAligner(haplotypeToRef);
+        try {
+            aligner.filePathName(hcArgs.fileNameReadToBestHap);
+            alignerHaplotypeToRef.filePathName(hcArgs.fileNameHapToRef);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+
         initialize(createBamOutIndex, createBamOutMD5);
     }
 

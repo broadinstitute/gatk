@@ -10,6 +10,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import shapeless.ops.hlist;
 
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,6 +74,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     }
 
     public int numOfSoftCLips(){return softClips;}
+
+
 
     /**
      * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
@@ -291,8 +295,15 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         return alignmentResult;
     }
 
+    PrintStream printStream = null;
+
+    @Override
+    public void filePathName(String fileName) throws FileNotFoundException {
+        this.printStream = new PrintStream(fileName);
+    }
+
     //testCode
-    private static void testOutput(SmithWatermanAlignment alignmentResult, byte[] reference, byte[] alternate, SWOverhangStrategy overhangStrategy, SWParameters parameters){
+    private void testOutput(SmithWatermanAlignment alignmentResult, byte[] reference, byte[] alternate, SWOverhangStrategy overhangStrategy, SWParameters parameters){
         Cigar cigar1 = alignmentResult.getCigar();
 
         final int n = reference.length+1;
@@ -304,13 +315,13 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         Cigar cigar2 = alignmentResult2.getCigar();
 
         if(!cigar1.equals(cigar2)){
-            System.out.println(new String(reference));
-            System.out.println();
-            System.out.println(new String(alternate));
-            System.out.println(alignmentResult2.getAlignmentOffset());
-            System.out.println("SW: " + cigar2.toString());
-            System.out.println(alignmentResult.getAlignmentOffset());
-            System.out.println("Heuristic: " + cigar1.toString());
+            this.printStream.println(new String(reference));
+            printStream.println();
+            printStream.println(new String(alternate));
+            printStream.println(alignmentResult2.getAlignmentOffset());
+            printStream.println("SW: " + cigar2.toString());
+            printStream.println(alignmentResult.getAlignmentOffset());
+            printStream.println("Heuristic: " + cigar1.toString());
         }
     }
 
@@ -678,5 +689,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         logger.info(String.format("Total compute time in indelHapToRef heuristic : %.2f sec", indelTimeHapToRef * 1e-9));
         logger.info(String.format("Total compute time in indelReadToHap heuristic : %.2f sec", indelTimeReadToHap * 1e-9));
         logger.info(String.format("Total compute time in twoMismatch heuristic : %.2f sec", totalTwoMismatchHeuristicTime * 1e-9));
+
+        this.printStream.close();
     }
 }
