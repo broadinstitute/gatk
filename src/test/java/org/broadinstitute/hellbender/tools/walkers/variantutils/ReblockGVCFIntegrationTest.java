@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -9,11 +10,15 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.text.XReadLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
@@ -23,7 +28,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     @Test  //covers inputs with "MQ" annotation
     public void testJustOneSample() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-L chr20:69485-69791 -O %s -R " + hg38_reference_20_21 +
+                "-L chr20:69771 -O %s -R " + hg38_reference_20_21 +
                         " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf -rgq-threshold 20" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "testJustOneSample.expected.g.vcf"));
@@ -40,6 +45,11 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .addArgument("V", largeFileTestDir + "NA12878.prod.chr20snippet.g.vcf.gz")
                 .addArgument("rgq-threshold", "20")
                 .addArgument("L", "20:60001-1000000")
+                .addArgument("A", "Coverage")
+                .addArgument("A", "RMSMappingQuality")
+                .addArgument("A", "ReadPosRankSumTest")
+                .addArgument("A", "MappingQualityRankSumTest")
+                .addBooleanArgument("disable-tool-default-annotations", true)
                 .addOutput(output);
         runCommandLine(args);
 
@@ -59,16 +69,18 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
+    @Test  //absolute minimal output
     public void testOneSampleAsForGnomAD() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-drop-low-quals -do-qual-approx -L chr20:69485-69791 -O %s -R " + hg38_reference_20_21 +
                         " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf" +
-                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false" +
+                        " -A Coverage -A RMSMappingQuality -A ReadPosRankSumTest -A MappingQualityRankSumTest --disable-tool-default-annotations true",
                 Arrays.asList(getToolTestDataDir() + "testOneSampleAsForGnomAD.expected.g.vcf"));
         spec.executeTest("testOneSampleDropLows", this);
     }
 
+    //TODO: this isn't actually correcting non-ref GTs because I changed some args around -- separate out dropping low qual alleles and low qual sites?
     @Test  //covers non-ref AD and non-ref GT corrections
     public void testNonRefADCorrection() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -86,6 +98,65 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                         " -V " + getToolTestDataDir() + "prod.chr20snippet.withRawMQ.g.vcf" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "prod.chr20snippet.withRawMQ.expected.g.vcf"));
-        spec.executeTest("testNonRefADCorrection", this);
+        spec.executeTest("testRawMQInput", this);
+    }
+
+    @Test
+    public void testASAnnotationsAndSubsetting() throws Exception {
+        //some subsetting, but never dropping the first alt
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-O %s -R " + b37_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12878.AS.chr20snippet.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "expected.NA12878.AS.chr20snippet.reblocked.g.vcf"));
+        spec.executeTest("testASAnnotationsAndSubsetting", this);
+
+        //one case where first alt is dropped
+        final IntegrationTestSpec spec2 = new IntegrationTestSpec(
+                "-O %s -R " + b37_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12892.AS.chr20snippet.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "expected.NA12892.AS.chr20snippet.reblocked.g.vcf"));
+        spec2.executeTest("testASAnnotationsAndSubsetting2", this);
+
+        //big test for as we ran for gnomADv3
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("V", "src/test/resources/large/ReblockGVCF/spanDel.exome.chr20.vcf")
+                .addBooleanArgument("do-qual-approx", true)
+                .addBooleanArgument("drop-low-quals", true)
+                .addArgument("rgq-threshold", "10")
+                .addArgument("L", "chr20")
+                .addOutput(output);
+        runCommandLine(args);
+
+        List<VariantContext> actual = VariantContextTestUtils.getVariantContexts(output);
+        actual.stream().forEach(a -> {
+            if (!a.getGenotype(0).isHomRef()) {
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(a, GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(a, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(a, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(a, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(a, GATKVCFConstants.AS_SB_TABLE_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(a, GATKVCFConstants.AS_VARIANT_DEPTH_KEY,
+                    VCFHeaderLineCount.R);
+        } });
+
+    }
+
+    @Test
+    public void testNewCompressionScheme() throws Exception {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-O %s -R " + b37_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12878.AS.chr20snippet.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false" +
+                        " --floor-blocks -GQB 10 -GQB 20 -GQB 30 -GQB 40 -GQB 50 -GQB 60",
+                Arrays.asList(getToolTestDataDir() + "expected.NA12878.AS.chr20snippet.reblocked.hiRes.g.vcf"));
+        spec.executeTest("testNewCompressionScheme", this);
     }
 }

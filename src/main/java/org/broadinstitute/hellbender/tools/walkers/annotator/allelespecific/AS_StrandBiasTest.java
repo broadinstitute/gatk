@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -151,11 +152,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         if (!vc.hasAttribute(getRawKeyName())) {
             return new HashMap<>();
         }
-        String rawRankSumData = vc.getAttributeAsString(getRawKeyName(),null);
-        if (rawRankSumData == null) {
+        String rawContingencyTableData = vc.getAttributeAsString(getRawKeyName(),null);
+        if (rawContingencyTableData == null) {
             return new HashMap<>();
         }
-        AlleleSpecificAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(originalVC.getAlleles(), rawRankSumData);
+        AlleleSpecificAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(originalVC.getAlleles(), rawContingencyTableData);
         parseRawDataString(myData);
 
         Map<Allele, Double> perAltRankSumResults = calculateReducedData(myData);
@@ -165,32 +166,25 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     protected void parseRawDataString(ReducibleAnnotationData<List<Integer>> myData) {
-        String rawDataString = myData.getRawData();
-        if (rawDataString.startsWith("[")) {
-            rawDataString = rawDataString.substring(1,rawDataString.length()-1);
+        List<String> values = AnnotationUtils.getAlleleLengthListOfString(myData.getRawData());
+        if (values.size() != myData.getAlleles().size()) {
+            throw new IllegalStateException("Number of alleles and number of allele-specific entries do not match.  " +
+                    "Allele-specific annotations should have an entry for each allele including the reference.");
         }
-        String[] rawDataPerAllele;
-        String[] rawListEntriesAsStringVector;
+
         Map<Allele, List<Integer>> perAlleleValues = new HashMap<>();
-        //Initialize maps
-        for (Allele current : myData.getAlleles()) {
-            perAlleleValues.put(current, new LinkedList<Integer>());
-        }
-        //rawDataPerAllele is the list of values for each allele (each of variable length)
-        rawDataPerAllele = rawDataString.split(SPLIT_DELIM);
-        for (int i=0; i<rawDataPerAllele.length; i++) {
-            String alleleData = rawDataPerAllele[i];
-            if (!alleleData.isEmpty()) {
-                List<Integer> alleleList = perAlleleValues.get(myData.getAlleles().get(i));
-                rawListEntriesAsStringVector = alleleData.split(",");
-                //Read counts will only ever be integers
-                for (String s : rawListEntriesAsStringVector) {
-                    if (!s.isEmpty()) {
-                        alleleList.add(Integer.parseInt(s.trim()));
-                    }
+        for (int i = 0; i < values.size(); i++) {
+            List<Integer> perAlleleList = new ArrayList<>();
+            String[] rawListEntriesAsStringVector = values.get(i).split(",");
+            //Read counts will only ever be integers
+            for (String s : rawListEntriesAsStringVector) {
+                if (!s.isEmpty()) {
+                    perAlleleList.add(Integer.parseInt(s.trim()));
                 }
             }
+            perAlleleValues.put(myData.getAlleles().get(i), perAlleleList);
         }
+
         myData.setAttributeMap(perAlleleValues);
     }
 

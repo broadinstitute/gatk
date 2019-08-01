@@ -64,7 +64,7 @@ final class TLODBlock extends GVCFBlock {
 
     // create a single Genotype with GQ and DP annotations
     @Override
-    Genotype createHomRefGenotype(final String sampleName) {
+    Genotype createHomRefGenotype(final String sampleName, final boolean floorBlock) {
         final GenotypeBuilder gb = new GenotypeBuilder(sampleName, Collections.nCopies(2, getRef()));  //FIXME: for somatic stuff we output the genotype as diploid because that's familiar for human
         gb.noAD().noPL().noAttributes(); // clear all attributes
 

@@ -355,10 +355,10 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         if ( originalVC.isVariant()  && originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 ) {
             // only re-genotype polymorphic sites
             final VariantContext regenotypedVC = calculateGenotypes(originalVC);
-            if (regenotypedVC == null || (!isProperlyPolymorphic(regenotypedVC) && !includeNonVariants)) {
+            if (regenotypedVC == null || (!GATKVariantContextUtils.isProperlyPolymorphic(regenotypedVC) && !includeNonVariants)) {
                 return null;
             }
-            if (isProperlyPolymorphic(regenotypedVC) || includeNonVariants) {
+            if (GATKVariantContextUtils.isProperlyPolymorphic(regenotypedVC) || includeNonVariants) {
                 // Note that reversetrimAlleles must be performed after the annotations are finalized because the reducible annotation data maps
                 // were generated and keyed on the un reverseTrimmed alleles from the starting VariantContexts. Thus reversing the order will make
                 // it difficult to recover the data mapping due to the keyed alleles no longer being present in the variant context.
@@ -547,7 +547,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final GenotypesContext reducedGenotypes = AlleleSubsettingUtils.subsetSomaticAlleles(outputHeader, regenotypedVC.getGenotypes(), allelesToKeep, relevantIndices);
         final VariantContext subsetVC = builder.alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         final VariantContext trimmedVC = GATKVariantContextUtils.trimAlleles(subsetVC, true, true);
-        if (isProperlyPolymorphic(trimmedVC)) {
+        if (GATKVariantContextUtils.isProperlyPolymorphic(trimmedVC)) {
             return trimmedVC;
         }
         else {
@@ -555,23 +555,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         }
     }
 
-
-    /**
-     * Determines whether the provided VariantContext has real alternate alleles.
-     *
-     * @param vc  the VariantContext to evaluate
-     * @return true if it has proper alternate alleles, false otherwise
-     */
-    public static boolean isProperlyPolymorphic(final VariantContext vc) {
-        //obvious cases
-        if (vc == null || vc.getAlternateAlleles().isEmpty()) {
-            return false;
-        } else if (vc.isBiallelic()) {
-            return !(GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0)) || vc.isSymbolic());
-        } else {
-            return true;
-        }
-    }
 
     /**
      * Add genotyping-based annotations to the new VC

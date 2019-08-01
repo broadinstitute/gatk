@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -411,6 +412,14 @@ public abstract class GATKTool extends CommandLineProgram {
 
     protected List<SimpleInterval> transformTraversalIntervals(final List<SimpleInterval> getIntervals, final SAMSequenceDictionary sequenceDictionary) {
         return getIntervals;
+    }
+
+    /**
+     *
+     * @return By default, not every GATK tool can read from a GenomicsDB -- child classes can override
+     */
+    protected GenomicsDBOptions getGenomicsDBOptions() {
+        throw new IllegalArgumentException("This tool does not take a GenomicsDB as a feature input.");
     }
 
     /**

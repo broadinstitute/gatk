@@ -55,12 +55,12 @@ public abstract class VariantWalker extends VariantWalkerBase {
         // Create a FeatureDataSource for the driving variants FeatureInput, using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                  referenceArguments.getReferencePath());
+                                                  getGenomicsDBOptions());
 
         // Also add the driving variants FeatureInput to FeatureManager as well so that it can be queried,
         // but use a lookahead value of 0 to avoid caching because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                     referenceArguments.getReferencePath());
+                                     getGenomicsDBOptions());
 
         // Note: the intervals for the driving variants are set in onStartup()
     }
@@ -88,8 +88,6 @@ public abstract class VariantWalker extends VariantWalkerBase {
     }
 
     /**
-     * {@inheritDoc}
-     *
      * Implementation of variant-based traversal.
      *
      * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the

@@ -1,18 +1,16 @@
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.*;
+import picard.util.MathUtil;
 
 public final class GenotypeUtils {
     private GenotypeUtils(){}
 
     /**
-     * Returns true of the genotype is a called diploid genotype with likelihoods.
+     * Returns true if the genotype is a diploid genotype with likelihoods.
      */
     public static boolean isDiploidWithLikelihoods(final Genotype g) {
-        return Utils.nonNull(g).isCalled() && g.hasLikelihoods() && g.getPloidy() == 2;
+        return Utils.nonNull(g).hasLikelihoods() && g.getPloidy() == 2;
     }
 
     /**
@@ -34,13 +32,14 @@ public final class GenotypeUtils {
                                                               final boolean roundContributionFromEachGenotype){
         Utils.nonNull(vc, "vc");
         Utils.nonNull(genotypes, "genotypes");
-        final boolean doMultiallelicMapping = !vc.isBiallelic();
 
-        int idxAA = 0, idxAB = 1, idxBB = 2;
+        final int idxAA = 0;
+        final int idxAB = 1;
+        final int idxBB = 2;
 
-        double refCount = 0;
-        double hetCount = 0;
-        double homCount = 0;
+        double genotypeWithTwoRefsCount = 0;  //i.e. 0/0
+        double genotypesWithOneRefCount = 0;  //e.g. 0/1, 0/2, etc.
+        double genotypesWithNoRefsCount = 0;  //e.g. 1/1, 1/2, 2/2, etc.
 
         for (final Genotype g : genotypes) {
             if (! isDiploidWithLikelihoods(g)){
@@ -49,43 +48,56 @@ public final class GenotypeUtils {
 
             // Genotype::getLikelihoods returns a new array, so modification in-place is safe
             final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
+            final double[] biallelicLikelihoods;
 
-
-            if (doMultiallelicMapping) {
-                if (g.isHetNonRef()) {
-                    //all likelihoods go to homCount
-                    homCount++;
+            //if there are multiple alts, use the biallelic PLs for the best alt
+            if (vc.getAlternateAlleles().size() > 1 ) {
+                //check for
+                int maxInd = MathUtil.indexOfMax(normalizedLikelihoods);
+                GenotypeLikelihoods.GenotypeLikelihoodsAllelePair alleles = GenotypeLikelihoods.getAllelePair(maxInd);
+                if (alleles.alleleIndex1 != 0 && alleles.alleleIndex2 != 0) {
+                    //all likelihoods go to genotypesWithNoRefsCount because no ref allele is called
+                    genotypesWithNoRefsCount++;
                     continue;
                 }
 
-                //get alternate allele for each sample
-                final Allele a1 = g.getAllele(0);
-                final Allele a2 = g.getAllele(1);
-                if (a2.isNonReference()) {
-                    final int[] idxVector = vc.getGLIndicesOfAlternateAllele(a2);
-                    idxAA = idxVector[0];
-                    idxAB = idxVector[1];
-                    idxBB = idxVector[2];
+                double maxLikelihood = normalizedLikelihoods[idxAB];
+                int hetIndex = idxAB;
+                int varIndex = idxBB;
+                for (final Allele currAlt : vc.getAlternateAlleles()) {
+                    final int[] idxVector = vc.getGLIndicesOfAlternateAllele(currAlt);
+                    int tempIndex = idxVector[1];
+                    if (normalizedLikelihoods[tempIndex] > maxLikelihood) {
+                        maxLikelihood = normalizedLikelihoods[tempIndex];
+                        hetIndex = tempIndex;
+                        varIndex = idxVector[2];
+                    }
                 }
-                //I expect hets to be reference first, but there are no guarantees (e.g. phasing)
-                else if (a1.isNonReference()) {
-                    final int[] idxVector = vc.getGLIndicesOfAlternateAllele(a1);
-                    idxAA = idxVector[0];
-                    idxAB = idxVector[1];
-                    idxBB = idxVector[2];
-                }
+                biallelicLikelihoods = MathUtils.normalizeFromRealSpace(new double[] {normalizedLikelihoods[idxAA], normalizedLikelihoods[hetIndex], normalizedLikelihoods[varIndex]});
+            }
+            else {
+                biallelicLikelihoods = normalizedLikelihoods;
             }
 
+            double refLikelihood = biallelicLikelihoods[idxAA];
+            double hetLikelihood = biallelicLikelihoods[idxAB];
+            double varLikelihood = biallelicLikelihoods[idxBB];
+
+            //NOTE: rounding is special cased for [0,0,X] and [X,0,0] PLs because likelihoods can come out as [0.5, 0.5, 0] and both counts round up
             if( roundContributionFromEachGenotype ) {
-                refCount += MathUtils.fastRound(normalizedLikelihoods[idxAA]);
-                hetCount += MathUtils.fastRound(normalizedLikelihoods[idxAB]);
-                homCount += MathUtils.fastRound(normalizedLikelihoods[idxBB]);
+                genotypeWithTwoRefsCount += MathUtils.fastRound(refLikelihood);
+                if (refLikelihood != hetLikelihood) {   //if GQ = 0 (specifically [0,0,X] PLs) count as homRef and don't add to the other counts
+                    genotypesWithOneRefCount += MathUtils.fastRound(hetLikelihood);
+                }
+                if (varLikelihood != hetLikelihood) {  //if GQ = 0 (specifically [X,0,0] PLs) count as het and don't count as variant
+                    genotypesWithNoRefsCount += MathUtils.fastRound(varLikelihood); //need specific genotypesWithNoRefsCount (rather than complement of the others) for PL[0,0,0] case
+                }
             } else {
-                refCount += normalizedLikelihoods[idxAA];
-                hetCount += normalizedLikelihoods[idxAB];
-                homCount += normalizedLikelihoods[idxBB];
+                genotypeWithTwoRefsCount += refLikelihood;
+                genotypesWithOneRefCount += hetLikelihood;
+                genotypesWithNoRefsCount += varLikelihood;
             }
         }
-        return new GenotypeCounts(refCount, hetCount, homCount);
+        return new GenotypeCounts(genotypeWithTwoRefsCount, genotypesWithOneRefCount, genotypesWithNoRefsCount);
     }
 }

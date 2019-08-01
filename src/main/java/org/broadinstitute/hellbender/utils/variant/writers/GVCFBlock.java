@@ -41,17 +41,17 @@ public abstract class GVCFBlock implements Locatable {
      * It will return {@code null} if input {@code block} is {@code null}, indicating that there
      * is no variant-context to be output into the VCF.
      */
-    public VariantContext toVariantContext(String sampleName) {
+    public VariantContext toVariantContext(String sampleName, final boolean floorBlocks) {
         final VariantContextBuilder vcb = new VariantContextBuilder(getStartingVC());
         vcb.attributes(new LinkedHashMap<>(2)); // clear the attributes
         vcb.stop(getEnd());
         vcb.attribute(VCFConstants.END_KEY, getEnd());
-        final Genotype genotype = createHomRefGenotype(sampleName);
+        final Genotype genotype = createHomRefGenotype(sampleName, floorBlocks);
 
         return vcb.genotypes(genotype).make();
     }
 
-    abstract Genotype createHomRefGenotype(String sampleName);
+    abstract Genotype createHomRefGenotype(String sampleName, boolean floorBlocks);
 
     public abstract void add(int pos, int newEnd, Genotype genotype);
 

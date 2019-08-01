@@ -54,7 +54,7 @@ public class TLODBlockUnitTest {
             Assert.assertEquals(band.getMinBlockLOD(), expectedTLODs[i]);
         }
 
-        final Genotype g = band.createHomRefGenotype("TUMOR");
+        final Genotype g = band.createHomRefGenotype("TUMOR", false);
         Assert.assertTrue(g.hasDP() && g.getDP() == expectedMedianDPs[DPs.length-1]);
         Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY) && ((int) g.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) == expectedMinDPs[DPs.length-1]);
         Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY) && ((double) g.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)) == expectedTLODs[DPs.length-1]);
