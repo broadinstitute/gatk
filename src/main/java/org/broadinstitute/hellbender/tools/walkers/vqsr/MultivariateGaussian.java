@@ -4,7 +4,6 @@ import org.apache.commons.math3.special.Gamma;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.collections.ExpandingArrayList;
 
 import java.util.Arrays;
 import java.util.List;
