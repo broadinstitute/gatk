@@ -322,6 +322,16 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             printStream.println("SW: " + cigar2.toString());
             printStream.println(alignmentResult.getAlignmentOffset());
             printStream.println("Heuristic: " + cigar1.toString());
+
+            System.out.println(new String(reference));
+            System.out.println();
+            System.out.println(new String(alternate));
+            System.out.println(alignmentResult2.getAlignmentOffset());
+            System.out.println("SW: " + cigar2.toString());
+            System.out.println(alignmentResult.getAlignmentOffset());
+            System.out.println("Heuristic: " + cigar1.toString());
+
+
         }
     }
 
