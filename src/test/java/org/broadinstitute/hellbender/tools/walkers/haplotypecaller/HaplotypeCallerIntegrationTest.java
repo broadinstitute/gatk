@@ -202,6 +202,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in AS VCF mode is < 99% (" +  concordance + ")");
     }
 
+    @Test
+    public void test() {
+        final String[] args = ("-I gs://haplotypecallerspark-evaluation/inputData/NexPond-359781.bam -L 1:224781783-249250621 -O NexPond-359781.chr22.vcf -R gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta --smith-waterman JAVA --SW-HeuristicOutputHapToRef testHapToRef.txt --SW-HeuristicOutputReadToBestHap testReadToBestHap.txt").split(" ");
+        runCommandLine(args);
+    }
+
     /*
      * Test that in GVCF mode we're consistent with past GATK4 results
      */

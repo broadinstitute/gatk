@@ -193,6 +193,16 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         state = State.DELETION;
                         length = alternate.length - matchingBases - softclips;
                     }
+                    if(length < 1){
+                        System.out.println(new String(reference));
+                        System.out.println();
+                        System.out.println(new String(alternate));
+                        System.out.println(indel.getIndelType());
+                        System.out.println(alignmentOffset);
+                        System.out.println(matchingBases);
+                        System.out.println(softclips);
+                        System.out.println(indelSize);
+                    }
 
                     final List<CigarElement> lce;
                     Cigar cigar;

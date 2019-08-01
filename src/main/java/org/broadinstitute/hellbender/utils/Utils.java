@@ -1289,8 +1289,8 @@ public final class Utils {
                     System.arraycopy(query, 0, que, 0, back + 1);
                     int del = lastIndexOfAtMostTwoMismatches(ref, que, 0, ref.length - 5 - que.length, false, 0, size).getIndex();
                     if (del != -1) {
-                        int matchingBases = ref.length - 1- del;
                         int indelSize = ref.length - del - que.length;
+                        int matchingBases = que.length;
                         Indel deletion = new Indel(reference.length - query.length + size - indelSize, matchingBases, indelSize, false);
                         int refBasesConsumed = query.length - size + deletion.getIndelSize() + deletion.getAlignmentOffset();
                         return new Alignment(reference.length - query.length + size - indelSize, size, "back", deletion, refBasesConsumed);

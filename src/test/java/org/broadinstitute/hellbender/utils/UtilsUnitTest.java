@@ -998,11 +998,11 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testAlignDelandSBack(){
         SmithWatermanJavaAligner aligner = SmithWatermanJavaAligner.getInstance();
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
-        String reference = "CGATTCTAGTCAA";
-        String query =            "ATCAAGC";
+        String reference = "GGGCCCAGGCTTTGTTCCTCTCCGACAGCTCACCTCCCTCCCCCTACCCCCGAC";
+        String query =     "GGGCCCAGGCTTTGTTCCTCTCCGACAGCTCACCTCCCTCCCCCTACCCCCCCC";
         SmithWatermanAlignment alignment = aligner.align(reference.getBytes(), query.getBytes(), parameters, SWOverhangStrategy.SOFTCLIP);
         int result = alignment.getAlignmentOffset();
-        int expected = 7;
+        int expected = 0;
         Assert.assertEquals(result, expected);
     }
 
