@@ -112,7 +112,7 @@ public class ReblockGVCFUnitTest {
     private VariantContext makeDeletionVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
         final int start = 10;
         final int stop = start+refLength-1;
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).make();
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().make();
     }
 
     private Genotype addAD(final Genotype g, final int... ads) {
