@@ -56,9 +56,9 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
         }
 
         // create the block, add g to it, and return it for use
-        final TLODBlock block = new TLODBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), partitionPrecision);
-        block.add(vc.getStart(), g);
-        return block;
+        return new TLODBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), partitionPrecision);
+        //block.add(vc.getStart(), g);
+        //return block;
     }
 
     /**

@@ -295,8 +295,9 @@ public final class GATKVariantContextUtils {
 
                 final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
                 if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
-                    gb.alleles(GATKVariantContextUtils.noCallAlleles(ploidy));
-                    gb.PL(new int[genotypeLikelihoods.length]);
+                    final Allele ref = allelesToUse.stream().filter(Allele::isReference).collect(Collectors.toList()).get(0);
+                    gb.alleles(Arrays.asList(ref, ref));
+                    gb.PL(new int[genotypeLikelihoods.length]).log10PError(0);
                 } else {
                     gb.alleles(finalAlleles);
                 }
@@ -1351,12 +1352,12 @@ public final class GATKVariantContextUtils {
     public static VariantContext trimAlleles(final VariantContext inputVC, final boolean trimForward, final boolean trimReverse) {
         Utils.nonNull(inputVC);
 
-        if ( inputVC.getNAlleles() <= 1 || inputVC.getAlleles().stream().anyMatch(a -> a.length() == 1) ) {
+        if ( inputVC.getNAlleles() <= 1 || inputVC.getAlleles().stream().anyMatch(a -> a.length() == 1 && !a.equals(Allele.SPAN_DEL)) ) {
             return inputVC;
         }
 
-        final List<byte[]> sequences = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBases).collect(Collectors.toList());
-        final List<IndexRange> ranges = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> new IndexRange(0, a.length())).collect(Collectors.toList());
+        final List<byte[]> sequences = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic() && !a.equals(Allele.SPAN_DEL)).map(Allele::getBases).collect(Collectors.toList());
+        final List<IndexRange> ranges = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic() && !a.equals(Allele.SPAN_DEL)).map(a -> new IndexRange(0, a.length())).collect(Collectors.toList());
 
         final Pair<Integer, Integer> shifts = AlignmentUtils.normalizeAlleles(sequences, ranges, 0, true);
         final int endTrim = shifts.getRight();
@@ -1392,7 +1393,7 @@ public final class GATKVariantContextUtils {
         final Map<Allele, Allele> originalToTrimmedAlleleMap = new LinkedHashMap<>();
 
         for (final Allele a : inputVC.getAlleles()) {
-            if (a.isSymbolic()) {
+            if (a.isSymbolic() || a.equals(Allele.SPAN_DEL)) {
                 alleles.add(a);
                 originalToTrimmedAlleleMap.put(a, a);
             } else {

@@ -980,6 +980,9 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
+        tests.add(new Object[]{Arrays.asList("ACC", "AC", "<NON_REF>"), Arrays.asList("AC", "A", "<NON_REF>"), 0});
+        tests.add(new Object[]{Arrays.asList("ACC", "AC", "*"), Arrays.asList("AC", "A", "*"), 0});
+
         tests.add(new Object[]{Arrays.asList("ACC", "AC"), Arrays.asList("AC", "A"), 0});
         tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), Arrays.asList("GC", "G"), 2});
         tests.add(new Object[]{Arrays.asList("ACGC", "ACGA"), Arrays.asList("C", "A"), 3});
@@ -1007,7 +1010,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(clipped.getStart(), unclipped.getStart() + numLeftClipped);
         for ( int i = 0; i < unclipped.getAlleles().size(); i++ ) {
             final Allele trimmed = clipped.getAlleles().get(i);
-            Assert.assertEquals(trimmed.getBaseString(), expected.get(i));
+            Assert.assertEquals(trimmed.getDisplayString(), expected.get(i));  //note that getBaseString doesn't work for <NON_REF>
         }
     }
 

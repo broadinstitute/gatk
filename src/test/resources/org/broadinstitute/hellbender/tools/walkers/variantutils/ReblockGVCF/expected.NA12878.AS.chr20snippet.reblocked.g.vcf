@@ -19,7 +19,6 @@
 ##INFO=<ID=AS_BaseQRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt Vs. Ref base qualities">
 ##INFO=<ID=AS_FS,Number=A,Type=Float,Description="allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele">
 ##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="Allele-specific inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
-##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="allele specific heterozygosity as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation; relate to inbreeding coefficient">
 ##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
 ##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
 ##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
@@ -34,7 +33,6 @@
 ##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes -- including ref, RAW format">
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
-##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
 ##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
 ##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
@@ -137,7 +135,8 @@
 ##contig=<ID=NC_007605,length=171823>
 ##reference=file:///seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
-20	10087820	.	C	CAG,<NON_REF>	294.60	.	AS_QUALapprox=|302|0;AS_RAW_BaseQRankSum=|-2.1,1|NaN;AS_RAW_MQ=123769.00|46800.00|0.00;AS_RAW_MQRankSum=|0.6,1|NaN;AS_RAW_ReadPosRankSum=|-0.4,1|NaN;AS_SB_TABLE=17,18|8,5|0,0;AS_VarDP=35|13|0;BaseQRankSum=-2.273;DP=93;MQRankSum=0.678;MQ_DP=93;QUALapprox=302;RAW_GT_COUNT=0,1,0;RAW_MQ=329810.00;RAW_MQandDP=329810,93;ReadPosRankSum=-0.492;VarDP=49	GT:AD:GQ:PL:SB	0/1:35,13,0:99:302,0,1079,483,1169,1922:17,18,9,5
+20	10087820	.	C	CAG,<NON_REF>	294.60	.	AS_QUALapprox=|302|0;AS_RAW_BaseQRankSum=|-2.1,1|NaN;AS_RAW_MQ=123769.00|46800.00|0.00;AS_RAW_MQRankSum=|0.6,1|NaN;AS_RAW_ReadPosRankSum=|-0.4,1|NaN;AS_SB_TABLE=17,18|8,5|0,0;AS_VarDP=35|13|0;BaseQRankSum=-2.273;DP=93;MQRankSum=0.678;MQ_DP=93;QUALapprox=302;RAW_GT_COUNT=0,1,0;RAW_MQ=329810.00;RAW_MQandDP=329810,93;ReadPosRankSum=-0.492;VarDP=48	GT:AD:GQ:PL:SB	0/1:35,13,0:99:302,0,1079,483,1169,1922:17,18,9,5
+20	10087821	.	A	<NON_REF>	.	.	END=10087822	GT:DP:GQ:MIN_DP:PL	0/0:93:99:93:0,188,2004
 20	10433000	.	G	<NON_REF>	.	.	END=10433307	GT:DP:GQ:MIN_DP:PL	0/0:36:21:29:0,21,315
 20	10433308	.	G	<NON_REF>	.	.	END=10433311	GT:DP:GQ:MIN_DP:PL	0/0:27:6:27:0,6,90
 20	10433312	.	C	<NON_REF>	.	.	END=10433319	GT:DP:GQ:MIN_DP:PL	0/0:37:48:37:0,48,553

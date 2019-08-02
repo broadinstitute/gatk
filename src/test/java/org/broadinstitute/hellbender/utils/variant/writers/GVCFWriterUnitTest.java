@@ -43,7 +43,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
     private static final String SAMPLE_NAME = "XXYYZZ";
 
 
-    static final class MockWriter implements VariantContextWriter {
+    static public final class MockWriter implements VariantContextWriter {
         final List<VariantContext> emitted = new ArrayList<>();
         boolean headerWritten = false;
         boolean closed = false;
@@ -600,12 +600,10 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testOverlappingDeletions() {
-        final ReblockGVCF reblocker = new ReblockGVCF();
-
         final Allele ref1 = Allele.create("TACACACACATACACACACAC", true);
         final Allele alt1 = Allele.create("T", false);
         final Allele ref2 = Allele.create("TACACACACACTACTA", true);
-        final Allele ref3 = Allele.create("C", true);
+        final Allele ref3 = Allele.create("T", true);
         final VariantContext deletion1 = new VariantContextBuilder(null, "1", 10000, 10020, Arrays.asList(ref1, alt1,
                 Allele.NON_REF_ALLELE))
                 .log10PError(1000 / -10 )
@@ -632,9 +630,11 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
         final VariantContext origRefBlock = makeHomRef("1", 10026, 60, 10050);
 
-        //Let's say that these "low quality" deletions are below the RGQ threshold and get converted to homRefs with all zero PLs
-        final VariantContext block1 = reblocker.lowQualVariantToGQ0HomRef(deletion1, deletion1);
-        final VariantContext block2 = reblocker.lowQualVariantToGQ0HomRef(deletion2, deletion2);
+        //Let's say that these are "low quality" deletions below the RGQ threshold that get converted to homRefs with all zero PLs
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(ref3, ref3)).DP(30).GQ(0).PL(new int[3]).attribute(VCFConstants.END_KEY, 10025);
+        final VariantContextBuilder vcb = new VariantContextBuilder(null, "1", 10010, 10025, Arrays.asList(ref3, Allele.NON_REF_ALLELE))
+                .genotypes(gb.make()).attribute(VCFConstants.END_KEY, 10025);
+        final VariantContext block2 = (new HomRefBlock(vcb.make(), 20, 100, 2).toVariantContext(SAMPLE_NAME, false));
 
         final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, Arrays.asList(20,100));
@@ -645,6 +645,9 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         Assert.assertTrue(mockWriter.emitted.size() == 3);
         Assert.assertTrue(mockWriter.emitted.get(1).getEnd()+1 == mockWriter.emitted.get(2).getStart());
         //The first two blocks overlap, which is fine, but the important thing is that there's no "hole" between the first deletion and the final block
+
+        //note that this is not a reblocking GVCF writer, so starts and ends won't be changed except for ref block merges
+        Assert.assertTrue(mockWriter.emitted.get(1).getStart() == block2.getStart());
     }
 
 }

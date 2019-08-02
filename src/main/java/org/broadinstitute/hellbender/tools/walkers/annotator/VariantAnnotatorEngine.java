@@ -128,6 +128,16 @@ public final class VariantAnnotatorEngine {
     }
 
     /**
+     *
+     * @param infoAnnotationClassName   the name of the Java class, NOT the annotation VCF key
+     * @return  true if the VariantAnnotatorEngine will apply the given annotation class
+     */
+    public boolean hasInfoAnnotation(final String infoAnnotationClassName) {
+        return getInfoAnnotations().stream()
+                .anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().equals(infoAnnotationClassName));
+    }
+
+    /**
      * Returns the set of descriptions to be added to the VCFHeader line (for all annotations in this engine).
      */
     public Set<VCFHeaderLine> getVCFAnnotationDescriptions() {
