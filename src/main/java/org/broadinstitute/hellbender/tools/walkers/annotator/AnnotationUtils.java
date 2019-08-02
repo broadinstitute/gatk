@@ -50,16 +50,7 @@ public final class AnnotationUtils {
      * @return true if the annotation is expected to have values per-allele
      */
     public static boolean isAlleleSpecific(final InfoFieldAnnotation annotation) {
-        if (annotation instanceof AS_RankSumTest) {
-            return true;
-        }
-        if (annotation instanceof AS_StrandBiasTest) {
-            return true;
-        }
-        if (annotation instanceof AS_RMSMappingQuality) {
-            return true;
-        }
-        if (annotation instanceof AS_StandardAnnotation) {
+        if (annotation instanceof AlleleSpecificAnnotation) {
             return true;
         }
         return false;
