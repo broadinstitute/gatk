@@ -92,7 +92,7 @@ DATAPROC_CUSTOM_PROPERTIES+=",mapred:mapreduce.map.maxattempts=8"
 DATAPROC_CUSTOM_PROPERTIES+=",mapred:mapreduce.reduce.maxattempts=8"
 DATAPROC_CUSTOM_PROPERTIES+=",spark:spark.task.maxFailures=8"
 DATAPROC_CUSTOM_PROPERTIES+=",spark:spark.stage.maxConsecutiveAttempts=8"
-DATAPROC_CUSTOM_PROPERTIES+=",hdfs:dfs.client.use.datanode.hostname=true"
+#DATAPROC_CUSTOM_PROPERTIES+=",hdfs:dfs.client.use.datanode.hostname=true"
 
 DATAPROC_IMAGE_VERSION="1.3"
 if [[ "1.4" == "${DATAPROC_IMAGE_VERSION}" ]]; then
