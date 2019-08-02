@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -140,8 +139,7 @@ public final class FeatureManager implements AutoCloseable {
      * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
      * arguments in the tool and creating query-able FeatureDataSources for them. Allows control over
      * how much caching is performed by each {@link FeatureDataSource}.
-     *
-     * @param toolInstance Instance of the tool to be run (potentially containing one or more FeatureInput arguments)
+     *  @param toolInstance Instance of the tool to be run (potentially containing one or more FeatureInput arguments)
      *                     Must have undergone command-line argument parsing and argument value injection already.
      * @param featureQueryLookahead When querying FeatureDataSources, cache this many extra bases of context beyond
      *                              the end of query intervals in anticipation of future queries (>= 0).
@@ -158,17 +156,17 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
-     * Same as {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}, except used when the
+     * Same as {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, GenomicsDBOptions)}, except used when the
      *  FeatureInputs (and associated types) are known.
      *
      *  This constructor should only be used in test code.
      *
      * @param featureInputsToTypeMap {@link Map} of a {@link FeatureInput} to the output type that must extend {@link Feature}.  Never {@code null}
-     * @param toolInstanceName See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
-     * @param featureQueryLookahead See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
-     * @param cloudPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
-     * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
-     * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
+     * @param toolInstanceName See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, GenomicsDBOptions)}
+     * @param featureQueryLookahead See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, GenomicsDBOptions)}
+     * @param cloudPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, GenomicsDBOptions)}
+     * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, GenomicsDBOptions)}
+     * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, GenomicsDBOptions)}
      */
     @VisibleForTesting
     FeatureManager(final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsToTypeMap, final String toolInstanceName, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {

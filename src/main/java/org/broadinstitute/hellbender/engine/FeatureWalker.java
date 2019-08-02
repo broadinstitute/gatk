@@ -35,7 +35,7 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
     @Override
     void initializeFeatures() {
         features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                      referenceArguments.getReferencePath());
+                                      getGenomicsDBOptions());
         initializeDrivingFeatures();
     }
 

@@ -29,6 +29,6 @@ public final class DummyPlaceholderGatkTool extends GATKTool {
     @Override
     void initializeFeatures(){
         features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                referenceArguments.getReferencePath());
+                getGenomicsDBOptions());
     }
 }

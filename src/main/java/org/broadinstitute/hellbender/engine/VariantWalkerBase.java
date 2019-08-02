@@ -63,7 +63,7 @@ public abstract class VariantWalkerBase extends WalkerBase {
         // TODO: FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES will likely hurt performance for tools like VQSR,
         // TODO: but let's test it
         features = new FeatureManager(this, DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                      referenceArguments.getReferencePath());
+                                      getGenomicsDBOptions());
         initializeDrivingVariants();
     }
 

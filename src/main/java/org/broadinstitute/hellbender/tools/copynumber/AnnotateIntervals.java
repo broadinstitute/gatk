@@ -169,7 +169,7 @@ public final class AnnotateIntervals extends GATKTool {
                 featureQueryLookahead,
                 cloudPrefetchBuffer,
                 cloudIndexPrefetchBuffer,
-                referenceArguments.getReferencePath());
+                getGenomicsDBOptions());
 
         // always perform GC-content annotation
         logger.info("Adding GC-content annotator...");
