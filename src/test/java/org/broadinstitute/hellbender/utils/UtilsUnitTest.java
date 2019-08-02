@@ -875,6 +875,16 @@ public final class UtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testIndel6(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference ="TTTTTTTTTTTTTTTTTTTTTATGTTTTTGAGACAGGTCTC";
+        final String query =    "TTTTTTTTTTTTTTTTTTTTTTTTT";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndex();
+        int expected = 1;
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
     public void softClipEnd(){
         final String reference = "CGATTCCAAGTC";
         final String query =            "AAGTCA";
@@ -1023,11 +1033,12 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testAlignDelAndSFront(){
         SmithWatermanJavaAligner aligner = SmithWatermanJavaAligner.getInstance();
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
-        String reference = "CGATTTCAGTACTT";
-        String query =   "AACGATTCAG";
+        String reference = "ATGTACTTTTAGCAGCCCATTTAAAAATTTATTTTCAAACAGCATCAAAAAAAGTGAGGCAGGACCTCGCTTTTTTTTTTTTTTTTAGATTTAACCAAATAGGTGGTATGGGTTAAAGAAATGGGAAAACCCTGGACTCTC";
+        String query =     "TTTTCAAACAGCATCAAAAAAAGTGAGGCAGGACCTCGCTTTTTTTTTTTTTTTTTT";
         SmithWatermanAlignment alignment = aligner.align(reference.getBytes(), query.getBytes(), parameters, SWOverhangStrategy.SOFTCLIP);
+        System.out.println(alignment.getCigar().toString());
         int result = alignment.getAlignmentOffset();
-        int expected = 0;
+        int expected = 31;
         Assert.assertEquals(result, expected);
     }
 
