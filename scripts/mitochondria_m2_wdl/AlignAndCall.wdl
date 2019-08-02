@@ -1,55 +1,60 @@
+version 1.0
+
 import "AlignmentPipeline.wdl" as AlignAndMarkDuplicates
 
 workflow AlignAndCall {
   meta {
     description: "Takes in unmapped bam and outputs VCF of SNP/Indel calls on the mitochondria."
   }
+
+  input {
+    File unmapped_bam
+    Float? autosomal_coverage
+
+    File mt_dict
+    File mt_fasta
+    File mt_fasta_index
+    File mt_amb
+    File mt_ann
+    File mt_bwt
+    File mt_pac
+    File mt_sa
+    File blacklisted_sites
+    File blacklisted_sites_index
+
+    #Shifted reference is used for calling the control region (edge of mitochondria reference).
+    #This solves the problem that BWA doesn't support alignment to circular contigs.
+    File mt_shifted_dict
+    File mt_shifted_fasta
+    File mt_shifted_fasta_index
+    File mt_shifted_amb
+    File mt_shifted_ann
+    File mt_shifted_bwt
+    File mt_shifted_pac
+    File mt_shifted_sa
+    File blacklisted_sites_shifted
+    File blacklisted_sites_shifted_index
+
+    File shift_back_chain
+
+    File? gatk_override
+    String? m2_extra_args
+    String? m2_filter_extra_args
+    Float? vaf_filter_threshold
+    Float? f_score_beta
+    Boolean compress_output_vcf
+
+    # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
+    # affected by this number. Default is 151.
+    Int? max_read_length
+
+    #Optional runtime arguments
+    Int? preemptible_tries
+  }
+
   parameter_meta {
     unmapped_bam: "Unmapped and subset bam, optionally with original alignment (OA) tag"
   }
-
-  File unmapped_bam
-  Float? autosomal_coverage
-
-  File mt_dict
-  File mt_fasta
-  File mt_fasta_index
-  File mt_amb
-  File mt_ann
-  File mt_bwt
-  File mt_pac
-  File mt_sa
-  File blacklisted_sites
-  File blacklisted_sites_index
-
-  #Shifted reference is used for calling the control region (edge of mitochondria reference).
-  #This solves the problem that BWA doesn't support alignment to circular contigs.
-  File mt_shifted_dict
-  File mt_shifted_fasta
-  File mt_shifted_fasta_index
-  File mt_shifted_amb
-  File mt_shifted_ann
-  File mt_shifted_bwt
-  File mt_shifted_pac
-  File mt_shifted_sa
-  File blacklisted_sites_shifted
-  File blacklisted_sites_shifted_index
-
-  File shift_back_chain
-
-  File? gatk_override
-  String? m2_extra_args
-  String? m2_filter_extra_args
-  Float? vaf_filter_threshold
-  Float? f_score_beta
-  Boolean compress_output_vcf
-
-  # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
-  # affected by this number. Default is 151.
-  Int? max_read_length
-
-  #Optional runtime arguments
-  Int? preemptible_tries
 
   call AlignAndMarkDuplicates.AlignmentPipeline as AlignToMt {
     input:
@@ -189,18 +194,20 @@ workflow AlignAndCall {
 }
 
 task GetContamination {
-  File input_bam
-  File input_bam_index
-  File ref_fasta
-  File ref_fasta_index
-  Int qual = 20
-  Int map_qual = 30
-  Float vaf = 0.01
+  input {
+    File input_bam
+    File input_bam_index
+    File ref_fasta
+    File ref_fasta_index
+    Int qual = 20
+    Int map_qual = 30
+    Float vaf = 0.01
+
+    # runtime
+    Int? preemptible_tries
+  }
 
   String basename = basename(input_bam, ".bam")
-
-  # runtime
-  Int? preemptible_tries
   Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
   Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
@@ -215,18 +222,18 @@ task GetContamination {
   set -e
 
   java -jar /usr/mtdnaserver/mitolib.jar haplochecker \
-    --in ${input_bam} \
-    --ref ${ref_fasta} \
+    --in ~{input_bam} \
+    --ref ~{ref_fasta} \
     --out haplochecker_out \
-    --QUAL ${qual} \
-    --MAPQ ${map_qual} \
-    --VAF ${vaf}
+    --QUAL ~{qual} \
+    --MAPQ ~{map_qual} \
+    --VAF ~{vaf}
 
 python3 <<CODE
 
 import csv
 
-with open("haplochecker_out/${basename}.contamination.txt") as output:
+with open("haplochecker_out/~{basename}.contamination.txt") as output:
     reader = csv.DictReader(output, delimiter='\t')
     for row in reader:
         print(row["MajorHG"], file=open("major_hg.txt", 'w'))
@@ -242,7 +249,7 @@ CODE
     docker: "gatkworkflows/mtdnaserver:1.2"
   }
   output {
-    File contamination_file = "haplochecker_out/${basename}.contamination.txt"
+    File contamination_file = "haplochecker_out/~{basename}.contamination.txt"
     String major_hg = read_string("major_hg.txt")
     Float major_level = read_float("major_level.txt")
     String minor_hg = read_string("minor_hg.txt")
@@ -251,15 +258,18 @@ CODE
 }
 
 task CollectWgsMetrics {
-  File input_bam
-  File input_bam_index
-  File ref_fasta
-  File ref_fasta_index
-  Int? read_length
-  Int read_length_for_optimization = select_first([read_length, 151])
-  Int? coverage_cap
+  input {
+    File input_bam
+    File input_bam_index
+    File ref_fasta
+    File ref_fasta_index
+    Int? read_length
+    Int? coverage_cap
 
-  Int? preemptible_tries
+    Int? preemptible_tries
+  }
+
+  Int read_length_for_optimization = select_first([read_length, 151])
   Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
   Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
@@ -275,13 +285,13 @@ task CollectWgsMetrics {
 
     java -Xms2000m -jar /usr/gitc/picard.jar \
       CollectWgsMetrics \
-      INPUT=${input_bam} \
+      INPUT=~{input_bam} \
       VALIDATION_STRINGENCY=SILENT \
-      REFERENCE_SEQUENCE=${ref_fasta} \
+      REFERENCE_SEQUENCE=~{ref_fasta} \
       OUTPUT=metrics.txt \
       USE_FAST_ALGORITHM=true \
-      READ_LENGTH=${read_length_for_optimization} \
-      ${"COVERAGE_CAP=" + coverage_cap} \
+      READ_LENGTH=~{read_length_for_optimization} \
+      ~{"COVERAGE_CAP=" + coverage_cap} \
       INCLUDE_BQ_HISTOGRAM=true \
       THEORETICAL_SENSITIVITY_OUTPUT=theoretical_sensitivity.txt
 
@@ -304,18 +314,21 @@ task CollectWgsMetrics {
 }
 
 task LiftoverAndCombineVcfs {
-  File shifted_vcf
-  File vcf
-  String basename = basename(shifted_vcf, ".vcf")
+  input {
+    File shifted_vcf
+    File vcf
+    String basename = basename(shifted_vcf, ".vcf")
 
-  File ref_fasta
-  File ref_fasta_index
-  File ref_dict
+    File ref_fasta
+    File ref_fasta_index
+    File ref_dict
 
-  File shift_back_chain
+    File shift_back_chain
 
-  # runtime
-  Int? preemptible_tries
+    # runtime
+    Int? preemptible_tries
+  }
+
   Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
   Int disk_size = ceil(size(shifted_vcf, "GB") + ref_size) + 20
 
@@ -332,16 +345,16 @@ task LiftoverAndCombineVcfs {
     set -e
 
     java -jar /usr/gitc/picard.jar LiftoverVcf \
-      I=${shifted_vcf} \
-      O=${basename}.shifted_back.vcf \
-      R=${ref_fasta} \
-      CHAIN=${shift_back_chain} \
-      REJECT=${basename}.rejected.vcf
+      I=~{shifted_vcf} \
+      O=~{basename}.shifted_back.vcf \
+      R=~{ref_fasta} \
+      CHAIN=~{shift_back_chain} \
+      REJECT=~{basename}.rejected.vcf
 
     java -jar /usr/gitc/picard.jar MergeVcfs \
-      I=${basename}.shifted_back.vcf \
-      I=${vcf} \
-      O=${basename}.final.vcf
+      I=~{basename}.shifted_back.vcf \
+      I=~{vcf} \
+      O=~{basename}.final.vcf
     >>>
     runtime {
       disks: "local-disk " + disk_size + " HDD"
@@ -351,32 +364,32 @@ task LiftoverAndCombineVcfs {
     }
     output{
         # rejected_vcf should always be empty
-        File rejected_vcf = "${basename}.rejected.vcf"
-        File final_vcf = "${basename}.final.vcf"
-        File final_vcf_index = "${basename}.final.vcf.idx"
+        File rejected_vcf = "~{basename}.rejected.vcf"
+        File final_vcf = "~{basename}.final.vcf"
+        File final_vcf_index = "~{basename}.final.vcf.idx"
     }
 }
 
 task M2 {
-  File ref_fasta
-  File ref_fai
-  File ref_dict
-  File input_bam
-  File input_bai
-  String? m2_extra_args
-  Boolean? make_bamout
-  Boolean compress
-  File? gga_vcf
-  File? gga_vcf_idx
+  input {
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    File input_bam
+    File input_bai
+    String? m2_extra_args
+    Boolean? make_bamout
+    Boolean compress
+    File? gga_vcf
+    File? gga_vcf_idx
+    File? gatk_override
+    # runtime
+    Int? mem
+    Int? preemptible_tries
+  }
 
   String output_vcf = "raw" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
-
-  File? gatk_override
-
-  # runtime
-  Int? mem
-  Int? preemptible_tries
   Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
   Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
@@ -394,18 +407,18 @@ task M2 {
   command <<<
       set -e
 
-      export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+      export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
       # We need to create these files regardless, even if they stay empty
       touch bamout.bam
 
-      gatk --java-options "-Xmx${command_mem}m" Mutect2 \
-        -R ${ref_fasta} \
-        -I ${input_bam} \
-        ${"--genotyping-mode GENOTYPE_GIVEN_ALLELES --alleles " + gga_vcf} \
-        -O ${output_vcf} \
-        ${true='--bam-output bamout.bam' false='' make_bamout} \
-        ${m2_extra_args} \
+      gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
+        -R ~{ref_fasta} \
+        -I ~{input_bam} \
+        ~{"--genotyping-mode GENOTYPE_GIVEN_ALLELES --alleles " + gga_vcf} \
+        -O ~{output_vcf} \
+        ~{true='--bam-output bamout.bam' false='' make_bamout} \
+        ~{m2_extra_args} \
         --annotation StrandBiasBySample \
         --mitochondria-mode \
         --max-reads-per-alignment-start 75 \
@@ -419,40 +432,42 @@ task M2 {
       cpu: 2
   }
   output {
-      File raw_vcf = "${output_vcf}"
-      File raw_vcf_idx = "${output_vcf_index}"
-      File stats = "${output_vcf}.stats"
+      File raw_vcf = "~{output_vcf}"
+      File raw_vcf_idx = "~{output_vcf_index}"
+      File stats = "~{output_vcf}.stats"
       File output_bamOut = "bamout.bam"
   }
 }
 
 task Filter {
-  File ref_fasta
-  File ref_fai
-  File ref_dict
-  File raw_vcf
-  File raw_vcf_index
-  File raw_vcf_stats
-  Boolean compress
-  Float? vaf_cutoff
+  input {
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    File raw_vcf
+    File raw_vcf_index
+    File raw_vcf_stats
+    Boolean compress
+    Float? vaf_cutoff
+
+    String? m2_extra_filtering_args
+    Int max_alt_allele_count
+    Float contamination
+    Float? autosomal_coverage
+    Float? vaf_filter_threshold
+    Float? f_score_beta
+
+    File blacklisted_sites
+    File blacklisted_sites_index
+
+    File? gatk_override
+
+  # runtime
+    Int? preemptible_tries
+  }
 
   String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
-
-  String? m2_extra_filtering_args
-  Int max_alt_allele_count
-  Float contamination
-  Float? autosomal_coverage
-  Float? vaf_filter_threshold
-  Float? f_score_beta
-
-  File blacklisted_sites
-  File blacklisted_sites_index
-
-  File? gatk_override
-
-  # runtime
-  Int? preemptible_tries
   Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
   Int disk_size = ceil(size(raw_vcf, "GB") + ref_size) + 20
 
@@ -461,32 +476,32 @@ task Filter {
   }
   parameter_meta {
       autosomal_coverage: "Median coverage of the autosomes for filtering potential polymorphic NuMT variants"
-      vaf_filter_thershold: "Hard cutoff for minimum allele fraction. All sites with VAF less than this cutoff will be filtered."
+      vaf_filter_threshold: "Hard cutoff for minimum allele fraction. All sites with VAF less than this cutoff will be filtered."
       f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
   }
   command <<<
       set -e
 
-      export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+      export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
       # We need to create these files regardless, even if they stay empty
       touch bamout.bam
 
-      gatk --java-options "-Xmx2500m" FilterMutectCalls -V ${raw_vcf} \
-        -R ${ref_fasta} \
+      gatk --java-options "-Xmx2500m" FilterMutectCalls -V ~{raw_vcf} \
+        -R ~{ref_fasta} \
         -O filtered.vcf \
-        --stats ${raw_vcf_stats} \
-        ${m2_extra_filtering_args} \
-        --max-alt-allele-count ${max_alt_allele_count} \
+        --stats ~{raw_vcf_stats} \
+        ~{m2_extra_filtering_args} \
+        --max-alt-allele-count ~{max_alt_allele_count} \
         --mitochondria-mode \
-        ${"--autosomal-coverage " + autosomal_coverage} \
-        ${"--min-allele-fraction " + vaf_filter_threshold} \
-        ${"--f-score-beta " + f_score_beta} \
-        --contamination-estimate ${contamination}
+        ~{"--autosomal-coverage " + autosomal_coverage} \
+        ~{"--min-allele-fraction " + vaf_filter_threshold} \
+        ~{"--f-score-beta " + f_score_beta} \
+        --contamination-estimate ~{contamination}
 
       gatk VariantFiltration -V filtered.vcf \
-        -O ${output_vcf} \
-        --mask ${blacklisted_sites} \
+        -O ~{output_vcf} \
+        --mask ~{blacklisted_sites} \
         --mask-name "blacklisted_site"
 
   >>>
@@ -498,23 +513,25 @@ task Filter {
       cpu: 2
   }
   output {
-      File filtered_vcf = "${output_vcf}"
-      File filtered_vcf_idx = "${output_vcf_index}"
+      File filtered_vcf = "~{output_vcf}"
+      File filtered_vcf_idx = "~{output_vcf_index}"
   }
 }
 
 task MergeStats {
-  File shifted_stats
-  File non_shifted_stats
-  Int? preemptible_tries
-  File? gatk_override
+  input {
+    File shifted_stats
+    File non_shifted_stats
+    Int? preemptible_tries
+    File? gatk_override
+  }
 
   command{
     set -e
 
-    export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    gatk MergeMutectStats --stats ${shifted_stats} --stats ${non_shifted_stats} -O raw.combined.stats
+    gatk MergeMutectStats --stats ~{shifted_stats} --stats ~{non_shifted_stats} -O raw.combined.stats
   }
   output {
     File stats = "raw.combined.stats"
