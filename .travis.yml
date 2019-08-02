@@ -97,7 +97,7 @@ before_install:
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/36/cromwell-36.jar;
   fi;
 # Download git lfs files
-- git lfs version
+- git lfs
 - git lfs install
 - git lfs fetch
 - git lfs checkout

@@ -45,8 +45,8 @@ tasks.withType(Test) {
     environment "SUPPRESS_GCLOUD_CREDS_WARNING","true"
 
     // set heap size for the test JVM(s)
-    minHeapSize = "1G"
-    maxHeapSize = "5G"
+    minHeapSize = "3500M"
+    maxHeapSize = "3500M"
 
     if (TEST_VERBOSITY == "minimal") {
         int count = 0
