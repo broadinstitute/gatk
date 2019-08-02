@@ -46,7 +46,7 @@ tasks.withType(Test) {
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
-    maxHeapSize = "4G"
+    maxHeapSize = "5G"
 
     if (TEST_VERBOSITY == "minimal") {
         int count = 0
