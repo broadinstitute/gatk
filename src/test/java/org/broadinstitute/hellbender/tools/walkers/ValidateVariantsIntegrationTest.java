@@ -37,7 +37,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     }
 
     private static String excludeValidationTypesButString(ValidateVariants.ValidationType type) {
-        if (type.equals(ALL)) {
+        if (type == null || type.equals(ALL)) {
             return "";
         }
         final StringBuilder sbuilder = new StringBuilder();
@@ -160,6 +160,14 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         );
 
         spec.executeTest("test bad chr counts #1", this);
+
+        IntegrationTestSpec spec2 = new IntegrationTestSpec(
+                baseTestStringWithoutReference(false, "validationExampleBad.vcf", false, null),
+                0,
+                UserException.FailsStrictValidation.class
+        );
+
+        spec2.executeTest("test bad chr counts #1", this);
     }
 
     @Test
