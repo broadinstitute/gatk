@@ -836,9 +836,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testIndel2(){
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference = "TTTTTTTT";
-        final String query =     "TTATTT";
+        final String query =        "TTATTT";
         int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
-        int expected = 0;
+        int expected = 3;
         Assert.assertEquals(result, expected);
     }
 
@@ -848,8 +848,8 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference = "CTTCAGTCCGGGTACG";
         final String query =        "CAGTTACCG";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getMatchingBases();
-        int expected = 4;
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
+        int expected = 3;
         Assert.assertEquals(result, expected);
     }
 
@@ -857,9 +857,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testIndel4(){
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference = "CTTCAGTCCGGGTACG";
-        final String query =             "CAG";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getIndelSize();
-        int expected = 1;
+        final String query =                   "CAG";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
+        int expected = 14;
         Assert.assertEquals(result, expected);
     }
 
@@ -869,8 +869,8 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference ="AGAATTTAAAATGATACACCCAATCTGGAAAACGGTTTGGGATTTTTCTGCAAAATTCATGCATTTTCTTTTTTTTTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTTCTTTCTTTCTTTCTCTCTCTCTCTTT";
         final String query =    "AGAATTTAAAATGATACACCCAATCTGGAAAACGGTTTGGGATTTTTCTGCAAAATTCATGCATTTTCTTTTTTTTTTTTC";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getIndelSize();
-        int expected = 3;
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
+        int expected = 0;
         Assert.assertEquals(result, expected);
     }
 
@@ -878,9 +878,19 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testIndel6(){
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference ="TTTTTTTTTTTTTTTTTTTTTATGTTTTTGAGACAGGTCTC";
-        final String query =    "TTTTTTTTTTTTTTTTTTTTTTTTT";
+        final String query =     "TTTTTTTTTTTTTTTTTTTTTTTTT";
         int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndex();
         int expected = 1;
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testIndestion(){
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        final String reference ="CGATTCGATTCGATT";
+        final String query =      "ATTCGAATTCA";
+        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndex();
+        int expected = 2;
         Assert.assertEquals(result, expected);
     }
 
@@ -1093,12 +1103,12 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testGenerateAlignmentScore(){
-        Utils.Alignment alignment = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 2, 1, true), 0);
+        Utils.Alignment alignment = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 2, 1, true, 0), 0);
         int result = alignment.generateAlignmentScore();
         int expected = 50;
         Assert.assertEquals(result, expected);
 
-        Utils.Alignment alignment2 = new Utils.Alignment(0, 2, "front", new Utils.Indel(-1, 0, 0, false), 0);
+        Utils.Alignment alignment2 = new Utils.Alignment(0, 2, "front", new Utils.Indel(-1, 0, 0, false, 0), 0);
         int result2 = alignment2.generateAlignmentScore();
         int expected2 = 45;
         Assert.assertEquals(result2, expected2);
@@ -1107,9 +1117,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
     @Test
     public void testCompareAlignments(){
         //2 SNPS case will have no softclips
-        Utils.Alignment alignment1 = new Utils.Alignment(0, 0, "", new Utils.Indel(-1, 0, 0, false), 0);
+        Utils.Alignment alignment1 = new Utils.Alignment(0, 0, "", new Utils.Indel(-1, 0, 0, false, 0), 0);
         //deletion and softlip
-        Utils.Alignment alignment2 = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 3, 3, false), 0);
+        Utils.Alignment alignment2 = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 3, 3, false, 0), 0);
         Utils.Alignment result = alignment1.compareAlignments(alignment2);
         Utils.Alignment expected = alignment1;
         Assert.assertEquals(result, expected);

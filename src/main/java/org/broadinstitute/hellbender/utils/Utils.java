@@ -1045,7 +1045,7 @@ public final class Utils {
             this.index = index;
             this.numOfSoftclips = numOfSoftclips;
             this.typeOfSoftclip = typeOfSoftclip;
-            this.indel = new Indel(-1, 0, 0, false);
+            this.indel = new Indel(-1, 0, 0, false, 0);
             this.refBasesConsumed = refBasesConsumed;
         }
 
@@ -1248,7 +1248,7 @@ public final class Utils {
                     int del = firstIndexOfAtMostTwoMismatches(ref, que, 0, 6);
                     if (del != -1) {
                         int matchingBases = query.length - que.length - size;
-                        Indel deletion = new Indel(0, matchingBases, del, false);
+                        Indel deletion = new Indel(0, matchingBases, del, false, 0);
                         int refBasesConsumed = query.length - size + deletion.getIndelSize() + deletion.getAlignmentOffset();
                         return new Alignment(0, size, "front", deletion, refBasesConsumed);
                     }
@@ -1261,7 +1261,7 @@ public final class Utils {
                         }
                     }
                     if (insFront == query.length) {
-                        Indel insertion = new Indel(0, front - size, 1, true);
+                        Indel insertion = new Indel(0, front - size, 1, true, 0);
                         int refBasesConsumed = query.length - size - insertion.getIndelSize() + insertion.getAlignmentOffset();
                         return new Alignment(0, size, "front", insertion, refBasesConsumed);
                     }
@@ -1291,7 +1291,7 @@ public final class Utils {
                     if (del != -1) {
                         int indelSize = ref.length - del - que.length;
                         int matchingBases = que.length;
-                        Indel deletion = new Indel(reference.length - query.length + size - indelSize, matchingBases, indelSize, false);
+                        Indel deletion = new Indel(reference.length - query.length + size - indelSize, matchingBases, indelSize, false, 0);
                         int refBasesConsumed = query.length - size + deletion.getIndelSize() + deletion.getAlignmentOffset();
                         return new Alignment(reference.length - query.length + size - indelSize, size, "back", deletion, refBasesConsumed);
                     }
@@ -1306,7 +1306,7 @@ public final class Utils {
                     if(insBack == -1){
                         int matchingBases = back;
                         int indelSize = 1;
-                        Indel insertion = new Indel(aligner, matchingBases, indelSize, true);
+                        Indel insertion = new Indel(aligner, matchingBases, indelSize, true, 0);
                         int refBasesConsumed = query.length - size - insertion.getIndelSize() + insertion.getAlignmentOffset();
                         return new Alignment(aligner, size, "back", insertion, refBasesConsumed);
                     }
@@ -1340,8 +1340,8 @@ public final class Utils {
      */
     public static Alignment oneIndelReadToHap(final byte[] reference, final byte[] query, SWParameters parameters, int maxInsertionSize, int maxDeletionSize, int maxSoftclipSize){
 
-        Indel insertion = new Indel(-1, Integer.MAX_VALUE, maxInsertionSize, true);
-        Indel deletion = new Indel(-1, Integer.MAX_VALUE, maxDeletionSize, false);
+        Indel insertion = new Indel(-1, Integer.MAX_VALUE, maxInsertionSize, true, 0);
+        Indel deletion = new Indel(-1, Integer.MAX_VALUE, maxDeletionSize, false, 0);
 
         //set bounds for indices that are eligible to have indels
         int refBackInsertionBound = query.length - 1 - maxInsertionSize;
@@ -1430,12 +1430,14 @@ public final class Utils {
                         int alignmentOffset = matchIndex;
                         int matchingBases = queryIndexBack + 1;
                         int indelSize = refIndexBack - matchIndex + 1 - matchingBases;
+                        int refBasesConsumed = alignmentOffset + matchingBases + indelSize + (query.length - matchingBases);
                         //only set new indel if indelsize is smaller, or if they're equal but new indel has less M's on the left
-                        if((indelSize < deletion.getIndelSize() || (indelSize == deletion.getIndelSize() && matchingBases <= deletion.getMatchingBases())) && indelSize > 0){
+                        if((indelSize < deletion.getIndelSize() || (indelSize == deletion.getIndelSize() && refBasesConsumed > deletion.getRefBasesConsumed()) || indelSize == deletion.getIndelSize() && refBasesConsumed == deletion.getRefBasesConsumed() && matchingBases < deletion.getMatchingBases()) && indelSize > 0){
                             deletion.setAlignmentOffset(alignmentOffset);
                             deletion.setMatchingBases(matchingBases);
                             deletion.setIndelSize(indelSize);
                             deletion.setIndelType(false);
+                            deletion.setRefBasesConsumed(refBasesConsumed);
                         }
                     }
                 }
@@ -1488,13 +1490,16 @@ public final class Utils {
                             //you've reached the end of the query, which means you have an insertion
                             if(queryIndexFront == -1){
                                 int alignmentOffset = refIndexFront + 1;
-                                int matchingBases = refIndexBack - alignmentOffset + 1;
-                                int indelSize = queryIndexBack - matchingBases + 1;
-                                if((indelSize < insertion.getIndelSize() || (indelSize == insertion.getIndelSize() && matchingBases <= insertion.getMatchingBases())) && indelSize > 0){
+                                int matchingBases = refIndexBack + 1 - alignmentOffset;
+                                int indelSize = queryIndexBack + 1 - matchingBases;
+                                int refBasesConsumed = alignmentOffset + matchingBases + (query.length - matchingBases - indelSize);
+                                //if(indelSize < insertion.getIndelSize()){
+                                if((indelSize < insertion.getIndelSize() || (indelSize == insertion.getIndelSize() && refBasesConsumed > insertion.getRefBasesConsumed()) || indelSize == insertion.getIndelSize() && refBasesConsumed == insertion.getRefBasesConsumed() && matchingBases < insertion.getMatchingBases()) && indelSize > 0){
                                     insertion.setAlignmentOffset(alignmentOffset);
                                     insertion.setMatchingBases(matchingBases);
                                     insertion.setIndelSize(indelSize);
                                     insertion.setIndelType(true);
+                                    insertion.setRefBasesConsumed(refBasesConsumed);
                                 }
                             }
 
@@ -1584,7 +1589,7 @@ public final class Utils {
 
     public static Alignment compareIndels(Alignment alignment1, Alignment alignment2, byte[] query, SWParameters parameters){
         if(alignment1.getIndex() == -1 && alignment2.getIndex() == -1){
-            return new Alignment(-1, 0, "", new Indel(-1, 0, 0, false), 0);
+            return new Alignment(-1, 0, "", new Indel(-1, 0, 0, false, 0), 0);
         }
         if(alignment1.getIndex() == -1 && alignment2.getIndex() != -1){
             return alignment2;
@@ -1659,12 +1664,22 @@ public final class Utils {
         int matchingBases;
         int indelSize;
         boolean insertion;
+        int refBasesConsumed;
 
-        public Indel(int alignmentOffset, int matchingBases, int indelSize, boolean insertion){
+        public Indel(int alignmentOffset, int matchingBases, int indelSize, boolean insertion, int refBasesConsumed){
             this.alignmentOffset = alignmentOffset;
             this.indelSize = indelSize;
             this.matchingBases = matchingBases;
             this.insertion = insertion;
+            this.refBasesConsumed = refBasesConsumed;
+        }
+
+        public int getRefBasesConsumed() {
+            return refBasesConsumed;
+        }
+
+        public void setRefBasesConsumed(int refBasesConsumed) {
+            this.refBasesConsumed = refBasesConsumed;
         }
 
         public int getIndelSize(){
