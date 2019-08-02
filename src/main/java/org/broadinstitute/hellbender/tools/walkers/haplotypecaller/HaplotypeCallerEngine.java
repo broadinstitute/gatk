@@ -273,6 +273,18 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if ( emitReferenceConfidence() && samplesList.numberOfSamples() != 1 ) {
             throw new CommandLineException.BadArgumentValue("--emit-ref-confidence", "Can only be used in single sample mode currently. Use the --sample-name argument to run on a single sample out of a multi-sample BAM file.");
         }
+
+        if (hcArgs.floorBlocks && !emitReferenceConfidence()) {
+            throw new UserException(HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS + " refers to GVCF blocks," +
+                    " so reference confidence mode (" + AssemblyBasedCallerArgumentCollection.EMIT_REFERENCE_CONFIDENCE_LONG_NAME +
+                    ") must be specified.");
+        }
+
+        if (hcArgs.floorBlocks && !emitReferenceConfidence()) {
+            throw new UserException(HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS + " refers to GVCF blocks," +
+                    " so reference confidence mode (" + AssemblyBasedCallerArgumentCollection.EMIT_REFERENCE_CONFIDENCE_LONG_NAME +
+                    ") must be specified.");
+        }
     }
 
     private void initializeSamples() {

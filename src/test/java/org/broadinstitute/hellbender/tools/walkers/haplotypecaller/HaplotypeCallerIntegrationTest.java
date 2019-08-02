@@ -13,6 +13,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.AssemblyRegionWalker;
@@ -368,6 +369,43 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             else if (!vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE)){      //there are some variants that don't have non-symbolic alts
                 Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
             }
+        }
+    }
+
+    /*
+     * Test that in VCF mode we're consistent with past GATK4 results
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testFloorGVCFBlocks(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testFloorGVCFBlocks", ".vcf");
+
+        final List<String> requestedGqBands = Arrays.asList("10","20","30","40","50","60");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(inputFileName))
+                .addReference(new File(referenceFileName))
+                .addInterval(new SimpleInterval("20:10000000-10100000"))
+                .addBooleanArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
+                .addArgument("pairHMM", "AVX_LOGLESS_CACHING")
+                .addArgument("floor-blocks")
+                .addArgument("ERC", "GVCF")
+                .addOutput(output);
+        requestedGqBands.forEach(x -> args.addArgument("GQB",x));
+        runCommandLine(args);
+
+        final List<String> allGqBands = new ArrayList(requestedGqBands);
+        allGqBands.add("99");
+        allGqBands.add("0");
+
+        //The interval here is big, so use a FeatureDataSource to limit memory usage
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output)) {
+            actualVcs.forEach(vc -> {
+                //sometimes there are calls with alt alleles that are genotyped hom ref and those don't get floored
+                if (vc.hasAttribute("END") && vc.getGenotype(0).hasGQ()) {
+                    Assert.assertTrue(allGqBands.contains(Integer.toString(vc.getGenotype(0).getGQ())));
+                }
+            });
         }
     }
 

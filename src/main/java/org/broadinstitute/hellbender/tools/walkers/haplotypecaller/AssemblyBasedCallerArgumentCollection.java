@@ -25,6 +25,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
 
     public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
     public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
+    public static final String EMIT_REFERENCE_CONFIDENCE_LONG_NAME = "emit-ref-confidence";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -107,11 +108,12 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
 
     /**
-     * (BETA feature) The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.
-     * This is similar to the HaplotypeCaller reference confidence/GVCF mode. See https://software.broadinstitute.org/gatk/documentation/article.php?id=4017 for information about GVCFs.
+     * The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.
+     * See https://software.broadinstitute.org/gatk/documentation/article.php?id=4017 for information about GVCFs.
+     * This is a BETA FEATURE for Mutect2 similar to the HaplotypeCaller reference confidence/GVCF mode.
      */
     @Advanced
-    @Argument(fullName="emit-ref-confidence", shortName="ERC", doc="(BETA feature) Mode for emitting reference confidence scores", optional = true)
+    @Argument(fullName=EMIT_REFERENCE_CONFIDENCE_LONG_NAME, shortName="ERC", doc="Mode for emitting reference confidence scores (BETA for Mutect2)", optional = true)
     public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     protected abstract int getDefaultMaxMnpDistance();
