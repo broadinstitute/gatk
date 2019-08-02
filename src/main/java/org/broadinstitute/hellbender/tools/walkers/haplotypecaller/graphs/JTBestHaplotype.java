@@ -152,7 +152,12 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
             // Don't traverse an edge if it only has reference evidence supporting it (unless there is no other evidence whatsoever)
             if (!edgesAccountedForByJunctionTrees.contains((MultiSampleEdge) edge) &&
                     totalOutgoingMultiplicity != 0 && edge.getMultiplicity() != 0) {
-                // only include
+
+                // TODO better justify this to myself and others
+                // only include ref edges with multiplicity of 1 (i.e. only the ref read spanned it) if there are no other choices at this site (from Junction trees or otherwise)
+                if ((edge.isRef() && edge.getMultiplicity() == 1) || (edgesAccountedForByJunctionTrees.isEmpty() && outgoingEdges.size() > 1)) {
+                    continue;
+                }
 
                 List<E> chainCopy = new ArrayList<>(chain);
                 chainCopy.add(edge);
