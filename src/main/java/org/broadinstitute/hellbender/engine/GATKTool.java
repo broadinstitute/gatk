@@ -415,11 +415,11 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     *
-     * @return By default, not every GATK tool can read from a GenomicsDB -- child classes can override
+     * Get the GenomicsDB read settings for the current tool
+     * @return By default, just return the vanilla options
      */
     protected GenomicsDBOptions getGenomicsDBOptions() {
-        throw new IllegalArgumentException("This tool does not take a GenomicsDB as a feature input.");
+        return new GenomicsDBOptions(referenceArguments.getReferencePath());
     }
 
     /**
@@ -481,8 +481,8 @@ public abstract class GATKTool extends CommandLineProgram {
      * By default, this method initializes the FeatureManager to use the lookahead cache of {@link FeatureDataSource#DEFAULT_QUERY_LOOKAHEAD_BASES} bases.
      */
     void initializeFeatures() {
-        features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                      referenceArguments.getReferencePath());
+        features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer,
+                cloudIndexPrefetchBuffer, getGenomicsDBOptions());
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }

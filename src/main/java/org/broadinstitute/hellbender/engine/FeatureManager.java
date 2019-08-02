@@ -147,14 +147,14 @@ public final class FeatureManager implements AutoCloseable {
      *                              the end of query intervals in anticipation of future queries (>= 0).
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
-     * @param reference reference to use when opening feature files, may be null, currently only used by Genomics DB
+     * @param gdbOptions settings for GenomicsDB to use when reading from a GenomicsDB workspace
      *
      */
-    public FeatureManager(final CommandLineProgram toolInstance, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    public FeatureManager(final CommandLineProgram toolInstance, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions gdbOptions) {
         this.toolInstanceSimpleClassName = toolInstance.getClass().getSimpleName();
         this.featureSources = new LinkedHashMap<>();
 
-        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
+        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, gdbOptions);
     }
 
     /**
@@ -193,7 +193,7 @@ public final class FeatureManager implements AutoCloseable {
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions gdbOptions) {
 
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
@@ -208,7 +208,7 @@ public final class FeatureManager implements AutoCloseable {
             if ( featureInput != null ) {
                 final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
                 addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                        toolInstance instanceof VariantWalker ? ((VariantWalker) toolInstance).getGenomicsDBOptions() : null);
+                        gdbOptions);
             }
         }
     }
