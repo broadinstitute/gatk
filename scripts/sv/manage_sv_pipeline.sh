@@ -227,7 +227,7 @@ GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_FASTA_GZ})"
 GCS_REFERENCE_IMAGE="$(echo "${GCS_REFERENCE_FASTA_GZ}" | sed 's/.fasta.gz$/.fasta.img/')"
 if [ "$(dirname ${GCS_REFERENCE_FASTA_GZ})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]; then
     echo "Reference and reference image must be in same folder"
-    exit -1
+    exit 1
 fi
 
 GCS_SAVE_PATH=${GCS_SAVE_PATH:-"${PROJECT_NAME}-${GCS_USER}"}
@@ -238,7 +238,6 @@ export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/st
 ##############################################
 # paths on cluster (HDFS, except for reference image which must be regular FS)
 CLUSTER_BAM="/data/$(basename ${GCS_BAM})"
-CLUSTER_REFERENCE_FAGZ="/reference/$(basename ${GCS_REFERENCE_FASTA_GZ})"
 CLUSTER_REFERENCE_IMAGE="/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 
 ##############################################
@@ -305,8 +304,10 @@ while true; do
     fi
     case $yn in
         [Yy]*)  SECONDS=0
-                echo "GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_FAGZ} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_FAGZ} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                KL=$(basename ${GCS_REFERENCE_FASTA_GZ} | sed 's/.fasta.gz/.kill.kmers/')
+                KMER_KILL_LIST="/reference/${KL}"
+                echo "GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_FASTA_GZ} ${OUTPUT_DIR} ${CLUSTER_BAM} ${KMER_KILL_LIST} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                GATK_SV_TOOL=${GATK_SV_TOOL} run_whole_pipeline.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_FASTA_GZ} ${OUTPUT_DIR} ${CLUSTER_BAM} ${KMER_KILL_LIST} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 printf 'Pipeline completed in %02dh:%02dm:%02ds\n' $((${SECONDS}/3600)) $((${SECONDS}%3600/60)) $((${SECONDS}%60))
                 break
                 ;;

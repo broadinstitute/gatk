@@ -7,10 +7,11 @@ if [[ "$#" -lt 6 ]]; then
     echo -e "  [1] local directory of GATK build (required)"
     echo -e "  [2] project name (required)"
     echo -e "  [3] cluster name (required)"
-    echo -e "  [4] absolute path to the output directory on the cluster (HDFS,required)"
-    echo -e "  [5] absolute path to the BAM on the cluster (index assumed accompanying the bam) (HDFS,required)"
-    echo -e "  [6] absolute path to the gzipped reference on the cluster (skip list is assumed accompanying with same basename and extension \".kill.intervals\") (HDFS,required)"
-    echo -e "  [7] absolute path to the reference index image on each worker node's local file system (required)"
+    echo -e "  [4] GCS path to block-compressed reference fasta, i.e. gs://.../*.fasta.gz (GCS, required)"
+    echo -e "  [5] absolute path to the output directory on the cluster (HDFS,required)"
+    echo -e "  [6] absolute path to the BAM on the cluster (index assumed accompanying the bam) (HDFS,required)"
+    echo -e "  [7] absolute path to the file on the cluster holding kmers to avoid (extension \".kill.kmers\") (HDFS,required)"
+    echo -e "  [8] absolute path to the reference index image on each worker node's local file system (required)"
     echo -e "  [*] extra command-line arguments to StructuralVariationDiscoveryPipelineSpark"
     echo -e "Example:"
     echo -e " bash run_whole_pipeline.sh \\"
@@ -28,19 +29,17 @@ fi
 GATK_DIR="$1"
 PROJECT_NAME="$2"
 CLUSTER_NAME="$3"
+GCS_REF_FA_GZ="$4"
 MASTER_NODE="hdfs://${CLUSTER_NAME}-m:8020"
-PROJECT_OUTPUT_DIR="${MASTER_NODE}$4"
-INPUT_BAM="${MASTER_NODE}$5"
-REF_FA_GZ="${MASTER_NODE}$6"
-REF_INDEX_IMAGE="$7"
-INTERVAL_KILL_LIST=$(echo "${REF_FA_GZ}" | sed 's/.fasta.gz$/.kill.intervals/')
-KMER_KILL_LIST=$(echo "${REF_FA_GZ}" | sed 's/.fasta.gz$/.kill.kmers/')
-ALTS_KILL_LIST=$(echo "${REF_FA_GZ}" | sed 's/.fasta.gz$/.kill.alts/')
-
-REF_FA=$(echo "${REF_FA_GZ}" | sed 's/.fasta.gz$/.fasta/')
+PROJECT_OUTPUT_DIR="${MASTER_NODE}$5"
+INPUT_BAM="${MASTER_NODE}$6"
+KMER_KILL_LIST="${MASTER_NODE}$7"
+REF_INDEX_IMAGE="$8"
+INTERVAL_KILL_LIST=$(echo "${KMER_KILL_LIST}" | sed 's/.kill.kmers$/.kill.intervals/')
+ALTS_KILL_LIST=$(echo "${KMER_KILL_LIST}" | sed 's/.kill.kmers$/.kill.alts/')
 
 # extract any extra arguments to StructuralVariationDiscoveryPipelineSpark
-shift $(($# < 7 ? $# : 7))
+shift $(($# < 8 ? $# : 8))
 SV_ARGS=${*:-${SV_ARGS:-""}}
 # expand any local variables passed as strings (e.g. PROJECT_OUTPUT_DIR)
 eval "SV_ARGS=\"${SV_ARGS}\""
@@ -63,7 +62,7 @@ case ${GATK_SV_TOOL} in
         TOOL_OPTIONS="\
             -I ${INPUT_BAM} \
             -O ${PROJECT_OUTPUT_DIR}/variants/ \
-            -R ${REF_FA} \
+            -R ${GCS_REF_FA_GZ} \
             --aligner-index-image ${REF_INDEX_IMAGE} \
             --exclusion-intervals ${INTERVAL_KILL_LIST} \
             --kmers-to-ignore ${KMER_KILL_LIST} \
@@ -80,7 +79,7 @@ case ${GATK_SV_TOOL} in
         TOOL_OPTIONS="\
             -I ${INPUT_BAM} \
             -O ${PROJECT_OUTPUT_DIR}/evidence \
-            -R ${REF_FA} \
+            -R ${GCS_REF_FA_GZ} \
             --aligner-index-image ${REF_INDEX_IMAGE} \
             --exclusion-intervals ${INTERVAL_KILL_LIST} \
             --kmers-to-ignore ${KMER_KILL_LIST} \
