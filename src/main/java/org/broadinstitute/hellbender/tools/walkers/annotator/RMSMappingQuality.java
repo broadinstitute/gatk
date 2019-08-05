@@ -59,15 +59,6 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     public boolean allowOlderRawKeyValues = false;
 
     @Override
-    public List<String> getRawKeyNames() {
-        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
-        if (hasSecondaryRawKeys()){
-            allRawKeys.addAll(getSecondaryRawKeys());
-        }
-        return allRawKeys;
-    }
-
-    @Override
     public String getPrimaryRawKey() { return GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY; }  //new key for the two-value MQ data to prevent version mismatch catastrophes
 
     /**

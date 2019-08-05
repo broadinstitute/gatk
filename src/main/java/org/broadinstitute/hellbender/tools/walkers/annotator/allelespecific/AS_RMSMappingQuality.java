@@ -192,15 +192,13 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
         final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
         annotations.put(getKeyNames().get(0), annotationString);
+        annotations.put(getPrimaryRawKey(), makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap()));
         return annotations;
     }
 
 
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY); }
-
-    @Override
-    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY); }
 
     private void getRMSDataFromLikelihoods(final AlleleLikelihoods<GATKRead, Allele> likelihoods, ReducibleAnnotationData<Double> myData) {
         for ( final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {

@@ -35,15 +35,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     @Override
-    public List<String> getRawKeyNames() {
-        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
-        if (hasSecondaryRawKeys()) {
-            allRawKeys.addAll(getSecondaryRawKeys());
-        }
-        return allRawKeys;
-    }
-
-    @Override
     public String getPrimaryRawKey() { return GATKVCFConstants.AS_SB_TABLE_KEY; }
 
     /**
@@ -189,7 +180,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         Map<Allele, Double> perAltRankSumResults = calculateReducedData(myData);
 
         String annotationString = makeReducedAnnotationString(vc, perAltRankSumResults);
-        return Collections.singletonMap(getKeyNames().get(0), annotationString);
+        String rawAnnotationsString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
+        Map<String, Object> returnMap = new HashMap<>();
+        returnMap.put(getKeyNames().get(0), annotationString);
+        returnMap.put(getPrimaryRawKey(), rawAnnotationsString);  //this is in case raw annotations are requested
+        return returnMap;
     }
 
     protected void parseRawDataString(ReducibleAnnotationData<List<Integer>> myData) {
