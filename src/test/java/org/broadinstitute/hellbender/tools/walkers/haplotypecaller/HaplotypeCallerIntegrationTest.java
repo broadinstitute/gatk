@@ -373,7 +373,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     /*
-     * Test that in VCF mode we're consistent with past GATK4 results
+     * Test that GQs are correct when the --floor-blocks argument is supplied
      */
     @Test(dataProvider="HaplotypeCallerTestInputs")
     public void testFloorGVCFBlocks(final String inputFileName, final String referenceFileName) throws Exception {
@@ -385,7 +385,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(inputFileName))
                 .addReference(new File(referenceFileName))
-                .addInterval(new SimpleInterval("20:10000000-10100000"))
+                .addInterval(new SimpleInterval("20:10009880-10012631"))
                 .addBooleanArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
                 .addArgument("pairHMM", "AVX_LOGLESS_CACHING")
                 .addArgument("floor-blocks")

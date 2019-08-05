@@ -279,12 +279,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     " so reference confidence mode (" + AssemblyBasedCallerArgumentCollection.EMIT_REFERENCE_CONFIDENCE_LONG_NAME +
                     ") must be specified.");
         }
-
-        if (hcArgs.floorBlocks && !emitReferenceConfidence()) {
-            throw new UserException(HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS + " refers to GVCF blocks," +
-                    " so reference confidence mode (" + AssemblyBasedCallerArgumentCollection.EMIT_REFERENCE_CONFIDENCE_LONG_NAME +
-                    ") must be specified.");
-        }
     }
 
     private void initializeSamples() {

@@ -50,10 +50,7 @@ public final class AnnotationUtils {
      * @return true if the annotation is expected to have values per-allele
      */
     public static boolean isAlleleSpecific(final InfoFieldAnnotation annotation) {
-        if (annotation instanceof AlleleSpecificAnnotation) {
-            return true;
-        }
-        return false;
+        return annotation instanceof AlleleSpecificAnnotation;
     }
 
     /**

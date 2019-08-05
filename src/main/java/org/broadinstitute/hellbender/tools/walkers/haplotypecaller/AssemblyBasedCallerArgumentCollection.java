@@ -110,10 +110,10 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     /**
      * The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.
      * See https://software.broadinstitute.org/gatk/documentation/article.php?id=4017 for information about GVCFs.
-     * This is a BETA FEATURE for Mutect2 similar to the HaplotypeCaller reference confidence/GVCF mode.
+     * For Mutect2, this is a BETA feature that functions similarly to the HaplotypeCaller reference confidence/GVCF mode.
      */
     @Advanced
-    @Argument(fullName=EMIT_REFERENCE_CONFIDENCE_LONG_NAME, shortName="ERC", doc="Mode for emitting reference confidence scores (BETA for Mutect2)", optional = true)
+    @Argument(fullName=EMIT_REFERENCE_CONFIDENCE_LONG_NAME, shortName="ERC", doc="Mode for emitting reference confidence scores (For Mutect2, this is a BETA feature)", optional = true)
     public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     protected abstract int getDefaultMaxMnpDistance();
