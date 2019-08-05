@@ -155,7 +155,8 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
 
                 // TODO better justify this to myself and others
                 // only include ref edges with multiplicity of 1 (i.e. only the ref read spanned it) if there are no other choices at this site (from Junction trees or otherwise)
-                if ((edge.isRef() && edge.getMultiplicity() == 1) || (edgesAccountedForByJunctionTrees.isEmpty() && outgoingEdges.size() > 1)) {
+                if ((edge.isRef() && edge.getMultiplicity() == 1) &&
+                        !(edgesAccountedForByJunctionTrees.isEmpty() && outgoingEdges.size() < 2)) { // no junction tree evidence and only one ref path to take
                     continue;
                 }
 

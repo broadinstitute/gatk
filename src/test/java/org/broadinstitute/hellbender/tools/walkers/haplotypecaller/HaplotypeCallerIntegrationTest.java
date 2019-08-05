@@ -166,7 +166,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testThisLargeCaseInDebugger() {
-        final String[] args = ("-I /Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam -R /Users/emeryj/hellbender/gatk/src/test/resources/large/Homo_sapiens_assembly19.fasta.gz -O "+createTempFile("output", ".vcf")+" -L 15:30007800-50208000 --debug-haplotype-discovery --haplotype-debug-histogram-output histogram.JT.txt -ERC GVCF --smith-waterman FASTEST_AVAILABLE --disable-sequence-graph-simplification").split(" ");
+        final String[] args = ("-I /Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam -R /Users/emeryj/hellbender/gatk/src/test/resources/large/Homo_sapiens_assembly19.fasta.gz -O "+createTempFile("output", ".vcf")+" -L 15:30007800-5b0208000 --debug-haplotype-discovery --haplotype-debug-histogram-output histogram.JT.txt -ERC GVCF --smith-waterman FASTEST_AVAILABLE --disable-sequence-graph-simplification").split(" ");
         runCommandLine(args);
     }
 
@@ -193,6 +193,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--disable-sequence-graph-simplification"
         };
 
         runCommandLine(args);
