@@ -121,7 +121,12 @@ workflow Mutect2 {
     Boolean? funco_use_gnomad_AF
     File? funco_data_sources_tar_gz
     String? funco_transcript_selection_mode
-    File? funco_transcript_selection_list
+    # Default to use the transcript selection list for variants.
+    # This is the same list as created for Oncotator.
+    # For more info:
+    #   https://gatkforums.broadinstitute.org/gatk/discussion/4154/howto-install-and-run-oncotator-for-the-first-time
+    #   https://personal.broadinstitute.org/lichtens/oncobeta/tx_selection_results_LTLedits.pptx
+    File? funco_transcript_selection_list = "gs://broad-public-datasets/funcotator/transcriptList.exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt"
     Array[String]? funco_annotation_defaults
     Array[String]? funco_annotation_overrides
     Array[String]? funcotator_excluded_fields
