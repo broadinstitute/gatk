@@ -11,10 +11,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.GraphBasedKBestHaplotypeFinder;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestHaplotype;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -276,10 +273,10 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
     private void assertSingleBubble(final TestAssembler assembler, final String one, final String two) {
         final SeqGraph graph = assembler.assemble();
         graph.simplifyGraph();
-        final List<KBestHaplotype> paths = new GraphBasedKBestHaplotypeFinder(graph).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
         final Set<String> expected = new HashSet<>(Arrays.asList(one, two));
-        for ( final KBestHaplotype path : paths ) {
+        for ( final KBestHaplotype<SeqVertex, BaseEdge> path : paths ) {
             final String seq = new String(path.getBases());
             Assert.assertTrue(expected.contains(seq));
             expected.remove(seq);
@@ -343,7 +340,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         Assert.assertNotNull(graph.getReferenceSourceVertex());
         Assert.assertNotNull(graph.getReferenceSinkVertex());
 
-        final List<KBestHaplotype> paths = new GraphBasedKBestHaplotypeFinder(graph).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 1);
     }
 
@@ -389,7 +386,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
 
         final SeqGraph graph = assembler.assemble();
-        final List<KBestHaplotype> paths = new GraphBasedKBestHaplotypeFinder(graph).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
         final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
         final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();

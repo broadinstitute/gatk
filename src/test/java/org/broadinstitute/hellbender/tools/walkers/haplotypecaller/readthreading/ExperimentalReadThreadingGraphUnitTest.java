@@ -584,7 +584,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         rtgraph.buildGraphIfNecessary();
 
         //final SeqGraph graph = rtgraph.toSequenceGraph();
-        final List<KBestHaplotype> paths = new GraphBasedKBestHaplotypeFinder(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 1);
     }
 
@@ -864,7 +864,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         // confirm that we created the appropriate bubble in the graph only if expected
         rtgraph.cleanNonRefPaths();
 //        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
-        final List<KBestHaplotype> paths = new GraphBasedKBestHaplotypeFinder(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
         Assert.assertEquals(paths.size(), shouldBeMerged ? 2 : 1);
     }
 
@@ -916,7 +916,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         // confirm that we created the appropriate bubble in the graph only if expected
         rtgraph.cleanNonRefPaths();
 //        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
-        final List<KBestHaplotype> paths = new JunctionTreeKBestHaplotypeFinder(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = new JunctionTreeKBestHaplotypeFinder<>(rtgraph, rtgraph.getReferenceSourceVertex(), rtgraph.getReferenceSinkVertex()).findBestHaplotypes();
         Assert.assertEquals(paths.size(), shouldBeMerged ? 2 : 1);
     }
 

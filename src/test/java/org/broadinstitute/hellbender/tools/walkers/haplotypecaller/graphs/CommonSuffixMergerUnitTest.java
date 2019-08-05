@@ -93,7 +93,7 @@ public class CommonSuffixMergerUnitTest extends GATKBaseTest {
     /**
      * Compares KBestHaplotype solutions, first by the haplotype base sequence and the by their score.
      */
-    private static final Comparator<KBestHaplotype> KBESTHAPLOTYPE_COMPARATOR = (o1,o2) -> {
+    private static final Comparator<KBestHaplotype<SeqVertex, BaseEdge>> KBESTHAPLOTYPE_COMPARATOR = (o1,o2) -> {
         final int baseCmp = new String(o1.getBases()).compareTo(new String(o2.getBases()));
         return baseCmp != 0 ? baseCmp : - Double.compare(o1.score(), o2.score());
     };
