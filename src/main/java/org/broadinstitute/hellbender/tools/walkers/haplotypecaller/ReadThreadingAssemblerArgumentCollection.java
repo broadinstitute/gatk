@@ -161,7 +161,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Hidden
     @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified debrujin graph", optional = true)
-    public boolean disableSeqGraphConstruciton = false;
+    public boolean disableSeqGraphConstruciton = true;
 
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
