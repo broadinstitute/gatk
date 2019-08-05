@@ -54,6 +54,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         this.haplotypeToref = haplotypeToref;
     }
 
+    int noSW = 0;
+    int yesSW = 0;
+    long totalExactMatchTime = 0;
     /**
      * Aligns the alternate sequence to the reference sequence
      *
@@ -74,8 +77,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE){
             //exact match
+            long startTime1 = System.nanoTime();
             int exactMatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0);
+            totalExactMatchTime += System.nanoTime() - startTime1;
             if (exactMatchIndex != -1) {
+                noSW++;
                 // generate the alignment result when the substring search was successful
                 final List<CigarElement> lce = Collections.singletonList(makeElement(State.MATCH, alternate.length));
                 alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), exactMatchIndex);
@@ -83,6 +89,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 return alignmentResult;
             }
 
+            /*
             //one mismatch
             int singleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1);
             if (singleMismatchIndex != -1) {
@@ -149,9 +156,10 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                     return alignmentResult;
                 }
             }
-
+            */
         }
 
+        yesSW++;
         // run full Smith-Waterman
         final int n = reference.length+1;
         final int m = alternate.length+1;
@@ -506,5 +514,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     @Override
     public void close() {
         logger.info(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
+        logger.info(String.format("Total compute time in exactMatch heuristic : %.2f sec", totalExactMatchTime * 1e-9));
+        logger.info(String.format("Total calls to exactMatchHeuristic: %0.2f sec", noSW * 1e-9));
+        logger.info(String.format("Total calls to SW: %0.2f sec", yesSW * 1e-9));
+
     }
 }
