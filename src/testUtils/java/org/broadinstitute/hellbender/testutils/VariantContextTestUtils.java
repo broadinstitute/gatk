@@ -555,7 +555,7 @@ public final class VariantContextTestUtils {
     public static VariantContext makeVC(final String source, final List<Allele> alleles, final Genotype... genotypes) {
         final int start = 10;
         final int stop = start; // does the stop actually get validated???  If it does then `new VariantContextBuilder().computeEndFromAlleles(alleles)...`
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).make();
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().make();
     }
 
     /**

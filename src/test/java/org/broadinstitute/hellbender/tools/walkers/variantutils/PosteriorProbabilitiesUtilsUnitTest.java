@@ -94,7 +94,7 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
     private VariantContext makeDeletionVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
         final int start = 10;
         final int stop = start+refLength-1;
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).make();
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().make();
     }
 
     private VariantContext makeHomRefBlock(final String source, final Allele refAllele, final Genotype... genotypes) {
@@ -105,7 +105,7 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         final List<Allele> alleles = new ArrayList<>();
         alleles.add(refAllele);
         alleles.add(Allele.NON_REF_ALLELE);
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).attributes(infoMap).make();
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().attributes(infoMap).make();
     }
 
     @Test
