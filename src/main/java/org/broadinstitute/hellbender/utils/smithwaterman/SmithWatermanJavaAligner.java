@@ -57,6 +57,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private int yesSW = 0;
     private int indelCount = 0;
     private int softClips = 0;
+    private int exactMatches = 0;
+    private int oneSNP = 0;
+    private int twoSNPs = 0;
 
     //methods for printing out number of SW/non-SW alignments
     public int getNumOfAlignments() {
@@ -64,6 +67,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     }
 
     public int noSW() {
+        System.out.println("ExactMatch:" + exactMatches);
+        System.out.println("OneSNP:" + oneSNP);
+        System.out.println("TwoSNPs: " + twoSNPs);
         System.out.println("Indel count: " + indelCount);
         System.out.println("SoftCLips:" + softClips);
         return noSW;
@@ -105,67 +111,97 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         Utils.nonNull(overhangStrategy);
 
         SmithWatermanAlignment alignmentResult = null;
-        Utils.Alignment bestAlignment = null;
 
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE){
 
-            int numOfSoftclips = 5;
-
-            //exact match
-            long startTime1 = System.nanoTime();
-            Utils.Alignment exactMatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0, 0, true, numOfSoftclips, 0);
-            exactMatchTime += System.nanoTime() - startTime1;
-            if (exactMatch.getIndex() != -1) {
-                noSW++;
-                bestAlignment = exactMatch;
-                numOfSoftclips = exactMatch.getNumOfSoftclips();
-                alignmentResult = calculateSoftclipCigar(exactMatch.getTypeOfSoftclip(), reference, alternate, numOfSoftclips);
-                totalComputeTime += System.nanoTime() - startTime;
-                if(numOfSoftclips <= 2){
-                    //******************
-                    testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                    //*****************
-                    return alignmentResult;
-                }
-            }
-
-            //one mismatch
-            long startTime2 = System.nanoTime();
-            Utils.Alignment singleMismatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1, 0, true, numOfSoftclips % 3, 0);
-            mismatchTime += System.nanoTime() - startTime2;
-            if (singleMismatch.getIndex() != -1){
-                noSW++;
-                bestAlignment = singleMismatch;
-                alignmentResult = calculateSoftclipCigar(singleMismatch.getTypeOfSoftclip(), reference, alternate, singleMismatch.getNumOfSoftclips());
-                totalComputeTime += System.nanoTime() - startTime;
-                numOfSoftclips = singleMismatch.getNumOfSoftclips();
-                if(numOfSoftclips == 0){
-                    //******************
-                    testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                    //*****************
-                    return alignmentResult;
-                }
-            }
-
-            //one indel
             if(this.haplotypeToref){
-                //int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
-                long startTime3 = System.nanoTime();
-                ImmutablePair<Integer,Integer> indelStartAndSize = Utils.oneIndelHapToRef(reference, alternate, 2);
-                indelTimeHapToRef += System.nanoTime() - startTime3;
-                int oneIndelIndex = indelStartAndSize.getLeft();
-                if (oneIndelIndex != -1){
-                    indelCount++;
-                    int indelLength = indelStartAndSize.getRight();
-                    alignmentResult = calculateOneIndelCigar(indelLength, reference, alternate, oneIndelIndex);
-                    totalComputeTime += System.nanoTime() - startTime;
-                    //******************
-                    testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                    //*****************
-                    return alignmentResult;
+                if(alternate.length == reference.length){
+                    for(int allowedMismatches = 0; allowedMismatches < 3; allowedMismatches++){
+                        int noSNPS = -1;
+                        noSNPS = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, allowedMismatches).getIndex();
+                        if(noSNPS != -1){
+
+                            if(allowedMismatches == 0){
+                                exactMatches++;
+                            }
+                            else if(allowedMismatches == 1){
+                                oneSNP++;
+                            }
+                            else{
+                                twoSNPs++;
+                            }
+
+                            noSW++;
+                            final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, reference.length));
+                            alignmentResult = new SWPairwiseAlignmentResult(new Cigar(lce), noSNPS);
+                            //******************
+                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            //*****************
+                            totalComputeTime += System.nanoTime() - startTime;
+                            return alignmentResult;
+                        }
+                    }
+                }
+                else{
+                    //int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
+                    long startTime3 = System.nanoTime();
+                    ImmutablePair<Integer,Integer> indelStartAndSize = Utils.oneIndelHapToRef(reference, alternate, 2);
+                    indelTimeHapToRef += System.nanoTime() - startTime;
+                    int oneIndelIndex = indelStartAndSize.getLeft();
+                    if (oneIndelIndex != -1){
+                        indelCount++;
+                        int indelLength = indelStartAndSize.getRight();
+                        alignmentResult = calculateOneIndelCigar(indelLength, reference, alternate, oneIndelIndex);
+                        totalComputeTime += System.nanoTime() - startTime;
+                        //******************
+                        //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                        //*****************
+                        return alignmentResult;
+                    }
                 }
             }
             else{
+                Utils.Alignment bestAlignment = null;
+                int numOfSoftclips = 5;
+
+                //exact match
+                long startTime1 = System.nanoTime();
+                Utils.Alignment exactMatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0, 0, true, numOfSoftclips, 0);
+                exactMatchTime += System.nanoTime() - startTime;
+                if (exactMatch.getIndex() != -1) {
+                    noSW++;
+                    exactMatches++;
+                    bestAlignment = exactMatch;
+                    numOfSoftclips = exactMatch.getNumOfSoftclips();
+                    alignmentResult = calculateSoftclipCigar(exactMatch.getTypeOfSoftclip(), reference, alternate, numOfSoftclips);
+                    if(numOfSoftclips <= 2){
+                        //******************
+                        //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                        //*****************
+                        totalComputeTime += System.nanoTime() - startTime;
+                        return alignmentResult;
+                    }
+                }
+
+                //one mismatch
+                long startTime2 = System.nanoTime();
+                Utils.Alignment singleMismatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1, 0, true, numOfSoftclips % 3, 0);
+                mismatchTime += System.nanoTime() - startTime2;
+                if (singleMismatch.getIndex() != -1){
+                    noSW++;
+                    oneSNP++;
+                    bestAlignment = singleMismatch;
+                    alignmentResult = calculateSoftclipCigar(singleMismatch.getTypeOfSoftclip(), reference, alternate, singleMismatch.getNumOfSoftclips());
+                    totalComputeTime += System.nanoTime() - startTime;
+                    numOfSoftclips = singleMismatch.getNumOfSoftclips();
+                    if(numOfSoftclips == 0){
+                        //******************
+                        //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                        //*****************
+                        totalComputeTime += System.nanoTime() - startTime;
+                        return alignmentResult;
+                    }
+                }
                 int maxInsertionSize = calculateMaxInsertionSizeReadToHap(parameters);
                 int maxDeletionSize = calculateMaxDeletionSizeReadToHap(parameters);
                 int maxSoftclipSize = 2;
@@ -176,6 +212,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 int alignmentOffset = oneIndelAlignment.getIndex();
                 if(alignmentOffset != -1){
                     indelCount++;
+
 
                     int matchingBases = indel.getMatchingBases();
                     int indelSize = indel.getIndelSize();
@@ -227,7 +264,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(cigar), alignmentOffset);
                         if(oneIndelAlignment.generateAlignmentScore() < 50){
                             //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                             //*****************
                             totalComputeTime += System.nanoTime() - startTime;
 
@@ -241,17 +278,17 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         bestAlignment = bestAlignment.compareAlignments(oneIndelAlignment);
                         if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() == -1){
                             //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                             //*****************
+                            totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
                         if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() != -1){
                             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(cigar), alignmentOffset);
                             //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                             //*****************
                             totalComputeTime += System.nanoTime() - startTime;
-
                             return alignmentResult;
                         }
                     }
@@ -259,16 +296,18 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 //call 2 SNPS
                 long startTime5 = System.nanoTime();
                 Utils.Alignment doubleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 2);
-                totalTwoMismatchHeuristicTime += System.nanoTime() - startTime5;
+                totalTwoMismatchHeuristicTime += System.nanoTime() - startTime;
                 if(doubleMismatchIndex.getIndex() != -1){
                     noSW++;
+                    twoSNPs++;
 
                     if(bestAlignment == null){
                         final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, alternate.length));
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), doubleMismatchIndex.getIndex());
                         //******************
-                        testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                        //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                         //*****************
+                        totalComputeTime += System.nanoTime() - startTime;
                         return alignmentResult;
                     }
                     else{
@@ -277,18 +316,21 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                             final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, alternate.length));
                             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), doubleMismatchIndex.getIndex());
                             //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                             //*****************
+                            totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
                         else{
                             //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                             //*****************
+                            totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
                     }
                 }
+
             }
         }
 
@@ -325,7 +367,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         Cigar cigar2 = alignmentResult2.getCigar();
 
         if(!cigar1.equals(cigar2)){
-            /*
+
             this.printStream.println(new String(reference));
             printStream.println();
             printStream.println(new String(alternate));
@@ -334,8 +376,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             printStream.println(alignmentResult.getAlignmentOffset());
             printStream.println("Heuristic: " + cigar1.toString());
 
- */
-
             System.out.println(new String(reference));
             System.out.println();
             System.out.println(new String(alternate));
@@ -343,6 +383,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             System.out.println("SW: " + cigar2.toString());
             System.out.println(alignmentResult.getAlignmentOffset());
             System.out.println("Heuristic: " + cigar1.toString());
+            System.out.println(this.haplotypeToref);
 
 
         }
