@@ -515,8 +515,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     public void close() {
         logger.info(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
         logger.info(String.format("Total compute time in exactMatch heuristic : %.2f sec", totalExactMatchTime * 1e-9));
-        logger.info(String.format("Total calls to exactMatchHeuristic: %.2f sec", noSW * 1e-9));
-        logger.info(String.format("Total calls to SW: %.2f sec", yesSW * 1e-9));
+        logger.info("Total calls to exactMatchHeuristic: " + noSW);
+        logger.info("Total calls to SW: " + yesSW);
 
     }
 }
