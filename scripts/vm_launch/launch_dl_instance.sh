@@ -24,8 +24,6 @@ gcloud compute instances create ${NAME} \
 --boot-disk-size=${DISK_SIZE} \
 --disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
 --disk=name=survey-tensors2,device-name=survey-tensors2,mode=ro,boot=no,auto-delete=no \
---disk=name=ecg-text3,device-name=ecg-text3,mode=ro,boot=no,auto-delete=no \
---disk=name=pix-size-tensors,device-name=pix-size-tensors,mode=ro,boot=no,auto-delete=no \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
 --machine-type ${INSTANCE_TYPE} \
