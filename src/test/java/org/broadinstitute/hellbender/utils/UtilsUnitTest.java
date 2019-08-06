@@ -601,6 +601,16 @@ public final class UtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testLastIndexOfWrongAlignments() {
+        final String reference = "TAGAACAAGATATTTGAAATGGAAACTATTCAAAAAATTGAGAATTTCTGACCACTTAACAAACCCACAGAAAATCCACCCGAGTGCACTGAGCACACCAGAAATCAGGTGGCCTCAAAGAGCTGC";
+        final String query     = "TAGAACAAGATATTTGAAATGGAAACTATTCAAAAAATTGAGAATTTCTGACCACTTAACAAACCCACAGAAAATCCACCCGAGTGCACTGAGCACACCAGAAATCAGGTGGCCTCAAAGAGCTGC";
+
+        final Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 2);
+        final int expected = 0;
+        Assert.assertEquals(result.getIndex(), expected);
+    }
+
+    @Test
     public void testLastIndexOfLastBoundaries() {
         final String reference = "AAAACCCCTTTTGGGG";
 
