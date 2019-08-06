@@ -717,12 +717,15 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
                                             final Function<MultiDeBruijnVertex, MultiSampleEdge> nextEdge,
                                             final Function<MultiSampleEdge, MultiDeBruijnVertex> nextNode){
         final LinkedList<MultiDeBruijnVertex> path = new LinkedList<>();
+        final Set<MultiDeBruijnVertex> visitedNodes = new HashSet<>();
 
         MultiDeBruijnVertex v = vertex;
         while ( ! done.test(v) ) {
             final MultiSampleEdge edge = nextEdge.apply(v);
             // if it has too low a weight, don't use it (or previous vertexes) for the path
             if ( edge.getPruningMultiplicity() < pruneFactor ) {
+                // save the previously visited notes to protect us from riding forever 'neath the streets of boston
+                visitedNodes.addAll(path);
                 path.clear();
             }
             else {
@@ -730,7 +733,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
             }
             v = nextNode.apply(edge);
             // Check that we aren't stuck in a loop
-            if ( path.contains(v) ) {
+            if ( path.contains(v) || visitedNodes.contains(v)) {
                 System.err.println("Dangling End recovery killed because of a loop (findPath)");
                 return null;
             }

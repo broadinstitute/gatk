@@ -170,6 +170,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    @Test
+    public void testThisParticularFailure() {
+        final String[] args = ("-I /Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/brokenBam.snippet.bam " +
+                "-R ./src/test/resources/large/Homo_sapiens_assembly19.fasta.gz -O bunk.vcf " +
+                "-L 22:16884248-17100000 " +
+                "--smith-waterman JAVA --disable-sequence-graph-simplification").split(" ");
+        runCommandLine(args);
+    }
+
     /*
      * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
      */
