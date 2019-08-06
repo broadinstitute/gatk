@@ -394,7 +394,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         requestedGqBands.forEach(x -> args.addArgument("GQB",x));
         runCommandLine(args);
 
-        final List<String> allGqBands = new ArrayList(requestedGqBands);
+        final List<String> allGqBands = new ArrayList<>(requestedGqBands);
         allGqBands.add("99");
         allGqBands.add("0");
 
