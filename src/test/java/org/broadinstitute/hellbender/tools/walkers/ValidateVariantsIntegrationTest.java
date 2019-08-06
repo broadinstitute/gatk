@@ -153,7 +153,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testBadChrCount1() throws IOException {
-        IntegrationTestSpec spec = new IntegrationTestSpec(
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(false, "validationExampleBad.vcf", false, CHR_COUNTS),
                 0,
                 UserException.FailsStrictValidation.class
@@ -162,13 +162,13 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         spec.executeTest("test bad chr counts #1", this);
 
         //test with no reference and no validations specified
-        IntegrationTestSpec spec2 = new IntegrationTestSpec(
+        final IntegrationTestSpec spec2 = new IntegrationTestSpec(
                 baseTestStringWithoutReference(false, "validationExampleBad.vcf", false, null),
                 0,
                 UserException.FailsStrictValidation.class
         );
 
-        spec2.executeTest("test bad chr counts #2", this);
+        spec2.executeTest("test bad chr counts with no ref and no validations specified", this);
     }
 
     @Test
