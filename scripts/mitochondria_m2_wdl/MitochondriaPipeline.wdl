@@ -10,6 +10,7 @@ workflow MitochondriaPipeline {
 
   input {
     File wgs_aligned_input_bam_or_cram
+    File wgs_aligned_input_bam_or_cram_index
     String contig_name = "chrM"
     Float? autosomal_coverage
 
@@ -74,6 +75,7 @@ workflow MitochondriaPipeline {
   call SubsetBamToChrM {
     input:
       input_bam = wgs_aligned_input_bam_or_cram,
+      input_bai = wgs_aligned_input_bam_or_cram_index,
       contig_name = contig_name,
       ref_fasta = ref_fasta,
       ref_fasta_index = ref_fasta_index,
@@ -163,6 +165,7 @@ workflow MitochondriaPipeline {
 task SubsetBamToChrM {
   input {
     File input_bam
+    File input_bai
     String contig_name
     String basename = basename(basename(input_bam, ".cram"), ".bam")
     File? ref_fasta
@@ -183,6 +186,9 @@ task SubsetBamToChrM {
   parameter_meta {
     ref_fasta: "Reference is only required for cram input. If it is provided ref_fasta_index and ref_dict are also required."
     input_bam: {
+      localization_optional: true
+    }
+    input_bai: {
       localization_optional: true
     }
   }
