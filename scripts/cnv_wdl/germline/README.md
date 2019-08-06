@@ -26,6 +26,7 @@ The reference used must be the same between PoN and case samples.
 - ``CNVGermlineCohortWorkflow.ref_fasta_dict`` -- Path to reference dict file.
 - ``CNVGermlineCohortWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
 - ``CNVGermlineCohortWorkflow.ref_fasta`` -- Path to reference fasta file.
+- ``CNVGermlineCohortWorkflow.maximum_number_events_per_sample`` -- Maximum number of events threshold for doing sample QC (recommended for WES is ~100)
 
 In additional, there are optional workflow-level and task-level parameters that may be set by advanced users; for example:
 
@@ -49,6 +50,7 @@ The reference, number of intervals per scatter, and bins (if specified) must be 
 - ``CNVGermlineCaseWorkflow.ref_fasta_dict`` -- Path to reference dict file.
 - ``CNVGermlineCaseWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
 - ``CNVGermlineCaseWorkflow.ref_fasta`` -- Path to reference fasta file.
+- ``CNVGermlineCohortWorkflow.maximum_number_events_per_sample`` -- Maximum number of events threshold for doing sample QC (recommended for WES is ~100)
 
 In additional, there are several task-level parameters that may be set by advanced users as above.
 
