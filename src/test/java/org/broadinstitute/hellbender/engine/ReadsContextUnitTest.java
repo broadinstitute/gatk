@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -43,7 +42,7 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
         // Default-constructed ReadsContexts and ReadsContexts constructed from null ReadsDataSources/intervals
         // should behave as empty context objects.
         ReadNameReadFilter readNameFilter = new ReadNameReadFilter();
-        readNameFilter.readName = "d";
+        readNameFilter.readNames.add("d");
         return new Object[][]{
                 {new ReadsContext(
                         new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
