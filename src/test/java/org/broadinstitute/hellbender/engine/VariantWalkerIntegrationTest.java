@@ -11,13 +11,17 @@ import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -155,6 +159,108 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
                 "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "d",  // name of reads we expect to see
         };
         tool.instanceMain(args);
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithFeaturesAndCachedReads",
+            oneLineSummary = "TestGATKToolWithFeaturesAndCachedReads",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithFeaturesAndCachedReads extends VariantWalker {
+
+        @Argument(fullName="outputFileName",optional=false)
+        private String outputFile;
+
+        @Argument(fullName="enable-reads-caching")
+        private boolean enableReadsCaching = false;
+
+        private FileWriter outputWriter;
+
+        @Override
+        public boolean requiresReads() { return true; }
+
+        @Override
+        public boolean useReadCaching() {
+            return enableReadsCaching;
+        }
+
+        @Override
+        public void onTraversalStart() {
+            try {
+                outputWriter = new FileWriter(new File(outputFile));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public Object onTraversalSuccess() {
+            try {
+                outputWriter.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        }
+
+        @Override
+        public void apply(
+                VariantContext variant,
+                ReadsContext readsContext,
+                ReferenceContext referenceContext,
+                FeatureContext featureContext )
+        {
+            final Iterator<GATKRead> it = readsContext.iterator();
+            try {
+                outputWriter.write("Variant loc: " + (new SimpleInterval(variant)).toString() + "\n");
+                while (it.hasNext()) {
+                    final GATKRead read = it.next();
+                    final String readString = read.isUnmapped() ?
+                        "(Unmapped): " + read.getName() :
+                        read.getName();
+                    outputWriter.write("Read loc: " + readString + "\n");
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Test
+    public void testReadCachingWithUnmappedReads() throws IOException {
+        // Query every read for every variant in the input, with caching off and then with caching one, and compare
+        // the results to make sure we get the same results either way, including for unmapped, placed reads.
+        //
+        // NOTE: the part of this test that doesn't use caching is relatively slow, but covers lots of interesting
+        // cases that are handled by the cache, including different relative order of mapped/unmapped mate pairs, and a
+        // mapped/unmapped mate pair that is split by the query for the first variant (the first variant triggers
+        // the cache to be filled using a start pos that overlaps the mapped, but not the unmapped, read of the pair,
+        // causing them to be separated by leaving the unmapped mate out of the initial result set used
+        // to prime the cache).
+        final File vcfFile = new File(largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf");
+        final File bamFile = new File(largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
+
+        final GATKTool toolWithOutCaching = new TestGATKToolWithFeaturesAndCachedReads();
+        final File readsWithoutCaching = createTempFile("readsWithoutCaching", ".txt");
+        final String[] noCachingArgs = {
+                "--variant", vcfFile.getCanonicalPath(),
+                "--input", bamFile.getCanonicalPath(),
+                "--outputFileName", readsWithoutCaching.getCanonicalPath(),
+                "--enable-reads-caching", "false"
+        };
+        toolWithOutCaching.instanceMain(noCachingArgs);
+
+        final File readsWithCaching = createTempFile("readsWithCaching", ".txt");
+        final String[] cachingArgs = {
+                "--variant", vcfFile.getCanonicalPath(),
+                "--input", bamFile.getCanonicalPath(),
+                "--outputFileName", readsWithCaching.getCanonicalPath(),
+                "--enable-reads-caching", "true"
+        };
+        final GATKTool toolWithCaching = new TestGATKToolWithFeaturesAndCachedReads();
+        toolWithCaching.instanceMain(cachingArgs);
+
+        IntegrationTestSpec.assertEqualTextFiles(readsWithCaching, readsWithoutCaching);
     }
 
 }

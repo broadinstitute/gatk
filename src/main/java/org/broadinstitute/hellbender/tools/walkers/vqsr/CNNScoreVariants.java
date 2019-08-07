@@ -253,6 +253,11 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     }
 
     @Override
+    public boolean useReadCaching() {
+        return true;
+    }
+
+    @Override
     public boolean requiresReference() {
         return true;
     }
