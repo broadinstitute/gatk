@@ -35,6 +35,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private long indelTimeHapToRef = 0;
     private long indelTimeReadToHap = 0;
     private long totalTwoMismatchHeuristicTime = 0;
+    private long snpTimeHapToRef = 0;
     private boolean haplotypeToref = false;
 
     /**
@@ -173,7 +174,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 if(alternate.length == reference.length){
                     for(int allowedMismatches = 0; allowedMismatches < 3; allowedMismatches++){
                         int noSNPS = -1;
+                        long startTime7 = System.nanoTime();
                         noSNPS = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, allowedMismatches).getIndex();
+                        snpTimeHapToRef += System.nanoTime() - startTime7;
                         if(noSNPS != -1){
 
                             if(allowedMismatches == 0){
@@ -201,7 +204,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                     //int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
                     long startTime3 = System.nanoTime();
                     ImmutablePair<Integer,Integer> indelStartAndSize = Utils.oneIndelHapToRef(reference, alternate, 2);
-                    indelTimeHapToRef += System.nanoTime() - startTime;
+                    indelTimeHapToRef += System.nanoTime() - startTime3;
                     int oneIndelIndex = indelStartAndSize.getLeft();
                     if (oneIndelIndex != -1){
                         indelCount++;
@@ -222,7 +225,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 //exact match
                 long startTime1 = System.nanoTime();
                 Utils.Alignment exactMatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0, 0, true, numOfSoftclips, 0);
-                exactMatchTime += System.nanoTime() - startTime;
+                exactMatchTime += System.nanoTime() - startTime1;
                 if (exactMatch.getIndex() != -1) {
                     noSW++;
                     exactMatches++;
@@ -351,7 +354,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 //call 2 SNPS
                 long startTime5 = System.nanoTime();
                 Utils.Alignment doubleMismatchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 2);
-                totalTwoMismatchHeuristicTime += System.nanoTime() - startTime;
+                totalTwoMismatchHeuristicTime += System.nanoTime() - startTime5;
                 if(doubleMismatchIndex.getIndex() != -1){
                     noSW++;
                     twoSNPs++;
