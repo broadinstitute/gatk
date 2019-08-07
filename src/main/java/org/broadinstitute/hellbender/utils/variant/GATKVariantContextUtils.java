@@ -1025,35 +1025,46 @@ public final class GATKVariantContextUtils {
         return updatedGenotypes;
     }
 
-    public static int computeReverseClipping(final List<Allele> unclippedAlleles, final byte[] ref) {
-        int clipping = 0;
-        boolean stillClipping = true;
+    /**
+     * Clip out any unnecessary bases off the end of all of the alleles
+     *
+     * The VCF spec represents alleles as block substitutions, replacing AC with A for a
+     * 1 bp deletion of the C.  However, it's possible that we'd end up with alleles that
+     * contain extra bases on the right, such as ACG/AG to represent the same 1 bp deletion.
+     * This routine finds an offset among all alleles that can be safely trimmed
+     * off the right of each allele and still represent the same block substitution.
+     *
+     * A/C => A/C
+     * AC/A => AC/A
+     * ACC/AC => AC/A
+     * AGT/CAT => AG/CA
+     * <DEL>/C => <DEL>/C
+     * @param ref bases of the reference allele
+     * @param alleles a non-null list of alleles that we want to clip
+     * @return the number of bases from the end of the alleles where we can safely clip or
+     *   -1 if the clipping method isnt applicable. So, if the result is 1, then we can remove
+     *   the last base of every allele.  If the result is 2, we can remove the
+     *   second base.
+     */
+    public static int computeReverseClipping(final List<Allele> alleles, final byte[] ref) {
 
-        while ( stillClipping ) {
-            for ( final Allele a : unclippedAlleles ) {
-                if ( a.isSymbolic() )
-                    continue;
+        final int shortestAllele = alleles.stream().filter(a ->!a.isSymbolic()).mapToInt(a -> a.length()).min().getAsInt();
 
-                // we need to ensure that we don't reverse clip out all of the bases from an allele because we then will have the wrong
-                // position set for the VariantContext (although it's okay to forward clip it all out, because the position will be fine).
-                if ( a.length() - clipping == 0 )
-                    return clipping - 1;
-
-                if ( a.length() - clipping <= 0 || a.length() == 0 ) {
-                    stillClipping = false;
-                }
-                else if ( ref.length == clipping ) {
-                    return -1;
-                }
-                else if ( a.getBases()[a.length()-clipping-1] != ref[ref.length-clipping-1] ) {
-                    stillClipping = false;
-                }
-            }
-            if ( stillClipping )
-                clipping++;
+        if(ref.length <= shortestAllele){//handles the special cases
+            return -1;
         }
 
-        return clipping;
+        for(int clipping = 0; clipping < (shortestAllele-1);clipping++){
+
+            final int superClipping = clipping;
+            final boolean anyMismatch=alleles.stream().filter(a ->!a.isSymbolic()).anyMatch(a->a.getBases()[a.length()-superClipping-1]!=ref[ref.length-superClipping-1]);//compares alleles to reference and assigns a boolean value based on it
+
+            if(anyMismatch){
+                return clipping;
+            }
+
+        }
+        return shortestAllele-1;
     }
 
     /**
