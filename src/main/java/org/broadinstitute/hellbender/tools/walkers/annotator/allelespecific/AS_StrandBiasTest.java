@@ -18,7 +18,7 @@ import java.util.*;
 /**
  * Allele-specific implementation of strand bias annotations
  */
-public abstract class AS_StrandBiasTest extends StrandBiasTest implements ReducibleAnnotation {
+public abstract class AS_StrandBiasTest extends StrandBiasTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private final static Logger logger = LogManager.getLogger(AS_StrandBiasTest.class);
     public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";

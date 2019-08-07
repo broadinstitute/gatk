@@ -310,9 +310,9 @@ public class FeatureContext {
      * @param interval genomic interval for the result.  Typically, this would be the interval of the variant.  Never {@link null}.
      * @param featureQueryLookahead When querying FeatureDataSources, cache this many extra bases of context beyond
      *                              the end of query intervals in anticipation of future queries. Must be >= 0.  If uncertain, use zero.
-     * @param cloudPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use zero.
-     * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use zero.
-     * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use {@code null}.
+     * @param cloudPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions)}  If uncertain, use zero.
+     * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions)}  If uncertain, use zero.
+     * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions)}  If uncertain, use {@code null}.
      */
     @VisibleForTesting
     public static FeatureContext createFeatureContextForTesting(final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsWithType, final String dummyToolInstanceName,
