@@ -1,19 +1,18 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -80,6 +79,22 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
         QD = fixTooHighQD(QD);
 
         return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", QD));
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
+        final int cohortDepth = GATKVariantContextUtils.calculateDepth(cohort, -1);
+        final int populationDepth = GATKVariantContextUtils.calculateDepth(population, -1);
+        if (cohortDepth == -1 || populationDepth == -1) {
+            return Collections.emptyMap();
+        }
+        final double cohortQual = GATKVariantContextUtils.calculateQual(cohort, -1);
+        final double populationQual = GATKVariantContextUtils.calculateQual(population, -1);
+        if (cohortQual == -1 || populationQual == -1) {
+            return Collections.emptyMap();
+        }
+        final double qd = (cohortQual + populationQual) / (double) (cohortDepth + populationDepth);
+        return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", qd));
     }
 
     /**

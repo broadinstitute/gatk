@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import it.unimi.dsi.fastutil.ints.IntList;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.AbstractList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * Minimal interface for random access to a collection of Alleles.
@@ -13,7 +13,7 @@ import java.util.List;
 //Note: Names in this interface are unusual because of name clash in a subclass.
 // For example the name of AlleleList.alleleCount() cannot be simply size(), as would be usual,
 // because {@link ReadLikelohoods} implements AlleleList and SampleList and then size() would be ambiguous.
-public interface AlleleList<A extends Allele>{
+public interface AlleleList<A extends Allele> {
 
     /**
      * Returns the number of alleles in this AlleleList.
@@ -100,6 +100,23 @@ public interface AlleleList<A extends Allele>{
         }
 
         return true;
+    }
+
+    static class MergeResult<A extends Allele> {
+        public final AlleleList<A> left;
+        public final AlleleList<A> right;
+        public final AlleleList<A> result;
+        public final IntList leftIndexesOnResult;
+        public final IntList rightIndexesOnResult;
+
+        private MergeResult(final AlleleList<A> left, final AlleleList<A> right, final AlleleList<A> result,
+                            final IntList leftIndexesOnResult, final IntList rightIndexesOnResult) {
+            this.left = left;
+            this.right = right;
+            this.result = result;
+            this.leftIndexesOnResult = leftIndexesOnResult;
+            this.rightIndexesOnResult = rightIndexesOnResult;
+        }
     }
 
     /**

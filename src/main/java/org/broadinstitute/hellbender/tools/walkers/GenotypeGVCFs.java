@@ -22,7 +22,9 @@ import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -99,6 +101,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
     private static final String GVCF_BLOCK = "GVCFBlock";
+    private static final String POPULATION_ANNOTATION_FILE_LONG_NAME = "population-annotations";
+    private static final String POPULATION_ANNOTATION_FILE_SHORT_NAME = "pop-anno";
     private VCFHeader outputHeader;
 
 
@@ -108,6 +112,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
     private boolean includeNonVariants = false;
+
+    @Argument(fullName=POPULATION_ANNOTATION_FILE_LONG_NAME, shortName=POPULATION_ANNOTATION_FILE_SHORT_NAME, doc="Variant file containing the enclosing population annotations", optional = true)
+    private FeatureInput<VariantContext> populationAnnotations = null;
 
     /**
      * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
@@ -310,12 +317,42 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants) :
                 regenotypeVC(mergedVC, ref, features, includeNonVariants);
-        if (regenotypedVC != null) {
-            final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if (!GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC) &&
+        final VariantContext finalVC = populationAnnotations == null ? regenotypedVC : applyPopulationAnnotations(regenotypedVC);
+        if (finalVC != null) {
+
+            final SimpleInterval variantStart = new SimpleInterval(finalVC.getContig(), finalVC.getStart(), finalVC.getStart());
+            if (!GATKVariantContextUtils.isSpanningDeletionOnly(finalVC) &&
                     (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
-                vcfWriter.add(regenotypedVC);
+                vcfWriter.add(finalVC);
             }
+        }
+    }
+
+    private VariantContext applyPopulationAnnotations(final VariantContext genotypedVC, final FeatureContext features) {
+        if (populationAnnotations == null || genotypedVC == null) {
+            return genotypedVC;
+        }
+        final List<VariantContext> popAnnos = features.getValues(populationAnnotations);
+        if (popAnnos.isEmpty()) {
+            return genotypedVC;
+        }
+        final VariantContext popAnno = popAnnos.stream().filter(vc -> vc.getStart() == genotypedVC.getStart())
+                .findFirst().orElse(null);
+        if (popAnno == null) {
+            return genotypedVC;
+        }
+        return applyPopulationAnnotations(genotypedVC, popAnno);
+    }
+
+    private VariantContext applyPopulationAnnotation(final VariantContext cohort, final VariantContext pop) {
+        final VariantContextBuilder builder = new VariantContextBuilder(pop);
+        final MergedAlleleList<Allele> newAlleleList = MergedAlleleList.merge(new IndexedAlleleList<Allele>(pop.getAlleles()),
+                   new IndexedAlleleList<>(cohort.getAlleles()));
+        builder.alleles(newAlleleList.asListOfAlleles());
+        final LinkedHashSet<String> annotationKeys = new LinkedHashSet<>(pop.getAttributes().keySet());
+        annotationKeys.addAll(cohort.getAttributes().keySet());
+        for (final String annotationKey : annotationKeys) {
+
         }
     }
 
@@ -463,7 +500,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeSomaticVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
+    protected VariantContext regenotypeSomaticVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;

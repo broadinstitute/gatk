@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -40,4 +41,6 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
         }
         return lines;
     }
+
+    public abstract <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList);
 }

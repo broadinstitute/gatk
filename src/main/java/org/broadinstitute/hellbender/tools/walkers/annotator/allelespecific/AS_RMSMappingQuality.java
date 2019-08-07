@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -64,6 +66,30 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
         annotations.put(getKeyNames().get(0), annotationString);
         return annotations;
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
+        final Map<String, Object> cooked = mergeCookedRMS(cohort, population, mergedAlleleList);
+        final Map<String, Object> raw = mergeRawRMS(cohort, population, mergedAlleleList);
+        if (cooked.isEmpty()) {
+            return raw;
+        } else if (raw.isEmpty()) {
+            return cooked;
+        } else {
+            return ImmutableMap.of(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,
+                    cooked.get(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY),
+                    GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY,
+                    raw.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
+        }
+    }
+
+    private <A extends Allele> Map<String, Object> mergeCookedRMS(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
+        if (cohort.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY) && population.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY)) {
+            final
+        } else {
+            return Collections.emptyMap();
+        }
     }
 
 

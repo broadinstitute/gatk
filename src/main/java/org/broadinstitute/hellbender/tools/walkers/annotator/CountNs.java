@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -51,6 +52,20 @@ public class CountNs extends InfoFieldAnnotation {
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.N_COUNT_KEY));
+    }
+
+    /**
+     * When absent from cohort and popuation, this annotation would also be missing.
+     * Otherwise we add up whatever values are present.
+     */
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        if (cohort.hasAttribute(GATKVCFConstants.N_COUNT_KEY) || population.hasAttribute(GATKVCFConstants.N_COUNT_KEY)) {
+            return Collections.singletonMap(GATKVCFConstants.N_COUNT_KEY, cohort.getAttributeAsInt(GATKVCFConstants.N_COUNT_KEY, 0) +
+                    population.getAttributeAsInt(GATKVCFConstants.N_COUNT_KEY, 0));
+        } else {
+            return Collections.emptyMap();
+        }
     }
 
     @Override

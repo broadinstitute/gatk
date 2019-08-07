@@ -19,12 +19,14 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -76,6 +78,23 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
+        if (!cohort.hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY) || !population.hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY)) {
+            return Collections.emptyMap();
+        } else {
+            final int cohortDepth = GATKVariantContextUtils.calculateDepth(cohort, -1);
+            final int populationDepth = GATKVariantContextUtils.calculateDepth(population, -1);
+            if (cohortDepth == -1 || populationDepth == -1) {
+                return Collections.emptyMap();
+            } else {
+                final double newValue = (cohort.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 0) * cohortDepth +
+                                         population.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 0) * populationDepth) / (double) (cohortDepth + populationDepth);
+                return Collections.singletonMap(VCFConstants.RMS_MAPPING_QUALITY_KEY, String.format(OUTPUT_PRECISION,newValue));
+            }
+        }
     }
 
     @Override
