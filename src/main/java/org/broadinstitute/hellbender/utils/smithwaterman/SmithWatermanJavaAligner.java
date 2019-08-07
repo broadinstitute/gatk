@@ -93,14 +93,21 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         this.haplotypeToref = haplotypeToref;
     }
 
-    /**
-     * Aligns the alternate sequence to the reference sequence
-     *
-     * @param reference  ref sequence
-     * @param alternate  alt sequence
-     */
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
+            SmithWatermanAlignment alignment = alignOptimized(reference, alternate, parameters, overhangStrategy);
+    }
+
+
+
+
+        /**
+         * Aligns the alternate sequence to the reference sequence
+         *
+         * @param reference  ref sequence
+         * @param alternate  alt sequence
+         */
+    public SmithWatermanAlignment alignOptimized(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         long startTime = System.nanoTime();
         numOfAlignments++;
 
