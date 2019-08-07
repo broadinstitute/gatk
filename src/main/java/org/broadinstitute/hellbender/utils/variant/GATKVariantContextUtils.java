@@ -17,6 +17,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -307,6 +308,60 @@ public final class GATKVariantContextUtils {
             return false;
         } else {
             return true;
+        }
+    }
+
+    /**
+     * Calculate the total (read) depth for this variant context.
+     * <p>
+     *     First it will try to use the "DP" info annotation. If not present it will use the genotypes' DPs. Is this
+     *     also fails, it will return the missingValue provided.
+     * </p>
+     * @param vc the target variant-context.
+     * @param missingValue the value to return in case that the depth cannot be calculated reliably.
+     * @return 0 or greater if the detph could be determined, or the missing value provided that could potentially be negative.
+     */
+    public static int calculateDepth(final VariantContext vc, final int missingValue) {
+        if (vc.hasAttribute(VCFConstants.DEPTH_KEY)) {
+            return vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, missingValue);
+        } else if (vc.hasGenotypes()) {
+            final GenotypesContext genotypes = vc.getGenotypes();
+            boolean anyHasDepth = false;
+            int total = 0;
+            for (final Genotype genotype : genotypes) {
+                if (genotype.hasDP()) {
+                    anyHasDepth = true;
+                    total += genotype.getDP();
+                }
+            }
+            return anyHasDepth ? total : missingValue;
+        } else {
+            return missingValue;
+        }
+    }
+
+    /**
+     * Returns a phred scalled qual for the variant-context.
+     * <p>
+     *     First we use the actual qual value for the variant if available. If not we rely on the "QD" annotation
+     *     if the detph is also known. If these two fail, we simply return the missing-value provided.
+     * </p>
+     * @param vc the target variant-context.
+     * @param missingValue the value to return in case the quality could not be determined reliably.
+     * @return 0 or greater if pressent, or the missing value that potentially could be negative or NaN.
+     */
+    public static double calculateQual(final VariantContext vc, final double missingValue) {
+        if (vc.hasLog10PError()) {
+            return vc.getPhredScaledQual();
+        } else if (vc.hasAttribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY)) {
+            final int depth = calculateDepth(vc, -1);
+            if (depth <= 0) {
+                return missingValue;
+            } else {
+                return vc.getAttributeAsDouble(GATKVCFConstants.QUAL_BY_DEPTH_KEY, 0) * depth;
+            }
+        } else {
+            return missingValue;
         }
     }
 
