@@ -258,7 +258,7 @@ public class GenotypeGVCFsEngine
         final GenotypeLikelihoodsCalculationModel model = vc.getType() == VariantContext.Type.INDEL
                 ? GenotypeLikelihoodsCalculationModel.INDEL
                 : GenotypeLikelihoodsCalculationModel.SNP;
-        return genotypingEngine.calculateGenotypes(vc, model, null);
+        return genotypingEngine.calculateGenotypes(vc, model);
     }
 
     /**

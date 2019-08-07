@@ -36,12 +36,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * the maximum extent into the full active region extension that we're willing to go in genotyping our events
      */
     @Hidden
-    @Argument(fullName="max-disc-ar-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping our events for discovery", optional = true)
-    protected int discoverExtension = 25;
-
-    @Hidden
-    @Argument(fullName="max-gga-ar-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping our events for GGA mode", optional = true)
-    protected int ggaExtension = 300;
+    @Argument(fullName="max-extension", doc = "the maximum extent into the full active region extension that we're willing to go in genotyping", optional = true)
+    protected int extension = 25;
 
     /**
      * Include at least this many bases around an event for calling it
@@ -201,6 +197,4 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public int minObservationsForKmerToBeSolid = 20;
 
     public abstract ReadThreadingAssembler makeReadThreadingAssembler();
-
-    public boolean consensusMode() { return false; }
 }

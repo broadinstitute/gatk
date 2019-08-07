@@ -445,7 +445,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testGivenAllelesMode() throws Exception {
+    public void testForceCalling() throws Exception {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 

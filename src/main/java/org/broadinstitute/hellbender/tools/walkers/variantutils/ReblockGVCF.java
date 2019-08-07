@@ -241,7 +241,7 @@ public final class ReblockGVCF extends VariantWalker {
             final GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
                     ? GenotypeLikelihoodsCalculationModel.INDEL
                     : GenotypeLikelihoodsCalculationModel.SNP;
-            result = genotypingEngine.calculateGenotypes(originalVC, model, null);
+            result = genotypingEngine.calculateGenotypes(originalVC, model);
         }
 
         if (result == null) {

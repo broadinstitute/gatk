@@ -410,39 +410,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testGenotypeGivenAllelesMode() throws IOException {
+    public void testForceCalling() throws IOException {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testGenotypeGivenAllelesMode", ".vcf");
-        final File expected = new File(TEST_FILES_DIR, "expected.testGenotypeGivenAllelesMode.gatk4.vcf");
 
-        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
-
-        final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
-                "-L", "20:10000000-10010000",
-                "-O", outputPath,
-                "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
-                "--alleles", new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf").getAbsolutePath()
-        };
-
-        runCommandLine(args);
-
-        // Test for an exact match against past results
-        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
-            IntegrationTestSpec.assertEqualTextFiles(output, expected);
-        }
-    }
-
-    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
-    public void testGenotypeGivenAllelesModeNotAllowedInGVCFMode() throws IOException {
-        Utils.resetRandomGenerator();
-
-        final File output = createTempFile("testGenotypeGivenAllelesModeNotAllowedInGVCFMode", ".g.vcf");
-
+        final File forceCallingVcf = new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf");
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
                 "-R", b37_reference_20_21,
@@ -450,13 +423,17 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
-                "--alleles", new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf").getAbsolutePath(),
-                "-ERC", "GVCF"
+                "--alleles", forceCallingVcf.getAbsolutePath()
         };
 
-        // Should throw, since -ERC GVCF is incompatible with GENOTYPE_GIVEN_ALLELES mode
         runCommandLine(args);
+
+        final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(output)
+                .collect(Collectors.toMap(vc -> vc.getStart(), vc -> vc.getAlternateAlleles()));
+        for (final VariantContext vc : new FeatureDataSource<VariantContext>(forceCallingVcf)) {
+            final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
+            vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
+        }
     }
 
     @Test

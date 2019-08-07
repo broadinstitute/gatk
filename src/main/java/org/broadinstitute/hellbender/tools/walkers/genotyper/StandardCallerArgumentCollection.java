@@ -29,8 +29,6 @@ public class StandardCallerArgumentCollection implements Serializable {
         Utils.nonNull(other);
 
         this.genotypeArgs = new GenotypeCalculationArgumentCollection(other.genotypeArgs);
-        this.genotypingOutputMode = other.genotypingOutputMode;
-        this.alleles = other.alleles; // FeatureInputs are immutable outside of the engine, so this shallow copy is safe
         this.CONTAMINATION_FRACTION = other.CONTAMINATION_FRACTION;
         this.CONTAMINATION_FRACTION_FILE = other.CONTAMINATION_FRACTION_FILE != null ? new File(other.CONTAMINATION_FRACTION_FILE.getAbsolutePath()) : null;
         if ( other.sampleContamination != null ) {
@@ -43,22 +41,6 @@ public class StandardCallerArgumentCollection implements Serializable {
 
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
-
-    @Argument(fullName = "genotyping-mode", doc = "Specifies how to determine the alternate alleles to use for genotyping", optional=true)
-    public GenotypingOutputMode genotypingOutputMode = GenotypingOutputMode.DISCOVERY;
-
-    /**
-     * When the caller is put into GENOTYPE_GIVEN_ALLELES mode it will genotype the samples using only the alleles provide in this rod binding
-     */
-    @Argument(fullName="alleles", doc="The set of alleles at which to genotype when --genotyping-mode is GENOTYPE_GIVEN_ALLELES", optional=true)
-    public FeatureInput<VariantContext> alleles;
-
-    /**
-     * When set to true an when in GENOTYPE_GIVEN_ALLELES mode all given alleles, even filtered ones, are genotyped
-     */
-    @Advanced
-    @Argument(fullName = "genotype-filtered-alleles", doc = "Whether to genotype all given alleles, even filtered ones, --genotyping-mode is GENOTYPE_GIVEN_ALLELES", optional = true)
-    public boolean genotypeFilteredAlleles = false;
 
     /**
      * If this fraction is greater is than zero, the caller will aggressively attempt to remove contamination through biased down-sampling of reads.

@@ -31,7 +31,7 @@ public final class AssemblyRegionTrimmer {
     private boolean debug;
 
     /**
-     * Holds the extension to be used based on whether GGA mode is on or off.
+     * Holds the extension to be used
      */
     private int usableExtension;
 
@@ -58,7 +58,6 @@ public final class AssemblyRegionTrimmer {
      *
      * @param assemblyArgs user arguments for the trimmer
      * @param sequenceDictionary dictionary to determine the bounds of contigs
-     * @param isGGA whether the trimming region calculator should act as if we are in GGA mode or not.
      * @param emitReferenceConfidence indicates whether we plan to use this trimmer to generate trimmed regions
      *                                to be used for emitting reference confidence.
      *
@@ -66,7 +65,7 @@ public final class AssemblyRegionTrimmer {
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public void initialize(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary, final boolean isGGA, final boolean emitReferenceConfidence) {
+    public void initialize(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary, final boolean emitReferenceConfidence) {
         Utils.validate(this.assemblyArgs == null, () -> getClass().getSimpleName() + " instance initialized twice");
 
         this.assemblyArgs = Utils.nonNull(assemblyArgs);;
@@ -74,7 +73,7 @@ public final class AssemblyRegionTrimmer {
 
         checkUserArguments();
         this.debug = assemblyArgs.debugAssembly;
-        usableExtension = isGGA ? this.assemblyArgs.ggaExtension : this.assemblyArgs.discoverExtension;
+        usableExtension = this.assemblyArgs.extension;
         this.emitReferenceConfidence = emitReferenceConfidence;
     }
 
@@ -90,11 +89,8 @@ public final class AssemblyRegionTrimmer {
         if ( assemblyArgs.indelPadding < 0 ) {
             throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + assemblyArgs.indelPadding + "< 0");
         }
-        if ( assemblyArgs.discoverExtension < 0) {
-            throw new CommandLineException.BadArgumentValue("maxDiscARExtension", "" + assemblyArgs.discoverExtension + "< 0");
-        }
-        if ( assemblyArgs.ggaExtension < 0) {
-            throw new CommandLineException.BadArgumentValue("maxGGAAREExtension", "" + assemblyArgs.ggaExtension + "< 0");
+        if ( assemblyArgs.extension < 0) {
+            throw new CommandLineException.BadArgumentValue("maxDiscARExtension", "" + assemblyArgs.extension + "< 0");
         }
     }
 

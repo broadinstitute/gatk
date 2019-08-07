@@ -11,7 +11,6 @@ public enum OutputMode {
     EMIT_ALL_CONFIDENT_SITES,
 
     /** produces calls at any callable site regardless of confidence; this argument is intended only for point
-     * mutations (SNPs) in DISCOVERY mode or generally when running in GENOTYPE_GIVEN_ALLELES mode; it will by
-     * no means produce a comprehensive set of indels in DISCOVERY mode */
+     * mutations (SNPs); it will not produce a comprehensive set of indels. */
     EMIT_ALL_SITES
 }

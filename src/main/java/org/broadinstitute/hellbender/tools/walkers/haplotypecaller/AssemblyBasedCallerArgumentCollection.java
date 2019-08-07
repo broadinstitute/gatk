@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
@@ -125,4 +127,11 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
     public int maxMnpDistance = getDefaultMaxMnpDistance();
+
+    @Argument(fullName="alleles", doc="The set of alleles for which to force genotyping regardless of evidence", optional=true)
+    public FeatureInput<VariantContext> alleles;
+
+    @Advanced
+    @Argument(fullName = "genotype-filtered-alleles", doc = "Whether to force genotype even filtered alleles", optional = true)
+    public boolean forceCallFiltered = false;
 }
