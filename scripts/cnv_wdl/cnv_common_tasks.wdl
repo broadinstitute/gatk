@@ -382,6 +382,7 @@ task PostprocessGermlineCNVCalls {
 
     String genotyped_intervals_vcf_filename = "genotyped-intervals-${entity_id}.vcf.gz"
     String genotyped_segments_vcf_filename = "genotyped-segments-${entity_id}.vcf.gz"
+    String denoised_copy_ratios_filename = "denoised_copy_ratios-${entity_id}.tsv"
 
     Array[String] allosomal_contigs_args = if defined(allosomal_contigs) then prefix("--allosomal-contig ", select_first([allosomal_contigs])) else []
 
@@ -433,7 +434,8 @@ task PostprocessGermlineCNVCalls {
             --contig-ploidy-calls contig-ploidy-calls \
             --sample-index ${sample_index} \
             --output-genotyped-intervals ${genotyped_intervals_vcf_filename} \
-            --output-genotyped-segments ${genotyped_segments_vcf_filename}
+            --output-genotyped-segments ${genotyped_segments_vcf_filename} \
+            --output-denoised-copy-ratios ${denoised_copy_ratios_filename}
 
         rm -rf CALLS_*
         rm -rf MODEL_*
@@ -451,6 +453,7 @@ task PostprocessGermlineCNVCalls {
     output {
         File genotyped_intervals_vcf = genotyped_intervals_vcf_filename
         File genotyped_segments_vcf = genotyped_segments_vcf_filename
+        File denoised_copy_ratios = denoised_copy_ratios_filename
     }
 }
 

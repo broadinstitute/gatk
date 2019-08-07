@@ -199,6 +199,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
         Array[Array[File]] genotyped_segments_vcf = CNVGermlineCaseWorkflow.genotyped_segments_vcf
         Array[Array[File]] qc_status_files = CNVGermlineCaseWorkflow.qc_status_files
         Array[Array[String]] qc_status_strings = CNVGermlineCaseWorkflow.qc_status_strings
+        Array[Array[File]] denoised_copy_ratios = CNVGermlineCaseWorkflow.denoised_copy_ratios
     }
 }
 

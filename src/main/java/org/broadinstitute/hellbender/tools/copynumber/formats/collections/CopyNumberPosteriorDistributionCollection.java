@@ -53,8 +53,8 @@ public final class CopyNumberPosteriorDistributionCollection extends AbstractSam
                                             Function.identity(),
                                             state -> dataLine.getDouble(state.getCopyNumber()))));
                 } catch (final IllegalArgumentException ex) {
-                    throw new UserException.BadInput("Validation error occurred on line %d of the posterior file: "
-                            + String.format(ex.getMessage(), dataLine.getLineNumber()));
+                    throw new UserException.BadInput(String.format("Validation error occurred on line %d of the posterior file: ", dataLine.getLineNumber())
+                            + ex.getMessage());
                 }
             };
     }

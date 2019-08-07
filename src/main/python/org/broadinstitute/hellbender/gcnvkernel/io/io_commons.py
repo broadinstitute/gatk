@@ -18,8 +18,8 @@ _logger = logging.getLogger(__name__)
 
 
 def read_csv(input_file: str,
-             dtypes_dict: Dict[str, object]=None,
-             mandatory_columns_set: Set[str]=None,
+             dtypes_dict: Dict[str, object] = None,
+             mandatory_columns_set: Set[str] = None,
              comment=io_consts.default_comment_char,
              delimiter=io_consts.default_delimiter_char) -> pd.DataFrame:
     """Opens a file and seeks to the first line that does not start with the comment character,
@@ -156,7 +156,7 @@ def write_ndarray_to_tsv(output_file: str,
                          comment=io_consts.default_comment_char,
                          delimiter=io_consts.default_delimiter_char,
                          extra_comment_lines: Optional[List[str]] = None,
-                         header: Optional[str] = None,
+                         column_name_str: Optional[str] = None,
                          write_shape_info: bool = True) -> None:
     """Write a vector or matrix ndarray to .tsv file.
 
@@ -169,7 +169,7 @@ def write_ndarray_to_tsv(output_file: str,
         comment: comment character
         delimiter: delimiter character
         extra_comment_lines: (optional) list of extra comment lines to add to the header
-        header: header line (e.g. for representing the ndarray as a table with named columns)
+        column_name_str: header line (e.g. for representing the ndarray as a table with named columns)
         write_shape_info: if True, ndarray shape info will be written to the header
 
     Returns:
@@ -179,24 +179,53 @@ def write_ndarray_to_tsv(output_file: str,
     assert array.ndim <= 2
     shape = array.shape
     dtype = array.dtype
-    if array.ndim == 2:
-        array_matrix = array
-    else:
-        array_matrix = array.reshape((array.size, 1))
+    header = ""
+    if write_shape_info:
+        header += compose_sam_comment(io_consts.shape_key_value, repr(shape)) + '\n'
+        header += compose_sam_comment(io_consts.type_key_value, str(dtype)) + '\n'
+    if extra_comment_lines is not None:
+        header += '\n'.join(comment + comment_line for comment_line in extra_comment_lines) + '\n'
 
+    if column_name_str is None:
+        header_length = array.shape[1] if array.ndim == 2 else 1
+        column_name_str = delimiter.join([io_consts.output_column_prefix + str(i) for i in range(header_length)])
+    header += column_name_str + '\n'
+    df = pd.DataFrame(array)
     with open(output_file, 'w') as f:
-        if write_shape_info:
-            f.write(comment + 'shape=' + repr(shape) + '\n')
-            f.write(comment + 'dtype=' + str(dtype) + '\n')
-        if extra_comment_lines is not None:
-            for comment_line in extra_comment_lines:
-                f.write(comment + comment_line + '\n')
-        if header is not None:
-            f.write(header + '\n')
-        for i_row in range(array_matrix.shape[0]):
-            row = array_matrix[i_row, :]
-            row_repr = delimiter.join([repr(x) for x in row])
-            f.write(row_repr + '\n')
+        f.write(header)
+        df.to_csv(path_or_buf=f, index=False, header=False, sep=delimiter)
+
+
+def compose_sam_comment(key: str, value: str) -> str:
+    """Compose a SAM style comment string that encodes a key-value pair
+    Args:
+        key: key string
+        value: value string
+
+    Returns:
+        A SAM style comment representing the key-value pair
+
+    """
+    comment_char = io_consts.default_comment_char
+    delim = io_consts.default_delimiter_char
+    sep = io_consts.default_key_value_sep
+    return comment_char + io_consts.sam_comment_tag + delim + key + sep + value
+
+
+def parse_sam_comment(comment_line: str) -> Tuple:
+    """Parse a SAM style comment
+
+    Args:
+        comment_line: a comment string
+
+    Returns:
+        Key-value pair represented by a SAM style comment
+    """
+    match = re.search(io_consts.sam_comment_key_value_regexp, comment_line, re.M)
+    if match is None or len(match.groups()) != 2:
+        return None, None
+    result = match.groups()
+    return result[0], result[1]
 
 
 def read_ndarray_from_tsv(input_file: str,
@@ -214,15 +243,6 @@ def read_ndarray_from_tsv(input_file: str,
     """
     dtype = None
     shape = None
-    rows: List[np.ndarray] = []
-
-    def _get_value(key: str, _line: str):
-        key_loc = _line.find(key)
-        if key_loc >= 0:
-            val_loc = _line.find('=')
-            return _line[val_loc + 1:].strip()
-        else:
-            return None
 
     with open(input_file, 'r') as f:
         for line in f:
@@ -230,18 +250,22 @@ def read_ndarray_from_tsv(input_file: str,
             if len(stripped_line) == 0:
                 continue
             elif stripped_line[0] == comment:
-                if dtype is None:
-                    dtype = _get_value('dtype', stripped_line)
-                if shape is None:
-                    shape = _get_value('shape', stripped_line)
-            else:
-                assert dtype is not None and shape is not None, \
-                    "Shape and dtype information could not be found in the header of " \
-                    "\"{0}\"".format(input())
-                row = np.asarray(stripped_line.split(delimiter), dtype=dtype)
-                rows.append(row)
+                key, value = parse_sam_comment(stripped_line)
+                if key == io_consts.type_key_value:
+                    assert dtype is None, "Multiple dtype lines are present in the header of " \
+                                          "\"{0}\"".format(input_file)
+                    dtype = value
+                if key == io_consts.shape_key_value:
+                    assert shape is None, "Multiple shape lines are present in the header of " \
+                                          "\"{0}\"".format(input_file)
+                    shape = make_tuple(value)
 
-    return np.vstack(rows).reshape(make_tuple(shape))
+    assert dtype is not None and shape is not None, \
+        "Shape and dtype information could not be found in the header of " \
+        "\"{0}\"".format(input_file)
+
+    df = pd.read_csv(filepath_or_buffer=input_file, sep=delimiter, dtype=dtype, comment=comment)
+    return df.values.reshape(shape)
 
 
 def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[pm.blocking.VarMap]:

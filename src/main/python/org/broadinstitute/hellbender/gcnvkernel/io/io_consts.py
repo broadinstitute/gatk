@@ -12,6 +12,9 @@ sample_folder_prefix = "SAMPLE_"
 # log copy number posterior matrix column name prefix for each integer copy number state
 copy_number_column_prefix = "COPY_NUMBER_"
 
+# generic column prefix
+output_column_prefix = "VALUE_"
+
 # ploidy prior table header column names
 ploidy_prior_contig_name_column = "CONTIG_NAME"
 ploidy_prior_prefix = "PLOIDY_PRIOR_"
@@ -44,8 +47,20 @@ sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
 # prefix for adding sample name as a header comment line
 sample_name_sam_header_prefix = "RG\tID:GATKCopyNumber\tSM:"
 
+# SAM header comment tag
+sam_comment_tag = "CO"
+
+# regular expression for matching key value pair from SAM comment line
+sam_comment_key_value_regexp = "^@CO[\t](.*):(.*).*"
+
+# SAM style comment characters
 default_comment_char = "@"
 default_delimiter_char = "\t"
+default_key_value_sep = ":"
+
+# key values for storing array type in shape information
+type_key_value = "dtype"
+shape_key_value = "shape"
 
 # dtype dictionaries giving types of mandatory columns whose names are known ahead of time
 # (some of these dictionaries are not currently used, but we define their formats for future reference)

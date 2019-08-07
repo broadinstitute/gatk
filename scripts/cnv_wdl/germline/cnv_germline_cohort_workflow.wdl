@@ -361,6 +361,7 @@ workflow CNVGermlineCohortWorkflow {
         Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
         File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
         String model_qc_string = CollectModelQualityMetrics.qc_status_string
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
     }
 }
 
