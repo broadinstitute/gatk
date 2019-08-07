@@ -3,9 +3,11 @@ package org.broadinstitute.hellbender.utils.smithwaterman;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.commons.jexl2.UnifiedJEXL;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import shapeless.ops.hlist;
@@ -95,11 +97,57 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
-            SmithWatermanAlignment alignment = alignOptimized(reference, alternate, parameters, overhangStrategy);
+            SmithWatermanAlignment alignment1 = alignOptimized(reference, alternate, parameters, overhangStrategy);
+
+            SmithWatermanAlignment alignment2 = alignUnoptimized(reference, alternate, parameters, overhangStrategy);
+
+            if(!alignment1.getCigar().equals(alignment2.getCigar()) || alignment1.getAlignmentOffset() != alignment2.getAlignmentOffset()){
+                throw new GATKException("alignments not equal");
+            }
+
+            return alignment2;
     }
 
 
+    public SmithWatermanAlignment alignUnoptimized(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
+        long startTime = System.nanoTime();
 
+        if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
+            throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
+        }
+        Utils.nonNull(parameters);
+        Utils.nonNull(overhangStrategy);
+
+        // avoid running full Smith-Waterman if there is an exact match of alternate in reference
+        int matchIndex = -1;
+        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
+            // Use a substring search to find an exact match of the alternate in the reference
+            // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
+            matchIndex = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0).getIndex();
+        }
+
+        final SmithWatermanAlignment alignmentResult;
+
+        if (matchIndex != -1) {
+            // generate the alignment result when the substring search was successful
+            final List<CigarElement> lce = new ArrayList<>(alternate.length);
+            lce.add(makeElement(State.MATCH, alternate.length));
+            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+        }
+        else {
+            // run full Smith-Waterman
+            final int n = reference.length+1;
+            final int m = alternate.length+1;
+            final int[][] sw = new int[n][m];
+            final int[][] btrack=new int[n][m];
+
+            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+        }
+
+        totalComputeTime += System.nanoTime() - startTime;
+        return alignmentResult;
+    }
 
         /**
          * Aligns the alternate sequence to the reference sequence
