@@ -87,7 +87,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+                "--SW-HeuristicOutputHapToRef", "testHapToRef.txt",
+                "--SW-HeuristicOutputReadToBestHap", "testReadToBestHap.txt"
         };
 
         runCommandLine(args);
@@ -123,7 +125,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+                "--SW-HeuristicOutputHapToRef", "testHapToRef.txt",
+                "--SW-HeuristicOutputReadToBestHap", "testReadToBestHap.txt"
         };
 
         runCommandLine(args);
