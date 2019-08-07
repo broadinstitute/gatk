@@ -278,7 +278,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         bestAlignment = bestAlignment.compareAlignments(oneIndelAlignment);
                         if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() == -1){
                             //******************
-                            //testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
+                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
                             //*****************
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
