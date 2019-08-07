@@ -357,7 +357,15 @@ public final class GnarlyGenotyperEngine {
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
         } else {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-            final GenotypeLikelihoodCalculator glCalc = glcCache.get(allelesToUse.size());
+
+            GenotypeLikelihoodCalculator glCalc;
+            if ( allelesToUse.size() <= maxAltAllelesToOutput ) {
+                glCalc = glcCache.get(allelesToUse.size() - 1);
+            } else {
+                final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
+                glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
+            }
+            
             final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));
