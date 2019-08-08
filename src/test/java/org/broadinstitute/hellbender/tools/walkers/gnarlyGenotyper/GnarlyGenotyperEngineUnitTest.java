@@ -48,6 +48,7 @@ public class GnarlyGenotyperEngineUnitTest {
                 alleleCounts, sbSum, false, false, rawGenotypeCounts);
 
         Assert.assertTrue(genotypes.get(0).hasPL() && genotypes.get(0).getPL().length == 15);
+        Assert.assertTrue(genotypes.get(1).hasPL() && genotypes.get(1).getPL().length == 15);
     }
 
     //use more alts than the maxAltAllelesToOutput for the engine, forcing on-the-fly generation of GLCalculator not in the cache

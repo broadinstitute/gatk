@@ -261,6 +261,7 @@ public final class GnarlyGenotyperEngine {
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
                                                 final boolean nonRefReturned, final boolean summarizePLs,
                                                 final int[] rawGenotypeCounts) {
+        final int maxAllelesToOutput = maxAltAllelesToOutput + 1;  //+1 for ref
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
         if(nonRefReturned && !inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalStateException("This tool assumes that the NON_REF allele is listed last, as in HaplotypeCaller GVCF output,"
@@ -272,7 +273,7 @@ public final class GnarlyGenotyperEngine {
         if (!summarizePLs) {
             final int maximumAlleleCount = inputAllelesWithNonRef.size();
             final int numConcreteAlts = maximumAlleleCount - 2; //-1 for NON_REF and -1 for ref
-            if (maximumAlleleCount <= maxAltAllelesToOutput + 1) {
+            if (maximumAlleleCount <= maxAllelesToOutput) {
                 newPLsize = likelihoodSizeCache[numConcreteAlts + 1]; //cache is indexed by #alleles with ref; don't count NON_REF
             } else {
                 newPLsize = GenotypeLikelihoods.numLikelihoods(numConcreteAlts + 1, ASSUMED_PLOIDY);
@@ -360,6 +361,7 @@ public final class GnarlyGenotyperEngine {
     protected void makeGenotypeCall(final GenotypeBuilder gb,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
+        final int maxAllelesToOutput = maxAltAllelesToOutput + 1; //+1 for ref
 
         if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
@@ -367,7 +369,7 @@ public final class GnarlyGenotyperEngine {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
 
             GenotypeLikelihoodCalculator glCalc;
-            if ( allelesToUse.size() <= maxAltAllelesToOutput ) {
+            if ( allelesToUse.size() <= maxAllelesToOutput ) {
                 glCalc = glcCache.get(allelesToUse.size());
             } else {
                 final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
