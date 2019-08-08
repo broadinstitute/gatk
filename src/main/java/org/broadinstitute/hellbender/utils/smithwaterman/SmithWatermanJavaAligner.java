@@ -813,6 +813,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         logger.info(String.format("Total compute time in indelHapToRef heuristic : %.2f sec", indelTimeHapToRef * 1e-9));
         logger.info(String.format("Total compute time in indelReadToHap heuristic : %.2f sec", indelTimeReadToHap * 1e-9));
         logger.info(String.format("Total compute time in twoMismatch heuristic : %.2f sec", totalTwoMismatchHeuristicTime * 1e-9));
+        logger.info(String.format("Total compute time in snpsHapToRef heuristic : %.2f sec", snpTimeHapToRef * 1e-9));
 
         this.printStream.close();
     }
