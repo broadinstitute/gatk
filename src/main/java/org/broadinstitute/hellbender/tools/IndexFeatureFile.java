@@ -1,12 +1,12 @@
 
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixIndex;
-import htsjdk.tribble.util.TabixUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -97,8 +97,8 @@ public final class IndexFeatureFile extends CommandLineProgram {
             // For block-compression files, write a Tabix index
             if (IOUtil.hasBlockCompressedExtension(featureFile)) {
                 // Creating tabix indices with a non standard extensions can cause problems so we disable it
-                if (outputFile != null && !outputFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
-                    throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");
+                if (outputFile != null && !outputFile.getAbsolutePath().endsWith(FileExtensions.TABIX_INDEX)) {
+                    throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + FileExtensions.TABIX_INDEX + "\" extension");
                 }
 
                 // TODO: this could benefit from provided sequence dictionary from reference

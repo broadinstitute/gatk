@@ -8,10 +8,9 @@ import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
-import htsjdk.tribble.Tribble;
-import htsjdk.tribble.util.TabixUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -200,8 +199,8 @@ public final class BucketUtils {
         if (isCloudStorageUrl(prefix) || (isHadoopUrl(prefix))){
             final String path = randomRemotePath(prefix, "", extension);
             IOUtils.deleteOnExit(IOUtils.getPath(path));
-            IOUtils.deleteOnExit(IOUtils.getPath(path + Tribble.STANDARD_INDEX_EXTENSION));
-            IOUtils.deleteOnExit(IOUtils.getPath(path + TabixUtils.STANDARD_INDEX_EXTENSION));
+            IOUtils.deleteOnExit(IOUtils.getPath(path + FileExtensions.TRIBBLE_INDEX));
+            IOUtils.deleteOnExit(IOUtils.getPath(path + FileExtensions.TABIX_INDEX));
             IOUtils.deleteOnExit(IOUtils.getPath(path + ".bai"));
             IOUtils.deleteOnExit(IOUtils.getPath(path + ".md5"));
             IOUtils.deleteOnExit(IOUtils.getPath(path.replaceAll(extension + "$", ".bai"))); //if path ends with extension, replace it with .bai

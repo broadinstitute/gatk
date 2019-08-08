@@ -4,12 +4,12 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.FeatureReader;
-import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -1870,7 +1870,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         }
 
         // make sure we got a tabix index
-        final File tabixIndexFile = new File(outputGZIPFile.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File tabixIndexFile = new File(outputGZIPFile.getAbsolutePath() + FileExtensions.TABIX_INDEX);
         Assert.assertTrue(tabixIndexFile.exists());
         Assert.assertTrue(tabixIndexFile.length() > 0);
 
@@ -1893,7 +1893,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             publicTestDir + "org/broadinstitute/hellbender/engine/8_mutect2_sorted.vcf.gz");
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
             final Path outputGZIP = jimfs.getPath("testCreateVcfWriterOnNio.vcf.gz");
-            final Path tabixIndex = outputGZIP.resolveSibling(outputGZIP.getFileName().toString() + TabixUtils.STANDARD_INDEX_EXTENSION);
+            final Path tabixIndex = outputGZIP.resolveSibling(outputGZIP.getFileName().toString() + FileExtensions.TABIX_INDEX);
             long recordCount = 0;
 
             try (final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(

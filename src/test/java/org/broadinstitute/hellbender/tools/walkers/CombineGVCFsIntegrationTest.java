@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
+public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
             "RAW_MQ", //MQ data format and key have changed since GATK3
@@ -502,7 +502,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> expectedVC = getVariantContexts(output2);
         final List<VariantContext> actualVC = getVariantContexts(output);
         final VCFHeader header = getHeaderFromFile(output);
-        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Collections.emptyList(), header));
     }
 
     @Test

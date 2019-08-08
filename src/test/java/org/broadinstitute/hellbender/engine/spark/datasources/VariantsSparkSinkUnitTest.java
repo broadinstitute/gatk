@@ -1,14 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.io.Files;
-import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -232,7 +231,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
             Assert.assertEquals("VCF", vcfFormat);
             Assert.assertTrue(blockCompressed);
             // check that a tabix index file is created or not
-            boolean tabixExists = java.nio.file.Files.exists(IOUtils.getPath(outputPath + TabixUtils.STANDARD_INDEX_EXTENSION));
+            boolean tabixExists = java.nio.file.Files.exists(IOUtils.getPath(outputPath + FileExtensions.TABIX_INDEX));
             Assert.assertEquals(tabixExists, writeTabixIndex);
         } else if (outputFile.endsWith(".bcf")) {
             Assert.assertEquals("BCF", vcfFormat);

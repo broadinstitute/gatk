@@ -59,7 +59,7 @@ public class AS_InbreedingCoeffUnitTest extends ReducibleAnnotationBaseTest {
         int stop = start; // alleles.contains(ATC) ? start + 3 : start;
         return new VariantContextBuilder(source, "1", start, stop, alleles)
                 .genotypes(Arrays.asList(genotypes))
-                .filters((String)null)
+                .unfiltered()
                 .make();
     }
 
