@@ -38,6 +38,7 @@ public final class GnarlyGenotyperEngine {
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of maxAltAllelesToOutput
     private int[] likelihoodSizeCache;
     private final ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
+    private Set<Class<? extends InfoFieldAnnotation>> allASAnnotations;
 
     private final int maxAltAllelesToOutput;
     private final boolean summarizePls;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
@@ -63,6 +64,12 @@ public final class GnarlyGenotyperEngine {
                 glcCache.add(numAlleles, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
             }
         }
+
+        //TODO: fix weird reflection logging?
+        final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
+        allASAnnotations = reflections.getSubTypesOf(InfoFieldAnnotation.class);
+        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
+        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -106,12 +113,6 @@ public final class GnarlyGenotyperEngine {
         if (!keepAllSites) {
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }
-
-        //TODO: fix weird reflection logging?
-        final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
-        final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = reflections.getSubTypesOf(InfoFieldAnnotation.class);
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
 
         int[] SBsum = {0,0,0,0};
 

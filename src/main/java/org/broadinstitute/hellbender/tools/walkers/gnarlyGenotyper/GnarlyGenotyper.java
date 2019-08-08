@@ -268,8 +268,7 @@ public final class GnarlyGenotyper extends VariantWalker {
         //return early if variant can't be genotyped
         if (!variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
             warning.warn("At least one variant cannot be genotyped because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY +
-                    "key assigned by the ReblockGVCFs tool. GnarlyGenotyper output may be empty. If the input did come from ReblockGVCFs, " +
-                    "check the GenomicsDB vidmap.json annotation info");
+                    "key assigned by the ReblockGVCFs tool. GnarlyGenotyper output may be empty.");
             return;
         }
 
