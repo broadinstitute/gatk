@@ -304,7 +304,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     private static Genotype genotypeWithObviousCall(final int ploidy, final int numAlleles, final int[] alleles, final int PL) {
         return makeGenotype(ploidy, PLsForObviousCall(ploidy, numAlleles, alleles, PL));
     }
-    //note the call is irrelevant to the AFCalculator, which only looks at PLs
+    //note the call is irrelevant to the AlleleFrequencyCalculator, which only looks at PLs
     private static Genotype makeGenotype(final int ploidy, int ... pls) {
         return new GenotypeBuilder("sample" + sampleNameCounter++).alleles(Collections.nCopies(ploidy, Allele.NO_CALL)).PL(pls).make();
     }

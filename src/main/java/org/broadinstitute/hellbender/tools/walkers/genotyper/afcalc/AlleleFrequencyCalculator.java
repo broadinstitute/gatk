@@ -23,7 +23,7 @@ import java.util.stream.IntStream;
 /**
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class AlleleFrequencyCalculator extends AFCalculator {
+public final class AlleleFrequencyCalculator {
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
@@ -45,7 +45,7 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
         // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
         return getLog10PNonRef(vc, defaultPloidy, 0, null);
     }
-    //TODO: this should be a class of static methods once the old AFCalculator is gone.
+    //TODO: this should be a class of static methods
     /**
      * Compute the probability of the alleles segregating given the genotype likelihoods of the samples in vc
      *
@@ -55,7 +55,6 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
      *                                be given to ref, alt SNP, and alt indel alleles.  Hack won't be necessary when we destroy the old AF calculators
      * @return result (for programming convenience)
      */
-    @Override
     public AFCalculationResult getLog10PNonRef(final VariantContext vc, final int defaultPloidy, final int maximumAlternativeAlleles, final double[] refSnpIndelPseudocounts) {
         Utils.nonNull(vc, "VariantContext cannot be null");
         final int numAlleles = vc.getNAlleles();
@@ -199,15 +198,4 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
             return new IndexRange(0, ploidy).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
         }
     }
-
-    @Override   //Note: unused
-    protected AFCalculationResult getResultFromFinalState(final VariantContext vc, final double[] priors, final StateTracker st) { return null; }
-
-    @Override//Note: unused
-    protected AFCalculationResult computeLog10PNonRef(final VariantContext vc, final int defaultPloidy,
-                                                               final double[] priors, final StateTracker st) { return null; }
-
-    @Override   //Note: unused
-    protected StateTracker getStateTracker(final boolean reset, final int maximumAlternativeAlleleCount) { return null; }
-
 }
