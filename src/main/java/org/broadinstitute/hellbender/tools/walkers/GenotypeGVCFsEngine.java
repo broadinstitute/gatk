@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -94,7 +93,7 @@ public class GenotypeGVCFsEngine
         }
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
-        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs), annotationEngine.isRequestedReducibleRawKey(GATKVCFConstants.AS_QUAL_KEY));
+        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, annotationEngine.isRequestedReducibleRawKey(GATKVCFConstants.AS_QUAL_KEY));
 
         if ( includeNonVariants ) {
             // Save INFO header names that require alt alleles

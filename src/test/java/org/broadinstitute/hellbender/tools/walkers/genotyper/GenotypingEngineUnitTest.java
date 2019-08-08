@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -50,14 +49,14 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
-        return new MinimalGenotypingEngine(uac, SAMPLES, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
+        return new MinimalGenotypingEngine(uac, SAMPLES);
     }
 
     private static GenotypingEngine<?> getNewQualGenotypingEngine() {
         final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
-        return new MinimalGenotypingEngine(uac, SAMPLES, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
+        return new MinimalGenotypingEngine(uac, SAMPLES);
     }
 
     @DataProvider(name="testCoveredByDeletionData")

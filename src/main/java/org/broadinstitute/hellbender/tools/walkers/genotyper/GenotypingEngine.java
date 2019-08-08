@@ -32,8 +32,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected final AFCalculator newAFCalculator;
 
-    protected final AFCalculatorProvider afCalculatorProvider;
-
     protected final Config configuration;
 
     protected VariantAnnotatorEngine annotationEngine;
@@ -64,11 +62,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
-                               final AFCalculatorProvider afCalculatorProvider,
                                final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
         this.samples = Utils.nonNull(samples, "the sample list cannot be null");
-        this.afCalculatorProvider = Utils.nonNull(afCalculatorProvider, "the AF calculator provider cannot be null");
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;

@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.FixedAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -201,7 +200,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
-        genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs.standardArgs), ! hcArgs.doNotRunPhysicalPhasing);
+        genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, ! hcArgs.doNotRunPhysicalPhasing);
         genotypingEngine.setAnnotationEngine(annotationEngine);
 
         referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel, hcArgs.standardArgs.genotypeArgs.numRefIfMissing);
@@ -315,8 +314,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // UGs engine with ploidy == 1
         simpleUAC.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.samplePloidy);
 
-        activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(simpleUAC, samplesList,
-                FixedAFCalculatorProvider.createThreadSafeProvider(simpleUAC));
+        activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(simpleUAC, samplesList);
         activeRegionEvaluationGenotyperEngine.setLogger(logger);
     }
 
