@@ -7,7 +7,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorImplementation;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -37,7 +36,6 @@ public class StandardCallerArgumentCollection implements Serializable {
         if ( other.sampleContamination != null ) {
             setSampleContamination(other.sampleContamination);
         }
-        this.requestedAlleleFrequencyCalculationModel = other.requestedAlleleFrequencyCalculationModel;
         this.exactCallsLog = other.exactCallsLog != null ? new File(other.exactCallsLog.getAbsolutePath()) : null;
         this.outputMode = other.outputMode;
         this.annotateAllSitesWithPLs = other.annotateAllSitesWithPLs;
@@ -149,13 +147,6 @@ public class StandardCallerArgumentCollection implements Serializable {
 
         return false;
     }
-
-    /**
-     * Controls the model used to calculate the probability that a site is variant plus the various sample genotypes in the data at a given locus.
-     */
-    @Hidden
-    @Argument(fullName = "p-nonref-model", doc = "Non-reference probability calculation model to employ", optional = true)
-    public AFCalculatorImplementation requestedAlleleFrequencyCalculationModel;
 
     @Hidden
     @Argument(shortName = "log-exact-calls", optional=true)
