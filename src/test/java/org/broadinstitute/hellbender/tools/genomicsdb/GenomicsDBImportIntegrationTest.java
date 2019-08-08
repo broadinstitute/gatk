@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.IntervalList;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.readers.LineIterator;
@@ -90,6 +91,9 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINED_WITH_GENOTYPES = largeFileTestDir + "gvcfs/combined_with_genotypes.g.vcf.gz";
     //This file was obtained from combined.gatk3.7.g.vcf.gz by dropping all the samples
     private static final String COMBINED_SITES_ONLY = largeFileTestDir + "gvcfs/combined.gatk3.7_sites_only.g.vcf.gz";
+    private static final String INTERVAL_PICARD_STYLE_EXPECTED = toolsTestDir + "GenomicsDBImport/interval_expected.interval_list";
+    private static final String MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED = 
+            toolsTestDir + "GenomicsDBImport/multiple_non_adjacent_intervals_combine_gvcfs_expected.interval_list";
     //Consider a gVCF with a REF block chr20:50-150. Importing this data into GenomicsDB using multiple intervals
     //-L chr20:1-100 and -L chr20:101-200 will cause the REF block to be imported into both the arrays
     //Now, when reading data from the workspace (assume full scan) - the data is split into 2 REF block intervals chr20:50-100
@@ -917,23 +921,30 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGenomicsDBBasicIncremental() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 0, false, 0, 1, false, false, false);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), INTERVAL, workspace, 0, false, 0, 1, false, false, false);
         checkJSONFilesAreWritten(workspace);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 0, false, 0, 1, false, false, true);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, true);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), INTERVAL, workspace, 0, false, 0, 1, false, false, true);
         checkJSONFilesAreWritten(workspace);
 
-        checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
     }
 
     @Test
-    public void testGenomicsDBIncrementalAndBatchSize1() throws IOException {
+    public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervals() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, 0, 1, false, false, false);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(0,2), MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, 0, 1, false, false, false);
         checkJSONFilesAreWritten(workspace);
-        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, 0, 1, false, false, true);
+        writeToGenomicsDB(LOCAL_GVCFS.subList(2,3), MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, 0, 1, false, false, true);
         checkJSONFilesAreWritten(workspace);
 
-        checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
+        for(SimpleInterval currInterval : MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS) {
+            List<SimpleInterval> tmpList = new ArrayList<SimpleInterval>(Arrays.asList(currInterval));
+            File expectedCombinedVCF = runCombineGVCFs(LOCAL_GVCFS, tmpList, b38_reference_20_21, new String[0]);
+            checkGenomicsDBAgainstExpected(workspace, tmpList, expectedCombinedVCF.getAbsolutePath(), b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, false, false);
+        }
+
+        createAndCheckIntervalListFromExistingWorkspace(workspace, false);
     }
 
     @Test
@@ -958,6 +969,27 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         checkJSONFilesAreWritten(workspace);
 
         checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE, true, false);
+    }
+
+    private void createAndCheckIntervalListFromExistingWorkspace(final String workspace, final Boolean singleInterval) {
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        final String outputIntervalList = workspace + "interval_output";
+        args.addArgument(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, workspace);
+        args.addArgument(GenomicsDBImport.INTERVAL_LIST_LONG_NAME, outputIntervalList);
+
+        runCommandLine(args);
+
+        String expectedOutput;
+        if (singleInterval) {
+            expectedOutput = INTERVAL_PICARD_STYLE_EXPECTED;
+        } else {
+            expectedOutput = MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED;
+        }
+        final IntervalList generatedInterval = IntervalList.fromFile(new File(outputIntervalList));
+        final IntervalList expectedInterval = IntervalList.fromFile(new File(expectedOutput));
+        generatedInterval.write(new File("/tmp/mlathara-generated"));
+        expectedInterval.write(new File("/tmp/mlathara-expected"));
+        Assert.assertTrue(generatedInterval.sorted().equals(expectedInterval.sorted()));
     }
 
     @Test(groups = {"bucket"})
