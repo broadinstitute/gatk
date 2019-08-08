@@ -36,7 +36,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         Utils.nonNull(other);
 
         this.useNewAFCalculator = other.useNewAFCalculator;
-        this.useOldAFCalculator = other.useOldAFCalculator;
         this.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = other.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
         this.snpHeterozygosity = other.snpHeterozygosity;
         this.indelHeterozygosity = other.indelHeterozygosity;
@@ -55,12 +54,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     @Deprecated
     @Argument(fullName = "use-new-qual-calculator", shortName = "new-qual", doc = "Use the new AF model instead of the so-called exact model", optional = true)
     public boolean useNewAFCalculator = true;
-
-    /**
-     * Use the old GATK 3 qual score aka the "exact model"
-     */
-    @Argument(fullName = "use-old-qual-calculator", shortName = "old-qual", doc = "Use the old AF model", optional = true)
-    public boolean useOldAFCalculator = false;
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
