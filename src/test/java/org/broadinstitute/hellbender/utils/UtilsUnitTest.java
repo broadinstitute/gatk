@@ -6,6 +6,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
@@ -875,6 +878,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference = "CTTCAGTCCGGGTACG";
         final String query =                   "CAG";
+
         int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
         int expected = 14;
         Assert.assertEquals(result, expected);
@@ -897,7 +901,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testIndel6(){
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference ="TTTTTTTTTTTTTTTTTTTTTATGTTTTTGAGACAGGTCTC";
-        final String query =     "TTTTTTTTTTTTTTTTTTTTTTTTT";
+        final String query =   "TTTTTTTTTTTTTTTTTTTTTTTTT";
         int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndex();
         int expected = 1;
         Assert.assertEquals(result, expected);
@@ -1157,25 +1161,49 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result, expected);
     }
 
+    enum State {
+        MATCH,
+        INSERTION,
+        DELETION,
+        CLIP
+    }
+
+    private static CigarElement makeElement(final State state, final int length) {
+        CigarOperator op = null;
+        switch (state) {
+            case MATCH: op = CigarOperator.M; break;
+            case INSERTION: op = CigarOperator.I; break;
+            case DELETION: op = CigarOperator.D; break;
+            case CLIP: op = CigarOperator.S; break;
+        }
+        return new CigarElement(length, op);
+    }
+
+    //this will currently fail
     @Test
     public void testGenerateAlignmentScore(){
-        Utils.Alignment alignment = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 2, 1, true, 0), 0, null);
+
+        List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, 10), makeElement(State.DELETION, 3), makeElement(State.MATCH, 7));
+        Utils.Alignment alignment = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 2, 1, true, 0), 0, new Cigar(lce), 0);
         int result = alignment.generateAlignmentScore();
-        int expected = 50;
+        int expected = 130;
         Assert.assertEquals(result, expected);
 
-        Utils.Alignment alignment2 = new Utils.Alignment(0, 2, "front", new Utils.Indel(-1, 0, 0, false, 0), 0, null);
+        List<CigarElement> lce2 = Arrays.asList(makeElement(State.CLIP, 2), makeElement(State.MATCH, 3), makeElement(State.INSERTION, 1), makeElement(State.MATCH, 15));
+        Utils.Alignment alignment2 = new Utils.Alignment(0, 2, "front", new Utils.Indel(-1, 0, 0, false, 0), 0, new Cigar(lce2), 2);
         int result2 = alignment2.generateAlignmentScore();
-        int expected2 = 45;
+        int expected2 = 100;
         Assert.assertEquals(result2, expected2);
+
+
     }
 
     @Test
     public void testCompareAlignments(){
         //2 SNPS case will have no softclips
-        Utils.Alignment alignment1 = new Utils.Alignment(0, 0, "", new Utils.Indel(-1, 0, 0, false, 0), 0, null);
+        Utils.Alignment alignment1 = new Utils.Alignment(0, 0, "", new Utils.Indel(-1, 0, 0, false, 0), 0, null, 0);
         //deletion and softlip
-        Utils.Alignment alignment2 = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 3, 3, false, 0), 0, null);
+        Utils.Alignment alignment2 = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 3, 3, false, 0), 0, null, 0);
         Utils.Alignment result = alignment1.compareAlignments(alignment2);
         Utils.Alignment expected = alignment1;
         Assert.assertEquals(result, expected);
