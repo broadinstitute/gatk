@@ -45,10 +45,11 @@ MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
-                       'cine_segmented_sax_inlinevf']
+                       'cine_segmented_sax_inlinevf', 't1_p2_1mm_fov256_sag_ti_880']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
+MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20252', '20253', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -195,13 +196,7 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
 
 def _sample_has_mris(zip_folder, sample_id) -> bool:
     sample_str = str(sample_id)
-    return os.path.exists(zip_folder + sample_str + '_20209_2_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20209_0_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20209_1_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20203_2_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20208_2_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20204_2_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20254_2_0.zip')
+    return any([os.path.exists(zip_folder + sample_str + '_' + mri_f + '_2_0.zip') for mri_f in MRI_FIELDS])
 
 
 def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
@@ -551,10 +546,6 @@ def _write_tensors_from_dicoms(x,
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
-
-                if slice_index >= mri_data.shape[2]:
-                    logging.info(f"got fugged up at:{v}, {mri_data.shape}")
-                    slice_index = mri_data.shape[2] - 1
                 mri_data[:sx, :sy, slice_index] = slice_data
             elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
                 if _is_mitral_valve_segmentation(slicer):
