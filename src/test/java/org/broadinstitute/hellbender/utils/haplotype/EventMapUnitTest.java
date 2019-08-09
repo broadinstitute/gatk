@@ -5,6 +5,7 @@ import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -110,7 +111,8 @@ public final class EventMapUnitTest extends GATKBaseTest {
         ee.replaceClumpedEventsWithBlockSubstitutions();
         Assert.assertEquals(ee.getNumberOfEvents(), 1);
         final VariantContext actual = ee.getVariantContexts().iterator().next();
-        Assert.assertTrue(GATKVariantContextUtils.equalSites(actual, expectedBlock), "Failed with " + actual);
+        Assert.assertTrue(new SimpleInterval(actual).equals(new SimpleInterval(expectedBlock)));
+        Assert.assertTrue(actual.getAlleles().equals(expectedBlock.getAlleles()));
     }
 
     @DataProvider(name = "AdjacentSNPIndelTest")

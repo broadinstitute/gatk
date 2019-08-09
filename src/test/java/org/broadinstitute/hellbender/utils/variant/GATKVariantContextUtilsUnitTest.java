@@ -425,20 +425,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(merged.getFilters(), cfg.expected.getFilters());
     }
 
-    @Test
-    public void testEqualSites() throws Exception {
-        final VariantContext v1 = new VariantContextBuilder("foo", "1", 10, 10, Collections.singletonList(Aref)).make();
-        final VariantContext v2 = new VariantContextBuilder("foo", "1", 11, 11, Collections.singletonList(Aref)).make();
-        final VariantContext v1WithAlleles = new VariantContextBuilder("foo", "1", 11, 11, Arrays.asList(T, Aref)).make();
-        Assert.assertTrue(GATKVariantContextUtils.equalSites(v1, v1));
-        Assert.assertTrue(GATKVariantContextUtils.equalSites(v2, v2));
-
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v1, v2));
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v1, v1WithAlleles));
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v2, v1));
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v1WithAlleles, v1));
-    }
-
     // --------------------------------------------------------------------------------
     //
     // Test genotype merging

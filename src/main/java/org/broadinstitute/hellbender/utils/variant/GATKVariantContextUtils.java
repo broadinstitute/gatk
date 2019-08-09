@@ -1313,22 +1313,6 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Are vc1 and 2 equal including their position and alleles?
-     * @param vc1 non-null VariantContext
-     * @param vc2 non-null VariantContext
-     * @return true if vc1 and vc2 are equal, false otherwise
-     */
-    public static boolean equalSites(final VariantContext vc1, final VariantContext vc2) {
-        Utils.nonNull(vc1, "vc1 is null");
-        Utils.nonNull(vc2, "vc2 is null");
-
-        if ( vc1.getStart() != vc2.getStart() ) return false;
-        if ( vc1.getEnd() != vc2.getEnd() ) return false;
-        if ( !vc1.getContig().equals(vc2.getContig())) return false;
-        return vc1.getAlleles().equals(vc2.getAlleles());
-    }
-
-    /**
      * Add chromosome counts (AC, AN and AF) to the VCF header lines
      *
      * @param headerLines the VCF header lines
