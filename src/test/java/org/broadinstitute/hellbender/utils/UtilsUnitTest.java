@@ -617,12 +617,14 @@ public final class UtilsUnitTest extends GATKBaseTest {
         // match right boundary of reference
         String query = "TGGGG";
         Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
+        System.out.println(result.getCigar().toString());
         int expected = reference.lastIndexOf(query);
         Assert.assertEquals(result.getIndex(), expected);
 
         // match left boundary of reference
         query = "AAAAC";
         result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query.getBytes(), 0);
+        System.out.println(result.getCigar().toString());
         expected = reference.lastIndexOf(query);
         Assert.assertEquals(result.getIndex(), expected);
     }
@@ -634,6 +636,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         // match right boundary of reference
         final String query1 = "TGAGG";
         Utils.Alignment result = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 1);
+        System.out.println(result.getCigar().toString());
         int expected = reference.length() - query1.length();
         Assert.assertEquals(result.getIndex(), expected);
 
@@ -814,6 +817,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         // match right boundary of reference
         final String query1 = "AGAGG";
         Utils.Alignment alignment = Utils.lastIndexOfAtMostTwoMismatches(reference.getBytes(), query1.getBytes(), 2);
+        System.out.println(alignment.getCigar().toString());
         Assert.assertEquals(alignment.getIndex(), 11);
 
         // match right boundary of reference
@@ -837,7 +841,8 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference = "CTTCAGTCCGGGTACG";
         final String query =     "CCATTTCAGT";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getMatchingBases();
+        Utils.Alignment alignment = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5);
+        int result = alignment.getIndel().getMatchingBases();
         int expected = 1;
         Assert.assertEquals(result, expected);
     }
@@ -858,7 +863,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference = "CTTCAGTCCGGGTACG";
         final String query =        "CAGTTACCG";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
+        Utils.Alignment alignment = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5);
+        System.out.println(alignment.getCigar().toString());
+        int result = alignment.getIndel().getAlignmentOffset();
         int expected = 3;
         Assert.assertEquals(result, expected);
     }
@@ -879,7 +886,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference ="AGAATTTAAAATGATACACCCAATCTGGAAAACGGTTTGGGATTTTTCTGCAAAATTCATGCATTTTCTTTTTTTTTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTTCTTTCTTTCTTTCTCTCTCTCTCTTT";
         final String query =    "AGAATTTAAAATGATACACCCAATCTGGAAAACGGTTTGGGATTTTTCTGCAAAATTCATGCATTTTCTTTTTTTTTTTTC";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndel().getAlignmentOffset();
+        Utils.Alignment alignment = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5);
+        System.out.println(alignment.getCigar().toString());
+        int result = alignment.getIndex();
         int expected = 0;
         Assert.assertEquals(result, expected);
     }
@@ -911,7 +920,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         final String reference ="CGATTCGATTCGATT";
         final String query =      "ATTCGAATTCA";
-        int result = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5).getIndex();
+        Utils.Alignment alignment = Utils.oneIndelReadToHap(reference.getBytes(), query.getBytes(), parameters, 3,5, 5);
+        System.out.println(alignment.getCigar().toString());
+        int result = alignment.getIndex();
         int expected = 2;
         Assert.assertEquals(result, expected);
     }
@@ -921,6 +932,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference = "CGATTCCAAGTC";
         final String query =            "AAGTCA";
         Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, false, false);
+        System.out.println(result.getCigar().toString());
         String expected = "back";
         Assert.assertEquals(result.getTypeOfSoftclip(), expected);
     }
@@ -931,6 +943,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference = "CGATTCCAAGTC";
         final String query =   "AACGAT";
         Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 2, 0, false, false);
+        System.out.println(result.getCigar().toString());
         String expected = "front";
         Assert.assertEquals(result.getTypeOfSoftclip(), expected);
     }
@@ -951,6 +964,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference ="CTAATTTTCGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
         final String query =     "TAATTTTCGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
         Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, false, false);
+        System.out.println(result.getCigar().toString());
         String expected = "back";
         Assert.assertEquals(result.getTypeOfSoftclip(), expected);
     }
@@ -961,12 +975,14 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference ="ATTTTTTTTTTTTTTTTTTTGAGATGGATTCTCACTCCTCT";
         final String query =   "ATTTTTTTTTTTTTTTTTTTTGAGATGGATTCTCACTCCTCT";
         Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 1, false, false);
+        System.out.println(result.getCigar().toString());
         String expected = "front";
         Assert.assertEquals(result.getTypeOfSoftclip(), expected);
 
         final String reference2 ="CTTTTTTTTTTTTTTTTTTTGGTTATTGATTCTTTTTATGTTTTG";
         final String query2 =   "CTTTTTTTTTTTTTTTTTTTTGG";
         Utils.Alignment result2 = Utils.softclip(reference2.getBytes(), query2.getBytes(), 1, 1, false, false);
+        System.out.println(result2.getCigar().toString());
         String expected2 = "front";
         Assert.assertEquals(result2.getTypeOfSoftclip(), expected2);
 
@@ -983,6 +999,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference ="AATTTCTGGAATGGATTATTAAACAGAGAGTCTGTAAGCACTTAGAAAAGGCCGCGGTGAGTCCCAGGGGCCAGCACTGCTCGAAATGTACAGCATTTCTCTTTGTAACAGGATTATTAGCCTGCTGTGCCCGGGGAAAACATGCAGCACAGTGCATCTCGAGTCAGCAGGATTTTGACGGCTTCTAACAAAATCTTGTAGACAAGATGGAGCTATGGGGGTTGGAGGAGAGAACATATAGGAAAAATCAGAGCCAAATGAACCACAGCCCCAAAGGGCACAGTTGAACAATGGACTGATTCCAGCCTTGCACGGA";
         final String query =   "AAATTTTGGAATGGATTATTAAACAGAGAGTCTGTAAGCACTTAGAAAAGGCCGCGGTGAGTCCCAGGGGCCAGCACTGCTCGAAATGTACA";
         Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 1, 0, true, false);
+        System.out.println(result.getCigar().toString());
         int expected = 1;
         Assert.assertEquals(result.getIndel().getIndelSize(), expected);
 
@@ -998,6 +1015,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String reference = "CGTATTTAGGGCTAATAAGA";
         final String query =   "AACGTATTTTAG";
         Utils.Alignment result = Utils.softclip(reference.getBytes(), query.getBytes(), 2, 0, false, true);
+        System.out.println(result.getCigar().toString());
         int expected = 7;
         Assert.assertEquals(result.getIndel().getMatchingBases(), expected);
     }
@@ -1093,6 +1111,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         String reference = "CGATTTCAGTACTT";
         String query =  "AAACGATTTCAG";
         SmithWatermanAlignment alignment = aligner.align(reference.getBytes(), query.getBytes(), parameters, SWOverhangStrategy.SOFTCLIP);
+        System.out.println(alignment.getCigar().toString());
         int result = alignment.getAlignmentOffset();
         int expected = 0;
         Assert.assertEquals(result, expected);
@@ -1129,22 +1148,23 @@ public final class UtilsUnitTest extends GATKBaseTest {
         SmithWatermanJavaAligner aligner = SmithWatermanJavaAligner.getInstance();
         SWParameters parameters = new SWParameters(10, -15, -30, -5);
         String reference = "GTCTCTACAAAAAATTAAATTAGAAATAAAAATTAGGTTGTTTTCTTATTTTTGAGTTTGCAGAATTCTTTTTTTTTTTTTTTTTTTTTGAGAGTTTGACTCTTGTTGCCCAAGCTGGAGTGCAGTGGCACGATCTCAGCTCACAGCAACC";
-        String query =    "GTTTTCTTATTTTTGAGTTTGCAGAATTCTTTTTTTTTTTTTTTTTTTTTTT";
+        String query =                                            "GTTTTCTTATTTTTGAGTTTGCAGAATTCTTTTTTTTTTTTTTTTTTTTTTT";
         SmithWatermanAlignment alignment = aligner.align(reference.getBytes(), query.getBytes(), parameters, SWOverhangStrategy.SOFTCLIP);
+        System.out.println(alignment.getCigar().toString());
         int result = alignment.getAlignmentOffset();
         System.out.println(alignment.getCigar().toString());
-        int expected = 46;
+        int expected = 39;
         Assert.assertEquals(result, expected);
     }
 
     @Test
     public void testGenerateAlignmentScore(){
-        Utils.Alignment alignment = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 2, 1, true, 0), 0);
+        Utils.Alignment alignment = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 2, 1, true, 0), 0, null);
         int result = alignment.generateAlignmentScore();
         int expected = 50;
         Assert.assertEquals(result, expected);
 
-        Utils.Alignment alignment2 = new Utils.Alignment(0, 2, "front", new Utils.Indel(-1, 0, 0, false, 0), 0);
+        Utils.Alignment alignment2 = new Utils.Alignment(0, 2, "front", new Utils.Indel(-1, 0, 0, false, 0), 0, null);
         int result2 = alignment2.generateAlignmentScore();
         int expected2 = 45;
         Assert.assertEquals(result2, expected2);
@@ -1153,9 +1173,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
     @Test
     public void testCompareAlignments(){
         //2 SNPS case will have no softclips
-        Utils.Alignment alignment1 = new Utils.Alignment(0, 0, "", new Utils.Indel(-1, 0, 0, false, 0), 0);
+        Utils.Alignment alignment1 = new Utils.Alignment(0, 0, "", new Utils.Indel(-1, 0, 0, false, 0), 0, null);
         //deletion and softlip
-        Utils.Alignment alignment2 = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 3, 3, false, 0), 0);
+        Utils.Alignment alignment2 = new Utils.Alignment(0, 1, "front", new Utils.Indel(0, 3, 3, false, 0), 0, null);
         Utils.Alignment result = alignment1.compareAlignments(alignment2);
         Utils.Alignment expected = alignment1;
         Assert.assertEquals(result, expected);

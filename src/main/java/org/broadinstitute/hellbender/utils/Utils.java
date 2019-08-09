@@ -5,6 +5,9 @@ import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -14,7 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import shapeless.ops.hlist;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1056,21 +1059,24 @@ public final class Utils {
         String typeOfSoftclip;
         Indel indel;
         int refBasesConsumed;
+        Cigar cigar;
 
-        public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, int refBasesConsumed){
+        public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, int refBasesConsumed, Cigar cigar){
             this.index = index;
             this.numOfSoftclips = numOfSoftclips;
             this.typeOfSoftclip = typeOfSoftclip;
             this.indel = new Indel(-1, 0, 0, false, 0);
             this.refBasesConsumed = refBasesConsumed;
+            this.cigar = cigar;
         }
 
-        public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, Indel indel, int refBasesConsumed){
+        public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, Indel indel, int refBasesConsumed, Cigar cigar){
             this.index = index;
             this.numOfSoftclips = numOfSoftclips;
             this.typeOfSoftclip = typeOfSoftclip;
             this.indel = indel;
             this.refBasesConsumed = refBasesConsumed;
+            this.cigar = cigar;
         }
 
         public int getIndex(){
@@ -1111,6 +1117,14 @@ public final class Utils {
 
         public void setRefBasesConsumed(int refBasesConsumed) {
             this.refBasesConsumed = refBasesConsumed;
+        }
+
+        public Cigar getCigar() {
+            return cigar;
+        }
+
+        public void setCigar(Cigar cigar) {
+            this.cigar = cigar;
         }
 
         public int generateAlignmentScore(){
@@ -1167,6 +1181,119 @@ public final class Utils {
         }
     }
 
+    //*******************************************************************************************
+    //Cigar stuff
+
+    private static Cigar generateCigarString(boolean haplotypeToRef, int numberOfSoftclips, String softclipType, byte[] reference, byte[] query,  boolean containsIndel, int indelSize, int matchingBases, boolean indelType){
+        if(haplotypeToRef){
+            if(containsIndel){
+                return calculateOneIndelCigarHapToRef(indelSize, reference, query, matchingBases);
+            }
+            else{
+                final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, reference.length));
+                return new Cigar(lce);
+            }
+        }
+        else{
+            if(containsIndel){
+                State state;
+                int length;
+                if(indelType){
+                    state = State.INSERTION;
+                    length = query.length - indelSize - matchingBases - numberOfSoftclips;
+                }
+                else{
+                    state = State.DELETION;
+                    length = query.length - matchingBases - numberOfSoftclips;
+                }
+                //length should NEVER be negative
+                if(length < 0){
+                    //set to 0 to avoid exception thrown. probably better way of handling this
+                    length = 0;
+                }
+
+                final List<CigarElement> lce;
+                Cigar cigar;
+                if(softclipType.equals("front")){
+                    lce = Arrays.asList(makeElement(State.CLIP, numberOfSoftclips), makeElement(State.MATCH, matchingBases),
+                            makeElement(state, indelSize), makeElement(State.MATCH, length));
+                    cigar = AlignmentUtils.leftAlignIndel(new Cigar(lce), reference, query, 0, 0, true);
+                }
+                else if(softclipType.equals("back")){
+                    lce = Arrays.asList(makeElement(State.MATCH, matchingBases),
+                            makeElement(state, indelSize), makeElement(State.MATCH, length), makeElement(State.CLIP, numberOfSoftclips));
+                    cigar = new Cigar(lce);
+
+                }
+                else{
+                    lce = Arrays.asList(makeElement(State.MATCH, matchingBases),
+                            makeElement(state, indelSize), makeElement(State.MATCH, length));
+                    cigar = new Cigar(lce);
+                }
+                return cigar;
+            }
+            else if(numberOfSoftclips > 0){
+                return calculateSoftclipCigarNoIndel(softclipType, numberOfSoftclips, reference, query);
+            }
+            else{
+                final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, query.length));
+                return new Cigar(lce);
+            }
+        }
+    }
+
+    private static Cigar calculateOneIndelCigarHapToRef(int indelLength, final byte[] reference, final byte[] alternate, int oneIndelIndex){
+        State state = null;
+        int cigarThirdElementLength = 0;
+
+        if(alternate.length < reference.length){
+            state = State.DELETION;
+            cigarThirdElementLength = alternate.length - oneIndelIndex;
+        }
+        if(alternate.length > reference.length){
+            state = State.INSERTION;
+            cigarThirdElementLength = alternate.length - indelLength - oneIndelIndex;
+        }
+
+        final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, oneIndelIndex),
+                makeElement(state, indelLength), makeElement(State.MATCH, cigarThirdElementLength));
+
+        return new Cigar(lce);
+    }
+
+    private static Cigar calculateSoftclipCigarNoIndel(String softclipType, int size, final byte[] reference, final byte[] alternate){
+        final List<CigarElement> lce;
+        if(softclipType.equals("front")){
+            lce = Arrays.asList(makeElement(State.CLIP, size), makeElement(State.MATCH, alternate.length - size));
+        }
+        else{
+            lce = Arrays.asList(makeElement(State.MATCH, alternate.length - size), makeElement(State.CLIP, size));
+        }
+        return new Cigar(lce);
+    }
+
+    /**
+     * The state of a trace step through the matrix
+     */
+    enum State {
+        MATCH,
+        INSERTION,
+        DELETION,
+        CLIP
+    }
+
+    private static CigarElement makeElement(final State state, final int length) {
+        CigarOperator op = null;
+        switch (state) {
+            case MATCH: op = CigarOperator.M; break;
+            case INSERTION: op = CigarOperator.I; break;
+            case DELETION: op = CigarOperator.D; break;
+            case CLIP: op = CigarOperator.S; break;
+        }
+        return new CigarElement(length, op);
+    }
+    //*******************************************************************************************
+
     public static Alignment lastIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches) {
         return lastIndexOfAtMostTwoMismatches(reference, query, allowedMismatches, 0, false, 0, 0);
     }
@@ -1194,7 +1321,8 @@ public final class Utils {
                 }
             }
             if (mismatchCount <= allowedMismatches) {
-                return new Alignment(refIndex, 0, "", queryLength + refIndex);
+                Cigar cigar = generateCigarString(false, 0, "", reference, query, false, 0, queryLength, false);
+                return new Alignment(refIndex, 0, "", queryLength + refIndex, cigar);
             }
         }
 
@@ -1208,9 +1336,8 @@ public final class Utils {
             }
         }
 
-
         //no exact match or softlcips are found
-        return new Alignment(-1, 0, "", 0);
+        return new Alignment(-1, 0, "", 0, null);
     }
 
     public static int firstIndexOfAtMostTwoMismatches(final byte[] reference, final byte[] query, final int allowedMismatches, int refBound) {
@@ -1232,7 +1359,7 @@ public final class Utils {
         return -1;
     }
 
-
+    //should probably break up the softclip method for different variants
     public static Alignment softclip(final byte[] reference, final byte[] query, int size, int allowedMismatches, boolean lookForDeletion, boolean lookForInsertion){
 
         int aligner;
@@ -1246,7 +1373,7 @@ public final class Utils {
             aligner = reference.length - query.length + size;
         }
         else{
-            return new Alignment(-1, 0, "", 0);
+            return new Alignment(-1, 0, "", 0, null);
         }
 
         for(front = size; front < query.length; front++){
@@ -1266,7 +1393,8 @@ public final class Utils {
                         int matchingBases = query.length - que.length - size;
                         Indel deletion = new Indel(0, matchingBases, del, false, 0);
                         int refBasesConsumed = query.length - size + deletion.getIndelSize() + deletion.getAlignmentOffset();
-                        return new Alignment(0, size, "front", deletion, refBasesConsumed);
+                        Cigar cigar = generateCigarString(false, size, "front", reference, query, true, del, matchingBases, false);
+                        return new Alignment(0, size, "front", deletion, refBasesConsumed, cigar);
                     }
                 }
                 if(lookForInsertion) {
@@ -1279,7 +1407,8 @@ public final class Utils {
                     if (insFront == query.length) {
                         Indel insertion = new Indel(0, front - size, 1, true, 0);
                         int refBasesConsumed = query.length - size - insertion.getIndelSize() + insertion.getAlignmentOffset();
-                        return new Alignment(0, size, "front", insertion, refBasesConsumed);
+                        Cigar cigar = generateCigarString(false, size, "front", reference, query, true, 1, front - size, true);
+                        return new Alignment(0, size, "front", insertion, refBasesConsumed, cigar);
                     }
                 }
                 mismatches++;
@@ -1289,7 +1418,8 @@ public final class Utils {
             }
         }
         if(front == query.length){
-            return new Alignment(0, size, "front", query.length - size);
+            Cigar cigar = generateCigarString(false, size, "front", reference, query, false, 0, query.length - size, false);
+            return new Alignment(0, size, "front", query.length - size, cigar);
         }
         mismatches = 0;
         for(back = query.length - 1 - size; back >= 0; back--){
@@ -1309,7 +1439,8 @@ public final class Utils {
                         int matchingBases = que.length;
                         Indel deletion = new Indel(reference.length - query.length + size - indelSize, matchingBases, indelSize, false, 0);
                         int refBasesConsumed = query.length - size + deletion.getIndelSize() + deletion.getAlignmentOffset();
-                        return new Alignment(reference.length - query.length + size - indelSize, size, "back", deletion, refBasesConsumed);
+                        Cigar cigar = generateCigarString(false, size, "back", reference, query, true, indelSize, matchingBases, false);
+                        return new Alignment(reference.length - query.length + size - indelSize, size, "back", deletion, refBasesConsumed, cigar);
                     }
                 }
                 if(lookForInsertion){
@@ -1324,20 +1455,22 @@ public final class Utils {
                         int indelSize = 1;
                         Indel insertion = new Indel(aligner, matchingBases, indelSize, true, 0);
                         int refBasesConsumed = query.length - size - insertion.getIndelSize() + insertion.getAlignmentOffset();
-                        return new Alignment(aligner, size, "back", insertion, refBasesConsumed);
+                        Cigar cigar = generateCigarString(false, size, "back", reference, query, true, indelSize, matchingBases, true);
+                        return new Alignment(aligner, size, "back", insertion, refBasesConsumed, cigar);
                     }
                 }
                 mismatches++;
                 if(mismatches > allowedMismatches){
-                    return new Alignment(-1, 0, "", 0);
+                    return new Alignment(-1, 0, "", 0, null);
                 }
             }
         }
         if(back == -1){
-            return new Alignment(reference.length - query.length + size, size, "back", reference.length);
+            Cigar cigar = generateCigarString(false, size, "back", reference, query, false, 0, query.length - size, false);
+            return new Alignment(reference.length - query.length + size, size, "back", reference.length, cigar);
         }
         else{
-            return new Alignment(-1, 0, "", 0);
+            return new Alignment(-1, 0, "", 0, null);
         }
     }
 
@@ -1541,7 +1674,8 @@ public final class Utils {
 
         //no del, yes ins
         if(insertion.getAlignmentOffset() != -1 && deletion.getAlignmentOffset() == -1){
-            Alignment ins = new Alignment(insertion.getAlignmentOffset(), 0, "", insertion, query.length - insertion.getIndelSize() + insertion.getAlignmentOffset());
+            Cigar cigar = generateCigarString(false, 0, "", reference, query, true, insertion.getIndelSize(), insertion.getMatchingBases(), true);
+            Alignment ins = new Alignment(insertion.getAlignmentOffset(), 0, "", insertion, query.length - insertion.getIndelSize() + insertion.getAlignmentOffset(), cigar);
             //look for 1S+del(1)
             Alignment del = Utils.softclip(reference, query, 1, 0, true, false);
             if(del.getIndex() != -1){
@@ -1551,7 +1685,8 @@ public final class Utils {
         }
         //no ins, yes del(0)
         else if(insertion.getAlignmentOffset() == -1 && deletion.getAlignmentOffset() != -1){
-            Alignment del = new Alignment(deletion.getAlignmentOffset(), 0, "", deletion, query.length + deletion.getIndelSize() + deletion.getAlignmentOffset());
+            Cigar cigar = generateCigarString(false, 0, "", reference, query, true, deletion.getIndelSize(), deletion.getMatchingBases(), false);
+            Alignment del = new Alignment(deletion.getAlignmentOffset(), 0, "", deletion, query.length + deletion.getIndelSize() + deletion.getAlignmentOffset(), cigar);
             //look for 1S+ins(1) if size is del(5)
             if(deletion.getIndelSize() == 1 || deletion.getIndelSize() == 2){
                 return del;
@@ -1588,11 +1723,13 @@ public final class Utils {
         //yes ins and del
         else{
             //if deletion is better, return deletion
-            Alignment del = new Alignment(deletion.getAlignmentOffset(), 0, "", deletion, query.length + deletion.getIndelSize() + deletion.getAlignmentOffset());
+            Cigar cigar = generateCigarString(false, 0, "", reference, query, true, deletion.getIndelSize(), deletion.getMatchingBases(), false);
+            Alignment del = new Alignment(deletion.getAlignmentOffset(), 0, "", deletion, query.length + deletion.getIndelSize() + deletion.getAlignmentOffset(), cigar);
             if(deletion.getIndelSize() <= 2){
                 return del;
             }
-            Alignment ins = new Alignment(insertion.getAlignmentOffset(), 0, "", insertion, query.length - insertion.getIndelSize() + insertion.getAlignmentOffset());
+            Cigar cigar2 = generateCigarString(false, 0, "", reference, query, true, insertion.getIndelSize(), insertion.getMatchingBases(), true);
+            Alignment ins = new Alignment(insertion.getAlignmentOffset(), 0, "", insertion, query.length - insertion.getIndelSize() + insertion.getAlignmentOffset(), cigar2);
 
             //else, look for 1S+del(1)
             Alignment del1 = softclip(reference, query, 1, 0, true, false);
@@ -1600,12 +1737,14 @@ public final class Utils {
             return compareIndels(semi1, del1, query, parameters);
         }
         //not sure what the error is here???
-        return new Alignment(-1, 0, "", 0);
+        //**************************
+        return new Alignment(-1, 0, "", 0, null);
     }
 
     public static Alignment compareIndels(Alignment alignment1, Alignment alignment2, byte[] query, SWParameters parameters){
         if(alignment1.getIndex() == -1 && alignment2.getIndex() == -1){
-            return new Alignment(-1, 0, "", new Indel(-1, 0, 0, false, 0), 0);
+            //**************************
+            return new Alignment(-1, 0, "", new Indel(-1, 0, 0, false, 0), 0, null);
         }
         if(alignment1.getIndex() == -1 && alignment2.getIndex() != -1){
             return alignment2;
