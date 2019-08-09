@@ -29,14 +29,6 @@ import java.util.List;
  */
 public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
-    private long totalComputeTime = 0;
-    private long exactMatchTime = 0;
-    private long mismatchTime = 0;
-    private long indelTimeHapToRef = 0;
-    private long indelTimeReadToHap = 0;
-    private long totalTwoMismatchHeuristicTime = 0;
-    private long snpTimeHapToRef = 0;
-    private boolean haplotypeToref = false;
 
     /**
      * return the stateless singleton instance of SmithWatermanJavaAligner
@@ -54,6 +46,32 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         DELETION,
         CLIP
     }
+
+    /**
+     * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
+     * accessible via {@link #getInstance}
+     */
+    public SmithWatermanJavaAligner(){}
+
+    /*
+     * 2nd Constructor for haplotypeToRef aligner
+     */
+    public SmithWatermanJavaAligner(boolean haplotypeToref){
+        this.haplotypeToref = haplotypeToref;
+    }
+
+    /**
+    Testing/debugging info
+     */
+    //**************************************
+    private long totalComputeTime = 0;
+    private long exactMatchTime = 0;
+    private long mismatchTime = 0;
+    private long indelTimeHapToRef = 0;
+    private long indelTimeReadToHap = 0;
+    private long totalTwoMismatchHeuristicTime = 0;
+    private long snpTimeHapToRef = 0;
+    private boolean haplotypeToref = false;
 
     private int numOfAlignments = 0;
     private int noSW = 0;
@@ -81,21 +99,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     public int yesSW() {
         return yesSW;
     }
+    //**************************************
 
-    public int numOfSoftCLips(){return softClips;}
-
-
-
-    /**
-     * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
-     * accessible via {@link #getInstance}
+    /*
+     *align() method that calls into both the current implementation and the optimized code, and compares their outputs
      */
-    public SmithWatermanJavaAligner(){}
-
-    public SmithWatermanJavaAligner(boolean haplotypeToref){
-        this.haplotypeToref = haplotypeToref;
-    }
-
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
             SmithWatermanAlignment alignment1 = alignOptimized(reference, alternate, parameters, overhangStrategy);
@@ -109,7 +117,10 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             return alignment2;
     }
 
-
+    /*
+    Current implementation of align()
+    includes exactMatch() heuristic, and then calls straight to SW
+     */
     public SmithWatermanAlignment alignUnoptimized(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         long startTime = System.nanoTime();
 
@@ -150,12 +161,12 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         return alignmentResult;
     }
 
-        /**
-         * Aligns the alternate sequence to the reference sequence
-         *
-         * @param reference  ref sequence
-         * @param alternate  alt sequence
-         */
+    /**
+     * Aligns the alternate sequence to the reference sequence
+     *
+     * @param reference  ref sequence
+     * @param alternate  alt sequence
+     */
     public SmithWatermanAlignment alignOptimized(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         long startTime = System.nanoTime();
         numOfAlignments++;
@@ -169,16 +180,18 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         SmithWatermanAlignment alignmentResult = null;
 
         if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE){
-
+            //if the alignment is haplotype-Ref
             if(this.haplotypeToref){
+                //check if lengths of 2 sequences are equal
                 if(alternate.length == reference.length){
+                    //loop to check for possible alignments with 0-2 SNPs
                     for(int allowedMismatches = 0; allowedMismatches < 3; allowedMismatches++){
                         int noSNPS = -1;
                         long startTime7 = System.nanoTime();
                         noSNPS = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, allowedMismatches).getIndex();
                         snpTimeHapToRef += System.nanoTime() - startTime7;
                         if(noSNPS != -1){
-
+                            noSW++;
                             if(allowedMismatches == 0){
                                 exactMatches++;
                             }
@@ -188,40 +201,37 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                             else{
                                 twoSNPs++;
                             }
-
-                            noSW++;
+                            //generate cigar string for 0-2 SNPS - should probably make this it's own method
                             final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, reference.length));
                             alignmentResult = new SWPairwiseAlignmentResult(new Cigar(lce), noSNPS);
-                            //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                            //*****************
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
                     }
                 }
+                //lengths are unequal
                 else{
                     //int maxIndelLength = calculateAllowedLengthOfIndelHapToRef(parameters);
                     long startTime3 = System.nanoTime();
+                    //should probably have oneIndelHapToRef return an Alignment object
                     ImmutablePair<Integer,Integer> indelStartAndSize = Utils.oneIndelHapToRef(reference, alternate, 2);
                     indelTimeHapToRef += System.nanoTime() - startTime3;
                     int oneIndelIndex = indelStartAndSize.getLeft();
                     if (oneIndelIndex != -1){
                         indelCount++;
                         int indelLength = indelStartAndSize.getRight();
+                        //include in one generateCigar() method
                         alignmentResult = calculateOneIndelCigar(indelLength, reference, alternate, oneIndelIndex);
                         totalComputeTime += System.nanoTime() - startTime;
-                        //******************
-                        testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                        //*****************
                         return alignmentResult;
                     }
                 }
             }
+            //alignment is read-Best haplotype
             else{
                 Utils.Alignment bestAlignment = null;
+                //max number of softclips is 5 - check table
                 int numOfSoftclips = 5;
-
                 //exact match
                 long startTime1 = System.nanoTime();
                 Utils.Alignment exactMatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 0, 0, true, numOfSoftclips, 0);
@@ -229,13 +239,13 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 if (exactMatch.getIndex() != -1) {
                     noSW++;
                     exactMatches++;
+                    //if exact match is found, it automatically becomes the best alignment found so far
                     bestAlignment = exactMatch;
                     numOfSoftclips = exactMatch.getNumOfSoftclips();
+                    //include in one cigar method. however, cigars should be generated in Utils and included in Alignment object
                     alignmentResult = calculateSoftclipCigar(exactMatch.getIndex(), exactMatch.getTypeOfSoftclip(), reference, alternate, numOfSoftclips);
+                    //look at table for reference
                     if(numOfSoftclips <= 2){
-                        //******************
-                        testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                        //*****************
                         totalComputeTime += System.nanoTime() - startTime;
                         return alignmentResult;
                     }
@@ -243,19 +253,17 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
                 //one mismatch
                 long startTime2 = System.nanoTime();
+                //max numberOfSoftclips gets reduced to 2 (look at table)
                 Utils.Alignment singleMismatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1, 0, true, numOfSoftclips % 3, 0);
                 mismatchTime += System.nanoTime() - startTime2;
                 if (singleMismatch.getIndex() != -1){
                     noSW++;
                     oneSNP++;
+                    //if you find singleMismatch, it will automatically be better than an exactMatch because you only look for singleMismatches that would beat exactMatches
                     bestAlignment = singleMismatch;
                     alignmentResult = calculateSoftclipCigar(singleMismatch.getIndex(), singleMismatch.getTypeOfSoftclip(), reference, alternate, singleMismatch.getNumOfSoftclips());
-                    totalComputeTime += System.nanoTime() - startTime;
                     numOfSoftclips = singleMismatch.getNumOfSoftclips();
                     if(numOfSoftclips == 0){
-                        //******************
-                        testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                        //*****************
                         totalComputeTime += System.nanoTime() - startTime;
                         return alignmentResult;
                     }
@@ -270,7 +278,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 int alignmentOffset = oneIndelAlignment.getIndex();
                 if(alignmentOffset != -1){
                     indelCount++;
-
 
                     int matchingBases = indel.getMatchingBases();
                     int indelSize = indel.getIndelSize();
@@ -288,17 +295,13 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         state = State.DELETION;
                         length = alternate.length - matchingBases - softclips;
                     }
-                    if(length < 1){
-                        System.out.println(new String(reference));
-                        System.out.println();
-                        System.out.println(new String(alternate));
-                        System.out.println(indel.getIndelType());
-                        System.out.println(alignmentOffset);
-                        System.out.println(matchingBases);
-                        System.out.println(softclips);
-                        System.out.println(indelSize);
+                    //length should NEVER be negative
+                    if(length < 0){
+                        //set to 0 to avoid exception thrown. probably better way of handling this
+                        length = 0;
                     }
 
+                    //cigar construction should be in one method in Utils
                     final List<CigarElement> lce;
                     Cigar cigar;
                     if(typeOfSoftclip.equals("front")){
@@ -317,15 +320,13 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                                 makeElement(state, indelSize), makeElement(State.MATCH, length));
                         cigar = new Cigar(lce);
                     }
-                    //compare oneIndel to best alignment thus far.
+                    //compare oneIndel to best alignment thus far
+                    //no alignment found - indel by default is best alginemnt
                     if(bestAlignment == null){
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(cigar), alignmentOffset);
+                        //if score will beat SNPS alignment, you're done
                         if(oneIndelAlignment.generateAlignmentScore() < 50){
-                            //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                            //*****************
                             totalComputeTime += System.nanoTime() - startTime;
-
                             return alignmentResult;
                         }
                         else{
@@ -333,19 +334,16 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         }
                     }
                     else{
+                        //compare indelAlignment to bestAlignment
                         bestAlignment = bestAlignment.compareAlignments(oneIndelAlignment);
+                        //if bestAlignment is better than 2 SNPs and it's not the indel
                         if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() == -1){
-                            //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                            //*****************
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
+                        //if bestAlignment is better than 2 SNPs and it is the indel
                         if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() != -1){
                             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(cigar), alignmentOffset);
-                            //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                            //*****************
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
@@ -358,31 +356,26 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 if(doubleMismatchIndex.getIndex() != -1){
                     noSW++;
                     twoSNPs++;
-
+                    //no other alignment found aside from 2 SNPs
                     if(bestAlignment == null){
+                        //construct cigar
                         final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, alternate.length));
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), doubleMismatchIndex.getIndex());
-                        //******************
-                        testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                        //*****************
                         totalComputeTime += System.nanoTime() - startTime;
                         return alignmentResult;
                     }
                     else{
+                        //compare bestAlignment with 2 SNPs alignment
                         bestAlignment = doubleMismatchIndex.compareAlignments(bestAlignment);
+                        //2 SNPs is best
                         if(bestAlignment.getNumOfSoftclips() == 0 && bestAlignment.getIndel().getAlignmentOffset() == -1){
                             final List<CigarElement> lce = Arrays.asList(makeElement(State.MATCH, alternate.length));
                             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), doubleMismatchIndex.getIndex());
-                            //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                            //*****************
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
+                        //previous bestAlignment is best
                         else{
-                            //******************
-                            testOutput(alignmentResult, reference, alternate, overhangStrategy, parameters);
-                            //*****************
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
@@ -442,8 +435,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             System.out.println(alignmentResult.getAlignmentOffset());
             System.out.println("Heuristic: " + cigar1.toString());
             System.out.println(this.haplotypeToref);
-
-
         }
     }
 
