@@ -183,6 +183,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             //if the alignment is haplotype-Ref
             if(this.haplotypeToref){
                 //check if lengths of 2 sequences are equal
+                //this conditional may never be true if padding makes the sequences different lengths!!!
                 if(alternate.length == reference.length){
                     //loop to check for possible alignments with 0-2 SNPs
                     for(int allowedMismatches = 0; allowedMismatches < 3; allowedMismatches++){

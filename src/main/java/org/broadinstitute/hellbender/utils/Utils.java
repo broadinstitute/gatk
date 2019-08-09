@@ -1063,6 +1063,7 @@ public final class Utils {
         Cigar cigar;
         int numOfMismatches;
 
+        //does not take an Indel object
         public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, int refBasesConsumed, Cigar cigar, int numOfMismatches){
             this.index = index;
             this.numOfSoftclips = numOfSoftclips;
@@ -1073,6 +1074,7 @@ public final class Utils {
             this.numOfMismatches = numOfMismatches;
         }
 
+        //does take an indel object
         public Alignment(int index, int numOfSoftclips, String typeOfSoftclip, Indel indel, int refBasesConsumed, Cigar cigar, int numOfMismatches){
             this.index = index;
             this.numOfSoftclips = numOfSoftclips;
@@ -1139,23 +1141,27 @@ public final class Utils {
             this.numOfMismatches = numOfMismatches;
         }
 
+        //todo - 5, 10, 15, 30 are all magic numbers that come from SW params
         public int generateAlignmentScore(){
-
             int score = 0;
             Cigar cigar = this.cigar;
             if(cigar == null){
                 return -1* Integer.MAX_VALUE;
             }
             int numOfMismatches = this.getNumOfMismatches();
+            //iterate through each element in the cigar string
             for(int i = 0; i < cigar.numCigarElements(); i++){
                 CigarElement element = cigar.getCigarElement(i);
                 CigarOperator operator = element.getOperator();
+                //element is M
                 if(operator.isAlignment()){
                     score += (element.getLength() * 10);
                 }
+                //element is I/D
                 else if(operator.isIndel()){
                     score -= (30 + (element.getLength() - 1) * 5);
                 }
+                //element is S
                 else{
                     //do nothing
                 }
@@ -1167,14 +1173,17 @@ public final class Utils {
 
         public Alignment compareAlignments(Alignment alignment){
             if(this.generateAlignmentScore() == alignment.generateAlignmentScore()){
+                //1st tiebreaker = is there a softlclip at the back?
                 if(this.getNumOfSoftclips() > 0 && this.getTypeOfSoftclip() == "back"){
                     return alignment;
                 }
                 else if(alignment.getNumOfSoftclips() > 0 && alignment.getTypeOfSoftclip() == "back"){
                     return this;
                 }
+                //2nd tiebreaker - refBases consumed
                 else{
                     if(this.getRefBasesConsumed() == alignment.getRefBasesConsumed()){
+                        //
                         return this.getIndel().getAlignmentOffset() == -1 ? this : alignment;
                     }
                     else{
@@ -1191,7 +1200,7 @@ public final class Utils {
     //*******************************************************************************************
     //Cigar stuff
 
-    private static Cigar generateCigarString(boolean haplotypeToRef, int numberOfSoftclips, String softclipType, byte[] reference, byte[] query,  boolean containsIndel, int indelSize, int matchingBases, boolean indelType){
+    public static Cigar generateCigarString(boolean haplotypeToRef, int numberOfSoftclips, String softclipType, byte[] reference, byte[] query,  boolean containsIndel, int indelSize, int matchingBases, boolean indelType){
         if(haplotypeToRef){
             if(containsIndel){
                 return calculateOneIndelCigarHapToRef(indelSize, reference, query, matchingBases);
