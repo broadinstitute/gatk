@@ -11,6 +11,8 @@ import java.util.List;
 
 /**
  * The collection of those arguments for ApplyBQSR that are not already defined in RecalibrationArgumentCollection.
+ * This is needed for tools (like {@link org.broadinstitute.hellbender.tools.spark.pipelines.ReadsPipelineSpark}
+ * that use both ApplyBSQR and Recalibration argument collections, and which would otherwise have duplicate arguments.
  */
 public class ApplyBQSRUniqueArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
