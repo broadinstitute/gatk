@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleListUnitTester;
 import org.testng.Assert;
@@ -12,11 +11,11 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
- * Tests {@link org.broadinstitute.gatk.tools.walkers.genotyper.HeterogeneousPloidyModel}
+ * Tests {@link org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel}
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HeterogeneousPloidyModelUnitTest {
+public final class PloidyModelUnitTest {
     private static final int[][] PLOIDIES =
             {{1, 1, 1, 1},
              {2, 2, 2, 2},
@@ -25,7 +24,7 @@ public final class HeterogeneousPloidyModelUnitTest {
             };
 
 
-    @Test(dataProvider = "ploidyAndSampleListData")
+    @Test(dataProvider = "ploidiesAndSampleListData")
     public void testPloidyAndSampleList(final int[] ploidies) {
         final int sampleCount = ploidies.length;
         final List<String> sampleNames = new ArrayList<>(sampleCount);
@@ -33,10 +32,9 @@ public final class HeterogeneousPloidyModelUnitTest {
             sampleNames.add("SAMPLE_" + i);
         final IndexedSampleList sampleList = new IndexedSampleList(sampleNames);
 
-        final PloidyModel ploidyModel = new HeterogeneousPloidyModel(sampleList,ploidies);
+        final PloidyModel ploidyModel = new PloidyModel(sampleList,ploidies);
         final boolean expectedHom = allSame(ploidies);
-        Assert.assertEquals(ploidyModel.isHomogeneous(), expectedHom);
-        Assert.assertEquals(ploidyModel.totalPloidy(), MathUtils.sum(ploidies));
+
 
         for (int i = 0; i < sampleCount; i++) {
             Assert.assertEquals(ploidyModel.samplePloidy(i), ploidies[i]);
@@ -57,7 +55,7 @@ public final class HeterogeneousPloidyModelUnitTest {
             sampleNames.add("SAMPLE_" + i);
         final IndexedSampleList sampleList = new IndexedSampleList(sampleNames);
 
-        new HeterogeneousPloidyModel(sampleList, new int[]{1,2,3});//count mismatch
+        new PloidyModel(sampleList, new int[]{1,2,3});//count mismatch
 
     }
 
@@ -69,7 +67,7 @@ public final class HeterogeneousPloidyModelUnitTest {
             sampleNames.add("SAMPLE_" + i);
         final IndexedSampleList sampleList = new IndexedSampleList(sampleNames);
 
-        new HeterogeneousPloidyModel(sampleList, new int[]{1,-2});//bad ploidy
+        new PloidyModel(sampleList, new int[]{1,-2});//bad ploidy
 
     }
 
@@ -81,12 +79,12 @@ public final class HeterogeneousPloidyModelUnitTest {
             sampleNames.add("SAMPLE_" + i);
         final IndexedSampleList sampleList = new IndexedSampleList(sampleNames);
 
-        final PloidyModel model = new HeterogeneousPloidyModel(sampleList, new int[]{1, 2});
+        final PloidyModel model = new PloidyModel(sampleList, new int[]{1, 2});
         model.samplePloidy(-3);
     }
 
-    @DataProvider(name="ploidyAndSampleListData")
-    public Object[][] ploidyAndSampleListData() {
+    @DataProvider(name="ploidiesAndSampleListData")
+    public Object[][] ploidiesAndSampleListData() {
         final Object[][] result = new Object[PLOIDIES.length][];
         int index = 0;
         for (int i = 0; i < PLOIDIES.length; i++) {
@@ -94,4 +92,60 @@ public final class HeterogeneousPloidyModelUnitTest {
         }
         return result;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        private static final int[] PLOIDY = { 1, 2, 3, 7, 10};
+
+        private static final int[] SAMPLE_COUNT = { 0, 1, 3, 4, 5, 6, 10, 101};
+
+
+        @Test(dataProvider = "ploidyAndSampleListData")
+        public void testPloidyAndSampleList(final int ploidy, final int sampleCount) {
+            final List<String> sampleNames = new ArrayList<>(sampleCount);
+            for (int i = 0; i < sampleCount; i++)
+                sampleNames.add("SAMPLE_" + i);
+            final IndexedSampleList sampleList = new IndexedSampleList(sampleNames);
+
+            final PloidyModel ploidyModel = new PloidyModel(sampleList,ploidy);
+
+
+
+            for (int i = 0; i < sampleCount; i++)
+                Assert.assertEquals(ploidyModel.samplePloidy(i), ploidy);
+
+            SampleListUnitTester.assertSampleList(ploidyModel, sampleNames);
+        }
+
+        @DataProvider(name="ploidyAndSampleListData")
+        public Object[][] ploidyAndSampleListData() {
+            final Object[][] result = new Object[PLOIDY.length * SAMPLE_COUNT.length][];
+            int index = 0;
+            for (int i = 0; i < PLOIDY.length; i++)
+                for (int j = 0; j < SAMPLE_COUNT.length; j++ )
+                    result[index++] = new Object[] { PLOIDY[i], SAMPLE_COUNT[j]};
+            return result;
+        }
+
+
+
+
 }
+
+
+
+

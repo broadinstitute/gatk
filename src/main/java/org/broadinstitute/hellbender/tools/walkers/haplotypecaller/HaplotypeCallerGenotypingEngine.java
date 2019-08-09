@@ -61,7 +61,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         super(configuration.standardArgs, samples, afCalculatorProvider, false);
         hcArgs = configuration;
         this.doPhysicalPhasing = doPhysicalPhasing;
-        ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
+        ploidyModel = new PloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
         genotypingModel = new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
