@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
@@ -37,6 +38,7 @@ public final class GnarlyGenotyperEngine {
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of maxAltAllelesToOutput
     private int[] likelihoodSizeCache;
     private final ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
+    private Set<Class<? extends InfoFieldAnnotation>> allASAnnotations;
 
     private final int maxAltAllelesToOutput;
     private final boolean summarizePls;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
@@ -54,12 +56,20 @@ public final class GnarlyGenotyperEngine {
             final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
 
             //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
-            likelihoodSizeCache = new int[maxAltAllelesToOutput + 1];
+            likelihoodSizeCache = new int[maxAltAllelesToOutput + 1 + 1]; //+1 for ref and +1 so index == numAlleles
+            glcCache.add(null); //add a null at index zero because zero alleles (incl. ref) makes no sense
             for (final int numAlleles : IntStream.rangeClosed(1, maxAltAllelesToOutput + 1).boxed().collect(Collectors.toList())) {
-                likelihoodSizeCache[numAlleles - 1] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
-                glcCache.add(numAlleles - 1, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
+                likelihoodSizeCache[numAlleles] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
+                //GL calculator cache is indexed by the total number of alleles, including ref
+                glcCache.add(numAlleles, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
             }
         }
+
+        //TODO: fix weird reflection logging?
+        final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
+        allASAnnotations = reflections.getSubTypesOf(InfoFieldAnnotation.class);
+        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
+        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -103,12 +113,6 @@ public final class GnarlyGenotyperEngine {
         if (!keepAllSites) {
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }
-
-        //TODO: fix weird reflection logging?
-        final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
-        final Set<Class<? extends InfoFieldAnnotation>> allASAnnotations = reflections.getSubTypesOf(InfoFieldAnnotation.class);
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_StrandBiasTest.class));
-        allASAnnotations.addAll(reflections.getSubTypesOf(AS_RankSumTest.class));
 
         int[] SBsum = {0,0,0,0};
 
@@ -252,10 +256,12 @@ public final class GnarlyGenotyperEngine {
      * @param vc the input variant with NON_REF
      * @return a GenotypesContext
      */
-    private GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
+    @VisibleForTesting
+    protected GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
                                                 final boolean nonRefReturned, final boolean summarizePLs,
                                                 final int[] rawGenotypeCounts) {
+        final int maxAllelesToOutput = maxAltAllelesToOutput + 1;  //+1 for ref
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
         if(nonRefReturned && !inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalStateException("This tool assumes that the NON_REF allele is listed last, as in HaplotypeCaller GVCF output,"
@@ -267,10 +273,10 @@ public final class GnarlyGenotyperEngine {
         if (!summarizePLs) {
             final int maximumAlleleCount = inputAllelesWithNonRef.size();
             final int numConcreteAlts = maximumAlleleCount - 2; //-1 for NON_REF and -1 for ref
-            if (maximumAlleleCount <= maxAltAllelesToOutput) {
-                newPLsize = likelihoodSizeCache[numConcreteAlts]; //-1 for zero-indexed array
+            if (maximumAlleleCount <= maxAllelesToOutput) {
+                newPLsize = likelihoodSizeCache[numConcreteAlts + 1]; //cache is indexed by #alleles with ref; don't count NON_REF
             } else {
-                newPLsize = GenotypeLikelihoods.numLikelihoods(maximumAlleleCount, ASSUMED_PLOIDY);
+                newPLsize = GenotypeLikelihoods.numLikelihoods(numConcreteAlts + 1, ASSUMED_PLOIDY);
             }
         }
 
@@ -345,19 +351,31 @@ public final class GnarlyGenotyperEngine {
 
     /**
      * For a genotype with likelihoods that has a no-call GT, determine the most likely genotype from PLs and set it
+     * We use a GenotypeLikelihoodCalculator to convert from the best PL index to the indexes of the alleles for that
+     * genotype so we can set the GenotypeBuilder with the alleles
      * @param gb    GenotypeBuilder to modify and pass back
-     * @param genotypeLikelihoods   PLs to use to call genotype
-     * @param allelesToUse  alleles in the parent VariantContext, because GenotypeBuilder needs the allele String rather than index
+     * @param genotypeLikelihoods   PLs to use to call genotype; count should agree with number of alleles in allelesToUse
+     * @param allelesToUse  alleles in the parent VariantContext (with ref), because GenotypeBuilder needs the allele String rather than index
      */
-    private void makeGenotypeCall(final GenotypeBuilder gb,
+    @VisibleForTesting
+    protected void makeGenotypeCall(final GenotypeBuilder gb,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
+        final int maxAllelesToOutput = maxAltAllelesToOutput + 1; //+1 for ref
 
         if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
         } else {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-            final GenotypeLikelihoodCalculator glCalc = glcCache.get(allelesToUse.size());
+
+            GenotypeLikelihoodCalculator glCalc;
+            if ( allelesToUse.size() <= maxAllelesToOutput ) {
+                glCalc = glcCache.get(allelesToUse.size());
+            } else {
+                final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
+                glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
+            }
+            
             final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));
