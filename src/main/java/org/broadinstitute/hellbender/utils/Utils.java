@@ -1183,8 +1183,17 @@ public final class Utils {
                 //2nd tiebreaker - refBases consumed
                 else{
                     if(this.getRefBasesConsumed() == alignment.getRefBasesConsumed()){
-                        //
-                        return this.getIndel().getAlignmentOffset() == -1 ? this : alignment;
+                        //3rd tiebreaker - not an indel wins
+                        int indel1 = this.getIndel().getAlignmentOffset();
+                        int indel2 = alignment.getIndel().getAlignmentOffset();
+                        //if they are both indels, choose the insertion (assumes one is an insertion and one is a deletion)
+                        if(indel1 != -1 && indel2 != -1){
+                            return this.getIndel().getIndelType() ? this : alignment;
+                        }
+                        //if one is an indel and one the other isn't, prefer the one that is NOT an indel
+                        else{
+                            return this.getIndel().getAlignmentOffset() == -1 ? this : alignment;
+                        }
                     }
                     else{
                         return this.getRefBasesConsumed() > alignment.getRefBasesConsumed() ? this : alignment;
@@ -1342,7 +1351,7 @@ public final class Utils {
             }
         }
 
-        //look for exact matches with Softclips(1-5)
+        //look for 0-2 SNPS with Softclips(1-5)
         if(lookForSoftclips){
             for(int size = 1; size <= allowedSoftclips; size++){
                 Alignment alignment = Utils.softclip(reference, query, size, allowedMismatches, false, false);
@@ -1375,24 +1384,26 @@ public final class Utils {
         return -1;
     }
 
-    //should probably break up the softclip method for different variants
+    //todo: should extract the softclip method for different variants
     public static Alignment softclip(final byte[] reference, final byte[] query, int size, int allowedMismatches, boolean lookForDeletion, boolean lookForInsertion){
 
-        int aligner;
+        int referenceStartOffset;
         int front;
         int back;
         int mismatches = 0;
         if(reference.length == query.length - size){
-            aligner = 0;
+            referenceStartOffset = 0;
         }
         else if(reference.length > query.length || reference.length == query.length){
-            aligner = reference.length - query.length + size;
+            referenceStartOffset = reference.length - query.length + size;
         }
         else{
             return new Alignment(-1, 0, "", 0, null, -1);
         }
 
+        //look for softlcip on the left
         for(front = size; front < query.length; front++){
+            //iterate until mismatch is found
             if(reference[front - size] != query[front]) {
                 if (lookForDeletion) {
                     //softlcip cannot be next to deletion
@@ -1433,20 +1444,22 @@ public final class Utils {
                 }
             }
         }
+        //traversed whole query length with allowedMismatches <= 2
         if(front == query.length){
             Cigar cigar = generateCigarString(false, size, "front", reference, query, false, 0, query.length - size, false);
             return new Alignment(0, size, "front", query.length - size, cigar, mismatches);
         }
+        //look for softclip on the right (mirrored code)
         mismatches = 0;
         for(back = query.length - 1 - size; back >= 0; back--){
-            if(reference[aligner + back] != query[back]){
+            if(reference[referenceStartOffset + back] != query[back]){
                 if(lookForDeletion){
                     //softclip cannot be next to deletion
                     if(reference[reference.length - 1] != query[query.length - 1 - size]){
                         break;
                     }
-                    byte[] ref = new byte[aligner + back + 1];
-                    System.arraycopy(reference, 0, ref, 0, aligner + back + 1);
+                    byte[] ref = new byte[referenceStartOffset + back + 1];
+                    System.arraycopy(reference, 0, ref, 0, referenceStartOffset + back + 1);
                     byte[] que = new byte[back + 1];
                     System.arraycopy(query, 0, que, 0, back + 1);
                     int del = lastIndexOfAtMostTwoMismatches(ref, que, 0, ref.length - 5 - que.length, false, 0, size).getIndex();
@@ -1462,17 +1475,17 @@ public final class Utils {
                 if(lookForInsertion){
                     int insBack;
                     for(insBack = back - 1; insBack >= 0; insBack--){
-                        if(reference[insBack + aligner + 1] != query[insBack]){
+                        if(reference[insBack + referenceStartOffset + 1] != query[insBack]){
                             break;
                         }
                     }
                     if(insBack == -1){
                         int matchingBases = back;
                         int indelSize = 1;
-                        Indel insertion = new Indel(aligner, matchingBases, indelSize, true, 0);
+                        Indel insertion = new Indel(referenceStartOffset, matchingBases, indelSize, true, 0);
                         int refBasesConsumed = query.length - size - insertion.getIndelSize() + insertion.getAlignmentOffset();
                         Cigar cigar = generateCigarString(false, size, "back", reference, query, true, indelSize, matchingBases, true);
-                        return new Alignment(aligner, size, "back", insertion, refBasesConsumed, cigar, mismatches);
+                        return new Alignment(referenceStartOffset, size, "back", insertion, refBasesConsumed, cigar, mismatches);
                     }
                 }
                 mismatches++;
@@ -1684,6 +1697,7 @@ public final class Utils {
                 }
             }
         }
+        //now look for softclips
 
         //no del, yes ins
         if(insertion.getAlignmentOffset() != -1 && deletion.getAlignmentOffset() == -1){

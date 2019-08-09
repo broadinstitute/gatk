@@ -1161,6 +1161,19 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result, expected);
     }
 
+
+    @Test
+    public void testExceptipn(){
+        SmithWatermanJavaAligner aligner = SmithWatermanJavaAligner.getInstance();
+        SWParameters parameters = new SWParameters(10, -15, -30, -5);
+        String reference = "ACAAAAATTAACTGGGTGTGGTGGTTTGCACCTATAGTCCCACCTGCTCAGGAGGATGAGGTTGGAGGATCACCTGAGTCTGGGGAGATCAAGGCTGTGGTGAGCCCAGATCATGCCACTGCACTCCAGCCTGGGTGACAGAGTAAGACCCCATCAAAAAAAAAAAAAGAAACTTTAAAAAATAATGGTGTTGATAATGATTGTAGAAATTGGAACCCTTGTA";
+        String query =   "ATACAAAAAA";
+        SmithWatermanAlignment alignment = aligner.align(reference.getBytes(), query.getBytes(), parameters, SWOverhangStrategy.SOFTCLIP);
+        int result = alignment.getAlignmentOffset();
+        int expected = 152;
+        Assert.assertEquals(result, expected);
+    }
+
     enum State {
         MATCH,
         INSERTION,

@@ -110,7 +110,17 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
             SmithWatermanAlignment alignment2 = alignUnoptimized(reference, alternate, parameters, overhangStrategy);
 
+
             if(!alignment1.getCigar().equals(alignment2.getCigar()) || alignment1.getAlignmentOffset() != alignment2.getAlignmentOffset()){
+
+                System.out.println(new String(reference));
+                System.out.println();
+                System.out.println(new String(alternate));
+                System.out.println(alignment2.getAlignmentOffset());
+                System.out.println("SW: " + alignment2.getCigar().toString());
+                System.out.println(alignment1.getAlignmentOffset());
+                System.out.println("Heuristic: " + alignment1.getCigar().toString());
+                System.out.println(this.haplotypeToref);
                 throw new GATKException("alignments not equal");
             }
 
@@ -255,6 +265,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 //one mismatch
                 long startTime2 = System.nanoTime();
                 //max numberOfSoftclips gets reduced to 2 (look at table)
+                //don't need to compare directly bc of how we check for softclips
                 Utils.Alignment singleMismatch = Utils.lastIndexOfAtMostTwoMismatches(reference, alternate, 1, 0, true, numOfSoftclips % 3, 0);
                 mismatchTime += System.nanoTime() - startTime2;
                 if (singleMismatch.getIndex() != -1){
@@ -280,6 +291,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 if(alignmentOffset != -1){
                     indelCount++;
 
+                    //todo: cigar = oneIndelAlignment.getCigar()
                     int matchingBases = indel.getMatchingBases();
                     int indelSize = indel.getIndelSize();
                     //construct cigar
@@ -323,10 +335,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                     }
                     //compare oneIndel to best alignment thus far
                     //no alignment found - indel by default is best alginemnt
+                    int miminumScore = (10 * alternate.length) - 50;
                     if(bestAlignment == null){
                         alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(cigar), alignmentOffset);
                         //if score will beat SNPS alignment, you're done
-                        if(oneIndelAlignment.generateAlignmentScore() < 50){
+                        if(oneIndelAlignment.generateAlignmentScore() > miminumScore){
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
@@ -338,12 +351,12 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         //compare indelAlignment to bestAlignment
                         bestAlignment = bestAlignment.compareAlignments(oneIndelAlignment);
                         //if bestAlignment is better than 2 SNPs and it's not the indel
-                        if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() == -1){
+                        if(bestAlignment.generateAlignmentScore() > miminumScore && bestAlignment.getIndel().getAlignmentOffset() == -1){
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
                         }
                         //if bestAlignment is better than 2 SNPs and it is the indel
-                        if(bestAlignment.generateAlignmentScore() < 50 && bestAlignment.getIndel().getAlignmentOffset() != -1){
+                        if(bestAlignment.generateAlignmentScore() > miminumScore && bestAlignment.getIndel().getAlignmentOffset() != -1){
                             alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(cigar), alignmentOffset);
                             totalComputeTime += System.nanoTime() - startTime;
                             return alignmentResult;
@@ -382,7 +395,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                         }
                     }
                 }
-
             }
         }
 
@@ -476,6 +488,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         return alignmentResult;
     }
 
+    //**************************************
+    //the following methods are not super reliable
     private static int calculateAllowedLengthOfIndelHapToRef(final SWParameters parameters){
         //calculate allowed length for indel to be less of a penalty than 2 mismatches
         int mismatchScore = parameters.getMismatchPenalty();
@@ -504,6 +518,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         int deletionCapSize = (2*matchScore + 2*mismatchPenalty - gapOpenPenalty + gapExtensionPenalty) / (gapExtensionPenalty);
         return deletionCapSize;
     }
+    //***********************************************
 
 
     /**
