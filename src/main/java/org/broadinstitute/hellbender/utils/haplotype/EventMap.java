@@ -322,28 +322,4 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
     }
 
-    private static class VariantContextComparator implements Comparator<VariantContext>, Serializable {
-        private static final long serialVersionUID = -2549166273822365485L;
-
-        @Override
-        public int compare(VariantContext vc1, VariantContext vc2) {
-            return vc1.getStart() - vc2.getStart();
-        }
-    }
-
-    /**
-     * Get all of the VariantContexts in the event maps for all haplotypes, sorted by their start position
-     * @param haplotypes the set of haplotypes to grab the VCs from
-     * @return a sorted set of variant contexts
-     */
-    public static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
-        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        final TreeSet<VariantContext> vcs = new TreeSet<>(new VariantContextComparator());
-
-        for( final Haplotype h : haplotypes ) {
-            vcs.addAll(h.getEventMap().getVariantContexts());
-        }
-
-        return vcs;
-    }
 }
