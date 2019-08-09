@@ -41,9 +41,9 @@ public final class AlleleFrequencyCalculator {
         this.defaultPloidy = defaultPloidy;
     }
 
-    public AFCalculationResult getLog10PNonRef(final VariantContext vc) {
+    public AFCalculationResult calculate(final VariantContext vc) {
         // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
-        return getLog10PNonRef(vc, defaultPloidy);
+        return calculate(vc, defaultPloidy);
     }
     //TODO: this should be a class of static methods
     /**
@@ -53,7 +53,7 @@ public final class AlleleFrequencyCalculator {
      *           must have at least 1 alternative allele
      * @return result (for programming convenience)
      */
-    public AFCalculationResult getLog10PNonRef(final VariantContext vc, final int defaultPloidy) {
+    public AFCalculationResult calculate(final VariantContext vc, final int defaultPloidy) {
         Utils.nonNull(vc, "VariantContext cannot be null");
         final int numAlleles = vc.getNAlleles();
         final List<Allele> alleles = vc.getAlleles();
