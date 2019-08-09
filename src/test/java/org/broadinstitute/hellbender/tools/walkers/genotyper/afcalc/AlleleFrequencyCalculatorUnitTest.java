@@ -63,8 +63,8 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         for (final Pair<VariantContext, VariantContext> pair : switchBWithCPairs) {
             final VariantContext vc1 = pair.getLeft();
             final VariantContext vc2 = pair.getRight();
-            final AFCalculationResult result1 = afCalc.getLog10PNonRef(vc1);
-            final AFCalculationResult result2 = afCalc.getLog10PNonRef(vc2);
+            final AFCalculationResult result1 = afCalc.calculate(vc1);
+            final AFCalculationResult result2 = afCalc.calculate(vc2);
             Assert.assertEquals(result1.getLog10PosteriorOfNoVariant(), result2.getLog10PosteriorOfNoVariant(), EPS);
             Assert.assertEquals(result1.getLog10PosteriorOfAlleleAbsent(B), result2.getLog10PosteriorOfAlleleAbsent(C), EPS);
             Assert.assertEquals(result1.getLog10PosteriorOfAlleleAbsent(C), result2.getLog10PosteriorOfAlleleAbsent(B), EPS);
@@ -98,7 +98,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         for (final Pair<VariantContext, int[]> pair : vcWithExpectedCounts) {
             final VariantContext vc = pair.getLeft();
             final int[] expected = pair.getRight();
-            final int[] actual = afCalc.getLog10PNonRef(vc).getAlleleCountsOfMLE();
+            final int[] actual = afCalc.calculate(vc).getAlleleCountsOfMLE();
             Assert.assertEquals(actual, expected);
         }
     }
@@ -122,7 +122,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
 
         final List<VariantContext> vcsWithDifferentNumbersOfSamples = IntStream.range(1, 11)
                 .mapToObj(n -> makeVC(alleles, Collections.nCopies(n, AB))).collect(Collectors.toList());
-        final int[] counts = vcsWithDifferentNumbersOfSamples.stream().mapToInt(vc -> afCalc.getLog10PNonRef(vc).getAlleleCountAtMLE(B)).toArray();
+        final int[] counts = vcsWithDifferentNumbersOfSamples.stream().mapToInt(vc -> afCalc.calculate(vc).getAlleleCountAtMLE(B)).toArray();
         Assert.assertEquals(counts[0],0); // one sample
         Assert.assertEquals(counts[1],0); // two samples
         Assert.assertEquals(counts[4],2); // five samples
@@ -143,7 +143,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         for (final int numSamples : new int[] {100, 1000}) {
 
             final VariantContext vc = makeVC(alleles, Collections.nCopies(numSamples, AC));
-            final AFCalculationResult result = afCalc.getLog10PNonRef(vc);
+            final AFCalculationResult result = afCalc.calculate(vc);
             Assert.assertEquals(result.getAlleleCountAtMLE(B), 0);
             Assert.assertEquals(result.getAlleleCountAtMLE(C), numSamples);
 
@@ -183,7 +183,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         // since we maintain a flat allele frequency distribution, the probability of being ref as each successive sample is added
         // is multiplied by the probability of any one.  Thus we get an arithmetic series in log space
         final double[] log10PRefs = vcsWithDifferentNumbersOfSamples.stream()
-                .mapToDouble(vc -> afCalc.getLog10PNonRef(vc).getLog10PosteriorOfNoVariant()).toArray();
+                .mapToDouble(vc -> afCalc.calculate(vc).getLog10PosteriorOfNoVariant()).toArray();
 
         for (int n = 0; n < 9; n++) {
             Assert.assertEquals(log10PRefs[n+1] - log10PRefs[n], log10PRefs[0], 0.01);
@@ -200,7 +200,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
             final List<Genotype> genotypeList = new ArrayList<>(Collections.nCopies(numRef, AA));
             genotypeList.add(AB);
             final VariantContext vc = makeVC(alleles, genotypeList);
-            final double log10PRef = afCalc.getLog10PNonRef(vc).getLog10PosteriorOfNoVariant();
+            final double log10PRef = afCalc.calculate(vc).getLog10PosteriorOfNoVariant();
             Assert.assertTrue(log10PRef < (-EXTREMELY_CONFIDENT_PL/10) + Math.log10(numRef) + 1);
         }
     }
@@ -226,7 +226,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         // first test the span del genotype alone.  Its best PL containing the SNP is 100, so we expect a variant probability
         // of about 10^(-100/10) -- a bit less due to the prior bias in favor of the reference
         final VariantContext vcSpanDel = makeVC(alleles, Arrays.asList(spanDel));
-        final double log10PVariant = afCalc.getLog10PNonRef(vcSpanDel).getLog10PosteriorOfVariant();
+        final double log10PVariant = afCalc.calculate(vcSpanDel).getLog10PosteriorOfVariant();
         Assert.assertTrue(log10PVariant < - 10);
 
         // now test a realistic situation of two samples, one with a low-quality SNP and one with the spanning deletion
@@ -235,9 +235,9 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         // Furthermore, to be precise it should be really behave almost identically to a hom ref *haploid* sample,
         // so we check that, too
         final VariantContext vcLowQualSnp = makeVC(alleles, Arrays.asList(lowQualSNP));
-        final double lowQualSNPQualScore = afCalc.getLog10PNonRef(vcLowQualSnp).getLog10PosteriorOfVariant();
+        final double lowQualSNPQualScore = afCalc.calculate(vcLowQualSnp).getLog10PosteriorOfVariant();
         final VariantContext vcBoth = makeVC(alleles, Arrays.asList(lowQualSNP, spanDel));
-        final double bothQualScore = afCalc.getLog10PNonRef(vcBoth).getLog10PosteriorOfVariant();
+        final double bothQualScore = afCalc.calculate(vcBoth).getLog10PosteriorOfVariant();
         Assert.assertEquals(lowQualSNPQualScore, bothQualScore, 0.1);
         Assert.assertTrue(bothQualScore < lowQualSNPQualScore);
 
@@ -245,7 +245,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         final Genotype haploidRef = makeGenotype(1, haploidRefPls);
 
         final VariantContext vcLowQualSnpAndHaploidRef = makeVC(alleles, Arrays.asList(lowQualSNP, haploidRef));
-        final double lowQualSNPAndHaplpidRefQualScore = afCalc.getLog10PNonRef(vcLowQualSnpAndHaploidRef).getLog10PosteriorOfVariant();
+        final double lowQualSNPAndHaplpidRefQualScore = afCalc.calculate(vcLowQualSnpAndHaploidRef).getLog10PosteriorOfVariant();
         Assert.assertEquals(bothQualScore, lowQualSNPAndHaplpidRefQualScore, 1e-5);
 
         // as a final test, we check that getting rid of the spanning deletion allele, in the sense that
@@ -256,7 +256,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         final int[] snpPlsWithoutSpanDel = new int[] {10, 0, 40};
         final VariantContext vcNoSpanDel = makeVC(Arrays.asList(A,B), Arrays.asList(makeGenotype(ploidy, snpPlsWithoutSpanDel),
                 makeGenotype(1, haploidRefPlsWithoutSpanDel)));
-        final double noSpanDelQualScore = afCalc.getLog10PNonRef(vcNoSpanDel).getLog10PosteriorOfVariant();
+        final double noSpanDelQualScore = afCalc.calculate(vcNoSpanDel).getLog10PosteriorOfVariant();
         Assert.assertEquals(bothQualScore, noSpanDelQualScore, 1e-6);
     }
 
@@ -274,8 +274,8 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         final Genotype genotypeWithSpanDel = makeGenotype(ploidy, plsWithSpanDel);
         final VariantContext vcWithoutSpanDel = makeVC(allelesWithoutSpanDel, Arrays.asList(genotypeWithoutSpanDel));
         final VariantContext vcWithSpanDel = makeVC(allelesWithSpanDel, Arrays.asList(genotypeWithSpanDel));
-        final double log10PVariantWithoutSpanDel = afCalc.getLog10PNonRef(vcWithoutSpanDel).getLog10PosteriorOfVariant();
-        final double log10PVariantWithSpanDel = afCalc.getLog10PNonRef(vcWithSpanDel).getLog10PosteriorOfVariant();
+        final double log10PVariantWithoutSpanDel = afCalc.calculate(vcWithoutSpanDel).getLog10PosteriorOfVariant();
+        final double log10PVariantWithSpanDel = afCalc.calculate(vcWithSpanDel).getLog10PosteriorOfVariant();
         Assert.assertEquals(log10PVariantWithoutSpanDel, log10PVariantWithSpanDel, 0.0001);
     }
 
@@ -289,7 +289,7 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         // make PLs that don't support the alt allele
         final List<int[]> pls = Arrays.asList(new int[] {0,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000,10000,10000,10000,10000});
         final VariantContext vc = makeVC(alleles, pls.stream().map(pl -> makeGenotype(ploidy, pl)).collect(Collectors.toList()));
-        final double log10PVariant = afCalc.getLog10PNonRef(vc).getLog10PosteriorOfVariant();
+        final double log10PVariant = afCalc.calculate(vc).getLog10PosteriorOfVariant();
     }
 
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero

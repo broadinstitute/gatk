@@ -44,8 +44,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     private final AFPriorProvider log10AlleleFrequencyPriorsSNPs;
 
-    private final AFPriorProvider log10AlleleFrequencyPriorsIndels;
-
     private final List<SimpleInterval> upstreamDeletionsLoc = new LinkedList<>();
 
     private final boolean doAlleleSpecificCalcs;
@@ -70,8 +68,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
         log10AlleleFrequencyPriorsSNPs = composeAlleleFrequencyPriorProvider(numberOfGenomes,
                 configuration.genotypeArgs.snpHeterozygosity, configuration.genotypeArgs.inputPrior);
-        log10AlleleFrequencyPriorsIndels = composeAlleleFrequencyPriorProvider(numberOfGenomes,
-                configuration.genotypeArgs.indelHeterozygosity, configuration.genotypeArgs.inputPrior);
 
         final double refPseudocount = configuration.genotypeArgs.snpHeterozygosity / Math.pow(configuration.genotypeArgs.heterozygosityStandardDeviation,2);
         final double snpPseudocount = configuration.genotypeArgs.snpHeterozygosity * refPseudocount;
@@ -247,7 +243,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
 
         final AlleleFrequencyCalculator afCalculator = newAFCalculator;
-        final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy);
+        final AFCalculationResult AFresult = afCalculator.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc);
 
         // posterior probability that at least one alt allele exists in the samples
@@ -267,13 +263,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
-                && !forceSiteEmission()
-                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles)) {
-            // technically, at this point our confidence in a reference call isn't accurately estimated
-            //  because it didn't take into account samples with no data, so let's get a better estimate
-            final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
-            final int INDEX_FOR_AC_EQUALS_1 = 1;
-            return limitedContext ? null : estimateReferenceConfidence(vc, stratifiedContexts, AFpriors[INDEX_FOR_AC_EQUALS_1], true, probOfAtLeastOneAltAllele);
+                && !forceSiteEmission() && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles)) {
+            return null;
         }
 
         // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
@@ -560,30 +551,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 .sum();
 
         return new VariantCallContext(vc, passesCallThreshold(QualityUtils.phredScaleLog10CorrectRate(log10POfRef)), false);
-    }
-
-    /**
-     * Returns the log10 prior probability for all possible allele counts from 0 to N where N is the total number of
-     * genomes (total-ploidy).
-     *
-     * @param vc the target variant-context, use to determine the total ploidy thus the possible ACs.
-     * @param defaultPloidy default ploidy to be assume if we do not have the ploidy for some sample in {@code vc}.
-     * @param model the calculation model (SNP,INDEL or MIXED) whose priors are to be retrieved.
-     * @throws java.lang.NullPointerException if either {@code vc} or {@code model} is {@code null}
-     * @return never {@code null}, an array with exactly <code>total-ploidy(vc) + 1</code> positions.
-     */
-    protected final double[] getAlleleFrequencyPriors( final VariantContext vc, final int defaultPloidy, final GenotypeLikelihoodsCalculationModel model ) {
-        final int totalPloidy = GATKVariantContextUtils.totalPloidy(vc, defaultPloidy);
-        switch (model) {
-            case SNP:
-            case GENERALPLOIDYSNP:
-                return log10AlleleFrequencyPriorsSNPs.forTotalPloidy(totalPloidy);
-            case INDEL:
-            case GENERALPLOIDYINDEL:
-                return log10AlleleFrequencyPriorsIndels.forTotalPloidy(totalPloidy);
-            default:
-                throw new IllegalArgumentException("Unexpected GenotypeCalculationModel " + model);
-        }
     }
 
     /**
