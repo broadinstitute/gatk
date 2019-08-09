@@ -75,61 +75,6 @@ public final class EventMapUnitTest extends GATKBaseTest {
         }
     }
 
-    @DataProvider(name = "BlockSubstitutionsData")
-    public Object[][] makeBlockSubstitutionsData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        for ( int size = EventMap.MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION; size < 10; size++ ) {
-            final String ref = StringUtils.repeat("A", size);
-            final String alt = StringUtils.repeat("C", size);
-            tests.add(new Object[]{ref, alt, size + "M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1, Arrays.asList(ref, alt))});
-        }
-
-        tests.add(new Object[]{"AAAAAA", "GAGAGA", "6M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1, Arrays.asList("AAAAA", "GAGAG"))});
-        tests.add(new Object[]{"AAAAAA", "GAGAGG", "6M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1, Arrays.asList("AAAAAA", "GAGAGG"))});
-
-        for ( int len = 0; len < 10; len++ ) {
-            final String s = len == 0 ? "" : StringUtils.repeat("A", len);
-            tests.add(new Object[]{s + "AACCCCAA", s + "GAAG", len + 2 + "M4D2M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1 + len,   Arrays.asList("AACCCCAA", "GAAG"))});
-            tests.add(new Object[]{s + "AAAA", s + "GACCCCAG", len + 2 + "M4I2M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1 + len, Arrays.asList("AAAA", "GACCCCAG"))});
-
-            tests.add(new Object[]{"AACCCCAA" + s, "GAAG" + s, "2M4D" + (len + 2) + "M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1,   Arrays.asList("AACCCCAA", "GAAG"))});
-            tests.add(new Object[]{"AAAA" + s, "GACCCCAG" + s, "2M4I" + (len + 2) + "M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1, Arrays.asList("AAAA", "GACCCCAG"))});
-        }
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    /**
-     * Example testng test using MyDataProvider
-     */
-    @Test(dataProvider = "BlockSubstitutionsData")
-    public void testBlockSubstitutionsData(final String refBases, final String haplotypeBases, final String cigar, final VariantContext expectedBlock) {
-        final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.decode(cigar));
-        final GenomeLoc loc = new UnvalidatingGenomeLoc(CHR, 0, 1, refBases.length());
-        final EventMap ee = new EventMap(hap, refBases.getBytes(), loc, NAME, 1);
-        ee.replaceClumpedEventsWithBlockSubstitutions();
-        Assert.assertEquals(ee.getNumberOfEvents(), 1);
-        final VariantContext actual = ee.getVariantContexts().iterator().next();
-        Assert.assertTrue(new SimpleInterval(actual).equals(new SimpleInterval(expectedBlock)));
-        Assert.assertTrue(actual.getAlleles().equals(expectedBlock.getAlleles()));
-    }
-
-    @DataProvider(name = "AdjacentSNPIndelTest")
-    public Object[][] makeAdjacentSNPIndelTest() {
-        List<Object[]> tests = new ArrayList<>();
-
-        tests.add(new Object[]{"TT", "GCT", "1M1I1M", Arrays.asList(Arrays.asList("T", "GC"))});
-        tests.add(new Object[]{"GCT", "TT", "1M1D1M", Arrays.asList(Arrays.asList("GC", "T"))});
-        tests.add(new Object[]{"TT", "GCCT", "1M2I1M", Arrays.asList(Arrays.asList("T", "GCC"))});
-        tests.add(new Object[]{"GCCT", "TT", "1M2D1M", Arrays.asList(Arrays.asList("GCC", "T"))});
-        tests.add(new Object[]{"AAGCCT", "AATT", "3M2D1M", Arrays.asList(Arrays.asList("GCC", "T"))});
-        tests.add(new Object[]{"AAGCCT", "GATT", "3M2D1M", Arrays.asList(Arrays.asList("A", "G"), Arrays.asList("GCC", "T"))});
-        tests.add(new Object[]{"AAAAA", "AGACA", "5M", Arrays.asList(Arrays.asList("A", "G"), Arrays.asList("A", "C"))});
-
-        return tests.toArray(new Object[][]{});
-    }
-
     @DataProvider(name = "MNPTest")
     public Object[][] makeMNPTest() {
         List<Object[]> tests = new ArrayList<>();
@@ -156,24 +101,6 @@ public final class EventMapUnitTest extends GATKBaseTest {
         tests.add(new Object[]{"ACTTGC", "CATTCG", "6M", justZero,
                 Arrays.asList(Arrays.asList("A", "C"), Arrays.asList("C", "A"), Arrays.asList("G", "C"), Arrays.asList("C", "G"))});
         return tests.toArray(new Object[][]{});
-    }
-
-    /**
-     * Example testng test using MyDataProvider
-     */
-    @Test(dataProvider = "AdjacentSNPIndelTest")
-    public void testAdjacentSNPIndelTest(final String refBases, final String haplotypeBases, final String cigar, final List<List<String>> expectedAlleles) {
-        final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.decode(cigar));
-        final GenomeLoc loc = new UnvalidatingGenomeLoc(CHR, 0, 1, refBases.length());
-        final EventMap ee = new EventMap(hap, refBases.getBytes(), loc, NAME, 1);
-        ee.replaceClumpedEventsWithBlockSubstitutions();
-        Assert.assertEquals(ee.getNumberOfEvents(), expectedAlleles.size());
-        final List<VariantContext> actuals = new ArrayList<>(ee.getVariantContexts());
-        for ( int i = 0; i < ee.getNumberOfEvents(); i++ ) {
-            final VariantContext actual = actuals.get(i);
-            Assert.assertEquals(actual.getReference().getDisplayString(), expectedAlleles.get(i).get(0));
-            Assert.assertEquals(actual.getAlternateAllele(0).getDisplayString(), expectedAlleles.get(i).get(1));
-        }
     }
 
     @Test(dataProvider = "MNPTest")

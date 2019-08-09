@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
 import java.util.*;
@@ -240,56 +239,6 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         }
 
         return b.alleles(Arrays.asList(ref, alt)).make();
-    }
-
-    // TODO -- warning this is an O(N^3) algorithm because I'm just lazy.  If it's valuable we need to reengineer it
-    protected void replaceClumpedEventsWithBlockSubstitutions() {
-        if ( getNumberOfEvents() >= MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION) {
-            int lastStart = -1;
-            for ( boolean foundOne = true; foundOne; ) {
-                foundOne = false;
-                for ( final VariantContext vc : getVariantContexts() ) {
-                    if ( vc.getStart() > lastStart ) {
-                        lastStart = vc.getStart();
-                        final List<VariantContext> neighborhood = getNeighborhood(vc, 10);
-                        if ( updateToBlockSubstitutionIfBetter(neighborhood) ) {
-                            foundOne = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    protected boolean updateToBlockSubstitutionIfBetter(final List<VariantContext> neighbors) {
-        if (neighbors.size() < MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION)
-            return false;
-        // TODO -- need more tests to decide if this is really so good
-
-        final VariantContext first = neighbors.get(0);
-        final int refStartOffset = first.getStart() - refLoc.getStart();
-        final int refEndOffset = neighbors.get(neighbors.size() - 1).getEnd() - refLoc.getStart();
-
-        final byte[] refBases = Arrays.copyOfRange(ref, refStartOffset, refEndOffset + 1);
-        final byte[] hapBases = AlignmentUtils.getBasesCoveringRefInterval(refStartOffset, refEndOffset, haplotype.getBases(), haplotype.getAlignmentStartHapwrtRef(), haplotype.getCigar());
-
-        final VariantContextBuilder builder = new VariantContextBuilder(first);
-        builder.stop(first.getStart() + refBases.length - 1);
-        builder.alleles(Arrays.asList(Allele.create(refBases, true), Allele.create(hapBases)));
-        final VariantContext block = builder.make();
-
-        // remove all merged events
-        for ( final VariantContext merged : neighbors ) {
-            if ( remove(merged.getStart()) == null )
-                throw new IllegalArgumentException("Expected to remove variant context from the event map but remove said there wasn't any element there: " + merged);
-        }
-
-        // note must be after we remove the previous events as the treeset only allows one key per start
-        logger.info("Transforming into block substitution at " + block);
-        addVC(block, false);
-
-        return true;
     }
 
     /**
