@@ -242,32 +242,6 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
     }
 
     /**
-     * Get all of the variant contexts starting at leftMost that are within maxBP of each other
-     *
-     * @param leftMost the left most (smallest position) variant context that will start the neighborhood
-     * @param maxBPBetweenEvents the maximum distance in BP between the end of one event the start of the next
-     *                           to be included the the resulting list
-     * @return a list that contains at least one element (leftMost)
-     */
-    protected List<VariantContext> getNeighborhood(final VariantContext leftMost, final int maxBPBetweenEvents) {
-        final List<VariantContext> neighbors = new LinkedList<>();
-
-        VariantContext left = leftMost;
-        for ( final VariantContext vc : getVariantContexts() ) {
-            if ( vc.getStart() < leftMost.getStart() )
-                continue;
-
-            if ( vc.getStart() - left.getEnd() < maxBPBetweenEvents ) {
-                // this vc is within max distance to the end of the left event, so accumulate it
-                neighbors.add(vc);
-                left = vc;
-            }
-        }
-
-        return neighbors;
-    }
-
-    /**
      * Get the starting positions of events in this event map
      * @return
      */

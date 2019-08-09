@@ -20,61 +20,6 @@ public final class EventMapUnitTest extends GATKBaseTest {
     private final static String CHR = "20";
     private final static String NAME = "foo";
 
-    @DataProvider(name = "MyDataProvider")
-    public Object[][] makeMyDataProvider() {
-        List<Object[]> tests = new ArrayList<>();
-
-        final List<String> SNP_ALLELES = Arrays.asList("A", "C");
-        final List<String> INS_ALLELES = Arrays.asList("A", "ACGTGA");
-        final List<String> DEL_ALLELES = Arrays.asList("ACGTA", "C");
-        final List<List<String>> allAlleles = Arrays.asList(SNP_ALLELES, INS_ALLELES, DEL_ALLELES);
-        for ( final int leftNotClump : Arrays.asList(-1, 3) ) {
-            for ( final int middleNotClump : Arrays.asList(-1, 10, 500) ) {
-                for ( final int rightNotClump : Arrays.asList(-1, 1000) ) {
-                    for ( final int nClumped : Arrays.asList(3, 4) ) {
-                        for ( final List<List<String>> alleles : Utils.makePermutations(allAlleles, nClumped, true)) {
-                            final List<VariantContext> allVCS = new LinkedList<>();
-
-                            if ( leftNotClump != -1 ) allVCS.add(GATKVariantContextUtils.makeFromAlleles(NAME, CHR, leftNotClump, SNP_ALLELES));
-                            if ( middleNotClump != -1 ) allVCS.add(GATKVariantContextUtils.makeFromAlleles(NAME, CHR, middleNotClump, SNP_ALLELES));
-                            if ( rightNotClump != -1 ) allVCS.add(GATKVariantContextUtils.makeFromAlleles(NAME, CHR, rightNotClump, SNP_ALLELES));
-
-                            int clumpStart = 50;
-                            final List<VariantContext> vcs = new LinkedList<>();
-                            for ( final List<String> myAlleles : alleles ) {
-                                final VariantContext vc = GATKVariantContextUtils.makeFromAlleles(NAME, CHR, clumpStart, myAlleles);
-                                clumpStart = vc.getEnd() + 3;
-                                vcs.add(vc);
-                            }
-
-                            tests.add(new Object[]{new EventMap(new LinkedList<>(allVCS)), Collections.emptyList()});
-                            allVCS.addAll(vcs);
-                            tests.add(new Object[]{new EventMap(allVCS), vcs});
-                        }
-                    }
-                }
-            }
-        }
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    /**
-     * Example testng test using MyDataProvider
-     */
-    @Test(dataProvider = "MyDataProvider")
-    public void testGetNeighborhood(final EventMap eventMap, final List<VariantContext> expectedNeighbors) {
-        final VariantContext leftOfNeighors = expectedNeighbors.isEmpty() ? null : expectedNeighbors.get(0);
-
-        for ( final VariantContext vc : eventMap.getVariantContexts() ) {
-            final List<VariantContext> n = eventMap.getNeighborhood(vc, 5);
-            if ( leftOfNeighors == vc )
-                Assert.assertEquals(n, expectedNeighbors);
-            else if ( ! expectedNeighbors.contains(vc) )
-                Assert.assertEquals(n, Collections.singletonList(vc), "Should only contain the original vc but " + n);
-        }
-    }
-
     @DataProvider(name = "MNPTest")
     public Object[][] makeMNPTest() {
         List<Object[]> tests = new ArrayList<>();
