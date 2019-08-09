@@ -459,7 +459,8 @@ public final class SVDDenoisingUtils {
 
     private static void transformToFractionalCoverage(final RealMatrix matrix) {
         logger.info("Transforming read counts to fractional coverage...");
-        final double[] sampleSums = MathUtils.rowSums(matrix);
+        final double[] sampleSums = IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> MathUtils.sum(matrix.getRow(r))).toArray();
         matrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
             public double visit(int sampleIndex, int intervalIndex, double value) {

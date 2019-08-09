@@ -292,7 +292,7 @@ public class LearnReadOrientationModelEngine {
     private static double computeLogPosterior(final int altDepth, final int altF1R2Depth, final int depth,
                                               final double statePrior, final BetaDistributionShape afPseudoCounts,
                                               final BetaDistributionShape f1r2PseudoCounts){
-        Utils.validateArg(MathUtils.isAProbability(statePrior), String.format("statePrior must be a probability but got %f", statePrior));
+        Utils.validateArg(MathUtils.goodProbability(statePrior), String.format("statePrior must be a probability but got %f", statePrior));
 
         return Math.log(statePrior)
                 + new BetaBinomialDistribution(null, afPseudoCounts.getAlpha(), afPseudoCounts.getBeta(), depth).logProbability(altDepth)

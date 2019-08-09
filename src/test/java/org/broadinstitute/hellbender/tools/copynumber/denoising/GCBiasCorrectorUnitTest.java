@@ -5,8 +5,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -61,8 +62,11 @@ public final class GCBiasCorrectorUnitTest extends GATKBaseTest {
         //
         final RealMatrix correctedCoverage = readCounts.copy();
         GCBiasCorrector.correctGCBias(correctedCoverage, intervalGCContent);
-        final double[] correctedNoiseBySample = MathUtils.rowStdDevs(correctedCoverage);
-        Arrays.stream(correctedNoiseBySample).forEach(x -> Assert.assertTrue(x < NON_GC_BIAS_NOISE_LEVEL * MEAN_READ_DEPTH));
+        Utils.nonNull(correctedCoverage);
+        final Variance varianceEvaluator = new Variance();
+        final double[] stdDevsBySample = IntStream.range(0, correctedCoverage.getRowDimension())
+                .mapToDouble(r -> Math.sqrt(varianceEvaluator.evaluate(correctedCoverage.getRow(r)))).toArray();
+        Arrays.stream(stdDevsBySample).forEach(x -> Assert.assertTrue(x < NON_GC_BIAS_NOISE_LEVEL * MEAN_READ_DEPTH));
 
         //check that GC-bias correction is approximately idempotent -- if you correct again, very little should happen
         final RealMatrix recorrectedCoverage = correctedCoverage.copy();

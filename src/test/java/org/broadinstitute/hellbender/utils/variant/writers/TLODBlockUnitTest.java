@@ -40,7 +40,7 @@ public class TLODBlockUnitTest {
         final int[] expectedMedianDPs = new int[DPs.length];
         for (int i = 0; i < DPs.length; i++) {
             TLODs[i] = TLOD_TO_DP_RATIO * DPs[i];
-            expectedTLODs[i] = MathUtils.arrayMin(Arrays.copyOfRange(TLODs, 0, i + 1));
+            expectedTLODs[i] = Arrays.stream(Arrays.copyOfRange(TLODs, 0, i + 1)).min().getAsDouble();
             expectedMinDPs[i] = MathUtils.arrayMin(Arrays.copyOfRange(DPs, 0, i + 1));
             expectedMedianDPs[i] = MathUtils.median(Arrays.copyOfRange(DPs, 0, i + 1));
         }

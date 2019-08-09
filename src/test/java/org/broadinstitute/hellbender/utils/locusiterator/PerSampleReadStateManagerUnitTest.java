@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
@@ -114,7 +115,7 @@ public final class PerSampleReadStateManagerUnitTest extends LocusIteratorByStat
             int alignmentStart = 1;
 
             for ( int readsThisStack : readCountsPerAlignmentStart ) {
-                ArrayList<GATKRead> stackReads = new ArrayList<>(ArtificialReadUtils.createIdenticalArtificialReads(readsThisStack, header, "foo", 0, alignmentStart, MathUtils.randomIntegerInRange(50, 100)));
+                ArrayList<GATKRead> stackReads = new ArrayList<>(ArtificialReadUtils.createIdenticalArtificialReads(readsThisStack, header, "foo", 0, alignmentStart, Utils.getRandomGenerator().nextInt(51) + 50));
                 ArrayList<AlignmentStateMachine> stackRecordStates = new ArrayList<>();
 
                 for ( GATKRead read : stackReads ) {
