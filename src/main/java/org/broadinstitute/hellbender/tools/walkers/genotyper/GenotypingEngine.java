@@ -247,18 +247,18 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
 
         final AlleleFrequencyCalculator afCalculator = newAFCalculator;
-        final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy, maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
+        final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc);
 
         // posterior probability that at least one alt allele exists in the samples
-        final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.getLog10PosteriorOfAFGT0());
+        final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.getLog10PosteriorOfVariant());
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
                 ! outputAlternativeAlleles.siteIsMonomorphic ||
                         configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES || configuration.annotateAllSitesWithPLs
-                        ? AFresult.getLog10PosteriorOfAFEq0() + 0.0
-                        : AFresult.getLog10PosteriorOfAFGT0() + 0.0 ;
+                        ? AFresult.getLog10PosteriorOfNoVariant() + 0.0
+                        : AFresult.getLog10PosteriorOfVariant() + 0.0 ;
 
 
         // Add 0.0 removes -0.0 occurrences.
@@ -380,7 +380,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
                 final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
-                final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
+                final boolean isPlausible = afCalculationResult.isPolymorphic(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
 
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
@@ -641,12 +641,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             if (AFresult.getAllelesUsedInGenotyping().size() > 2) {
                 for (final Allele a : allAllelesToUse) {
                     if (a.isNonReference()) {
-                        perAlleleQuals.add(AFresult.getLog10PosteriorOfAFEq0ForAllele(a));
+                        perAlleleQuals.add(AFresult.getLog10PosteriorOfAlleleAbsent(a));
                     }
                 }
             }
             else {
-                perAlleleQuals.add(AFresult.getLog10PosteriorOfAFEq0());
+                perAlleleQuals.add(AFresult.getLog10PosteriorOfNoVariant());
             }
 
             attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals);
