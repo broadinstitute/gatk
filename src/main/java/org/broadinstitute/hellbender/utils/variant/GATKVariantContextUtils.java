@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
@@ -1327,81 +1326,6 @@ public final class GATKVariantContextUtils {
         if ( vc1.getEnd() != vc2.getEnd() ) return false;
         if ( !vc1.getContig().equals(vc2.getContig())) return false;
         return vc1.getAlleles().equals(vc2.getAlleles());
-    }
-
-    /**
-     * Returns the absolute 0-based index of an allele.
-     *
-     * <p/>
-     * If the allele is equal to the reference, the result is 0, if it equal to the first alternative the result is 1
-     * and so forth.
-     * <p/>
-     * Therefore if you want the 0-based index within the alternative alleles you need to do the following:
-     *
-     * <p/>
-     * You can indicate whether the Java object reference comparator {@code ==} can be safelly used by setting {@code useEquals} to {@code false}.
-     *
-     * @param vc the target variant context.
-     * @param allele the target allele.
-     * @param ignoreRefState whether the reference states of the allele is important at all. Has no effect if {@code useEquals} is {@code false}.
-     * @param considerRefAllele whether the reference allele should be considered. You should set it to {@code false} if you are only interested in alternative alleles.
-     * @param useEquals whether equal method should be used in the search: {@link Allele#equals(Allele,boolean)}.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null}.
-     * @return {@code -1} if there is no such allele that satify those criteria, a value between 0 and {@link VariantContext#getNAlleles()} {@code -1} otherwise.
-     */
-    public static int indexOfAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState, final boolean considerRefAllele, final boolean useEquals) {
-        Utils.nonNull(allele);
-        return useEquals ? indexOfEqualAllele(vc,allele,ignoreRefState,considerRefAllele) : indexOfSameAllele(vc,allele,considerRefAllele);
-    }
-
-    /**
-     * Returns the relative 0-based index of an alternative allele.
-     * <p/>
-     * The the query allele is the same as the first alternative allele, the result is 0,
-     * if it is equal to the second 1 and so forth.
-     *
-     *
-     * <p/>
-     * Notice that the ref-status of the query {@code allele} is ignored.
-     *
-     * @param vc the target variant context.
-     * @param allele the query allele.
-     * @param useEquals  whether equal method should be used in the search: {@link Allele#equals(Allele,boolean)}.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null}.
-     *
-     * @return {@code -1} if there is no such allele that satisfy those criteria, a value between 0 and the number
-     *  of alternative alleles - 1.
-     */
-    public static int indexOfAltAllele(final VariantContext vc, final Allele allele, final boolean useEquals) {
-        final int absoluteIndex = indexOfAllele(vc,allele,true,false,useEquals);
-        return absoluteIndex == -1 ? -1 : absoluteIndex - 1;
-    }
-
-    // Implements index search using equals.
-    private static int indexOfEqualAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState,
-                                          final boolean considerRefAllele) {
-        int i = 0;
-        for (final Allele a : vc.getAlleles())
-            if (a.equals(allele,ignoreRefState))
-                return i == 0 ? (considerRefAllele ? 0 : -1) : i;
-            else
-                i++;
-        return -1;
-    }
-
-    // Implements index search using ==.
-    private static int indexOfSameAllele(final VariantContext vc, final Allele allele, final boolean considerRefAllele) {
-        int i = 0;
-
-        for (final Allele a : vc.getAlleles())
-            if (a == allele)
-                return i == 0 ? (considerRefAllele ? 0 : -1) : i;
-            else
-                i++;
-
-        return -1;
     }
 
     /**
