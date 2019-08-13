@@ -157,7 +157,13 @@ public final class ReadThreadingAssembler {
                 } else {
                     sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
                     ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).generateJunctionTrees();
+                    if (debugGraphTransformations) {
+                        result.getThreadingGraph().printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + result.getKmerSize() + ".0.4.JT_unpruned.dot"), 10000);
+                    }
                     ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
+                    if (debugGraphTransformations) {
+                        result.getThreadingGraph().printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + result.getKmerSize() + ".0.5.JT_pruned.dot"), 10000);
+                    }
                     // add it to graphs with meaningful non-reference features
                     assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
                     nonRefRTGraphs.add(result.getThreadingGraph());
