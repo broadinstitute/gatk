@@ -561,4 +561,65 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         Assert.assertEquals(readReport2.getVariations(),
                 Collections.singletonList(new SNV(3, CALL_T, CALL_A, QUAL_30)));
     }
+
+    @Test
+    public void testFindLargeDeletions() {
+        AnalyzeSaturationMutagenesis.minAltLength = 2;
+        AnalyzeSaturationMutagenesis.findLargeDels = true;
+        final SAMFileHeader header =
+                ArtificialReadUtils.createArtificialSamHeader(1, 0, 17);
+        final byte[] bases = new byte[10];
+        System.arraycopy(refSeq, 0, bases, 0, 5);
+        System.arraycopy(refSeq, 12, bases, 5, 5);
+        final byte[] quals = new byte[10];
+        Arrays.fill(quals, QUAL_30);
+
+        // OK: primary preceeds supplementary
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases, quals, "5M5S");
+        read1.setAttribute("SA", "0,13,+,5S5M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read1).toString(), "5M7D5M");
+
+        // OK: supplementary preceeds primary
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 13,
+                bases, quals, "5S5M");
+        read2.setAttribute("SA", "0,1,+,5M5S,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read2).toString(), "5M7D5M");
+
+        // too much overlap on read
+        final GATKRead read3 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases, quals, "6M4S");
+        read3.setAttribute("SA", "0,11,+,3S7M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read3).toString(), "6M4S");
+
+        // too far apart on read
+        final GATKRead read4 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases, quals, "3M7S");
+        read4.setAttribute("SA", "0,14,+,6S4M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read4).toString(), "3M7S");
+
+        // wrong strand
+        final GATKRead read5 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases, quals, "5M5S");
+        read5.setAttribute("SA", "0,13,-,5S5M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read5).toString(), "5M5S");
+
+        // wrong order
+        final GATKRead read6 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 13,
+                bases, quals, "5M5S");
+        read6.setAttribute("SA", "0,1,+,5S5M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read6).toString(), "5M5S");
+
+        // OK: 1-base overlap on read
+        final GATKRead read7 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases, quals, "6M4S");
+        read7.setAttribute("SA", "0,13,+,5S5M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read7).toString(), "6M7D4M");
+
+        // OK: 1-base separation on read
+        final GATKRead read8 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases, quals, "4M6S");
+        read8.setAttribute("SA", "0,13,+,5S5M,60,0;");
+        Assert.assertEquals(AnalyzeSaturationMutagenesis.ReadReport.findLargeDeletions(read8).toString(), "4M7D6M");
+    }
 }
