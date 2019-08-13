@@ -371,7 +371,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
     @VisibleForTesting
     static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, int mergedAllelesListSizeBeforePossibleTrimming, ReadLikelihoods<Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine) {
-        final SimpleInterval locus = new SimpleInterval(mergedVC.getContig());
+        final SimpleInterval locus = new SimpleInterval(mergedVC);
         final SimpleInterval refLocInterval= new SimpleInterval(refLoc);
         final ReferenceDataSource refData = new ReferenceMemorySource(new ReferenceBases(ref, refLocInterval), header.getSequenceDictionary());
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
@@ -379,7 +379,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
 
         // NOTE: We choose to reverseTrimAlleles() here as opposed to when we actually do the trimming because otherwise we would have to resolve
-        //       the mismatching readAlleleLikelihoods object which is keyed to the old, possibly incorrectly trimmed alleles. 
+        //       the mismatching readAlleleLikelihoods object which is keyed to the old, possibly incorrectly trimmed alleles.
         return untrimmedResult.getAlleles().size() == mergedAllelesListSizeBeforePossibleTrimming ? untrimmedResult
                 : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
     }
