@@ -23,7 +23,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     public JTBestHaplotype(final JTBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {
         super(p, edgesToExtend, edgePenalty);
         treesInQueue = p.treesInQueue.clone();
-        decisionEdgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.decisionEdgesTakenSinceLastJunctionTreeEvidence + 1;
+        decisionEdgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : p.decisionEdgesTakenSinceLastJunctionTreeEvidence;
     }
 
     // Constructor to be used for internal calls from {@link #getApplicableNextEdgesBasedOnJunctionTrees()}
@@ -41,6 +41,10 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         super(initialVertex, graph);
         treesInQueue = new JunctionTreeView();
         decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
+    }
+
+    public boolean hasJunctionTreeEvidence() {
+        return treesInQueue.hasJunctionTreeEvidence();
     }
 
     //TODO this needs to be the same logic as the blow method, this is temporary

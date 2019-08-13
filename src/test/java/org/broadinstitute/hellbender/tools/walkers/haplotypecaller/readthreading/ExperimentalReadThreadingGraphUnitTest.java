@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -20,7 +21,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
-    //TODO these tests are currently just copy pasted from ReadThreadingGraphUnitTests, this should be rectified.
     //TODO test for newSmithWatermanAlignmentMode
 
     @DataProvider (name = "loopingReferences")
@@ -38,13 +38,60 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         assembler.buildGraphIfNecessary();
-//        for (int i = 1; i + kmerSize < ref.length(); i++) {
-            List<MultiDeBruijnVertex> refVertexes = assembler.getReferencePath(assembler.findKmer(new Kmer(ref.getBytes(), 0, kmerSize)), ReadThreadingGraph.TraversalDirection.downwards, Optional.empty());
-            final StringBuilder builder = new StringBuilder(refVertexes.get(0).getSequenceString());
-            refVertexes.stream().skip(1).forEach(v -> builder.append(v.getSuffixString()));
-            Assert.assertEquals(builder.toString(), ref);
-//        }
+        List<MultiDeBruijnVertex> refVertexes = assembler.getReferencePath(assembler.findKmer(new Kmer(ref.getBytes(), 0, kmerSize)), ReadThreadingGraph.TraversalDirection.downwards, Optional.empty());
+        final StringBuilder builder = new StringBuilder(refVertexes.get(0).getSequenceString());
+        refVertexes.stream().skip(1).forEach(v -> builder.append(v.getSuffixString()));
+        Assert.assertEquals(builder.toString(), ref);
     }
+
+    @Test
+    // This test is intended to assert that a potentially dangerous infinite loop is closed
+    public void testDanglingEndRecoveryInfiniteHeadLoop() {
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final String ref = "AACTGGGCTAGAGAGCGTT";
+        final String loopingDanglingHead = "TTCGAAGGTCGAAG"; // "TCGAA" is repeated, causing dangling head recovery to fail
+
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(ref), false);
+        // Coverage = 3, thus above the prune factor of 2
+        assembler.addSequence("loopingUnconecetedHead", getBytes(loopingDanglingHead), false);
+        assembler.addSequence("loopingUnconecetedHead", getBytes(loopingDanglingHead), false);
+        assembler.addSequence("loopingUnconecetedHead", getBytes(loopingDanglingHead), false);
+
+        // This graph should have generated 3 junction trees (one at GAAAA, one at TCGGG, and one at AATCG)
+        assembler.buildGraphIfNecessary();
+
+        //Try dangling head recovery (this might have infinitely looped if we are not careful)
+        assembler.recoverDanglingHeads(2, 0, true, SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA));
+
+        Assert.assertTrue(true, "If we reached here than the above code didn't infinitely loop");
+    }
+
+    @Test
+    // As above, pruning the dangling end recovery path can cause the infinite loop recovery to fall over
+    public void testDanglingEndRecoveryInfiniteHeadLoopWithPruning() {
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final String ref = "AACTGGGCTAGAGAGCGTT";
+        final String loopingDanglingHead = "TTCGAAGGTCGAA"; // "TCGAA" is repeated, causing dangling head recovery to fail
+        final String loopingDanglingHeadShortened = "TTCGAAGGTC"; // "TCGAA" is repeated, causing dangling head recovery to fail
+
+
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(ref), false);
+        assembler.addSequence("loopingUnconecetedHead", getBytes(loopingDanglingHead), false);
+        assembler.addSequence("loopingUnconecetedHead", getBytes(loopingDanglingHead), false);
+        // Now the some of the kimers in the infinite loop should have < 3 coverage, causing pruning to kick in
+        assembler.addSequence("loopingUnconecetedHead", getBytes(loopingDanglingHeadShortened), false);
+
+        // This graph should have generated 3 junction trees (one at GAAAA, one at TCGGG, and one at AATCG)
+        assembler.buildGraphIfNecessary();
+
+        //Try dangling head recovery (this might have infinitely looped if we are not careful)
+        assembler.recoverDanglingHeads(3, 0, true, SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA));
+
+        Assert.assertTrue(true, "If we reached here than the above code didn't infinitely loop");
+    }
+
 
     @Test
     public void testKirensTestExample() {
@@ -155,7 +202,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 7);
+        Assert.assertEquals(junctionTrees.size(), 6);
 
         ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("CCGA")));
         ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TCGA")));
@@ -271,6 +318,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     }
 
     @Test
+    // NOTE this test is less useful now that the starting JT has been removed
     public void testSimpleJunctionTreeIncludeRefInJunctionTreeNoWithStartEndChanges() {
         final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
         String ref = "GGGAAATTTCCCGGG"; // Reads span to the start/stop of the ref, thus we have to worry about symbolic alleles
@@ -290,20 +338,17 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 3);
+        Assert.assertEquals(junctionTrees.size(), 2);
 
         ExperimentalReadThreadingGraph.ThreadingTree starttree = junctionTrees.get(assembler.findKmer(new Kmer("GGGAA")));
         ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCC")));
         ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
         //NOTE there is no "TTCCC" edge here because it only existed as a reference path
-        Assert.assertNotNull(starttree); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
 
-        List<String> starttreeChoices = starttree.getPathsPresentAsBaseChoiceStrings();
         List<String> tree1Choices = tree1.getPathsPresentAsBaseChoiceStrings();
         List<String> tree2Choices = tree2.getPathsPresentAsBaseChoiceStrings();
-        Assert.assertEquals(starttreeChoices, Collections.singletonList("A"));
         Assert.assertEquals(tree1Choices, Collections.singletonList("_"));
         Assert.assertEquals(tree2Choices, Collections.singletonList("_"));
     }
@@ -358,7 +403,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 3); //
+        Assert.assertEquals(junctionTrees.size(), 2); //
 
         ExperimentalReadThreadingGraph.ThreadingTree outsideTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
         ExperimentalReadThreadingGraph.ThreadingTree insideTree = junctionTrees.get(assembler.findKmer(new Kmer("TAAAT")));
@@ -387,7 +432,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 3); //
+        Assert.assertEquals(junctionTrees.size(), 2); //
 
         ExperimentalReadThreadingGraph.ThreadingTree outsideTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
         ExperimentalReadThreadingGraph.ThreadingTree insideTree = junctionTrees.get(assembler.findKmer(new Kmer("TAAAT")));
@@ -465,7 +510,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     }
 
     @Test(enabled = ! DEBUG)
-    // NOTE that now we do not count the reference as edge multiplicity
+    // NOTE that now we do still count the reference as edge multiplicity
     public void testCountingOfStartEdges() {
         final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(3);
         final String ref   = "NNNGTCAAA"; // ref has some bases before start
@@ -481,9 +526,9 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
             final MultiDeBruijnVertex target = assembler.getEdgeTarget(edge);
             final boolean headerVertex = source.getSuffix() == 'N' || target.getSuffix() == 'N';
             if ( headerVertex ) {
-                Assert.assertEquals(edge.getMultiplicity(), 0, "Bases in the unique reference header should have multiplicity of 0");
+                Assert.assertEquals(edge.getMultiplicity(), 1, "Bases in the unique reference header should have multiplicity of 0");
             } else {
-                Assert.assertEquals(edge.getMultiplicity(), 1, "Should have multiplicity of 1 for any edge outside the ref header but got " + edge + " " + source + " -> " + target);
+                Assert.assertEquals(edge.getMultiplicity(), 2, "Should have multiplicity of 1 for any edge outside the ref header but got " + edge + " " + source + " -> " + target);
             }
         }
     }
@@ -512,7 +557,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
             if (source.getSequenceString().equals("GTC") && target.getSequenceString().equals("TCA")) {
                 expected = 1;
             } else {
-                expected = oneCountVertices.contains(target.getSequenceString()) ? 1 : (twoCountVertices.contains(target.getSequenceString()) ? 2 : 0);
+                expected = oneCountVertices.contains(target.getSequenceString()) ? 2 : (twoCountVertices.contains(target.getSequenceString()) ? 3 : 1);
             }
             Assert.assertEquals(edge.getMultiplicity(), expected, "Bases at edge " + edge + " from " + source + " to " + target + " has bad multiplicity");
         }

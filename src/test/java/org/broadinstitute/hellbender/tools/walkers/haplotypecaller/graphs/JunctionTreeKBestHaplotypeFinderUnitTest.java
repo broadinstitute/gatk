@@ -29,7 +29,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
                 new Object[]{"GACACACAGTCA", 3, 8, true}, //ACA and CAC are repeated, 9 is enough bases to span the path
                 new Object[]{"GACACACAGTCA", 3, 5, false}, //ACA and CAC are repeated, 8 is not
                 new Object[]{"GACACTCACGCACGG", 3, 6, true}, //CAC repeated thrice, showing that the loops are handled somewhat sanely
-                new Object[]{"GACATCGACGG", 3, 11, true}, //GAC repeated twice, starting with GAC, can it recover the reference if it starts on a repeated kmer
+                new Object[]{"GACATCGACGG", 3, 11, false}, //GAC repeated twice, starting with GAC, can it recover the reference if it starts on a repeated kmer (should not be recoverable based on our decisions)
                 new Object[]{"GACATCGACGG", 3, 6, false}, //With non-unique reference start we fall over for looping structures
                 new Object[]{"GACATCGACGG", 3, 6, false}, //reads too short to be resolvable
                 new Object[]{"GACATCACATC", 3, 8, true}, //final kmer ATC is repeated, can we recover the reference for repating final kmer
@@ -63,13 +63,15 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         if (resolvable) {
             Assert.assertEquals(bestPaths.size(), 1);
         } else {
-            Assert.assertEquals(bestPaths.size(), 5);
+            Assert.assertTrue(bestPaths.size() > 1);
         }
     }
 
-    @Test
+    @Test (enabled = false) //TODO this test needs to be reconsidered, this is the "baby thrown out with the bathwater" for ignoring reference weight edges wherever possible,
+    // todo                             this loop becomes unresolvable because there is no evidence for the path out of the loop so the chain stops expanding after a point
     // Asserting that for a very degenerate looping case (the only weight resides in the loop (which could happen due to non-unique kmers for unmerged dangling ends)
     // note that this particular case is recovered by virtue of the fact that the reference path itself has weight
+    // This test asserts that ref path weight is still taken into accoun
     public void testDegenerateLoopingCase() {
         final String ref = "GACACTCACGCACGG";
         final int kmerSize = 3;
@@ -95,6 +97,30 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     }
 
     @Test
+    // This test demonstrates a potential source of infinite looping, specifically the chain extension
+    public void testDegernerateLoopingDanglingEndInChainGatheringCode() {
+        final String ref = "GACACTCACGCACGGCC";
+        final String alt = "GACACTCACCCCCCCCC"; // the alt ends with a looping and un-escpaed string that is repetative, this will make a path that has no hope of escape (RUN!)
+        final int kmerSize = 5;
+        final int readlength = 8;
+
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(kmerSize);
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        // Add "reads" to the graph
+        for (int i = 0; i + readlength < ref.length(); i ++) {
+            assembler.addSequence("anonymous", Arrays.copyOfRange(getBytes(alt), i, i + readlength), false);
+        }
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+        assembler.pruneJunctionTrees(1);
+
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThresholdToUse(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+
+        Assert.assertTrue(true, "This case could have infinitely looped because the junction trees were all uninformative and pruned on the poly-C branch. There is no condition to stop because the junction tree was removed by pruning");
+    }
+
+    @Test
     // Asserting that for a very degenerate looping case (the only weight resides in the loop (which could happen due to non-unique kmers for unmerged dangling ends)
     // note that this particular case is recovered by virtue of the fact that the reference path itself has weight
     public void testDegernerateLoopingDanglingEnd() {
@@ -115,16 +141,69 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThresholdToUse(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
-        // For this graph strucutre, there is no evidence whatsoever that a path follow the reference, unfortunately this means we can currently not recover the loop in the alt
+        // For this graph structure, there is no evidence whatsoever that a path follow the reference, unfortunately this means we can currently not recover the loop in the alt
         Assert.assertTrue(bestPaths.isEmpty());
 
     }
 
-    // TODO add another test that checks edge cases and alerts future generations to the risks of the "days since last JT node" risk
-//    @Test
-//    public void testPathTerminationBasedOnDistanceFromLastHaplotype() {
-//        alsdkfja;ldfjks
-//    }
+    @Test
+    // Due to there being no JT covering the reference, we assert that we are only finding the read supported alt path despite the reference path being a reasonable start path
+    public void testJunctionTreeRefusesToFollowReferencePathUnlessThereIsNoChoice() {
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(4);
+        String ref = "AAAACAC"+"CCGA"+"ATGTGGGG"+"A"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
+
+        // A simple snip het
+        String read1 = "AAAACAC"+"TCGA"+"CTGTGGGG"+"C"+"GGGTT"; // CGAC merges with the below read
+        String read2 = "AAAACAC"+"TCGA"+"CTGTGGGG"+"C"+"GGGTT"; // CGAC merges with the above read
+
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(read1), false);
+        assembler.addSequence("anonymous", getBytes(read2), false);
+
+        assembler.generateJunctionTrees();
+
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThresholdToUse(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+
+        Assert.assertEquals(bestPaths.size(), 1);
+        Assert.assertEquals(new String(bestPaths.get(0).getBytes()), read1);
+    }
+
+    @Test
+    // This test asserts the current behavior towards junction tree ending because of insufficient junction tree data, if we are past our point of junction tree evidence we will fail
+    // to find paths, thus this test documents the limitations therein.
+    public void testPathTerminationBasedOnDistanceFromLastHaplotype() {
+        final ExperimentalReadThreadingGraph assembler1 = new ExperimentalReadThreadingGraph(6);
+        final ExperimentalReadThreadingGraph assembler2 = new ExperimentalReadThreadingGraph(6);
+
+        String ref =  "AAACAC"+"C"+"ATGGCGG"+"A"+"GGAGTT"+"T"+"GCTCGAA"+"G"+"GGCGTA"+"C"+"CCTACCT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
+        String alt1 = "AAACAC"+"A"+"ATGGCGG"+"T"+"GGAGTT"+"G"+"GCTCGAA"+"A"+"GGCGTA"+"G"+"CCTACCT";
+        String alt2 = "AAACAC"+"A"+"ATGGCGG"+"T"+"GGAGTT"+"G"+"GCTCGAA"+"A"+"GGCGTA"+"C"+"CCTACCT"; //No expansion of the last path
+
+        assembler1.addSequence("anonymous", getBytes(ref), true);
+        assembler2.addSequence("anonymous", getBytes(ref), true);
+        // Add short sequences of reads to generate the appropriate alt paths
+        for (int i = 0; i + 6 < ref.length(); i ++) {
+            assembler1.addSequence("anonymous", Arrays.copyOfRange(getBytes(alt1), i, i + 7), false);
+            assembler2.addSequence("anonymous", Arrays.copyOfRange(getBytes(alt2), i, i + 7), false);
+        }
+
+        assembler1.generateJunctionTrees();
+        assembler2.generateJunctionTrees();
+        // Assert that the trees are all pointless
+        assembler1.getReadThreadingJunctionTrees(false).values().forEach(tree -> Assert.assertTrue(tree.getRootNode().isEmpty()));
+        assembler2.getReadThreadingJunctionTrees(false).values().forEach(tree -> Assert.assertTrue(tree.getRootNode().isEmpty()));
+
+        // We had to close out our paths because none of the junction trees are informative and there are 4 decisions to make
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler1).setWeightThresholdToUse(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+        Assert.assertEquals(bestPaths.size(), 0);
+
+        // We didn't have to close out our paths because there were < 4 decisions made without junction trees, thus we do recover the path
+        final List<String> bestPaths2 = new JunctionTreeKBestHaplotypeFinder<>(assembler2).setWeightThresholdToUse(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+        Assert.assertEquals(bestPaths2.size(), 1);
+    }
 
     @Test
     // This is a test enforcing that the behavior around nodes are both outDegree > 1 while also having downstream children with inDegree > 1.
@@ -145,7 +224,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 11);
+        Assert.assertEquals(junctionTrees.size(), 10);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -179,7 +258,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 11);
+        Assert.assertEquals(junctionTrees.size(), 10);
 
         JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -216,7 +295,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 7);
+        Assert.assertEquals(junctionTrees.size(), 6);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -248,7 +327,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 3);
+        Assert.assertEquals(junctionTrees.size(), 2);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThresholdToUse(3);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -280,7 +359,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 2);
+        Assert.assertEquals(junctionTrees.size(), 1);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -313,7 +392,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 2); //TODO this will become 2 once the change is implemented
+        Assert.assertEquals(junctionTrees.size(), 1); //TODO this will become 2 once the change is implemented
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -346,7 +425,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 2);
+        Assert.assertEquals(junctionTrees.size(), 1);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -379,7 +458,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 3);
+        Assert.assertEquals(junctionTrees.size(), 2);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         Assert.assertEquals(finder.sources.size(), 1);
@@ -458,7 +537,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 7);
+        Assert.assertEquals(junctionTrees.size(), 6);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
         finder.setWeightThresholdToUse(0);
@@ -952,15 +1031,12 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         @SuppressWarnings("all")
         final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = new JunctionTreeKBestHaplotypeFinder<>(graph, refSource, refEnd).findBestHaplotypes();
 
-        Assert.assertEquals(paths.size(), 2);
+        Assert.assertEquals(paths.size(), 1);
 
-        final Path<MultiDeBruijnVertex, MultiSampleEdge> refPath = paths.get(0);
-        final Path<MultiDeBruijnVertex, MultiSampleEdge> altPath = paths.get(1);
+        final Path<MultiDeBruijnVertex, MultiSampleEdge> altPath = paths.get(0);
 
-        final String refString = "AAATTTGGGCCCTT";
         final String altString = "AAATTTGCGCCCTT";
 
-        Assert.assertEquals(refPath.getBases(), refString.getBytes());
         Assert.assertEquals(altPath.getBases(), altString.getBytes());
     }
 

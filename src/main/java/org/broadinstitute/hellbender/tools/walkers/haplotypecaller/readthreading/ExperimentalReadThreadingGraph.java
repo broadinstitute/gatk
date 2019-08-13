@@ -215,10 +215,6 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
     // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
     private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
-        // The reference source vertex warrants a junction tree
-        if (getReferenceSourceVertex() == vertex) {
-            return false;
-        }
 
         for (MultiSampleEdge edge : outgoingEdgesOf(vertex)) {
             if (inDegreeOf(getEdgeTarget(edge)) > 1) {

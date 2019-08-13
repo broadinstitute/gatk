@@ -398,7 +398,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
     /**
      * Try to recover dangling tails
      *
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
      * @param recoverAll recover even branches with forks
      * @param aligner
@@ -426,7 +426,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
     /**
      * Try to recover dangling heads
      *
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
      * @param recoverAll recover even branches with forks
      * @param aligner
@@ -459,7 +459,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * Attempt to attach vertex with out-degree == 0 to the graph
      *
      * @param vertex the vertex to recover
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
      * @param aligner
      * @return 1 if we successfully recovered the vertex and 0 otherwise
@@ -485,7 +485,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * Attempt to attach vertex with in-degree == 0, or a vertex on its path, to the graph
      *
      * @param vertex the vertex to recover
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
      * @param recoverAll recover even branches with forks
      * @param aligner
@@ -589,7 +589,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      *
      * @param aligner
      * @param vertex   the sink of the dangling chain
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param recoverAll recover even branches with forks
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
@@ -622,7 +622,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      *
      * @param aligner
      * @param vertex   the source of the dangling head
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param recoverAll recover even branches with forks
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
@@ -653,7 +653,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * Note that nodes are excluded if their pruning weight is less than the pruning factor.
      *
      * @param vertex   the original vertex
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param giveUpAtBranch stop trying to find a path if a vertex with multiple incoming or outgoing edge is found
      * @return the path if it can be determined or null if this vertex either doesn't merge onto another path or
      *  has an ancestor with multiple incoming edges before hitting the reference path
@@ -704,7 +704,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * Finds a path starting from a given vertex and satisfying various predicates
      *
      * @param vertex   the original vertex
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param done test for whether a vertex is at the end of the path
      * @param returnPath test for whether to return a found path based on its terminal vertex
      * @param nextEdge function on vertices returning the next edge in the path
@@ -717,7 +717,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
                                             final Function<MultiDeBruijnVertex, MultiSampleEdge> nextEdge,
                                             final Function<MultiSampleEdge, MultiDeBruijnVertex> nextNode){
         final LinkedList<MultiDeBruijnVertex> path = new LinkedList<>();
-        final Set<MultiDeBruijnVertex> visitedNodes = new HashSet<>();
+        final Set<MultiDeBruijnVertex> visitedNodes = new HashSet<>(); // This code is necessary to
 
         MultiDeBruijnVertex v = vertex;
         while ( ! done.test(v) ) {

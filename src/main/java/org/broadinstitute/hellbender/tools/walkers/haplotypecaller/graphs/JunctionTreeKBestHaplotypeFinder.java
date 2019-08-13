@@ -12,6 +12,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
     public static final int DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED = 2;
     public static final int DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE = 4;
+    public static final int DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH = 10;
     private int weightThresholdToUse = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
@@ -99,9 +100,11 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             // This safeguards against infinite loops and degenerate excessively long paths, only allow 4 decisions without junction tree guidance
             if (pathToExtend.getDecisionEdgesTakenSinceLastJunctionTreeEvidence() > DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE) {
-                break;
+                continue;
             }
-
+            ////////////////////////////////////////////////////////////
+            // code to discover where the next interesting node is
+            ////////////////////////////////////////////////////////////
             V vertexToExtend = pathToExtend.getLastVertex();
             Set<E> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
 
@@ -112,9 +115,13 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                 // Keep going until we reach a fork, reference sink, or fork
                 while ( outgoingEdges.size() == 1 && // Case (2)
                         experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) == null && // Case (1)
-                        !sinks.contains(vertexToExtend)) // Case (3)
+                        !sinks.contains(vertexToExtend))// Case (3)
                     {
                     final E edge = outgoingEdges.iterator().next();
+                    // Defensive check for looping edges, don't extend the chain in such a way as to create loops, let other code handle that
+                    if (chain.contains(edge)) {
+                        break;
+                    }
                     chain.add(edge);
                     vertexToExtend = graph.getEdgeTarget(edge);
                     outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
@@ -129,17 +136,19 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             }
             // vertexToExtend and outgoingEdges are necessarily at the next "interesting" point
 
+
+            ////////////////////////////////////////////////////////////
+            // code to decide what to do at that interesting node
+            ////////////////////////////////////////////////////////////
             // In the event we have a junction tree on top of a vertex with outDegree > 1, we add this first before we traverse paths
             if ( experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) != null) { //TODO make the condition for this actually based on the relevant junction tree
                 // TODO chain can be null but we still need to inherit a thing, probably happens whenever we pick up a tree.
-                // ignore starting junciton tree
-//                if (!sources.contains(vertexToExtend)) {
-                    pathToExtend.addJunctionTree(experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
-//                }
+                // ignore starting junction tree
+                pathToExtend.addJunctionTree(experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
             }
 
             //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat
-            // If we are at a reference end then we close out the path TODO this isn't adequate for non-unique reference sinks
+            // If we are at a reference end then we close out the path
             if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(weightThresholdToUse)) {
                 //TODO this will probably be resolved using a junction tree on that node and treating it as an edge to extend
                 //todo the proposal here would be to check if there is an active tree left for us at this point and if so keep going
@@ -164,9 +173,21 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             } else {
                 // If there are no outgoing edges from this node, then just kill this branch from the queue
                 if (outgoingEdges.size() > 0) {
-                    List<E> chainCopy = new ArrayList<>(chain);
-                    chainCopy.add(outgoingEdges.iterator().next());
-                    queue.add(new JTBestHaplotype<>(pathToExtend, chainCopy, 0));
+                    //TODO evaluate the expense of asking this quesion, there are ways to mitigate the cost. This particuar case is almost always triggered
+                    // Defensive check, if we see the same vertex
+                    final V finalVertexToExtend = vertexToExtend;
+                    if (!pathToExtend.hasJunctionTreeEvidence() &&
+                            pathToExtend.getVertices()
+                                    .stream()
+                                    .filter(v -> v.equals(finalVertexToExtend))
+                                    .count() > DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH) {
+                        // do nothing
+                    } else {
+                        // otherwie add the path
+                        List<E> chainCopy = new ArrayList<>(chain);
+                        chainCopy.add(outgoingEdges.iterator().next());
+                        queue.add(new JTBestHaplotype<>(pathToExtend, chainCopy, 0));
+                    }
                 }
             }
         }
