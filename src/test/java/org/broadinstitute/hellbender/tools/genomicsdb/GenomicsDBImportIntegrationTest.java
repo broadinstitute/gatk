@@ -987,8 +987,6 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         }
         final IntervalList generatedInterval = IntervalList.fromFile(new File(outputIntervalList));
         final IntervalList expectedInterval = IntervalList.fromFile(new File(expectedOutput));
-        generatedInterval.write(new File("/tmp/mlathara-generated"));
-        expectedInterval.write(new File("/tmp/mlathara-expected"));
         Assert.assertTrue(generatedInterval.sorted().equals(expectedInterval.sorted()));
     }
 
