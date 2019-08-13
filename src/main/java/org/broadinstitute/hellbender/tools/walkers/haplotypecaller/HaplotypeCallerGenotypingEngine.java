@@ -168,11 +168,12 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                             loc);
 
             VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced);
-            int mergedAlleles = mergedVC.getAlleles().size();
 
             if( mergedVC == null ) {
                 continue;
             }
+
+            int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
 
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
 
@@ -190,7 +191,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             if (emitReferenceConfidence) {
                 mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
-                mergedAlleles++;
+                mergedAllelesListSizeBeforePossibleTrimming++;
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
@@ -200,7 +201,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call);
 
-                final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAlleles, readAlleleLikelihoods, call, annotationEngine);
+                final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
                 returnCalls.add( annotatedCall );
 
                 if (withBamOut) {
@@ -369,14 +370,17 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     @VisibleForTesting
-    static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, int mergedAllelesSize, ReadLikelihoods<Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine) {
-        final SimpleInterval locus = new SimpleInterval(mergedVC.getContig(), mergedVC.getStart(), mergedVC.getEnd());
+    static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, int mergedAllelesListSizeBeforePossibleTrimming, ReadLikelihoods<Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine) {
+        final SimpleInterval locus = new SimpleInterval(mergedVC.getContig());
         final SimpleInterval refLocInterval= new SimpleInterval(refLoc);
         final ReferenceDataSource refData = new ReferenceMemorySource(new ReferenceBases(ref, refLocInterval), header.getSequenceDictionary());
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
-        return call.getAlleles().size() == mergedAllelesSize ? untrimmedResult
+
+        // NOTE: We choose to reverseTrimAlleles() here as opposed to when we actually do the trimming because otherwise we would have to resolve
+        //       the mismatching readAlleleLikelihoods object which is keyed to the old, possibly incorrectly trimmed alleles. 
+        return untrimmedResult.getAlleles().size() == mergedAllelesListSizeBeforePossibleTrimming ? untrimmedResult
                 : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
     }
 
