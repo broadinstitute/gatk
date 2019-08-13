@@ -47,6 +47,21 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     }
 
     @Test
+    public void testKirensTestExample() {
+        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        String ref = "ACTGATTTCGATGCGATGCGATGCCACGGTGG"; // a loop of length 3 in the middle
+
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(ref), false);
+
+        // This graph should have generated 3 junction trees (one at GAAAA, one at TCGGG, and one at AATCG)
+        assembler.generateJunctionTrees();
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))) != null);
+    }
+
+    @Test
     public void testGraphPruningSanityCheck() {
         final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
         String ref = "TTTTTAAAAACCCCCGGGGGATATATCGCGCG"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting

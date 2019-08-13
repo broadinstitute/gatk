@@ -264,7 +264,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-I", inputFileName,
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
-                "-O", "/dev/null",
+                "-O", outputPath,
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
