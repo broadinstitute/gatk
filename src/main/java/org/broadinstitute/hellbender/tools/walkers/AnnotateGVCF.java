@@ -23,5 +23,7 @@ public class AnnotateGVCF extends VariantLocusWalker {
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
 
+
+
     }
 }

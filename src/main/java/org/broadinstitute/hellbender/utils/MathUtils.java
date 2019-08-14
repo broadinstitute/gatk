@@ -1095,8 +1095,16 @@ public final class MathUtils {
             return array;
 
         final double sum = sum(array);
-        Utils.validateArg(sum >= 0.0, () -> "Values in probability array sum to a negative number " + sum);
         return applyToArray(array, x -> x/sum);
+    }
+
+    /**
+     * Convenient 3-element input case for {@link #normalizeFromRealSpace}.
+     */
+    public static double[] normalizeFromRealSpace(final double a, final double b, final double c) {
+        final double sum = a + b + c;
+        Utils.validateArg(sum >= 0.0, () -> "Values in probability array sum to a negative number " + sum);
+        return new double[] { a / sum, b / sum, c / sum};
     }
 
     public static int maxElementIndex(final double[] array) {

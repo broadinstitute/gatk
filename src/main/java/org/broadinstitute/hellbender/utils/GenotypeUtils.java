@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import picard.util.MathUtil;
 
 public final class GenotypeUtils {
@@ -23,14 +24,14 @@ public final class GenotypeUtils {
      * Skips non-diploid genotypes.
      *
      *
-     * @param vc the VariantContext that the {@link Genotype}s originated from, non-null
+     * @param numberOfAlleles total number of alleles including the reference. Must be at least one.
      * @param genotypes a GenotypesContext containing genotypes to count, these must be a subset of {@code vc.getGenotypes()}, non-null
      * @param roundContributionFromEachGenotype if this is true, the normalized likelihood from each genotype will be rounded before
      *                                          adding to the total count
      */
-    public static GenotypeCounts computeDiploidGenotypeCounts(final VariantContext vc, final GenotypesContext genotypes,
+    public static GenotypeCounts computeDiploidGenotypeCounts(final int numberOfAlleles, final GenotypesContext genotypes,
                                                               final boolean roundContributionFromEachGenotype){
-        Utils.nonNull(vc, "vc");
+        ParamUtils.isPositive(numberOfAlleles, "number of alleles");
         Utils.nonNull(genotypes, "genotypes");
 
         final int idxAA = 0;
@@ -40,7 +41,6 @@ public final class GenotypeUtils {
         double genotypeWithTwoRefsCount = 0;  //i.e. 0/0
         double genotypesWithOneRefCount = 0;  //e.g. 0/1, 0/2, etc.
         double genotypesWithNoRefsCount = 0;  //e.g. 1/1, 1/2, 2/2, etc.
-
         for (final Genotype g : genotypes) {
             if (! isDiploidWithLikelihoods(g)){
                 continue;
@@ -51,7 +51,7 @@ public final class GenotypeUtils {
             final double[] biallelicLikelihoods;
 
             //if there are multiple alts, use the biallelic PLs for the best alt
-            if (vc.getAlternateAlleles().size() > 1 ) {
+            if (numberOfAlleles > 2 ) {
                 //check for
                 int maxInd = MathUtil.indexOfMax(normalizedLikelihoods);
                 GenotypeLikelihoods.GenotypeLikelihoodsAllelePair alleles = GenotypeLikelihoods.getAllelePair(maxInd);
@@ -64,24 +64,23 @@ public final class GenotypeUtils {
                 double maxLikelihood = normalizedLikelihoods[idxAB];
                 int hetIndex = idxAB;
                 int varIndex = idxBB;
-                for (final Allele currAlt : vc.getAlternateAlleles()) {
-                    final int[] idxVector = vc.getGLIndicesOfAlternateAllele(currAlt);
-                    int tempIndex = idxVector[1];
+                for (int altIdx = 1; altIdx < numberOfAlleles; altIdx++) {
+                    final int tempIndex = GenotypeLikelihoods.calculatePLindex(0, altIdx);
                     if (normalizedLikelihoods[tempIndex] > maxLikelihood) {
                         maxLikelihood = normalizedLikelihoods[tempIndex];
                         hetIndex = tempIndex;
-                        varIndex = idxVector[2];
+                        varIndex = GenotypeLikelihoods.calculatePLindex(altIdx, altIdx);
                     }
                 }
-                biallelicLikelihoods = MathUtils.normalizeFromRealSpace(new double[] {normalizedLikelihoods[idxAA], normalizedLikelihoods[hetIndex], normalizedLikelihoods[varIndex]});
+                biallelicLikelihoods = MathUtils.normalizeFromRealSpace(normalizedLikelihoods[idxAA], normalizedLikelihoods[hetIndex], normalizedLikelihoods[varIndex]);
             }
             else {
                 biallelicLikelihoods = normalizedLikelihoods;
             }
 
-            double refLikelihood = biallelicLikelihoods[idxAA];
-            double hetLikelihood = biallelicLikelihoods[idxAB];
-            double varLikelihood = biallelicLikelihoods[idxBB];
+            final double refLikelihood = biallelicLikelihoods[idxAA];
+            final double hetLikelihood = biallelicLikelihoods[idxAB];
+            final double varLikelihood = biallelicLikelihoods[idxBB];
 
             //NOTE: rounding is special cased for [0,0,X] and [X,0,0] PLs because likelihoods can come out as [0.5, 0.5, 0] and both counts round up
             if( roundContributionFromEachGenotype ) {

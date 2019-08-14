@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -67,10 +68,11 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
         GenotypesContext genotypes = getFounderGenotypes(vc);
+        final int numberOfAlleles = vc.getNAlleles();
         if (genotypes == null || !vc.isVariant()) {
             return Collections.emptyMap();
         }
-        final Pair<Integer, Double> sampleCountEH = calculateEH(vc, genotypes);
+        final Pair<Integer, Double> sampleCountEH = calculateEH(numberOfAlleles, genotypes);
         final int sampleCount = sampleCountEH.getLeft();
         final double eh =  sampleCountEH.getRight();
 
@@ -80,17 +82,24 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
         return Collections.singletonMap(getKeyNames().get(0), (Object) String.format("%.4f", eh));
     }
 
-    @VisibleForTesting
-    static Pair<Integer, Double> calculateEH(final VariantContext vc, final GenotypesContext genotypes) {
-        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
-        // number of samples that have likelihoods
-        final int sampleCount = (int) genotypes.stream().filter(g->GenotypeUtils.isDiploidWithLikelihoods(g)).count();
+    @Override
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext pop, final MergedAlleleList<A> mergedAlleleList) {
+        if (cohort.hasGenotypes() && pop.hasGenotypes()) {
 
-        return calculateEH(vc, t, sampleCount);
+        }
     }
 
     @VisibleForTesting
-    public static Pair<Integer, Double> calculateEH(final VariantContext vc, final GenotypeCounts t, final int sampleCount) {
+    static Pair<Integer, Double> calculateEH(final int numberOfAlleles, final GenotypesContext genotypes) {
+        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(numberOfAlleles, genotypes, ROUND_GENOTYPE_COUNTS);
+        // number of samples that have likelihoods
+        final int sampleCount = (int) genotypes.stream().filter(g->GenotypeUtils.isDiploidWithLikelihoods(g)).count();
+
+        return calculateEH(numberOfAlleles, t, sampleCount);
+    }
+
+    @VisibleForTesting
+    public static Pair<Integer, Double> calculateEH(final int numberOfAlleles, final GenotypeCounts t, final int sampleCount) {
         final int refCount = (int)t.getRefs();
         final int hetCount = (int)t.getHets();
         final int homCount = (int)t.getHoms();

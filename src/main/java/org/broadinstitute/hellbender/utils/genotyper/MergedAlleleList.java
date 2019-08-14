@@ -1,12 +1,26 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
 import it.unimi.dsi.fastutil.ints.AbstractIntList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntLists;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.utils.Log10Cache;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.ToDoubleBiFunction;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -14,17 +28,21 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     private final AlleleList<A> left;
     private final AlleleList<A> right;
     private final AlleleList<A> result;
-    private final IntList indexOfLeftAllelesOnResult;
-    private final IntList indexOfRightAllelesOnResult;
+    private final IntList indexOfLeftAlleles;
+    private final IntList indexOfRightAlleles;
+    private List<IntList[]> indexesOfLeftGenotypes;
+    private List<IntList[]> indexesOfRightGenotypes;
 
+
+    private final GenotypeLikelihoodCalculators GT_LK_CALCULATORS = new GenotypeLikelihoodCalculators();
 
     private MergedAlleleList(final AlleleList<A> left, final AlleleList<A> right, final AlleleList<A> result, final IntList indexOfLeftAllelesOnResult,
                              final IntList indexOfRightAllelesOnResult) {
         this.left = left;
         this.right = right;
         this.result = result;
-        this.indexOfLeftAllelesOnResult = indexOfLeftAllelesOnResult;
-        this.indexOfRightAllelesOnResult = indexOfRightAllelesOnResult;
+        this.indexOfLeftAlleles = indexOfLeftAllelesOnResult;
+        this.indexOfRightAlleles = indexOfRightAllelesOnResult;
     }
 
     @SuppressWarnings("unchecked")
@@ -56,7 +74,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     }
 
     @Override
-    public int indexOfAllele(A allele) {
+    public int indexOfAllele(Allele allele) {
         return result.indexOfAllele(allele);
     }
 
@@ -142,6 +160,62 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         return new MergedAlleleList<>(originalLeft, originalRight, result, leftIndexes, rightIndexes);
     }
 
+    public int[] mapIntPerAlleleAttribute(final AlleleList<A> oldAlleleList, final int[] oldValues, final int missingValue) {
+        Utils.nonNull(oldAlleleList);
+        Utils.nonNull(oldValues);
+        Utils.validate(oldValues.length == oldAlleleList.numberOfAlleles(), "");
+        final IntList indexOfOldAlleles = calculateIndexesOfAlleles(oldAlleleList);
+        final int[] newValues = new int[result.numberOfAlleles()];
+        for (int i = 0; i < newValues.length; i++) {
+            final int oldIndex = indexOfOldAlleles.getInt(i);
+            newValues[i] = oldIndex < 0 ? missingValue : oldValues[oldIndex];
+        }
+        return newValues;
+    }
+
+    /**
+     * Merge likelihoods.
+     * @param oldAlleleList
+     * @param ploidy
+     * @param likelihoods
+     * @return
+     */
+    public double[] mapGenotypeLikelihoods(final AlleleList<A> oldAlleleList, final int ploidy, final double[] likelihoods) {
+        final List<IntList> indexOfGenotypes = calculateIndexesOfGenotypes(oldAlleleList, ploidy);
+        final double[] result = new double[indexOfGenotypes.size()];
+        final double minLikelihood = MathUtils.arrayMin(likelihoods);
+        for (int i = 0; i < result.length; i++) {
+            final IntList oldGenotypes = indexOfGenotypes.get(i);
+            final int oldGenotypesSize = oldGenotypes.size();
+            if (oldGenotypesSize == 0 || oldGenotypesSize == likelihoods.length) {
+                result[i] = minLikelihood - MathUtils.log10(ploidy);
+            } else if (oldGenotypes.size() == 1) {
+                result[i] = likelihoods[oldGenotypes.getInt(0)];
+            } else {
+                int minLikelihoodIndex = oldGenotypes.get(0);
+                double minLikelihoodValue = likelihoods[oldGenotypes.get(minLikelihoodIndex)];
+                for (int j = 1; j < oldGenotypes.size(); j++) {
+                    int candidateIndex = oldGenotypes.get(j);
+                    if (likelihoods[candidateIndex] < minLikelihoodValue) {
+                        minLikelihoodValue = likelihoods[candidateIndex];
+                        minLikelihoodIndex = candidateIndex;
+                    }
+                }
+                final GenotypeLikelihoodCalculator oldCalculator = GT_LK_CALCULATORS.getInstance(ploidy, oldAlleleList.numberOfAlleles());
+                final GenotypeAlleleCounts example = oldCalculator.genotypeAlleleCountsAt(minLikelihoodIndex);
+                int matched = 0;
+                for (int k = 0; k < example.distinctAlleleCount(); k++) {
+                    if (this.result.containsAllele(oldAlleleList.getAllele(example.alleleIndexAt(k)))) {
+                        matched += example.alleleCountAt(k);
+                    }
+                }
+                result[i] = minLikelihoodValue + MathUtils.log10(matched) - MathUtils.log10(ploidy);
+            }
+        }
+        return result;
+
+    }
+
 
     private static class FirstNIntegers extends AbstractIntList {
 
@@ -166,5 +240,82 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         }
     }
 
+
+    private static <A extends Allele, B extends Allele> IntList calculateIndexesOfAlleles(final AlleleList<A> originalAlleles, final AlleleList<B> resultAlleles) {
+        final int resultLength = originalAlleles.numberOfAlleles();
+        if (resultLength == 0) {
+            return IntLists.EMPTY_LIST;
+        } else if (resultLength == 1) {
+            final int index = resultAlleles.indexOfAllele(originalAlleles.getAllele(0));
+            if (index > 0) {
+                return IntLists.singleton(index);
+            } else {
+                return IntLists.singleton(resultAlleles.nonRefAlleleIndex());
+            }
+        } else {
+            final IntList result = new IntArrayList(resultLength);
+            final int nonRefIndex = originalAlleles.nonRefAlleleIndex();
+            for (int i = 0; i < resultLength; i++) {
+                final int index = originalAlleles.indexOfAllele(resultAlleles.getAllele(i));
+                result.add(index >= 0 ? index : nonRefIndex);
+            }
+            return result;
+        }
+    }
+
+    private <A extends Allele> IntList calculateIndexesOfAlleles(final AlleleList<A> originalAlleles) {
+        if (originalAlleles.sameAlleles(left)) {
+            return indexOfLeftAlleles;
+        } else if (originalAlleles.sameAlleles(right)) {
+            return indexOfRightAlleles;
+        } else {
+            return calculateIndexesOfAlleles(originalAlleles, result);
+        }
+    }
+
+    private <A extends Allele> List<IntList> calculateIndexesOfGenotypes(final AlleleList<A> original, final int ploidy) {
+        final IntList indexOfOriginalAlleles = calculateIndexesOfAlleles(original);
+
+        final GenotypeLikelihoodCalculator resultCalculator = GT_LK_CALCULATORS.getInstance(ploidy, result.numberOfAlleles());
+        final int resultLength = resultCalculator.genotypeCount();
+        if (resultLength == 0) {
+            return Collections.emptyList();
+        } else {
+            final List<IntList> result = new ArrayList<>(resultLength);
+            final int[] alleleIndexBuffer = new int[ploidy];
+            int[] alleleCountsByIndexBuffer = null;
+            final GenotypeLikelihoodCalculator originalCalculator = GT_LK_CALCULATORS.getInstance(ploidy, original.numberOfAlleles());
+            for (int i = 0; i < resultLength; i++) {
+                final GenotypeAlleleCounts resultAlleleCounts = resultCalculator.genotypeAlleleCountsAt(i);
+                resultAlleleCounts.copyAlleleIndexes(alleleIndexBuffer, 0);
+                boolean notFound = false;
+                for (int j = 0; j < ploidy; j++) {
+                    final int index = alleleIndexBuffer[j] = indexOfOriginalAlleles.getInt(alleleIndexBuffer[j]);
+                    notFound |= index == -1;
+                }
+                if (!notFound) {
+                    result.add(IntLists.singleton(originalCalculator.allelesToIndex(alleleIndexBuffer)));
+                } else {
+                    alleleCountsByIndexBuffer = alleleCountsByIndexBuffer == null ? alleleCountsByIndexBuffer : new int[original.numberOfAlleles()];
+                    final IntList resultList = new IntArrayList(20); // 20 will cover most small cases.
+                    final int originalGenotypeCount = originalCalculator.genotypeCount();
+                    for (final int alleleIndex : alleleIndexBuffer) {
+                        if (alleleIndex >= 0) {
+                            alleleCountsByIndexBuffer[alleleIndex]++;
+                        }
+                    }
+                    for (int j = 0; j < originalGenotypeCount; j++) {
+                        final GenotypeAlleleCounts originalGenotypeAlleleCounts = originalCalculator.genotypeAlleleCountsAt(j);
+                        if (originalGenotypeAlleleCounts.greaterOrEqualAlleleCountsByIndex(alleleCountsByIndexBuffer)) {
+                            resultList.add(j);
+                        }
+                    }
+                    Arrays.fill(alleleCountsByIndexBuffer, 0);
+                    result.add(resultList);
+                }
+            }
+            return result;
+        }
+    }
 
 }

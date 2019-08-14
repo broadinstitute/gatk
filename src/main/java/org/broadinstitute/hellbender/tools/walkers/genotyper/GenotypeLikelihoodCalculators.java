@@ -247,7 +247,6 @@ public final class GenotypeLikelihoodCalculators {
         return result;
     }
 
-
     /**
      * Returns an instance given its ploidy and the number of alleles.
      *

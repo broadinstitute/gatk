@@ -25,7 +25,7 @@ public interface AlleleList<A extends Allele> {
      * Returns a negative number if the given allele is not present in this AlleleList.
      * @throws IllegalArgumentException if allele is null.
      */
-    int indexOfAllele(final A allele);
+    int indexOfAllele(final Allele allele);
 
     /**
      * Returns the allele at the given index in this AlleleList.
@@ -239,7 +239,7 @@ public interface AlleleList<A extends Allele> {
         }
 
         @Override
-        public int indexOfAllele(final A allele) {
+        public int indexOfAllele(final Allele allele) {
             return list.indexOfAllele(allele);
         }
 
@@ -340,13 +340,41 @@ public interface AlleleList<A extends Allele> {
         }
 
         @Override
-        public int indexOfAllele(final A allele) {
+        public int indexOfAllele(final Allele allele) {
             return to.indexOfAllele(allele);
         }
 
         @Override
         public A getAllele(final int index) {
             return to.getAllele(index);
+        }
+    }
+
+    default int nonRefAlleleIndex() {
+        final int n = numberOfAlleles();
+        for (int i = 0; i < n; i++) {
+            if (getAllele(i).isNonRefAllele()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    default boolean sameAlleles(final AlleleList<?> other) {
+        if (other == this) {
+            return true;
+        } else {
+            final int thisLength = numberOfAlleles();
+            if (thisLength == other.numberOfAlleles()) {
+                for (int i = 0; i < thisLength; i++) {
+                    if (!other.getAllele(i).equals(other.getAllele(i))) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 }

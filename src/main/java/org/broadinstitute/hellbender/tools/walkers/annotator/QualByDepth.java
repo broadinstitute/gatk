@@ -82,7 +82,8 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
     }
 
     @Override
-    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population,
+                                                        final MergedAlleleList<A> mergedAlleleList) {
         final int cohortDepth = GATKVariantContextUtils.calculateDepth(cohort, -1);
         final int populationDepth = GATKVariantContextUtils.calculateDepth(population, -1);
         if (cohortDepth == -1 || populationDepth == -1) {

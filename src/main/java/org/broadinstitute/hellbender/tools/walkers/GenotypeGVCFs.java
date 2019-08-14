@@ -22,9 +22,7 @@ import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -349,9 +347,37 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final MergedAlleleList<Allele> newAlleleList = MergedAlleleList.merge(new IndexedAlleleList<Allele>(pop.getAlleles()),
                    new IndexedAlleleList<>(cohort.getAlleles()));
         builder.alleles(newAlleleList.asListOfAlleles());
+        final GenotypesContext cohortGenotypes = cohort.getGenotypes();
+        final List<Genotype> genotypes = updateAlleleList(cohortGenotypes, newAlleleList);
         final LinkedHashSet<String> annotationKeys = new LinkedHashSet<>(pop.getAttributes().keySet());
         annotationKeys.addAll(cohort.getAttributes().keySet());
         for (final String annotationKey : annotationKeys) {
+
+        }
+    }
+
+    private List<Genotype> updateAlleleList(final GenotypesContext cohortGenotypes, final MergedAlleleList<Allele> newAlleleList) {
+        return cohortGenotypes.stream()
+                .map(old -> updateAlleleList(old, newAlleleList))
+                .collect(Collectors.toList());
+    }
+
+    private List<Genotype> updateAlleleList(final Genotype old, final AlleleList<Allele> oldAlleleList, final MergedAlleleList<Allele> newAlleleList) {
+        final GenotypeBuilder builder = new GenotypeBuilder();
+        if (old.hasAD()) {
+            builder.AD(newAlleleList.mapIntPerAlleleAttribute(oldAlleleList, old.getAD(), 0));
+        }
+        if (old.hasDP()) {
+            builder.DP(old.getDP());
+        }
+        if (old.hasGQ()) {
+            builder.GQ(old.getGQ());
+        }
+        if (old.hasPL()) {
+            builder.PL(newAlleleList.mapGenotypeLikelihoods(oldAlleleList, old.getPloidy(), old.getLikelihoods().getAsVector()));
+        }
+        builder.alleles(old.getAlleles());
+        for (final Map.Entry<String, Object> attr : old.getExtendedAttributes().entrySet()) {
 
         }
     }

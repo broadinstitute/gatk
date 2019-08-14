@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import it.unimi.dsi.fastutil.ints.IntList;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.functional.IntBiConsumer;
 import org.broadinstitute.hellbender.utils.functional.IntToDoubleBiFunction;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -596,6 +598,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         System.arraycopy(sortedAlleleCounts, 0, dest, offset, sortedAlleleCountsLength);
     }
 
+
     /**
      * Instantiates the first genotype possible provided a total ploidy.
      * @param ploidy the ploidy of the genotype.
@@ -693,5 +696,37 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         return new IndexRange(0, distinctAlleleCount).sum(n -> func.apply(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
     }
 
+    public void copyAlleleIndexes(final int[] dest, final int offset) {
+        Utils.nonNull(dest);
+        ParamUtils.isPositiveOrZero(offset, "offset");
+        Utils.validate(offset + ploidy < dest.length, "the copy operation would go beyond the end of the array");
+        for (int i = 0, j = offset; i < sortedAlleleCounts.length;) {
+            final int index = sortedAlleleCounts[i++];
+            final int freq = sortedAlleleCounts[i++];
+            for (int k = 0; k < freq; k++) {
+                dest[j++] = index;
+            }
+        }
+    }
 
+    /**
+     * Checks whether this genotype contains at least as many copies of each allele as the ones
+     * requested in the input array where each position of the array 'i' makes reference to
+     * the ith allele sorted by index.
+     *
+     * @param alleleCountsByIndex counts for the first alleles where the index in the input
+     *                            array correspond to the index of the allele.
+     * @return {@code true} iff the allele counts for the first alleles are at least
+     *  as large in this genotype as in the input array.
+     */
+    public boolean greaterOrEqualAlleleCountsByIndex(final int[] alleleCountsByIndex) {
+        Utils.nonNull(alleleCountsByIndex);
+        for (int i = 0; i < alleleCountsByIndex.length; i++) {
+            final int count = alleleCountsByIndex[i];
+            if (count > 0 && alleleCountFor(i) < count) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

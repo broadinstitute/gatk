@@ -59,7 +59,7 @@ public class CountNs extends InfoFieldAnnotation {
      * Otherwise we add up whatever values are present.
      */
     @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
         if (cohort.hasAttribute(GATKVCFConstants.N_COUNT_KEY) || population.hasAttribute(GATKVCFConstants.N_COUNT_KEY)) {
             return Collections.singletonMap(GATKVCFConstants.N_COUNT_KEY, cohort.getAttributeAsInt(GATKVCFConstants.N_COUNT_KEY, 0) +
                     population.getAttributeAsInt(GATKVCFConstants.N_COUNT_KEY, 0));
