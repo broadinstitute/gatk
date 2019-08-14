@@ -352,7 +352,8 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
                     log_q_c_stc[si, ti, :] = sample_log_pi_jc[t_to_j_map[ti], :]
                 else:
                     for c in range(calling_config.num_copy_number_states):
-                        log_q_c_stc[si, ti, c] = np.log(np.sum(sample_pi_jkc[t_to_j_map[ti], :, c] * log_q_tau_tk[ti, :]))
+                        log_q_c_stc[si, ti, c] = np.log(np.sum(sample_pi_jkc[t_to_j_map[ti], :, c] *
+                                                               np.exp(log_q_tau_tk[ti, :])))
         shared_workspace.log_q_c_stc = th.shared(log_q_c_stc, name="log_q_c_stc", borrow=config.borrow_numpy)
 
 
@@ -484,8 +485,6 @@ class DenoisingCallingWorkspace:
         """Initializes members required for copy number class inference (must be called in the cohort mode).
         The following members are initialized:
             - `DenoisingCallingWorkspace.log_class_emission_tk`
-            - `DenoisingCallingWorkspace.class_probs_k`
-            - `DenoisingCallingWorkspace.log_class_prob_zero`
             - `DenoisingCallingWorkspace.log_trans_tkk`
         """
         # class emission log posterior
@@ -522,7 +521,7 @@ class DenoisingCallingWorkspace:
             class_prior_probs_tk = np.zeros(shape=(len(self.interval_list), 2), dtype=types.floatX)
             for ti in range(len(self.interval_list)):
                 if self.interval_list[ti].get_annotation(CommonRegionAnnotation.get_key()):
-                    # interval is annotated as common
+                    # interval is annotated as CNV-active (or common)
                     class_prior_probs_tk[ti] = [self.calling_config.active_region_prior_error,
                                                 1.0 - self.calling_config.active_region_prior_error]
                 else:
