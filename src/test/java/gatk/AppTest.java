@@ -61,7 +61,13 @@ public class AppTest {
     public void testNonExistant() throws URISyntaxException {
         Assert.assertTrue(Files.isDirectory(Paths.get(new URI("gs://hellbender/hargle/blargle/"))));
     }
-    
+
+    @Test
+    public void testWierdPathThatLooksLikeADirectory() throws URISyntaxException {
+        final Path weirdo = Paths.get(new URI("gs://hellbender/test/weird_bad_path_that_looks_like_a_directory/empty/"));
+        Assert.assertTrue(Files.exists(weirdo));
+        Assert.assertTrue(Files.isDirectory(weirdo));
+    }
 
     @Test
     public void testCopy() throws URISyntaxException, IOException {
