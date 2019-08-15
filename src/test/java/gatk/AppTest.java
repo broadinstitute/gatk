@@ -3,16 +3,9 @@
  */
 package gatk;
 
-import com.google.cloud.http.HttpTransportOptions;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
-import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
-import com.google.common.base.Strings;
 import org.testng.Assert;
-import org.testng.annotations.*;
-import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
-import shaded.cloud_nio.org.threeten.bp.Duration;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,9 +20,6 @@ public class AppTest {
 
     public static final Path REMOTE_TEXT_FILE = getPath("gs://hellbender/test/resources/large/exampleLargeFile.txt");
 
-    static {
-        setGlobalNIODefaultOptions(5, "");
-    }
 
     @Test
     public void testExists() throws URISyntaxException, IOException {
@@ -39,12 +29,6 @@ public class AppTest {
     @Test
     public void testIsRegularFile() throws URISyntaxException, IOException {
         Assert.assertTrue(Files.isRegularFile(REMOTE_TEXT_FILE));
-    }
-
-    @Test
-    public void testThingSimilarToWhatTheRealFailureIs(){
-        final Path path = getPath("gs://hellbender/test/resources/org/broadinstitute/hellbender/tools/BQSR/overlappingRead.bam");
-        lookForIndex(path);
     }
 
     @Test
@@ -78,44 +62,6 @@ public class AppTest {
         Files.copy(remotePath, target);
         Assert.assertEquals(Files.size(target), Files.size(remotePath));
         Files.delete(target);
-    }
-
-    public static void setGlobalNIODefaultOptions(int maxReopens, String requesterProject) {
-        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens, requesterProject));
-        CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
-    }
-
-    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens, String requesterProject) {
-        CloudStorageConfiguration.Builder builder = CloudStorageConfiguration.builder()
-                // if the channel errors out, re-open up to this many times
-                .maxChannelReopens(maxReopens);
-        if (!Strings.isNullOrEmpty(requesterProject)) {
-            // enable requester pays and indicate who pays
-            builder = builder.autoDetectRequesterPays(true).userProject(requesterProject);
-        }
-
-        //this causes the gcs filesystem to treat files that end in a / as a directory
-        //true is the default but this protects against future changes in behavior
-        builder.usePseudoDirectories(true);
-        return builder.build();
-    }
-
-    private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {
-        return builder
-                .setTransportOptions(HttpTransportOptions.newBuilder()
-                        .setConnectTimeout(120000)
-                        .setReadTimeout(120000)
-                        .build())
-                .setRetrySettings(RetrySettings.newBuilder()
-                        .setMaxAttempts(15)
-                        .setMaxRetryDelay(Duration.ofMillis(256_000L))
-                        .setTotalTimeout(Duration.ofMillis(4000_000L))
-                        .setInitialRetryDelay(Duration.ofMillis(1000L))
-                        .setRetryDelayMultiplier(2.0)
-                        .setInitialRpcTimeout(Duration.ofMillis(180_000L))
-                        .setRpcTimeoutMultiplier(1.0)
-                        .setMaxRpcTimeout(Duration.ofMillis(180_000L))
-                        .build());
     }
 
     public static Path getPath(String uriString) {
@@ -161,23 +107,6 @@ public class AppTest {
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
-    }
-
-    public static Path lookForIndex(Path samPath){
-        Path indexPath;
-        final String fileName = samPath.getFileName().toString(); // works for all path types (e.g. HDFS)
-        final String bai = fileName.substring(0, fileName.length() - ".bam".length()) + ".bai";
-        final String csi = fileName.substring(0, fileName.length() - ".bam".length()) + ".csi";
-        indexPath = samPath.resolveSibling(bai);
-        if (Files.isRegularFile(indexPath)) { // works for all path types (e.g. HDFS)
-            return indexPath;
-        } else { // if there is no .bai index, look for .csi index
-            indexPath = samPath.resolveSibling(csi);
-            if (Files.isRegularFile(indexPath)) {
-                return indexPath;
-            }
-        }
-        return null;
     }
 
     @Test
