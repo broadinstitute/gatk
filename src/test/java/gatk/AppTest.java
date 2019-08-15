@@ -6,6 +6,7 @@ package gatk;
 import com.google.cloud.http.HttpTransportOptions;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
 import org.testng.Assert;
@@ -17,54 +18,49 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.util.Arrays;
+import java.util.HashMap;
 
 
 public class AppTest {
+
+    public static final Path REMOTE_TEXT_FILE = getPath("gs://hellbender/test/resources/large/exampleLargeFile.txt");
+
     static {
         setGlobalNIODefaultOptions(5, "");
     }
 
-    private static Path getRemotePath(){
-        try {
-            return Paths.get(new URI("gs://hellbender/test/resources/large/exampleLargeFile.txt"));
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     @Test
     public void testExists() throws URISyntaxException, IOException {
-        Assert.assertTrue(Files.exists(getRemotePath()));
+        Assert.assertTrue(Files.exists(REMOTE_TEXT_FILE));
     }
 
     @Test
     public void testIsRegularFile() throws URISyntaxException, IOException {
-        Assert.assertTrue(Files.isRegularFile(getRemotePath()));
+        Assert.assertTrue(Files.isRegularFile(REMOTE_TEXT_FILE));
     }
 
     @Test
     public void testRead() throws URISyntaxException, IOException {
-        try(InputStream inputStream = Files.newInputStream(getRemotePath())){
+        try(InputStream inputStream = Files.newInputStream(REMOTE_TEXT_FILE)){
             Assert.assertNotEquals(inputStream.read(), - 1);
         }
     }
 
     @Test
     public void testPseudoDirectory() throws URISyntaxException {
-        Assert.assertTrue(Files.isDirectory(Paths.get(new URI("gs://hellbender/test/resources/large/"))));
+        Assert.assertTrue(Files.isDirectory(getPath("gs://hellbender/test/resources/large/")));
     }
 
     @Test
     public void testNonExistant() throws URISyntaxException {
-        Assert.assertTrue(Files.isDirectory(Paths.get(new URI("gs://hellbender/hargle/blargle/"))));
+        Assert.assertTrue(Files.isDirectory(getPath("gs://hellbender/hargle/blargle/")));
     }
 
     @Test
     public void testWierdPathThatLooksLikeADirectory() throws URISyntaxException {
-        final Path weirdo = Paths.get(new URI("gs://hellbender/test/weird_bad_path_that_looks_like_a_directory/empty/"));
+        final Path weirdo = getPath("gs://hellbender/test/weird_bad_path_that_looks_like_a_directory/empty/");
         Assert.assertTrue(Files.exists(weirdo));
         Assert.assertTrue(Files.isDirectory(weirdo));
     }
@@ -72,7 +68,7 @@ public class AppTest {
     @Test
     public void testCopy() throws URISyntaxException, IOException {
         final Path target = Paths.get("local.txt");
-        final Path remotePath = getRemotePath();
+        final Path remotePath = REMOTE_TEXT_FILE;
         Files.copy(remotePath, target);
         Assert.assertEquals(Files.size(target), Files.size(remotePath));
         Files.delete(target);
@@ -114,5 +110,50 @@ public class AppTest {
                         .setRpcTimeoutMultiplier(1.0)
                         .setMaxRpcTimeout(Duration.ofMillis(180_000L))
                         .build());
+    }
+
+    public static Path getPath(String uriString) {
+        URI uri;
+        try {
+            uri = URI.create(uriString);
+        } catch (IllegalArgumentException x) {
+            // not a valid URI. Caller probably just gave us a file name.
+            return Paths.get(uriString);
+        }
+        try {
+            // special case GCS, in case the filesystem provider wasn't installed properly but is available.
+            if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
+                return getPathOnGcs(uriString);
+            }
+            // Paths.get(String) assumes the default file system
+            // Paths.get(URI) uses the scheme
+            return uri.getScheme() == null ? Paths.get(uriString) : Paths.get(uri);
+        } catch (FileSystemNotFoundException e) {
+            try {
+                ClassLoader cl = Thread.currentThread().getContextClassLoader();
+                if ( cl == null ) {
+                    throw e;
+                }
+                return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+            }
+            catch (ProviderNotFoundException x) {
+                // TODO: this creates bogus Path on the current file system for schemes such as gendb, nonexistent, gcs
+                // TODO: we depend on this code path to allow IntervalUtils to all getPath on a string that may be either
+                // a literal interval or a feature file containing intervals
+                // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
+                return Paths.get(uriString);
+            }
+            catch ( IOException io ) {
+                throw new RuntimeException(uriString + " is not a supported path", io);
+            }
+        }
+    }
+
+    public static java.nio.file.Path getPathOnGcs(String gcsUrl) {
+        // use a split limit of -1 to preserve empty split tokens, especially trailing slashes on directory names
+        final String[] split = gcsUrl.split("/", -1);
+        final String BUCKET = split[2];
+        final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
+        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 }
