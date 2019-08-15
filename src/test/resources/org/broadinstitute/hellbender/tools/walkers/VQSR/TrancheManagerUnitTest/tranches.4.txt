@@ -1,5 +1,0 @@
-FDRtranche,novelTITV,pCut,numNovel,filterName
-0.10,2.8000,1.1800,893,FDRtranche0.00to0.10
-1.00,2.7782,1.0600,903,FDRtranche0.10to1.00
-10.00,2.5269,0.3800,984,FDRtranche1.00to10.00
-100.00,1.6091,0.0000,1602,FDRtranche10.00to100.00

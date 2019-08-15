@@ -1,36 +1,5 @@
-.idea/
-hellbender.iml
-*.ipr
-*.iml
-*.iws
-*.iml
+# Ignore Gradle project-specific cache directory
 .gradle
-build/
-.idea/libraries/Gradle__*
-*.*~
-hellbender-engine/repos/
-hellbender-tools/repos/
-.DS_Store
-testSortingFile.txt
-gsalib.tar.gz
-*.swp
-gradlew.bat
-tmp/
-src/main/java/local/
-out/
-*.pyc
-gatkcondaenv.yml
-gatkcondaenv.intel.yml
-gatkPythonPackageArchive.zip
 
-#Please don't commit me
-client_secret.json
-servicekey.json
-
-#Test Generated File
-I_SHOULD_HAVE_BEEN_DELETED
-funcotator_tmp
-
-#Eclipse files
-/bin/
-.project
+# Ignore Gradle build output directory
+build

@@ -1,9 +1,0 @@
-@HD	VN:1.5	SO:unsorted
-@SQ	SN:chr1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr3	LN:16000	M5:94de808a3a2203dbb02434a47bd8184f	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr4	LN:16000	M5:7d397ee919e379328d8f52c57a54c778	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr5	LN:101	M5:ae947e7425533fdc9db7535ce21a897a	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr6	LN:101	M5:ec55306bb0c635adae21c7733b9db6ab	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr7	LN:404	M5:cddcca887c75987e49ab3b7e418ce283	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
-@SQ	SN:chr8	LN:202	M5:95467d3917cd8bcb824dc586b0384079	UR:file:/Users/edwardk/Documents/hellbender/src/test/resources/org/broadinstitute/hellbender/utils/SequenceDictionaryUtils/test.fasta
