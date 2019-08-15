@@ -42,6 +42,12 @@ public class AppTest {
     }
 
     @Test
+    public void testThingSimilarToWhatTheRealFailureIs(){
+        final Path path = getPath("gs://hellbender/test/resources/org/broadinstitute/hellbender/tools/BQSR/overlappingRead.bam");
+        lookForIndex(path);
+    }
+
+    @Test
     public void testRead() throws URISyntaxException, IOException {
         try(InputStream inputStream = Files.newInputStream(REMOTE_TEXT_FILE)){
             Assert.assertNotEquals(inputStream.read(), - 1);
@@ -156,4 +162,27 @@ public class AppTest {
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
+
+    public static Path lookForIndex(Path samPath){
+        Path indexPath;
+        final String fileName = samPath.getFileName().toString(); // works for all path types (e.g. HDFS)
+        final String bai = fileName.substring(0, fileName.length() - ".bam".length()) + ".bai";
+        final String csi = fileName.substring(0, fileName.length() - ".bam".length()) + ".csi";
+        indexPath = samPath.resolveSibling(bai);
+        if (Files.isRegularFile(indexPath)) { // works for all path types (e.g. HDFS)
+            return indexPath;
+        } else { // if there is no .bai index, look for .csi index
+            indexPath = samPath.resolveSibling(csi);
+            if (Files.isRegularFile(indexPath)) {
+                return indexPath;
+            }
+        }
+        return null;
+    }
+
+    @Test
+    public void testIsRegularFileOnNonexistant() throws URISyntaxException {
+        Files.isRegularFile(Paths.get(new URI("gs://hellbender/nonexistant")));
+    }
 }
+

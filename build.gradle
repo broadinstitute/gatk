@@ -20,7 +20,7 @@ repositories {
     jcenter()
 }
 
-final googleCloudNioVersion =  System.getenv('NIO_VERSION') ?:  '0.90.0-alpha:shaded'
+final googleCloudNioVersion =  System.getenv('NIO_VERSION') ?:  '0.81.0-alpha:shaded'
 
 dependencies {
     // This dependency is found on compile classpath of this component and consumers.
