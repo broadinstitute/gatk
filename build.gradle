@@ -18,14 +18,18 @@ repositories {
     // Use jcenter for resolving your dependencies.
     // You can declare any Maven/Ivy/file repository here.
     jcenter()
+    maven {
+        url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
+    }
 }
 
 final googleCloudNioVersion =  System.getenv('NIO_VERSION') ?:  '0.90.0-alpha:shaded'
 
+
 dependencies {
     // This dependency is found on compile classpath of this component and consumers.
-    implementation 'com.google.cloud:google-cloud-nio:' + googleCloudNioVersion;
-
+    implementation 'com.google.cloud:google-cloud-nio:' + googleCloudNioVersion; 
+    implementation 'com.google.cloud:google-cloud-core:1.87.1-20190816.172619-1')
     // Use TestNG framework, also requires calling test.useTestNG() below
     testImplementation 'org.testng:testng:6.14.3'
 }
