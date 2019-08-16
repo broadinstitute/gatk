@@ -11,10 +11,10 @@ env:
   matrix:
   - NIO_VERSION=0.81.0-alpha:shaded
   - NIO_VERSION=0.81.0-alpha
-  - NIO_VERSION=0.89.0-alpha:shaded
-  - NIO_VERSION=0.90.0-alpha:shaded
-  - NIO_VERSION=0.100.0-alpha:shaded
-  - NIO_VERSION=0.105.0-alpha:shaded
+  - NIO_VERSION=0.89.0-alpha
+  - NIO_VERSION=0.90.0-alpha
+  - NIO_VERSION=0.100.0-alpha
+  - NIO_VERSION=0.105.0-alpha
   global:
   #gradle needs this
   - TERM=dumb
