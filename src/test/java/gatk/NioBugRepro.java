@@ -3,9 +3,24 @@
  */
 package gatk;
 
+import com.google.cloud.ServiceDefaults;
+import com.google.cloud.ServiceFactory;
+import com.google.cloud.ServiceOptions;
+import com.google.cloud.TransportOptions;
+import com.google.cloud.spi.ServiceRpcFactory;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import shaded.cloud_nio.com.google.api.core.ApiClock;
+import shaded.cloud_nio.com.google.api.core.CurrentMillisClock;
+import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
+import shaded.cloud_nio.com.google.api.gax.rpc.HeaderProvider;
+import shaded.cloud_nio.com.google.api.gax.rpc.NoHeaderProvider;
+import shaded.cloud_nio.com.google.auth.Credentials;
+import shaded.cloud_nio.com.google.common.base.MoreObjects;
+import shaded.cloud_nio.com.google.common.base.Preconditions;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -113,5 +128,27 @@ public class NioBugRepro {
     public void testIsRegularFileOnNonexistant() throws URISyntaxException {
         Files.isRegularFile(Paths.get(new URI("gs://hellbender/nonexistant")));
     }
+
+    public static abstract class ServiceTester extends ServiceOptions<Storage, StorageOptions>{
+        // the compiler made me...
+        public ServiceTester() {
+            super(null, null, null, null);
+        }
+
+        public static void getDefaults(){
+                System.out.println("GOOGLE_CLOUD_PROJECT property: " +System.getProperty("GOOGLE_CLOUD_PROJECT", System.getenv("GOOGLE_CLOUD_PROJECT")));
+                System.out.println("GCLOUD_PROJECT property:       " + System.getProperty("GCLOUD_PROJECT", System.getenv("GCLOUD_PROJECT")));
+                System.out.println("App Engine Project ID:         " + getAppEngineProjectId());
+                System.out.println("Service Account Project ID:    " + getServiceAccountProjectId());
+                System.out.println("Google Cloud Project ID:       " + getGoogleCloudProjectId());
+        }
+    }
+
+    @Test
+    public void printDefaults(){
+        ServiceTester.getDefaults();
+    }
+
+
 }
 
