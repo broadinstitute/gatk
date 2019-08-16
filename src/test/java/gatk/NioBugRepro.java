@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 
-public class AppTest {
+public class NioBugRepro {
 
     public static final Path REMOTE_TEXT_FILE = getPath("gs://hellbender/test/resources/large/exampleLargeFile.txt");
 
