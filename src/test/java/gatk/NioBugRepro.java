@@ -3,24 +3,12 @@
  */
 package gatk;
 
-import com.google.cloud.ServiceDefaults;
-import com.google.cloud.ServiceFactory;
 import com.google.cloud.ServiceOptions;
-import com.google.cloud.TransportOptions;
-import com.google.cloud.spi.ServiceRpcFactory;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import shaded.cloud_nio.com.google.api.core.ApiClock;
-import shaded.cloud_nio.com.google.api.core.CurrentMillisClock;
-import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
-import shaded.cloud_nio.com.google.api.gax.rpc.HeaderProvider;
-import shaded.cloud_nio.com.google.api.gax.rpc.NoHeaderProvider;
-import shaded.cloud_nio.com.google.auth.Credentials;
-import shaded.cloud_nio.com.google.common.base.MoreObjects;
-import shaded.cloud_nio.com.google.common.base.Preconditions;
 
 import java.io.IOException;
 import java.io.InputStream;

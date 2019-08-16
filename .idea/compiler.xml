@@ -2,6 +2,8 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel>
+      <module name="gatk.main" target="12" />
+      <module name="gatk.test" target="12" />
       <module name="gatk.testUtils" target="1.8" />
     </bytecodeTargetLevel>
   </component>
