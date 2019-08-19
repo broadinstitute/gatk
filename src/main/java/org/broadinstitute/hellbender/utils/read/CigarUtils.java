@@ -311,7 +311,7 @@ public final class CigarUtils {
         final SmithWatermanAlignment alignment = aligner.align(paddedRef.getBytes(), paddedPath.getBytes(), NEW_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
 
         if ( isSWFailure(alignment) ) {
-            return null;
+            throw new RuntimeException("test");
         }
 
 

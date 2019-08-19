@@ -106,29 +106,35 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
      */
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
-            SmithWatermanAlignment alignment1 = alignOptimized(reference, alternate, parameters, overhangStrategy);
+            SmithWatermanAlignment optimizedAlignment = alignOptimized(reference, alternate, parameters, overhangStrategy);
 
-            SmithWatermanAlignment alignment2 = alignUnoptimized(reference, alternate, parameters, overhangStrategy);
+            SmithWatermanAlignment oldAlignment = alignUnoptimized(reference, alternate, parameters, overhangStrategy);
+//            optimizedAlignment = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(optimizedAlignment.getCigar()), optimizedAlignment.getAlignmentOffset());
 
-
-            if(!alignment1.getCigar().toString().equals(alignment2.getCigar().toString()) || alignment1.getAlignmentOffset() != alignment2.getAlignmentOffset()){
+            if(!optimizedAlignment.getCigar().toString().equals(oldAlignment.getCigar().toString()) || optimizedAlignment.getAlignmentOffset() != oldAlignment.getAlignmentOffset()){
 
                 System.out.println(new String(reference));
                 System.out.println();
                 System.out.println(new String(alternate));
-                System.out.println(alignment2.getAlignmentOffset());
-                System.out.println("SW: " + alignment2.getCigar().toString());
-                System.out.println(alignment1.getAlignmentOffset());
-                System.out.println("Heuristic: " + alignment1.getCigar().toString());
+                System.out.println(oldAlignment.getAlignmentOffset());
+                System.out.println("SW: " + oldAlignment.getCigar().toString());
+                System.out.println(optimizedAlignment.getAlignmentOffset());
+                System.out.println("Heuristic: " + optimizedAlignment.getCigar().toString());
                 System.out.println(this.haplotypeToref);
                 throw new GATKException("alignments not equal");
             }
 
-            if (haplotypeToref) {
-                return alignment2;
-            } else {
-                return alignment1;
-            }
+//            if (overhangStrategy == SWOverhangStrategy.LEADING_INDEL) {
+//                return oldAlignment;
+//            } else {
+//                return optimizedAlignment;
+//            }
+        return oldAlignment;
+//            if (haplotypeToref) {
+//                return oldAlignment;
+//            } else {
+//                return oldAlignment;
+//            }
     }
 
     /*
@@ -419,7 +425,9 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
     @Override
     public void filePathName(String fileName) throws FileNotFoundException {
-        this.printStream = new PrintStream(fileName);
+        if (fileName != null) {
+            this.printStream = new PrintStream(fileName);
+        }
     }
 
     //testCode
@@ -436,13 +444,15 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
         if(!cigar1.equals(cigar2) || alignmentResult.getAlignmentOffset() != alignmentResult2.getAlignmentOffset()){
 
-            this.printStream.println(new String(reference));
-            printStream.println();
-            printStream.println(new String(alternate));
-            printStream.println(alignmentResult2.getAlignmentOffset());
-            printStream.println("SW: " + cigar2.toString());
-            printStream.println(alignmentResult.getAlignmentOffset());
-            printStream.println("Heuristic: " + cigar1.toString());
+            if (printStream != null) {
+                this.printStream.println(new String(reference));
+                printStream.println();
+                printStream.println(new String(alternate));
+                printStream.println(alignmentResult2.getAlignmentOffset());
+                printStream.println("SW: " + cigar2.toString());
+                printStream.println(alignmentResult.getAlignmentOffset());
+                printStream.println("Heuristic: " + cigar1.toString());
+            }
 
             System.out.println(new String(reference));
             System.out.println();
@@ -826,6 +836,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         logger.info(String.format("Total compute time in twoMismatch heuristic : %.2f sec", totalTwoMismatchHeuristicTime * 1e-9));
         logger.info(String.format("Total compute time in snpsHapToRef heuristic : %.2f sec", snpTimeHapToRef * 1e-9));
 
-        this.printStream.close();
+        if (printStream != null) {
+            this.printStream.close();
+        }
     }
 }

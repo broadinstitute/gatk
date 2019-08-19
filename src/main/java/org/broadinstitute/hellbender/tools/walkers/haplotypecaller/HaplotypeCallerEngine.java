@@ -164,7 +164,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             aligner.filePathName(hcArgs.fileNameReadToBestHap);
             alignerHaplotypeToRef.filePathName(hcArgs.fileNameHapToRef);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
 
 
