@@ -58,6 +58,10 @@ public abstract class ReadsKey {
             this.keyValue = key;
         }
 
+        public long getKeyValue() {
+            return keyValue;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -89,6 +93,14 @@ public abstract class ReadsKey {
         KeyForPair(final long firstReadKeyValue, final long secondReadKeyValue) {
             this.firstReadKeyValue = firstReadKeyValue;
             this.secondReadKeyValue = secondReadKeyValue;
+        }
+
+        public long getFirstReadKeyValue() {
+            return firstReadKeyValue;
+        }
+
+        public long getSecondReadKeyValue() {
+            return secondReadKeyValue;
         }
 
         @Override

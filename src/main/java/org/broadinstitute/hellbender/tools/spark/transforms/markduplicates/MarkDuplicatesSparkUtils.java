@@ -10,7 +10,11 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapGroupsFunction;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.broadcast.Broadcast;
+import org.apache.spark.sql.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -21,6 +25,9 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparksql.NonDuplicatesSparkSqlRecord;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparksql.MarkDuplicatesSparkSqlRecord;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparksql.ReadsKeySparkSqlRecord;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.sam.markduplicates.util.ReadEnds;
@@ -40,8 +47,8 @@ public class MarkDuplicatesSparkUtils {
     public static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
     // This comparator represents the tiebreaking for PairedEnds duplicate marking.
     // We compare first on score, followed by unclipped start position (which is reversed here because of the expected ordering)
-    private static final Comparator<TransientFieldPhysicalLocation> PAIRED_ENDS_SCORE_COMPARATOR = Comparator.comparing(TransientFieldPhysicalLocation::getScore)
-            .thenComparing(TransientFieldPhysicalLocationComparator.INSTANCE.reversed());
+    private static final Comparator<MarkDuplicatesSparkSqlRecord> PAIRED_ENDS_SCORE_COMPARATOR = Comparator.comparing(MarkDuplicatesSparkSqlRecord::getScore)
+            .thenComparing(MarkDuplicatesSparkSqlRecordPhysicalLocationComparator.INSTANCE.reversed());
 
     /**
      * Returns the library associated with the provided read's read group.
@@ -124,9 +131,9 @@ public class MarkDuplicatesSparkUtils {
         final Broadcast<Map<String, Short>> headerReadGroupIndexMap = JavaSparkContext.fromSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
         final Broadcast<Map<String, Byte>> libraryIndex = JavaSparkContext.fromSparkContext(reads.context()).broadcast( constructLibraryIndex(header));
 
-        // Place all the reads into a single RDD of MarkDuplicatesSparkRecord objects
-        final JavaPairRDD<ReadsKey, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
-            final List<Tuple2<ReadsKey, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
+        // Place all the reads into a single RDD of MarkDuplicatesSparkSqlRecord objects
+        final JavaRDD<MarkDuplicatesSparkSqlRecord> pairedEnds = keyedReads.flatMap(keyedRead -> {
+            final List<MarkDuplicatesSparkSqlRecord> out = Lists.newArrayList();
             final IndexPair<?>[] hadNonPrimaryRead = {null};
 
             final List<IndexPair<GATKRead>> primaryReads = Utils.stream(keyedRead._2())
@@ -135,11 +142,11 @@ public class MarkDuplicatesSparkUtils {
                     .peek(readWithIndex -> {
                         final GATKRead read = readWithIndex.getValue();
                         if (!(read.isSecondaryAlignment()||read.isSupplementaryAlignment())) {
-                            PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
-                                    MarkDuplicatesSparkRecord.newEmptyFragment(read, header, libraryIndex.getValue()) :
-                                    MarkDuplicatesSparkRecord.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy, libraryIndex.getValue());
+                            MarkDuplicatesSparkSqlRecord fragment = (ReadUtils.readHasMappedMate(read)) ?
+                                    MarkDuplicatesSparkSqlRecord.newEmptyFragment(read, header, libraryIndex.getValue()) :
+                                    MarkDuplicatesSparkSqlRecord.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy, libraryIndex.getValue());
 
-                            out.add(new Tuple2<>(fragment.key(), fragment));
+                            out.add(fragment);
                         } else {
                             hadNonPrimaryRead[0] = readWithIndex;
                         }
@@ -149,8 +156,8 @@ public class MarkDuplicatesSparkUtils {
 
             // Catching the case where there are only secondary and supplementary reads in the readname group
             if (primaryReads.isEmpty()) {
-                final MarkDuplicatesSparkRecord pass = MarkDuplicatesSparkRecord.getPassthrough((GATKRead)hadNonPrimaryRead[0].getValue(), hadNonPrimaryRead[0].getIndex());
-                out.add(new Tuple2<>(pass.key(), pass));
+                final MarkDuplicatesSparkSqlRecord pass = MarkDuplicatesSparkSqlRecord.getPassthrough((GATKRead)hadNonPrimaryRead[0].getValue(), hadNonPrimaryRead[0].getIndex());
+                out.add(pass);
                 return out.iterator();
 
                 // Mark duplicates cant properly handle templates with more than two reads in a pair
@@ -169,7 +176,7 @@ public class MarkDuplicatesSparkUtils {
             if (mappedPair.size()==2) {
                 final GATKRead firstRead = mappedPair.get(0).getValue();
                 final IndexPair<GATKRead> secondRead = mappedPair.get(1);
-                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead, secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy, libraryIndex.getValue());
+                final MarkDuplicatesSparkSqlRecord pair = MarkDuplicatesSparkSqlRecord.newPair(firstRead, secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy, libraryIndex.getValue());
                 // Validate and add the read group to the pair
                 final Short readGroup = headerReadGroupIndexMap.getValue().get(firstRead.getReadGroup());
                 if (readGroup != null) {
@@ -179,13 +186,13 @@ public class MarkDuplicatesSparkUtils {
                             new UserException.ReadMissingReadGroup(firstRead) :
                             new UserException.HeaderMissingReadGroup(firstRead);
                 }
-                out.add(new Tuple2<>(pair.key(), pair));
+                out.add(pair);
 
                 // If there is one paired read in the template this probably means the bam is missing its mate, don't duplicate mark it
             } else if (mappedPair.size()==1) {
                 final IndexPair<GATKRead> firstRead = mappedPair.get(0);
-                final MarkDuplicatesSparkRecord pass = MarkDuplicatesSparkRecord.getPassthrough(firstRead.getValue(), firstRead.getIndex());
-                out.add(new Tuple2<>(pass.key(), pass));
+                final MarkDuplicatesSparkSqlRecord pass = MarkDuplicatesSparkSqlRecord.getPassthrough(firstRead.getValue(), firstRead.getIndex());
+                out.add(pass);
             }
             // If mappedPair is empty here, it probably means that we had a fragment with an unmapped mate, which has already been built
             // and added to out. So we just pass through and return.
@@ -193,9 +200,20 @@ public class MarkDuplicatesSparkUtils {
             return out.iterator();
         });
 
-        final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
-
-        return markDuplicateRecords(keyedPairs, finder, markOpticalDups);
+        // convert to Spark Dataset
+        SparkSession sparkSession = SparkSession.builder().sparkContext(JavaSparkContext.fromSparkContext(reads.context()).sc()).getOrCreate();
+        Dataset<MarkDuplicatesSparkSqlRecord> markDuplicatesSparkSqlRecordDataset = sparkSession.createDataset(pairedEnds.rdd(), Encoders.bean(MarkDuplicatesSparkSqlRecord.class));
+        // group by key
+        KeyValueGroupedDataset<ReadsKeySparkSqlRecord, MarkDuplicatesSparkSqlRecord> grouped = markDuplicatesSparkSqlRecordDataset.groupByKey(
+                (MapFunction<MarkDuplicatesSparkSqlRecord, ReadsKeySparkSqlRecord>) MarkDuplicatesSparkSqlRecord::key,
+                Encoders.bean(ReadsKeySparkSqlRecord.class));
+        // and mark duplicates
+        Dataset<NonDuplicatesSparkSqlRecord> nonDuplicates = grouped.flatMapGroups(
+                (FlatMapGroupsFunction<ReadsKeySparkSqlRecord, MarkDuplicatesSparkSqlRecord, NonDuplicatesSparkSqlRecord>) (readsKeySparkSqlRecord, iterator) ->
+                        markDuplicateRecords(Utils.stream(iterator).collect(Collectors.toList()), finder, markOpticalDups), Encoders.bean(NonDuplicatesSparkSqlRecord.class));
+        // convert back to RDD
+        return nonDuplicates.toJavaRDD().mapToPair((PairFunction<NonDuplicatesSparkSqlRecord, IndexPair<String>, Integer>) record ->
+                new Tuple2<>(new IndexPair<>(record.getName(), record.getPartitionIndex()), record.getNumOpticalDuplicates()));
     }
 
     /**
@@ -283,49 +301,44 @@ public class MarkDuplicatesSparkUtils {
      *  - Farms out to methods which handles each group
      *  - Collects the results and returns an iterator
      */
-    @SuppressWarnings("unchecked")
-    private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
-                                                                                final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
-        return keyedPairs.flatMapToPair(keyedPair -> {
-            Iterable<MarkDuplicatesSparkRecord> pairGroups = keyedPair._2();
+    private static Iterator<NonDuplicatesSparkSqlRecord> markDuplicateRecords(final Iterable<MarkDuplicatesSparkSqlRecord> pairGroups,
+                                                                                     final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
+        final List<NonDuplicatesSparkSqlRecord> nonDuplicates = Lists.newArrayList();
+        final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkSqlRecord>> stratifiedByType = splitByType(pairGroups);
 
-            final List<Tuple2<IndexPair<String>, Integer>> nonDuplicates = Lists.newArrayList();
-            final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> stratifiedByType = splitByType(pairGroups);
+        // Each key corresponds to either fragments or paired ends, not a mixture of both.
+        final List<MarkDuplicatesSparkSqlRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
+        final List<MarkDuplicatesSparkSqlRecord> fragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.FRAGMENT);
+        final List<MarkDuplicatesSparkSqlRecord> pairs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR);
+        final List<MarkDuplicatesSparkSqlRecord> passthroughs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PASSTHROUGH);
 
-            // Each key corresponds to either fragments or paired ends, not a mixture of both.
-            final List<MarkDuplicatesSparkRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
-            final List<MarkDuplicatesSparkRecord> fragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.FRAGMENT);
-            final List<Pair> pairs = (List<Pair>)(List)stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR);
-            final List<MarkDuplicatesSparkRecord> passthroughs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PASSTHROUGH);
+        //empty MarkDuplicatesSparkRecord signify that a pair has a mate somewhere else
+        // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
+        if (Utils.isNonEmpty(fragments) && !Utils.isNonEmpty(emptyFragments)) {
+            final NonDuplicatesSparkSqlRecord bestFragment = handleFragments(fragments, finder);
+            nonDuplicates.add(bestFragment);
+        }
 
-            //empty MarkDuplicatesSparkRecord signify that a pair has a mate somewhere else
-            // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
-            if (Utils.isNonEmpty(fragments) && !Utils.isNonEmpty(emptyFragments)) {
-                final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments, finder);
-                nonDuplicates.add(bestFragment);
-            }
+        if (Utils.isNonEmpty(pairs)) {
+            nonDuplicates.addAll(handlePairs(pairs, finder, markOpticalDups));
+        }
 
-            if (Utils.isNonEmpty(pairs)) {
-                nonDuplicates.addAll(handlePairs(pairs, finder, markOpticalDups));
-            }
+        if (Utils.isNonEmpty(passthroughs)) {
+            nonDuplicates.addAll(handlePassthroughs(passthroughs));
+        }
 
-            if (Utils.isNonEmpty(passthroughs)) {
-                nonDuplicates.addAll(handlePassthroughs(passthroughs));
-            }
-
-            return nonDuplicates.iterator();
-        });
+        return nonDuplicates.iterator();
     }
 
     /**
      * split MarkDuplicatesSparkRecord into groups by their type
      */
-    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> splitByType(Iterable<MarkDuplicatesSparkRecord> duplicateGroup) {
-        final EnumMap<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> byType = new EnumMap<>(MarkDuplicatesSparkRecord.Type.class);
-        for(MarkDuplicatesSparkRecord pair: duplicateGroup) {
-            byType.compute(pair.getType(), (key, value) -> {
+    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkSqlRecord>> splitByType(Iterable<MarkDuplicatesSparkSqlRecord> duplicateGroup) {
+        final EnumMap<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkSqlRecord>> byType = new EnumMap<>(MarkDuplicatesSparkRecord.Type.class);
+        for(MarkDuplicatesSparkSqlRecord pair: duplicateGroup) {
+            byType.compute(MarkDuplicatesSparkRecord.Type.values()[pair.getType()], (key, value) -> {
                 if (value == null) {
-                    final ArrayList<MarkDuplicatesSparkRecord> pairedEnds = new ArrayList<>();
+                    final ArrayList<MarkDuplicatesSparkSqlRecord> pairedEnds = new ArrayList<>();
                     pairedEnds.add(pair);
                     return pairedEnds;
                 } else {
@@ -337,49 +350,49 @@ public class MarkDuplicatesSparkUtils {
         return byType;
     }
 
-    private static List<Tuple2<IndexPair<String>,Integer>> handlePassthroughs(List<MarkDuplicatesSparkRecord> passthroughs) {
+    private static List<NonDuplicatesSparkSqlRecord> handlePassthroughs(List<MarkDuplicatesSparkSqlRecord> passthroughs) {
         // Emit the passthrough reads as non-duplicates.
         return passthroughs.stream()
-                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), MarkDuplicatesSpark.NO_OPTICAL_MARKER))
+                .map(pair -> new NonDuplicatesSparkSqlRecord(pair.getPartitionIndex(), pair.getName(), MarkDuplicatesSpark.NO_OPTICAL_MARKER))
                 .collect(Collectors.toList());
     }
 
-    private static List<Tuple2<IndexPair<String>, Integer>> handlePairs(final List<Pair> pairs, final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
+    private static List<NonDuplicatesSparkSqlRecord> handlePairs(final List<MarkDuplicatesSparkSqlRecord> pairs, final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
         // save ourselves the trouble when there are no optical duplicates to worry about
         if (pairs.size() == 1) {
-            return Collections.singletonList(new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
+            return Collections.singletonList(new NonDuplicatesSparkSqlRecord(pairs.get(0).getPartitionIndex(), pairs.get(0).getName(), 0));
         }
 
-        List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
+        List<NonDuplicatesSparkSqlRecord> output = new ArrayList<>();
 
-        final Pair bestPair = pairs.stream()
+        final MarkDuplicatesSparkSqlRecord bestPair = pairs.stream()
                 .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
                 .max(PAIRED_ENDS_SCORE_COMPARATOR)
                 .orElseThrow(() -> new GATKException.ShouldNeverReachHereException("There was no best pair because the stream was empty, but it shouldn't have been empty."));
 
         // Split by orientation and count duplicates in each group separately.
-        final Map<Byte, List<Pair>> groupByOrientation = pairs.stream()
-                .collect(Collectors.groupingBy(Pair::getOrientationForOpticalDuplicates));
+        final Map<Byte, List<MarkDuplicatesSparkSqlRecord>> groupByOrientation = pairs.stream()
+                .collect(Collectors.groupingBy(MarkDuplicatesSparkSqlRecord::getOrientationForOpticalDuplicates));
         final int numOpticalDuplicates;
         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
-            final List<Pair> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
-            final List<Pair> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
+            final List<MarkDuplicatesSparkSqlRecord> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
+            final List<MarkDuplicatesSparkSqlRecord> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
             numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair, markOpticalDups? output : null) + countOpticalDuplicates(finder, peRF, bestPair, markOpticalDups? output : null);
         } else {
             numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair, markOpticalDups? output : null);
         }
-        output.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        output.add(new NonDuplicatesSparkSqlRecord(bestPair.getPartitionIndex(), bestPair.getName(), numOpticalDuplicates));
         return output;
     }
 
-    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best, List<Tuple2<IndexPair<String>,Integer>> opticalDuplicateList) {
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<MarkDuplicatesSparkSqlRecord> scored, MarkDuplicatesSparkSqlRecord best, List<NonDuplicatesSparkSqlRecord> opticalDuplicateList) {
         final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored, best);
         int numOpticalDuplicates = 0;
         for (int i = 0; i < opticalDuplicateFlags.length; i++) {
             if (opticalDuplicateFlags[i]) {
                 numOpticalDuplicates++;
                 if (opticalDuplicateList != null) {
-                    opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), MarkDuplicatesSpark.OPTICAL_DUPLICATE_MARKER));
+                    opticalDuplicateList.add(new NonDuplicatesSparkSqlRecord(scored.get(i).getPartitionIndex(), scored.get(i).getName(), MarkDuplicatesSpark.OPTICAL_DUPLICATE_MARKER));
                 }
             }
         }
@@ -389,12 +402,11 @@ public class MarkDuplicatesSparkUtils {
     /**
      * If there are fragments with no non-fragments overlapping at a site, select the best one according to PAIRED_ENDS_SCORE_COMPARATOR
      */
-    private static Tuple2<IndexPair<String>, Integer> handleFragments(List<MarkDuplicatesSparkRecord> duplicateFragmentGroup, OpticalDuplicateFinder finder) {
+    private static NonDuplicatesSparkSqlRecord handleFragments(List<MarkDuplicatesSparkSqlRecord> duplicateFragmentGroup, OpticalDuplicateFinder finder) {
         return duplicateFragmentGroup.stream()
-                .map(f -> (Fragment)f)
                 .peek(f -> finder.addLocationInformation(f.getName(), f))
                 .max(PAIRED_ENDS_SCORE_COMPARATOR)
-                .map(best -> new Tuple2<>(new IndexPair<>(best.getName(), best.getPartitionIndex()), -1))
+                .map(best -> new NonDuplicatesSparkSqlRecord(best.getPartitionIndex(), best.getName(), -1))
                 .orElse(null);
     }
 
@@ -465,7 +477,7 @@ public class MarkDuplicatesSparkUtils {
     }
 
     /**
-     * Comparator for TransientFieldPhysicalLocation objects by their attributes and strandedness. This comparator is intended to serve as a tiebreaker
+     * Comparator for MarkDuplicatesSparkSqlRecord objects by their attributes and strandedness. This comparator is intended to serve as a tiebreaker
      * for the score comparator.
      *
      * It compares two PhysicalLocation  the orientation of the strand, followed by their physical location attributes,
@@ -474,19 +486,19 @@ public class MarkDuplicatesSparkUtils {
      * NOTE: Because the original records were grouped by start position, we know that they must be unique once they hit this
      *       comparator and thus we don't need to worry about further tiebreaking for this method.
      */
-    public static final class TransientFieldPhysicalLocationComparator implements Comparator<TransientFieldPhysicalLocation>, Serializable {
+    public static final class MarkDuplicatesSparkSqlRecordPhysicalLocationComparator implements Comparator<MarkDuplicatesSparkSqlRecord>, Serializable {
         private static final long serialVersionUID = 1L;
 
-        public static final TransientFieldPhysicalLocationComparator INSTANCE = new TransientFieldPhysicalLocationComparator();
-        private TransientFieldPhysicalLocationComparator() { }
+        public static final MarkDuplicatesSparkSqlRecordPhysicalLocationComparator INSTANCE = new MarkDuplicatesSparkSqlRecordPhysicalLocationComparator();
+        private MarkDuplicatesSparkSqlRecordPhysicalLocationComparator() { }
 
         @Override
-        public int compare( TransientFieldPhysicalLocation first, TransientFieldPhysicalLocation second ) {
+        public int compare( MarkDuplicatesSparkSqlRecord first, MarkDuplicatesSparkSqlRecord second ) {
             int result = 0;
 
             //This is done to mimic SAMRecordCoordinateComparator's behavior
-            if (first.isRead1ReverseStrand() != second.isRead1ReverseStrand()) {
-                return first.isRead1ReverseStrand() ? -1: 1;
+            if (first.getRead1ReverseStrand() != second.getRead1ReverseStrand()) {
+                return first.getRead1ReverseStrand() ? -1: 1;
             }
 
             if (first.getTile() != second.getTile()) {
