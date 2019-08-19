@@ -104,7 +104,7 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
     private static final int NUMBER_OF_LEARNING_PASSES = 2;
 
     @Override
-    protected int numberOfPasses() { return NUMBER_OF_LEARNING_PASSES + 1; }
+    protected int numberOfPasses() { return NUMBER_OF_LEARNING_PASSES + 2; }    // {@coode NUMBER_OF_LEARNING_PASSES} passes for learning, one for the threshold, and one for calling
 
     @Override
     public boolean requiresReference() { return true;}
@@ -142,9 +142,9 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
                                 final FeatureContext featureContext,
                                 final int n) {
         ParamUtils.isPositiveOrZero(n, "Passes must start at the 0th pass.");
-        if (n < NUMBER_OF_LEARNING_PASSES) {
+        if (n <= NUMBER_OF_LEARNING_PASSES) {
             filteringEngine.accumulateData(variant, referenceContext);
-        } else if (n == NUMBER_OF_LEARNING_PASSES) {
+        } else if (n == NUMBER_OF_LEARNING_PASSES + 1) {
             vcfWriter.add(filteringEngine.applyFiltersAndAccumulateOutputStats(variant, referenceContext));
         } else {
             throw new GATKException.ShouldNeverReachHereException("This walker should never reach (zero-indexed) pass " + n);
@@ -156,6 +156,10 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
         if (n < NUMBER_OF_LEARNING_PASSES) {
             filteringEngine.learnParameters();
         } else if (n == NUMBER_OF_LEARNING_PASSES) {
+            // it's important for filter parameters to stay the same and only learn the threshold in the final pass so that the
+            // final threshold used corresponds exactly to the filters
+            filteringEngine.learnThreshold();
+        }else if (n == NUMBER_OF_LEARNING_PASSES + 1) {
             final Path filteringStats = IOUtils.getPath(
                 filteringStatsOutput != null ? filteringStatsOutput
                     : outputVcf + FILTERING_STATS_EXTENSION);

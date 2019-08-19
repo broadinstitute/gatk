@@ -63,7 +63,7 @@ public class Mutect2FilteringEngine {
 
     /**
      * Maximum probability that a potential variant is not a true somatic mutation.  Variants with error probabilities
-     * below this threshold are called; variants with error probabilities above are filtered.
+     * at or below this threshold are called; variants with error probabilities above are filtered.
      */
     public double getThreshold() { return thresholdCalculator.getThreshold(); }
 
@@ -159,6 +159,11 @@ public class Mutect2FilteringEngine {
         filteringOutputStats.clear();
     }
 
+    public void learnThreshold() {
+        thresholdCalculator.relearnThresholdAndClearAcumulatedProbabilities();
+        filteringOutputStats.clear();
+    }
+
     /**
      * Create a filtered variant and record statistics for the final pass of {@link FilterMutectCalls}
      */
@@ -177,8 +182,9 @@ public class Mutect2FilteringEngine {
                 }
             });
 
-            // TODO: clarify this logic
-            if (errorProbability > EPSILON && errorProbability > getThreshold() - EPSILON) {
+            // error probability must exceed threshold, and just in case threshold is bad, probabilities close to 1 must be filtered
+            // and probabilities close to 0 must not be filtered
+            if (( errorProbability > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold())))) {
                 vcb.filter(entry.getKey().filterName());
             }
         }
