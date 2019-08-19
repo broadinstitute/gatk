@@ -80,6 +80,11 @@ public interface SmithWatermanAligner extends Closeable {
          */
         JAVA(SmithWatermanJavaAligner::getInstance);
 
+//        /**
+//         * use the pure java implementation of Smith-Waterman, works on all hardware
+//         */
+//        JAVA_OPTIMIZED(SmithWatermanJavaAligner::getInstance);
+
         private final Supplier<SmithWatermanAligner> alignerSupplier;
 
         Implementation(final Supplier<SmithWatermanAligner> alignerSupplier ){

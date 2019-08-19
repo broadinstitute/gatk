@@ -111,7 +111,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             SmithWatermanAlignment alignment2 = alignUnoptimized(reference, alternate, parameters, overhangStrategy);
 
 
-            if(!alignment1.getCigar().equals(alignment2.getCigar()) || alignment1.getAlignmentOffset() != alignment2.getAlignmentOffset()){
+            if(!alignment1.getCigar().toString().equals(alignment2.getCigar().toString()) || alignment1.getAlignmentOffset() != alignment2.getAlignmentOffset()){
 
                 System.out.println(new String(reference));
                 System.out.println();
@@ -124,7 +124,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
                 throw new GATKException("alignments not equal");
             }
 
-            return alignment2;
+            if (haplotypeToref) {
+                return alignment2;
+            } else {
+                return alignment1;
+            }
     }
 
     /*
