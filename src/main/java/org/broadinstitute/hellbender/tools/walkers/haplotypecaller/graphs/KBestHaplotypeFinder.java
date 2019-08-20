@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
+import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.alg.CycleDetector;
@@ -71,6 +72,8 @@ public final class KBestHaplotypeFinder {
 
         final Map<SeqVertex, MutableInt> vertexCounts = graph.vertexSet().stream()
                 .collect(Collectors.toMap(v -> v, v -> new MutableInt(0)));
+        final Map<SeqVertex, Double> vertexLastOutgoingScore = graph.vertexSet().stream()
+                .collect(Collectors.toMap(v -> v, v -> 0.0));
 
         while (!queue.isEmpty() && result.size() < maxNumberOfHaplotypes) {
             final KBestHaplotype pathToExtend = queue.poll();
@@ -78,7 +81,13 @@ public final class KBestHaplotypeFinder {
             if (sinks.contains(vertexToExtend)) {
                 result.add(pathToExtend);
             } else {
-                if (vertexCounts.get(vertexToExtend).getAndIncrement() < maxNumberOfHaplotypes) {
+                int pathCount = vertexCounts.get(vertexToExtend).getAndIncrement();
+                double lastScore = vertexLastOutgoingScore.get(vertexToExtend);
+
+                // As an optimization, only look at the first maxNumberOfHaplotypes, otherwise if this score ties with the last haplotype
+                // taken then add it as well (which helps prevent order from mattering when there are ties in the last ~maxHaplotypes paths through a vertex)
+                if (pathCount < maxNumberOfHaplotypes || lastScore == pathToExtend.score()) {
+                    vertexLastOutgoingScore.put(vertexToExtend, pathToExtend.score());
                     final Set<BaseEdge> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
                     int totalOutgoingMultiplicity = 0;
                     for (final BaseEdge edge : outgoingEdges) {
