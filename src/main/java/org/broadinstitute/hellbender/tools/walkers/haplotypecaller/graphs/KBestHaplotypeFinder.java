@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
  */
 public final class KBestHaplotypeFinder {
 
+    public static final Comparator<KBestHaplotype> K_BEST_HAPLOTYPE_COMPARATOR = Comparator.comparingDouble(KBestHaplotype::score)
+            .reversed()
+            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); //reverse this since that's what the existing tests expect
     private final SeqGraph graph;
     final Set<SeqVertex> sinks;
     final Set<SeqVertex> sources;
@@ -67,8 +70,7 @@ public final class KBestHaplotypeFinder {
      */
     public List<KBestHaplotype> findBestHaplotypes(final int maxNumberOfHaplotypes) {
         final List<KBestHaplotype> result = new ArrayList<>();
-        final PriorityQueue<KBestHaplotype> queue = new PriorityQueue<>(Comparator.comparingDouble(KBestHaplotype::score).reversed()
-                .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR));
+        final PriorityQueue<KBestHaplotype> queue = new PriorityQueue<>(K_BEST_HAPLOTYPE_COMPARATOR);
         sources.forEach(source -> queue.add(new KBestHaplotype(source, graph)));
 
         final Map<SeqVertex, MutableInt> vertexCounts = graph.vertexSet().stream()
