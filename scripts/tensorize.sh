@@ -123,7 +123,6 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
                 --mode tensorize \
                 --tensors $TENSOR_PATH \
                 --output_folder $TENSOR_PATH \
-                --include_heart_zoom \
                 $PYTHON_ARGS \
                 --dicoms ./dicoms_$MIN_SAMPLE_ID/ \
                 --min_sample_id $MIN_SAMPLE_ID \
@@ -134,7 +133,6 @@ LAUNCH_CMDLINE_MESSAGE
 		--mode tensorize \
 		--tensors $TENSOR_PATH \
 		--output_folder $TENSOR_PATH \
-		--include_heart_zoom \
 		$PYTHON_ARGS \
 		--dicoms ./dicoms_$MIN_SAMPLE_ID/ \
 		--min_sample_id $MIN_SAMPLE_ID \

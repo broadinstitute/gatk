@@ -84,7 +84,6 @@ def parse_args():
     parser.add_argument('--max_slices', default=999999, type=int, help='Maximum number of dicom slices to read')
     parser.add_argument('--b_slice_force', default=None,
                         help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
-    parser.add_argument('--include_heart_zoom', default=False, action='store_true', help='Include the heart zoom')
     parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
                         help='Include missing channels in continuous tensors')
     parser.add_argument('--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',

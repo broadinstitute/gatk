@@ -34,10 +34,10 @@ PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
 SUBPLOT_SIZE = 6
 
-COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'gold',
-               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'lime_green', 'wheat', 'chocolate', 'tan',
-               'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru',
-               'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered', 'darkkhaki']
+COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'red',
+               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
+               'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
+               'teal', 'peru', 'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
@@ -61,6 +61,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
+        plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
@@ -94,9 +95,8 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
-    # if tm.name == 'median':
-    #     plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
-    #     plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
+    if tm.name == 'median':
+        plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
 
     return performance_metrics
 
@@ -236,8 +236,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
     logging.info(f"Saved scatters together at: {figure_path}")
 
 
-def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]],
-                                prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
+                                alpha: float = 0.5):
     row = 0
     col = 0
     total_plots = len(scatters)
@@ -251,6 +251,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
             r_sqr = pearson * pearson
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
             axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
+            axes[row, col].legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
@@ -261,7 +262,6 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
-        plt.legend(loc="upper left")
 
         row += 1
         if row == rows:
@@ -565,8 +565,8 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     labels_to_areas = {}
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
-    lw = 3
-    plt.figure(figsize=(28, 22))
+    lw = 2
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -595,8 +595,8 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
 
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
-    lw = 3
-    plt.figure(figsize=(28, 22))
+    lw = 2
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -708,15 +708,17 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
 
 def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve
-    lw = 4.0
+    lw = 2.0
     labels_to_areas = {}
-    plt.figure(figsize=(22, 18))
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for k in labels:
         c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
-        plt.plot(recall, precision, lw=lw, color=c, label=k + ' area = %0.3f' % average_precision)
+        label_text = f"{k} mean precision:{average_precision:.3f}"
+        plt.plot(recall, precision, lw=lw, color=c, label=label_text)
+        logging.info(f"prAUC Label {label_text}")
         labels_to_areas[k] = average_precision
 
     plt.ylim([-0.02, 1.03])
@@ -738,16 +740,17 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
 
 def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve for each model
-    lw = 4.0
-    plt.figure(figsize=(22, 18))
+    lw = 2.0
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
         for k in labels:
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = "{}_{} area:{:.3f}".format(p, k, average_precision)
+            label_text = f"{p}_{k} mean precision:{average_precision:.3f}"
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
+            logging.info(f"prAUC Label {label_text}")
 
     plt.ylim([-0.02, 1.03])
     plt.xlim([0.0, 1.00])
@@ -811,12 +814,12 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [12, 25, 50]
-    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    perplexities = [8, 50]
+    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
     for i, p in enumerate(perplexities):
-        tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=123, perplexity=p, method='exact', learning_rate=20, n_iter_without_progress=1000, min_grad_norm=0.0)
+        tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=123, perplexity=p, learning_rate=20, n_iter_without_progress=500)
         p2y[p] = tsne.fit_transform(x_embed)
 
     j = -1
@@ -832,7 +835,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
-            ax.set_title(tm.name + ", Perplexity=%d" % p)
+            ax.set_title(tm.name)  # + ", Perplexity=%d" % p)
             if tm in categorical_labels + gene_labels:
                 color_labels = []
                 for c in tm.channel_map:

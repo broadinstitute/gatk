@@ -74,7 +74,6 @@ def write_tensors(a_id: str,
                   x: int,
                   y: int,
                   z: int,
-                  include_heart_zoom: bool,
                   zoom_x: int,
                   zoom_y: int,
                   zoom_width: int,
@@ -101,7 +100,6 @@ def write_tensors(a_id: str,
     :param x: Maximum x dimension of MRIs
     :param y: Maximum y dimension of MRIs
     :param z: Maximum z dimension of MRIs
-    :param include_heart_zoom: If True, also extract zoomed MRI of the heart
     :param zoom_x: x coordinate of the zoom
     :param zoom_y: y coordinate of the zoom
     :param zoom_width: width of the zoom
@@ -128,7 +126,7 @@ def write_tensors(a_id: str,
             continue
         try:
             with h5py.File(tensor_path, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
@@ -436,22 +434,21 @@ def _to_float_or_false(s):
         return False
 
 
-def _write_tensors_from_zipped_dicoms(x,
-                                      y,
-                                      z,
-                                      include_heart_zoom,
-                                      zoom_x,
-                                      zoom_y,
-                                      zoom_width,
-                                      zoom_height,
-                                      write_pngs,
-                                      tensors,
-                                      dicoms,
-                                      mri_field_ids,
-                                      zip_folder,
-                                      hd5,
-                                      sample_id,
-                                      stats) -> None:
+def _write_tensors_from_zipped_dicoms(x: int,
+                                      y: int,
+                                      z: int,
+                                      zoom_x: int,
+                                      zoom_y: int,
+                                      zoom_width: int,
+                                      zoom_height: int,
+                                      write_pngs: bool,
+                                      tensors: str,
+                                      dicoms: str,
+                                      mri_field_ids: List[str],
+                                      zip_folder: str,
+                                      hd5: h5py.File,
+                                      sample_id: int,
+                                      stats: Dict[str, int]) -> None:
     sample_str = str(sample_id)
     for mri_field in mri_field_ids:
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
@@ -462,36 +459,32 @@ def _write_tensors_from_zipped_dicoms(x,
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height,
+                _write_tensors_from_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height,
                                            write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
 
-def _write_tensors_from_dicoms(x,
-                               y,
-                               z,
-                               include_heart_zoom,
-                               zoom_x,
-                               zoom_y,
-                               zoom_width,
-                               zoom_height,
-                               write_pngs,
-                               tensors,
-                               dicom_folder,
-                               hd5,
-                               sample_str,
-                               stats) -> None:
+def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+                               dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int]) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
     Segmented dicoms require special processing and are written to tensor per-slice
 
     Arguments
-        x: Width of the tensors (actual MRI width will be padded with 0s or cropped to this number)
-        y: Height of the tensors (actual MRI width will be padded with 0s or cropped to this number)
-        dicom_folder: Folder with all dicoms associated with one sample.
-        hd5: Tensor file in which to create datasets for each series and each segmented slice
-        stats: Counter to keep track of summary statistics
+        :param x: Width of the tensors (actual MRI width will be padded with 0s or cropped to this number)
+        :param y: Height of the tensors (actual MRI width will be padded with 0s or cropped to this number)
+        :param z: Minimum number of slices to include in the each tensor if more slices are found they will be kept
+        :param zoom_x: x coordinate of the zoom
+        :param zoom_y: y coordinate of the zoom
+        :param zoom_width: width of the zoom
+        :param zoom_height: height of the zoom
+        :param write_pngs: write MRIs as PNG images for debugging
+        :param tensors: Folder where hd5 tensor files are being written
+        :param dicom_folder: Folder with all dicoms associated with one sample.
+        :param hd5: Tensor file in which to create datasets for each series and each segmented slice
+        :param sample_str: The current sample ID as a string
+        :param stats: Counter to keep track of summary statistics
 
     """
     views = defaultdict(list)
@@ -510,11 +503,6 @@ def _write_tensors_from_dicoms(x,
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
-    diastoles = {}
-    diastoles_pix = {}
-    systoles = {}
-    systoles_pix = {}
-
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         stats[v + ' mri shape:' + str(mri_shape)] += 1
@@ -523,98 +511,102 @@ def _write_tensors_from_dicoms(x,
             y = views[v][0].Columns
             z = len(views[v])
 
-        if v != MRI_TO_SEGMENT:
-            mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
+        if v == MRI_TO_SEGMENT:
+            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, x, y, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, stats)
         else:
-            full_slice = np.zeros((x, y), dtype=np.float32)
-            full_mask = np.zeros((x, y), dtype=np.float32)
-
-        for slicer in views[v]:
-            if MRI_PIXEL_WIDTH not in hd5 and v in MRI_SERIES_TO_WRITE:
-                hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT not in hd5 and v in MRI_SERIES_TO_WRITE:
-                hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
-            if MRI_PIXEL_WIDTH + '_' + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-                hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-                hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
-
-            sx = min(slicer.Rows, x)
-            sy = min(slicer.Columns, y)
-            slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-            if v != MRI_TO_SEGMENT:
+            mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
+            for slicer in views[v]:
+                sx = min(slicer.Rows, x)
+                sy = min(slicer.Columns, y)
+                _save_pixel_dimensions_if_missing(slicer, v, hd5)
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
-                mri_data[:sx, :sy, slice_index] = slice_data
-            elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
-                if _is_mitral_valve_segmentation(slicer):
-                    stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
-                    continue
+                mri_data[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+            hd5.create_dataset(v, data=mri_data, compression='gzip')
 
-                overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
-                cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
 
-                if write_pngs:
-                    overlayed = np.ma.masked_where(overlay != 0, slicer.pixel_array)
-                    # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
-                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlayed)
+def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, x: int, y: int,
+                                                zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str, hd5: h5py.File,
+                                                sample_str: str, stats: Dict[str, int]) -> None:
+    systoles = {}
+    diastoles = {}
+    systoles_pix = {}
+    diastoles_pix = {}
+    full_mask = np.zeros((x, y), dtype=np.float32)
+    full_slice = np.zeros((x, y), dtype=np.float32)
 
-                if not cur_angle in diastoles:
+    for slicer in slices:
+        sx = min(slicer.Rows, x)
+        sy = min(slicer.Columns, y)
+        _save_pixel_dimensions_if_missing(slicer, series, hd5)
+        if _has_overlay(slicer):
+            if _is_mitral_valve_segmentation(slicer):
+                stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
+                continue
+
+            overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
+            cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
+
+            full_slice[:sx, :sy] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+            full_mask[:sx, :sy] = mask
+            hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
+            hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
+
+            zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+            zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+            hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
+            hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
+
+            if write_pngs:
+                overlayed = np.ma.masked_where(overlay != 0, slicer.pixel_array)
+                # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
+                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
+                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
+                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlayed)
+                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
+                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
+
+            if cur_angle not in diastoles:
+                diastoles[cur_angle] = slicer
+                diastoles_pix[cur_angle] = ventricle_pixels
+                systoles[cur_angle] = slicer
+                systoles_pix[cur_angle] = ventricle_pixels
+            else:
+                if ventricle_pixels > diastoles_pix[cur_angle]:
                     diastoles[cur_angle] = slicer
                     diastoles_pix[cur_angle] = ventricle_pixels
+                if ventricle_pixels < systoles_pix[cur_angle]:
                     systoles[cur_angle] = slicer
                     systoles_pix[cur_angle] = ventricle_pixels
-                else:
-                    if ventricle_pixels > diastoles_pix[cur_angle]:
-                        diastoles[cur_angle] = slicer
-                        diastoles_pix[cur_angle] = ventricle_pixels
-                    if ventricle_pixels < systoles_pix[cur_angle]:
-                        systoles[cur_angle] = slicer
-                        systoles_pix[cur_angle] = ventricle_pixels
 
-                full_slice[:sx, :sy] = slice_data
-                full_mask[:sx, :sy] = mask
-                hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
-                hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
+    for angle in diastoles:
+        sx = min(diastoles[angle].Rows, x)
+        sy = min(diastoles[angle].Columns, y)
+        full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
+        overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(diastoles[angle])
+        hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
+        hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
+        if write_pngs:
+            plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
+            plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
-                if include_heart_zoom:
-                    zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                    zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                    hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
-                    hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
-                    if write_pngs:
-                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                        plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
-                        plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
+        sx = min(systoles[angle].Rows, x)
+        sy = min(systoles[angle].Columns, y)
+        full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
+        overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(systoles[angle])
+        hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
+        hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
+        if write_pngs:
+            plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
+            plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
-        if v == MRI_TO_SEGMENT:
-            # if len(diastoles) == 0:
-            #     raise ValueError('Error not writing tensors if diastole could not be found.')
-            for angle in diastoles:
-                sx = min(diastoles[angle].Rows, x)
-                sy = min(diastoles[angle].Columns, y)
-                full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-                overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(diastoles[angle])
-                hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
-                hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
-                if write_pngs:
-                    plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
-                    plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
-                sx = min(systoles[angle].Rows, x)
-                sy = min(systoles[angle].Columns, y)
-                full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-                overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(systoles[angle])
-                hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
-                hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
-                if write_pngs:
-                    plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
-                    plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
-        else:
-            hd5.create_dataset(v, data=mri_data, compression='gzip')
+def _save_pixel_dimensions_if_missing(slicer, series, hd5):
+    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_SERIES_TO_WRITE + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+        hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
+    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_SERIES_TO_WRITE + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+        hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
 
 def _has_overlay(d) -> bool:
@@ -902,6 +894,14 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 def append_float_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
+    # link_file = '/mnt/ml4cvd/projects/jamesp/data/ukb_app17488_app7089_link.csv'
+    # link_ids = {}
+    # with open(link_file, 'r') as link:
+    #     lol = list(csv.reader(link, delimiter=delimiter))
+    #     logging.info(f"LINK CSV of floats header:{lol[0]}")
+    #     for row in lol[1:]:
+    #         #sample_id = row[0]
+    #         link_ids[row[0]] = row[1]
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field

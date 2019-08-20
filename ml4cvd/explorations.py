@@ -65,25 +65,31 @@ def sort_csv(input_csv_file, volume_csv):
             [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
 
 
-def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap],
-                        tensor_maps_out: List[TensorMap],
-                        data: Dict[str, np.ndarray],
-                        labels: Dict[str, np.ndarray],
-                        paths: List[str],
-                        folder: str):
+def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
+                        labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
     for y, tm in zip(predictions, tensor_maps_out):
+        if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+            y = predictions
         logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if tm.is_categorical_any() and len(tm.shape) == 3:
+        if len(tm.shape) == 3:
+            input_map = None
             for im in tensor_maps_in:
-                if im.dependent_map == tm:
-                    break
+                if tm.is_categorical_any() and im.dependent_map == tm:
+                    input_map = im
+                elif len(tm.shape) == len(im.shape):
+                    input_map = im
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT,
-                           np.argmax(labels[tm.output_name()][i], axis=-1))
-                plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(y[i], axis=-1))
-                plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[im.input_name()][i, :, :, 0])
-
+                if tm.is_categorical_any():
+                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1))
+                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1))
+                    if input_map is not None:
+                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0])
+                else:
+                    for j in range(y.shape[3]):
+                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j])
+                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j])
+                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j])
         elif tm.is_categorical_any() and len(tm.shape) == 4:
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
@@ -153,13 +159,6 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
             subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
         if len(scatters) > 1:
             subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
-
-        embeddings = embed_model_predict(model, tensor_maps_in, 'embed', test_data, batch_size)
-        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-        label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels_1d, len(test_paths))
-
-        gene_labels = []
-        plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, folder+f"tsne_epoch_{i:03d}_", 0.7)
 
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 

@@ -14,7 +14,7 @@ from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_clas
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', #'lv_mass',
+CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'charge', 'AF_PRS_LDscore',  # lv_mass',
                          'corrected_extracted_lvesv', 'corrected_extracted_lvef', 'corrected_extracted_lvedv',
                          'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
                          'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
@@ -227,7 +227,7 @@ class TensorMap(object):
         return self.group == 'categorical_flag'
 
     def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag()
+        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation()
 
     def is_continuous(self):
         return self.group == 'continuous'
@@ -249,6 +249,9 @@ class TensorMap(object):
 
     def is_ecg_rest(self):
         return self.group == 'ecg_rest'
+
+    def is_ecg_categorical_interpretation(self):
+        return self.group == 'ecg_categorical_interpretation'
 
     def is_ecg_bike(self):
         return self.group == 'ecg_bike'
@@ -477,6 +480,32 @@ class TensorMap(object):
             label_tensor = np.array(hd5[MRI_SEGMENTED].get(cur_slice), dtype=np.float32)
             dependents[self.dependent_map][:, :, :] = to_categorical(label_tensor, self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 'sax_inlinevf_zoom_blackout':
+            mask_group = MRI_ZOOM_MASK
+            slice_idx = np.random.choice(list(hd5[MRI_ZOOM_INPUT].keys()))
+            angle_idx = int(slice_idx) // MRI_FRAMES
+            tensor = np.zeros(self.shape, dtype=np.float32)
+            dependents[self.dependent_map] = np.zeros(self.dependent_map.shape, dtype=np.float32)
+            for i in range(self.shape[-2]):
+                cur_slice = str((angle_idx * MRI_FRAMES) + i + 1)  # Instance Number off by 1
+                tensor[:, :, i, 0] = np.array(hd5[MRI_ZOOM_INPUT].get(cur_slice), dtype=np.float32)
+                label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
+                dependents[self.dependent_map][:, :, i, :] = to_categorical(label_tensor, self.dependent_map.shape[-1])
+                tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
+            return self.zero_mean_std1(tensor)
+        elif self.name == 'cine_segmented_sax_inlinevf_blackout':
+            mask_group = MRI_SEGMENTED
+            slice_idx = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
+            angle_idx = int(slice_idx) // MRI_FRAMES
+            tensor = np.zeros(self.shape, dtype=np.float32)
+            dependents[self.dependent_map] = np.zeros(self.dependent_map.shape, dtype=np.float32)
+            for i in range(self.shape[-2]):
+                cur_slice = str((angle_idx * MRI_FRAMES) + i + 1)  # Instance Number off by 1
+                tensor[:, :, i, 0] = np.array(hd5[MRI_TO_SEGMENT].get(cur_slice), dtype=np.float32)
+                label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
+                dependents[self.dependent_map][:, :, i, :] = to_categorical(label_tensor, self.dependent_map.shape[-1])
+                tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
+            return self.zero_mean_std1(tensor)
         elif self.name == 'mri_systole_diastole':
             if self.hd5_override is not None:
                 b_number = 'b' + str(np.random.choice(self.hd5_override))
@@ -514,33 +543,89 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 't1_brain_208z':
+            tensor = np.zeros(self.shape, dtype=np.float32)
+            tensor[:] = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[:, :, :self.shape[-1]]
+            return self.zero_mean_std1(tensor)
         elif self.is_root_array():
             tensor = np.zeros(self.shape, dtype=np.float32)
             tensor[:] = np.array(hd5[self.name], dtype=np.float32)
             return self.zero_mean_std1(tensor)
         elif self.name in MRI_ANNOTATION_GOOD_NEEDED:
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != [MRI_ANNOTATION_CHANNEL_MAP['good']]:
-                if self.sentinel is not None:
-                    continuous_data[:] = self.sentinel
-                    return continuous_data
+            if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != MRI_ANNOTATION_CHANNEL_MAP['good']:
                 raise ValueError('MRI Critic annotation not good or unreviewed.')
-            continuous_data[:] = float(hd5['continuous'][self.name][0])
+            continuous_data[0] = float(hd5['continuous'][self.name][0])
+            if continuous_data[0] == 0 and (self.sentinel == None and self.name in CONTINUOUS_NEVER_ZERO):
+                raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
+            if continuous_data[0] == 0 and self.sentinel is not None:
+                continuous_data[:] = self.sentinel
+                return continuous_data
+            if continuous_data[0] > 280:
+                raise ValueError('Volume crazy value.')
             return self.normalize(continuous_data)
         elif self.name == 'ecg_coarse':
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             if 'poor_data_quality' in hd5['categorical']:
                 raise ValueError('Poor data skipped by ecg_coarse.')
-            for rhythm in ('Normal_sinus_rhythm', 'Sinus_bradycardia', 'Marked_sinus_bradycardia'):
-                if rhythm in hd5['categorical']:
+            ecg_interpretation = str(hd5['ecg_rest_text'][0])
+            for afib in ['Atrial fibrillation']:
+                if afib in ecg_interpretation:
+                    categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
+                    return categorical_data
+            for rhythm in ['sinus', 'Sinus']:
+                if rhythm in ecg_interpretation:
                     categorical_data[self.channel_map['Sinus_rhythm']] = 1.0
                     return categorical_data
-            if 'Atrial_fibrillation' in hd5['categorical']:
-                categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
-                return categorical_data
             categorical_data[self.channel_map['Other_rhythm']] = 1.0
             return categorical_data
-
+        elif self.name == 'ecg_semi_coarse':
+            categorical_data = np.zeros(self.shape, dtype=np.float32)
+            if 'poor_data_quality' in hd5['categorical']:
+                raise ValueError('Poor data skipped by ecg_coarse.')
+            ecg_interpretation = str(hd5['ecg_rest_text'][0])
+            for channel in self.channel_map:
+                if channel in hd5['categorical']:
+                    categorical_data[self.channel_map[channel]] = 1.0
+                    return categorical_data
+            for afib in ['Atrial fibrillation']:
+                if afib in ecg_interpretation:
+                    categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
+                    return categorical_data
+            for rhythm in ['sinus', 'Sinus']:
+                if rhythm in ecg_interpretation:
+                    categorical_data[self.channel_map['Other_sinus_rhythm']] = 1.0
+                    return categorical_data
+            categorical_data[self.channel_map['Other_rhythm']] = 1.0
+            return categorical_data
+        elif self.name == 'ecg_semi_coarse_with_poor':
+            categorical_data = np.zeros(self.shape, dtype=np.float32)
+            ecg_interpretation = str(hd5['ecg_rest_text'][0])
+            for channel in self.channel_map:
+                if channel in hd5['categorical']:
+                    categorical_data[self.channel_map[channel]] = 1.0
+                    return categorical_data
+            for afib in ['Atrial fibrillation']:
+                if afib in ecg_interpretation:
+                    categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
+                    return categorical_data
+            for rhythm in ['sinus', 'Sinus']:
+                if rhythm in ecg_interpretation:
+                    categorical_data[self.channel_map['Other_sinus_rhythm']] = 1.0
+                    return categorical_data
+            categorical_data[self.channel_map['Other_rhythm']] = 1.0
+            return categorical_data
+        elif self.is_ecg_categorical_interpretation():
+            categorical_data = np.zeros(self.shape, dtype=np.float32)
+            for channel in self.channel_map:
+                if channel in str(hd5['ecg_rest_text'][0]):
+                    categorical_data[self.channel_map[channel]] = 1.0
+                    return categorical_data
+            if 'no_' + self.name in self.channel_map:
+                categorical_data[self.channel_map['no_' + self.name]] = 1.0
+                return categorical_data
+            else:
+                raise ValueError(f"ECG categorical interpretation could not find any of these keys: {self.channel_map.keys()}")
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:

@@ -369,5 +369,5 @@ def _log_first_error(stats: Counter, tensor_path: str):
     for k in stats:
         if 'Error' in k and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
-            logging.info(f"Got first error: {k}")
             logging.info(f"At tensor path: {tensor_path}")
+            logging.info(f"Got first error: {k}")

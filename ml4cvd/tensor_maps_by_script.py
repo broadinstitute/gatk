@@ -8,8 +8,8 @@ from ml4cvd.defines import MRI_SEGMENTED_CHANNEL_MAP
 
 
 TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-lax', (256, 256, 48), dependent_map=TMAPS['lax-view-detect'])
-TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-sax', (256, 256, 48), dependent_map=TMAPS['sax-view-detect'])
-TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-slax', (256, 256, 48), dependent_map=TMAPS['slax-view-detect'])
+TMAPS['mri-xyt-sax'] = TensorMap('mri-xyt-sax', (256, 256, 48), dependent_map=TMAPS['sax-view-detect'])
+TMAPS['mri-xyt-slax'] = TensorMap('mri-xyt-slax', (256, 256, 48), dependent_map=TMAPS['slax-view-detect'])
 TMAPS['mri_slice_segmented'] = TensorMap('mri_slice_segmented', (256, 256, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['mri_slice_segmented_weighted'] = TensorMap('mri_slice_segmented', (256, 256, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([20.0, 250.0, 250.0], 'mri_slice_segmented'))
 TMAPS['mri_slice'] = TensorMap('mri_slice', (256, 256, 1), dependent_map=TMAPS['mri_slice_segmented'])
@@ -18,7 +18,7 @@ TMAPS['cine_segmented_sax_inlinevf_segmented'] = TensorMap('cine_segmented_sax_i
 TMAPS['cine_segmented_sax_inlinevf_segmented_weighted'] = TensorMap('cine_segmented_sax_inlinevf_segmented', (256, 256, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'cine_segmented_sax_inlinevf_segmented'))
 TMAPS['cine_segmented_sax_inlinevf'] = TensorMap('cine_segmented_sax_inlinevf', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
 TMAPS['cine_segmented_sax_inlinevf_weighted'] = TensorMap('cine_segmented_sax_inlinevf', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented_weighted'])
-TMAPS['sax_inlinevf_zoom_mask'] = TensorMap('sax_inlinevf_zoom_mask', (96,96,48, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_inlinevf_zoom_mask'] = TensorMap('sax_inlinevf_zoom_mask', (96, 96, 48, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['sax_inlinevf_zoom_mask_weighted'] = TensorMap('sax_inlinevf_zoom_mask', (96, 96, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([5.0, 15.0, 15.0], 'sax_inlinevf_zoom_mask'))
 TMAPS['sax_inlinevf_zoom'] = TensorMap('sax_inlinevf_zoom',(96,96,48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask'])
 TMAPS['sax_inlinevf_zoom_weighted'] = TensorMap('sax_inlinevf_zoom',(96,96,48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask_weighted'])
@@ -34,7 +34,9 @@ TMAPS['mri_systole_diastole_8_segmented_weighted'] = TensorMap('mri_systole_dias
 TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented'])
 TMAPS['mri_systole_diastole_8_weighted'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented_weighted'])
 
-
+TMAPS['cine_segmented_sax_inlinevf_blackout'] = TensorMap('cine_segmented_sax_inlinevf_blackout', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
+TMAPS['sax_inlinevf_zoom_mask_blackout_weighted'] = TensorMap('sax_inlinevf_zoom_mask', (96, 96, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([0.1, 20.0, 25.0], 'sax_inlinevf_zoom_mask_blackout'))
+TMAPS['sax_inlinevf_zoom_blackout'] = TensorMap('sax_inlinevf_zoom_blackout', (96, 96, 48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask_blackout_weighted'])
 
 #  Continuous tensor maps
 TMAPS['34_0'] = TensorMap('34_Year-of-birth', group='continuous', normalization={'mean': 1951.5428168330234, 'std': 8.116157117024175}, annotation_units=1, channel_map={'34_Year-of-birth_0_0': 0, })
