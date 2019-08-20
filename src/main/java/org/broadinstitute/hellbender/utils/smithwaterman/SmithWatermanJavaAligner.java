@@ -111,7 +111,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             SmithWatermanAlignment oldAlignment = alignUnoptimized(reference, alternate, parameters, overhangStrategy);
 //            optimizedAlignment = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(optimizedAlignment.getCigar()), optimizedAlignment.getAlignmentOffset());
 
-            if(!optimizedAlignment.getCigar().toString().equals(oldAlignment.getCigar().toString()) || optimizedAlignment.getAlignmentOffset() != oldAlignment.getAlignmentOffset()){
+            if(!optimizedAlignment.getCigar().equals(oldAlignment.getCigar()) || optimizedAlignment.getAlignmentOffset() != oldAlignment.getAlignmentOffset()){
 
                 System.out.println(new String(reference));
                 System.out.println();
