@@ -281,7 +281,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
 
-                //TODO: force-clling logic goes here
                 final boolean toOutput = (isPlausible || forceKeepAllele(allele) || isNonRefWhichIsLoneAltAllele || forcedAlleles.contains(allele) ) && !isSpuriousSpanningDeletion;
 
                 siteIsMonomorphic &= !(isPlausible && !isSpuriousSpanningDeletion);

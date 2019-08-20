@@ -11,9 +11,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.AssemblyRegionWalker;
@@ -220,7 +218,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", outputPath,
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
@@ -255,7 +253,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardAnnotation",
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
@@ -290,7 +288,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
         };
 
@@ -322,7 +320,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardAnnotation",
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
         };
 
@@ -346,7 +344,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "--" + GenotypeCalculationArgumentCollection.SUPPORTING_CALLSET_LONG_NAME,
                     largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
                 "--" + GenotypeCalculationArgumentCollection.NUM_REF_SAMPLES_LONG_NAME, "2500",
@@ -371,33 +369,33 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
-
+    
     /*
      * Test that GQs are correct when the --floor-blocks argument is supplied
      */
     @Test(dataProvider="HaplotypeCallerTestInputs")
     public void testFloorGVCFBlocks(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
-
+        
         final File output = createTempFile("testFloorGVCFBlocks", ".vcf");
-
+        
         final List<String> requestedGqBands = Arrays.asList("10","20","30","40","50","60");
-
+        
         final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(inputFileName))
-                .addReference(new File(referenceFileName))
-                .addInterval(new SimpleInterval("20:10009880-10012631"))
-                .addBooleanArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
-                .addArgument("pairHMM", "AVX_LOGLESS_CACHING")
-                .addArgument("floor-blocks")
-                .addArgument("ERC", "GVCF")
-                .addOutput(output);
+        .addReference(new File(referenceFileName))
+        .addInterval(new SimpleInterval("20:10009880-10012631"))
+        .addBooleanArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
+        .addArgument("pairHMM", "AVX_LOGLESS_CACHING")
+        .addArgument("floor-blocks")
+        .addArgument("ERC", "GVCF")
+        .addOutput(output);
         requestedGqBands.forEach(x -> args.addArgument("GQB",x));
         runCommandLine(args);
-
+        
         final List<String> allGqBands = new ArrayList<>(requestedGqBands);
         allGqBands.add("99");
         allGqBands.add("0");
-
+        
         //The interval here is big, so use a FeatureDataSource to limit memory usage
         try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output)) {
             actualVcs.forEach(vc -> {
@@ -409,21 +407,28 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
-    public void testForceCalling() throws IOException {
-        Utils.resetRandomGenerator();
+    // force calling bam (File) vcf (File) and intervals (String)
+    @DataProvider(name="ForceCallingInputs")
+    public Object[][] getForceCallingInputs() {
+        return new Object[][] {
+                {NA12878_20_21_WGS_bam, new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf"), "20:10000000-10010000"},
+                {NA12878_20_21_WGS_bam, new File(toolsTestDir, "mutect/gga_mode.vcf"), "20:9998500-10010000"}
+        };
+    }
 
+    @Test(dataProvider = "ForceCallingInputs")
+    public void testForceCalling(final String bamPath, final File forceCallingVcf, final String intervalString) throws IOException {
+        Utils.resetRandomGenerator();
         final File output = createTempFile("testGenotypeGivenAllelesMode", ".vcf");
 
-        final File forceCallingVcf = new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf");
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
-                "-L", "20:10000000-10010000",
+                "-I", bamPath,
+                "-R", b37Reference,
+                "-L", intervalString,
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-                "--alleles", forceCallingVcf.getAbsolutePath()
+                "--" + AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, forceCallingVcf.getAbsolutePath()
         };
 
         runCommandLine(args);
@@ -913,7 +918,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", reference,
                 "-L", interval.toString(),
                 "-O", uncorrectedOutput.getAbsolutePath(),
-                "-ERC", (gvcfMode ? "GVCF" : "NONE"),
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, (gvcfMode ? ReferenceConfidenceMode.GVCF.toString() : ReferenceConfidenceMode.NONE.toString()),
         };
         Utils.resetRandomGenerator();
         runCommandLine(noContaminationCorrectionArgs);
@@ -925,7 +930,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", interval.toString(),
                 "-O", correctedOutput.getAbsolutePath(),
                 "-contamination", Double.toString(contaminationFraction),
-                "-ERC", (gvcfMode ? "GVCF" : "NONE"),
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, (gvcfMode ? ReferenceConfidenceMode.GVCF.toString() : ReferenceConfidenceMode.NONE.toString()),
         };
         Utils.resetRandomGenerator();
         runCommandLine(contaminationCorrectionArgs);
@@ -937,7 +942,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", interval.toString(),
                 "-O", correctedOutputUsingContaminationFile.getAbsolutePath(),
                 "-contamination-file", contaminationFile,
-                "-ERC", (gvcfMode ? "GVCF" : "NONE"),
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, (gvcfMode ? ReferenceConfidenceMode.GVCF.toString() : ReferenceConfidenceMode.NONE.toString()),
         };
         Utils.resetRandomGenerator();
         runCommandLine(contaminationCorrectionFromFileArgs);
@@ -1015,7 +1020,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10010000",
                 "-O", output.getAbsolutePath(),
                 "-contamination", "1.0",
-                "-ERC", "GVCF"
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString()
         };
         runCommandLine(contaminationArgs);
 
@@ -1080,7 +1085,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", reference,
                 "-L", intervalString,
                 "-O", outputNoMaxAlternateAlleles.getAbsolutePath(),
-                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, (gvcfMode ? ReferenceConfidenceMode.GVCF.toString() : ReferenceConfidenceMode.NONE.toString())
         };
         runCommandLine(argsNoMaxAlternateAlleles);
 
@@ -1090,7 +1095,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", intervalString,
                 "-O", outputWithMaxAlternateAlleles.getAbsolutePath(),
                 "--max-alternate-alleles", Integer.toString(maxAlternateAlleles),
-                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, (gvcfMode ? ReferenceConfidenceMode.GVCF.toString() : ReferenceConfidenceMode.NONE.toString())
         };
         runCommandLine(argsWithMaxAlternateAlleles);
 

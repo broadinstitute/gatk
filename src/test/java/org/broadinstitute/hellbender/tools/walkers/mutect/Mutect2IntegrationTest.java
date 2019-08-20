@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnReadOrientationModel;
@@ -454,7 +455,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
-                "--alleles", givenAllelesVcf.getAbsolutePath());
+                "--" + AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, givenAllelesVcf.getAbsolutePath());
         runCommandLine(args);
 
         final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(unfilteredVcf)
@@ -479,7 +480,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
-                "--alleles", givenAllelesVcf.getAbsolutePath(),
+                "--" + AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, givenAllelesVcf.getAbsolutePath(),
                 "--kmer-size", "1",
                 "--dont-increase-kmer-sizes-for-cycles");
         runCommandLine(args);
@@ -504,7 +505,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:1119000-1120000",
                 "-O", unfilteredVcf.getAbsolutePath(),
-                "--alleles", givenAllelesVcf.getAbsolutePath());
+                "--" + AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, givenAllelesVcf.getAbsolutePath());
         runCommandLine(args);
     }
 
@@ -747,7 +748,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-L", "chrM:1-1000",
                 "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", standardVcf.getAbsolutePath(),
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, "GVCF",
                 "-LODB", "-2.0",
                 "-LODB", "0.0",
                 "-min-AF", "0.01");
@@ -788,7 +789,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-L", "chrM:1-1000",
                 "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", unthresholded.getAbsolutePath(),
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-LODB", "-2.0",
                 "-LODB", "0.0",
                 "-min-AF", "0.00");

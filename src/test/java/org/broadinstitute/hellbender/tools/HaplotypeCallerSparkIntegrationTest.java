@@ -12,7 +12,9 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.SparkTestUtils;
@@ -200,7 +202,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING"
         };
 
@@ -224,7 +226,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
                 "-I", NA12878_20_21_WGS_bam,
                 "-R", b37_reference_20_21,
                 "-O", createTempFile("testGVCF_GZ_throw_exception", extension).getAbsolutePath(),
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
         };
 
         runCommandLine(args);
@@ -259,7 +261,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
                 "-G", "AS_StandardAnnotation",
-                "-ERC", "GVCF",
+                "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING"
         };
 

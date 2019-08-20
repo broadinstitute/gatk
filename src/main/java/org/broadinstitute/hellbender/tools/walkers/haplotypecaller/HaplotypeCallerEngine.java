@@ -264,12 +264,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         Utils.validateArg(hcArgs.likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD >= QualityUtils.MIN_USABLE_Q_SCORE, "BASE_QUALITY_SCORE_THRESHOLD must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
 
         if ( emitReferenceConfidence() && samplesList.numberOfSamples() != 1 ) {
-            throw new CommandLineException.BadArgumentValue("--emit-ref-confidence", "Can only be used in single sample mode currently. Use the --sample-name argument to run on a single sample out of a multi-sample BAM file.");
+            throw new CommandLineException.BadArgumentValue(AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, "Can only be used in single sample mode currently. Use the --sample-name argument to run on a single sample out of a multi-sample BAM file.");
         }
 
         if (hcArgs.floorBlocks && !emitReferenceConfidence()) {
             throw new UserException(HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS + " refers to GVCF blocks," +
-                    " so reference confidence mode (" + AssemblyBasedCallerArgumentCollection.EMIT_REFERENCE_CONFIDENCE_LONG_NAME +
+                    " so reference confidence mode (" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME +
                     ") must be specified.");
         }
     }
