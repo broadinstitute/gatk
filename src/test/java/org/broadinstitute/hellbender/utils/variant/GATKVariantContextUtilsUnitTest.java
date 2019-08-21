@@ -652,7 +652,20 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name = "ReverseClippingPositionTestProvider")
     public Object[][] makeReverseClippingPositionTestProvider() {
         // pair clipping
+
+        //TODO:
+        // 1. write more unit tests, for example: ref is the longest allele, ref is neither shortest nor longest, alleles with length 1,
+        // and do these with different numbers of matching bases
+        // 2. commit and push again
+        // 3. look at computeForwardClipping
+        // 4. make computeForwardClipping more concise
+        // 5. unify computeReverseClipping with computeForwardClipping as computeClipping(List<Allele> alleles, byte[ref], boolean isReverse)
+        // final int reverseClipping = computeClipping(alleles, ref, true);
+        // final int forwardClipping = computeClipping(alleles, ref, false);
+
+        new ReverseClippingPositionTestProvider(2, "ATT", "CCATT");
         new ReverseClippingPositionTestProvider(0, "ATT", "CCG");
+        new ReverseClippingPositionTestProvider(0, "A", "CCGGGGTTTA");
         new ReverseClippingPositionTestProvider(1, "ATT", "CCT");
         new ReverseClippingPositionTestProvider(2, "ATT", "CTT");
         new ReverseClippingPositionTestProvider(2, "ATT", "ATT");  // cannot completely clip allele

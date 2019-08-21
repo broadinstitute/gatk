@@ -1048,23 +1048,27 @@ public final class GATKVariantContextUtils {
      */
     public static int computeReverseClipping(final List<Allele> alleles, final byte[] ref) {
 
-        final int shortestAllele = alleles.stream().filter(a ->!a.isSymbolic()).mapToInt(a -> a.length()).min().getAsInt();
-
-        if(ref.length <= shortestAllele){//handles the special cases
-            return -1;
-        }
+        final int shortestAllele = Math.min(alleles.stream().filter(a ->!a.isSymbolic()).mapToInt(a -> a.length()).min().getAsInt(), ref.length);
 
         for(int clipping = 0; clipping < (shortestAllele-1);clipping++){
 
-            final int superClipping = clipping;
+
+            final int superClipping = clipping;//superClipping is a final var since the lambda expression requires it
+
             final boolean anyMismatch=alleles.stream().filter(a ->!a.isSymbolic()).anyMatch(a->a.getBases()[a.length()-superClipping-1]!=ref[ref.length-superClipping-1]);//compares alleles to reference and assigns a boolean value based on it
+
 
             if(anyMismatch){
                 return clipping;
             }
 
         }
-        return shortestAllele-1;
+
+        //if(ref.length == shortestAllele && alleles.stream().filter(a ->!a.isSymbolic()).allMatch(a->a.getBases()[a.length()-shortestAllele] == ref[0])){
+        //    return 0;
+        //}
+            return shortestAllele-1;
+
     }
 
     /**
