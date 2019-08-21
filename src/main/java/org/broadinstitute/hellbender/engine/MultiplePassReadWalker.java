@@ -1,83 +1,60 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Use this extension of a ReadWalker when you need to process the reads multiple times.
- * Implement the method traverseReads(), calling forEachRead(func) as many times as you need to.
- * The functional object you provide to forEachRead will be presented with each read.
+ * A MultiplePassReadWalker traverses input reads multiple times. To use this class, implement the
+ * method @{code traverseReads()}, calling {@link #forEachRead(GATKReadConsumer)} as many times as required.
+ * The functional object provided to forEachRead will be called with each read.
  */
 public abstract class MultiplePassReadWalker extends ReadWalker {
-    private SAMSequenceDictionary dictionary;
     private CountingReadFilter countedFilter;
-    private SamReaderFactory samReaderFactory;
+    private boolean firstPass = true;
 
     @FunctionalInterface
-    public interface GATKApply {
-        void apply( GATKRead read, ReferenceContext reference, FeatureContext features );
+    public interface GATKReadConsumer {
+        void consume( GATKRead read, ReferenceContext reference, FeatureContext features );
     }
 
     public abstract void traverseReads();
 
-    public void forEachRead( final GATKApply func ) {
-        try ( final ReadsDataSource readsSource =
-                      new ReadsDataSource(
-                              readArguments.getReadPaths(),
-                              readArguments.getReadIndexPaths(),
-                              samReaderFactory,
-                              cloudPrefetchBuffer,
-                              (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer)) ) {
-
-            if ( hasUserSuppliedIntervals() ) {
-                readsSource.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(dictionary));
-            }
-
-            final ReadTransformer preTransformer = makePreReadFilterTransformer();
-            final ReadTransformer postTransformer = makePostReadFilterTransformer();
-            Utils.stream(readsSource).map(preTransformer).filter(countedFilter).map(postTransformer).forEach( read -> {
-                final SimpleInterval readInterval = getReadInterval(read);
-                func.apply(
-                        read,
-                        new ReferenceContext(reference, readInterval), // will be empty if reference or readInterval is null
-                        new FeatureContext(features, readInterval));   // will be empty if features or readInterval is null
-                progressMeter.update(readInterval); });
+    /**
+     * MultiplePassReadWalker-derived tools should call {@code forEachRead} once for each requested traversal
+     * of the input reads. Reads will be processed and the {@code readHandler} will be presented with each
+     * {@code GATKRead} processed during the traversal.
+     * @param readHandler handler for reads for the current reads iteration
+     */
+    public void forEachRead( final GATKReadConsumer readHandler) {
+        if (!firstPass) {
+            resetReadsDataSource();
         }
+
+        getTransformedReadStream(countedFilter).forEach( read -> {
+            final SimpleInterval readInterval = getReadInterval(read);
+            readHandler.consume(
+                    read,
+                    new ReferenceContext(reference, readInterval), // will be empty if reference or readInterval is null
+                    new FeatureContext(features, readInterval));   // will be empty if features or readInterval is null
+            progressMeter.update(readInterval);
+        });
+
+        firstPass = false;
     }
 
     @Override
     public final void traverse() {
-        dictionary = reads.getHeader().getSequenceDictionary();
-        reads.close();
-        reads = null;
-
         countedFilter = makeReadFilter();
-        SamReaderFactory factory =
-                SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
-        if ( hasReference() ) { // pass in reference if available, because CRAM files need it
-            factory = factory.referenceSequence(referenceArguments.getReferencePath());
-        }
-        if ( intervalArgumentCollection.intervalsSpecified() && !disableBamIndexCaching ) {
-            factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
-        }
-        samReaderFactory = factory;
         traverseReads();
         logger.info(countedFilter.getSummaryLine());
     }
 
-    // not used.  here because we extend ReadWalker, which requires it.
     @Override
     public final void apply( final GATKRead read,
                              final ReferenceContext referenceContext,
                              final FeatureContext featureContext ) {
-        throw new GATKException("apply called unexpectedly");
+        throw new GATKException("apply can't be called in MultiplePassReadWalker");
     }
 }

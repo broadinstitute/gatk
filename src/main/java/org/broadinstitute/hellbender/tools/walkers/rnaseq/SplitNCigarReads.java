@@ -10,8 +10,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.MultiplePassReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.TwoPassReadWalker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -71,7 +71,7 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
         oneLineSummary = "Split Reads with N in Cigar",
         programGroup = ReadDataManipulationProgramGroup.class
 )
-public final class SplitNCigarReads extends TwoPassReadWalker {
+public final class SplitNCigarReads extends MultiplePassReadWalker {
 
     // A list of tags that break upon splitting on N. These will be removed from reads in the output.
     // NOTE: for future developers who want to use these tags. For each tag you remove from this list corresponding
@@ -176,19 +176,14 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
     }
 
     @Override
-    protected void firstPassApply(GATKRead read, ReferenceContext bytes, FeatureContext featureContext) {
-        splitNCigarRead(read,overhangManager, true, header, processSecondaryAlignments);
-    }
-
-    @Override
-    protected void secondPassApply(GATKRead read, ReferenceContext bytes, FeatureContext featureContext) {
-        splitNCigarRead(read,overhangManager, true, header, processSecondaryAlignments);
-    }
-
-    // Activates writing in the manager, which destinguishes each pass
-    @Override
-    protected void afterFirstPass() {
+    public void traverseReads() {
+        forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
+                splitNCigarRead(read, overhangManager,true, header, processSecondaryAlignments)
+        );
         overhangManager.activateWriting();
+        forEachRead((GATKRead read, ReferenceContext reference, FeatureContext features) ->
+                splitNCigarRead(read, overhangManager,true, header, processSecondaryAlignments)
+        );
     }
 
     @Override
@@ -200,7 +195,6 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
             throw new UserException.MissingReference("Could not find reference file");
         }
     }
-
 
     /**
      * Goes through the cigar string of the read and create new reads for each consecutive non-N elements (while soft clipping the rest of the read) that are supplemental to each other.
