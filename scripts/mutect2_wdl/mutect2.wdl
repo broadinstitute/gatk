@@ -444,8 +444,8 @@ workflow Mutect2 {
                 reference_version = select_first([funco_reference_version, "hg19"]),
                 output_file_base_name = basename(funcotate_vcf_input, ".vcf") + ".annotated",
                 output_format = if defined(funco_output_format) then "" + funco_output_format else funco_default_output_format,
-                compress = if defined(funco_compress) then funco_compress else false,
-                use_gnomad = if defined(funco_use_gnomad_AF) then funco_use_gnomad_AF else false,
+                compress = if defined(funco_compress) then select_first([funco_compress]) else false,
+                use_gnomad = if defined(funco_use_gnomad_AF) then select_first([funco_use_gnomad_AF]) else false,
                 data_sources_tar_gz = funco_data_sources_tar_gz,
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
@@ -488,8 +488,9 @@ task CramToBam {
       File ref_fasta
       File ref_fai
       File ref_dict
-      File cram
-      File crai
+      #cram and crai must be optional since Normal cram is optional
+      File? cram
+      File? crai
       String name
       Int disk_size
       Int? mem
@@ -1047,13 +1048,13 @@ task Filter {
 
         gatk --java-options "-Xmx~{command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
             -R ~{ref_fasta} \
-      	    -O ~{output_vcf} \
-      	    ~{"--contamination-table " + contamination_table} \
-      	    ~{"--tumor-segmentation " + maf_segments} \
-      	    ~{"--ob-priors " + artifact_priors_tar_gz} \
-      	    ~{"-stats " + mutect_stats} \
-      	    --filtering-stats filtering.stats \
-      	    ~{m2_extra_filtering_args}
+            -O ~{output_vcf} \
+            ~{"--contamination-table " + contamination_table} \
+            ~{"--tumor-segmentation " + maf_segments} \
+            ~{"--ob-priors " + artifact_priors_tar_gz} \
+            ~{"-stats " + mutect_stats} \
+            --filtering-stats filtering.stats \
+            ~{m2_extra_filtering_args}
     }
 
     runtime {
