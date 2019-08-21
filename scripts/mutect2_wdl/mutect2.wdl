@@ -717,8 +717,6 @@ task MergeVCFs {
       Array[File] input_vcf_indices
       String output_name
       Boolean compress
-      String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-      String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
       File? gatk_override
 
@@ -731,6 +729,10 @@ task MergeVCFs {
       Int? cpu
       Boolean use_ssd = false
     }
+
+    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
+
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
