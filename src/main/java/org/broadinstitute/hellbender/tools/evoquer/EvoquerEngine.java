@@ -18,6 +18,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -373,72 +374,79 @@ class EvoquerEngine {
         schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
         validateSchema(columnNames);
 
-        for ( final GenericRecord row : avroReader ) {
-            if ( runQueryOnly ) {
-                continue;
-            }
-
-            ++totalNumberOfSites;
-
-            final long currentPosition = Long.parseLong(row.get(POSITION_FIELD_NAME).toString());
-            final List<VariantContext> unmergedCalls = new ArrayList<>();
-            final Set<String> currentPositionSamplesSeen = new HashSet<>();
-            boolean currentPositionHasVariant = false;
-            final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
-
-            if ( printDebugInformation ) {
-                logger.info(contig + ":" + currentPosition + ": found record: " + row);
-            }
-
-            final GenericData.Array<?> sampleArray = (GenericData.Array) row.get(VALUES_ARRAY_FIELD_NAME);
-
-            for ( final Object sampleArrayEntry : sampleArray ) {
-                final GenericData.Record sampleRecord = (GenericData.Record)sampleArrayEntry;
-                final String sampleName = sampleRecord.get(SAMPLE_FIELD_NAME).toString();
-                currentPositionSamplesSeen.add(sampleName);
-
-                if ( printDebugInformation ) {
-                    logger.info("\t" + contig + ":" + currentPosition + ": found struct for sample " + sampleName + ": " + sampleRecord);
+        long lastGoodPosition = -1;
+        try {
+            for (final GenericRecord row : avroReader) {
+                if (runQueryOnly) {
+                    continue;
                 }
 
-                switch (sampleRecord.get(STATE_FIELD_NAME).toString()) {
-                    case "v":   // Variant
-                        ++totalNumberOfVariants;
-                        unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName));
-                        currentPositionHasVariant = true;
-                        break;
-                    case "0":   // Non Variant Block with GQ < 10
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 0));
-                        break;
-                    case "1":  // Non Variant Block with 10 <=  GQ < 20
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 10));
-                        break;
-                    case "2":  // Non Variant Block with 20 <= GQ < 30
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 20));
-                        break;
-                    case "3":  // Non Variant Block with 30 <= GQ < 40
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 30));
-                        break;
-                    case "4":  // Non Variant Block with 40 <= GQ < 50
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 40));
-                        break;
-                    case "5":  // Non Variant Block with 50 <= GQ < 60
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 50));
-                        break;
-                    case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
-                        unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 60));
-                        break;
-                    case "*":   // Spanning Deletion
-                        break;
-                    case "m":   // Missing
-                        // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
-                        break;
-                    default:
-                        throw new GATKException("Unrecognized state: " + sampleRecord.get(STATE_FIELD_NAME).toString());
-                }
-            }
+                ++totalNumberOfSites;
 
-            finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
+                final long currentPosition = Long.parseLong(row.get(POSITION_FIELD_NAME).toString());
+                lastGoodPosition = currentPosition;
+                final List<VariantContext> unmergedCalls = new ArrayList<>();
+                final Set<String> currentPositionSamplesSeen = new HashSet<>();
+                boolean currentPositionHasVariant = false;
+                final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
+
+                if (printDebugInformation) {
+                    logger.info(contig + ":" + currentPosition + ": found record: " + row);
+                }
+
+                final GenericData.Array<?> sampleArray = (GenericData.Array) row.get(VALUES_ARRAY_FIELD_NAME);
+
+                for (final Object sampleArrayEntry : sampleArray) {
+                    final GenericData.Record sampleRecord = (GenericData.Record) sampleArrayEntry;
+                    final String sampleName = sampleRecord.get(SAMPLE_FIELD_NAME).toString();
+                    currentPositionSamplesSeen.add(sampleName);
+
+                    if (printDebugInformation) {
+                        logger.info("\t" + contig + ":" + currentPosition + ": found struct for sample " + sampleName + ": " + sampleRecord);
+                    }
+
+                    switch (sampleRecord.get(STATE_FIELD_NAME).toString()) {
+                        case "v":   // Variant
+                            ++totalNumberOfVariants;
+                            unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName));
+                            currentPositionHasVariant = true;
+                            break;
+                        case "0":   // Non Variant Block with GQ < 10
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 0));
+                            break;
+                        case "1":  // Non Variant Block with 10 <=  GQ < 20
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 10));
+                            break;
+                        case "2":  // Non Variant Block with 20 <= GQ < 30
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 20));
+                            break;
+                        case "3":  // Non Variant Block with 30 <= GQ < 40
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 30));
+                            break;
+                        case "4":  // Non Variant Block with 40 <= GQ < 50
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 40));
+                            break;
+                        case "5":  // Non Variant Block with 50 <= GQ < 60
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 50));
+                            break;
+                        case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
+                            unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 60));
+                            break;
+                        case "*":   // Spanning Deletion
+                            break;
+                        case "m":   // Missing
+                            // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
+                            break;
+                        default:
+                            throw new GATKException("Unrecognized state: " + sampleRecord.get(STATE_FIELD_NAME).toString());
+                    }
+                }
+
+                finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
+            }
+        } catch (Exception e){
+            throw new RuntimeException("Failed while processing avro records." +
+                    "\nLast good position was: " + lastGoodPosition, e);
         }
     }
 
