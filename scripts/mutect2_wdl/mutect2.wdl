@@ -93,20 +93,16 @@ workflow Mutect2 {
       File? realignment_index_bundle
       String? realignment_extra_args
       Boolean? run_orientation_bias_mixture_model_filter
-      Boolean run_ob_filter = select_first([run_orientation_bias_mixture_model_filter, false])
       String? m2_extra_args
       String? m2_extra_filtering_args
       String? split_intervals_extra_args
       Boolean? make_bamout
-      Boolean make_bamout_or_default = select_first([make_bamout, false])
       Boolean? compress_vcfs
-      Boolean compress = select_first([compress_vcfs, false])
       File? gga_vcf
       File? gga_vcf_idx
 
       # oncotator inputs
       Boolean? run_oncotator
-      Boolean run_oncotator_or_default = select_first([run_oncotator, false])
       File? onco_ds_tar_gz
       String? onco_ds_local_db_dir
       String? sequencing_center
@@ -116,7 +112,6 @@ workflow Mutect2 {
 
       # Funcotator inputs
       Boolean? run_funcotator
-      Boolean run_funcotator_or_default = select_first([run_funcotator, false])
       String? funco_reference_version
       String? funco_output_format
       Boolean? funco_compress
@@ -132,17 +127,13 @@ workflow Mutect2 {
 
       String funco_default_output_format = "MAF"
 
-
       # runtime
       String gatk_docker
       File? gatk_override
       String basic_bash_docker = "ubuntu:16.04"
       String? oncotator_docker
-      String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.9.0"])
       Boolean? filter_oncotator_maf
-      Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
       Boolean? filter_funcotations
-      Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
 
       Int? preemptible_attempts
       Int? max_retries
@@ -150,39 +141,49 @@ workflow Mutect2 {
       # Use as a last resort to increase the disk given to every task in case of ill behaving data
       Int? emergency_extra_disk
 
-      # Disk sizes used for dynamic sizing
-      Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
-      Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
-      Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
-      Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
-
-      # If no tar is provided, the task downloads one from broads ftp server
-      Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
-      Int funco_tar_size = if defined(funco_data_sources_tar_gz) then ceil(size(funco_data_sources_tar_gz, "GB") * 3) else 100
-      Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
-
-      # This is added to every task as padding, should increase if systematically you need more disk for every call
-      Int disk_pad = 10 + gatk_override_size + select_first([emergency_extra_disk,0])
-
       # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
       # Large is for Bams/WGS vcfs
       # Small is for metrics/other vcfs
       Float large_input_to_output_multiplier = 2.25
       Float small_input_to_output_multiplier = 2.0
       Float cram_to_bam_multiplier = 6.0
-
-      # logic about output file names -- these are the names *without* .vcf extensions
-      String output_basename = basename(basename(tumor_reads, ".bam"),".cram")  #hacky way to strip either .bam or .cram
-      String unfiltered_name = output_basename + "-unfiltered"
-      String filtered_name = output_basename + "-filtered"
-      String funcotated_name = output_basename + "-funcotated"
-
-      String output_vcf_name = output_basename + ".vcf"
-
-      # Size M2 differently based on if we are using NIO or not
-      Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
-      Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
     }
+
+    Boolean compress = select_first([compress_vcfs, false])
+    Boolean run_ob_filter = select_first([run_orientation_bias_mixture_model_filter, false])
+    Boolean make_bamout_or_default = select_first([make_bamout, false])
+    Boolean run_oncotator_or_default = select_first([run_oncotator, false])
+    Boolean run_funcotator_or_default = select_first([run_funcotator, false])
+    String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.9.0"])
+    Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
+    Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
+
+    # Disk sizes used for dynamic sizing
+    Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
+    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
+    Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
+    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
+
+    # If no tar is provided, the task downloads one from broads ftp server
+    Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
+    Int funco_tar_size = if defined(funco_data_sources_tar_gz) then ceil(size(funco_data_sources_tar_gz, "GB") * 3) else 100
+    Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
+
+    # This is added to every task as padding, should increase if systematically you need more disk for every call
+    Int disk_pad = 10 + gatk_override_size + select_first([emergency_extra_disk,0])
+
+    # logic about output file names -- these are the names *without* .vcf extensions
+    String output_basename = basename(basename(tumor_reads, ".bam"),".cram")  #hacky way to strip either .bam or .cram
+    String unfiltered_name = output_basename + "-unfiltered"
+    String filtered_name = output_basename + "-filtered"
+    String funcotated_name = output_basename + "-funcotated"
+
+    String output_vcf_name = output_basename + ".vcf"
+
+    Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
+    Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
+
+
 
     if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
         call CramToBam as TumorCramToBam {
@@ -221,6 +222,7 @@ workflow Mutect2 {
     Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
 
     Int m2_output_size = tumor_bam_size / scatter_count
+    #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
     Int m2_per_scatter_size = (tumor_bam_size + normal_bam_size) + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
 
     call SplitIntervals {
