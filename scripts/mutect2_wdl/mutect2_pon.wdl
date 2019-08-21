@@ -47,8 +47,8 @@ workflow Mutect2_Panel {
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                tumor_bam = normal_bam.left,
-                tumor_bai = normal_bam.right,
+                tumor_reads = normal_bam.left,
+                tumor_reads_index = normal_bam.right,
                 scatter_count = scatter_count,
                 m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
                 gatk_override = gatk_override,
@@ -101,9 +101,9 @@ workflow Mutect2_Panel {
 
     output {
         File pon = MergeVCFs.merged_vcf
-        File pon_idx = MergeVCFs.merged_vcf_index
+        File pon_idx = MergeVCFs.merged_vcf_idx
         Array[File] normal_calls = Mutect2.filtered_vcf
-        Array[File] normal_calls_idx = Mutect2.filtered_vcf_index
+        Array[File] normal_calls_idx = Mutect2.filtered_vcf_idx
     }
 }
 
