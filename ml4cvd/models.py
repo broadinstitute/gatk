@@ -411,7 +411,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
                     flat_activation = Dropout(dropout)(flat_activation)
             multimodal_activation = concatenate([multimodal_activation, flat_activation])
         elif tm.parents is not None:
-            if False and len(K.int_shape(output_predictions[tm.parents[0]])) > 1:
+            if False and len(K.int_shape(output_predictions[tm.parents[0]])) > 1:  # TODO: fix False
                 output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
             else:
                 parented_activation = concatenate([multimodal_activation] + [output_predictions[p] for p in tm.parents])

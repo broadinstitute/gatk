@@ -70,7 +70,6 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
 
 TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythm'),
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3})
-
 TMAPS['ecg_coarse'] = TensorMap('ecg_coarse', group='categorical', loss=weighted_crossentropy([1.0, 15.0, 5.0], 'ecg_coarse'),
                                 channel_map={'Sinus_rhythm': 0, 'Atrial_fibrillation': 1, 'Other_rhythm': 2})
 TMAPS['ecg_semi_coarse'] = TensorMap('ecg_semi_coarse', group='categorical', loss=weighted_crossentropy([1.0, 1.0, 2.0, 4.0, 16.0, 20.0], 'ecg_semi_coarse'),
@@ -331,6 +330,11 @@ TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimis
 
 TMAPS['t1_p2_1mm_fov256_sag_ti_880'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880', (256, 256, 416), group='root_array')
 TMAPS['t1_brain_208z'] = TensorMap('t1_brain_208z', (256, 256, 208))
+TMAPS['t1_brain_208z_half'] = TensorMap('t1_brain_208z_half', (256 // 2, 256 // 2, 208 // 2))
+TMAPS['t1_brain_208z_quarter'] = TensorMap('t1_brain_208z_quarter', (256 // 4, 256 // 4, 208 // 4))
+TMAPS['t1_brain_208z_3d'] = TensorMap('t1_brain_208z_3d', (256, 256, 208, 1))
+TMAPS['t1_brain_208z_half_3d'] = TensorMap('t1_brain_208z_half_3d', (256 // 2, 256 // 2, 208 // 2, 1))
+TMAPS['t1_brain_208z_quarter_3d'] = TensorMap('t1_brain_208z_quarter_3d', (256 // 4, 256 // 4, 208 // 4, 1))
 
 TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', (288, 384, 7), group='root_array')
 TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (288, 384, 7), group='root_array')
