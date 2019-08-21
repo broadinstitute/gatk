@@ -631,18 +631,15 @@ class EvoquerEngine {
         }
         
         return String.format(
-                "SELECT pet.position, ARRAY_AGG(STRUCT( pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
-                "FROM `%s` AS pet\n" +
-                "LEFT OUTER JOIN `%s` AS vet\n" +
-                "ON (pet.position = vet.position AND pet.sample = vet.sample)\n" +
-                "WHERE (pet.position >= %d AND pet.position <= %d)\n" +
-                "AND (vet.position >= %d AND vet.position <= %d)\n" +
-                "GROUP BY position\n" +
-                limitString,
+                "SELECT position, ARRAY_AGG(STRUCT( sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
+                        "FROM `%s` AS pet\n" +
+                        "LEFT OUTER JOIN `%s` AS vet\n" +
+                        "USING (position, sample)\n" +
+                        "WHERE (position >= %d AND position <= %d)\n" +
+                        "GROUP BY position\n" +
+                        limitString,
                 getFQPositionTable(interval),
                 getFQVariantTable(interval),
-                interval.getStart(),
-                interval.getEnd(),
                 interval.getStart(),
                 interval.getEnd());
     }
