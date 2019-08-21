@@ -9,7 +9,7 @@
 #  m2_extra_args: additional command line parameters for Mutect2.  This should not involve --max-mnp-distance,
 #  which the wdl hard-codes to 0 because GenpmicsDBImport can't handle MNPs
 
-import "mutect2_nio.wdl" as m2
+import "mutect2.wdl" as m2
 workflow Mutect2_Panel {
     # inputs
 	File? intervals
