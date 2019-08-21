@@ -29,6 +29,7 @@ ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
 ECG_BIKE_MEDIAN_SIZE = (5500, len(ECG_BIKE_LEADS))
 ECG_BIKE_STRIP_SIZE = (5000, len(ECG_BIKE_LEADS))
 ECG_BIKE_FULL_SIZE = (216500, len(ECG_BIKE_LEADS))
+ECG_BIKE_RECOVERY_SIZE = (500 * 60, len(ECG_BIKE_LEADS))
 ECG_CHAR_2_IDX = {'!': 0, ' ': 1, "'": 2, ')': 4, '(': 3, '-': 5, '/': 6, '1': 7, '3': 9, '2': 8, '4': 10, ':': 11,
                   '?': 12, 'A': 13, 'C': 15, 'B': 14, 'E': 17, 'D': 16, 'G': 18, 'I': 20, 'H': 19, 'J': 21, 'M': 23,
                   'L': 22, 'N': 24, 'Q': 26, 'P': 25, 'S': 28, 'R': 27, 'U': 30, 'T': 29, 'W': 32, 'V': 31, 'a': 33,

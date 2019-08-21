@@ -20,7 +20,7 @@ CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastol
                          'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
                          'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
                          'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0', '22402_Liver-fat-percentage_2_0',
-                         'liver_fat_sentinel_prediction']
+                         'liver_fat_sentinel_prediction', 'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0']
 
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
@@ -256,6 +256,9 @@ class TensorMap(object):
 
     def is_ecg_bike(self):
         return self.group == 'ecg_bike'
+
+    def is_ecg_bike_recovery(self):
+        return self.group == 'ecg_bike_recovery'
 
     def is_ecg_text(self):
         return self.group == 'ecg_text'
@@ -728,6 +731,11 @@ class TensorMap(object):
         elif self.is_ecg_bike():
             tensor = np.array(hd5[self.group][self.name], dtype=np.float32)
             return self.zero_mean_std1(tensor)
+        elif self.is_ecg_bike_recovery():
+            tensor = np.zeros(self.shape)
+            for channel, idx in self.channel_map.items():
+                tensor[:, idx] = hd5[self.group][channel]
+                return self.zero_mean_std1(tensor)
         elif self.is_ecg_text():
             tensor = np.zeros(self.shape, dtype=np.float32)
             dependents[self.dependent_map] = np.zeros(self.dependent_map.shape, dtype=np.float32)
