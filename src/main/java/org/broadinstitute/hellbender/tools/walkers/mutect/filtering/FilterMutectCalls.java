@@ -104,7 +104,7 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
     private static final int NUMBER_OF_LEARNING_PASSES = 2;
 
     @Override
-    protected int numberOfPasses() { return NUMBER_OF_LEARNING_PASSES + 2; }    // {@coode NUMBER_OF_LEARNING_PASSES} passes for learning, one for the threshold, and one for calling
+    protected int numberOfPasses() { return NUMBER_OF_LEARNING_PASSES + 2; }    // {@code NUMBER_OF_LEARNING_PASSES} passes for learning, one for the threshold, and one for calling
 
     @Override
     public boolean requiresReference() { return true;}
