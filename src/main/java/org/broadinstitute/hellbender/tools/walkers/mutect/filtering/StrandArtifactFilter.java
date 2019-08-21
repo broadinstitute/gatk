@@ -127,8 +127,8 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
         final double reverseLogPrior = Math.log(strandArtifactPrior/2);
         final double noneLogPrior = Math.log(1 - strandArtifactPrior);
 
-        final double[] forwardReverseNoneProbs = MathUtils.normalizeLog10(new double[] {(forwardLogLikelihood + forwardLogPrior) * MathUtils.LOG10_OF_E,
-                (reverseLogLikelihood + reverseLogPrior)* MathUtils.LOG10_OF_E, (noneLogLikelihood + noneLogPrior) * MathUtils.LOG10_OF_E}, false, true);
+        final double[] forwardReverseNoneProbs = MathUtils.normalizeLog10(new double[] {(forwardLogLikelihood + forwardLogPrior) * MathUtils.LOG10_E,
+                (reverseLogLikelihood + reverseLogPrior)* MathUtils.LOG10_E, (noneLogLikelihood + noneLogPrior) * MathUtils.LOG10_E}, false, true);
 
         return new EStep(forwardReverseNoneProbs[0], forwardReverseNoneProbs[1], forwardCount, reverseCount, forwardAltCount, reverseAltCount);
     }

@@ -27,30 +27,14 @@ public final class MathUtils {
     public static final double LOG10_P_OF_ZERO = -1000000.0;
 
     public static final double LOG10_ONE_HALF = Math.log10(0.5);
-
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
+    private static final double LOG_10 = Math.log(10);
+    public static final double LOG10_E = Math.log10(Math.E);
 
-    private static final double LN_10 = Math.log(10);
-
-    public static final double INV_SQRT_2_PI = 1.0 / Math.sqrt(2.0 * Math.PI);
-
-    private static final double NATURAL_LOG_OF_TEN = Math.log(10.0);
-
-    private static final double SQUARE_ROOT_OF_TWO_TIMES_PI = Math.sqrt(2.0 * Math.PI);
-
-    /**
-     * Log10 of the e constant.
-     */
-    public static final double LOG10_OF_E = Math.log10(Math.E);
-    public static final double FAIR_BINOMIAL_PROB_LOG10_0_5 = Math.log10(0.5);
-    /**
-     * Threshold used to determine best way to calculate log(1-exp(a))
-     * based on https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
-     */
-    private static final double LN_1_M_EXP_THRESHOLD = - Math.log(2);
-
+    private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
+    
     private static final Log10Cache LOG_10_CACHE = new Log10Cache();
     private static final Log10FactorialCache LOG_10_FACTORIAL_CACHE = new Log10FactorialCache();
     private static final DigammaCache DIGAMMA_CACHE = new DigammaCache();
@@ -281,8 +265,8 @@ public final class MathUtils {
     public static double log10OneMinusPow10(final double a) {
         if (a > 0) return Double.NaN;
         if (a == 0) return Double.NEGATIVE_INFINITY;
-        final double b = a * LN_10;
-        return NaturalLogUtils.log1mexp(b) / LN_10;
+        final double b = a * LOG_10;
+        return NaturalLogUtils.log1mexp(b) / LOG_10;
     }
 
     /**
@@ -404,7 +388,7 @@ public final class MathUtils {
      * @return log10(x)
      */
     public static double logToLog10(final double ln) {
-        return ln * LOG10_OF_E;
+        return ln * LOG10_E;
     }
 
     public static double approximateLog10SumLog10(final double[] vals) {
@@ -610,7 +594,7 @@ public final class MathUtils {
      * @see #binomialProbability(int, int, double) with p=0.5 and log10 applied to result
      */
     public static double log10BinomialProbability(final int n, final int k) {
-        return log10BinomialCoefficient(n, k) + (n * FAIR_BINOMIAL_PROB_LOG10_0_5);
+        return log10BinomialCoefficient(n, k) + (n * LOG10_ONE_HALF);
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start) {
@@ -662,8 +646,8 @@ public final class MathUtils {
         Utils.validateArg( sd >= 0, "sd: Standard deviation of normal must be > 0");
         if ( ! wellFormedDouble(mean) || ! wellFormedDouble(sd) || ! wellFormedDouble(x) )
             throw new IllegalArgumentException("mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
-        final double a = -1.0 * Math.log10(sd * SQUARE_ROOT_OF_TWO_TIMES_PI);
-        final double b = -1.0 * (square(x - mean) / (2.0 * square(sd))) / NATURAL_LOG_OF_TEN;
+        final double a = -1.0 * Math.log10(sd * ROOT_TWO_PI);
+        final double b = -1.0 * (square(x - mean) / (2.0 * square(sd))) / LOG_10;
         return a + b;
     }
 
@@ -829,7 +813,7 @@ public final class MathUtils {
     }
 
     public static double log10ToLog(final double log10){
-        return log10 * LN_10;
+        return log10 * LOG_10;
     }
 
     /**
@@ -918,7 +902,7 @@ public final class MathUtils {
         Utils.validateArg(wellFormedDouble(mean) && wellFormedDouble(sd) && wellFormedDouble(x),
                           "mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
 
-        return (INV_SQRT_2_PI / sd) *  Math.exp(-(x - mean)*(x-mean)/ (2.0 * sd * sd));
+        return Math.exp(-(x - mean)*(x-mean)/ (2.0 * sd * sd)) / (sd * ROOT_TWO_PI);
     }
 
     /**

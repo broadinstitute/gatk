@@ -35,8 +35,7 @@ public final class SVDDenoisingUtils {
     private static final Logger logger = LogManager.getLogger(SVDDenoisingUtils.class);
 
     private static final double EPSILON = 1E-9;
-    private static final double INV_LN2 = MathUtils.INV_LOG_2;
-    private static final double LN2_EPSILON = Math.log(EPSILON) * INV_LN2;
+    private static final double LN2_EPSILON = Math.log(EPSILON) * MathUtils.INV_LOG_2;
 
     private SVDDenoisingUtils() {}
 
@@ -499,6 +498,6 @@ public final class SVDDenoisingUtils {
     }
 
     private static double safeLog2(final double x) {
-        return x < EPSILON ? LN2_EPSILON : Math.log(x) * INV_LN2;
+        return x < EPSILON ? LN2_EPSILON : Math.log(x) * MathUtils.INV_LOG_2;
     }
 }
