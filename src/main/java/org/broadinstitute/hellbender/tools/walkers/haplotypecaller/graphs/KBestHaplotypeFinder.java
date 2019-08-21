@@ -17,7 +17,7 @@ public final class KBestHaplotypeFinder {
 
     public static final Comparator<KBestHaplotype> K_BEST_HAPLOTYPE_COMPARATOR = Comparator.comparingDouble(KBestHaplotype::score)
             .reversed()
-            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); //reverse this since that's what the existing tests expect
+            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); // This is an arbitrary deterministic tie breaker. 
     private final SeqGraph graph;
     final Set<SeqVertex> sinks;
     final Set<SeqVertex> sources;
