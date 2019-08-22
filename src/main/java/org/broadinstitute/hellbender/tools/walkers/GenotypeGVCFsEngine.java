@@ -113,7 +113,7 @@ public class GenotypeGVCFsEngine
 
         ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
-        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants, tlodThreshold, afTolerance) :
+        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, includeNonVariants, tlodThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, includeNonVariants);
 
         return regenotypedVC;
@@ -195,7 +195,7 @@ public class GenotypeGVCFsEngine
         if ( newAlleles.size() == 1 ) {
             final VariantContextBuilder builder = new VariantContextBuilder(vc).alleles(newAlleles);
             for ( final String name : infoHeaderAltAllelesLineNames ) {
-                builder.rmAttributes(Arrays.asList(name));
+                builder.rmAttributes(Collections.singletonList(name));
             }
             return builder.make();
         } else {
@@ -258,14 +258,14 @@ public class GenotypeGVCFsEngine
         final GenotypeLikelihoodsCalculationModel model = vc.getType() == VariantContext.Type.INDEL
                 ? GenotypeLikelihoodsCalculationModel.INDEL
                 : GenotypeLikelihoodsCalculationModel.SNP;
-        return genotypingEngine.calculateGenotypes(vc, model, null);
+        return genotypingEngine.calculateGenotypes(vc, model);
     }
 
     /**
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeSomaticVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants, double tlodThreshold, double afTolerance) {
+    private VariantContext regenotypeSomaticVC(final VariantContext originalVC, boolean includeNonVariants, double tlodThreshold, double afTolerance) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;

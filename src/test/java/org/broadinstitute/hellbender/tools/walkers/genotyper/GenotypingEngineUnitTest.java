@@ -84,7 +84,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                 new GenotypeBuilder("sample1").alleles(gtAlleles).PL(new double[]{0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make(),  // homVar for first alt -- note that these are doubles, so they get renormalized
                 new GenotypeBuilder("sample2").alleles(gtAlleles).PL(new double[]{0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make()); // homVar for second alt
         final VariantContext vc = new VariantContextBuilder("test", "1",1, refAllele.length(), allelesDel).genotypes(genotypes).make();
-        final VariantContext vcOut = genotypingEngine.calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.INDEL, null);
+        final VariantContext vcOut = genotypingEngine.calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.INDEL);
         Assert.assertFalse(vcOut.getAlleles().contains(altT));
 
         // Make sure the spanning deletion is removed since the deletion was removed
@@ -96,7 +96,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                 new GenotypeBuilder("sample2").alleles(gtAlleles).PL(new double[]{0, 0, 0, 0, 0, 0}).make());
         final VariantContext vcSpanDel = new VariantContextBuilder("test1", "1",2, 2 + refAlleleSpanDel.length() - 1, vcAllelesSpanDel).
                 genotypes(genotypesSpanDel).make();
-        final VariantContext vcOut1 = genotypingEngine.calculateGenotypes(vcSpanDel, GenotypeLikelihoodsCalculationModel.INDEL, null);
+        final VariantContext vcOut1 = genotypingEngine.calculateGenotypes(vcSpanDel, GenotypeLikelihoodsCalculationModel.INDEL);
         //the site is monomorphic, which becomes null
         Assert.assertTrue(vcOut1 == null);
 
@@ -124,7 +124,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                 new GenotypeBuilder("s2157").alleles(gtAlleles).PL(new int[]{0,21,315,21,315,315}).make());
         final VariantContext vcMultiWithSpanDel = new VariantContextBuilder("test2", "1",2, 2 + refAlleleSpanDel.length() - 1, mutliAllelicWithSpanDel).
                 genotypes(regressionGenotypes).make();
-        final VariantContext vcOut2 = genotypingEngine.calculateGenotypes(vcMultiWithSpanDel, GenotypeLikelihoodsCalculationModel.SNP, null);
+        final VariantContext vcOut2 = genotypingEngine.calculateGenotypes(vcMultiWithSpanDel, GenotypeLikelihoodsCalculationModel.SNP);
         //low quality T should get dropped, leaving only star, which shouldn't be output
         Assert.assertTrue(vcOut2 == null);
     }
@@ -133,7 +133,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
     public void testNoIndexOutOfBoundsExceptionWhenSubsettingToNoAlleles(){
         final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA, altT))
                 .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, refA))).make();
-        getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null);
+        getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP);
     }
 
     @Test
@@ -141,7 +141,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA,
                                                                                                Allele.NON_REF_ALLELE))
                 .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, Allele.NON_REF_ALLELE))).make();
-        Assert.assertNotNull(getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null));
+        Assert.assertNotNull(getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP));
     }
 
     @DataProvider
