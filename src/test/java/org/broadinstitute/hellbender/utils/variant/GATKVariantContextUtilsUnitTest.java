@@ -631,13 +631,12 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     // --------------------------------------------------------------------------------
 
     private class ReverseClippingPositionTestProvider extends TestDataProvider {
-        final String ref;
+
         final List<Allele> alleles = new ArrayList<>();
         final int expectedClip;
 
-        private ReverseClippingPositionTestProvider(final int expectedClip, final String ref, final String... alleles) {
+        private ReverseClippingPositionTestProvider(final int expectedClip, final String... alleles) {
             super(ReverseClippingPositionTestProvider.class);
-            this.ref = ref;
             for ( final String allele : alleles )
                 this.alleles.add(Allele.create(allele));
             this.expectedClip = expectedClip;
@@ -645,7 +644,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         @Override
         public String toString() {
-            return String.format("ref=%s allele=%s reverse clip %d", ref, alleles, expectedClip);
+            return String.format(" allele=%s reverse clip %d", alleles, expectedClip);
         }
     }
 
@@ -680,7 +679,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ReverseClippingPositionTestProvider")
     public void testReverseClippingPositionTestProvider(ReverseClippingPositionTestProvider cfg) {
-        int result = GATKVariantContextUtils.computeReverseClipping(cfg.alleles, cfg.ref.getBytes());
+        int result = GATKVariantContextUtils.computeClippingLength(cfg.alleles,true);
         Assert.assertEquals(result, cfg.expectedClip);
     }
 
@@ -987,31 +986,27 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
-        tests.add(new Object[]{Collections.singletonList("A"), -1});
-        tests.add(new Object[]{Collections.singletonList("<DEL>"), -1});
-        tests.add(new Object[]{Arrays.asList("A", "C"), -1});
-        tests.add(new Object[]{Arrays.asList("AC", "C"), -1});
-        tests.add(new Object[]{Arrays.asList("A", "G"), -1});
-        tests.add(new Object[]{Arrays.asList("A", "T"), -1});
-        tests.add(new Object[]{Arrays.asList("GT", "CA"), -1});
-        tests.add(new Object[]{Arrays.asList("GT", "CT"), -1});
-        tests.add(new Object[]{Arrays.asList("ACC", "AC"), 0});
-        tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), 1});
-        tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), 1});
-        tests.add(new Object[]{Arrays.asList("ACGC", "ACGA"), 2});
-        tests.add(new Object[]{Arrays.asList("ACGC", "AGC"), 0});
-        tests.add(new Object[]{Arrays.asList("A", "<DEL>"), -1});
-        for ( int len = 0; len < 50; len++ )
-            tests.add(new Object[]{Arrays.asList("A" + new String(Utils.dupBytes((byte)'C', len)), "C"), -1});
-
-        tests.add(new Object[]{Arrays.asList("A", "T", "C"), -1});
-        tests.add(new Object[]{Arrays.asList("AT", "AC", "AG"), 0});
-        tests.add(new Object[]{Arrays.asList("AT", "AC", "A"), -1});
-        tests.add(new Object[]{Arrays.asList("AT", "AC", "ACG"), 0});
-        tests.add(new Object[]{Arrays.asList("AC", "AC", "ACG"), 0});
-        tests.add(new Object[]{Arrays.asList("AC", "ACT", "ACG"), 0});
-        tests.add(new Object[]{Arrays.asList("ACG", "ACGT", "ACGTA"), 1});
-        tests.add(new Object[]{Arrays.asList("ACG", "ACGT", "ACGCA"), 1});
+        tests.add(new Object[]{Collections.singletonList("A"), 0});
+        tests.add(new Object[]{Collections.singletonList("<DEL>"), 0});
+        tests.add(new Object[]{Arrays.asList("A", "C"), 0});
+        tests.add(new Object[]{Arrays.asList("AC", "C"), 0});
+        tests.add(new Object[]{Arrays.asList("A", "G"), 0});
+        tests.add(new Object[]{Arrays.asList("A", "T"), 0});
+        tests.add(new Object[]{Arrays.asList("GT", "CA"), 0});
+        tests.add(new Object[]{Arrays.asList("GT", "CT"), 0});
+        tests.add(new Object[]{Arrays.asList("ACC", "AC"),1});
+        tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), 2});
+        tests.add(new Object[]{Arrays.asList("ACGC", "ACGA"), 3});
+        tests.add(new Object[]{Arrays.asList("ACGC", "AGC"), 1});
+        tests.add(new Object[]{Arrays.asList("A", "<DEL>"), 0});
+        tests.add(new Object[]{Arrays.asList("A", "T", "C"), 0});
+        tests.add(new Object[]{Arrays.asList("AT", "AC", "AG"), 1});
+        tests.add(new Object[]{Arrays.asList("AT", "AC", "A"), 0});
+        tests.add(new Object[]{Arrays.asList("AT", "AC", "ACG"), 1});
+        tests.add(new Object[]{Arrays.asList("AC", "AC", "ACG"), 1});
+        tests.add(new Object[]{Arrays.asList("AC", "ACT", "ACG"), 1});
+        tests.add(new Object[]{Arrays.asList("ACG", "ACGT", "ACGTA"), 2});
+        tests.add(new Object[]{Arrays.asList("ACG", "ACGT", "ACGCA"), 2});
 
         return tests.toArray(new Object[][]{});
     }
@@ -1023,7 +1018,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 .collect(Collectors.toList());
 
         for ( final List<Allele> myAlleles : Utils.makePermutations(alleles, alleles.size(), false)) {
-            final int actual = GATKVariantContextUtils.computeForwardClipping(myAlleles);
+            final int actual = GATKVariantContextUtils.computeClippingLength(myAlleles,false);
             Assert.assertEquals(actual, expectedClip);
         }
     }
