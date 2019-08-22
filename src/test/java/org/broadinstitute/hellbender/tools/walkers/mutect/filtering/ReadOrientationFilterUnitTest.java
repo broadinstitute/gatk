@@ -116,7 +116,7 @@ public class ReadOrientationFilterUnitTest extends GATKBaseTest {
         pi[ArtifactState.getF1R2StateForAlt(altAllele).ordinal()] = 1;
         pi[ArtifactState.getF2R1StateForAlt(altAllele).ordinal()] = 1;
 
-        return MathUtils.normalizeFromRealSpace(pi);
+        return MathUtils.normalizeSumToOne(pi);
     }
 
 }

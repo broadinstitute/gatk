@@ -219,7 +219,7 @@ public final class RandomDNAUnitTest {
 
     public void checkResults(final int[] results, final int n, final int m) {
         final double mean = Arrays.stream(results).average().getAsDouble();
-        final double std = new StandardDeviation().evaluate(Arrays.stream(results).mapToDouble(i->i).toArray());
+        final double std = new StandardDeviation().evaluate(Arrays.stream(results).asDoubleStream().toArray());
         final double expectedMean = (n*m)/4.0;
         final double s = std; // not really because it's the population not the sample dtd but it'll do
         Assert.assertTrue(mean < expectedMean + 2 * s / Math.sqrt(n * m), "unexpected mean:" + mean);

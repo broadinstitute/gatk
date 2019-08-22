@@ -61,9 +61,9 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
 
         final VariantContext vcBase = new VariantContextBuilder("test", "20", 10, 10, AC).make();
 
-        final double[] homRefPL = MathUtils.normalizeFromRealSpace(new double[]{0.9, 0.09, 0.01});
-        final double[] hetPL = MathUtils.normalizeFromRealSpace(new double[]{0.09, 0.9, 0.01});
-        final double[] homVarPL = MathUtils.normalizeFromRealSpace(new double[]{0.01, 0.09, 0.9});
+        final double[] homRefPL = MathUtils.normalizeSumToOne(new double[]{0.9, 0.09, 0.01});
+        final double[] hetPL = MathUtils.normalizeSumToOne(new double[]{0.09, 0.9, 0.01});
+        final double[] homVarPL = MathUtils.normalizeSumToOne(new double[]{0.01, 0.09, 0.9});
         final double[] uninformative = new double[]{0, 0, 0};
 
         final Genotype base = new GenotypeBuilder("NA12878").DP(10).GQ(100).make();

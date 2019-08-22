@@ -246,7 +246,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
 
                 // compare to the exact reference implementation with appropriate tolerance
                 Assert.assertEquals(actualLogL, exactLogL, cfg.getTolerance(hmm), "Failed with hmm " + hmm);
-                Assert.assertTrue(MathUtils.goodLog10Probability(actualLogL), "Bad log likelihood " + actualLogL);
+                Assert.assertTrue(MathUtils.isValidLog10Probability(actualLogL), "Bad log likelihood " + actualLogL);
             }
         }
     }
@@ -260,7 +260,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
                 final double calculatedLogL = cfg.calcLog10Likelihood(hmm, false);
                 // compare to the exact reference implementation with appropriate tolerance
                 Assert.assertEquals(calculatedLogL, exactLogL, cfg.getTolerance(hmm), String.format("Test: logL calc=%.2f expected=%.2f for %s with hmm %s", calculatedLogL, exactLogL, cfg.toString(), hmm));
-                Assert.assertTrue(MathUtils.goodLog10Probability(calculatedLogL), "Bad log10 likelihood " + calculatedLogL);
+                Assert.assertTrue(MathUtils.isValidLog10Probability(calculatedLogL), "Bad log10 likelihood " + calculatedLogL);
             }
         }
     }
@@ -669,7 +669,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
         final byte[] delQuals = Utils.dupBytes((byte)40, readBases.length);
         final byte[] gcp = Utils.dupBytes((byte) 10, readBases.length);
         double d = hmm.computeReadLikelihoodGivenHaplotypeLog10(hap.getBytes(), readBases, baseQuals, insQuals, delQuals, gcp, recache, nextHapBases);
-        Assert.assertTrue(MathUtils.goodLog10Probability(d), "Likelihoods = " + d + " was bad for read " + read + " and ref " + hap + " with hapStart " + hapStart);
+        Assert.assertTrue(MathUtils.isValidLog10Probability(d), "Likelihoods = " + d + " was bad for read " + read + " and ref " + hap + " with hapStart " + hapStart);
         return d;
     }
 

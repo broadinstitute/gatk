@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.NormalDistribution;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
@@ -134,15 +132,15 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testGoodProbability(){
         for (final double good : Arrays.asList(0.1, 1.0)) {
-            Assert.assertTrue(MathUtils.goodProbability(good));
-            Assert.assertTrue(MathUtils.goodLog10Probability(log10(good)));
+            Assert.assertTrue(MathUtils.isValidProbability(good));
+            Assert.assertTrue(MathUtils.isValidLog10Probability(log10(good)));
         }
 
-        Assert.assertTrue(MathUtils.goodProbability(0.0));
-        Assert.assertTrue(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY));
+        Assert.assertTrue(MathUtils.isValidProbability(0.0));
+        Assert.assertTrue(MathUtils.isValidLog10Probability(Double.NEGATIVE_INFINITY));
 
         for (final double bad : Arrays.asList(-1.0, 2.0, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)) {
-            Assert.assertFalse(MathUtils.goodProbability(bad));
+            Assert.assertFalse(MathUtils.isValidProbability(bad));
         }
     }
 
@@ -400,7 +398,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testNormalizeFromReal(){
         final double error = 1e-6;
-        final double[] actual = MathUtils.normalizeFromRealSpace(new double[]{1.0, 2.0, 3.0});
+        final double[] actual = MathUtils.normalizeSumToOne(new double[]{1.0, 2.0, 3.0});
         final double[] expected =  {1.0/6.0, 2.0/6.0, 3.0/6.0};
         for (int i = 0; i < actual.length; i++){
             Assert.assertEquals(expected[i], actual[i], error);
@@ -1063,28 +1061,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
                 .collect(Collectors.toList());
         Assert.assertEquals(result.stream().filter(n -> n==0).count(), 0);
         Assert.assertEquals(result.stream().filter(n -> n == 1).count(), NUM_SAMPLES / 2, 50);
-    }
-
-    @Test
-    public void testSum3d() {
-        final double[][][] array = {{{-2, 17}, {1, 1}}, {{1, 1}, {-2, 17}}, {{1, 1}, {1, 1}}, {{1, 1}, {1, 1}}};
-        final double gt = 42;
-        final double guess = MathUtils.sum(array);
-        Assert.assertEquals(guess, gt);
-    }
-
-    @Test
-    public void testSum3dInf() {
-        final double[][][] array = {{{Double.POSITIVE_INFINITY, 17}, {1, 1}}, {{1, 1}, {-2, 17}}, {{1, 1}, {1, 1}}, {{1, 1}, {1, 1}}};
-        final double guess = MathUtils.sum(array);
-        Assert.assertTrue(Double.isInfinite(guess));
-    }
-
-    @Test
-    public void testSum3dNaN() {
-        final double[][][] array = {{{Double.NaN, 17}, {1, 1}}, {{1, 1}, {-2, 17}}, {{1, 1}, {1, 1}}, {{1, 1}, {1, 1}}};
-        final double guess = MathUtils.sum(array);
-        Assert.assertTrue(Double.isNaN(guess));
     }
 
     @Test

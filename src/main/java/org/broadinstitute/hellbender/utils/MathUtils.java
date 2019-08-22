@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
@@ -34,7 +35,7 @@ public final class MathUtils {
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
-    
+
     private static final Log10Cache LOG_10_CACHE = new Log10Cache();
     private static final Log10FactorialCache LOG_10_FACTORIAL_CACHE = new Log10FactorialCache();
     private static final DigammaCache DIGAMMA_CACHE = new DigammaCache();
@@ -53,25 +54,6 @@ public final class MathUtils {
         final List<Pair<E, Double>> pmf = choices.stream()
                 .map(e -> new Pair<>(e, probabilityFunction.apply(e))).collect(Collectors.toList());
         return new EnumeratedDistribution<>(rng, pmf).sample();
-    }
-
-    /**
-     *  Return sum of 3d array
-     *
-     * @param array Never {@code null}
-     * @return sum of array
-     */
-    public static double sum(final double[][][] array) {
-        Utils.nonNull(array);
-        double result = 0;
-        for (double[][] d: array) {
-            for (double[] da: d){
-                for (double daa: da) {
-                    result += daa;
-                }
-            }
-        }
-        return result;
     }
 
     /**
@@ -175,7 +157,6 @@ public final class MathUtils {
         double[] apply(int value);
     }
 
-
     /**
      * A utility class that computes on the fly average and standard deviation for a stream of numbers.
      * The number of observations does not have to be known in advance, and can be also very big (so that
@@ -278,10 +259,9 @@ public final class MathUtils {
      *
      * @return true if vector is well-formed, false otherwise
      */
-    public static boolean goodLog10ProbVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
+    public static boolean isValidLog10ProbabilityVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
         Utils.nonNull(vector);
-        return vector.length == expectedSize &&
-                allMatch(vector, MathUtils::goodLog10Probability) &&
+        return vector.length == expectedSize && allMatch(vector, MathUtils::isValidLog10Probability) &&
                 !( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 );
     }
 
@@ -740,7 +720,7 @@ public final class MathUtils {
      * @param array the array to be normalized
      * @return a newly allocated array corresponding the normalized values in array
      */
-    public static double[] normalizeFromRealSpace(final double[] array) {
+    public static double[] normalizeSumToOne(final double[] array) {
         Utils.nonNull(array);
         if ( array.length == 0 )
             return array;
@@ -792,29 +772,13 @@ public final class MathUtils {
         return min;
     }
 
-    /**
-     * Checks that the result is a well-formed log10 probability
-     *
-     * @param result a supposedly well-formed log10 probability value
-     * @return true if result is really well formed
-     */
-    public static boolean goodLog10Probability(final double result) {
-        return result <= 0.0;
-    }
+    public static boolean isValidLog10Probability(final double result) { return result <= 0.0; }
 
-    /**
-     * Checks that the result is a well-formed probability
-     *
-     * @param result a supposedly well-formed probability value
-     * @return true if result is really well formed
-     */
-    public static boolean goodProbability(final double result) {
+    public static boolean isValidProbability(final double result) {
         return result >= 0.0 && result <= 1.0;
     }
 
-    public static double log10ToLog(final double log10){
-        return log10 * LOG_10;
-    }
+    public static double log10ToLog(final double log10){ return log10 * LOG_10; }
 
     /**
       * Calculates the log10 of the gamma function for x.

@@ -201,7 +201,7 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
         final double[] relativeProbsOfHetHomArtifact = {hetPrior * hetLikelihood + homPrior * homLikelihood, ARTIFACT_PRIOR * artifactLikelihood};
 
         // check for invalid probabilities just in case of finite precision error
-        return MathUtils.sum(relativeProbsOfHetHomArtifact) < 0 ? 0 : MathUtils.normalizeFromRealSpace(relativeProbsOfHetHomArtifact)[0];
+        return MathUtils.sum(relativeProbsOfHetHomArtifact) < 0 ? 0 : MathUtils.normalizeSumToOne(relativeProbsOfHetHomArtifact)[0];
     }
 
     private BetaDistributionShape fitBeta(final List<int[]> altAndRefCounts) {

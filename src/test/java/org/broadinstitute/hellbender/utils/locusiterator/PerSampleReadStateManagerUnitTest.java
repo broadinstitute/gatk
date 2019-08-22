@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -9,113 +8,81 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * testing of the new (non-legacy) version of LocusIteratorByState
  */
 public final class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseTest {
-    private static final class PerSampleReadStateManagerTester extends TestDataProvider {
-        private List<Integer> readCountsPerAlignmentStart;
-        private List<GATKRead> reads;
-        private List<ArrayList<AlignmentStateMachine>> recordStatesByAlignmentStart;
-        private int removalInterval;
 
-        public PerSampleReadStateManagerTester(List<Integer> readCountsPerAlignmentStart, int removalInterval ) {
+    private static final class PerSampleReadStateManagerTester extends TestDataProvider {
+        private final List<Integer> readCountsPerAlignmentStart;
+        private final int removalInterval;
+
+        public PerSampleReadStateManagerTester(final List<Integer> readCountsPerAlignmentStart, final int removalInterval ) {
             super(PerSampleReadStateManagerTester.class);
 
             this.readCountsPerAlignmentStart = readCountsPerAlignmentStart;
             this.removalInterval = removalInterval;
-
-            reads = new ArrayList<>();
-            recordStatesByAlignmentStart = new ArrayList<>();
 
             setName(String.format("%s: readCountsPerAlignmentStart: %s  removalInterval: %d",
                     getClass().getSimpleName(), readCountsPerAlignmentStart, removalInterval));
         }
 
         public void run() {
-            PerSampleReadStateManager perSampleReadStateManager = new PerSampleReadStateManager(LocusIteratorByState.NO_DOWNSAMPLING);
+            final List<GATKRead> reads = new ArrayList<>();
+            final List<ArrayList<AlignmentStateMachine>> recordStatesByAlignmentStart = new ArrayList<>();
+            makeReads(reads, recordStatesByAlignmentStart);
 
-            makeReads();
+            final PerSampleReadStateManager perSampleReadStateManager = new PerSampleReadStateManager(LocusIteratorByState.NO_DOWNSAMPLING);
+            recordStatesByAlignmentStart.stream().map(LinkedList<AlignmentStateMachine>::new).forEach(perSampleReadStateManager::addStatesAtNextAlignmentStart);
 
-            for ( ArrayList<AlignmentStateMachine> stackRecordStates : recordStatesByAlignmentStart ) {
-                perSampleReadStateManager.addStatesAtNextAlignmentStart(new LinkedList<>(stackRecordStates));
-            }
-
-            // read state manager should have the right number of reads
             Assert.assertEquals(reads.size(), perSampleReadStateManager.size());
 
-            Iterator<GATKRead> originalReadsIterator = reads.iterator();
-            Iterator<AlignmentStateMachine> recordStateIterator = perSampleReadStateManager.iterator();
-            int recordStateCount = 0;
+            final Iterator<GATKRead> originalReadsIterator = reads.iterator();
+            final Iterator<AlignmentStateMachine> stateIterator = perSampleReadStateManager.iterator();
+            int recordStateIndex = 0;
             int numReadStatesRemoved = 0;
 
             // Do a first-pass validation of the record state iteration by making sure we get back everything we
             // put in, in the same order, doing any requested removals of read states along the way
-            while ( recordStateIterator.hasNext() ) {
-                AlignmentStateMachine readState = recordStateIterator.next();
-                recordStateCount++;
-                GATKRead readFromPerSampleReadStateManager = readState.getRead();
-
-                Assert.assertTrue(originalReadsIterator.hasNext());
-                GATKRead originalRead = originalReadsIterator.next();
-
+            while ( stateIterator.hasNext() ) {
                 // The read we get back should be literally the same read in memory as we put in
-                Assert.assertTrue(originalRead == readFromPerSampleReadStateManager);
+                Assert.assertTrue(originalReadsIterator.hasNext());
+                Assert.assertTrue(originalReadsIterator.next() == stateIterator.next().getRead());
 
                 // If requested, remove a read state every removalInterval states
-                if ( removalInterval > 0 && recordStateCount % removalInterval == 0 ) {
-                    recordStateIterator.remove();
+                if ( removalInterval > 0 && recordStateIndex % removalInterval == 0 ) {
+                    stateIterator.remove();
                     numReadStatesRemoved++;
                 }
+                recordStateIndex++;
             }
 
             Assert.assertFalse(originalReadsIterator.hasNext());
+            Assert.assertEquals(perSampleReadStateManager.size(), reads.size() - numReadStatesRemoved);
 
-            // If we removed any read states, do a second pass through the read states to make sure the right
-            // states were removed
+            // second pass through the read states to make sure the right states were removed
             if ( numReadStatesRemoved > 0 ) {
-                Assert.assertEquals(perSampleReadStateManager.size(), reads.size() - numReadStatesRemoved);
 
-                originalReadsIterator = reads.iterator();
-                recordStateIterator = perSampleReadStateManager.iterator();
-                int readCount = 0;
-                int readStateCount = 0;
-
-                // Match record states with the reads that should remain after removal
-                while ( recordStateIterator.hasNext() ) {
-                    AlignmentStateMachine readState = recordStateIterator.next();
-                    readStateCount++;
-                    GATKRead readFromPerSampleReadStateManager = readState.getRead();
-
-                    Assert.assertTrue(originalReadsIterator.hasNext());
-
-                    GATKRead originalRead = originalReadsIterator.next();
-                    readCount++;
-
-                    if ( readCount % removalInterval == 0 ) {
-                        originalRead = originalReadsIterator.next(); // advance to next read, since the previous one should have been discarded
-                        readCount++;
+                Iterator<AlignmentStateMachine> secondPassStateIterator = perSampleReadStateManager.iterator();
+                for ( int readIndex = 0; readIndex < reads.size(); readIndex++ ) {
+                    // skip reads that were removed in the first pass
+                    if ( readIndex % removalInterval == 0 ) {
+                        continue;
                     }
-
-                    // The read we get back should be literally the same read in memory as we put in (after accounting for removals)
-                    Assert.assertTrue(originalRead == readFromPerSampleReadStateManager);
+                    Assert.assertTrue(secondPassStateIterator.hasNext());
+                    Assert.assertTrue(reads.get(readIndex) == secondPassStateIterator.next().getRead());
                 }
-
-                Assert.assertEquals(readStateCount, reads.size() - numReadStatesRemoved);
+                Assert.assertFalse(secondPassStateIterator.hasNext());
             }
-
-            // Allow memory used by this test to be reclaimed
-            readCountsPerAlignmentStart = null;
-            reads = null;
-            recordStatesByAlignmentStart = null;
         }
 
-        private void makeReads() {
-            int alignmentStart = 1;
-
+        private void makeReads(List<GATKRead> reads, List<ArrayList<AlignmentStateMachine>> recordStatesByAlignmentStart) {
+            final int alignmentStart = 1;
             for ( int readsThisStack : readCountsPerAlignmentStart ) {
-                ArrayList<GATKRead> stackReads = new ArrayList<>(ArtificialReadUtils.createIdenticalArtificialReads(readsThisStack, header, "foo", 0, alignmentStart, Utils.getRandomGenerator().nextInt(51) + 50));
+                final int readLength = Utils.getRandomGenerator().nextInt(51) + 50;
+                ArrayList<GATKRead> stackReads = new ArrayList<>(ArtificialReadUtils.createIdenticalArtificialReads(readsThisStack, header, "foo", 0, alignmentStart, readLength));
                 ArrayList<AlignmentStateMachine> stackRecordStates = new ArrayList<>();
 
                 for ( GATKRead read : stackReads ) {
@@ -130,7 +97,7 @@ public final class PerSampleReadStateManagerUnitTest extends LocusIteratorByStat
 
     @DataProvider(name = "PerSampleReadStateManagerTestDataProvider")
     public Object[][] createPerSampleReadStateManagerTests() {
-        for ( List<Integer> thisTestReadStateCounts : Arrays.asList( Arrays.asList(1),
+        final List<List<Integer>> testReadStateCounts = Arrays.asList(Arrays.asList(1),
                 Arrays.asList(2),
                 Arrays.asList(10),
                 Arrays.asList(1, 1),
@@ -144,20 +111,22 @@ public final class PerSampleReadStateManagerUnitTest extends LocusIteratorByStat
                 Arrays.asList(1, 1, 1, 1, 1, 1),
                 Arrays.asList(10, 10, 10, 10, 10, 10),
                 Arrays.asList(1, 2, 10, 1, 2, 10)
-        ) ) {
+        );
 
-            for ( int removalInterval : Arrays.asList(0, 2, 3) ) {
-                new PerSampleReadStateManagerTester(thisTestReadStateCounts, removalInterval);
-            }
-        }
+        final List<Integer> removeIntervals = Arrays.asList(0, 2, 3);
 
-        return PerSampleReadStateManagerTester.getTests(PerSampleReadStateManagerTester.class);
+        final List<Object[]> tests = testReadStateCounts.stream()
+                .flatMap(counts -> removeIntervals.stream()
+                        .map(interval -> new Object[] {new PerSampleReadStateManagerTester(counts, interval)}))
+                .collect(Collectors.toList());
+
+        return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "PerSampleReadStateManagerTestDataProvider")
     public void runPerSampleReadStateManagerTest( PerSampleReadStateManagerTester test ) {
         logger.warn("Running test: " + test);
-
+        Utils.resetRandomGenerator();
         test.run();
     }
 }
