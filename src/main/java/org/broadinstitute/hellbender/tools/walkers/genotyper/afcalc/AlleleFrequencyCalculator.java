@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.Dirichlet;
@@ -41,11 +42,18 @@ public final class AlleleFrequencyCalculator {
         this.defaultPloidy = defaultPloidy;
     }
 
+    public static AlleleFrequencyCalculator makeCalculator(final GenotypeCalculationArgumentCollection genotypeArgs) {
+        final double refPseudocount = genotypeArgs.snpHeterozygosity / Math.pow(genotypeArgs.heterozygosityStandardDeviation,2);
+        final double snpPseudocount = genotypeArgs.snpHeterozygosity * refPseudocount;
+        final double indelPseudocount = genotypeArgs.indelHeterozygosity * refPseudocount;
+        return new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, genotypeArgs.samplePloidy);
+    }
+
     public AFCalculationResult calculate(final VariantContext vc) {
         // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
         return calculate(vc, defaultPloidy);
     }
-    //TODO: this should be a class of static methods
+
     /**
      * Compute the probability of the alleles segregating given the genotype likelihoods of the samples in vc
      *

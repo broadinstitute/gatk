@@ -96,10 +96,10 @@ public final class AFCalculationResult {
     public int getAlleleCountAtMLE(final Allele allele) {
         Utils.nonNull(allele);
         Utils.validate( allele.isNonReference(), () -> "Cannot get the alt allele index for reference allele " + allele);
-        final int index1 = allelesUsedInGenotyping.indexOf(allele);
-        Utils.validateArg(index1 != -1, () -> "could not find allele " + allele + " in " + allelesUsedInGenotyping);
-        final int index = index1 - 1;
-        return alleleCountsOfMLE[index];
+        final int indexInAllAllelesIncludingRef = allelesUsedInGenotyping.indexOf(allele);
+        Utils.validateArg(indexInAllAllelesIncludingRef != -1, () -> "could not find allele " + allele + " in " + allelesUsedInGenotyping);
+        final int indexInAltAlleles = indexInAllAllelesIncludingRef - 1;
+        return alleleCountsOfMLE[indexInAltAlleles];
     }
 
     /**
@@ -127,13 +127,13 @@ public final class AFCalculationResult {
                 byAllele.add(String.format("%s => MLE %d / posterior %.2f", a, getAlleleCountAtMLE(a), getLog10PosteriorOfAlleleAbsent(a)));
             }
         }
-        return String.format("AFCalc%n\t\tlog10PosteriorOfAFGT0=%.2f%n\t\t%s", getLog10PosteriorOfVariant(), Utils.join("\n\t\t", byAllele));
+        return String.format("AFCalc%n\t\tlog10PosteriorOfVariant=%.2f%n\t\t%s", getLog10PosteriorOfVariant(), Utils.join("\n\t\t", byAllele));
     }
 
     /**
-     * Same as #isPolymorphic but takes a phred-scaled quality score as input
+     * Are we confident that an allele is present
      */
-    public boolean isPolymorphic(final Allele allele, final double phredScaleQualThreshold) {
+    public boolean passesThreshold(final Allele allele, final double phredScaleQualThreshold) {
         Utils.nonNull(allele);
         return getLog10PosteriorOfAlleleAbsent(allele) + EPSILON < QualityUtils.qualToErrorProbLog10(phredScaleQualThreshold);
     }
