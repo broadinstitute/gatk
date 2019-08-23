@@ -129,7 +129,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 //            } else {
 //                return optimizedAlignment;
 //            }
-        return oldAlignment;
+        return optimizedAlignment;
 //            if (haplotypeToref) {
 //                return oldAlignment;
 //            } else {
