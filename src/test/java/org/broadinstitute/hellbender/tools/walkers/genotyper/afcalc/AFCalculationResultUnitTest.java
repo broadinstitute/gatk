@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -45,6 +42,6 @@ public final class AFCalculationResultUnitTest extends GATKBaseTest {
             Assert.assertEquals(result.getAlleleCountAtMLE(alleles.get(n)), mleCounts[n-1]);
         }
 
-        Assert.assertEquals(result.getLog10PosteriorOfVariant(), Math.log10(1 - probabilityOfNoVariant), 1.0e-10);
+        Assert.assertEquals(result.log10ProbVariantPresent(), Math.log10(1 - probabilityOfNoVariant), 1.0e-10);
     }
 }

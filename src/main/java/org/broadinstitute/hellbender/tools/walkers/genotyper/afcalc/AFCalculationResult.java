@@ -111,11 +111,11 @@ public final class AFCalculationResult {
         return allelesUsedInGenotyping;
     }
 
-    public double getLog10PosteriorOfNoVariant() {
+    public double log10ProbOnlyRefAlleleExists() {
         return log10PosteriorOfNoVariant;
     }
 
-    public double getLog10PosteriorOfVariant() {
+    public double log10ProbVariantPresent() {
         return MathUtils.log10OneMinusPow10(log10PosteriorOfNoVariant);
     }
 
@@ -127,7 +127,7 @@ public final class AFCalculationResult {
                 byAllele.add(String.format("%s => MLE %d / posterior %.2f", a, getAlleleCountAtMLE(a), getLog10PosteriorOfAlleleAbsent(a)));
             }
         }
-        return String.format("AFCalc%n\t\tlog10PosteriorOfVariant=%.2f%n\t\t%s", getLog10PosteriorOfVariant(), Utils.join("\n\t\t", byAllele));
+        return String.format("AFCalc%n\t\tlog10PosteriorOfVariant=%.2f%n\t\t%s", log10ProbVariantPresent(), Utils.join("\n\t\t", byAllele));
     }
 
     /**
