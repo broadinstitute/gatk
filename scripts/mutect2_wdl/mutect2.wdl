@@ -75,6 +75,7 @@ version 1.0
 ## pertaining to the included programs.
 workflow Mutect2 {
     input {
+      # Mutect2 inputs
       File? intervals
       File ref_fasta
       File ref_fai
