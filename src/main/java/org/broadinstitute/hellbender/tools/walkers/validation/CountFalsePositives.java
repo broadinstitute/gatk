@@ -49,15 +49,17 @@ public class CountFalsePositives extends VariantWalker {
     static final String USAGE_ONE_LINE_SUMMARY = "Count PASS variants";
     static final String USAGE_SUMMARY = "Count PASS (false positive) variants in a vcf file for Mutect2 NA12878 normal-normal evaluation";
 
-    @Argument(
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output file"
-    )
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file")
     private File outputFile = null;
+
     long indelFalsePositiveCount = 0;
     long snpFalsePositiveCount = 0;
     String id;
+
+    @Override
+    public boolean requiresIntervals() {
+        return true;
+    }
 
     // TODO: eventually use tumor and normal sample names instead of the file name. To do so we must extract them from the vcf, which I don't know how.
     @Override
