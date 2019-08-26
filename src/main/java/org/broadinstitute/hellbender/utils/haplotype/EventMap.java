@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
 import java.util.*;
@@ -242,82 +241,6 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         return b.alleles(Arrays.asList(ref, alt)).make();
     }
 
-    // TODO -- warning this is an O(N^3) algorithm because I'm just lazy.  If it's valuable we need to reengineer it
-    protected void replaceClumpedEventsWithBlockSubstitutions() {
-        if ( getNumberOfEvents() >= MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION) {
-            int lastStart = -1;
-            for ( boolean foundOne = true; foundOne; ) {
-                foundOne = false;
-                for ( final VariantContext vc : getVariantContexts() ) {
-                    if ( vc.getStart() > lastStart ) {
-                        lastStart = vc.getStart();
-                        final List<VariantContext> neighborhood = getNeighborhood(vc, 10);
-                        if ( updateToBlockSubstitutionIfBetter(neighborhood) ) {
-                            foundOne = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    protected boolean updateToBlockSubstitutionIfBetter(final List<VariantContext> neighbors) {
-        if (neighbors.size() < MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION)
-            return false;
-        // TODO -- need more tests to decide if this is really so good
-
-        final VariantContext first = neighbors.get(0);
-        final int refStartOffset = first.getStart() - refLoc.getStart();
-        final int refEndOffset = neighbors.get(neighbors.size() - 1).getEnd() - refLoc.getStart();
-
-        final byte[] refBases = Arrays.copyOfRange(ref, refStartOffset, refEndOffset + 1);
-        final byte[] hapBases = AlignmentUtils.getBasesCoveringRefInterval(refStartOffset, refEndOffset, haplotype.getBases(), haplotype.getAlignmentStartHapwrtRef(), haplotype.getCigar());
-
-        final VariantContextBuilder builder = new VariantContextBuilder(first);
-        builder.stop(first.getStart() + refBases.length - 1);
-        builder.alleles(Arrays.asList(Allele.create(refBases, true), Allele.create(hapBases)));
-        final VariantContext block = builder.make();
-
-        // remove all merged events
-        for ( final VariantContext merged : neighbors ) {
-            if ( remove(merged.getStart()) == null )
-                throw new IllegalArgumentException("Expected to remove variant context from the event map but remove said there wasn't any element there: " + merged);
-        }
-
-        // note must be after we remove the previous events as the treeset only allows one key per start
-        logger.info("Transforming into block substitution at " + block);
-        addVC(block, false);
-
-        return true;
-    }
-
-    /**
-     * Get all of the variant contexts starting at leftMost that are within maxBP of each other
-     *
-     * @param leftMost the left most (smallest position) variant context that will start the neighborhood
-     * @param maxBPBetweenEvents the maximum distance in BP between the end of one event the start of the next
-     *                           to be included the the resulting list
-     * @return a list that contains at least one element (leftMost)
-     */
-    protected List<VariantContext> getNeighborhood(final VariantContext leftMost, final int maxBPBetweenEvents) {
-        final List<VariantContext> neighbors = new LinkedList<>();
-
-        VariantContext left = leftMost;
-        for ( final VariantContext vc : getVariantContexts() ) {
-            if ( vc.getStart() < leftMost.getStart() )
-                continue;
-
-            if ( vc.getStart() - left.getEnd() < maxBPBetweenEvents ) {
-                // this vc is within max distance to the end of the left event, so accumulate it
-                neighbors.add(vc);
-                left = vc;
-            }
-        }
-
-        return neighbors;
-    }
-
     /**
      * Get the starting positions of events in this event map
      * @return
@@ -399,28 +322,4 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
     }
 
-    private static class VariantContextComparator implements Comparator<VariantContext>, Serializable {
-        private static final long serialVersionUID = -2549166273822365485L;
-
-        @Override
-        public int compare(VariantContext vc1, VariantContext vc2) {
-            return vc1.getStart() - vc2.getStart();
-        }
-    }
-
-    /**
-     * Get all of the VariantContexts in the event maps for all haplotypes, sorted by their start position
-     * @param haplotypes the set of haplotypes to grab the VCs from
-     * @return a sorted set of variant contexts
-     */
-    public static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
-        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        final TreeSet<VariantContext> vcs = new TreeSet<>(new VariantContextComparator());
-
-        for( final Haplotype h : haplotypes ) {
-            vcs.addAll(h.getEventMap().getVariantContexts());
-        }
-
-        return vcs;
-    }
 }

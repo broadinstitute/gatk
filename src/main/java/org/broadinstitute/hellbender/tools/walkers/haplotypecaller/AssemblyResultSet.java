@@ -525,9 +525,25 @@ public final class AssemblyResultSet {
     public void regenerateVariationEvents(int maxMnpDistance) {
         final List<Haplotype> haplotypeList = getHaplotypeList();
         EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug, maxMnpDistance);
-        variationEvents = EventMap.getAllVariantContexts(haplotypeList);
+        variationEvents = getAllVariantContexts(haplotypeList);
         lastMaxMnpDistanceUsed = OptionalInt.of(maxMnpDistance);
         variationPresent = haplotypeList.stream().anyMatch(Haplotype::isNonReference);
+    }
+
+    /**
+     * Get all of the VariantContexts in the event maps for all haplotypes, sorted by their start position
+     * @param haplotypes the set of haplotypes to grab the VCs from
+     * @return a sorted set of variant contexts
+     */
+    private static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
+        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
+        final TreeSet<VariantContext> vcs = new TreeSet<>(Comparator.comparingInt(VariantContext::getStart));
+
+        for( final Haplotype h : haplotypes ) {
+            vcs.addAll(h.getEventMap().getVariantContexts());
+        }
+
+        return vcs;
     }
 
     public void setDebug(boolean debug) {

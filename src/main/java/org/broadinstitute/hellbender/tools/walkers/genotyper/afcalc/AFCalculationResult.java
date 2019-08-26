@@ -74,10 +74,10 @@ public final class AFCalculationResult {
         }
         if ( ! allelesUsedInGenotyping.containsAll(log10pRefByAllele.keySet()) ) {
             throw new IllegalArgumentException("log10pRefByAllele doesn't contain all of the alleles used in genotyping: log10pRefByAllele " + log10pRefByAllele + " but allelesUsedInGenotyping " + allelesUsedInGenotyping);
-        }if ( ! MathUtils.goodLog10ProbVector(log10LikelihoodsOfAC, LOG_10_ARRAY_SIZES, false) ) {
+        }if ( ! MathUtils.isValidLog10ProbabilityVector(log10LikelihoodsOfAC, LOG_10_ARRAY_SIZES, false) ) {
             throw new IllegalArgumentException("log10LikelihoodsOfAC are bad " + Utils.join(",", log10LikelihoodsOfAC));
         }
-        if ( ! MathUtils.goodLog10ProbVector(log10PriorsOfAC, LOG_10_ARRAY_SIZES, false) ) {
+        if ( ! MathUtils.isValidLog10ProbabilityVector(log10PriorsOfAC, LOG_10_ARRAY_SIZES, false) ) {
             throw new IllegalArgumentException("log10priors are bad " + Utils.join(",", log10PriorsOfAC));
         }
 

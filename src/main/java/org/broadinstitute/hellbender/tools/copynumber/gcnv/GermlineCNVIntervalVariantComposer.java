@@ -186,6 +186,6 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
     }
 
     private static int convertLogProbabilityToPhredScore(final double posteriorProbInLogSpace) {
-        return (int) FastMath.floor(-10.0 * posteriorProbInLogSpace * MathUtils.LOG10_OF_E);
+        return (int) FastMath.floor(-10.0 * posteriorProbInLogSpace * MathUtils.LOG10_E);
     }
 }
