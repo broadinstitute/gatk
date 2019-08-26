@@ -31,6 +31,7 @@ import java.util.List;
  * gatk --java-options "-Xmx4g" CountFalsePositives \
  *   -V filtered.vcf.gz \
  *   -R ref_fasta.fa \
+ *   -L target_panel.interval_list \
  *   -O false-positives.txt
  * </pre>
  *
