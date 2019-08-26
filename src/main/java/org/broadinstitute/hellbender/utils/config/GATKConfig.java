@@ -121,9 +121,9 @@ public interface GATKConfig extends Mutable, Accessible {
     String spark_io_compression_codec();
 
     @SystemProperty
-    @Key("spark.yarn.executor.memoryOverhead")
+    @Key("spark.executor.memoryOverhead")
     @DefaultValue("600")
-    int spark_yarn_executor_memoryOverhead();
+    int spark_executor_memoryOverhead();
 
     @SystemProperty
     @Key("spark.driver.extraJavaOptions")

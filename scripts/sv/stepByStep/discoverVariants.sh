@@ -26,4 +26,4 @@ REF_TWOBIT="${MASTER_NODE}$4"
     --cluster "${CLUSTER_NAME}" \
     --driver-memory 30G \
     --executor-memory 8G \
-    --conf spark.yarn.executor.memoryOverhead=5000
+    --conf spark.executor.memoryOverhead=5000

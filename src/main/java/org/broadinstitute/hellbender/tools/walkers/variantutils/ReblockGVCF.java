@@ -10,7 +10,11 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.FixedAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
@@ -22,24 +26,26 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Condense homRef blocks in a single-sample GVCF
  *
  * <p>
- * ReblockGVCF compressed a GVCF by merging hom-ref blocks that were produced using the '-ERC GVCF' or '-ERC BP_RESOLUTION' mode of the
+ * ReblockGVCF compresses a GVCF by merging hom-ref blocks that were produced using the '-ERC GVCF' or '-ERC BP_RESOLUTION' mode of the
  * HaplotypeCaller according to new GQ band parameters.  A joint callset produced with GVCFs reprocessed by ReblockGVCF will have
  * lower precision for hom-ref genotype qualities at variant sites, but the input data footprint can be greatly reduced
  * if the default GQ band parameters are used.</p>
  *
  * <h3>Input</h3>
  * <p>
- * A HaplotypeCaller-produced gVCF to reblock
+ * A HaplotypeCaller-produced GVCF to reblock
  * </p>
  *
  * <h3>Output</h3>
@@ -55,14 +61,24 @@ import java.util.*;
  *   -O sample1.reblocked.g.vcf
  * </pre>
  *
+ * Invocation as for use with GnarlyGenotyper in the "Biggest Practices"
+ * <pre>
+ *  gatk ReblockGVCF \
+ *    -R reference.fasta \
+ *    -V sample1.g.vcf \
+ *    -drop-low-quals \
+ *    -rgq-threshold 10 \
+ *    -do-qual-approx \
+ *    -O sample1.reblocked.g.vcf
+ *  * </pre>
+ *
  * <h3>Caveats</h3>
- * <p>Only single-sample gVCF files produced by HaplotypeCaller can be used as input for this tool.</p>
- * <p>By default this tool only passes through annotations used by VQSR.  A different set of annotations can be specified with the usual -A argument.
+ * <p>Only single-sample GVCF files produced by HaplotypeCaller can be used as input for this tool.</p>
  * <h3>Special note on ploidy</h3>
  * <p>This tool assumes diploid genotypes.</p>
  *
  */
-@ExperimentalFeature
+@BetaFeature
 @CommandLineProgramProperties(summary = "Compress a single-sample GVCF from HaplotypeCaller by merging homRef blocks using new GQ band parameters",
         oneLineSummary = "Condenses homRef blocks in a single-sample GVCF",
         programGroup = OtherProgramGroup.class,
@@ -78,6 +94,13 @@ public final class ReblockGVCF extends VariantWalker {
 
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
+
+    /**
+     * Output the band lower bound for each GQ block instead of the min GQ -- for better compression
+     */
+    @Advanced
+    @Argument(fullName=HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS, doc = "Output the band lower bound for each GQ block regardless of the data it represents", optional = true)
+    private boolean floorBlocks = false;
 
     @Advanced
     @Argument(fullName=HaplotypeCallerArgumentCollection.GQ_BAND_LONG_NAME, shortName=HaplotypeCallerArgumentCollection.GQ_BAND_SHORT_NAME,
@@ -96,7 +119,7 @@ public final class ReblockGVCF extends VariantWalker {
     protected double rgqThreshold = 0.0;
 
     @Advanced
-    @Argument(fullName="do-qual-score-approximation", shortName="do-qual-approx", doc="Add necessary INFO field annotation to perform QUAL approximation downstream")
+    @Argument(fullName="do-qual-score-approximation", shortName="do-qual-approx", doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper")
     protected boolean doQualApprox = false;
 
     /**
@@ -113,7 +136,7 @@ public final class ReblockGVCF extends VariantWalker {
     private final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK,
             GATKVCFConstants.DOWNSAMPLED_KEY, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
-            GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY);
+            GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, GATKVCFConstants.EXCESS_HET_KEY);
 
     private VariantContextWriter vcfWriter;
 
@@ -121,9 +144,8 @@ public final class ReblockGVCF extends VariantWalker {
     public boolean useVariantAnnotations() { return true;}
 
     @Override
-    public List<Annotation> getDefaultVariantAnnotations() {
-        return Arrays.asList(new Coverage(), new RMSMappingQuality(), new ReadPosRankSumTest(), new MappingQualityRankSumTest());
-
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Arrays.asList(StandardAnnotation.class, AS_StandardAnnotation.class);
     }
 
     @Override
@@ -147,9 +169,12 @@ public final class ReblockGVCF extends VariantWalker {
         headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));   // needed for gVCFs without DP tags
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
         if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
         }
@@ -161,7 +186,7 @@ public final class ReblockGVCF extends VariantWalker {
         VariantContextWriter writer = createVCFWriter(outputFile);
 
         try {
-            vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), PLOIDY_TWO);
+            vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), PLOIDY_TWO, floorBlocks);
         } catch ( IllegalArgumentException e ) {
             throw new IllegalArgumentException("GQBands are malformed: " + e.getMessage(), e);
         }
@@ -212,7 +237,8 @@ public final class ReblockGVCF extends VariantWalker {
 
         //don't need to calculate quals for sites with no data whatsoever or sites already genotyped homRef,
         // but if STAND_CALL_CONF > 0 we need to drop low quality alleles and regenotype
-        if (result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 && !isHomRefCall(result)) {
+         //Note that spanning deletion star alleles will be considered low quality
+        if (result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 && !isHomRefCall(result) && dropLowQuals) {
             final GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
                     ? GenotypeLikelihoodsCalculationModel.INDEL
                     : GenotypeLikelihoodsCalculationModel.SNP;
@@ -265,9 +291,10 @@ public final class ReblockGVCF extends VariantWalker {
         }
     }
 
-    private boolean shouldBeReblocked(final VariantContext result) {
+    @VisibleForTesting
+    protected boolean shouldBeReblocked(final VariantContext result) {
         final Genotype genotype = result.getGenotype(0);
-        return genotype.getPL()[0] < rgqThreshold || genotype.isHomRef();
+        return !genotype.isCalled() || (genotype.hasPL() && genotype.getPL()[0] < rgqThreshold) || genotype.isHomRef();
     }
 
     /**
@@ -278,8 +305,11 @@ public final class ReblockGVCF extends VariantWalker {
      */
     @VisibleForTesting
     public VariantContext lowQualVariantToGQ0HomRef(final VariantContext result, final VariantContext originalVC) {
-        if(dropLowQuals && !isHomRefCall(result)) {
+        if(dropLowQuals && (!isHomRefCall(result) || !result.getGenotype(0).isCalled())) {
             return null;
+        }
+        if (!result.getGenotype(0).isCalled()) {
+            return new VariantContextBuilder(result).attributes(null).make();
         }
 
         final Map<String, Object> attrMap = new HashMap<>();
@@ -347,6 +377,15 @@ public final class ReblockGVCF extends VariantWalker {
                     attrMap.put(key, origMap.get(key));
                 }
             }
+            if (annotation instanceof ReducibleAnnotation) {
+                final String key = ((ReducibleAnnotation)annotation).getRawKeyName();
+                if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
+                    continue;
+                }
+                if (origMap.containsKey(key)) {
+                    attrMap.put(key, origMap.get(key));
+                }
+            }
         }
         final Genotype genotype = result.getGenotype(0);
         if (doQualApprox && genotype.hasPL()) {
@@ -357,13 +396,13 @@ public final class ReblockGVCF extends VariantWalker {
             }
             attrMap.put(GATKVCFConstants.VARIANT_DEPTH_KEY, varDP);
         }
-        VariantContextBuilder builder = new VariantContextBuilder(result);
+        VariantContextBuilder builder = new VariantContextBuilder(result);  //QUAL from result is carried through
         builder.attributes(attrMap);
 
-        boolean allelesNeedSubsetting = false;
+        boolean allelesNeedSubsetting = result.getNAlleles() != originalVC.getNAlleles();
         List<Allele> allelesToDrop = new ArrayList<>();
         if (dropLowQuals) {
-            //drop low quality alleles iff we're dropping low quality variants (mostly because this can introduce GVCF gaps if deletion alleles are dropped)
+            //drop alleles that aren't called iff we're dropping low quality variants (mostly because this can introduce GVCF gaps if deletion alleles are dropped)
             for (final Allele currAlt : result.getAlternateAlleles()) {
                 boolean foundMatch = false;
                 for (final Allele gtAllele : genotype.getAlleles()) {
@@ -386,6 +425,7 @@ public final class ReblockGVCF extends VariantWalker {
                 }
             }
         }
+
         //remove any AD reads for the non-ref
         int nonRefInd = result.getAlleleIndex(Allele.NON_REF_ALLELE);
         boolean genotypesWereModified = false;
@@ -407,31 +447,113 @@ public final class ReblockGVCF extends VariantWalker {
             genotypesArray.add(g);
         }
 
-        //we're going to approximate depth for MQ calculation with the site-level DP (should be informative and uninformative reads), which is pretty safe because it will only differ if reads are missing MQ
-        final Double rawMqValue = originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY) ?
-                originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0) :
-                originalVC.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 60.0) *
-                        originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0);
-        attrMap.put(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,
-                 String.format("%.2f,%d", rawMqValue, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
-        attrMap.put(GATKVCFConstants.MAPPING_QUALITY_DEPTH, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
-        if (originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
-            attrMap.put(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
+        if (!originalVC.hasAttribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
+            //we're going to approximate depth for MQ calculation with the site-level DP (should be informative and uninformative reads), which is pretty safe because it will only differ if reads are missing MQ
+            final Integer rawMqValue = originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY) ?
+                    (int)Math.round(originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0.0)) :
+                    (int)Math.round(originalVC.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 60.0) *
+                            originalVC.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 60.0) *
+                            originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+            attrMap.put(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,
+                    String.format("%d,%d", rawMqValue, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)));
+            attrMap.put(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
+            if (originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
+                attrMap.put(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
+            }
         }
 
+
+        int[] relevantIndices = new int[result.getNAlleles()];
+        List<Allele> newAlleleSet = new ArrayList<>();
+        for(final Allele a : result.getAlleles()) {
+            newAlleleSet.add(a);
+        }
         if(allelesNeedSubsetting) {
-            List<Allele> newAlleleSet = new ArrayList<>();
-            for(final Allele a : result.getAlleles()) {
-                newAlleleSet.add(a);
-            }
             newAlleleSet.removeAll(allelesToDrop);
             builder.alleles(newAlleleSet);
+            final GenotypesContext gc;
             if(!genotypesWereModified) {
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)));
+                gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(), PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                builder.genotypes(gc);
             }
-            else {  //again, only initialize a builder if we have to
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)));
+            else {
+                gc = AlleleSubsettingUtils.subsetAlleles(newGenotypes, PLOIDY_TWO, result.getAlleles(), newAlleleSet, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                builder.genotypes(gc);
             }
+            g = gc.get(0);
+            relevantIndices = newAlleleSet.stream().mapToInt(a -> originalVC.getAlleles().indexOf(a)).toArray();
+        }
+
+        //copy over info annotations
+        for(final InfoFieldAnnotation annotation : annotationEngine.getInfoAnnotations()) {
+            for (final String key : annotation.getKeyNames()) {
+                if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
+                    continue;
+                }
+                if (origMap.containsKey(key)) {
+                    attrMap.put(key, origMap.get(key));
+                }
+            }
+            if (annotation instanceof ReducibleAnnotation) {
+                final String key = ((ReducibleAnnotation)annotation).getRawKeyName();
+                if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
+                    continue;
+                }
+                if (origMap.containsKey(key)) {
+                    if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation)) {
+                        List<String> alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(originalVC.getAttributeAsString(key, null));
+                        final List<?> subsetList = alleleSpecificValues.size() > 0 ? ReferenceConfidenceVariantContextMerger.remapRLengthList(alleleSpecificValues, relevantIndices)
+                                : Collections.nCopies(relevantIndices.length, "");
+                        attrMap.put(key, AnnotationUtils.encodeAnyASList(subsetList));
+                    }
+                    else {
+                        attrMap.put(key, origMap.get(key));
+                    }
+                }
+            }
+        }
+        //do QUAL calcs after we potentially drop alleles
+        if (doQualApprox && g.hasPL()) {
+            attrMap.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, g.getPL()[0]);
+            int varDP = QualByDepth.getDepth(result.getGenotypes(), null);
+            if (varDP == 0) {  //prevent QD=Infinity case
+                varDP = originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 1); //if there's no VarDP and no DP, just prevent Infs/NaNs and QD will get capped later
+            }
+            attrMap.put(GATKVCFConstants.VARIANT_DEPTH_KEY, varDP);
+            if (annotationEngine.getInfoAnnotations().stream()
+                    .anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().equals("AS_QualByDepth"))) {
+                     final List<String> quals = new ArrayList<>();
+                for (final Allele alt : newAlleleSet) {
+                    if (alt.isReference()) {
+                        //GDB expects an empty field for ref
+                        continue;
+                    }
+                    if (alt.equals(Allele.NON_REF_ALLELE)) {
+                        quals.add("0");
+                        continue;
+                    }
+                    final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
+                            HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), Arrays.asList(result.getReference(), alt),
+                            GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
+                    if (gc.get(0).hasPL()) {
+                        quals.add(Integer.toString(gc.get(0).getPL()[0]));
+                    } else {  //AlleleSubsettingUtils can no-call genotypes with super duper low GQs
+                        quals.add("0");
+                    }
+                }
+                attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM+String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, quals));
+                List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
+                        HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet,
+                        GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
+                if (as_varDP != null) {
+                    attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM)));
+                }
+            }
+        }
+        attrMap.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, g.getAlleles().stream().anyMatch(Allele::isReference) ? Arrays.asList(0,1,0) : Arrays.asList(0,0,1)); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
+        builder.attributes(attrMap);
+
+        if (allelesNeedSubsetting) {
             //only trim if we're subsetting alleles, and we only subset if we're allowed to drop sites, as per the -drop-low-quals arg
             return GATKVariantContextUtils.reverseTrimAlleles(builder.attributes(attrMap).unfiltered().make());
         }

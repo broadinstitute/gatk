@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
@@ -49,7 +50,7 @@ import java.util.Set;
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
 public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {
 
-    private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
+    private static final OneShotLogger logger = new OneShotLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
     private static final boolean ROUND_GENOTYPE_COUNTS = false;
 
@@ -72,13 +73,14 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements Standar
         Utils.nonNull(vc);
         final GenotypesContext genotypes = getFounderGenotypes(vc);
         if (genotypes == null || genotypes.size() < MIN_SAMPLES || !vc.isVariant()) {
+            logger.warn("InbreedingCoeff will not be calculated; at least " + MIN_SAMPLES + " samples must have called genotypes");
             return Collections.emptyMap();
         }
         final Pair<Integer, Double> sampleCountCoeff = calculateIC(vc, genotypes);
         final int sampleCount = sampleCountCoeff.getLeft();
         final double F = sampleCountCoeff.getRight();
         if (sampleCount < MIN_SAMPLES) {
-            logger.warn("Annotation will not be calculated, must provide at least " + MIN_SAMPLES + " samples");
+            logger.warn("InbreedingCoeff will not be calculated for at least one position; at least " + MIN_SAMPLES + " samples must have called genotypes");
             return Collections.emptyMap();
         }
         return Collections.singletonMap(getKeyNames().get(0), String.format("%.4f", F));

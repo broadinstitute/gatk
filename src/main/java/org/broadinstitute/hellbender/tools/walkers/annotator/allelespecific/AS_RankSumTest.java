@@ -23,10 +23,7 @@ import java.util.*;
  */
 public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation {
     private static final Logger logger = LogManager.getLogger(AS_RankSumTest.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
-    public static final String PRINT_DELIM = "|";
     public static final String RAW_DELIM = ",";
-    public static final String REDUCED_DELIM = ",";
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -136,7 +133,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         for (int i = 0; i< vcAlleles.size(); i++) {
             if (!vcAlleles.get(i).isReference()) {
                 if (i != 0) { //strings will always start with a printDelim because we won't have values for the reference allele, but keep this for consistency with other annotations
-                    annotationString += PRINT_DELIM;
+                    annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
                 }
                 final Double alleleValue = perAlleleValues.get(vcAlleles.get(i));
                 //can be null if there are no ref reads
@@ -253,7 +250,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         }
         //TODO handle misformatted annotation field more gracefully
         //rawDataPerAllele is a per-sample list of the rank sum statistic for each allele
-        final String[] rawDataPerAllele = rawDataNoBrackets.split(SPLIT_DELIM);
+        final String[] rawDataPerAllele = rawDataNoBrackets.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
             final Histogram alleleList = perAlleleValues.get(myData.getAlleles().get(i));
@@ -289,7 +286,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         String annotationString = "";
         for (final Allele a : vc.getAlternateAlleles()) {
             if (!annotationString.isEmpty()) {
-                annotationString += REDUCED_DELIM;
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
             }
             if (!perAltRankSumResults.containsKey(a)) {
                 logger.warn("ERROR: VC allele not found in annotation alleles -- maybe there was trimming?");
@@ -305,7 +302,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         for (int i = 0; i< vcAlleles.size(); i++) {
             if (!vcAlleles.get(i).isReference()) {
                 if (i != 0) {    //strings will always start with a printDelim because we won't have values for the reference allele, but keep this for consistency with other annotations
-                    annotationString += PRINT_DELIM;
+                    annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
                 }
                 final Histogram alleleValue = perAlleleValues.get(vcAlleles.get(i));
                 //can be null if there are no ref reads

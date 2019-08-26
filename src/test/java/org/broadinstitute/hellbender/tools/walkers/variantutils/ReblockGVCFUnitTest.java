@@ -71,6 +71,12 @@ public class ReblockGVCFUnitTest {
         Assert.assertTrue(modified.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE));
         Assert.assertTrue(!modified.filtersWereApplied());
         Assert.assertTrue(modified.getLog10PError() == VariantContext.NO_LOG10_PERROR);
+
+        //No-calls were throwing NPEs.  Now they're not.
+        final Genotype g2 = makeG("sample1", Allele.NO_CALL,Allele.NO_CALL);
+        final VariantContext noData = makeDeletionVC("noData", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g2);
+        final VariantContext notCrashing = reblocker.lowQualVariantToGQ0HomRef(noData, noData);
+        Assert.assertTrue(notCrashing.getGenotype(0).isNoCall());
     }
 
     @Test
@@ -87,6 +93,15 @@ public class ReblockGVCFUnitTest {
         Assert.assertTrue(newG.getAllele(0).equals(SHORT_REF));
         Assert.assertTrue(newG.getAllele(1).equals(SHORT_REF));
         Assert.assertTrue(!newG.hasAD());
+    }
+
+    @Test  //no-calls can be dropped or reblocked just like hom-refs, i.e. we don't have to preserve them like variants
+    public void testNoCalls() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+
+        final Genotype g2 = makeG("sample1", Allele.NO_CALL,Allele.NO_CALL);
+        final VariantContext noData = makeDeletionVC("noData", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g2);
+        Assert.assertTrue(reblocker.shouldBeReblocked(noData));
     }
 
     //TODO: these are duplicated from PosteriorProbabilitiesUtilsUnitTest but PR #4947 modifies VariantContextTestUtils, so I'll do some refactoring before the second of the two is merged

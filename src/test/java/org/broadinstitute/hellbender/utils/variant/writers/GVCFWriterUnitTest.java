@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.variant.writers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
-import com.google.common.collect.RangeMap;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
@@ -11,11 +10,8 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ReblockGVCF;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -386,7 +382,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "GoodBandPartitionData")
     public void testGoodPartitions(final List<Number> partitions, List<Range<Integer>> expected) {
-        final GVCFBlockCombiner combiner = new GVCFBlockCombiner(partitions, HomoSapiensConstants.DEFAULT_PLOIDY);
+        final GVCFBlockCombiner combiner = new GVCFBlockCombiner(partitions, HomoSapiensConstants.DEFAULT_PLOIDY, false);
         Assert.assertEquals(new ArrayList<>(combiner.gqPartitions.asMapOfRanges().values()), expected);
         Assert.assertEquals(new ArrayList<>(combiner.gqPartitions.asMapOfRanges().keySet()), expected);
     }
@@ -406,7 +402,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "BadBandPartitionData", expectedExceptions = IllegalArgumentException.class)
     public void testBadPartitionsThrowException(final List<Number> partitions){
-        GVCFBlockCombiner combiner = new GVCFBlockCombiner(partitions, HomoSapiensConstants.DEFAULT_PLOIDY); // we should explode here
+        GVCFBlockCombiner combiner = new GVCFBlockCombiner(partitions, HomoSapiensConstants.DEFAULT_PLOIDY, false); // we should explode here
     }
 
     @Test

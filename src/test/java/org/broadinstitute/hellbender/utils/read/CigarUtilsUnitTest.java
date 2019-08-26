@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.testutils.ReadClipperTestUtils;
 import org.testng.Assert;
@@ -337,7 +338,7 @@ public final class CigarUtilsUnitTest {
 
     @Test(dataProvider = "testData_testComputeCigar")
     public void testComputeCigar(String s1, String s2, String expectedCigar) throws Exception {
-        final Cigar actualCigar = CigarUtils.calculateCigar(s1.getBytes(), s2.getBytes(), SmithWatermanJavaAligner.getInstance());
+        final Cigar actualCigar = CigarUtils.calculateCigar(s1.getBytes(), s2.getBytes(), SmithWatermanJavaAligner.getInstance(), SWOverhangStrategy.SOFTCLIP);
         final Cigar decode = TextCigarCodec.decode(expectedCigar);
         Assert.assertEquals(actualCigar, decode);
     }

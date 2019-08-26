@@ -31,6 +31,7 @@ import static org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter.GVC
 public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
     final RangeMap<Integer, Range<Integer>> gqPartitions;
     final int defaultPloidy;
+    final boolean floorBlocks;
     final Queue<VariantContext> toOutput = new ArrayDeque<>();
 
     /**
@@ -42,9 +43,10 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
 
     GVCFBlock currentBlock = null;
 
-    public GVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy) {
+    public GVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy, boolean floorBlocks) {
         this.gqPartitions = parsePartitions(gqPartitions);
         this.defaultPloidy = defaultPloidy;
+        this.floorBlocks = floorBlocks;
     }
 
     /**
@@ -131,7 +133,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
             currentBlock.add(vc.getStart(), vc.getAttributeAsInt(VCFConstants.END_KEY, vc.getStart()), g);
             result = null;
         } else {
-            result = currentBlock != null ? currentBlock.toVariantContext(sampleName): null;
+            result = currentBlock != null ? currentBlock.toVariantContext(sampleName, floorBlocks): null;
             currentBlock = createNewBlock(vc, g);
         }
         return result;
@@ -172,7 +174,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
      */
     private void emitCurrentBlock() {
         if (currentBlock != null) {
-            toOutput.add(currentBlock.toVariantContext(sampleName));
+            toOutput.add(currentBlock.toVariantContext(sampleName, floorBlocks));
             this.currentBlock = null;
         }
     }

@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
@@ -14,9 +15,9 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Allele-specific call confidence normalized by depth of sample reads supporting the allele
@@ -51,8 +52,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY); }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_QUAL_KEY; }
-
+    public String getRawKeyName() { return GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY;}
 
     @Override
     public List<VCFInfoHeaderLine> getRawDescriptions() {
@@ -108,7 +108,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
         //we need to use the AS_QUAL value that was added to the VC by the GenotypingEngine
-        if ( !vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY) ) {
+        if ( !vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY) && !vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             return null;
         }
 
@@ -117,26 +117,25 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
             return null;
         }
 
-        final List<Integer> standardDepth = getAlleleDepths(genotypes);
+        final List<Integer> standardDepth;
+        if (originalVC.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
+            standardDepth = Arrays.stream(originalVC.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "")
+                    .split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX)).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
+        } else {
+            standardDepth = getAlleleDepths(genotypes);
+        }
         if (standardDepth == null) { //all no-calls and homRefs
             return null;
         }
 
-        //Parse the VC's allele-specific qual values
-        List<Object> alleleQualObjList = vc.getAttributeAsList(GATKVCFConstants.AS_QUAL_KEY);
-        if (alleleQualObjList.size() != vc.getNAlleles() -1) {
-            throw new IllegalStateException("Number of AS_QUAL values doesn't match the number of alternate alleles.");
-        }
-        List<Double> alleleQualList = new ArrayList<>();
-        for (final Object obj : alleleQualObjList) {
-            alleleQualList.add(Double.parseDouble(obj.toString()));
-        }
+        List<Integer> alleleQualList = parseQualList(vc);
+
 
         // Don't normalize indel length for AS_QD because it will only be called from GenotypeGVCFs, never UG
         List<Double> QDlist = new ArrayList<>();
         double refDepth = (double)standardDepth.get(0);
         for (int i = 0; i < alleleQualList.size(); i++) {
-            double AS_QD = -10.0 * alleleQualList.get(i) / ((double)standardDepth.get(i+1) + refDepth); //+1 to skip the reference field of the AD, add ref counts to each to match biallelic case
+            double AS_QD = alleleQualList.get(i) / ((double)standardDepth.get(i+1) + refDepth); //+1 to skip the reference field of the AD, add ref counts to each to match biallelic case
             // Hack: see note in the fixTooHighQD method below
             AS_QD = QualByDepth.fixTooHighQD(AS_QD);
             QDlist.add(AS_QD);
@@ -144,10 +143,17 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
 
         final Map<String, Object> map = new HashMap<>();
         map.put(getKeyNames().get(0), AnnotationUtils.encodeValueList(QDlist, "%.2f"));
+        //keep AS_QUALapprox for Gnarly Pipeline because we don't subset alts or output genotypes if there are more than 6 alts
+        map.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, StringUtils.join(alleleQualList, AnnotationUtils.LIST_DELIMITER));
         return map;
     }
 
-    private List<Integer> getAlleleDepths(final GenotypesContext genotypes) {
+    /**
+     *
+     * @param genotypes
+     * @return a list of length NAlleles (with ref) containing summed AD values; may be null if AD is missing
+     */
+    public static List<Integer> getAlleleDepths(final GenotypesContext genotypes) {
         int numAlleles = -1;
         for (final Genotype genotype : genotypes) {
             if (genotype.hasAD()) {
@@ -180,5 +186,44 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
             }
         }
         return Arrays.asList(alleleDepths);
+    }
+
+    public static String finalizeRawGVCFVarDPValues(final String rawAnnotationListWithNonRef, final int expectedFinalAlleleCount) {
+        if (rawAnnotationListWithNonRef == null) {
+            return null;
+        }
+        List<String> dpValues = Arrays.asList(rawAnnotationListWithNonRef.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX));
+        if (dpValues.size() != expectedFinalAlleleCount + 1) {  //we expect a nonRef allele
+            return null;
+        }
+        else {
+            return String.join(AnnotationUtils.LIST_DELIMITER, dpValues.subList(1, dpValues.size()-1));
+            //start with 1 to skip ref counts; end at size-1 to trim non-ref
+        }
+    }
+
+    public static List<Integer> parseQualList(final VariantContext vc) {
+        final List<Integer> alleleQualList = new ArrayList<>();
+        if (vc.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
+            //Parse the VC's allele-specific qual values
+            List<Object> alleleQualObjList = vc.getAttributeAsList(GATKVCFConstants.AS_QUAL_KEY);
+            if (alleleQualObjList.size() != vc.getNAlleles() - 1) {
+                throw new IllegalStateException("Number of AS_QUAL values doesn't match the number of alternate alleles.");
+            }
+            for (final Object obj : alleleQualObjList) {
+                alleleQualList.add(Integer.parseInt(obj.toString()));
+            }
+        }
+        else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
+            String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
+            String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
+            if (values.length != vc.getNAlleles()+1) {  //plus one because the non-ref place holder is still around
+                throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
+            }
+            for (int i = 1; i < vc.getNAlleles(); i++) {
+                alleleQualList.add(Integer.parseInt(values[i]));
+            }
+        }
+        return alleleQualList;
     }
 }

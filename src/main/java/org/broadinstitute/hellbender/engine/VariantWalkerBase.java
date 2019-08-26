@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 
@@ -33,11 +34,22 @@ public abstract class VariantWalkerBase extends WalkerBase {
      */
     public static final int DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES = 100_000;
 
+    //Various options for reading from a GenomicsDB
+    protected GenomicsDBOptions genomicsDBOptions;
+
     @Override
     public boolean requiresFeatures() { return true; }
 
     @Override
     public String getProgressMeterRecordLabel() { return "variants"; }
+
+    @Override
+    protected GenomicsDBOptions getGenomicsDBOptions() {
+        if (genomicsDBOptions == null) {
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath());
+        }
+        return genomicsDBOptions;
+    }
 
     @Override
     void initializeFeatures() {

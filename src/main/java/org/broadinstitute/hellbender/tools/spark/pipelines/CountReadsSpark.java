@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -47,7 +46,6 @@ import java.util.List;
  * </pre>
  */
 @DocumentedFeature
-@BetaFeature
 @CommandLineProgramProperties(
         summary = "Counts reads in the input SAM/BAM",
         oneLineSummary = "Counts reads in the input SAM/BAM",

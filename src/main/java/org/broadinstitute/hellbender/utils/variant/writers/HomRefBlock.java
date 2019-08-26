@@ -56,16 +56,21 @@ final class HomRefBlock extends GVCFBlock {
 
     // create a single Genotype with GQ and DP annotations
     @Override
-    Genotype createHomRefGenotype(final String sampleName) {
+    Genotype createHomRefGenotype(final String sampleName, final boolean floorBlocks) {
         final GenotypeBuilder gb = new GenotypeBuilder(sampleName, Collections.nCopies(getPloidy(), getRef()));
         gb.noAD().noPL().noAttributes(); // clear all attributes
 
         final int[] minPLs = getMinPLs();
         final int[] minPPs = getMinPPs();
-        gb.PL(minPLs);
-        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(minPPs != null? minPPs : minPLs));
+        if (!floorBlocks) {
+            gb.PL(minPLs);
+            gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(minPPs != null ? minPPs : minPLs));
+            gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
+        }
+        else {
+            gb.GQ(getGQLowerBound());
+        }
         gb.DP(getMedianDP());
-        gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
         if (minPPs != null) {
             gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(minPPs));
         }

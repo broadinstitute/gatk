@@ -1,0 +1,10 @@
+{
+  "scan_full": true,
+  "workspace": "workspace",
+  "array": "genomicsdb_array",
+  "vid_mapping_file": "workspace/vidmap.json",
+  "callset_mapping_file": "workspace/callset.json",
+  "reference_genome": "/Users/gauthier/workspaces/reblockGVCF/Homo_sapiens_assembly38.fasta",
+  "max_diploid_alt_alleles_that_can_be_genotyped": 6,
+  "produce_GT_field": true
+}

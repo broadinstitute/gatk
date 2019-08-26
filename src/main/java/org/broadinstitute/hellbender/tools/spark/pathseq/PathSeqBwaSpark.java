@@ -84,7 +84,7 @@ import java.io.IOException;
  *   --executor-memory 32G \
  *   --num-executors 4 \
  *   --executor-cores 30 \
- *   --conf spark.yarn.executor.memoryOverhead=132000
+ *   --conf spark.executor.memoryOverhead=132000
  * </pre>
  *
  * <p>Note that the microbe BWA image must be copied to the same path on every worker node. The microbe FASTA
@@ -157,7 +157,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
             PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
-            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize);
+            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize, useNio);
             return new Tuple2<>(header, reads);
         }
         logger.warn("Could not find file " + path + ". Skipping...");

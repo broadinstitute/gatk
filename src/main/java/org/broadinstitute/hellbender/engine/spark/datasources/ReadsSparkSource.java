@@ -72,11 +72,27 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize) {
+        return getParallelReads(readFileName, referencePath, traversalParameters, splitSize, false);
+    }
+
+    /**
+     * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
+     * i.e., file:///path/to/bam.bam.
+     * @param readFileName file to load
+     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
+     * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
+     * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
+     *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
+     * @param useNio whether to use NIO or the Hadoop filesystem for reading files
+     * @return RDD of (SAMRecord-backed) GATKReads from the file.
+     */
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize, final boolean useNio) {
         try {
             String cramReferencePath = checkCramReference(ctx, readFileName, referencePath);
             HtsjdkReadsTraversalParameters<SimpleInterval> tp = traversalParameters == null ? null :
                     new HtsjdkReadsTraversalParameters<>(traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
             HtsjdkReadsRdd htsjdkReadsRdd = HtsjdkReadsRddStorage.makeDefault(ctx)
+                    .useNio(useNio)
                     .splitSize((int) splitSize)
                     .validationStringency(validationStringency)
                     .referenceSourcePath(cramReferencePath)

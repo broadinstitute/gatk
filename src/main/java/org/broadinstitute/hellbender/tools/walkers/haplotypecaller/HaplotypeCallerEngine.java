@@ -148,7 +148,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param referenceReader reader to provide reference data, this reference reader will be closed when {@link #shutdown()} is called
      * @param annotationEngine variantAnnotatorEngine with annotations to process already added
      */
-    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine ) {
+    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex,
+                                  boolean createBamOutMD5, final SAMFileHeader readsHeader,
+                                  ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine) {
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);
         this.referenceReader = Utils.nonNull(referenceReader);
@@ -356,7 +358,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
-                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.standardArgs.genotypeArgs.samplePloidy);
+                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.standardArgs.genotypeArgs.samplePloidy, hcArgs.floorBlocks);
             } catch ( IllegalArgumentException e ) {
                 throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
             }
@@ -711,6 +713,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
+        // Write assembly region debug output if present
+        assemblyEngine.printDebugHistograms();
 
     }
 
