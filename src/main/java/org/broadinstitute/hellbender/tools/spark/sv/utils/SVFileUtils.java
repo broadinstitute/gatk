@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.FileExtensions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -24,7 +25,7 @@ public final class SVFileUtils {
         Utils.nonNull(outputName, "provided output name is null");
 
         final SAMFileWriterFactory factory = new SAMFileWriterFactory()
-                .setCreateIndex(preOrdered && outputName.endsWith(BamFileIoUtils.BAM_FILE_EXTENSION)
+                .setCreateIndex(preOrdered && outputName.endsWith(FileExtensions.BAM)
                         && header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
         try ( SAMFileWriter writer = factory.makeSAMOrBAMWriter(header, preOrdered, IOUtils.getPath(outputName))) {
             alignments.forEachRemaining(writer::addAlignment);

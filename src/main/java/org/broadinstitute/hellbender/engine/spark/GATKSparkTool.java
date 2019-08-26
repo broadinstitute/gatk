@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamFileHeaderMerger;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.GZIIndex;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -702,10 +701,10 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     protected static List<String> addVCFsForSpark(JavaSparkContext ctx, List<String> vcfFileNames) {
         for (String vcfFileName : vcfFileNames) {
             String vcfIndexFileName;
-            if (vcfFileName.endsWith(IOUtil.VCF_FILE_EXTENSION)) {
-                vcfIndexFileName = vcfFileName + IOUtil.VCF_INDEX_EXTENSION;
-            } else if (vcfFileName.endsWith(IOUtil.COMPRESSED_VCF_FILE_EXTENSION)) {
-                vcfIndexFileName = vcfFileName + IOUtil.COMPRESSED_VCF_INDEX_EXTENSION;
+            if (vcfFileName.endsWith(FileExtensions.VCF)) {
+                vcfIndexFileName = vcfFileName + FileExtensions.VCF_INDEX;
+            } else if (vcfFileName.endsWith(FileExtensions.COMPRESSED_VCF)) {
+                vcfIndexFileName = vcfFileName + FileExtensions.COMPRESSED_VCF_INDEX;
             } else {
                 throw new IllegalArgumentException("Unrecognized known sites file extension. Must be .vcf or .vcf.gz");
             }

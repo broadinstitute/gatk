@@ -113,6 +113,11 @@ workflow CNVGermlineCaseWorkflow {
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
+    ##########################
+    #### arguments for QC ####
+    ##########################
+    Int maximum_number_events_per_sample
+
     Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
 
     call CNVTasks.PreprocessIntervals {
@@ -231,6 +236,14 @@ workflow CNVGermlineCaseWorkflow {
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
+
+        call CNVTasks.CollectSampleQualityMetrics {
+            input:
+                genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
+                entity_id = CollectCounts.entity_id[sample_index],
+                maximum_number_events = maximum_number_events_per_sample,
+                preemptible_attempts = preemptible_attempts
+        }
     }
 
     output {
@@ -242,6 +255,9 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] qc_status_files = CollectSampleQualityMetrics.qc_status_file
+        Array[String] qc_status_strings = CollectSampleQualityMetrics.qc_status_string
+        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
     }
 }
 

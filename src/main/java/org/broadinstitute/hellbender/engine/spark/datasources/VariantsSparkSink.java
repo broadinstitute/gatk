@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -116,7 +116,7 @@ public final class VariantsSparkSink {
             final int numReducers, final boolean writeTabixIndex, final boolean sortVariantsToHeader) throws IOException {
 
         //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 is fixed
-        if (outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
+        if (outputFile.endsWith(FileExtensions.BCF) || outputFile.endsWith(FileExtensions.BCF + ".gz")) {
             throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
         final JavaRDD<VariantContext> sortedVariants = sortVariantsToHeader ? sortVariants(variants, header, numReducers) : variants;

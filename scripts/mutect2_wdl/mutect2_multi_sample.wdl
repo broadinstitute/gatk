@@ -1,3 +1,5 @@
+version 1.0
+
 #  Run Mutect 2 on a list of tumors or tumor-normal pairs
 #
 #  Description of inputs
@@ -20,22 +22,22 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2_Multi {
-    # Mutect2 inputs
-	File? intervals
-	File ref_fasta
-	File ref_fai
-	File ref_dict
-	File pair_list
-	Array[Array[String]] pairs = read_tsv(pair_list)
-	File? pon
-	File? pon_idx
-	File? gnomad
-	File? gnomad_idx
-	File? variants_for_contamination
+  input {
+    File? intervals
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    File pair_list
+
+    File? pon
+    File? pon_idx
+    File? gnomad
+    File? gnomad_idx
+    File? variants_for_contamination
     File? variants_for_contamination_idx
-	Boolean? run_orientation_bias_mixture_model_filter
-	Int scatter_count
-	String? m2_extra_args
+    Boolean? run_orientation_bias_mixture_model_filter
+    Int scatter_count
+    String? m2_extra_args
     String? m2_extra_filtering_args
     Boolean? compress_vcfs
     Boolean? make_bamout
@@ -63,6 +65,9 @@ workflow Mutect2_Multi {
     String? oncotator_docker
     Int? preemptible_attempts
     File? gatk_override
+  }
+
+  Array[Array[String]] pairs = read_tsv(pair_list)
 
 	scatter( row in pairs ) {
 	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.

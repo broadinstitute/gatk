@@ -196,17 +196,14 @@ class SampleDenoisingAndCallingPosteriorsWriter:
                 os.path.join(sample_posterior_path, io_consts.default_baseline_copy_number_tsv_filename),
                 baseline_copy_number_t,
                 extra_comment_lines=sample_name_comment_line,
-                header=io_consts.baseline_copy_number_column_name,
-                write_shape_info=False)
+                column_name_str=io_consts.baseline_copy_number_column_name)
 
             # write denoised copy ratio means
             mu_denoised_copy_ratio_t = mu_denoised_copy_ratio_st[si, :]
             io_commons.write_ndarray_to_tsv(
                 os.path.join(sample_posterior_path, io_consts.default_denoised_copy_ratios_mean_tsv_filename),
                 mu_denoised_copy_ratio_t,
-                extra_comment_lines=sample_name_comment_line,
-                header=io_consts.denoised_copy_ratio_mean_column_name,
-                write_shape_info=False
+                extra_comment_lines=sample_name_comment_line
             )
 
             # write denoised copy ratio standard deviations
@@ -214,9 +211,7 @@ class SampleDenoisingAndCallingPosteriorsWriter:
             io_commons.write_ndarray_to_tsv(
                 os.path.join(sample_posterior_path, io_consts.default_denoised_copy_ratios_std_tsv_filename),
                 std_denoised_copy_ratio_t,
-                extra_comment_lines=sample_name_comment_line,
-                header=io_consts.denoised_copy_ratio_std_column_name,
-                write_shape_info=False
+                extra_comment_lines=sample_name_comment_line
             )
 
 

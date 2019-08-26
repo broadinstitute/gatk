@@ -1,3 +1,5 @@
+version 1.0
+
 ## Copyright Broad Institute, 2017
 ##
 ## This WDL workflow runs GATK4 Mutect 2 on a single tumor-normal pair or on a single tumor sample,
@@ -72,81 +74,90 @@
 ## pages at https://hub.docker.com/r/broadinstitute/* for detailed licensing information
 ## pertaining to the included programs.
 workflow Mutect2 {
-    # Mutect2 inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File tumor_reads
-    File tumor_reads_index
-    File? normal_reads
-    File? normal_reads_index
-    File? pon
-    File? pon_idx
-    Int scatter_count
-    File? gnomad
-    File? gnomad_idx
-    File? variants_for_contamination
-    File? variants_for_contamination_idx
-    File? realignment_index_bundle
-    String? realignment_extra_args
-    Boolean? run_orientation_bias_mixture_model_filter
-    Boolean run_ob_filter = select_first([run_orientation_bias_mixture_model_filter, false])
-    String? m2_extra_args
-    String? m2_extra_filtering_args
-    String? split_intervals_extra_args
-    Boolean? make_bamout
-    Boolean make_bamout_or_default = select_first([make_bamout, false])
-    Boolean? compress_vcfs
+    input {
+      # Mutect2 inputs
+      File? intervals
+      File ref_fasta
+      File ref_fai
+      File ref_dict
+      File tumor_reads
+      File tumor_reads_index
+      File? normal_reads
+      File? normal_reads_index
+      File? pon
+      File? pon_idx
+      Int scatter_count
+      File? gnomad
+      File? gnomad_idx
+      File? variants_for_contamination
+      File? variants_for_contamination_idx
+      File? realignment_index_bundle
+      String? realignment_extra_args
+      Boolean? run_orientation_bias_mixture_model_filter
+      String? m2_extra_args
+      String? m2_extra_filtering_args
+      String? split_intervals_extra_args
+      Boolean? make_bamout
+      Boolean? compress_vcfs
+      File? gga_vcf
+      File? gga_vcf_idx
+
+      # oncotator inputs
+      Boolean? run_oncotator
+      File? onco_ds_tar_gz
+      String? onco_ds_local_db_dir
+      String? sequencing_center
+      String? sequence_source
+      File? default_config_file
+      String? oncotator_extra_args
+
+      # Funcotator inputs
+      Boolean? run_funcotator
+      String? funco_reference_version
+      String? funco_output_format
+      Boolean? funco_compress
+      Boolean? funco_use_gnomad_AF
+      File? funco_data_sources_tar_gz
+      String? funco_transcript_selection_mode
+      File? funco_transcript_selection_list
+      Array[String]? funco_annotation_defaults
+      Array[String]? funco_annotation_overrides
+      Array[String]? funcotator_excluded_fields
+      Boolean? funco_filter_funcotations
+      String? funcotator_extra_args
+
+      String funco_default_output_format = "MAF"
+
+      # runtime
+      String gatk_docker
+      File? gatk_override
+      String basic_bash_docker = "ubuntu:16.04"
+      String? oncotator_docker
+      Boolean? filter_oncotator_maf
+      Boolean? filter_funcotations
+
+      Int? preemptible_attempts
+      Int? max_retries
+
+      # Use as a last resort to increase the disk given to every task in case of ill behaving data
+      Int? emergency_extra_disk
+
+      # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
+      # Large is for Bams/WGS vcfs
+      # Small is for metrics/other vcfs
+      Float large_input_to_output_multiplier = 2.25
+      Float small_input_to_output_multiplier = 2.0
+      Float cram_to_bam_multiplier = 6.0
+    }
+
     Boolean compress = select_first([compress_vcfs, false])
-    File? gga_vcf
-    File? gga_vcf_idx
-
-    # oncotator inputs
-    Boolean? run_oncotator
+    Boolean run_ob_filter = select_first([run_orientation_bias_mixture_model_filter, false])
+    Boolean make_bamout_or_default = select_first([make_bamout, false])
     Boolean run_oncotator_or_default = select_first([run_oncotator, false])
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
-    String? sequencing_center
-    String? sequence_source
-    File? default_config_file
-    String? oncotator_extra_args
-
-    # Funcotator inputs
-    Boolean? run_funcotator
     Boolean run_funcotator_or_default = select_first([run_funcotator, false])
-    String? funco_reference_version
-    String? funco_output_format
-    Boolean? funco_compress
-    Boolean? funco_use_gnomad_AF
-    File? funco_data_sources_tar_gz
-    String? funco_transcript_selection_mode
-    File? funco_transcript_selection_list
-    Array[String]? funco_annotation_defaults
-    Array[String]? funco_annotation_overrides
-    Array[String]? funcotator_excluded_fields
-    Boolean? funco_filter_funcotations
-    String? funcotator_extra_args
-
-    String funco_default_output_format = "MAF"
-
-
-    # runtime
-    String gatk_docker
-    File? gatk_override
-    String basic_bash_docker = "ubuntu:16.04"
-    String? oncotator_docker
     String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.9.0"])
-    Boolean? filter_oncotator_maf
     Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
-    Boolean? filter_funcotations
     Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
-
-    Int? preemptible_attempts
-    Int? max_retries
-
-    # Use as a last resort to increase the disk given to every task in case of ill behaving data
-    Int? emergency_extra_disk
 
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
@@ -162,13 +173,6 @@ workflow Mutect2 {
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 10 + gatk_override_size + select_first([emergency_extra_disk,0])
 
-    # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
-    # Large is for Bams/WGS vcfs
-    # Small is for metrics/other vcfs
-    Float large_input_to_output_multiplier = 2.25
-    Float small_input_to_output_multiplier = 2.0
-    Float cram_to_bam_multiplier = 6.0
-
     # logic about output file names -- these are the names *without* .vcf extensions
     String output_basename = basename(basename(tumor_reads, ".bam"),".cram")  #hacky way to strip either .bam or .cram
     String unfiltered_name = output_basename + "-unfiltered"
@@ -177,9 +181,10 @@ workflow Mutect2 {
 
     String output_vcf_name = output_basename + ".vcf"
 
-    # Size M2 differently based on if we are using NIO or not
     Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
     Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
+
+
 
     if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
         call CramToBam as TumorCramToBam {
@@ -218,6 +223,7 @@ workflow Mutect2 {
     Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
 
     Int m2_output_size = tumor_bam_size / scatter_count
+    #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
     Int m2_per_scatter_size = (tumor_bam_size + normal_bam_size) + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
 
     call SplitIntervals {
@@ -441,8 +447,8 @@ workflow Mutect2 {
                 reference_version = select_first([funco_reference_version, "hg19"]),
                 output_file_base_name = basename(funcotate_vcf_input, ".vcf") + ".annotated",
                 output_format = if defined(funco_output_format) then "" + funco_output_format else funco_default_output_format,
-                compress = if defined(funco_compress) then funco_compress else false,
-                use_gnomad = if defined(funco_use_gnomad_AF) then funco_use_gnomad_AF else false,
+                compress = if defined(funco_compress) then select_first([funco_compress]) else false,
+                use_gnomad = if defined(funco_use_gnomad_AF) then select_first([funco_use_gnomad_AF]) else false,
                 data_sources_tar_gz = funco_data_sources_tar_gz,
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
@@ -481,15 +487,17 @@ workflow Mutect2 {
 }
 
 task CramToBam {
-
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File cram
-    File crai
-    String name
-    Int disk_size
-    Int? mem
+    input {
+      File ref_fasta
+      File ref_fai
+      File ref_dict
+      #cram and crai must be optional since Normal cram is optional
+      File? cram
+      File? crai
+      String name
+      Int disk_size
+      Int? mem
+    }
 
     Int machine_mem = if defined(mem) then mem * 1000 else 6000
 
@@ -499,10 +507,10 @@ task CramToBam {
         set -e
         set -o pipefail
 
-        samtools view -h -T ${ref_fasta} ${cram} |
-            samtools view -b -o ${name}.bam -
-        samtools index -b ${name}.bam
-        mv ${name}.bam.bai ${name}.bai
+        samtools view -h -T ~{ref_fasta} ~{cram} |
+            samtools view -b -o ~{name}.bam -
+        samtools index -b ~{name}.bam
+        mv ~{name}.bam.bai ~{name}.bai
     }
 
     runtime {
@@ -512,30 +520,31 @@ task CramToBam {
     }
 
     output {
-        File output_bam = "${name}.bam"
-        File output_bai = "${name}.bai"
+        File output_bam = "~{name}.bam"
+        File output_bai = "~{name}.bai"
     }
 }
 
 task SplitIntervals {
-    # inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    Int scatter_count
-    String? split_intervals_extra_args
+    input {
+      File? intervals
+      File ref_fasta
+      File ref_fai
+      File ref_dict
+      Int scatter_count
+      String? split_intervals_extra_args
 
-    File? gatk_override
+      File? gatk_override
 
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
@@ -543,15 +552,15 @@ task SplitIntervals {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         mkdir interval-files
-        gatk --java-options "-Xmx${command_mem}m" SplitIntervals \
-            -R ${ref_fasta} \
-            ${"-L " + intervals} \
-            -scatter ${scatter_count} \
+        gatk --java-options "-Xmx~{command_mem}m" SplitIntervals \
+            -R ~{ref_fasta} \
+            ~{"-L " + intervals} \
+            -scatter ~{scatter_count} \
             -O interval-files \
-            ${split_intervals_extra_args}
+            ~{split_intervals_extra_args}
         cp interval-files/*.interval_list .
     }
 
@@ -571,92 +580,111 @@ task SplitIntervals {
 }
 
 task M2 {
-    # inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File tumor_bam
-    File tumor_bai
-    File? normal_bam
-    File? normal_bai
-    File? pon
-    File? pon_idx
-    File? gnomad
-    File? gnomad_idx
-    String? m2_extra_args
-    Boolean? make_bamout
-    Boolean? run_ob_filter
-    Boolean compress
-    File? gga_vcf
-    File? gga_vcf_idx
-    File? variants_for_contamination
-    File? variants_for_contamination_idx
+    input {
+      File? intervals
+      File ref_fasta
+      File ref_fai
+      File ref_dict
+      File tumor_bam
+      File tumor_bai
+      File? normal_bam
+      File? normal_bai
+      File? pon
+      File? pon_idx
+      File? gnomad
+      File? gnomad_idx
+      String? m2_extra_args
+      Boolean? make_bamout
+      Boolean? run_ob_filter
+      Boolean compress
+      File? gga_vcf
+      File? gga_vcf_idx
+      File? variants_for_contamination
+      File? variants_for_contamination_idx
+
+      File? gatk_override
+
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
 
     String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
     String output_stats = output_vcf + ".stats"
 
-    File? gatk_override
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
-
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 500
 
+    parameter_meta{
+      intervals: {localization_optional: true}
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
+      tumor_bam: {localization_optional: true}
+      tumor_bai: {localization_optional: true}
+      normal_bam: {localization_optional: true}
+      normal_bai: {localization_optional: true}
+      pon: {localization_optional: true}
+      pon_idx: {localization_optional: true}
+      gnomad: {localization_optional: true}
+      gnomad_idx: {localization_optional: true}
+      gga_vcf: {localization_optional: true}
+      gga_vcf_idx: {localization_optional: true}
+      variants_for_contamination: {localization_optional: true}
+      variants_for_contamination_idx: {localization_optional: true}
+    }
 
     command <<<
         set -e
 
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
         touch f1r2.tar.gz
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${tumor_bam} -O tumor_name.txt -encode
-        tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
+        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
+        tumor_command_line="-I ~{tumor_bam} -tumor `cat tumor_name.txt`"
 
-        if [[ ! -z "${normal_bam}" ]]; then
-            gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${normal_bam} -O normal_name.txt -encode
-            normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
+        if [[ ! -z "~{normal_bam}" ]]; then
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode
+            normal_command_line="-I ~{normal_bam} -normal `cat normal_name.txt`"
         fi
 
-        gatk --java-options "-Xmx${command_mem}m" Mutect2 \
-            -R ${ref_fasta} \
+        gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
+            -R ~{ref_fasta} \
             $tumor_command_line \
             $normal_command_line \
-            ${"--germline-resource " + gnomad} \
-            ${"-pon " + pon} \
-            ${"-L " + intervals} \
-            ${"--alleles " + gga_vcf} \
-            -O "${output_vcf}" \
-            ${true='--bam-output bamout.bam' false='' make_bamout} \
-            ${true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ${m2_extra_args}
+            ~{"--germline-resource " + gnomad} \
+            ~{"-pon " + pon} \
+            ~{"-L " + intervals} \
+            ~{"--alleles " + gga_vcf} \
+            -O "~{output_vcf}" \
+            ~{true='--bam-output bamout.bam' false='' make_bamout} \
+            ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
+            ~{m2_extra_args}
 
         ### GetPileupSummaries
         # These must be created, even if they remain empty, as cromwell doesn't support optional output
         touch tumor-pileups.table
         touch normal-pileups.table
 
-        if [[ ! -z "${variants_for_contamination}" ]]; then
-            gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -R ${ref_fasta} -I ${tumor_bam} ${"--interval-set-rule INTERSECTION -L " + intervals} \
-                -V ${variants_for_contamination} -L ${variants_for_contamination} -O tumor-pileups.table
+        if [[ ! -z "~{variants_for_contamination}" ]]; then
+            gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
 
-            if [[ ! -z "${normal_bam}" ]]; then
-                gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -R ${ref_fasta} -I ${normal_bam} ${"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -V ${variants_for_contamination} -L ${variants_for_contamination} -O normal-pileups.table
+            if [[ ! -z "~{normal_bam}" ]]; then
+                gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
             fi
         fi
     >>>
@@ -672,12 +700,12 @@ task M2 {
     }
 
     output {
-        File unfiltered_vcf = "${output_vcf}"
-        File unfiltered_vcf_idx = "${output_vcf_idx}"
+        File unfiltered_vcf = "~{output_vcf}"
+        File unfiltered_vcf_idx = "~{output_vcf_idx}"
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
-        File stats = "${output_stats}"
+        File stats = "~{output_stats}"
         File f1r2_counts = "f1r2.tar.gz"
         File tumor_pileups = "tumor-pileups.table"
         File normal_pileups = "normal-pileups.table"
@@ -685,24 +713,27 @@ task M2 {
 }
 
 task MergeVCFs {
-    # inputs
-    Array[File] input_vcfs
-    Array[File] input_vcf_indices
-    String output_name
-    Boolean compress
+    input {
+      Array[File] input_vcfs
+      Array[File] input_vcf_indices
+      String output_name
+      Boolean compress
+
+      File? gatk_override
+
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
+
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
-    File? gatk_override
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
@@ -712,8 +743,8 @@ task MergeVCFs {
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}m" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx~{command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
     }
 
     runtime {
@@ -727,29 +758,30 @@ task MergeVCFs {
     }
 
     output {
-        File merged_vcf = "${output_vcf}"
-        File merged_vcf_idx = "${output_vcf_idx}"
+        File merged_vcf = "~{output_vcf}"
+        File merged_vcf_idx = "~{output_vcf_idx}"
     }
 }
 
 task MergeBamOuts {
-    # inputs
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    Array[File]+ bam_outs
-    String output_vcf_name
+    input {
+      File ref_fasta
+      File ref_fai
+      File ref_dict
+      Array[File]+ bam_outs
+      String output_vcf_name
 
-    File? gatk_override
+      File? gatk_override
 
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
@@ -759,17 +791,17 @@ task MergeBamOuts {
         # This command block assumes that there is at least one file in bam_outs.
         #  Do not call this task if len(bam_outs) == 0
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}m" GatherBamFiles \
-            -I ${sep=" -I " bam_outs} -O unsorted.out.bam -R ${ref_fasta}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx~{command_mem}m" GatherBamFiles \
+            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{ref_fasta}
 
         # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
         # overlapping bamouts
 
-        gatk --java-options "-Xmx${command_mem}m" SortSam -I unsorted.out.bam \
-            -O ${output_vcf_name}.out.bam \
+        gatk --java-options "-Xmx~{command_mem}m" SortSam -I unsorted.out.bam \
+            -O ~{output_vcf_name}.out.bam \
             --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
-        gatk --java-options "-Xmx${command_mem}m" BuildBamIndex -I ${output_vcf_name}.out.bam -VALIDATION_STRINGENCY LENIENT
+        gatk --java-options "-Xmx~{command_mem}m" BuildBamIndex -I ~{output_vcf_name}.out.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
@@ -783,26 +815,27 @@ task MergeBamOuts {
     }
 
     output {
-        File merged_bam_out = "${output_vcf_name}.out.bam"
-        File merged_bam_out_index = "${output_vcf_name}.out.bai"
+        File merged_bam_out = "~{output_vcf_name}.out.bam"
+        File merged_bam_out_index = "~{output_vcf_name}.out.bai"
     }
 }
 
 
 task MergeStats {
-    # inputs
-    Array[File]+ stats
+    input {
+      Array[File]+ stats
 
-    File? gatk_override
+      File? gatk_override
 
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 2000
@@ -810,11 +843,11 @@ task MergeStats {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
 
-        gatk --java-options "-Xmx${command_mem}m" MergeMutectStats \
-            -stats ${sep=" -stats " stats} -O merged.stats
+        gatk --java-options "-Xmx~{command_mem}m" MergeMutectStats \
+            -stats ~{sep=" -stats " stats} -O merged.stats
 
     }
 
@@ -834,20 +867,22 @@ task MergeStats {
 }
 
 task MergePileupSummaries {
-    # input_tables needs to be optional because GetPileupSummaries is in an if-block
-    Array[File?] input_tables
-    String output_name
-    File? gatk_override
-    File ref_dict
+    input {
+      # input_tables needs to be optional because GetPileupSummaries is in an if-block
+      Array[File?] input_tables
+      String output_name
+      File? gatk_override
+      File ref_dict
 
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
@@ -855,12 +890,12 @@ task MergePileupSummaries {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx${command_mem}m" GatherPileupSummaries \
-        --sequence-dictionary ${ref_dict} \
-        -I ${sep=' -I ' input_tables} \
-        -O ${output_name}.tsv
+        gatk --java-options "-Xmx~{command_mem}m" GatherPileupSummaries \
+        --sequence-dictionary ~{ref_dict} \
+        -I ~{sep=' -I ' input_tables} \
+        -O ~{output_name}.tsv
     }
 
     runtime {
@@ -874,23 +909,25 @@ task MergePileupSummaries {
     }
 
     output {
-        File merged_table = "${output_name}.tsv"
+        File merged_table = "~{output_name}.tsv"
     }
 }
 
 # Learning step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task LearnReadOrientationModel {
-    Array[File] f1r2_tar_gz
-    File? gatk_override
+    input {
+      Array[File] f1r2_tar_gz
+      File? gatk_override
 
-    # runtime
-    Int? max_retries
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
+      # runtime
+      Int? max_retries
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 8000
@@ -898,10 +935,10 @@ task LearnReadOrientationModel {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx${command_mem}m" LearnReadOrientationModel \
-            -I ${sep=" -I " f1r2_tar_gz} \
+        gatk --java-options "-Xmx~{command_mem}m" LearnReadOrientationModel \
+            -I ~{sep=" -I " f1r2_tar_gz} \
             -O "artifact-priors.tar.gz"
     }
 
@@ -922,19 +959,20 @@ task LearnReadOrientationModel {
 }
 
 task CalculateContamination {
-    # inputs
-    String? intervals
-    File tumor_pileups
-    File? normal_pileups
+    input {
+      String? intervals
+      File tumor_pileups
+      File? normal_pileups
 
-    File? gatk_override
+      File? gatk_override
 
-    # runtime
-    Int? preemptible_attempts
-    Int? max_retries
-    String gatk_docker
-    Int? disk_space
-    Int? mem
+      # runtime
+      Int? preemptible_attempts
+      Int? max_retries
+      String gatk_docker
+      Int? disk_space
+      Int? mem
+    }
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3000
@@ -943,10 +981,10 @@ task CalculateContamination {
     command {
         set -e
 
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I ${tumor_pileups} \
-        -O contamination.table --tumor-segmentation segments.table ${"-matched " + normal_pileups}
+        gatk --java-options "-Xmx~{command_mem}m" CalculateContamination -I ~{tumor_pileups} \
+        -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups}
     }
 
     runtime {
@@ -965,52 +1003,63 @@ task CalculateContamination {
 }
 
 task Filter {
-    # inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File unfiltered_vcf
-    File unfiltered_vcf_idx
-    String output_name
-    Boolean compress
+    input {
+      File? intervals
+      File ref_fasta
+      File ref_fai
+      File ref_dict
+      File unfiltered_vcf
+      File unfiltered_vcf_idx
+      String output_name
+      Boolean compress
+      File? mutect_stats
+      File? artifact_priors_tar_gz
+      File? contamination_table
+      File? maf_segments
+      String? m2_extra_filtering_args
+
+      File? gatk_override
+
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
+
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
-    File? mutect_stats
-    File? artifact_priors_tar_gz
-    File? contamination_table
-    File? maf_segments
-    String? m2_extra_filtering_args
-
-    File? gatk_override
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
     Int command_mem = machine_mem - 500
 
+    parameter_meta{
+      intervals: {localization_optional: true}
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
+      unfiltered_vcf: {localization_optional: true}
+      unfiltered_vcf_idx: {localization_optional: true}
+    }
+
     command {
         set -e
 
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf} \
-            -R ${ref_fasta} \
-      	    -O ${output_vcf} \
-      	    ${"--contamination-table " + contamination_table} \
-      	    ${"--tumor-segmentation " + maf_segments} \
-      	    ${"--ob-priors " + artifact_priors_tar_gz} \
-      	    ${"-stats " + mutect_stats} \
-      	    --filtering-stats filtering.stats \
-      	    ${m2_extra_filtering_args}
+        gatk --java-options "-Xmx~{command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
+            -R ~{ref_fasta} \
+            -O ~{output_vcf} \
+            ~{"--contamination-table " + contamination_table} \
+            ~{"--tumor-segmentation " + maf_segments} \
+            ~{"--ob-priors " + artifact_priors_tar_gz} \
+            ~{"-stats " + mutect_stats} \
+            --filtering-stats filtering.stats \
+            ~{m2_extra_filtering_args}
     }
 
     runtime {
@@ -1024,50 +1073,59 @@ task Filter {
     }
 
     output {
-        File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_idx = "${output_vcf_idx}"
+        File filtered_vcf = "~{output_vcf}"
+        File filtered_vcf_idx = "~{output_vcf_idx}"
         File filtering_stats = "filtering.stats"
     }
 }
 
 task FilterAlignmentArtifacts {
-    #input
-    File? gatk_override
-    File input_vcf
-    File input_vcf_idx
-    File bam
-    File bai
-    String output_name
-    Boolean compress
+    input {
+      File? gatk_override
+      File input_vcf
+      File input_vcf_idx
+      File bam
+      File bai
+      String output_name
+      Boolean compress
+      File realignment_index_bundle
+      String? realignment_extra_args
+
+      # runtime
+      String gatk_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
+    }
+
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
-    File realignment_index_bundle
-    String? realignment_extra_args
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 9000
     Int command_mem = machine_mem - 500
 
+    parameter_meta{
+      input_vcf: {localization_optional: true}
+      input_vcf_idx: {localization_optional: true}
+      bam: {localization_optional: true}
+      bai: {localization_optional: true}
+    }
+
     command {
         set -e
 
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx${command_mem}m" FilterAlignmentArtifacts \
-            -V ${input_vcf} \
-            -I ${bam} \
-            --bwa-mem-index-image ${realignment_index_bundle} \
-            ${realignment_extra_args} \
-            -O ${output_vcf}
+        gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
+            -V ~{input_vcf} \
+            -I ~{bam} \
+            --bwa-mem-index-image ~{realignment_index_bundle} \
+            ~{realignment_extra_args} \
+            -O ~{output_vcf}
     }
 
     runtime {
@@ -1081,34 +1139,36 @@ task FilterAlignmentArtifacts {
     }
 
     output {
-        File filtered_vcf = "${output_vcf}"
-        File filtered_vcf_idx = "${output_vcf_idx}"
+        File filtered_vcf = "~{output_vcf}"
+        File filtered_vcf_idx = "~{output_vcf_idx}"
     }
 }
 
 task oncotate_m2 {
-    # inputs
-    File m2_vcf
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
-    String? oncotator_exe
-    String? sequencing_center
-    String? sequence_source
-    File? default_config_file
-    String case_id
-    String? control_id
-    String? oncotator_extra_args
+    input {
+      File m2_vcf
+      File? onco_ds_tar_gz
+      String? onco_ds_local_db_dir
+      String? oncotator_exe
+      String? sequencing_center
+      String? sequence_source
+      File? default_config_file
+      String case_id
+      String? control_id
+      String? oncotator_extra_args
 
-    # runtime
-    String oncotator_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? max_retries
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
+      # runtime
+      String oncotator_docker
+      Int? mem
+      Int? preemptible_attempts
+      Int? max_retries
+      Int? disk_space
+      Int? cpu
+      Boolean use_ssd = false
 
-    Boolean? filter_maf
+      Boolean? filter_maf
+    }
+
     Boolean is_filter_maf = select_first([filter_maf, true])
     String filter_maf_args = if (is_filter_maf) then " --collapse-filter-cols --prune-filter-cols " else ""
 
@@ -1121,14 +1181,14 @@ task oncotate_m2 {
         set -e
 
         # local db dir is a directory and has been specified
-        if [[ -d "${onco_ds_local_db_dir}" ]]; then
-            echo "Using local db-dir: ${onco_ds_local_db_dir}"
+        if [[ -d "~{onco_ds_local_db_dir}" ]]; then
+            echo "Using local db-dir: ~{onco_ds_local_db_dir}"
             echo "THIS ONLY WORKS WITHOUT DOCKER!"
-            ln -s ${onco_ds_local_db_dir} onco_dbdir
-        elif [[ "${onco_ds_tar_gz}" == *.tar.gz ]]; then
-            echo "Using given tar file: ${onco_ds_tar_gz}"
+            ln -s ~{onco_ds_local_db_dir} onco_dbdir
+        elif [[ "~{onco_ds_tar_gz}" == *.tar.gz ]]; then
+            echo "Using given tar file: ~{onco_ds_tar_gz}"
             mkdir onco_dbdir
-            tar zxvf ${onco_ds_tar_gz} -C onco_dbdir --strip-components 1
+            tar zxvf ~{onco_ds_tar_gz} -C onco_dbdir --strip-components 1
         else
             echo "Downloading and installing oncotator datasources from Broad FTP site..."
             # Download and untar the db-dir
@@ -1137,15 +1197,15 @@ task oncotate_m2 {
             ln -s oncotator_v1_ds_April052016 onco_dbdir
         fi
 
-        ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
-            -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --collapse-number-annotations --log_name oncotator.log \
-            -a Center:${default="Unknown" sequencing_center} \
-            -a source:${default="Unknown" sequence_source} \
-            -a normal_barcode:${control_id} \
-            -a tumor_barcode:${case_id} \
-            ${"--default_config " + default_config_file} \
-            ${filter_maf_args} \
-            ${oncotator_extra_args}
+        ~{default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
+            -v ~{m2_vcf} ~{case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --collapse-number-annotations --log_name oncotator.log \
+            -a Center:~{default="Unknown" sequencing_center} \
+            -a source:~{default="Unknown" sequence_source} \
+            -a normal_barcode:~{control_id} \
+            -a tumor_barcode:~{case_id} \
+            ~{"--default_config " + default_config_file} \
+            ~{filter_maf_args} \
+            ~{oncotator_extra_args}
     >>>
 
     runtime {
@@ -1159,20 +1219,22 @@ task oncotate_m2 {
     }
 
     output {
-        File oncotated_m2_maf="${case_id}.maf.annotated"
+        File oncotated_m2_maf="~{case_id}.maf.annotated"
     }
 }
 
 # Calculates sum of a list of floats
 task SumFloats {
-    Array[Float] sizes
+    input {
+      Array[Float] sizes
 
-    # Runtime parameters
-    Int? preemptible_attempts
-    Int? max_retries
+      # Runtime parameters
+      Int? preemptible_attempts
+      Int? max_retries
+    }
 
     command <<<
-        python -c "print ${sep="+" sizes}"
+        python -c "print ~{sep="+" sizes}"
     >>>
 
     output {
@@ -1188,34 +1250,51 @@ task SumFloats {
 }
 
 task Funcotate {
-     # ==============
-     # Inputs
-     File ref_fasta
-     File ref_fai
-     File ref_dict
-     File input_vcf
-     File input_vcf_idx
-     String reference_version
-     String output_file_base_name
-     String output_format
-     Boolean compress
-     Boolean use_gnomad
-     # This should be updated when a new version of the data sources is released
-     # TODO: Make this dynamically chosen in the command.
-     File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
-     String? control_id
-     String? case_id
-     String? sequencing_center
-     String? sequence_source
-     String? transcript_selection_mode
-     File? transcript_selection_list
-     Array[String]? annotation_defaults
-     Array[String]? annotation_overrides
-     Array[String]? funcotator_excluded_fields
-     Boolean? filter_funcotations
-     File? interval_list
+     input {
+       File ref_fasta
+       File ref_fai
+       File ref_dict
+       File input_vcf
+       File input_vcf_idx
+       String reference_version
+       String output_file_base_name
+       String output_format
+       Boolean compress
+       Boolean use_gnomad
+       # This should be updated when a new version of the data sources is released
+       # TODO: Make this dynamically chosen in the command.
+       File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+       String? control_id
+       String? case_id
+       String? sequencing_center
+       String? sequence_source
+       String? transcript_selection_mode
+       File? transcript_selection_list
+       Array[String]? annotation_defaults
+       Array[String]? annotation_overrides
+       Array[String]? funcotator_excluded_fields
+       Boolean? filter_funcotations
+       File? interval_list
 
-     String? extra_args
+       String? extra_args
+
+       # ==============
+       # Runtime options:
+       String gatk_docker
+       File? gatk_override
+       Int? mem
+       Int? preemptible_attempts
+       Int? max_retries
+       Int? disk_space_gb
+       Int? cpu
+
+       Boolean use_ssd = false
+
+       # You may have to change the following two parameter values depending on the task requirements
+       Int default_ram_mb = 3000
+       # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
+       Int default_disk_space_gb = 100
+     }
 
      # ==============
      # Process input args:
@@ -1233,77 +1312,68 @@ task Funcotate {
      String interval_list_arg = if defined(interval_list) then " -L " else ""
      String extra_args_arg = select_first([extra_args, ""])
 
-     # ==============
-     # Runtime options:
-     String gatk_docker
-     File? gatk_override
-     Int? mem
-     Int? preemptible_attempts
-     Int? max_retries
-     Int? disk_space_gb
-     Int? cpu
-
-     Boolean use_ssd = false
-
-     # You may have to change the following two parameter values depending on the task requirements
-     Int default_ram_mb = 3000
-     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
-     Int default_disk_space_gb = 100
-
      # Mem is in units of GB but our command and memory runtime values are in MB
      Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
      Int command_mem = machine_mem - 1000
 
      String dollar = "$"
 
+     parameter_meta{
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
+      input_vcf: {localization_optional: true}
+      input_vcf_idx: {localization_optional: true}
+     }
+
      command <<<
          set -e
-         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
          # Extract our data sources:
          echo "Extracting data sources zip file..."
          mkdir datasources_dir
-         tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+         tar zxvf ~{data_sources_tar_gz} -C datasources_dir --strip-components 1
          DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
          # Handle gnomAD:
-         if ${use_gnomad} ; then
+         if ~{use_gnomad} ; then
              echo "Enabling gnomAD..."
              for potential_gnomad_gz in gnomAD_exome.tar.gz gnomAD_genome.tar.gz ; do
-                 if [[ -f ${dollar}{DATA_SOURCES_FOLDER}/${dollar}{potential_gnomad_gz} ]] ; then
-                     cd ${dollar}{DATA_SOURCES_FOLDER}
-                     tar -zvxf ${dollar}{potential_gnomad_gz}
+                 if [[ -f ~{dollar}{DATA_SOURCES_FOLDER}/~{dollar}{potential_gnomad_gz} ]] ; then
+                     cd ~{dollar}{DATA_SOURCES_FOLDER}
+                     tar -zvxf ~{dollar}{potential_gnomad_gz}
                      cd -
                  else
-                     echo "ERROR: Cannot find gnomAD folder: ${dollar}{potential_gnomad_gz}" 1>&2
+                     echo "ERROR: Cannot find gnomAD folder: ~{dollar}{potential_gnomad_gz}" 1>&2
                      false
                  fi
              done
          fi
 
          # Run Funcotator:
-         gatk --java-options "-Xmx${command_mem}m" Funcotator \
+         gatk --java-options "-Xmx~{command_mem}m" Funcotator \
              --data-sources-path $DATA_SOURCES_FOLDER \
-             --ref-version ${reference_version} \
-             --output-file-format ${output_format} \
-             -R ${ref_fasta} \
-             -V ${input_vcf} \
-             -O ${output_file} \
-             ${interval_list_arg} ${default="" interval_list} \
-             --annotation-default normal_barcode:${default="Unknown" control_id} \
-             --annotation-default tumor_barcode:${default="Unknown" case_id} \
-             --annotation-default Center:${default="Unknown" sequencing_center} \
-             --annotation-default source:${default="Unknown" sequence_source} \
-             ${"--transcript-selection-mode " + transcript_selection_mode} \
-             ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
-             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
-             ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
-             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
-             ${filter_funcotations_args} \
-             ${extra_args_arg}
+             --ref-version ~{reference_version} \
+             --output-file-format ~{output_format} \
+             -R ~{ref_fasta} \
+             -V ~{input_vcf} \
+             -O ~{output_file} \
+             ~{interval_list_arg} ~{default="" interval_list} \
+             --annotation-default normal_barcode:~{default="Unknown" control_id} \
+             --annotation-default tumor_barcode:~{default="Unknown" case_id} \
+             --annotation-default Center:~{default="Unknown" sequencing_center} \
+             --annotation-default source:~{default="Unknown" sequence_source} \
+             ~{"--transcript-selection-mode " + transcript_selection_mode} \
+             ~{transcript_selection_arg}~{default="" sep=" --transcript-list " transcript_selection_list} \
+             ~{annotation_def_arg}~{default="" sep=" --annotation-default " annotation_defaults} \
+             ~{annotation_over_arg}~{default="" sep=" --annotation-override " annotation_overrides} \
+             ~{excluded_fields_args}~{default="" sep=" --exclude-field " funcotator_excluded_fields} \
+             ~{filter_funcotations_args} \
+             ~{extra_args_arg}
          # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:
-         if [[ "${output_format}" == "MAF" ]] ; then
-            touch ${output_maf_index}
+         if [[ "~{output_format}" == "MAF" ]] ; then
+            touch ~{output_maf_index}
          fi
      >>>
 
@@ -1318,7 +1388,7 @@ task Funcotate {
      }
 
      output {
-         File funcotated_output_file = "${output_file}"
-         File funcotated_output_file_index = "${output_file_index}"
+         File funcotated_output_file = "~{output_file}"
+         File funcotated_output_file_index = "~{output_file_index}"
      }
 }

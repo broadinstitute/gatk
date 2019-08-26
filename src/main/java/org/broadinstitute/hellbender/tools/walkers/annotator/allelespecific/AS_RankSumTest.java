@@ -21,7 +21,7 @@ import java.util.*;
 /**
  * Allele-specific implementation of rank sum test annotations
  */
-public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation {
+public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private static final Logger logger = LogManager.getLogger(AS_RankSumTest.class);
     public static final String RAW_DELIM = ",";
 

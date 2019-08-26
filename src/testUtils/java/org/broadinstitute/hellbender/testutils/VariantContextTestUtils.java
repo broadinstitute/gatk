@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
+import java.util.regex.Pattern;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.output.NullOutputStream;
@@ -46,7 +47,6 @@ import java.util.stream.StreamSupport;
 import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
 
 public final class VariantContextTestUtils {
-
     private VariantContextTestUtils() {}
 
     /** Standard Logger.  */
@@ -325,35 +325,36 @@ public final class VariantContextTestUtils {
 
         for ( final Map.Entry<String, Object> act : actual.entrySet() ) {
             final Object actualValue = act.getValue();
-            if ( expected.containsKey(act.getKey()) && expected.get(act.getKey()) != null ) {
-                final Object expectedValue = expected.get(act.getKey());
+            final String key = act.getKey();
+            if ( expected.containsKey(key) && expected.get(key) != null ) {
+                final Object expectedValue = expected.get(key);
                 if (expectedValue instanceof List && actualValue instanceof List) {
                     // both values are lists, compare element b element
                     List<Object> expectedList = (List<Object>) expectedValue;
                     List<Object> actualList = (List<Object>) actualValue;
                     Assert.assertEquals(actualList.size(), expectedList.size());
                     for (int i = 0; i < expectedList.size(); i++) {
-                        assertAttributeEquals(act.getKey(), actualList.get(i), expectedList.get(i));
+                        assertAttributeEquals(key, actualList.get(i), expectedList.get(i));
                     }
                 } else if (expectedValue instanceof List) {
                     // expected is a List but actual is not; normalize to String and compare
                     Assert.assertTrue(actualValue instanceof String, "Attempt to compare list to a non-string value");
-                    final String expectedString = ((List<Object>) expectedValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
-                    assertAttributeEquals(act.getKey(), actualValue, expectedString);
+                    final String expectedString = ((List<Object>) expectedValue).stream().map(Object::toString).collect(Collectors.joining(","));
+                    assertAttributeEquals(key, actualValue, expectedString);
                 }
                 else if (actualValue instanceof List) {
                     // actual is a List but expected is not; normalize to String and compare
                     Assert.assertTrue(expectedValue instanceof String, "Attempt to compare list to a non-string value");
-                    final String actualString = ((List<Object>) actualValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
-                    assertAttributeEquals(act.getKey(), actualString, expectedValue);
+                    final String actualString = ((List<Object>) actualValue).stream().map(Object::toString).collect(Collectors.joining(","));
+                    assertAttributeEquals(key, actualString, expectedValue);
                 } else {
-                    assertAttributeEquals(act.getKey(), actualValue, expectedValue);
+                    assertAttributeEquals(key, actualValue, expectedValue);
                 }
             } else {
                 // it's ok to have a binding in x -> null that's absent in y
-                Assert.assertNull(actualValue, act.getKey() + " present in one but not in the other");
+                Assert.assertNull(actualValue, key + " present in one but not in the other");
             }
-            expectedKeys.remove(act.getKey());
+            expectedKeys.remove(key);
         }
 
         // now expectedKeys contains only the keys found in expected but not in actual,
@@ -554,7 +555,7 @@ public final class VariantContextTestUtils {
     public static VariantContext makeVC(final String source, final List<Allele> alleles, final Genotype... genotypes) {
         final int start = 10;
         final int stop = start; // does the stop actually get validated???  If it does then `new VariantContextBuilder().computeEndFromAlleles(alleles)...`
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).make();
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().make();
     }
 
     /**

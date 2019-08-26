@@ -2,12 +2,12 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.util.ParsingUtils;
-import htsjdk.tribble.util.TabixUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -54,7 +54,7 @@ public final class IndexUtils {
             if (! isTabix){
                 return null;
             }
-            final String indexPath = ParsingUtils.appendToPath(path, TabixUtils.STANDARD_INDEX_EXTENSION);
+            final String indexPath = ParsingUtils.appendToPath(path, FileExtensions.TABIX_INDEX);
             logger.debug("Loading tabix index from disk for file " + featureFile);
             final Index index = IndexFactory.loadIndex(indexPath);
             final File indexFile = new File(indexPath);

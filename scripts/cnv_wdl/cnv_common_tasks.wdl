@@ -382,6 +382,7 @@ task PostprocessGermlineCNVCalls {
 
     String genotyped_intervals_vcf_filename = "genotyped-intervals-${entity_id}.vcf.gz"
     String genotyped_segments_vcf_filename = "genotyped-segments-${entity_id}.vcf.gz"
+    String denoised_copy_ratios_filename = "denoised_copy_ratios-${entity_id}.tsv"
 
     Array[String] allosomal_contigs_args = if defined(allosomal_contigs) then prefix("--allosomal-contig ", select_first([allosomal_contigs])) else []
 
@@ -433,7 +434,8 @@ task PostprocessGermlineCNVCalls {
             --contig-ploidy-calls contig-ploidy-calls \
             --sample-index ${sample_index} \
             --output-genotyped-intervals ${genotyped_intervals_vcf_filename} \
-            --output-genotyped-segments ${genotyped_segments_vcf_filename}
+            --output-genotyped-segments ${genotyped_segments_vcf_filename} \
+            --output-denoised-copy-ratios ${denoised_copy_ratios_filename}
 
         rm -rf CALLS_*
         rm -rf MODEL_*
@@ -451,5 +453,93 @@ task PostprocessGermlineCNVCalls {
     output {
         File genotyped_intervals_vcf = genotyped_intervals_vcf_filename
         File genotyped_segments_vcf = genotyped_segments_vcf_filename
+        File denoised_copy_ratios = denoised_copy_ratios_filename
+    }
+}
+
+task CollectSampleQualityMetrics {
+    File genotyped_segments_vcf
+    String entity_id
+    Int maximum_number_events
+
+    # Runtime parameters
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 1]) * 1000
+
+    String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+
+    command <<<
+        set -e 
+        NUM_SEGMENTS=$(gunzip -c ${genotyped_segments_vcf} | grep -v '#' | wc -l)
+        if [ $NUM_SEGMENTS -lt ${maximum_number_events} ]; then
+            echo "PASS" >> ${entity_id}.qcStatus.txt
+        else 
+            echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ${entity_id}.qcStatus.txt
+        fi
+    >>>
+
+    runtime {
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 20]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File qc_status_file = "${entity_id}.qcStatus.txt"
+        String qc_status_string = read_string("${entity_id}.qcStatus.txt")
+    }
+}
+
+task CollectModelQualityMetrics {
+    Array[File] gcnv_model_tars
+
+    # Runtime parameters
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 1]) * 1000
+
+    String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+
+    command <<<
+        sed -e 
+        qc_status="PASS"
+
+        gcnv_model_tar_array=(${sep=" " gcnv_model_tars})
+        for index in ${dollar}{!gcnv_model_tar_array[@]}; do
+            gcnv_model_tar=${dollar}{gcnv_model_tar_array[$index]}
+            mkdir MODEL_$index
+            tar xzf $gcnv_model_tar -C MODEL_$index
+            ard_file=MODEL_$index/mu_ard_u_log__.tsv
+
+            #check whether all values for ARD components are negative
+            NUM_POSITIVE_VALUES=$(awk '{ if (index($0, "@") == 0) {if ($1 > 0.0) {print $1} }}' MODEL_$index/mu_ard_u_log__.tsv | wc -l)
+            if [ $NUM_POSITIVE_VALUES -eq 0 ]; then
+                qc_status="ALL_PRINCIPAL_COMPONENTS_USED"
+                break
+            fi
+        done
+        echo $qc_status >> qcStatus.txt
+    >>>
+
+    runtime {
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File qc_status_file = "qcStatus.txt"
+        String qc_status_string = read_string("qcStatus.txt")
     }
 }

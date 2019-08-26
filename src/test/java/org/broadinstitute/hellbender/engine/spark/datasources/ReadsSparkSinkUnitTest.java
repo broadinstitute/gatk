@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.FileExtensions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -178,11 +179,11 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
         // check that a bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeBai) {
-            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + BAMIndex.BAI_INDEX_SUFFIX)));
+            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + FileExtensions.BAI_INDEX)));
         }
         // check that a splitting bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeSbi) {
-            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + SBIIndex.FILE_EXTENSION)));
+            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + FileExtensions.SBI)));
         }
 
         JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputPath, referenceFile);

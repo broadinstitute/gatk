@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific call confidence normalized by depth of sample reads supporting the allele (AS_QD)")
-public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnnotation, AS_StandardAnnotation {
+public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnnotation, AS_StandardAnnotation, AlleleSpecificAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY); }

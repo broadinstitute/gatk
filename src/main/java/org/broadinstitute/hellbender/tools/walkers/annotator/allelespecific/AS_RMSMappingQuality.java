@@ -43,7 +43,7 @@ import java.util.*;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific root-mean-square of the mapping quality of reads across all samples (AS_MQ)")
-public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements AS_StandardAnnotation, ReducibleAnnotation {
+public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements AS_StandardAnnotation, ReducibleAnnotation, AlleleSpecificAnnotation {
 
     private final String printFormat = "%.2f";
 

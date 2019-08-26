@@ -5,6 +5,7 @@ import htsjdk.samtools.BAMSBIIndexer;
 import htsjdk.samtools.seekablestream.SeekableFileStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedFilePointerUtil;
+import htsjdk.samtools.util.FileExtensions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -81,7 +82,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The splitting index (SBI) file. If this is unspecified an index will be created with the same name as " +
-                    "the input file but with the additional extension " + SBIIndex.FILE_EXTENSION,
+                    "the input file but with the additional extension " + FileExtensions.SBI,
             optional = true)
     public File output;
 
@@ -132,7 +133,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
                 assertBamIsCoordinateSorted(header);
                 final SBIIndexWriter indexer = new SBIIndexWriter(out, granularity);
 
-                final BAMIndexer bamIndexer = new BAMIndexer(IOUtils.replaceExtension(index, BAMIndex.BAI_INDEX_SUFFIX), header);
+                final BAMIndexer bamIndexer = new BAMIndexer(IOUtils.replaceExtension(index, FileExtensions.BAI_INDEX), header);
                 BAMFileSpan lastFilePointer = null;
                 for(final SAMRecord read : reader){
                     BAMFileSpan filePointer = (BAMFileSpan) read.getFileSource().getFilePointer();
@@ -156,7 +157,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
 
     private static void assertBamIsCoordinateSorted(final SAMFileHeader header) {
         if( header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
-            throw new UserException.BadInput("Cannot create a " + BAMIndex.BAI_INDEX_SUFFIX + " index for a file " +
+            throw new UserException.BadInput("Cannot create a " + FileExtensions.BAI_INDEX + " index for a file " +
                     "that isn't coordinate sorted.");
         }
     }
@@ -171,11 +172,11 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
 
     private static File getOutputFile(final File suggestedOutput, final File input) {
         if(suggestedOutput == null){
-            return new File(input.getPath() + SBIIndex.FILE_EXTENSION);
+            return new File(input.getPath() + FileExtensions.SBI);
         } else {
-            if (!suggestedOutput.getAbsolutePath().endsWith("bam" + SBIIndex.FILE_EXTENSION)){
+            if (!suggestedOutput.getAbsolutePath().endsWith("bam" + FileExtensions.SBI)){
                 logger.warn("Creating a splitting index (SBI) with an extension that doesn't match "
-                        + "bam"+SBIIndex.FILE_EXTENSION + ".  Output file: "+suggestedOutput);
+                        + "bam"+ FileExtensions.SBI + ".  Output file: "+suggestedOutput);
             }
             return suggestedOutput;
         }

@@ -4,7 +4,7 @@ import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.SparkFiles;
@@ -132,7 +132,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
     @Override
     protected void runTool(JavaSparkContext ctx) {
         //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 are fixed
-        if (output.endsWith(IOUtil.BCF_FILE_EXTENSION) || output.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
+        if (output.endsWith(FileExtensions.BCF) || output.endsWith(FileExtensions.BCF + ".gz")) {
             throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
         Utils.validateArg(hcArgs.dbsnp.dbsnp == null, "HaplotypeCallerSpark does not yet support -D or --dbsnp arguments" );

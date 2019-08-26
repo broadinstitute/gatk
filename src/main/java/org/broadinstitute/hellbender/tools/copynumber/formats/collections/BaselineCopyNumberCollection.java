@@ -21,7 +21,7 @@ public final class BaselineCopyNumberCollection extends AbstractSampleRecordColl
         super(inputFile,
                 new TableColumnCollection(GermlineCNVNamingConstants.BASELINE_COPY_NUMBER_TABLE_COLUMN),
                 getBaselineCopyNumberRecordFromDataLineDecoder(inputFile),
-                getBaselineCopyNumberRecordFromDataLineEncoder());
+                getBaselineCopyNumberRecordToDataLineEncoder());
     }
 
     /**
@@ -44,7 +44,7 @@ public final class BaselineCopyNumberCollection extends AbstractSampleRecordColl
      * Generates an instance of {@link DataLine} from {@link IntegerCopyNumberState} for writing baseline
      * copy-number collection to a file.
      */
-    private static BiConsumer<IntegerCopyNumberState, DataLine> getBaselineCopyNumberRecordFromDataLineEncoder() {
+    private static BiConsumer<IntegerCopyNumberState, DataLine> getBaselineCopyNumberRecordToDataLineEncoder() {
         return (baselineCopyNumberState, dataLine) -> dataLine.append(baselineCopyNumberState.getCopyNumber());
     }
 }
