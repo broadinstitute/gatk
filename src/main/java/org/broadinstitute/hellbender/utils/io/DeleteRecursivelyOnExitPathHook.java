@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.io;
 
-import java.io.IOException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import java.util.LinkedHashSet;
  * This class should be considered an implementation detail of {@link IOUtils#deleteOnExit(Path)} and not used directly.
  */
 class DeleteRecursivelyOnExitPathHook {
+    private static Logger LOG = LogManager.getLogger(DeleteRecursivelyOnExitPathHook.class);
     private static LinkedHashSet<Path> paths = new LinkedHashSet<>();
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(DeleteRecursivelyOnExitPathHook::runHooks));
@@ -54,8 +56,9 @@ class DeleteRecursivelyOnExitPathHook {
         for (Path path : toBeDeleted) {
             try {
                 IOUtils.deleteRecursively(path);
-            } catch (SecurityException e) {
+            } catch (final Exception e) {
                 // do nothing if cannot be deleted, because it is a shutdown hook
+                LOG.debug(() -> "Could not recursively delete " + path.toString() + " during JVM shutdown because we encountered the following exception:", e);
             }
         }
     }
