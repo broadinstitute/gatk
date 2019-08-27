@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Molten;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -23,7 +23,7 @@ import java.util.TreeMap;
  */
 @Analysis(description = "Indel length histogram", molten = true)
 public class IndelLengthHistogram extends VariantEvaluator implements StandardEval {
-    private final Map<Integer, Integer> counts = new HashMap<>();
+    private final Map<Integer, Integer> counts = new LinkedHashMap<>();
     private final static boolean asFrequencies = true;
     int nIndels = 0;
 

@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,7 +100,7 @@ public class SVVCFWriter {
 
     @VisibleForTesting
     static VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
-        final Set<VCFHeaderLine> headerLines = new HashSet<>(GATKSVVCFHeaderLines.getSymbAltAlleleLines());
+        final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(GATKSVVCFHeaderLines.getSymbAltAlleleLines());
         headerLines.addAll(GATKSVVCFHeaderLines.getInfoLines());
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
         headerLines.addAll(GATKSVVCFHeaderLines.getFormatLines());

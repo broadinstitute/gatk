@@ -134,7 +134,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     // State that gets accumulated between calls of apply()
     private final LinkedList<VariantContext> variantContextsOverlappingCurrentMerge = new LinkedList<>();
-    private final Set<String> samples = new HashSet<>();
+    private final Set<String> samples = new LinkedHashSet<>();
     private SimpleInterval prevPos = null;
     private byte refAfterPrevPos;
     private ReferenceContext storedReferenceContext;
@@ -222,7 +222,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     // Get any intermediate stop sites based on the break band multiple.
     @VisibleForTesting
     protected final static Set<Integer> getIntermediateStopSites(final SimpleInterval intervalToClose, final int breakBandMultiple) {
-        final Set<Integer> sitesToStop = new HashSet<>();
+        final Set<Integer> sitesToStop = new LinkedHashSet<>();
 
         if ( breakBandMultiple > 0) {
             // if the intermediate interval to close starts before the end of the first band multiple,
@@ -343,7 +343,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * @return true if it is okay to skip this position, false otherwise
      */
     private boolean okayToSkipThisSite(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
-        Set<String> intersection = new HashSet<>(getSamples(variantContexts));
+        Set<String> intersection = new LinkedHashSet<>(getSamples(variantContexts));
         intersection.retainAll(samples);
 
         //if there's a starting VC with a sample that's already in a current VC, don't skip this position
@@ -351,7 +351,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     }
 
     private Set<String> getSamples(List<VariantContext> variantContexts) {
-        Set<String> output = new HashSet<>();
+        Set<String> output = new LinkedHashSet<>();
         for (final VariantContext vc : variantContexts) {
             output.addAll(vc.getSampleNames());
         }
@@ -434,7 +434,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         }
 
         // attributes
-        final Map<String, Object> attrs = new HashMap<>(1);
+        final Map<String, Object> attrs = new LinkedHashMap<>(1);
         if ( !useBpResolution && end != start ) {
             attrs.put(VCFConstants.END_KEY, Integer.toString(end));
         }

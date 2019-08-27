@@ -380,7 +380,7 @@ final class CpxVariantCanonicalRepresentation {
 
     @VisibleForTesting
     VariantContextBuilder toVariantContext(final byte[] refBases) {
-        final Map<String, Object> typeSpecificAttributes = new HashMap<>();
+        final Map<String, Object> typeSpecificAttributes = new LinkedHashMap<>();
         typeSpecificAttributes.put(CPX_EVENT_ALT_ARRANGEMENTS,
                 String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, eventDescriptions));
         if ( ! referenceSegments.isEmpty() ) {

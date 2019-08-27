@@ -45,7 +45,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     protected final double indelHeterozygosity;
 
     private final int maxGenotypeCountToEnumerate;
-    private final Map<Integer, Integer> practicalAlleleCountForPloidy = new HashMap<>();
+    private final Map<Integer, Integer> practicalAlleleCountForPloidy = new LinkedHashMap<>();
 
     protected final boolean doPhysicalPhasing;
 
@@ -140,7 +140,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         final SortedSet<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, ref, refLoc, activeAllelesToGenotype, maxMnpDistance);
 
         // Walk along each position in the key set and create each event to be outputted
-        final Set<Haplotype> calledHaplotypes = new HashSet<>();
+        final Set<Haplotype> calledHaplotypes = new LinkedHashSet<>();
         final List<VariantContext> returnCalls = new ArrayList<>();
         final int ploidy = configuration.genotypeArgs.samplePloidy;
         final List<Allele> noCallAlleles = GATKVariantContextUtils.noCallAlleles(ploidy);
@@ -495,7 +495,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     private static Map<String, List<GATKRead>> overlappingFilteredReads(final Map<String, List<GATKRead>> perSampleFilteredReadList, final SimpleInterval loc) {
-        final Map<String,List<GATKRead>> overlappingFilteredReads = new HashMap<>(perSampleFilteredReadList.size());
+        final Map<String,List<GATKRead>> overlappingFilteredReads = new LinkedHashMap<>(perSampleFilteredReadList.size());
 
         for (final Map.Entry<String,List<GATKRead>> sampleEntry : perSampleFilteredReadList.entrySet()) {
             final List<GATKRead> originalList = sampleEntry.getValue();

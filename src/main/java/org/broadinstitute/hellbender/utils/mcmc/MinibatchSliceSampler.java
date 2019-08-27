@@ -118,7 +118,7 @@ public final class MinibatchSliceSampler<DATA> extends AbstractSliceSampler {
         if (xSampleCache == null || xSampleCache != xSample) {
             xSampleCache = xSample;
             logPriorCache = logPrior.apply(xSample);
-            logLikelihoodsCache = new HashMap<>(numDataPoints);
+            logLikelihoodsCache = new LinkedHashMap<>(numDataPoints);
         }
         if (!(xSampleCache != null && logPriorCache != null && logLikelihoodsCache != null)) {
             throw new GATKException.ShouldNeverReachHereException("Cache for xSample is in an invalid state.");

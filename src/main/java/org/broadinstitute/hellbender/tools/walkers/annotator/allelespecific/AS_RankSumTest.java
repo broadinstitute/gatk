@@ -102,7 +102,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @return A set of CompressedDataLists representing the the values for the reads supporting each allele
      */
     protected AlleleSpecificAnnotationData<CompressedDataList<Integer>> initializeNewRawAnnotationData(final List<Allele> vcAlleles) {
-        Map<Allele, CompressedDataList<Integer>> perAlleleValues = new HashMap<>();
+        Map<Allele, CompressedDataList<Integer>> perAlleleValues = new LinkedHashMap<>();
         for (Allele a : vcAlleles) {
             perAlleleValues.put(a, new CompressedDataList<>());
         }
@@ -119,7 +119,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @return A set of Histograms representing the the values for the reads supporting each allele
      */
     private AlleleSpecificAnnotationData<Histogram> initializeNewAnnotationData(final List<Allele> vcAlleles) {
-        Map<Allele, Histogram> perAlleleValues = new HashMap<>();
+        Map<Allele, Histogram> perAlleleValues = new LinkedHashMap<>();
         for (Allele a : vcAlleles) {
             perAlleleValues.put(a, new Histogram());
         }
@@ -178,13 +178,13 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      */
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
         if (!vc.hasAttribute(getRawKeyName())) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
         final String rawRankSumData = vc.getAttributeAsString(getRawKeyName(),null);
         if (rawRankSumData == null) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
-        final Map<String,Object> annotations = new HashMap<>();
+        final Map<String,Object> annotations = new LinkedHashMap<>();
         final AlleleSpecificAnnotationData<Histogram> myData = new AlleleSpecificAnnotationData<>(originalVC.getAlleles(), rawRankSumData);
         parseRawDataString(myData);
 
@@ -200,7 +200,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
     // Calculates the median of values per-Allele in the rank-sum tests
     public Map<Allele, Double> calculateReducedData(final Map<Allele, Histogram> perAlleleValues, final Allele ref) {
-        final Map<Allele, Double> perAltRankSumResults = new HashMap<>();
+        final Map<Allele, Double> perAltRankSumResults = new LinkedHashMap<>();
         for (final Allele alt : perAlleleValues.keySet()) {
             if (!alt.equals(ref, false) && perAlleleValues.get(alt) != null) {
                 perAltRankSumResults.put(alt, perAlleleValues.get(alt).median());
@@ -236,7 +236,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     protected void parseRawDataString(final ReducibleAnnotationData<Histogram> myData) {
         final String rawDataString = myData.getRawData();
         String rawDataNoBrackets;
-        final Map<Allele, Histogram> perAlleleValues = new HashMap<>();
+        final Map<Allele, Histogram> perAlleleValues = new LinkedHashMap<>();
         //Initialize maps
         for (final Allele current : myData.getAlleles()) {
             perAlleleValues.put(current, new Histogram());
@@ -315,7 +315,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     }
 
     public Map<Allele,Double> calculateRankSum(final Map<Allele, CompressedDataList<Integer>> perAlleleValues, final Allele ref) {
-        final Map<Allele, Double> perAltRankSumResults = new HashMap<>();
+        final Map<Allele, Double> perAltRankSumResults = new LinkedHashMap<>();
         //shortcut to not try to calculate rank sum if there are no reads that unambiguously support the ref
         if (perAlleleValues.get(ref).isEmpty())
             return perAltRankSumResults;

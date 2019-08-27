@@ -32,7 +32,7 @@ public class PerAlleleCollection<X extends Number> {
 
     public PerAlleleCollection(final Type type){
         this.type = type;
-        altAlleleValueMap = new HashMap<>();
+        altAlleleValueMap = new LinkedHashMap<>();
         refAllele = Optional.empty();
     }
 

@@ -277,7 +277,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * in which its present.
      */
     private void validateAllSequenceDictionaries() {
-        final Map<String, FeatureDataSource<VariantContext>> contigMap = new HashMap<>();
+        final Map<String, FeatureDataSource<VariantContext>> contigMap = new LinkedHashMap<>();
         featureDataSources.forEach(
             ds -> {
                 final SAMSequenceDictionary dictionary = ds.getSequenceDictionary();

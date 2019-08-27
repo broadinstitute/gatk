@@ -17,7 +17,7 @@ public class MafOutputRendererConstants {
     // Static initializers:
 
     static {
-        final Map<String, String> variantClassMap = new HashMap<>();
+        final Map<String, String> variantClassMap = new LinkedHashMap<>();
 
         variantClassMap.put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),     "In_Frame_Del");
         variantClassMap.put(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),     "In_Frame_Ins");

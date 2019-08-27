@@ -29,7 +29,7 @@ public final class PSBuildReferenceTaxonomyUtils {
     protected static Map<String, Tuple2<String, Long>> parseReferenceRecords(final List<SAMSequenceRecord> dictionaryList,
                                                                              final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
 
-        final Map<String, Tuple2<String, Long>> accessionToNameAndLength = new HashMap<>();
+        final Map<String, Tuple2<String, Long>> accessionToNameAndLength = new LinkedHashMap<>();
         for (final SAMSequenceRecord record : dictionaryList) {
             final String recordName = record.getSequenceName();
             final long recordLength = record.getSequenceLength();
@@ -116,10 +116,10 @@ public final class PSBuildReferenceTaxonomyUtils {
             final int accessionColumnIndex = catalogFormat.getAccessionColumn();
             if (accessionsNotFoundIn == null) {
                 //If accessionsNotFoundIn is null, this is the first call to parseCatalog, so initialize the set to all accessions
-                accessionsNotFoundOut = new HashSet<>(accessionToNameAndLength.keySet());
+                accessionsNotFoundOut = new LinkedHashSet<>(accessionToNameAndLength.keySet());
             } else {
                 //Otherwise this is a subsequent call and we continue to look for any remaining accessions
-                accessionsNotFoundOut = new HashSet<>(accessionsNotFoundIn);
+                accessionsNotFoundOut = new LinkedHashSet<>(accessionsNotFoundIn);
             }
             final int minColumns = Math.max(taxIdColumnIndex, accessionColumnIndex) + 1;
             long lineNumber = 1;
@@ -231,7 +231,7 @@ public final class PSBuildReferenceTaxonomyUtils {
     protected static Map<String, Integer> buildAccessionToTaxIdMap(final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties,
                                                                   final PSTree tree,
                                                                   final int minNonVirusContigLength) {
-        final Map<String, Integer> accessionToTaxId = new HashMap<>();
+        final Map<String, Integer> accessionToTaxId = new LinkedHashMap<>();
         for (final int taxId : taxIdToProperties.keySet()) {
             final boolean isVirus = tree.getPathOf(taxId).contains(PSTaxonomyConstants.VIRUS_ID);
             final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
@@ -251,7 +251,7 @@ public final class PSBuildReferenceTaxonomyUtils {
 
         //Build tree of all taxa
         final PSTree tree = new PSTree(PSTaxonomyConstants.ROOT_ID);
-        final Collection<Integer> invalidIds = new HashSet<>(taxIdToProperties.size());
+        final Collection<Integer> invalidIds = new LinkedHashSet<>(taxIdToProperties.size());
         for (final int taxId : taxIdToProperties.keySet()) {
             if (taxId != PSTaxonomyConstants.ROOT_ID) {
                 final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
@@ -272,7 +272,7 @@ public final class PSBuildReferenceTaxonomyUtils {
         tree.checkStructure();
 
         //Trim tree down to nodes corresponding only to reference taxa (and their ancestors)
-        final Set<Integer> relevantNodes = new HashSet<>();
+        final Set<Integer> relevantNodes = new LinkedHashSet<>();
         for (final int taxonId : taxIdToProperties.keySet()) {
             if (!taxIdToProperties.get(taxonId).getAccessions().isEmpty() && tree.hasNode(taxonId)) {
                 relevantNodes.addAll(tree.getPathOf(taxonId));

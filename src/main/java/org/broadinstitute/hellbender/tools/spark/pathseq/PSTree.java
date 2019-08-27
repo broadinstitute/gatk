@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 /**
  * Represents a taxonomic tree with nodes assigned a name and taxonomic rank (e.g. order, family, genus, species, etc.)
- * Nodes are stored in a HashMap and keyed by a String id. Tree keeps track of each node's children as well as its
+ * Nodes are stored in a LinkedHashMap and keyed by a String id. Tree keeps track of each node's children as well as its
  * parent for efficient traversals top-down and bottom-up.
  * <p>
  * Designed to be constructed on-the-fly while parsing the NCBI taxonomy dump, which specifies each node and its parent.
@@ -29,7 +29,7 @@ public class PSTree {
     public static final int NULL_NODE = 0;
 
     public PSTree(final int rootId) {
-        tree = new HashMap<>();
+        tree = new LinkedHashMap<>();
         root = rootId;
         tree.put(root, new PSTreeNode());
         tree.get(root).setName("root");
@@ -44,7 +44,7 @@ public class PSTree {
 
         root = Integer.valueOf(input.readString());
         final int treeSize = input.readInt();
-        tree = new HashMap<>(treeSize);
+        tree = new LinkedHashMap<>(treeSize);
         for (int i = 0; i < treeSize; i++) {
             final int key = input.readInt();
             final PSTreeNode value = kryo.readObject(input, PSTreeNode.class);
@@ -108,7 +108,7 @@ public class PSTree {
      */
     public Set<Integer> removeUnreachableNodes() {
         final Set<Integer> reachable = traverse();
-        final Set<Integer> unreachable = new HashSet<>(tree.keySet());
+        final Set<Integer> unreachable = new LinkedHashSet<>(tree.keySet());
         unreachable.removeAll(reachable);
         retainNodes(reachable);
         return unreachable;
@@ -155,7 +155,7 @@ public class PSTree {
      */
     private Set<Integer> traverse() {
         final Queue<Integer> queue = new LinkedList<>();
-        final Set<Integer> visited = new HashSet<>(tree.size());
+        final Set<Integer> visited = new LinkedHashSet<>(tree.size());
         queue.add(root);
         while (!queue.isEmpty()) {
             final int id = queue.poll();
@@ -184,7 +184,7 @@ public class PSTree {
             paths.add(getPathOf(node));
         }
         final List<Integer> firstPath = paths.remove(0);
-        final Set<Integer> commonNodes = new HashSet<>(firstPath);
+        final Set<Integer> commonNodes = new LinkedHashSet<>(firstPath);
         for (final List<Integer> path : paths) {
             commonNodes.retainAll(path);
         }
@@ -235,7 +235,7 @@ public class PSTree {
      */
     public void retainNodes(final Set<Integer> idsToKeep) {
         Utils.validateArg(idsToKeep.contains(root), "Cannot remove root");
-        final HashMap<Integer, PSTreeNode> newTree = new HashMap<>(idsToKeep.size());
+        final LinkedHashMap<Integer, PSTreeNode> newTree = new LinkedHashMap<>(idsToKeep.size());
         for (final int id : tree.keySet()) {
             if (idsToKeep.contains(id)) {
                 final PSTreeNode info = tree.get(id);
@@ -279,7 +279,7 @@ public class PSTree {
      */
     public List<Integer> getPathOf(int id) {
         final List<Integer> path = new ArrayList<>();
-        final Set<Integer> visitedNodes = new HashSet<>(tree.size());
+        final Set<Integer> visitedNodes = new LinkedHashSet<>(tree.size());
         while (id != NULL_NODE) {
             if (!visitedNodes.contains(id)) {
                 visitedNodes.add(id);

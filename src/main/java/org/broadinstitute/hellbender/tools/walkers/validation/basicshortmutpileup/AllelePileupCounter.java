@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,7 +27,7 @@ public class AllelePileupCounter {
     private final Allele referenceAllele;
     private final List<Allele> alternateAlleles;
     private int minBaseQualityCutoff;
-    private Map<Allele, MutableInt> countMap = new HashMap<>();
+    private Map<Allele, MutableInt> countMap = new LinkedHashMap<>();
 
     /**
      *

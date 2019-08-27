@@ -70,7 +70,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
             fullName = COLUMNS_OF_INTEREST_LONG_NAME,
             minElements = 1
     )
-    private Set<String> columnsOfInterest = new HashSet<>();
+    private Set<String> columnsOfInterest = new LinkedHashSet<>();
 
     @Argument(
             doc = "Output TSV file with combined segment breakpoints",
@@ -90,8 +90,8 @@ public class CombineSegmentBreakpoints extends GATKTool {
         final SAMFileHeader outputSamFileHeader = createOutputSamFileHeader(annotatedIntervalCollection1, annotatedIntervalCollection2);
 
         // Check to see if we should warn the user that one or more columns of interest were not seen in any input file.
-        final Set<String> allSeenAnnotations = Sets.union(new HashSet<>(annotatedIntervalCollection1.getAnnotations()),
-                new HashSet<>(annotatedIntervalCollection2.getAnnotations()));
+        final Set<String> allSeenAnnotations = Sets.union(new LinkedHashSet<>(annotatedIntervalCollection1.getAnnotations()),
+                new LinkedHashSet<>(annotatedIntervalCollection2.getAnnotations()));
         final Set<String> unusedColumnsOfInterest = Sets.difference(columnsOfInterest, allSeenAnnotations);
         if (unusedColumnsOfInterest.size() > 0) {
             final List<String> missingColumns = new ArrayList<>(unusedColumnsOfInterest);

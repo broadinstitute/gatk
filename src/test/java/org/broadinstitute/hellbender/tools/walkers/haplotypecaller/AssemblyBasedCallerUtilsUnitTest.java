@@ -121,7 +121,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         int qNameIndex = 0;
         List<GATKRead> reads = new ArrayList<>();
-        Map<GATKRead, Haplotype> readHaplotypeMap = new HashMap<>();
+        Map<GATKRead, Haplotype> readHaplotypeMap = new LinkedHashMap<>();
         for (Haplotype haplotype : haplotypesList) {
             //create a bunch of reads for different haplotypes
             final String hapString = haplotype.getBaseString();
@@ -137,7 +137,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 }
             }
         }
-        Map<String, List<GATKRead>> sampleReadMap = new HashMap<>();
+        Map<String, List<GATKRead>> sampleReadMap = new LinkedHashMap<>();
         sampleReadMap.put("sample1", reads);
         final AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypesList);
         final SampleList samples = new IndexedSampleList("sample1");
@@ -243,8 +243,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         vcs.add(new VariantContextBuilder("source", contig, start + 20, start + 23, Arrays.asList(
                 Allele.create("TCGA", true), Allele.create("T", false))).make());
 
-        Map<VariantContext, List<GATKRead>> vcReadsMap = new HashMap<>();
-        Map<GATKRead, Integer> supportedAlleleMap = new HashMap<>();
+        Map<VariantContext, List<GATKRead>> vcReadsMap = new LinkedHashMap<>();
+        Map<GATKRead, Integer> supportedAlleleMap = new LinkedHashMap<>();
         for (VariantContext vc : vcs) {
             vcReadsMap.put(vc, new ArrayList<>());
         }
@@ -279,7 +279,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         List<ReadLikelihoods<Allele>> readLikelihoodsList = new ArrayList<>();
         List<List<String>> readAttributeListList = new ArrayList<>();
         for (VariantContext vc : vcs) {
-            Map<String, List<GATKRead>> sampleReadMap = new HashMap<>();
+            Map<String, List<GATKRead>> sampleReadMap = new LinkedHashMap<>();
             sampleReadMap.put("sample1", vcReadsMap.get(vc));
             final SampleList samples = new IndexedSampleList("sample1");
             final AlleleList<Allele> alleles = new IndexedAlleleList<>(vc.getAlleles());
@@ -728,24 +728,24 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> calls = Arrays.asList(vc1, vc2, vc3);
 
         // test no phased variants, empty map
-        final Map<VariantContext, Pair<Integer, String>> nonePhased1 = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, String>> nonePhased1 = new LinkedHashMap<>();
         tests.add(new Object[]{calls, nonePhased1, 0, 0, 0});
 
         // test no phased variants, full map, exception expected
-        final Map<VariantContext, Pair<Integer, String>> nonePhased2 = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, String>> nonePhased2 = new LinkedHashMap<>();
         nonePhased2.put(vc1, Pair.of(0, "0/1"));
         nonePhased2.put(vc2, Pair.of(1, "0/1"));
         nonePhased2.put(vc3, Pair.of(2, "0/1"));
         tests.add(new Object[]{calls, nonePhased2, 3, -1, -1});
 
         // test 2 phased variants
-        final Map<VariantContext, Pair<Integer, String>> twoPhased = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, String>> twoPhased = new LinkedHashMap<>();
         twoPhased.put(vc1, Pair.of(0, "0/1"));
         twoPhased.put(vc2, Pair.of(0, "0/1"));
         tests.add(new Object[]{calls, twoPhased, 1, 1, 2});
 
         // test all phased variants
-        final Map<VariantContext, Pair<Integer, String>> allPhased = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, String>> allPhased = new LinkedHashMap<>();
         allPhased.put(vc1, Pair.of(0, "0/1"));
         allPhased.put(vc2, Pair.of(0, "0/1"));
         allPhased.put(vc3, Pair.of(0, "0/1"));
@@ -823,45 +823,45 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         pos234.getEventMap().put(3, vc3);
         pos234.getEventMap().put(4, vc4);
 
-        final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>();
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap = new LinkedHashMap<>();
 
         // test no phased variants #1
         final Set<Haplotype> haplotypes2 = new HashSet<>();
         haplotypes2.add(pos2);
         haplotypeMap.put(vc2, haplotypes2);
-        tests.add(new Object[]{Arrays.asList(vc2), new HashMap<>(haplotypeMap), 2, 0, 0, 0, 0});
+        tests.add(new Object[]{Arrays.asList(vc2), new LinkedHashMap<>(haplotypeMap), 2, 0, 0, 0, 0});
 
         // test no phased variants #2
         final Set<Haplotype> haplotypes3 = new HashSet<>();
         haplotypes3.add(pos3);
         haplotypeMap.put(vc3, haplotypes3);
-        tests.add(new Object[]{Arrays.asList(vc2, vc3), new HashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
+        tests.add(new Object[]{Arrays.asList(vc2, vc3), new LinkedHashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
 
         // test opposite phase
-        tests.add(new Object[]{Arrays.asList(vc2, vc3), new HashMap<>(haplotypeMap), 2, 2, 1, 1, 1});
+        tests.add(new Object[]{Arrays.asList(vc2, vc3), new LinkedHashMap<>(haplotypeMap), 2, 2, 1, 1, 1});
 
         // test no phased variants #3
         final Set<Haplotype> haplotypes4 = new HashSet<>();
         haplotypes4.add(pos4);
         haplotypeMap.put(vc4, haplotypes4);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
+        tests.add(new Object[]{calls, new LinkedHashMap<>(haplotypeMap), 3, 0, 0, 0, 0});
 
         // test mixture
         final Set<Haplotype> haplotypes24 = new HashSet<>();
         haplotypes24.add(pos24);
         haplotypeMap.put(vc2, haplotypes24);
         haplotypeMap.put(vc4, haplotypes24);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 2, 1});
+        tests.add(new Object[]{calls, new LinkedHashMap<>(haplotypeMap), 2, 3, 1, 2, 1});
 
         // test 2 hets
         haplotypeMap.remove(vc3);
-        tests.add(new Object[]{Arrays.asList(vc2, vc4), new HashMap<>(haplotypeMap), 1, 2, 1, 2, 0});
+        tests.add(new Object[]{Arrays.asList(vc2, vc4), new LinkedHashMap<>(haplotypeMap), 1, 2, 1, 2, 0});
 
         // test 2 with opposite phase
         final Set<Haplotype> haplotypes1 = new HashSet<>();
         haplotypes1.add(pos1);
         haplotypeMap.put(vc1, haplotypes1);
-        tests.add(new Object[]{Arrays.asList(vc1, vc2, vc4), new HashMap<>(haplotypeMap), 2, 3, 1, 1, 2});
+        tests.add(new Object[]{Arrays.asList(vc1, vc2, vc4), new LinkedHashMap<>(haplotypeMap), 2, 3, 1, 1, 2});
 
         // test homs around a het
         final Set<Haplotype> haplotypes2hom = new HashSet<>();
@@ -875,7 +875,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc2, haplotypes2hom);
         haplotypeMap.put(vc3, haplotypes3het);
         haplotypeMap.put(vc4, haplotypes4hom);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
+        tests.add(new Object[]{calls, new LinkedHashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
 
         // test hets around a hom
         final Set<Haplotype> haplotypes2het = new HashSet<>();
@@ -888,7 +888,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc2, haplotypes2het);
         haplotypeMap.put(vc3, haplotypes3hom);
         haplotypeMap.put(vc4, haplotypes4het);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
+        tests.add(new Object[]{calls, new LinkedHashMap<>(haplotypeMap), 2, 3, 1, 3, 0});
 
         // test no phased variants around a hom
         final Set<Haplotype> haplotypes2incomplete = new HashSet<>();
@@ -902,7 +902,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         haplotypeMap.put(vc2, haplotypes2incomplete);
         haplotypeMap.put(vc3, haplotypes3incomplete);
         haplotypeMap.put(vc4, haplotypes4complete);
-        tests.add(new Object[]{calls, new HashMap<>(haplotypeMap), 0, 0, 0, 0, 0});
+        tests.add(new Object[]{calls, new LinkedHashMap<>(haplotypeMap), 0, 0, 0, 0, 0});
 
         return tests.toArray(new Object[][]{});
     }
@@ -915,7 +915,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                              final int expectedNumGroups,
                                              final int expectedNum01,
                                              final int expectedNum10) {
-        final Map<VariantContext, Pair<Integer, String>> actualPhaseSetMapping = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, String>> actualPhaseSetMapping = new LinkedHashMap<>();
         final int actualNumGroups = AssemblyBasedCallerUtils.constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes, actualPhaseSetMapping);
         Assert.assertEquals(actualNumGroups, expectedNumGroups);
         Assert.assertEquals(actualPhaseSetMapping.size(), expectedMapSize);

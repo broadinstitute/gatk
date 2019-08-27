@@ -7,7 +7,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +28,7 @@ public class ReblockGVCFUnitTest {
         final Genotype g0 = makeG("sample1", LONG_REF, DELETION, 41, 0, 37, 200, 100, 200, 400, 600, 800);
         final Genotype g = addAD(g0,0,13,17,0);
         final VariantContext extraAlt0 = makeDeletionVC("lowQualVar", Arrays.asList(LONG_REF, DELETION, LONG_SNP, Allele.NON_REF_ALLELE), LONG_REF.length(), g);
-        final Map<String, Object> attr = new HashMap<>();
+        final Map<String, Object> attr = new LinkedHashMap<>();
         attr.put(VCFConstants.DEPTH_KEY, 32);
         final VariantContext extraAlt = addAttributes(extraAlt0, attr);
         //we'll call this with the same VC again under the assumption that STAND_CALL_CONF is zero so no alleles/GTs change
@@ -85,7 +85,7 @@ public class ReblockGVCFUnitTest {
 
         final Genotype g = makeG("sample1", LONG_REF, Allele.NON_REF_ALLELE, 200, 100, 200, 11, 0, 37);
         final VariantContext toBeNoCalled = makeDeletionVC("lowQualVar", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g);
-        final Map<String, Object> noAttributesMap = new HashMap<>();
+        final Map<String, Object> noAttributesMap = new LinkedHashMap<>();
         final GenotypeBuilder noCalled = reblocker.changeCallToGQ0HomRef(toBeNoCalled, noAttributesMap);
         final Genotype newG = noCalled.make();
         Assert.assertTrue(noAttributesMap.containsKey(VCFConstants.END_KEY));

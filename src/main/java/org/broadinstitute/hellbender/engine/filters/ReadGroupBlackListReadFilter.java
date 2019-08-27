@@ -34,7 +34,7 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     public List<String> blackList = new ArrayList<>();
 
     //most of the collection Entry classes are not serializable so just use a Map
-    private final Map<String, Collection<String>> blacklistEntries = new HashMap<>();
+    private final Map<String, Collection<String>> blacklistEntries = new LinkedHashMap<>();
 
     // Command line parser requires a no-arg constructor
     public ReadGroupBlackListReadFilter() {};

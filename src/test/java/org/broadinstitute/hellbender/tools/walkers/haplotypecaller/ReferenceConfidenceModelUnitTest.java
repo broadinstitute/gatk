@@ -598,7 +598,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
     }
 
     public static Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final Collection<GATKRead> reads , final SAMFileHeader header) {
-        final Map<String, List<GATKRead>> returnMap = new HashMap<>();
+        final Map<String, List<GATKRead>> returnMap = new LinkedHashMap<>();
         final int sampleCount = samplesList.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
             returnMap.put(samplesList.getSample(i), new ArrayList<>());

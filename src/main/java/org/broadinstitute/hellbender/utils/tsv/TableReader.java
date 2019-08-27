@@ -115,7 +115,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     private TableColumnCollection columns;
 
-    private Map<String, String> metadata = new HashMap<>();
+    private Map<String, String> metadata = new LinkedHashMap<>();
 
     /**
      * Holds a reference to the csvReader object use to read and parse the input

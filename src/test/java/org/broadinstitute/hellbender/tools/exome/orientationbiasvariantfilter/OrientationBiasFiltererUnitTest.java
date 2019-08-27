@@ -27,7 +27,7 @@ public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
         SortedSet<Transition> relevantTransitions = new TreeSet<>();
         relevantTransitions.add(Transition.transitionOf('G', 'T'));
 
-        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new LinkedHashMap<>();
         final double amGTPreAdapterQ = 20.0;
         preAdapterQFakeScoreMap.put(Transition.transitionOf('G', 'T'), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
 
@@ -80,7 +80,7 @@ public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
         relevantTransitions.add(Transition.transitionOf('G', 'T'));
         relevantTransitions.add(Transition.transitionOf('C', 'T'));
 
-        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new LinkedHashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
         preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
@@ -142,7 +142,7 @@ public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
         relevantTransitions.add(Transition.transitionOf('G', 'T'));
         relevantTransitions.add(Transition.transitionOf('C', 'T'));
 
-        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new LinkedHashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
         preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
@@ -180,7 +180,7 @@ public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
         relevantTransitions.add(Transition.transitionOf('G', 'T'));
         relevantTransitions.add(Transition.transitionOf('C', 'T'));
 
-        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new LinkedHashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
         preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
@@ -224,7 +224,7 @@ public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
         SortedSet<Transition> relevantTransitions = new TreeSet<>();
         relevantTransitions.add(Transition.transitionOf('G', 'T'));
         relevantTransitions.add(Transition.transitionOf('C', 'T'));
-        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new LinkedHashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
         preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.

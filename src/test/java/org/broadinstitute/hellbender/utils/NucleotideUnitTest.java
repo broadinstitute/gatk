@@ -375,7 +375,7 @@ public class NucleotideUnitTest {
     @Test(dependsOnMethods = "testDecode", dataProvider = "testSequences")
     public void testAddingOneByOne(final byte[] bases) {
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        final Map<Nucleotide, Integer> shadow = new LinkedHashMap<>(Nucleotide.values().length);
         for (final byte base : bases) {
             subject.add(base);
             final Nucleotide nuc = Nucleotide.decode(base);
@@ -399,7 +399,7 @@ public class NucleotideUnitTest {
             }
         }
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        final Map<Nucleotide, Integer> shadow = new LinkedHashMap<>(Nucleotide.values().length);
         for (final char base : bases) {
             subject.add(base);
             final Nucleotide nuc = Nucleotide.decode(base);
@@ -414,7 +414,7 @@ public class NucleotideUnitTest {
     @Test(dependsOnMethods = "testDecode", dataProvider = "testSequences")
     public void testAddingAllAtOnce(final byte[] bases) {
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        final Map<Nucleotide, Integer> shadow = new LinkedHashMap<>(Nucleotide.values().length);
         for (final byte base : bases) {
             final Nucleotide nuc = Nucleotide.decode(base);
             shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);
@@ -438,7 +438,7 @@ public class NucleotideUnitTest {
             }
         }
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        final Map<Nucleotide, Integer> shadow = new LinkedHashMap<>(Nucleotide.values().length);
         for (final char base : bases) {
             final Nucleotide nuc = Nucleotide.decode(base);
             shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);
@@ -463,7 +463,7 @@ public class NucleotideUnitTest {
         }
         final String string = new String(bases);
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        final Map<Nucleotide, Integer> shadow = new LinkedHashMap<>(Nucleotide.values().length);
         for (final char base : bases) {
             final Nucleotide nuc = Nucleotide.decode(base);
             shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);
@@ -494,7 +494,7 @@ public class NucleotideUnitTest {
     @Test(dependsOnMethods = "testDecode", dataProvider = "testSequences")
     public void testClear(final byte[] bases) {
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        final Map<Nucleotide, Integer> shadow = new LinkedHashMap<>(Nucleotide.values().length);
         for (final byte base : bases) {
             final Nucleotide nuc = Nucleotide.decode(base);
             shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);

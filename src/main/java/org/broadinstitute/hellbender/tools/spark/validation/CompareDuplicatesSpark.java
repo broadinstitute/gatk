@@ -262,7 +262,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     }
 
     private static Map<Integer, List<GATKRead>> splitByStart(Iterable<GATKRead> duplicateGroup) {
-        final Map<Integer, List<GATKRead>> byType = new HashMap<>();
+        final Map<Integer, List<GATKRead>> byType = new LinkedHashMap<>();
         for(GATKRead read: duplicateGroup) {
             byType.compute(ReadUtils.getStrandedUnclippedStart(read), (key, value) -> {
                 if (value == null) {

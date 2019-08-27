@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.EdgeFactory;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -74,7 +74,7 @@ public final class TestGraph extends BaseGraph<MultiDeBruijnVertex, BaseEdge> {
     @Override
     public SeqGraph toSequenceGraph() {
         final SeqGraph seqGraph = new SeqGraph(getKmerSize());
-        final Map<MultiDeBruijnVertex, SeqVertex> vertexMap = new HashMap<>();
+        final Map<MultiDeBruijnVertex, SeqVertex> vertexMap = new LinkedHashMap<>();
 
         // create all of the equivalent seq graph vertices
         for ( final MultiDeBruijnVertex dv : vertexSet() ) {

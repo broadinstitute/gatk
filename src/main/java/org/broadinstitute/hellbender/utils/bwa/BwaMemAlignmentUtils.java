@@ -109,7 +109,7 @@ public class BwaMemAlignmentUtils {
             }
         }
 
-        final Map<BwaMemAlignment,String> saTags = new HashMap<>(SVUtils.hashMapCapacity(nAlignments));
+        final Map<BwaMemAlignment,String> saTags = new LinkedHashMap<>(SVUtils.hashMapCapacity(nAlignments));
         for ( int idx = 0; idx != nAlignments; ++idx ) {
             final BwaMemAlignment alignment = alignments.get(idx);
             if ( SAMFlag.SECONDARY_ALIGNMENT.isSet(alignment.getSamFlag()) ) continue;

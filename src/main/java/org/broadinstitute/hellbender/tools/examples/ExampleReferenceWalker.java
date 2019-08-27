@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -33,7 +33,7 @@ public class ExampleReferenceWalker extends ReferenceWalker {
     private FeatureInput<VariantContext> variants;
 
     @VisibleForTesting
-    final Map<String, OverlapCounts> contextCounts = new HashMap<>();
+    final Map<String, OverlapCounts> contextCounts = new LinkedHashMap<>();
 
     @Override
     protected SimpleInterval getReferenceWindow(SimpleInterval locus) {

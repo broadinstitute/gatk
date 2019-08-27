@@ -123,7 +123,7 @@ public class Concordance extends AbstractConcordanceWalker {
     private VariantContextWriter truePositivesAndFalsePositivesVcfWriter;
     private VariantContextWriter filteredTrueNegativesAndFalseNegativesVcfWriter;
 
-    private final Map<String, FilterAnalysisRecord> filterAnalysisRecords = new HashMap<>();
+    private final Map<String, FilterAnalysisRecord> filterAnalysisRecords = new LinkedHashMap<>();
 
     @Override
     public void onTraversalStart() {

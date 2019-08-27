@@ -67,7 +67,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         }
         // calculate the annotation from the likelihoods
         // likelihoods can come from HaplotypeCaller call to VariantAnnotatorEngine
-        final Map<String, Object> annotations = new HashMap<>();
+        final Map<String, Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
         getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
         final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
@@ -150,11 +150,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     @Override
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
         if (!vc.hasAttribute(getRawKeyName())) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
         String rawContingencyTableData = vc.getAttributeAsString(getRawKeyName(),null);
         if (rawContingencyTableData == null) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
         AlleleSpecificAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(originalVC.getAlleles(), rawContingencyTableData);
         parseRawDataString(myData);
@@ -172,7 +172,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
                     "Allele-specific annotations should have an entry for each allele including the reference.");
         }
 
-        Map<Allele, List<Integer>> perAlleleValues = new HashMap<>();
+        Map<Allele, List<Integer>> perAlleleValues = new LinkedHashMap<>();
         for (int i = 0; i < values.size(); i++) {
             List<Integer> perAlleleList = new ArrayList<>();
             String[] rawListEntriesAsStringVector = values.get(i).split(",");
@@ -287,7 +287,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     //Allele-specific annotations cannot be called from walkers other than HaplotypeCaller
     protected Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
                                                                             final VariantContext vc){
-        return new HashMap<>();
+        return new LinkedHashMap<>();
     }
 
     public static String rawValueAsString(int[][] table) {

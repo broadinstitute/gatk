@@ -181,7 +181,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                         .collectAsMap();
 
         // resend the relevant contigs through the pair-iteration-ed path
-        final Set<String> relevantContigs = new HashSet<>( contigNameToCpxVariantAttributes.keySet() );
+        final Set<String> relevantContigs = new LinkedHashSet<>( contigNameToCpxVariantAttributes.keySet() );
         final JavaRDD<GATKRead> relevantAlignments = assemblyRawAlignments.filter(read -> relevantContigs.contains(read.getName()));
         final JavaRDD<AlignedContig> analysisReadyContigs =
                 SvDiscoverFromLocalAssemblyContigAlignmentsSpark
@@ -255,7 +255,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             final int insLen = simple.getAttributeAsInt(INSERTED_SEQUENCE_LENGTH, 0);
             if (insLen > EVENT_SIZE_THRESHOLD && deletionLen > EVENT_SIZE_THRESHOLD) { // case 1: insertion and deletion, linked
 
-                final Map<String, Object> attributes = new HashMap<>( simple.getAttributes() );
+                final Map<String, Object> attributes = new LinkedHashMap<>( simple.getAttributes() );
                 attributes.remove(INSERTED_SEQUENCE_MAPPINGS);
                 attributes.remove(SVLEN);
                 attributes.remove(SVTYPE);
@@ -276,7 +276,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                 return Stream.of(newDeletion.make(), newInsertion.make());
             } else if (insLen > EVENT_SIZE_THRESHOLD && deletionLen <= EVENT_SIZE_THRESHOLD) { // case 2: insertion with micro deletion
                 String fatInsertionID = simple.getID().replace("DEL", "INS");
-                final Map<String, Object> attributes = new HashMap<>( simple.getAttributes() );
+                final Map<String, Object> attributes = new LinkedHashMap<>( simple.getAttributes() );
                 attributes.remove(INSERTED_SEQUENCE_MAPPINGS);
                 attributes.remove(HOMOLOGY_LENGTH);
                 attributes.remove(HOMOLOGY);
@@ -402,7 +402,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         // TODO: 5/11/18 this is suboptimal:
         // a round trip to AnnotatedInterval because some CPX variants themselves are duplicated,
         // i.e. their alt seq, extracted from different assembly contigs, only differ slightly.
-        return extractedSimpleVariants.stream().map(AnnotatedInterval::new).collect(Collectors.toCollection(HashSet::new))
+        return extractedSimpleVariants.stream().map(AnnotatedInterval::new).collect(Collectors.toCollection(LinkedHashSet::new))
                 .stream().map(ai -> ai.sourceVC)
                 .collect(Collectors.toMap(AnnotatedInterval::new,
                         simpleVC -> {
@@ -410,7 +410,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                     final TreeSet<String> sourceCtgNames = new TreeSet<>(SVUtils.getAttributeAsStringList(simpleVC, CONTIG_NAMES));
                     return new Tuple2<>(complexEvents, sourceCtgNames);
                 })
-                ); // hashMap is good enough for us
+                ); // LinkedHashMap is good enough for us
     }
 
     /**

@@ -213,7 +213,7 @@ public class AnnotatedIntervalUtils {
         final String[] s1Vals = StringUtils.splitByWholeSeparator(s1, separator);
         final String[] s2Vals = StringUtils.splitByWholeSeparator(s2, separator);
 
-        final Set<String> allValsSet = new HashSet<>(Arrays.asList(s1Vals));
+        final Set<String> allValsSet = new LinkedHashSet<>(Arrays.asList(s1Vals));
         allValsSet.addAll(Arrays.asList(s2Vals));
 
         final List<String> allVals = new ArrayList<>(allValsSet);

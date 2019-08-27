@@ -64,7 +64,7 @@ public class CalculateMixingFractions extends VariantWalker {
             optional=false)
     private final File outputFile = null;
 
-    private final Map<String, AltAndTotalReadCounts> sampleCounts = new HashMap<>();
+    private final Map<String, AltAndTotalReadCounts> sampleCounts = new LinkedHashMap<>();
 
     @Override
     public void onTraversalStart() {

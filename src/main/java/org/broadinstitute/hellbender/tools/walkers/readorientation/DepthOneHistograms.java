@@ -5,7 +5,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,11 +20,11 @@ public class DepthOneHistograms {
     public DepthOneHistograms(final int maxDepth) {
         this.maxDepth = maxDepth;
 
-        map = new HashMap<>(F1R2FilterConstants.NUM_KMERS);
+        map = new LinkedHashMap<>(F1R2FilterConstants.NUM_KMERS);
 
         // Initialize, for each reference context, the (Alt Allele, Artifact Type) -> Histogram map
         F1R2FilterConstants.ALL_KMERS.forEach(context -> {
-            map.put(context, new HashMap<>((Nucleotide.STANDARD_BASES.size() - 1) * ReadOrientation.SIZE));
+            map.put(context, new LinkedHashMap<>((Nucleotide.STANDARD_BASES.size() - 1) * ReadOrientation.SIZE));
 
             for (Nucleotide altAllele : Nucleotide.STANDARD_BASES) {
                 // Skip e.g. AGT -> AGT because G is not an alt allele

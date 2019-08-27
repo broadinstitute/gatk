@@ -58,7 +58,7 @@ public class SomaticReferenceConfidenceModel extends ReferenceConfidenceModel {
                                                                        final boolean readsWereRealigned) {
 
         final SomaticRefVsAnyResult result = new SomaticRefVsAnyResult();
-        final Map<String, List<GATKRead>> perSampleReadMap = new HashMap<>();
+        final Map<String, List<GATKRead>> perSampleReadMap = new LinkedHashMap<>();
         perSampleReadMap.put(samples.getSample(0), pileup.getReads());
         final ReadLikelihoods<Allele> readLikelihoods = new ReadLikelihoods<>(samples, new IndexedAlleleList<>(Arrays.asList(Allele.create(refBase,true), Allele.NON_REF_ALLELE)), perSampleReadMap);
         final ReadLikelihoods<Allele> readLikelihoods2 = new ReadLikelihoods<>(samples, new IndexedAlleleList<>(Arrays.asList(Allele.create(refBase,true), Allele.NON_REF_ALLELE)), perSampleReadMap);

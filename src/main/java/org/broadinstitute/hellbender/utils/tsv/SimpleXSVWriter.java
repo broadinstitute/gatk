@@ -76,7 +76,7 @@ public class SimpleXSVWriter implements Closeable {
         expectedNumColumns = columns.size();
 
         // Create the mapping between header and column
-        headerMap = new HashMap<>();
+        headerMap = new LinkedHashMap<>();
         for (int i = 0; i < columns.size(); i++) {
             Utils.nonNull(columns.get(i), "Provided header had null column at position: " + i);
             if (headerMap.putIfAbsent(columns.get(i), i) != null) {

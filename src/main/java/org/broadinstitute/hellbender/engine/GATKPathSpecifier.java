@@ -14,7 +14,7 @@ import java.io.Serializable;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -54,7 +54,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
                     if (cl == null) {
                         throw e;
                     }
-                    return FileSystems.newFileSystem(getURI(), new HashMap<>(), cl).provider().getPath(getURI());
+                    return FileSystems.newFileSystem(getURI(), new LinkedHashMap<>(), cl).provider().getPath(getURI());
                 } catch (final IOException ioe) {
                     throw new GATKException("IOException loading new file system", ioe);
                 }

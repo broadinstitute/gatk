@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,7 +55,7 @@ public class KSWindowFinder {
         this.readMetadata = readMetadata;
         this.filter = filter;
         final Map<String, LibraryStatistics> libraryStatisticsMap = readMetadata.getAllLibraryStatistics();
-        libraryToHistoPairMap = new HashMap<>(SVUtils.hashMapCapacity(libraryStatisticsMap.size()));
+        libraryToHistoPairMap = new LinkedHashMap<>(SVUtils.hashMapCapacity(libraryStatisticsMap.size()));
         libraryStatisticsMap.forEach(( libName, stats ) -> {
             final IntHistogram[] pair = new IntHistogram[2];
             pair[0] = stats.createEmptyHistogram();

@@ -126,7 +126,7 @@ public final class MultiLevelCollectorTest {
 
     public static final Map<MetricAccumulationLevel, Map<String, Integer>> accumulationLevelToPerUnitReads = new LinkedHashMap<>();
     static {
-        HashMap<String, Integer> curMap = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> curMap = new LinkedHashMap<>();
         curMap.put("__", 19);
         accumulationLevelToPerUnitReads.put(MetricAccumulationLevel.ALL_READS, curMap);
 

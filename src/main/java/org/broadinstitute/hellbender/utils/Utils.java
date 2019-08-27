@@ -1299,7 +1299,7 @@ public final class Utils {
      * @return A new mapping from class of values to set of keys.  Never {@code null}
      */
     public static <T,U> Map<U, Set<T>> getReverseValueToListMap(final Map<T, List<U>> somethingToListMap) {
-        final Map<U, Set<T>> result = new HashMap<>();
+        final Map<U, Set<T>> result = new LinkedHashMap<>();
 
         for (final Map.Entry<T, List<U>> entry : somethingToListMap.entrySet()) {
             entry.getValue().forEach(v -> result.computeIfAbsent(v, k -> new HashSet<>()).add(entry.getKey()));

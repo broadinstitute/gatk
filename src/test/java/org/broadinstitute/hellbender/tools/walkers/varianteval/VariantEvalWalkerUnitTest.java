@@ -231,7 +231,7 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
     }
 
     private <T> Map<T, T> makeIdentityFunctionMap(Collection<T> values) {
-        Map<T,T> map = new HashMap<T, T>(values.size());
+        Map<T,T> map = new LinkedHashMap<T, T>(values.size());
         for ( final T value : values )
             map.put(value, value);
         return Collections.unmodifiableMap(map);

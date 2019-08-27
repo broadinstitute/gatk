@@ -96,7 +96,7 @@ public class ReadMetadata {
         final Map<String, LibraryRawStatistics> combinedMaps =
                 perPartitionStatistics.stream()
                         .map(PartitionStatistics::getLibraryNameToStatisticsMap)
-                        .reduce(new HashMap<>(), ReadMetadata::combineMaps);
+                        .reduce(new LinkedHashMap<>(), ReadMetadata::combineMaps);
         nReads = combinedMaps.values().stream().mapToLong(LibraryRawStatistics::getNReads).sum();
         final long nReadBases = combinedMaps.values().stream().mapToLong(LibraryRawStatistics::getNBases).sum();
         avgReadLen = (int)(nReadBases / nReads);
@@ -111,7 +111,7 @@ public class ReadMetadata {
         final long totalBaseQuals =
                 combinedMaps.values().stream().mapToLong(LibraryRawStatistics::getTotalBaseQuality).sum();
         meanBaseQuality = (float)totalBaseQuals / nReadBases;
-        libraryToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(combinedMaps.size()));
+        libraryToFragmentStatistics = new LinkedHashMap<>(SVUtils.hashMapCapacity(combinedMaps.size()));
         combinedMaps.forEach( (libName, rawStats) ->
                 libraryToFragmentStatistics.put(libName,rawStats.createLibraryStatistics(nRefBases)));
     }
@@ -133,7 +133,7 @@ public class ReadMetadata {
         this.coverage = coverage;
         meanBaseQuality = DEFAULT_MEAN_BASE_QUALITY_FOR_TESTING;
         this.partitionBounds = partitionBounds;
-        libraryToFragmentStatistics = new HashMap<>(6);
+        libraryToFragmentStatistics = new LinkedHashMap<>(6);
         libraryToFragmentStatistics.put(null, stats);
         for ( final SAMReadGroupRecord readGroupRecord : header.getReadGroups() ) {
             libraryToFragmentStatistics.put(readGroupRecord.getLibrary(), stats);
@@ -148,7 +148,7 @@ public class ReadMetadata {
         }
 
         final int groupMapSize = input.readInt();
-        readGroupToLibrary = new HashMap<>(SVUtils.hashMapCapacity(groupMapSize));
+        readGroupToLibrary = new LinkedHashMap<>(SVUtils.hashMapCapacity(groupMapSize));
         for ( int idx = 0; idx != groupMapSize; ++idx ) {
             final String groupName = input.readString();
             final String libName = input.readString();
@@ -156,7 +156,7 @@ public class ReadMetadata {
         }
 
         final int contigMapSize = input.readInt();
-        contigNameToID = new HashMap<>(SVUtils.hashMapCapacity(contigMapSize));
+        contigNameToID = new LinkedHashMap<>(SVUtils.hashMapCapacity(contigMapSize));
         for ( int idx = 0; idx != contigMapSize; ++idx ) {
             final String contigName = input.readString();
             final int contigId = input.readInt();
@@ -180,7 +180,7 @@ public class ReadMetadata {
 
         final int libMapSize = input.readInt();
         final LibraryStatistics.Serializer statsSerializer = new LibraryStatistics.Serializer();
-        libraryToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(libMapSize));
+        libraryToFragmentStatistics = new LinkedHashMap<>(SVUtils.hashMapCapacity(libMapSize));
         for ( int idx = 0; idx != libMapSize; ++idx ) {
             final String libraryName = input.readString();
             final LibraryStatistics stats = statsSerializer.read(kryo, input, LibraryStatistics.class);
@@ -326,7 +326,7 @@ public class ReadMetadata {
 
     public static Map<String, Integer> buildContigNameToIDMap( final SAMSequenceDictionary dictionary ) {
         final List<SAMSequenceRecord> contigs = dictionary.getSequences();
-        final Map<String, Integer> contigNameToID = new HashMap<>(SVUtils.hashMapCapacity(contigs.size()));
+        final Map<String, Integer> contigNameToID = new LinkedHashMap<>(SVUtils.hashMapCapacity(contigs.size()));
         final int nContigs = contigs.size();
         for ( int contigID = 0; contigID < nContigs; ++contigID ) {
             contigNameToID.put(contigs.get(contigID).getSequenceName(), contigID);
@@ -345,7 +345,7 @@ public class ReadMetadata {
     public static Map<String, String> buildGroupToLibMap( final SAMFileHeader header ) {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
         final int mapCapacity = SVUtils.hashMapCapacity(header.getReadGroups().size());
-        final Map<String, String> readGroupToLibraryMap = new HashMap<>(mapCapacity);
+        final Map<String, String> readGroupToLibraryMap = new LinkedHashMap<>(mapCapacity);
         for ( final SAMReadGroupRecord groupRecord : readGroups ) {
             readGroupToLibraryMap.put(groupRecord.getId(), groupRecord.getLibrary());
         }
@@ -582,7 +582,7 @@ public class ReadMetadata {
                                     final int maxTrackedFragmentLength,
                                     final Map<String, String> readGroupToLibraryMap ) {
             final Iterator<GATKRead> mappedReadItr = filter.applyFilter(unfilteredReadItr, SVReadFilter::isMappedPrimary);
-            libraryNameToStatisticsMap = new HashMap<>();
+            libraryNameToStatisticsMap = new LinkedHashMap<>();
             if ( !mappedReadItr.hasNext() ) {
                 firstContig = lastContig = null;
                 firstLocation = lastLocation = -1;
@@ -622,7 +622,7 @@ public class ReadMetadata {
         private PartitionStatistics( final Kryo kryo, final Input input ) {
             final LibraryRawStatistics.Serializer rawStatsSerializer = new LibraryRawStatistics.Serializer();
             int nEntries = input.readInt();
-            libraryNameToStatisticsMap = new HashMap<>(SVUtils.hashMapCapacity(nEntries));
+            libraryNameToStatisticsMap = new LinkedHashMap<>(SVUtils.hashMapCapacity(nEntries));
             while ( nEntries-- > 0 ) {
                 final String libName = input.readString();
                 final LibraryRawStatistics rawStats = rawStatsSerializer.read(kryo, input, LibraryRawStatistics.class);

@@ -96,7 +96,7 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
 
         final double log10PError = -5;
 
-        Map<String, List<GATKRead>> emptyMap = new HashMap<>();
+        Map<String, List<GATKRead>> emptyMap = new LinkedHashMap<>();
         emptyMap.put(SAMPLE, Collections.emptyList());
         final ReadLikelihoods<Allele> likelihoods = new UnfilledReadsLikelihoods<Allele>(new IndexedSampleList(SAMPLE), new IndexedAlleleList<>(ALLELES), emptyMap);
 

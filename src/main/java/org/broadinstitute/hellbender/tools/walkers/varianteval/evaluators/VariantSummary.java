@@ -83,7 +83,7 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         public TypeSampleMap(final Collection<String> samples) {
             super(Type.class);
             for ( Type type : Type.values() ) {
-                Map<String, Integer> bySample = new HashMap<String, Integer>(samples.size());
+                Map<String, Integer> bySample = new LinkedHashMap<String, Integer>(samples.size());
                 for ( final String sample : samples ) {
                     bySample.put(sample, 0);
                 }

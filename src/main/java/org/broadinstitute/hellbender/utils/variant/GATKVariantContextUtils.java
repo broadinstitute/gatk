@@ -62,7 +62,7 @@ public final class GATKVariantContextUtils {
                                                               final String versionString, final String dateTime,
                                                               final String cmdLine) {
         final Set<VCFHeaderLine> defaultVCFHeaderLines = new HashSet<>();
-        final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
+        final Map<String, String> simpleHeaderLineMap = new LinkedHashMap<>(4);
         simpleHeaderLineMap.put("ID", toolName);
         simpleHeaderLineMap.put("Version", versionString);
         simpleHeaderLineMap.put("Date", dateTime);

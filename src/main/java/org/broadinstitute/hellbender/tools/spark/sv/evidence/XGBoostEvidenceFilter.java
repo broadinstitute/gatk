@@ -90,14 +90,14 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
         this.readMetadata = readMetadata;
 
         evidenceOverlapChecker = new EvidenceOverlapChecker(evidenceItr, readMetadata, params.minEvidenceMapQ);
-        rawFeatureCache = new HashMap<>();
+        rawFeatureCache = new LinkedHashMap<>();
 
         listItr = null;
         treeItr = evidenceOverlapChecker.getTreeIterator();
     }
 
     private static Map<Class<?>, Integer> evidenceTypeOrderToImmutableMap(final List<Class<?>> evidenceTypeOrder) {
-        final HashMap<Class<?>, Integer> evidenceTypeMap = new HashMap<>();
+        final LinkedHashMap<Class<?>, Integer> evidenceTypeMap = new LinkedHashMap<>();
         for(int index = 0; index < evidenceTypeOrder.size(); ++index) {
             evidenceTypeMap.put(evidenceTypeOrder.get(index), index);
         }

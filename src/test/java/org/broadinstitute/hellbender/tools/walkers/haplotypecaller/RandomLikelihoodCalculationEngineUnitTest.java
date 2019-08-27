@@ -13,7 +13,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,7 +22,7 @@ public final class RandomLikelihoodCalculationEngineUnitTest {
     public void testComputeLikelihoods(){
         final ReadLikelihoodCalculationEngine lce = new RandomLikelihoodCalculationEngine();
 
-        final Map<String, List<GATKRead>> perSampleReadList= new HashMap<>();
+        final Map<String, List<GATKRead>> perSampleReadList= new LinkedHashMap<>();
         final int n = 10 ;
         final GATKRead read1= ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(n + "M"));
         read1.setMappingQuality(60);

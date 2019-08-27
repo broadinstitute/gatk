@@ -232,7 +232,7 @@ public class SimpleTsvOutputRenderer extends OutputRenderer {
     }
 
     /**
-     * Simple method that will produce a linked field:value hashmap using starting fields from the funcotations in a {@link FuncotationMap}
+     * Simple method that will produce a linked field:value LinkedHashMap using starting fields from the funcotations in a {@link FuncotationMap}
      *  and a map of funcotation field name.
      *
      *  This method does not add columns for defaults or overrides in the output map.  Just uses the override and

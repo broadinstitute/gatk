@@ -131,7 +131,7 @@ public final class BaseRecalibrator extends ReadWalker {
 
     /**
      * Parse the -cov arguments and create a list of covariates to be used here
-     * Based on the covariates' estimates for initial capacity allocate the data hashmap
+     * Based on the covariates' estimates for initial capacity allocate the data LinkedHashMap
      */
     @Override
     public void onTraversalStart() {

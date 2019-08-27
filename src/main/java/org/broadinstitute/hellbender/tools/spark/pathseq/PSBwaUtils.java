@@ -74,7 +74,7 @@ public final class PSBwaUtils {
         if (read.isUnmapped() || read.getAssignedContig().equals("*")) return Collections.emptyIterator();
         if (!read.hasAttribute("SA")) return Collections.singleton(read.getAssignedContig()).iterator();
         final String[] saTokens = read.getAttributeAsString("SA").split(";");
-        final Set<String> sequenceNames = new HashSet<>(SVUtils.hashMapCapacity(1 + saTokens.length));
+        final Set<String> sequenceNames = new LinkedHashSet<>(SVUtils.hashMapCapacity(1 + saTokens.length));
         sequenceNames.add(read.getAssignedContig());
         for (final String token : saTokens) {
             final String[] alignmentTokens = token.split(",", 1);

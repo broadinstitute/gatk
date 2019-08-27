@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -12,7 +12,7 @@ import java.util.Map;
  * Created by gauthier on 9/25/15.
  */
 public final class CompressedDataList<T>  implements Iterable<T> {
-    protected Map<T,Integer> valueCounts = new HashMap<>();
+    protected Map<T,Integer> valueCounts = new LinkedHashMap<>();
 
     public Map<T,Integer> getValueCounts(){
         return valueCounts;

@@ -47,7 +47,7 @@ public class MafOutputRenderer extends OutputRenderer {
 
     private static final Logger logger = LogManager.getLogger(MafOutputRenderer.class);
 
-    private static final Set<String> HG_19_CHR_SET = new HashSet<>(Arrays.asList("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y"));
+    private static final Set<String> HG_19_CHR_SET = new LinkedHashSet<>(Arrays.asList("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y"));
 
     private static final List<String> ORDERED_GENCODE_VARIANT_CLASSIFICATIONS = new ArrayList<> (Arrays.asList(
             GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),

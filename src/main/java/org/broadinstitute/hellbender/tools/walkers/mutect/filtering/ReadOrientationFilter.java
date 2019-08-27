@@ -18,7 +18,7 @@ import java.io.File;
 import java.util.*;
 
 public class ReadOrientationFilter extends Mutect2VariantFilter {
-    private Map<String, ArtifactPriorCollection> artifactPriorCollections = new HashMap<>();
+    private Map<String, ArtifactPriorCollection> artifactPriorCollections = new LinkedHashMap<>();
 
     public ReadOrientationFilter(final List<File> readOrientationPriorTables) {
         readOrientationPriorTables.stream()

@@ -131,7 +131,7 @@ public class LearnReadOrientationModelEngine {
         this.altResponsibilities = new Array2DRowRealMatrix(altDesignMatrix.size(), F1R2FilterConstants.NUM_STATES);
 
         // Store responsibilities for each depth and the F1R2/F2R1 of the one alt read
-        this.responsibilitiesOfAltDepth1Sites = new HashMap<>();
+        this.responsibilitiesOfAltDepth1Sites = new LinkedHashMap<>();
         this.refAllele = F1R2FilterUtils.getMiddleBase(referenceContext);
         this.convergenceThreshold = convergenceThreshold;
         this.maxEMIterations = maxEMIterations;
@@ -304,7 +304,7 @@ public class LearnReadOrientationModelEngine {
      * They are both beta binomial distributions and are therefore parameterized by the pseudocounts alpha and beta
      */
     private static Map<ArtifactState, BetaDistributionShape> getPseudoCountsForAlleleFraction(){
-        final Map<ArtifactState, BetaDistributionShape> alleleFractionPseudoCounts = new HashMap<>(ArtifactState.values().length);
+        final Map<ArtifactState, BetaDistributionShape> alleleFractionPseudoCounts = new LinkedHashMap<>(ArtifactState.values().length);
 
         // The allele fraction distribution, which is not aware of the read orientation, should be the same between
         // F1R2 and F2R1 artifacts
@@ -320,7 +320,7 @@ public class LearnReadOrientationModelEngine {
     }
 
     private static Map<ArtifactState, BetaDistributionShape> getPseudoCountsForAltF1R2Fraction(){
-        final Map<ArtifactState, BetaDistributionShape> altF1R2FractionPseudoCounts = new HashMap<>(ArtifactState.values().length);
+        final Map<ArtifactState, BetaDistributionShape> altF1R2FractionPseudoCounts = new LinkedHashMap<>(ArtifactState.values().length);
 
         ArtifactState.getF1R2ArtifactStates().forEach(z -> altF1R2FractionPseudoCounts.put(z, new BetaDistributionShape(PSEUDOCOUNT_OF_LIKELY_OUTCOME, PSEUDOCOUNT_OF_RARE_OUTCOME)));
         ArtifactState.getF2R1ArtifactStates().forEach(z -> altF1R2FractionPseudoCounts.put(z, new BetaDistributionShape(PSEUDOCOUNT_OF_RARE_OUTCOME, PSEUDOCOUNT_OF_LIKELY_OUTCOME)));

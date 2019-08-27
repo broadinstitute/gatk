@@ -313,7 +313,7 @@ public final class CpxVariantInterpreter {
                     minFlankingLengths.add( String.valueOf(minAlnLen) );
                 });
 
-        final Map<String, String> attributeMap = new HashMap<>();
+        final Map<String, String> attributeMap = new LinkedHashMap<>();
 
         attributeMap.put(TOTAL_MAPPINGS, String.valueOf(contigNames.size()));
 

@@ -111,7 +111,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         final Map<String, List<AltSiteRecord>> recordsBySample = gatherAltSiteRecords(altTableFiles);
 
-        final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = new HashMap<>();
+        final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = new LinkedHashMap<>();
         for (final Map.Entry<String, List<AltSiteRecord>> entry : recordsBySample.entrySet()) {
             final String sample = entry.getKey();
             final List<AltSiteRecord> records = entry.getValue();
@@ -330,7 +330,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
     @VisibleForTesting
     static Map<String, List<AltSiteRecord>> gatherAltSiteRecords(final List<File> tables){
-        final Map<String, List<AltSiteRecord>> result = new HashMap<>();
+        final Map<String, List<AltSiteRecord>> result = new LinkedHashMap<>();
         for (final File table : tables) {
             final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(table.toPath(), DEFAULT_INITIAL_LIST_SIZE);
             final String sample = sampleAndRecords.getLeft();

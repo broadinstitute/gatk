@@ -15,7 +15,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
     @Test
     public void testParseReferenceRecords() {
 
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
 
         final List<SAMSequenceRecord> dictList = new ArrayList<>();
 
@@ -55,11 +55,11 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
                             +   "3\tx\tacc_B\tx\tx\tx\tx\n";
         final BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        final Map<String, Tuple2<String, Long>> accessionToNameAndLength = new HashMap<>();
+        final Map<String, Tuple2<String, Long>> accessionToNameAndLength = new LinkedHashMap<>();
         accessionToNameAndLength.put("acc_A", new Tuple2<>("ref|acc_A", 2000L));
         accessionToNameAndLength.put("acc_C", new Tuple2<>("ref|acc_C", 3000L));
 
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
         final PSPathogenReferenceTaxonProperties taxonProperties = new PSPathogenReferenceTaxonProperties();
         taxonProperties.addAccession("ref|acc_B|taxid|3", 1000);
         taxIdToProperties.put(3, taxonProperties);
@@ -99,7 +99,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
                 + "3\t|\tname C\t|\t-\t|\tscientific name\t|\n";
         final BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
         taxIdToProperties.put(1, new PSPathogenReferenceTaxonProperties());
         taxIdToProperties.put(2, new PSPathogenReferenceTaxonProperties());
         taxIdToProperties.put(4, new PSPathogenReferenceTaxonProperties());
@@ -126,7 +126,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
                 + "4\t|\t1\t|\tkingdom\t|\t-\t|\t-\t|\t-\t|\t-\t|\t-\t|\t-\t|\t-\t|\t-\t|\t-\t|\t-\t|\n";
         final BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
 
         final PSPathogenReferenceTaxonProperties rootProperties = new PSPathogenReferenceTaxonProperties("root");
         taxIdToProperties.put(1, rootProperties);
@@ -169,7 +169,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
 
     @Test
     public void testBuildReferenceNameToTaxMap() {
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
         final PSTree tree = new PSTree(1);
         tree.addNode(PSTaxonomyConstants.VIRUS_ID,"Virus",1,0,"kingdom");
         tree.addNode(3,"Bacteria",1,0,"kingdom");
@@ -226,14 +226,14 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
     //Empty input should throw exception
     @Test(expectedExceptions = Exception.class)
     public void testEmptyBuildTaxonomicTree() {
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
 
         PSBuildReferenceTaxonomyUtils.buildTaxonomicTree(taxIdToProperties);
     }
 
     @Test
     public void testBuildTaxonomicTree() {
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
 
         //Tree that reduces to an empty tree because no nodes are associated with references
         final PSPathogenReferenceTaxonProperties taxPropertiesRoot = new PSPathogenReferenceTaxonProperties();
@@ -275,7 +275,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
 
     @Test(expectedExceptions = Exception.class)
     public void testBuildEmptyTaxonomicTree() {
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
 
         //Tree that reduces to an empty tree because no nodes are associated with references
         final PSPathogenReferenceTaxonProperties taxPropertiesRoot = new PSPathogenReferenceTaxonProperties();
@@ -296,7 +296,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
 
     @Test
     public void testRemoveUnusedTaxIds() {
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
         taxIdToProperties.put(1, new PSPathogenReferenceTaxonProperties());
         taxIdToProperties.put(2, new PSPathogenReferenceTaxonProperties());
         taxIdToProperties.put(3, new PSPathogenReferenceTaxonProperties());

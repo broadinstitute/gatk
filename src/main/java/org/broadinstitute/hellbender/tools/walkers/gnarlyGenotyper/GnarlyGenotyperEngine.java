@@ -127,7 +127,7 @@ public final class GnarlyGenotyperEngine {
             removeNonRef = false;
         }
 
-        final Map<Allele, Integer> alleleCountMap = new HashMap<>();
+        final Map<Allele, Integer> alleleCountMap = new LinkedHashMap<>();
         //initialize the count map
         for (final Allele a : targetAlleles) {
             alleleCountMap.put(a, 0);
@@ -313,7 +313,7 @@ public final class GnarlyGenotyperEngine {
                     makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
                 }
             }
-            final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());
+            final Map<String, Object> attrs = new LinkedHashMap<>(g.getExtendedAttributes());
             attrs.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
             //attrs.remove(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
             calledGT = genotypeBuilder.attributes(attrs).make();

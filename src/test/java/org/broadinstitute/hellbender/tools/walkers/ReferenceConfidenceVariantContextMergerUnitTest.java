@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -399,15 +399,15 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
 
         // use a literal string for this one to ensure that we have at least one test value that
         // has no embedded decimal point to emulate conditions found in the wild
-        Map<String, Object> attributes1 = new HashMap<>();
+        Map<String, Object> attributes1 = new LinkedHashMap<>();
         attributes1.put(MAP_QUAL_RANK_SUM_KEY, "0");
         toMergeVCs.add(vcBuilder.attributes(attributes1).make());
 
-        Map<String, Object> attributes2 = new HashMap<>();
+        Map<String, Object> attributes2 = new LinkedHashMap<>();
         attributes2.put(MAP_QUAL_RANK_SUM_KEY, Double.toString(medianRankSum));
         toMergeVCs.add(vcBuilder.attributes(attributes2).make());
 
-        Map<String, Object> attributes3 = new HashMap<>();
+        Map<String, Object> attributes3 = new LinkedHashMap<>();
         attributes3.put(MAP_QUAL_RANK_SUM_KEY, "2.46");
         toMergeVCs.add(vcBuilder.attributes(attributes3).make());
 

@@ -35,7 +35,7 @@ public class PSScorerTest extends CommandLineProgramTest {
 
     @BeforeMethod
     public void before() {
-        refNameToTax = new HashMap<>(3);
+        refNameToTax = new LinkedHashMap<>(3);
         refNameToTax.put("recordA", 1);
         refNameToTax.put("recordB", 2);
         refNameToTax.put("recordC", 3);
@@ -120,7 +120,7 @@ public class PSScorerTest extends CommandLineProgramTest {
 
         final File file = createTempFile("header_warnings", "txt");
         final PSTree tree = new PSTree(1);
-        final Map<String, Integer> map = new HashMap<>(10);
+        final Map<String, Integer> map = new LinkedHashMap<>(10);
         map.put("seq1", 2);
         map.put("seq2", 2);
         map.put("seq3", 3);
@@ -354,7 +354,7 @@ public class PSScorerTest extends CommandLineProgramTest {
     }
 
     private static Map<Integer,PSPathogenTaxonScore> scoreIteratorToMap(final Iterator<Tuple2<Integer, PSPathogenTaxonScore>> iter) {
-        final Map<Integer,PSPathogenTaxonScore> map = new HashMap<>();
+        final Map<Integer,PSPathogenTaxonScore> map = new LinkedHashMap<>();
         iter.forEachRemaining(pair -> map.put(pair._1, pair._2));
         return map;
     }
@@ -574,7 +574,7 @@ public class PSScorerTest extends CommandLineProgramTest {
         final File tempFile = createTempFile("test", ".dat");
         final PSTree tree_in = new PSTree(1);
         tree_in.addNode(2, "n2", 1, 100, "rank_2");
-        final Map<String, Integer> map_in = new HashMap<>();
+        final Map<String, Integer> map_in = new LinkedHashMap<>();
         map_in.put("acc_2a", 2);
         map_in.put("acc_2b", 2);
         final PSTaxonomyDatabase expectedDatabase = new PSTaxonomyDatabase(tree_in, map_in);

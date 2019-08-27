@@ -348,10 +348,10 @@ public class FuncotatorTestUtils {
     }
 
     /**
-     * Make sure that the tsv file written exactly matches the linked hashmap.  This includes the field ordering is the same as well.
+     * Make sure that the tsv file written exactly matches the linked LinkedHashMap.  This includes the field ordering is the same as well.
      *
      * @param testFile Must be a readable file.  Does not have to contain records.
-     * @param gtOutputRecords a list of linked hashmaps.  Each hashmap representing one row in the tsv.  Never {@code null}
+     * @param gtOutputRecords a list of linked hashmaps.  Each LinkedHashMap representing one row in the tsv.  Never {@code null}
      * @param gtFieldNames List of expected column headers/fields.  This should just be {@code Lists.newArrayList(gtOutputRecord.get(...).keySet()}, but
      *                     must be stated explicitly to handle files with no records (i.e. only have a header).
      * @throws IOException if the file reader cannot be created.
@@ -372,7 +372,7 @@ public class FuncotatorTestUtils {
      *  groundtruth record ({@code gtOutputRecords.get(0)}) contains the field names.
      *
      * @param testFile Must be a readable file.  MUST contain records.
-     * @param gtOutputRecords a list of linked hashmaps.  Each hashmap representing one row in the tsv.  Never {@code null} and cannot be empty.
+     * @param gtOutputRecords a list of linked hashmaps.  Each LinkedHashMap representing one row in the tsv.  Never {@code null} and cannot be empty.
      * @throws IOException if the file reader cannot be created.
      */
     public static void assertTsvFile(final File testFile, final List<LinkedHashMap<String, String>> gtOutputRecords) throws IOException {

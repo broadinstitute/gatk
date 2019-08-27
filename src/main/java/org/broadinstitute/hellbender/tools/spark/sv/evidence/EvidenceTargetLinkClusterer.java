@@ -48,8 +48,8 @@ public class EvidenceTargetLinkClusterer {
                                 ? 1 : 0,
                         nextEvidence instanceof BreakpointEvidence.DiscordantReadPairEvidence
                                 ? 1 : 0,
-                        nextEvidence instanceof BreakpointEvidence.DiscordantReadPairEvidence ? Collections.singleton(templateName) : new HashSet<>(),
-                        nextEvidence instanceof BreakpointEvidence.SplitRead ? Collections.singleton(templateName) : new HashSet<>()
+                        nextEvidence instanceof BreakpointEvidence.DiscordantReadPairEvidence ? Collections.singleton(templateName) : new LinkedHashSet<>(),
+                        nextEvidence instanceof BreakpointEvidence.SplitRead ? Collections.singleton(templateName) : new LinkedHashSet<>()
                 );
 
                 // if the new link overlaps with an existing link, combine the two links together, adding their evidence counts
@@ -67,9 +67,9 @@ public class EvidenceTargetLinkClusterer {
                             ? oldLink.splitReads + 1 : oldLink.splitReads;
                     int newReadPairCount = nextEvidence instanceof BreakpointEvidence.DiscordantReadPairEvidence
                             ? oldLink.readPairs + 1 : oldLink.readPairs;
-                    final Set<String> readPairTemplateNames = new HashSet<>(oldLink.getReadPairTemplateNames());
+                    final Set<String> readPairTemplateNames = new LinkedHashSet<>(oldLink.getReadPairTemplateNames());
                     if (nextEvidence instanceof BreakpointEvidence.DiscordantReadPairEvidence) readPairTemplateNames.add(templateName);
-                    final Set<String> splitReadTemplateNames = new HashSet<>(oldLink.getSplitReadTemplateNames());
+                    final Set<String> splitReadTemplateNames = new LinkedHashSet<>(oldLink.getSplitReadTemplateNames());
                     if (nextEvidence instanceof BreakpointEvidence.SplitRead) splitReadTemplateNames.add(templateName);
                     updatedLink = new EvidenceTargetLink(
                             new StrandedInterval(newSource, oldLink.source.getStrand()),

@@ -326,7 +326,7 @@ public final class TableColumnCollection {
         if (columnNames.length == 0) {
             throw Utils.nonNull(exceptionFactory.apply("there must be at least one column"));
         }
-        final Set<String> columnNameSet = new HashSet<>(columnNames.length);
+        final Set<String> columnNameSet = new LinkedHashSet<>(columnNames.length);
         for (int i = 0; i < columnNames.length; i++) {
             final String columnName = Utils.nonNull(columnNames[i],"no column name can be null: e.g. " + i + " element");
             if (!columnNameSet.add(columnName)) {

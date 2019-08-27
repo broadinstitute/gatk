@@ -142,7 +142,7 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
     public void testGetSampleContaminationInitializedMap() {
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
 
-        Map<String,Double> contaminationMap = new HashMap<>();
+        Map<String,Double> contaminationMap = new LinkedHashMap<>();
         contaminationMap.put("Sample1", 0.1);
         contaminationMap.put("Sample2", 0.2);
         args.setSampleContamination(contaminationMap);
@@ -163,7 +163,7 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
 
         args.CONTAMINATION_FRACTION = 0.05;
-        Map<String,Double> contaminationMap = new HashMap<>();
+        Map<String,Double> contaminationMap = new LinkedHashMap<>();
         contaminationMap.put("Sample1", 0.1);
         contaminationMap.put("Sample2", 0.2);
         args.setSampleContamination(contaminationMap);
@@ -184,7 +184,7 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
 
         // Create a map that doesn't actually have any contamination set
-        Map<String,Double> contaminationMap = new HashMap<>();
+        Map<String,Double> contaminationMap = new LinkedHashMap<>();
         contaminationMap.put("Sample1", 0.0);
         contaminationMap.put("Sample2", 0.0);
         args.setSampleContamination(contaminationMap);

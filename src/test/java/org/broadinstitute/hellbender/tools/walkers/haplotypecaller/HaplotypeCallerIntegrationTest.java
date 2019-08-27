@@ -1123,7 +1123,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         // First, find all calls in the VCF produced WITHOUT --max-alternate-alleles that have
         // more than maxAlternateAlleles alt alleles, excluding NON_REF. For each call, calculate
         // and store the expected list of subsetted alleles:
-        final Map<SimpleInterval, List<Allele>> expectedSubsettedAllelesByLocus = new HashMap<>();
+        final Map<SimpleInterval, List<Allele>> expectedSubsettedAllelesByLocus = new LinkedHashMap<>();
         for ( final VariantContext vc : callsNoMaxAlternateAlleles ) {
             if ( getNumAltAllelesExcludingNonRef(vc) > maxAlternateAlleles ) {
                 final List<Allele> mostLikelyAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, HomoSapiensConstants.DEFAULT_PLOIDY, maxAlternateAlleles);
@@ -1206,8 +1206,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      * Can optionally ignore GVCF blocks in the concordance calculation.
      */
     public static double calculateConcordance( final File actual, final File expected, final boolean ignoreGVCFBlocks ) {
-        final Set<String> actualVCFKeys = new HashSet<>();
-        final Set<String> expectedVCFKeys = new HashSet<>();
+        final Set<String> actualVCFKeys = new LinkedHashSet<>();
+        final Set<String> expectedVCFKeys = new LinkedHashSet<>();
         int concordant = 0;
         int discordant = 0;
 

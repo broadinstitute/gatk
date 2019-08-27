@@ -31,7 +31,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -790,7 +790,7 @@ public final class IOUtils {
                 if ( cl == null ) {
                     throw e;
                 }
-                return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+                return FileSystems.newFileSystem(uri, new LinkedHashMap<>(), cl).provider().getPath(uri);
             }
             catch (ProviderNotFoundException x) {
                 // TODO: this creates bogus Path on the current file system for schemes such as gendb, nonexistent, gcs

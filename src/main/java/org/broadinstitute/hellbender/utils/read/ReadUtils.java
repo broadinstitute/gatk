@@ -418,11 +418,11 @@ public final class ReadUtils {
      * @return a map of reads ot their mates for all reads for which a mate could be found.
      */
     public static Map<GATKRead, GATKRead> getReadToMateMap(final ReadsContext readsContext, final int fragmentSize) {
-        final Map<String, GATKRead> readOnes = new HashMap<>();
-        final Map<String, GATKRead> readTwos = new HashMap<>();
+        final Map<String, GATKRead> readOnes = new LinkedHashMap<>();
+        final Map<String, GATKRead> readTwos = new LinkedHashMap<>();
         Utils.stream(readsContext.iterator()).forEach(read -> (read.isFirstOfPair() ? readOnes : readTwos).put(read.getName(), read));
 
-        final Map<GATKRead, GATKRead> result = new HashMap<>();
+        final Map<GATKRead, GATKRead> result = new LinkedHashMap<>();
         final SimpleInterval originalInterval = readsContext.getInterval();
         final SimpleInterval expandedInterval = new SimpleInterval(originalInterval.getContig(), Math.max(1, originalInterval.getStart() - fragmentSize), originalInterval.getEnd() + fragmentSize);
         Utils.stream(readsContext.iterator(expandedInterval)).forEach(mate -> {

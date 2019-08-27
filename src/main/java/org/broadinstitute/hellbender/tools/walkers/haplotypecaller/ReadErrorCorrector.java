@@ -57,8 +57,8 @@ public final class ReadErrorCorrector {
      */
     final KMerCounter countsByKMer;
 
-    private final Map<Kmer,Kmer> kmerCorrectionMap = new HashMap<>();
-    private final Map<Kmer,Pair<int[],byte[]>> kmerDifferingBases = new HashMap<>();
+    private final Map<Kmer,Kmer> kmerCorrectionMap = new LinkedHashMap<>();
+    private final Map<Kmer,Pair<int[],byte[]>> kmerDifferingBases = new LinkedHashMap<>();
     private final int kmerLength;
     private final boolean debug;
     private final boolean trimLowQualityBases;

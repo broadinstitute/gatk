@@ -47,7 +47,7 @@ public final class AssemblyRegionTestDataSetUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(haplotypes.size(), (int) Math.pow(2, variants));
 
-        final Map<String,Integer> haplotypeNumberByString = new HashMap<>();
+        final Map<String,Integer> haplotypeNumberByString = new LinkedHashMap<>();
         for (int i = 0; i < haplotypes.size(); i++) {
             final Haplotype hap = haplotypes.get(i);
             final Civar civar = haplotypeCivars.get(i);

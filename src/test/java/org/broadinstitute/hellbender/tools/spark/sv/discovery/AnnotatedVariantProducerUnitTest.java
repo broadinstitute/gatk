@@ -221,7 +221,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                         new EvidenceTargetLink(
                                 new StrandedInterval(new SVInterval(0, 190, 210), true),
                                 new StrandedInterval(new SVInterval(0, 310, 320), false),
-                                5, 7, new HashSet<>(), new HashSet<>())),
+                                5, 7, new LinkedHashSet<>(), new LinkedHashSet<>())),
                 Arrays.asList( unAnnotatedVC ),
                 Arrays.asList( annotatedVC ) }
         );
@@ -230,7 +230,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                         new EvidenceTargetLink(
                                 new StrandedInterval(new SVInterval(0, 190, 210), true),
                                 new StrandedInterval(new SVInterval(0, 310, 320), true),
-                                5, 7, new HashSet<>(), new HashSet<>())),
+                                5, 7, new LinkedHashSet<>(), new LinkedHashSet<>())),
                 Arrays.asList( unAnnotatedVC ),
                 Arrays.asList( unAnnotatedVC ) }
         );
@@ -239,11 +239,11 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                         new EvidenceTargetLink(
                                 new StrandedInterval(new SVInterval(0, 190, 210), true),
                                 new StrandedInterval(new SVInterval(0, 310, 320), false),
-                                3, 4, new HashSet<>(), new HashSet<>()),
+                                3, 4, new LinkedHashSet<>(), new LinkedHashSet<>()),
                         new EvidenceTargetLink(
                                 new StrandedInterval(new SVInterval(0, 192, 215), true),
                                 new StrandedInterval(new SVInterval(0, 299, 303), false),
-                                2, 3, new HashSet<>(), new HashSet<>())),
+                                2, 3, new LinkedHashSet<>(), new LinkedHashSet<>())),
                 Arrays.asList( unAnnotatedVC ),
                 Arrays.asList( annotatedVC ) }
         );

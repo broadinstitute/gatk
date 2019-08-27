@@ -40,11 +40,11 @@ public final class BaseGraphUnitTest extends GATKBaseTest {
     public void sourcesAndSinksAndNeighbors(){
         Assert.assertEquals(graph.getSources(), Collections.singleton(v1));
         Assert.assertEquals(graph.getSinks(), Collections.singleton(v5));
-        Assert.assertEquals(graph.neighboringVerticesOf(v2), new HashSet<>(Arrays.asList(v1, v3, v4)));
+        Assert.assertEquals(graph.neighboringVerticesOf(v2), new LinkedHashSet<>(Arrays.asList(v1, v3, v4)));
         Assert.assertTrue(graph.hasCycles());
         Assert.assertTrue(graph.containsAllVertices(Arrays.asList(v1, v3, v4)));
-        Assert.assertEquals(graph.subsetToNeighbors(v1, 0).vertexSet(), new HashSet<>(Arrays.asList(v1)));
-        Assert.assertEquals(graph.subsetToNeighbors(v1, 1).vertexSet(), new HashSet<>(Arrays.asList(v1, v2)));
+        Assert.assertEquals(graph.subsetToNeighbors(v1, 0).vertexSet(), new LinkedHashSet<>(Arrays.asList(v1)));
+        Assert.assertEquals(graph.subsetToNeighbors(v1, 1).vertexSet(), new LinkedHashSet<>(Arrays.asList(v1, v2)));
         Assert.assertEquals(graph.subsetToNeighbors(v1, 2).vertexSet(), new HashSet<>(Arrays.asList(v1, v2, v3, v4)));
         Assert.assertEquals(graph.subsetToNeighbors(v1, 3).vertexSet(), new HashSet<>(Arrays.asList(v1, v2, v3, v4, v5)));
         Assert.assertEquals(graph.subsetToNeighbors(v1, 3), graph);

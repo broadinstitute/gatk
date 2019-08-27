@@ -110,7 +110,7 @@ public class OverhangFixingManager {
         this.doNotFixOverhangs = doNotFixOverhangs;
         this.waitingReadGroups = new PriorityQueue<List<SplitRead>>(INITIAL_CAPACITY, new SplitReadComparator());
         this.outputToFile = false;
-        this.mateChangedReads = new HashMap<>();
+        this.mateChangedReads = new LinkedHashMap<>();
         this.processSecondaryReads = processSecondaryReads;
     }
 

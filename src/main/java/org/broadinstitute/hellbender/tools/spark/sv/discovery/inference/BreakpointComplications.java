@@ -108,7 +108,7 @@ public abstract class BreakpointComplications {
      */
     public Map<String, Object> toVariantAttributes() {
 
-        final Map<String, Object> attributeMap = new HashMap<>();
+        final Map<String, Object> attributeMap = new LinkedHashMap<>();
 
         if ( !getInsertedSequenceForwardStrandRep().isEmpty() ) {
             attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE, getInsertedSequenceForwardStrandRep());

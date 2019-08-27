@@ -10,7 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -243,7 +243,7 @@ public final class TableUtils {
     public static void checkMandatoryColumns(final TableColumnCollection columns, final TableColumnCollection mandatoryColumns,
                                              final Function<String, RuntimeException> formatExceptionFactory) {
         if (!columns.containsAll(mandatoryColumns.names())) {
-            final Set<String> missingColumns = Sets.difference(new HashSet<>(mandatoryColumns.names()), new HashSet<>(columns.names()));
+            final Set<String> missingColumns = Sets.difference(new LinkedHashSet<>(mandatoryColumns.names()), new LinkedHashSet<>(columns.names()));
             throw formatExceptionFactory.apply("Bad header in file.  Not all mandatory columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
         }
     }

@@ -132,7 +132,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
             case 0: return Collections.emptySet();
             case 1: return Collections.singleton(result.get(0));
             default:
-                    return new HashSet<>(result);
+                    return new LinkedHashSet<>(result);
         }
     }
 
@@ -998,7 +998,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      */
     private NonUniqueResult determineKmerSizeAndNonUniques(final int minKmerSize, final int maxKmerSize) {
         final Collection<SequenceForKmers> withNonUniques = getAllPendingSequences();
-        final Set<Kmer> nonUniqueKmers = new HashSet<>();
+        final Set<Kmer> nonUniqueKmers = new LinkedHashSet<>();
 
         // go through the sequences and determine which kmers aren't unique within each read
         for (int kmerSize = minKmerSize ; kmerSize <= maxKmerSize; kmerSize++) {

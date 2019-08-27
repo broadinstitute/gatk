@@ -911,7 +911,7 @@ public class AssemblyContigAlignmentsConfigPicker {
             }
         }
 
-        final Map<AlignmentInterval, Tuple2<Integer, Integer>> maxOverlapMap = new HashMap<>(configuration.size());
+        final Map<AlignmentInterval, Tuple2<Integer, Integer>> maxOverlapMap = new LinkedHashMap<>(configuration.size());
         for (int i = 0; i < configuration.size(); ++i) {
             maxOverlapMap.put(configuration.get(i),
                     new Tuple2<>(intermediateResult.get(i).maxFront._2, intermediateResult.get(i).maxRear._2));

@@ -297,7 +297,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     private static Map<GATKRead, byte[]> buildGapContinuationPenalties(final List<GATKRead> reads, final byte gapPenalty) {
-        final Map<GATKRead, byte[]> result = new HashMap<>(reads.size());
+        final Map<GATKRead, byte[]> result = new LinkedHashMap<>(reads.size());
         reads.stream().forEach(read -> result.put(read, Utils.dupBytes(gapPenalty, read.getLength())));
         return result;
     }

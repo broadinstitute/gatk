@@ -92,7 +92,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         // Go through the Annotation Maps and check to see if the default/override annotation names are applicable for
         // this FuncotationFactory:
         final Set<String> supportedFuncotations = getSupportedFuncotationFields();
-        this.annotationOverrideMap = new HashMap<>();
+        this.annotationOverrideMap = new LinkedHashMap<>();
         for ( final String annotationOverrideKey : annotationOverrides.keySet() ) {
             if ( supportedFuncotations.contains(annotationOverrideKey) ) {
                 annotationOverrideMap.put( annotationOverrideKey, annotationOverrides.get(annotationOverrideKey) );

@@ -95,7 +95,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             return Collections.emptyMap();
         }
 
-        final Map<String, Object> annotations = new HashMap<>();
+        final Map<String, Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData<List<Long>> myData = new ReducibleAnnotationData<>(null);
         calculateRawData(vc, likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
@@ -113,7 +113,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             parseRawDataString(currentValue);
             combineAttributeMap(currentValue, combinedData);
         }
-        final Map<String, Object> annotations = new HashMap<>();
+        final Map<String, Object> annotations = new LinkedHashMap<>();
         String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
         annotations.put(getRawKeyName(), annotationString);
         return annotations;
@@ -160,10 +160,10 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             }
         }
         else {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
         if (rawMQdata == null) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
 
         ReducibleAnnotationData<List<Long>> myData = new ReducibleAnnotationData(rawMQdata);
@@ -218,10 +218,10 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
                                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
         if (likelihoods == null || likelihoods.readCount() < 1 ) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
 
-        final Map<String, Object> annotations = new HashMap<>();
+        final Map<String, Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData<List<Long>> myData = new ReducibleAnnotationData<>(null);
         calculateRawData(vc, likelihoods, myData);
         final String annotationString = makeFinalizedAnnotationString(myData.getAttribute(Allele.NO_CALL).get(TOTAL_DEPTH_INDEX), myData.getAttribute(Allele.NO_CALL).get(SUM_OF_SQUARES_INDEX));

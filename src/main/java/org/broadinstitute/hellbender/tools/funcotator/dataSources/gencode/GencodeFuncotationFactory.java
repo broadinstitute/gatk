@@ -611,7 +611,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     @VisibleForTesting
     static Map<String, MappedTranscriptIdInfo> createTranscriptIdMap(final ReferenceDataSource fastaReference) {
 
-        final Map<String, MappedTranscriptIdInfo> idMap = new HashMap<>();
+        final Map<String, MappedTranscriptIdInfo> idMap = new LinkedHashMap<>();
 
         for ( final SAMSequenceRecord sequence : fastaReference.getSequenceDictionary().getSequences() ) {
 

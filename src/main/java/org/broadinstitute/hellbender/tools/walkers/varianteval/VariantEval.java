@@ -298,7 +298,7 @@ public class VariantEval extends MultiVariantWalker {
     private SampleDB sampleDB = null;
 
     // maintain the mapping of FeatureInput to name used in output file
-    Map<FeatureInput<VariantContext>, String> inputToNameMap = new HashMap<>();
+    Map<FeatureInput<VariantContext>, String> inputToNameMap = new LinkedHashMap<>();
 
     /**
      * Initialize the stratifications, evaluations, evaluation contexts, and reporting object
@@ -329,7 +329,7 @@ public class VariantEval extends MultiVariantWalker {
         }
 
         // Now that we have all the inputs categorized, determine the sample list from the eval inputs.
-        Map<String, VCFHeader> vcfInputs = new HashMap<>();
+        Map<String, VCFHeader> vcfInputs = new LinkedHashMap<>();
         evals.forEach(x -> vcfInputs.put(x.getName(), (VCFHeader)getHeaderForFeatures(x)));
 
         Set<String> vcfSamples = new HashSet<>();
@@ -495,8 +495,8 @@ public class VariantEval extends MultiVariantWalker {
      * This will get called once per site where a variant is present in any input
      */
     public void doApply(ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> evalVCs = variantEvalUtils.bindVariantContexts(referenceContext, featureContext, evals, byFilterIsEnabled, true, perSampleIsEnabled, perFamilyIsEnabled, mergeEvals);
-        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> compVCs = variantEvalUtils.bindVariantContexts(referenceContext, featureContext, comps, byFilterIsEnabled, false, false, false, false);
+        LinkedHashMap<FeatureInput<VariantContext>, LinkedHashMap<String, Collection<VariantContext>>> evalVCs = variantEvalUtils.bindVariantContexts(referenceContext, featureContext, evals, byFilterIsEnabled, true, perSampleIsEnabled, perFamilyIsEnabled, mergeEvals);
+        LinkedHashMap<FeatureInput<VariantContext>, LinkedHashMap<String, Collection<VariantContext>>> compVCs = variantEvalUtils.bindVariantContexts(referenceContext, featureContext, comps, byFilterIsEnabled, false, false, false, false);
 
         // for each eval track
         for ( final FeatureInput<VariantContext> evalInput : evals ) {
@@ -544,11 +544,11 @@ public class VariantEval extends MultiVariantWalker {
         }
     }
 
-    private void processComp(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext eval, String evalName, FeatureInput<VariantContext> compInput, String stratLevelName, HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> compVCs, Collection<VariantContext> evalSetBySample) {
+    private void processComp(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext eval, String evalName, FeatureInput<VariantContext> compInput, String stratLevelName, LinkedHashMap<FeatureInput<VariantContext>, LinkedHashMap<String, Collection<VariantContext>>> compVCs, Collection<VariantContext> evalSetBySample) {
         String compName = getNameForInput(compInput);
 
         // no sample stratification for comps
-        final HashMap<String, Collection<VariantContext>> compSetHash = compInput == null ? null : compVCs.get(compInput);
+        final LinkedHashMap<String, Collection<VariantContext>> compSetHash = compInput == null ? null : compVCs.get(compInput);
         final Collection<VariantContext> compSet = (compSetHash == null || compSetHash.isEmpty()) ? Collections.<VariantContext>emptyList() : compVCs.get(compInput).values().iterator().next();
 
         // find the comp

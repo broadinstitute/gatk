@@ -76,7 +76,7 @@ public final class AssemblyBasedCallerUtils {
      */
     public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
         final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies(HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY);
-        final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
+        final Map<GATKRead, GATKRead> result = new LinkedHashMap<>(bestAlleles.size());
 
         for (final ReadLikelihoods<Haplotype>.BestAllele bestAllele : bestAlleles) {
             final GATKRead originalRead = bestAllele.read;
@@ -325,9 +325,9 @@ public final class AssemblyBasedCallerUtils {
                 unassembledGivenAlleles = givenVC.getAlternateAlleles();
             } else {
                 // map all alleles to the longest common reference
-                final Set<Allele> assembledAlleleSet = new HashSet<>(longerRef.length() == assembledVC.getReference().length() ? assembledVC.getAlternateAlleles() :
+                final Set<Allele> assembledAlleleSet = new LinkedHashSet<>(longerRef.length() == assembledVC.getReference().length() ? assembledVC.getAlternateAlleles() :
                         ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
-                final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
+                final Set<Allele> givenAlleleSet = new LinkedHashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
                         ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
                 unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
             }
@@ -463,7 +463,7 @@ public final class AssemblyBasedCallerUtils {
     public static List<VariantContext> getVariantContextsFromGivenAlleles(final int loc,
                                                                           final List<VariantContext> activeAllelesToGenotype,
                                                                           final boolean includeSpanningEvents) {
-        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
+        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new LinkedHashSet<>();
         final List<VariantContext> results = new ArrayList<>();
 
         int givenAlleleSourceCount = 0;
@@ -509,7 +509,7 @@ public final class AssemblyBasedCallerUtils {
                                                                                  final List<Haplotype> haplotypes,
                                                                                  final boolean includeSpanningEvents) {
         final List<VariantContext> results = new ArrayList<>();
-        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
+        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new LinkedHashSet<>();
 
         haplotypes.stream()
                 .flatMap(h -> Utils.stream(h.getEventMap().getOverlappingEvents(loc)))
@@ -643,7 +643,7 @@ public final class AssemblyBasedCallerUtils {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = constructHaplotypeMapping(calls, calledHaplotypes);
 
         // construct a mapping from call to phase set ID
-        final Map<VariantContext, Pair<Integer, String>> phaseSetMapping = new HashMap<>();
+        final Map<VariantContext, Pair<Integer, String>> phaseSetMapping = new LinkedHashMap<>();
         final int uniqueCounterEndValue = constructPhaseSetMapping(calls, haplotypeMap, calledHaplotypes.size() - 1, phaseSetMapping);
 
         // we want to establish (potential) *groups* of phased variants, so we need to be smart when looking at pairwise phasing partners
@@ -660,7 +660,7 @@ public final class AssemblyBasedCallerUtils {
     @VisibleForTesting
     static Map<VariantContext, Set<Haplotype>> constructHaplotypeMapping(final List<VariantContext> originalCalls,
                                                                                    final Set<Haplotype> calledHaplotypes) {
-        final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>(originalCalls.size());
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap = new LinkedHashMap<>(originalCalls.size());
         for ( final VariantContext call : originalCalls ) {
             // don't try to phase if there is not exactly 1 alternate allele
             if ( ! isBiallelic(call) ) {
@@ -674,7 +674,7 @@ public final class AssemblyBasedCallerUtils {
                     (Allele.SPAN_DEL.equals(alt) && vc.getStart() < call.getStart() && vc.getEnd() >= call.getStart());
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
                     .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
-                    .collect(Collectors.toCollection(HashSet<Haplotype>::new));
+                    .collect(Collectors.toCollection(LinkedHashSet<Haplotype>::new));
 
             haplotypeMap.put(call, hapsWithAllele);
         }
@@ -751,7 +751,7 @@ public final class AssemblyBasedCallerUtils {
                 // if the variants are apart on *all* haplotypes, record that fact
                 else if ( haplotypesWithCall.size() + haplotypesWithComp.size() == totalAvailableHaplotypes ) {
 
-                    final Set<Haplotype> intersection = new HashSet<>();
+                    final Set<Haplotype> intersection = new LinkedHashSet<>();
                     intersection.addAll(haplotypesWithCall);
                     intersection.retainAll(haplotypesWithComp);
                     if ( intersection.isEmpty() ) {

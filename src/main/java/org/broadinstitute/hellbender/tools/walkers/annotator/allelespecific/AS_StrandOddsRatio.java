@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -92,7 +92,7 @@ public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_St
 
     @Override
     protected Map<Allele,Double> calculateReducedData(AlleleSpecificAnnotationData<List<Integer>> combinedData) {
-        final Map<Allele,Double> annotationMap = new HashMap<>();
+        final Map<Allele,Double> annotationMap = new LinkedHashMap<>();
         final Map<Allele, List<Integer>> perAlleleData = combinedData.getAttributeMap();
         final List<Integer> refStrandCounts = perAlleleData.get(combinedData.getRefAllele());
         for (final Allele a : perAlleleData.keySet()) {

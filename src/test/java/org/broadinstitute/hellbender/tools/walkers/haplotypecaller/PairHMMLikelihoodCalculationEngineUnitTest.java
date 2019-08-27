@@ -171,7 +171,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTe
                     PairHMM.Implementation.LOGLESS_CACHING, MathUtils.logToLog10(QualityUtils.qualToErrorProbLog10(LEAC.phredScaledGlobalReadMismappingRate)),
                     PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE);
 
-            final Map<String, List<GATKRead>> perSampleReadList = new HashMap<>();
+            final Map<String, List<GATKRead>> perSampleReadList = new LinkedHashMap<>();
             final int n = 10;
             final GATKRead read1 = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(n + "M"));
             read1.setMappingQuality(60);

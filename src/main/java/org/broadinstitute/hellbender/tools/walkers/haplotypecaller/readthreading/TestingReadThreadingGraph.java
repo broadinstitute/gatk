@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -67,7 +67,7 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
         final Matcher pathMatcher = PATH_PATTERN.matcher(pathString);
 
         boolean referenceFound = false;
-        final Map<String,MultiDeBruijnVertex> vertexById = new HashMap<>();
+        final Map<String,MultiDeBruijnVertex> vertexById = new LinkedHashMap<>();
 
         // Loop between path strings and add them one by one.
         while (pathMatcher.find()) {

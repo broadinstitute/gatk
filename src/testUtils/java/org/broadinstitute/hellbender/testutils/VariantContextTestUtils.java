@@ -185,7 +185,7 @@ public final class VariantContextTestUtils {
             }
         }
 
-        final HashMap<String, Object> newAttributes = new HashMap<>(vc.getAttributes());
+        final LinkedHashMap<String, Object> newAttributes = new LinkedHashMap<>(vc.getAttributes());
         for (Map.Entry<String, Object> entry : newAttributes.entrySet()) {
             VCFHeaderLineCount type = header.hasInfoLine(entry.getKey())?header.getInfoHeaderLine(entry.getKey()).getCountType():VCFHeaderLineCount.UNBOUNDED;
             int ploidy = vc.getGenotypes().getMaxPloidy(2);
@@ -195,7 +195,7 @@ public final class VariantContextTestUtils {
 
         // The above will have built new genotype for PL,AD, and SAC fields excluding the GT and GQ field, thus we must re-add them for comparison.
         for (int i = 0; i < newGT.size(); i++) {
-            final HashMap<String, Object> newGTAttributes = new HashMap<>(newGT.get(i).getExtendedAttributes());
+            final LinkedHashMap<String, Object> newGTAttributes = new LinkedHashMap<>(newGT.get(i).getExtendedAttributes());
             for (Map.Entry<String, Object> entry : newGTAttributes.entrySet()) {
                 VCFHeaderLineCount type = header.hasInfoLine(entry.getKey())?header.getFormatHeaderLine(entry.getKey()).getCountType():VCFHeaderLineCount.UNBOUNDED;
                 int ploidy = vc.getGenotypes().getMaxPloidy(2);

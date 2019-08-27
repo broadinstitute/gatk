@@ -32,7 +32,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
         if ((pedigreeFile!= null) && (!hasAddedPedigreeFounders)) {
             initializeSampleDBAndSetFounders(pedigreeFile);
         }
-        return (founderIds == null || founderIds.isEmpty()) ? vc.getGenotypes() : vc.getGenotypes(new HashSet<>(founderIds));
+        return (founderIds == null || founderIds.isEmpty()) ? vc.getGenotypes() : vc.getGenotypes(new LinkedHashSet<>(founderIds));
     }
 
     public PedigreeAnnotation(final Set<String> founderIds){

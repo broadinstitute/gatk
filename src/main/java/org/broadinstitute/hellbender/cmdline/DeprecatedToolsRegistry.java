@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.cmdline;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -16,7 +16,7 @@ public class DeprecatedToolsRegistry {
 
     // Mapping from tool name to string describing the major version number where the tool first disappeared and
     // optional recommended alternatives
-    private static Map<String, Pair<String, String>> deprecatedTools = new HashMap<>();
+    private static Map<String, Pair<String, String>> deprecatedTools = new LinkedHashMap<>();
 
     static {
         // Indicate version in which the tool disappeared, and recommended replacement in parentheses if applicable

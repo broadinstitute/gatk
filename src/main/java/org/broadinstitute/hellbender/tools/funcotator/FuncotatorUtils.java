@@ -75,9 +75,9 @@ public final class FuncotatorUtils {
      */
     static {
 
-        final HashMap<String, AminoAcid> mapByCodon  = new HashMap<>(AminoAcid.values().length);
-        final HashMap<String, AminoAcid> mapByLetter = new HashMap<>(AminoAcid.values().length);
-        final HashMap<String, AminoAcid> mapByCode   = new HashMap<>(AminoAcid.values().length);
+        final LinkedHashMap<String, AminoAcid> mapByCodon  = new LinkedHashMap<>(AminoAcid.values().length);
+        final LinkedHashMap<String, AminoAcid> mapByLetter = new LinkedHashMap<>(AminoAcid.values().length);
+        final LinkedHashMap<String, AminoAcid> mapByCode   = new LinkedHashMap<>(AminoAcid.values().length);
 
         for ( final AminoAcid acid : AminoAcid.values() ) {
             mapByCode.put(acid.getCode(),acid);
@@ -87,8 +87,8 @@ public final class FuncotatorUtils {
             }
         }
 
-        final HashMap<String, AminoAcid>              mtCodons        = new HashMap<>();
-        final HashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new HashMap<>();
+        final LinkedHashMap<String, AminoAcid>              mtCodons        = new LinkedHashMap<>();
+        final LinkedHashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new LinkedHashMap<>();
 
         mtCodons.put("ATA", AminoAcid.METHIONINE);
         mtCodons.put("AGA", AminoAcid.STOP_CODON);
@@ -1908,7 +1908,7 @@ public final class FuncotatorUtils {
      * @return An initialized {@link Map} of {@link String} to {@link String} with keys of contig names from the B37 Human Genome Reference and values of the corresponding contig name in the HG19 Human Genome reference.
      */
     private static final Map<String, String> initializeB37ToHg19ContigNameMap() {
-        final Map<String, String> b37ToHg19ContigNameMap = new HashMap<>();
+        final Map<String, String> b37ToHg19ContigNameMap = new LinkedHashMap<>();
 
         b37ToHg19ContigNameMap.put( "1", "chr1" );
         b37ToHg19ContigNameMap.put( "2", "chr2" );

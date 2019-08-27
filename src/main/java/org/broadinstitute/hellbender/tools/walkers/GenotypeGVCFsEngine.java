@@ -450,7 +450,7 @@ public class GenotypeGVCFsEngine
         final GenotypesContext oldGTs = vc.getGenotypes();
         final List<Genotype> recoveredGs = new ArrayList<>(oldGTs.size());
         for ( final Genotype oldGT : oldGTs ) {
-            final Map<String, Object> attrs = new HashMap<>(oldGT.getExtendedAttributes());
+            final Map<String, Object> attrs = new LinkedHashMap<>(oldGT.getExtendedAttributes());
 
             final GenotypeBuilder builder = new GenotypeBuilder(oldGT);
             int depth = oldGT.hasDP() ? oldGT.getDP() : 0;

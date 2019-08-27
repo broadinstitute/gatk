@@ -85,7 +85,7 @@ public final class AlleleSubsettingUtils {
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
             final GenotypeBuilder gb = new GenotypeBuilder(g);
             if (useNewLikelihoods) {
-                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                final Map<String, Object> attributes = new LinkedHashMap<>(g.getExtendedAttributes());
                 gb.PL(newLikelihoods).log10PError(newLog10GQ);
                 attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
                 gb.noAttributes().attributes(attributes);

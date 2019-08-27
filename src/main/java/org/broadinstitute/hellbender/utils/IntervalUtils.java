@@ -1494,7 +1494,7 @@ public final class IntervalUtils {
 
         final OverlapDetector<U> overlapDetector = OverlapDetector.create(vals);
 
-        final Map<T, List<U>> result = new HashMap<>();
+        final Map<T, List<U>> result = new LinkedHashMap<>();
 
         for (final T key: sortedKeys) {
 

@@ -70,7 +70,7 @@ public final class ConfigFactory {
     /**
      * A set to keep track of the classes we've already resolved for configuration path purposes:
      */
-    private final Set<Class<? extends Config>> alreadyResolvedPathVariables = new HashSet<>();
+    private final Set<Class<? extends Config>> alreadyResolvedPathVariables = new LinkedHashSet<>();
 
     // =================================================================================================================
 

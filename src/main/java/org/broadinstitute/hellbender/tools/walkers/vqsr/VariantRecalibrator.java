@@ -811,7 +811,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     }
 
     private Map<String, Double> getMapFromVectorTable(final GATKReportTable vectorTable) {
-        final Map<String, Double> dataMap = new HashMap<>();
+        final Map<String, Double> dataMap = new LinkedHashMap<>();
 
         //do a row-major traversal
         for (int i = 0; i < vectorTable.getNumRows(); i++) {

@@ -230,7 +230,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
         final List<AltSiteRecord> altDesignMatrix = new ArrayList<>();
 
-        final Map<String, Histogram<Integer>> refSiteHistograms = new HashMap<>(ALL_KMERS.size());
+        final Map<String, Histogram<Integer>> refSiteHistograms = new LinkedHashMap<>(ALL_KMERS.size());
         ALL_KMERS.forEach(context -> {
             Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
             refSiteHistograms.put(context, emptyRefHistogram);

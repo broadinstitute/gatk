@@ -33,7 +33,7 @@ import java.util.*;
 class StratNode<T extends Stratifier<Object>> implements Iterable<StratNode<T>> {
     int key = -1;
     final T stratifier;
-    final Map<Object, StratNode<T>> subnodes; // NOTE, because we don't iterate our best option is a HashMap
+    final Map<Object, StratNode<T>> subnodes; // NOTE, because we don't iterate our best option is a LinkedHashMap
 
     protected StratNode() {
         this.subnodes = Collections.emptyMap();
@@ -42,8 +42,8 @@ class StratNode<T extends Stratifier<Object>> implements Iterable<StratNode<T>> 
 
     protected StratNode(final T stratifier, final Map<Object, StratNode<T>> subnodes) {
         this.stratifier = stratifier;
-        // important to reallocate an unmodififable hashmap with this specific size for space and safety
-        this.subnodes = Collections.unmodifiableMap(new HashMap<Object, StratNode<T>>(subnodes));
+        // important to reallocate an unmodififable LinkedHashMap with this specific size for space and safety
+        this.subnodes = Collections.unmodifiableMap(new LinkedHashMap<Object, StratNode<T>>(subnodes));
     }
 
     public void setKey(final int key) {

@@ -150,12 +150,12 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         return new Object[][] {
                 // Empty maps:
                 {
-                    new HashMap<>(),
+                    new LinkedHashMap<>(),
                     new LinkedHashMap<>()
                 },
                 // Singleton map that doesn't contain a replaceable element:
                 {
-                        MapUtils.putAll(new HashMap<String, Object>(),
+                        MapUtils.putAll(new LinkedHashMap<String, Object>(),
                                 new Object[][] {
                                         {"Unreplaceable_Key", "Unreplaceable_Value"},
                                 }
@@ -168,7 +168,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 },
                 // Map with multiple elements, none of which are replaced:
                 {
-                        MapUtils.putAll(new HashMap<String, Object>(),
+                        MapUtils.putAll(new LinkedHashMap<String, Object>(),
                                 new Object[][] {
                                         {"Unreplaceable_Key1", "Unreplaceable_Value1"},
                                         {"Unreplaceable_Key2", "Unreplaceable_Value2"},
@@ -183,7 +183,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 },
                 // Singleton map containing a replaced value:
                 {
-                        MapUtils.putAll(new HashMap<String, Object>(),
+                        MapUtils.putAll(new LinkedHashMap<String, Object>(),
                                 new Object[][] {
                                         { MafOutputRendererConstants.FieldName_Other_Transcripts, OTHER_TRANSCRIPTS_RAW_NAMES },
                                 }
@@ -196,7 +196,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 },
                 // Map with multiple elements, some of which are replaced:
                 {
-                        MapUtils.putAll(new HashMap<String, Object>(),
+                        MapUtils.putAll(new LinkedHashMap<String, Object>(),
                                 new Object[][] {
                                         {"Unreplaceable_Key1", "Unreplaceable_Value1"},
                                         { MafOutputRendererConstants.FieldName_Other_Transcripts, OTHER_TRANSCRIPTS_RAW_NAMES },
@@ -211,7 +211,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 },
                 // Map with multiple elements, all of which are replaced:
                 {
-                        MapUtils.putAll(new HashMap<String, Object>(),
+                        MapUtils.putAll(new LinkedHashMap<String, Object>(),
                                 new Object[][] {
                                         { MafOutputRendererConstants.FieldName_Other_Transcripts, OTHER_TRANSCRIPTS_RAW_NAMES },
                                         { MafOutputRendererConstants.FieldName_Variant_Type,      GencodeFuncotation.VariantType.INS.toString() },

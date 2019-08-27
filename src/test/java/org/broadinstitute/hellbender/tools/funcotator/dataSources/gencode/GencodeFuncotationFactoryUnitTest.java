@@ -2540,7 +2540,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, variantInterval);
 
         final FeatureInput<GencodeGtfFeature> gencodeFeatureInput = new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap());
-        final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new HashMap<>();
+        final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new LinkedHashMap<>();
         featureInputMap.put(gencodeFeatureInput, GencodeGtfFeature.class);
         final FeatureContext featureContext = FeatureContext.createFeatureContextForTesting(featureInputMap, "dummyName", variantInterval, VariantWalker.DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, 0, 0, null);
 
@@ -2589,7 +2589,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final SimpleInterval vcHg19Interval = new SimpleInterval(vcHg19.getContig(), vcHg19.getStart(), vcHg19.getEnd());
 
         final FeatureInput<GencodeGtfFeature> gencodeFeatureInput = new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap());
-        final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new HashMap<>();
+        final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new LinkedHashMap<>();
         featureInputMap.put(gencodeFeatureInput, GencodeGtfFeature.class);
         final FeatureContext featureContext = FeatureContext.createFeatureContextForTesting(featureInputMap, "dummyName", vcHg19Interval, VariantWalker.DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, 0, 0, null);
 

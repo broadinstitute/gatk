@@ -165,7 +165,7 @@ public final class SynchronizedUnivariateSolver {
         if (jobDescriptions.isEmpty()) {
             return Collections.emptyMap();
         }
-        final Map<Integer, SolverWorker> solvers = new HashMap<>(jobDescriptions.size());
+        final Map<Integer, SolverWorker> solvers = new LinkedHashMap<>(jobDescriptions.size());
         solversCountDownLatch = new CountDownLatch(jobDescriptions.size());
         IntStream.range(0, jobDescriptions.size())
                 .forEach(jobIdx -> solvers.put(jobDescriptions.get(jobIdx).getIndex(),

@@ -314,7 +314,7 @@ public class RevertSamSpark extends GATKSparkTool {
     private Map<String, FastqQualityFormat> createReadGroupFormatMap( final JavaRDD<GATKRead> reads,
                                                                       final Broadcast<SAMFileHeader> inHeader,
                                                                       final boolean restoreOriginalQualities) {
-        final Map<String, FastqQualityFormat> output = new HashMap<>();
+        final Map<String, FastqQualityFormat> output = new LinkedHashMap<>();
 
         inHeader.getValue().getReadGroups().stream().forEach(rg -> {
             // For each readgroup filter down to just the reads in that group
@@ -470,7 +470,7 @@ public class RevertSamSpark extends GATKSparkTool {
             }
 
             assertAllReadGroupsMapped(writerMap, inHeader.getReadGroups());
-            headerMap = new HashMap<>();
+            headerMap = new LinkedHashMap<>();
             for (final SAMReadGroupRecord readGroup : inHeader.getReadGroups()) {
                 final SAMFileHeader header = createOutHeader(inHeader, sortOrder, !keepAlignmentInformation);
                 header.addReadGroup(readGroup);
@@ -588,7 +588,7 @@ public class RevertSamSpark extends GATKSparkTool {
 
     // Names the files based on the locations laid out in the readgroup map
     private static Map<String, Path> createOutputMapFromFile(final String outputMapFile) throws IOException {
-        final Map<String, Path> outputMap = new HashMap<>();
+        final Map<String, Path> outputMap = new LinkedHashMap<>();
         try (final FeatureReader<TableFeature>  parser = AbstractFeatureReader.getFeatureReader(outputMapFile, new TableCodec(null), false);) {
             for (final TableFeature row : parser.iterator()) {
                 final String id = row.get(OUTPUT_MAP_READ_GROUP_FIELD_NAME);
@@ -602,7 +602,7 @@ public class RevertSamSpark extends GATKSparkTool {
 
     // Names the files based on the readgroups individually presented in the header
     private static Map<String, Path> createOutputMapFromHeader(final List<SAMReadGroupRecord> readGroups, final String outputDir, final String extension) {
-        final Map<String, Path> outputMap = new HashMap<>();
+        final Map<String, Path> outputMap = new LinkedHashMap<>();
         for (final SAMReadGroupRecord readGroup : readGroups) {
             final String id = readGroup.getId();
             final String fileName = id + extension;

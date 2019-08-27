@@ -134,9 +134,9 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
             return null;
         }
 
-        Map<Path, String> mapping = new HashMap<>();
-        final Set<URI> gvcfURIsFromSampleNameMap = new HashSet<>(sampleNameMapFromGenomicsDBImport.values());
-        final Set<Path> gvcfPathsFromSampleNameMap = new HashSet<>();
+        Map<Path, String> mapping = new LinkedHashMap<>();
+        final Set<URI> gvcfURIsFromSampleNameMap = new LinkedHashSet<>(sampleNameMapFromGenomicsDBImport.values());
+        final Set<Path> gvcfPathsFromSampleNameMap = new LinkedHashSet<>();
         for(final URI currEntry : gvcfURIsFromSampleNameMap) {
             gvcfPathsFromSampleNameMap.add(IOUtils.getPath(currEntry.toString()));
         }
@@ -217,8 +217,8 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
             for ( final List<String> batch : batches ) {
                 // We have to compute these lookup tables per-batch, to allow for the possibility
                 // of duplicate sample names across different batches (but not within the same batch!)
-                Map<String, String> sampleNameInMapToSampleNameInHeader = new HashMap<>();
-                Map<String, String> sampleNameInHeaderToSampleNameInMap = new HashMap<>();
+                Map<String, String> sampleNameInMapToSampleNameInHeader = new LinkedHashMap<>();
+                Map<String, String> sampleNameInHeaderToSampleNameInMap = new LinkedHashMap<>();
 
                 for ( final String batchSample : batch ) {
                     final Path vcfPath = IOUtils.getPath(sampleNameMapFromGenomicsDBImport.get(batchSample).toString());

@@ -171,7 +171,7 @@ public final class MultiLevelReducibleCollectorUnitTest {
             new LinkedHashMap<>();
 
     static {
-        HashMap<String, Integer> curMap = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> curMap = new LinkedHashMap<>();
         curMap.put("__", 19);
         accumulationLevelToPerUnitReads.put(MetricAccumulationLevel.ALL_READS, curMap);
 

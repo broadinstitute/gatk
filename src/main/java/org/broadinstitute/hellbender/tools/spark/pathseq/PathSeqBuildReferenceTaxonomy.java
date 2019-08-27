@@ -133,7 +133,7 @@ public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
         final List<SAMSequenceRecord> referenceRecords = reference.getSequenceDictionary().getSequences();
 
         //Parse reference index, filling in data to taxIdToProperties and accessionToNameAndLength where possible
-        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties = new LinkedHashMap<>();
         final Map<String, Tuple2<String, Long>> accessionToNameAndLength = PSBuildReferenceTaxonomyUtils.parseReferenceRecords(referenceRecords, taxIdToProperties);
 
         //Parse RefSeq catalog to determine taxonomic ID's of accession keys in accessionToNameAndLength

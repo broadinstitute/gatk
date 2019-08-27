@@ -54,12 +54,12 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     private final GATKAnnotationArgumentCollection userArgs;
 
     // Map of Annotation (simple) class names to the corresponding discovered plugin instance
-    private final Map<String, Annotation> allDiscoveredAnnotations = new HashMap<>();
+    private final Map<String, Annotation> allDiscoveredAnnotations = new LinkedHashMap<>();
 
     // Map of Annotation (simple) class names to the corresponding default plugin instance.
     // We keep the actual instances in case they have any additional state provided by the tool
     // when they were created
-    private final Map<String, Annotation> toolDefaultAnnotations = new HashMap<>();
+    private final Map<String, Annotation> toolDefaultAnnotations = new LinkedHashMap<>();
     private final Set<String> toolDefaultGroups = new HashSet<>();
 
     // Set of predecessor annotations for which we've seen arguments exist either as a tool default or be supplied by the user
@@ -68,7 +68,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
 
     // Map of annotation group name to list of annotations flagged with that group. The key here the simple name of the interface
     // that describes the annotation group.
-    private final Map<String, Map<String, Annotation>> discoveredGroups = new HashMap<>();
+    private final Map<String, Map<String, Annotation>> discoveredGroups = new LinkedHashMap<>();
 
     // Resolved instances calculated from the user input and tool defaults together
     private List<Annotation> resolvedInstances;
@@ -231,7 +231,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
             // associating the discovered annotations with their defined groups.
             // If a duplicate annotation is added, the group will opt to keep the old instantiation around
             if ((inter != PLUGIN_BASE_CLASS) && (PLUGIN_BASE_CLASS.isAssignableFrom(inter))) {
-                Map<String, Annotation> groupIdentity = (discoveredGroups.containsKey(inter.getSimpleName()) ? discoveredGroups.get(inter.getSimpleName()) : new HashMap<>());
+                Map<String, Annotation> groupIdentity = (discoveredGroups.containsKey(inter.getSimpleName()) ? discoveredGroups.get(inter.getSimpleName()) : new LinkedHashMap<>());
                 groupIdentity.putIfAbsent(simpleName, annot);
                 discoveredGroups.put(inter.getSimpleName(), groupIdentity);
                 Collections.addAll(interfaces, inter.getInterfaces());

@@ -1131,7 +1131,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Get the annotation fields:
         final String[] funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
-        final Map<String, Pair<Pair<String, String>, Pair<String, String>>> unequalFieldValuesMap = new HashMap<>();
+        final Map<String, Pair<Pair<String, String>, Pair<String, String>>> unequalFieldValuesMap = new LinkedHashMap<>();
 
         for (int i = 0; i < annotationsToCheckMaf.size(); i++) {
             final String annotationToCheckVcf = annotationsToCheckVcf.get(i);

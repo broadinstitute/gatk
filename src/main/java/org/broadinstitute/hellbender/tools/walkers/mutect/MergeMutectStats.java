@@ -29,10 +29,10 @@ public class MergeMutectStats extends CommandLineProgram {
     private File outputStatsTable = null;
 
     public Object doWork() {
-        final Map<String, ToDoubleFunction<List<Double>>> aggregations = new HashMap<>();
+        final Map<String, ToDoubleFunction<List<Double>>> aggregations = new LinkedHashMap<>();
         aggregations.put(Mutect2Engine.CALLABLE_SITES_NAME, list -> list.stream().mapToDouble(x -> x).sum());
 
-        final Map<String, List<Double>> scatteredStats = new HashMap<>();
+        final Map<String, List<Double>> scatteredStats = new LinkedHashMap<>();
         stats.stream().flatMap(file -> MutectStats.readFromFile(file).stream()).forEach(mutectStat -> {
             final String key = mutectStat.getStatistic();
             final double value = mutectStat.getValue();

@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -219,7 +219,7 @@ public enum InsertSizeDistributionShape {
 
     static {
         final InsertSizeDistributionShape[] shapes = values();
-        byLowercaseName = new HashMap<>(shapes.length * (1 + 5));
+        byLowercaseName = new LinkedHashMap<>(shapes.length * (1 + 5));
         for (final InsertSizeDistributionShape shape : shapes) {
             byLowercaseName.put(shape.name().toLowerCase(), shape);
             for (final String alias : shape.aliases) {

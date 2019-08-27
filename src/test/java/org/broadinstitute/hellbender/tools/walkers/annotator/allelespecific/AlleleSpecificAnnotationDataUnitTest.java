@@ -6,7 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public class AlleleSpecificAnnotationDataUnitTest extends GATKBaseTest {
         Assert.assertNull(asad.getAttribute(T));
         Assert.assertEquals(asad.getRawData(), rawData);
 
-        final Map<Allele, Integer> map= new HashMap<>();
+        final Map<Allele, Integer> map= new LinkedHashMap<>();
         map.put(Aref, 10);
         map.put(T, 11);
         asad.setAttributeMap(map);

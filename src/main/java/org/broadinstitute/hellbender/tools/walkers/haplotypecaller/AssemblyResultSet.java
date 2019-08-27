@@ -131,7 +131,7 @@ public final class AssemblyResultSet {
     }
 
     private Map<Haplotype, Haplotype> trimDownHaplotypes(final AssemblyRegion trimmedAssemblyRegion, final List<Haplotype> haplotypeList) {
-        final Map<Haplotype,Haplotype> originalByTrimmedHaplotypes = new HashMap<>();
+        final Map<Haplotype,Haplotype> originalByTrimmedHaplotypes = new LinkedHashMap<>();
 
         for ( final Haplotype h : haplotypeList ) {
             final Haplotype trimmed = h.trim(trimmedAssemblyRegion.getExtendedSpan());
@@ -200,7 +200,7 @@ public final class AssemblyResultSet {
         pw.println("Extended Act Region " + getRegionForGenotyping().getExtendedSpan());
         pw.println("Ref haplotype coords " + getHaplotypeList().get(0).getGenomeLocation());
         pw.println("Haplotype count " + haplotypes.size());
-        final Map<Integer,Integer> kmerSizeToCount = new HashMap<>();
+        final Map<Integer,Integer> kmerSizeToCount = new LinkedHashMap<>();
 
         for (final Map.Entry<Haplotype,AssemblyResult> e : assemblyResultByHaplotype.entrySet()) {
             final AssemblyResult as = e.getValue();

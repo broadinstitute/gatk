@@ -14,7 +14,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -98,7 +98,7 @@ public class GenomicsDBUtils {
         //In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
         //Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
         //We iterate over the list and create a field name to list index map
-        final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
+        final LinkedHashMap<String, Integer> fieldNameToIndexInVidFieldsList =
                 getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
 
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
@@ -162,9 +162,9 @@ public class GenomicsDBUtils {
      * @param vidMapPB Protobuf vid mapping object
      * @return map from field name to index in vidMapPB.fields list
      */
-    public static HashMap<String, Integer> getFieldNameToListIndexInProtobufVidMappingObject(
+    public static LinkedHashMap<String, Integer> getFieldNameToListIndexInProtobufVidMappingObject(
             final GenomicsDBVidMapProto.VidMappingPB vidMapPB) {
-        final HashMap<String, Integer> fieldNameToIndexInVidFieldsList = new HashMap<>();
+        final LinkedHashMap<String, Integer> fieldNameToIndexInVidFieldsList = new LinkedHashMap<>();
         for (int fieldIdx = 0; fieldIdx < vidMapPB.getFieldsCount(); ++fieldIdx) {
             fieldNameToIndexInVidFieldsList.put(vidMapPB.getFields(fieldIdx).getName(), fieldIdx);
         }

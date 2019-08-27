@@ -16,9 +16,9 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
     private final double maxIntraHaplotypeDistance;
 
     // for each pgt + pid phasing string, a list of loci-error probability pairs
-    private Map<String, List<Pair<Integer, Double>>> accumulatingPhasedProbabilities = new HashMap<>();
+    private Map<String, List<Pair<Integer, Double>>> accumulatingPhasedProbabilities = new LinkedHashMap<>();
 
-    private Map<String, List<Pair<Integer, Double>>> phasedProbabilities = new HashMap<>();
+    private Map<String, List<Pair<Integer, Double>>> phasedProbabilities = new LinkedHashMap<>();
 
     public FilteredHaplotypeFilter(final double maxIntraHaplotypeDistance) {
         this.maxIntraHaplotypeDistance = maxIntraHaplotypeDistance;
@@ -83,7 +83,7 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
 
     @Override
     protected void clearAccumulatedData() {
-        accumulatingPhasedProbabilities = new HashMap<>();
+        accumulatingPhasedProbabilities = new LinkedHashMap<>();
     }
 
     @Override

@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 
 /**
@@ -22,7 +22,7 @@ public class PSTreeNode {
     private Collection<Integer> children;
 
     public PSTreeNode() {
-        children = new HashSet<>();
+        children = new LinkedHashSet<>();
     }
 
     private PSTreeNode(final Kryo kryo, final Input input) {
@@ -34,7 +34,7 @@ public class PSTreeNode {
         parent = input.readInt();
         length = input.readLong();
         final int numChildren = input.readInt();
-        children = new HashSet<>(numChildren);
+        children = new LinkedHashSet<>(numChildren);
         for (int i = 0; i < numChildren; i++) {
             children.add(Integer.valueOf(input.readString()));
         }
@@ -141,7 +141,7 @@ public class PSTreeNode {
         n.rank = this.rank;
         n.parent = this.parent;
         n.length = this.length;
-        n.children = new HashSet<>(this.children);
+        n.children = new LinkedHashSet<>(this.children);
         return n;
     }
 

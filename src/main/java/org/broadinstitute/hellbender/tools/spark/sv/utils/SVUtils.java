@@ -111,7 +111,7 @@ public final class SVUtils {
 
     // =================================================================================================================
 
-    /** return a good initialCapacity for a HashMap that will hold a given number of elements */
+    /** return a good initialCapacity for a LinkedHashMap that will hold a given number of elements */
     public static int hashMapCapacity( final int nElements )
     {
         return (int)((nElements*4L)/3) + 1;

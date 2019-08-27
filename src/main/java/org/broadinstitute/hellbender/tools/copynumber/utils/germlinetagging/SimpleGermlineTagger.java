@@ -86,7 +86,7 @@ public class SimpleGermlineTagger {
     }
 
     private static Map<AnnotatedInterval, CalledCopyRatioSegment.Call> createTumorSegmentsToGermlineTagMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> nonZeroMergedNormalSegmentsToTumorSegments, int paddingInBp, final String callAnnotation, final double reciprocalThreshold) {
-        final Map<AnnotatedInterval,CalledCopyRatioSegment.Call> result = new HashMap<>();
+        final Map<AnnotatedInterval,CalledCopyRatioSegment.Call> result = new LinkedHashMap<>();
         for (final AnnotatedInterval normalSeg : nonZeroMergedNormalSegmentsToTumorSegments.keySet()) {
             final List<AnnotatedInterval> overlappingTumorSegments = nonZeroMergedNormalSegmentsToTumorSegments.get(normalSeg);
 

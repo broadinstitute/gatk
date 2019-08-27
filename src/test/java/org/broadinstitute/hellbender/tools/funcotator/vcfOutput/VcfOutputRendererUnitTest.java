@@ -48,7 +48,7 @@ public class VcfOutputRendererUnitTest extends GATKBaseTest {
         final VcfOutputRenderer vcfOutputRenderer = new VcfOutputRenderer(vcfWriter,
             new ArrayList<>(), entireInputVcf.getLeft(), new LinkedHashMap<>(dummyDefaults),
             new LinkedHashMap<>(),
-            new HashSet<>(), new HashSet<>(Arrays.asList("BAZ", "AC")), "Unknown");
+            new LinkedHashSet<>(), new LinkedHashSet<>(Arrays.asList("BAZ", "AC")), "Unknown");
 
         final VariantContext variant = entireInputVcf.getRight().get(0);
 

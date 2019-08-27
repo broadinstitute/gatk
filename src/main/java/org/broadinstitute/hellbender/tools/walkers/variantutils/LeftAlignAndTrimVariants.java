@@ -420,7 +420,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
     protected VariantContext updateAllele(final VariantContext vc, final Allele newAllele) {
         // create a mapping from original allele to new allele
-        HashMap<Allele, Allele> alleleMap = new HashMap<Allele, Allele>(vc.getAlleles().size());
+        LinkedHashMap<Allele, Allele> alleleMap = new LinkedHashMap<Allele, Allele>(vc.getAlleles().size());
         if (newAllele.isReference()) {
             alleleMap.put(vc.getReference(), newAllele);
             alleleMap.put(vc.getAlternateAllele(0), Allele.create(newAllele.getBases()[0], false));

@@ -229,7 +229,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
-        final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
+        final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>(inputHeaders);
         VariantRecalibrationUtils.addVQSRStandardHeaderLines(hInfo);
         if (useASannotations) {
             VariantRecalibrationUtils.addAlleleSpecificVQSRHeaderLines(hInfo);

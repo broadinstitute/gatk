@@ -48,7 +48,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final Map<String, ReferenceDataSource> referenceDataSourceMap;
 
     static {
-        referenceDataSourceMap = new HashMap<>(2);
+        referenceDataSourceMap = new LinkedHashMap<>(2);
 
         referenceDataSourceMap.put(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), ReferenceDataSource.of( new File(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()).toPath() ));
         referenceDataSourceMap.put(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), ReferenceDataSource.of( new File(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()).toPath() ));

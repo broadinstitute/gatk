@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -43,8 +43,8 @@ public final class HeterozygosityCalculator {
 
         sampleCount = 0;
         if (hetCounts == null && alleleCounts == null) {
-            hetCounts = new HashMap<>();
-            alleleCounts = new HashMap<>();
+            hetCounts = new LinkedHashMap<>();
+            alleleCounts = new LinkedHashMap<>();
             for (final Allele a : vc.getAlleles()) {
                 if (a.isNonReference()) {
                     hetCounts.put(a, 0.0);

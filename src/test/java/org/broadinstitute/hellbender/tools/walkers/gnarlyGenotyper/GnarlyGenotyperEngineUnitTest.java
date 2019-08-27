@@ -6,7 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +37,7 @@ public class GnarlyGenotyperEngineUnitTest {
         final Genotype g2 = VariantContextTestUtils.makeG("g1", Aref, oneInserted, sample2pls);
         final VariantContext vc = VariantContextTestUtils.makeVC("test", Arrays.asList(Aref, oneInserted, twoInserted, threeInserted, fourRepeats, fiveRepeats), g1, g2);
 
-        final Map<Allele, Integer> alleleCounts = new HashMap<>();
+        final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         alleleCounts.put(Aref, 1);
         alleleCounts.put(oneInserted, 1);
         alleleCounts.put(twoInserted,2);

@@ -139,7 +139,7 @@ public class OrientationBiasFilterer {
         final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = createSampleToGenotypeVariantContextSortedMap(sampleNames, preAdapterQAnnotatedVariants);
 
         // This map will hold all updated genotypes (across samples)
-        final Map<VariantContext, List<Genotype>> newGenotypes = new HashMap<>();
+        final Map<VariantContext, List<Genotype>> newGenotypes = new LinkedHashMap<>();
 
         // For each sample, perform the actual filtering.
         for (final String sampleName: sampleNames) {
@@ -174,7 +174,7 @@ public class OrientationBiasFilterer {
             // Add filtering results to genotypes and store a pair of genotype variant context, so that we can update variant contexts later.
             logger.info(sampleName + ": Adding orientation bias filter results to genotypes...");
 
-            final Map<Transition, Long> transitionCutSoFar = new HashMap<>();
+            final Map<Transition, Long> transitionCutSoFar = new LinkedHashMap<>();
             relevantTransitions.stream().forEach(transition -> transitionCutSoFar.put(transition, 0L));
             for (final UniqueIDWrapper<Genotype> genotypeWrapped : genotypesToConsiderForFiltering.keySet()) {
                 final Genotype genotype = genotypeWrapped.getWrapped();
@@ -249,7 +249,7 @@ public class OrientationBiasFilterer {
                                                                                 final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering,
                                                                                 final Map<Transition, Long> transitionCount) {
         // Adjust the number to cut based on artifact mode
-        final Map<Transition, Long> transitionNumToCut = new HashMap<>();
+        final Map<Transition, Long> transitionNumToCut = new LinkedHashMap<>();
         transitionCount.keySet().stream().forEach(transition -> transitionNumToCut.put(transition, 0L));
         for (final Transition transition : transitionNumToCut.keySet()) {
             transitionNumToCut.put(transition, (long) calculateTotalNumToCut(fdrThresh, transitionCount.get(transition),
@@ -300,7 +300,7 @@ public class OrientationBiasFilterer {
     }
 
     private static Map<Transition, Long> createTransitionCountMap(SortedSet<Transition> relevantTransitions, SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering) {
-        final Map<Transition, Long> transitionCount = new HashMap<>();
+        final Map<Transition, Long> transitionCount = new LinkedHashMap<>();
         relevantTransitions.stream().forEach(transition -> transitionCount.put(transition, 0L));
         for (final UniqueIDWrapper<Genotype> g : genotypesToConsiderForFiltering.keySet()) {
             relevantTransitions.stream()
@@ -326,7 +326,7 @@ public class OrientationBiasFilterer {
                 .comparingDouble((UniqueIDWrapper<Genotype> g) -> -OrientationBiasUtils.getGenotypeDouble(g.getWrapped(), OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0))
                 .thenComparingLong(UniqueIDWrapper::getId);
 
-        final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = new HashMap<>();
+        final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = new LinkedHashMap<>();
 
         final ProgressMeter customProgressMeter = new ProgressMeter(0.1);
         customProgressMeter.start();

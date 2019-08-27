@@ -91,7 +91,7 @@ public final class DataprocTestUtils {
      */
     public static void launchGatkTool(final String tool, final List<String> args, final String clusterName){
         //set the jar staging directory so jar caching works
-        final Map<String, String> env = new HashMap<>(System.getenv());
+        final Map<String, String> env = new LinkedHashMap<>(System.getenv());
         final String gcpTestStaging = BaseTest.getGCPTestStaging();
         env.put("GATK_GCS_STAGING", gcpTestStaging);
 

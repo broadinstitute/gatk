@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
@@ -36,7 +36,7 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
     }
 
     private static Map<String, PSPathogenTaxonScore> getScores(final String[] lines) {
-        final Map<String, PSPathogenTaxonScore> scores = new HashMap<>(lines.length);
+        final Map<String, PSPathogenTaxonScore> scores = new LinkedHashMap<>(lines.length);
         for (int i = 1; i < lines.length; i++) {
             String[] tok = lines[i].split("\t");
             Assert.assertTrue(tok.length == SCORE_TABLE_COLUMNS, "Expected " + SCORE_TABLE_COLUMNS + " columns, but found " + tok.length);

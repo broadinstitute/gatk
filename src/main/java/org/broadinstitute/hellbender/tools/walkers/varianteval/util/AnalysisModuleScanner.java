@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -18,7 +18,7 @@ import java.util.Map;
  *         the object, a Mashalling object can serialize or deserialize a analysis module.
  */
 public class AnalysisModuleScanner {
-    final private static Map<String, Annotation[]> annotationCache = new HashMap<String, Annotation[]>();
+    final private static Map<String, Annotation[]> annotationCache = new LinkedHashMap<String, Annotation[]>();
 
     // what we extracted from the class
     private Map<Field, DataPoint> datums = new LinkedHashMap<Field, DataPoint>();   // the data we've discovered

@@ -30,10 +30,10 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     }
 
     private void assertNonUniques(final ReadThreadingGraph assembler, String... nonUniques) {
-        final Set<String> actual = new HashSet<>();
+        final Set<String> actual = new LinkedHashSet<>();
         assembler.buildGraphIfNecessary();
         for ( final Kmer kmer : assembler.getNonUniqueKmers() ) actual.add(new String(kmer.bases()));
-        final Set<String> expected = new HashSet<>(Arrays.asList(nonUniques));
+        final Set<String> expected = new LinkedHashSet<>(Arrays.asList(nonUniques));
         Assert.assertEquals(actual, expected);
     }
 

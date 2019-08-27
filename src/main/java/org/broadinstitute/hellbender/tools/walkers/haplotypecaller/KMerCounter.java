@@ -15,7 +15,7 @@ public final class KMerCounter {
     /**
      * A map of for each kmer to its num occurrences in addKmers
      */
-    private final Map<Kmer, CountedKmer> countsByKMer = new HashMap<>();
+    private final Map<Kmer, CountedKmer> countsByKMer = new LinkedHashMap<>();
     private final int kmerLength;
 
     /**

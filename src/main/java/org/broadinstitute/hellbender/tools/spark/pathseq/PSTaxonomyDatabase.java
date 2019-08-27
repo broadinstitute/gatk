@@ -5,7 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -27,7 +27,7 @@ public class PSTaxonomyDatabase {
 
         tree = kryo.readObject(input, PSTree.class);
         final int setSize = input.readInt();
-        accessionToTaxId = new HashMap<>(setSize);
+        accessionToTaxId = new LinkedHashMap<>(setSize);
         for (int i = 0; i < setSize; i++) {
             final String key = input.readString();
             final String value = input.readString();

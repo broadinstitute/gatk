@@ -469,7 +469,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     private VcfFuncotationFactory createVcfFuncotationFactory(final String name,
                                                               final String version,
                                                               final Path sourceFilePath) {
-        return new VcfFuncotationFactory(name, version, sourceFilePath, new LinkedHashMap<>(), new FeatureInput<VariantContext>(sourceFilePath.toString(), name, new HashMap<>()));
+        return new VcfFuncotationFactory(name, version, sourceFilePath, new LinkedHashMap<>(), new FeatureInput<VariantContext>(sourceFilePath.toString(), name, new LinkedHashMap<>()));
     }
 
     @Test

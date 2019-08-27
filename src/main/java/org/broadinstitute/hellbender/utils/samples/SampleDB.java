@@ -8,7 +8,7 @@ import java.util.*;
 public final class SampleDB {
     /**
      * This is where Sample objects are stored. Samples are usually accessed by their ID, which is unique, so
-     * this is stored as a HashMap.
+     * this is stored as a LinkedHashMap.
      */
     private final Map<String, Sample> samples = new LinkedHashMap<>();
 

@@ -1839,7 +1839,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     }
 
     private void writeHeader(final VariantContextWriter writer) {
-        final Set<VCFHeaderLine> metaData = new HashSet<>();
+        final Set<VCFHeaderLine> metaData = new LinkedHashSet<>();
         metaData.add(new VCFHeaderLine(
                 VCFHeaderVersion.VCF4_2.getFormatString(),
                 VCFHeaderVersion.VCF4_2.getVersionString()));

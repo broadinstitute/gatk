@@ -75,7 +75,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
 
     private int[] annotateWithPileup(final VariantContext vc, List<PileupElement> pileupElements) {
 
-        final HashMap<Byte, Integer> alleleCounts = new HashMap<>();
+        final LinkedHashMap<Byte, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
             alleleCounts.put(allele.getBases()[0], 0);
         }

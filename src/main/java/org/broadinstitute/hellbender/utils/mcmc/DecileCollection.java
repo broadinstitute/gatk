@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 public final class DecileCollection implements Serializable {
     static final long serialVersionUID = 145L;
 
-    private final Map<Decile, Double> deciles = new HashMap<>();
+    private final Map<Decile, Double> deciles = new LinkedHashMap<>();
 
     /**
      * Constructs a DecileCollection from a list of samples using Apache Commons {@link Percentile}.

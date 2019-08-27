@@ -58,7 +58,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         if ( likelihoods == null) {
             return Collections.emptyMap();
         }
-        final Map<String, Object> annotations = new HashMap<>();
+        final Map<String, Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData<Double> myData = new ReducibleAnnotationData<>(null);
         getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
@@ -116,7 +116,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
             combineAttributeMap(value, combinedData);
 
         }
-        final Map<String, Object> annotations = new HashMap<>();
+        final Map<String, Object> annotations = new LinkedHashMap<>();
         String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
         annotations.put(getRawKeyName(), annotationString);
         return annotations;
@@ -157,14 +157,14 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
         if (!vc.hasAttribute(getRawKeyName())) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
         final String rawMQdata = vc.getAttributeAsString(getRawKeyName(),null);
         if (rawMQdata == null) {
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
 
-        final Map<String,Object> annotations = new HashMap<>();
+        final Map<String,Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData myData = new AlleleSpecificAnnotationData<Double>(originalVC.getAlleles(), rawMQdata);
         parseRawDataString(myData);
 
@@ -230,7 +230,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
             return null;
         }
 
-        final Map<Allele, Integer> variantADs = new HashMap<>();
+        final Map<Allele, Integer> variantADs = new LinkedHashMap<>();
         for(final Allele a : vc.getAlleles())
             variantADs.put(a,0);
 

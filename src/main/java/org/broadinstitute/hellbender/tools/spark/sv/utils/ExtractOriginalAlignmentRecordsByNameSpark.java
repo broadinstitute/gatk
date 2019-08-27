@@ -18,7 +18,7 @@ import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -110,7 +110,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkT
             return rdr.lines().map(s -> s.replaceAll("^@", "")
                                          .replaceAll("/1$", "")
                                          .replaceAll("/2$", ""))
-                    .collect(Collectors.toCollection(HashSet::new));
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
         } catch ( final IOException ioe ) {
             throw new GATKException("Unable to read names file from " + readNameFile, ioe);
         }

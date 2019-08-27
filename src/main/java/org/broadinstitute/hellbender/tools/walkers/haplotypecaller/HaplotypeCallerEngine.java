@@ -380,7 +380,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return a VCF header
      */
     public VCFHeader makeVCFHeader( final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine>  defaultToolHeaderLines ) {
-        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        final Set<VCFHeaderLine> headerInfo = new LinkedHashSet<>();
         headerInfo.addAll(defaultToolHeaderLines);
 
         headerInfo.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
@@ -623,7 +623,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 haplotypeBAMWriter.isPresent());
 
         if ( haplotypeBAMWriter.isPresent() ) {
-            final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
+            final Set<Haplotype> calledHaplotypeSet = new LinkedHashSet<>(calledHaplotypes.getCalledHaplotypes());
             if ( hcArgs.disableOptimizations ) {
                 calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
             }

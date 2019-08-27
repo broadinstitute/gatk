@@ -189,7 +189,7 @@ public class AnnotatedVariantProducer implements Serializable {
                         .map(ChimericContigAlignmentEvidenceAnnotations::new)
                         .collect(Collectors.toList());
 
-        final Map<String, Object> attributeMap = new HashMap<>();
+        final Map<String, Object> attributeMap = new LinkedHashMap<>();
         attributeMap.put(GATKSVVCFConstants.TOTAL_MAPPINGS,    annotations.size());
         attributeMap.put(GATKSVVCFConstants.HQ_MAPPINGS,       annotations.stream().filter(annotation -> annotation.minMQ == DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD).count());
         attributeMap.put(GATKSVVCFConstants.MAPPING_QUALITIES, annotations.stream().map(annotation -> String.valueOf(annotation.minMQ)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));

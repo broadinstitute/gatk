@@ -68,7 +68,7 @@ public final class PSScorer {
                 .mapPartitionsToPair(iter -> computeTaxScores(iter, taxonomyDatabaseBroadcast.value(), divideByGenomeLength));
 
         //Reduce scores by taxon and compute normalized scores
-        Map<Integer, PSPathogenTaxonScore> taxScoresMap = new HashMap<>(taxScoresRdd.reduceByKey(PSPathogenTaxonScore::add).collectAsMap());
+        Map<Integer, PSPathogenTaxonScore> taxScoresMap = new LinkedHashMap<>(taxScoresRdd.reduceByKey(PSPathogenTaxonScore::add).collectAsMap());
         taxScoresMap = computeNormalizedScores(taxScoresMap, taxDB.tree, scoreArgs.notNormalizedByKingdom);
 
         //Write scores to file
@@ -284,7 +284,7 @@ public final class PSScorer {
                                                                                   final PSTaxonomyDatabase taxonomyDatabase,
                                                                                   final boolean divideByGenomeLength) {
         final PSTree tree = taxonomyDatabase.tree;
-        final Map<Integer, PSPathogenTaxonScore> taxIdsToScores = new HashMap<>();
+        final Map<Integer, PSPathogenTaxonScore> taxIdsToScores = new LinkedHashMap<>();
         final Set<Integer> invalidIds = new HashSet<>();
         while (taxonHits.hasNext()) {
             final PSPathogenAlignmentHit hit = taxonHits.next();
@@ -345,7 +345,7 @@ public final class PSScorer {
     static final Map<Integer, PSPathogenTaxonScore> computeNormalizedScores(final Map<Integer, PSPathogenTaxonScore> taxIdsToScores,
                                                                            final PSTree tree, boolean notNormalizedByKingdom) {
         //Get sum of all scores assigned under each superkingdom or the root node
-        final Map<Integer, Double> normalizationSums = new HashMap<>();
+        final Map<Integer, Double> normalizationSums = new LinkedHashMap<>();
         assignKingdoms(taxIdsToScores, normalizationSums, tree, notNormalizedByKingdom);
 
         //Gets normalized selfScores and adds it to all ancestors

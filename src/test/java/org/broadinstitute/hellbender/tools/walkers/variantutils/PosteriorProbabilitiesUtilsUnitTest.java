@@ -101,7 +101,7 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
     private VariantContext makeHomRefBlock(final String source, final Allele refAllele, final Genotype... genotypes) {
         final int start = 10;
         final int stop = start;
-        final Map<String, Object> infoMap = new HashMap<>();
+        final Map<String, Object> infoMap = new LinkedHashMap<>();
         infoMap.put(VCFConstants.END_KEY,100);
         final List<Allele> alleles = new ArrayList<>();
         alleles.add(refAllele);

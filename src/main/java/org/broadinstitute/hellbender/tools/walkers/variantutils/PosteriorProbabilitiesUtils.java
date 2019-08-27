@@ -62,7 +62,7 @@ public final class PosteriorProbabilitiesUtils {
                                                          final int numRefSamplesFromMissingResources,
                                                          final PosteriorProbabilitiesOptions opts) {
         Utils.nonNull(vc1, "VariantContext vc1 is null");
-        final Map<Allele,Integer> totalAlleleCounts = new HashMap<>();
+        final Map<Allele,Integer> totalAlleleCounts = new LinkedHashMap<>();
 
         //only use discovered allele count for missing resources if there are at least 10 samples or if we have reference samples
         final boolean useDiscoveredACForMissing = !opts.ignoreInputSamplesForMissingResources && (vc1.getNSamples() >= minSamplesToUseInputs || numRefSamplesFromMissingResources != 0);

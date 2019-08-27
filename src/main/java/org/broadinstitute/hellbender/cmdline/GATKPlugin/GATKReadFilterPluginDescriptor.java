@@ -52,7 +52,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     final GATKReadFilterArgumentCollection userArgs;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
-    private final Map<String, ReadFilter> allDiscoveredReadFilters = new HashMap<>();
+    private final Map<String, ReadFilter> allDiscoveredReadFilters = new LinkedHashMap<>();
 
     // Map of read filter (simple) class names to the corresponding default plugin instance
     // it is a LinkedHashMap because we want to remember the order in which these were provided, and also keep the
@@ -344,7 +344,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         });
 
         // throw if a filter name was specified that has no corresponding instance
-        final Map<String, ReadFilter> requestedReadFilters = new HashMap<>();
+        final Map<String, ReadFilter> requestedReadFilters = new LinkedHashMap<>();
         userArgs.getUserEnabledReadFilterNames().forEach(s -> {
             ReadFilter trf = allDiscoveredReadFilters.get(s);
             if (null == trf) {

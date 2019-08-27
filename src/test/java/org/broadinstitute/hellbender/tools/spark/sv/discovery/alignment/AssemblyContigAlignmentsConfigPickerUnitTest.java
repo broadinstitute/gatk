@@ -160,7 +160,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         final AlignedContig alignedContig = fromPrimarySAMRecordString("asm031090:tig00000\t16\tchr5\t49659827\t60\t332S112M161S\t*\t0\t0\tCATTCCGTTCCGTTCCATTCCATTCCATTCCATTCTATTCGGGTTAATTCCATTCCATTCCATTCGATTGCAATCGAGTTGATTCCATTCCCTAACATTCCATTCCATTCCATTCCATTCCATTCCATTCCATTCCTTTCCATTCCATTACGGATGATTCCATTCCATTGCATTCCATTCCATTCCATTCCCCTGTACTCGGGTTGATTCCATTCCATTGCATTCCAATCCATGCCCTTCCACTCGTGTTGATTCCATTCTTTCCATTCCATTCAAGTTGAATCCATTCCATTGCAATCCATTCCATTCGATTCCATTCGATTGCACTCGGGTTGATTCCATTCCATTGCATTCCATTCCATTCCATTCCATTCCATTCCGTTCCATTCCTTTCCATTACATTCGGATTGATTCTATTCAATTCCCTTACACTCCATTACATTCCATTTCATTCCGGTAGTTTTCACTCCATTCCATTCCATTTCTCTCCATTCCATTGCACTCGGGTTGATTCCATTCCATTGCATTCCATTCCATTTGGGTAGTTTCCACTCCATTCCATTCCATTTCTCTCCATTCCATTGCACTCGGGTTGATTCCATTCC\t*\tSA:Z:chr22_KI270736v1_random,101512,+,455S56M94S,0,1;chr10,41903518,+,372S74M159S,48,7;chr20,31162579,+,37S59M509S,0,5;chr20,31188805,+,298S43M264S,0,2;chr4,49639434,+,331S37M237S,60,1;chrUn_KI270519v1,137524,+,101S37M467S,3,1;chrUn_KN707896v1_decoy,6014,-,81M15I253M5D189M67S,0,34;chrUn_KN707896v1_decoy,6436,-,517S88M,60,3;\tMD:Z:58A7C7G18T12C5\tRG:Z:GATKSVContigAlignments\tNM:i:5\tAS:i:87\tXS:i:55",
                 true);
         final List<GoodAndBadMappings> goodAndBadMappings = AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(alignedContig,
-                new HashSet<>(Arrays.asList("chr4", "chr5", "chr10", "chr20", "")), 0.0);
+                new LinkedHashSet<>(Arrays.asList("chr4", "chr5", "chr10", "chr20", "")), 0.0);
         final List<AlignmentInterval> goodAfterTieBreak = fromPrimarySAMRecordString("asm031090:tig00000\t16\tchr5\t49659827\t60\t332S112M161S\t*\t0\t0\tCATTCCGTTCCGTTCCATTCCATTCCATTCCATTCTATTCGGGTTAATTCCATTCCATTCCATTCGATTGCAATCGAGTTGATTCCATTCCCTAACATTCCATTCCATTCCATTCCATTCCATTCCATTCCATTCCTTTCCATTCCATTACGGATGATTCCATTCCATTGCATTCCATTCCATTCCATTCCCCTGTACTCGGGTTGATTCCATTCCATTGCATTCCAATCCATGCCCTTCCACTCGTGTTGATTCCATTCTTTCCATTCCATTCAAGTTGAATCCATTCCATTGCAATCCATTCCATTCGATTCCATTCGATTGCACTCGGGTTGATTCCATTCCATTGCATTCCATTCCATTCCATTCCATTCCATTCCGTTCCATTCCTTTCCATTACATTCGGATTGATTCTATTCAATTCCCTTACACTCCATTACATTCCATTTCATTCCGGTAGTTTTCACTCCATTCCATTCCATTTCTCTCCATTCCATTGCACTCGGGTTGATTCCATTCCATTGCATTCCATTCCATTTGGGTAGTTTCCACTCCATTCCATTCCATTTCTCTCCATTCCATTGCACTCGGGTTGATTCCATTCC\t*\tSA:Z:chr10,41903518,+,372S74M159S,48,7;chr4,49639434,+,331S37M237S,60,1;chrUn_KI270519v1,137524,+,101S37M467S,3,1;chrUn_KN707896v1_decoy,6436,-,517S88M,60,3;\tMD:Z:58A7C7G18T12C5\tRG:Z:GATKSVContigAlignments\tNM:i:5\tAS:i:87\tXS:i:55",
                 true).getAlignments();
         final ArrayList<AlignmentInterval> copy = new ArrayList<>(alignedContig.getAlignments());
@@ -549,7 +549,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
                                                                  new AlignmentInterval(new SimpleInterval("chr18:77373208-77373391"), 1448, 1631, TextCigarCodec.decode("1447S184M980S"), true, 60, AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT),
                                                                  new AlignmentInterval(new SimpleInterval("chr18:77373514-77374571"), 1554, 2611, TextCigarCodec.decode("1165H388S1058M"), true, 60, AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
 
-        final Map<AlignmentInterval, Tuple2<Integer, Integer>> overlapMap = new HashMap<>(4);
+        final Map<AlignmentInterval, Tuple2<Integer, Integer>> overlapMap = new LinkedHashMap<>(4);
         overlapMap.put(alignments.get(0), new Tuple2<>(-1, 282));
         overlapMap.put(alignments.get(1), new Tuple2<>(282, 56));
         overlapMap.put(alignments.get(2), new Tuple2<>(56, 78));
@@ -561,7 +561,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
     @Test(groups = "sv", dataProvider = "forGetMaxOverlapPairs")
     public void testGetMaxOverlapPairs(final List<AlignmentInterval> alignments, final Map<AlignmentInterval, Tuple2<Integer, Integer>> expected) {
         final Map<AlignmentInterval, Tuple2<Integer, Integer>> actual = AssemblyContigAlignmentsConfigPicker.getMaxOverlapPairs(alignments);
-        twoSetsEqualIgnoreOrder(new HashSet<>(actual.keySet()), new HashSet<>(expected.keySet()));
+        twoSetsEqualIgnoreOrder(new LinkedHashSet<>(actual.keySet()), new LinkedHashSet<>(expected.keySet()));
         actual.forEach((k,v) -> Assert.assertEquals(v, expected.get(k)));
     }
 

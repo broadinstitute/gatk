@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.help;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class HelpConstants {
@@ -72,7 +72,7 @@ public final class HelpConstants {
         if (groupToSuperCategory == null) {
 
             // do this only on demand since we only need it during docgen
-            groupToSuperCategory = new HashMap<>();
+            groupToSuperCategory = new LinkedHashMap<>();
 
             // supercat Tools
 

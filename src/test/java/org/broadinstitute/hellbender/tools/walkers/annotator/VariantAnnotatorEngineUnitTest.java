@@ -57,7 +57,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final ReducibleAnnotationData<Object> myData = new ReducibleAnnotationData<>("-10.0");
 
         new AS_RMSMappingQuality().calculateRawData(vc, likelihoods, myData);
-        Map<String, List<?>> testAnnotationData = new HashMap<>();
+        Map<String, List<?>> testAnnotationData = new LinkedHashMap<>();
         testAnnotationData.put(new AS_RMSMappingQuality().getRawKeyName(), Collections.singletonList(myData));
 
         Map<String, Object> value = vae.combineAnnotations(alleles, testAnnotationData);

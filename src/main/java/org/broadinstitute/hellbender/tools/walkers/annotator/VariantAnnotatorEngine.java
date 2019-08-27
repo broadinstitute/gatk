@@ -191,7 +191,7 @@ public final class VariantAnnotatorEngine {
      */
     @SuppressWarnings({"unchecked"})
     public Map<String, Object> combineAnnotations(final List<Allele> allelesList, Map<String, List<?>> annotationMap) {
-        Map<String, Object> combinedAnnotations = new HashMap<>();
+        Map<String, Object> combinedAnnotations = new LinkedHashMap<>();
 
         // go through all the requested reducible info annotationTypes
         for (final InfoFieldAnnotation annotationType : infoAnnotations) {
@@ -500,7 +500,7 @@ public final class VariantAnnotatorEngine {
 
     private Map<String, Object> removeIrrelevantAttributes(Map<String, Object> attributes) {
         // since the VC has been subset, remove the invalid attributes
-        Map<String, Object> ret = new HashMap<>(attributes);
+        Map<String, Object> ret = new LinkedHashMap<>(attributes);
         for ( final String key : attributes.keySet() ) {
             if ( !(key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(VCFConstants.ALLELE_FREQUENCY_KEY) || key.equals(VCFConstants.ALLELE_NUMBER_KEY)) ) {
                 ret.remove(key);

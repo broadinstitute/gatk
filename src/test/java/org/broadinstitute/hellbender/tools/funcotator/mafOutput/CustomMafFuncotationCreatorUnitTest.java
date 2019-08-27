@@ -153,7 +153,7 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
                         "snippetTest",
                         sourceFilePath,
                         new LinkedHashMap<>(),
-                        new FeatureInput<VariantContext>(sourceFilePath.toString(), DBSNP_DS_NAME, new HashMap<>())
+                        new FeatureInput<VariantContext>(sourceFilePath.toString(), DBSNP_DS_NAME, new LinkedHashMap<>())
                 );
 
         /* dbSNP records of relevance.

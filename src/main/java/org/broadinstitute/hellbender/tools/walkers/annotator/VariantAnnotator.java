@@ -146,7 +146,7 @@ public class VariantAnnotator extends VariantWalker {
      * randomly.
      */
     @Argument(fullName="expression", shortName="E", doc="One or more specific expressions to apply to variant calls", optional=true)
-    protected Set<String> expressionsToUse = new HashSet<>();
+    protected Set<String> expressionsToUse = new LinkedHashSet<>();
 
     /**
      * If this argument is specified, add annotations (specified by --expression) from an external resource
@@ -183,7 +183,7 @@ public class VariantAnnotator extends VariantWalker {
 
         // setup the header fields
         // note that if any of the definitions conflict with our new ones, then we want to overwrite the old ones
-        final Set<VCFHeaderLine> hInfo = new HashSet<>();
+        final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
 
         hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());

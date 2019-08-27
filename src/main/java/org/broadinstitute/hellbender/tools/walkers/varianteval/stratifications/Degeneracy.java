@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -14,7 +14,7 @@ import java.util.List;
  * Experimental stratification by the degeneracy of an amino acid, according to VCF annotation.  Not safe
  */
 public class Degeneracy extends VariantStratifier {
-    private HashMap<String, HashMap<Integer, String>> degeneracies;
+    private LinkedHashMap<String, LinkedHashMap<Integer, String>> degeneracies;
 
     @Override
     public void initialize() {
@@ -25,7 +25,7 @@ public class Degeneracy extends VariantStratifier {
         states.add("6-fold");
         states.add("all");
 
-        HashMap<String, String[]> aminoAcids = new HashMap<String, String[]>();
+        LinkedHashMap<String, String[]> aminoAcids = new LinkedHashMap<String, String[]>();
         aminoAcids.put("Ile",  new String[]{"ATT", "ATC", "ATA"});
         aminoAcids.put("Leu",  new String[]{"CTT", "CTC", "CTA", "CTG", "TTA", "TTG"});
         aminoAcids.put("Val",  new String[]{"GTT", "GTC", "GTA", "GTG"});
@@ -48,7 +48,7 @@ public class Degeneracy extends VariantStratifier {
         aminoAcids.put("Arg",  new String[]{"CGT", "CGC", "CGA", "CGG", "AGA", "AGG"});
         aminoAcids.put("Stop", new String[]{"TAA", "TAG", "TGA"});
 
-        degeneracies = new HashMap<String, HashMap<Integer, String>>();
+        degeneracies = new LinkedHashMap<String, LinkedHashMap<Integer, String>>();
 
         for (String aminoAcid : aminoAcids.keySet()) {
             String[] codons = aminoAcids.get(aminoAcid);
@@ -71,7 +71,7 @@ public class Degeneracy extends VariantStratifier {
                 }
 
                 if (!degeneracies.containsKey(aminoAcid)) {
-                    degeneracies.put(aminoAcid, new HashMap<Integer, String>());
+                    degeneracies.put(aminoAcid, new LinkedHashMap<Integer, String>());
                 }
 
                 degeneracies.get(aminoAcid).put(pos, degeneracy);

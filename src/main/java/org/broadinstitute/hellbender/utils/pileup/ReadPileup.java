@@ -186,7 +186,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * @throws org.broadinstitute.hellbender.exceptions.UserException.ReadMissingReadGroup if unknownSampleName is {@code null} and there are reads without RG/sample name
      */
     public Map<String, ReadPileup> splitBySample(final SAMFileHeader header, final String unknownSampleName) {
-        final Map<String, ReadPileup> toReturn = new HashMap<>();
+        final Map<String, ReadPileup> toReturn = new LinkedHashMap<>();
         for (final String sample : getSamples(header)) {
             final ReadPileup pileupBySample = getPileupForSample(sample, header);
             if (sample != null) {
@@ -395,8 +395,8 @@ public class ReadPileup implements Iterable<PileupElement> {
     }
 
     private Collection<PileupElement> filterSingleSampleForOverlaps(ReadPileup pileup, Comparator<PileupElement> tieBreaker, boolean discardDiscordant) {
-        Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
-        Set<String> readNamesDeleted = new HashSet<>();
+        Map<String, PileupElement> filteredPileup = new LinkedHashMap<String, PileupElement>();
+        Set<String> readNamesDeleted = new LinkedHashSet<>();
 
         for (PileupElement p : pileup) {
             String readName = p.getRead().getName();

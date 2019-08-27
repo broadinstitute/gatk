@@ -22,7 +22,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -211,7 +211,7 @@ public final class AlignedAssemblyOrExcuse {
         output.writeInt(secondsInAssembly);
         if ( errorMessage == null ) {
             final int nContigs = assembly.getNContigs();
-            final Map<Contig, Integer> contigMap = new HashMap<>();
+            final Map<Contig, Integer> contigMap = new LinkedHashMap<>();
             output.writeInt(nContigs);
             for ( int idx = 0; idx != nContigs; ++idx ) {
                 final Contig contig = assembly.getContig(idx);
@@ -280,7 +280,7 @@ public final class AlignedAssemblyOrExcuse {
         Utils.validate(intervalFile != null && header != null && intervals != null && intervalDispositions != null,
                 "At least one of the arguments is null.");
 
-        final Map<Integer, AlignedAssemblyOrExcuse> resultsMap = new HashMap<>();
+        final Map<Integer, AlignedAssemblyOrExcuse> resultsMap = new LinkedHashMap<>();
         intervalDispositions.forEach(alignedAssemblyOrExcuse ->
                 resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
 

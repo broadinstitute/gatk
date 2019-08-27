@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 import htsjdk.variant.variantcontext.Allele;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +17,7 @@ public final class AlleleSpecificAnnotationData<T> extends ReducibleAnnotationDa
 
     public AlleleSpecificAnnotationData(final List<Allele> inputAlleles, final String inputData) {
         super(inputData);
-        this.attributeMap = new HashMap<>();
+        this.attributeMap = new LinkedHashMap<>();
         inputAlleles.forEach(a -> {attributeMap.put(a, null);});
         alleleList = inputAlleles;
         refAllele = alleleList.stream().filter(Allele::isReference).findAny().orElse(null);

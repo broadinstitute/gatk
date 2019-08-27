@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -73,7 +73,7 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
         if (stratifiedPileups != null) {
             return stratifiedPileups;
         }
-        Map<String, List<PileupElement>> pileupMap = new HashMap<>();
+        Map<String, List<PileupElement>> pileupMap = new LinkedHashMap<>();
         for (int i = 0; i < samples.numberOfSamples(); i++) {
             pileupMap.put(samples.getSample(i), ReadPileup.locToReadsPileup(sampleReads(i), loc));
         }

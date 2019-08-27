@@ -11,12 +11,12 @@ import java.util.function.Function;
 
 /**
  * Multiset implementation that provides low memory overhead with a high load factor by using the hopscotch algorithm.
- * Retrieval times are usually a little slower than for the JDK's HashSet (neglecting GC time), but this class uses much
- * less memory.  Insertion and deletion times are typically a little better than HashSet.
+ * Retrieval times are usually a little slower than for the JDK's LinkedHashSet (neglecting GC time), but this class uses much
+ * less memory.  Insertion and deletion times are typically a little better than LinkedHashSet.
  * It's probably a nice choice for very large collections.
  *
- * You can make it faster than HashSet by replacing the prime-number table sizing with power-of-2 table
- * sizing, but then it'll behave just as badly as HashSet given poor hashCode implementations.  (The extra time in
+ * You can make it faster than LinkedHashSet by replacing the prime-number table sizing with power-of-2 table
+ * sizing, but then it'll behave just as badly as LinkedHashSet given poor hashCode implementations.  (The extra time in
  * retrieval is mostly due to having to take the hash value mod the capacity, rather than masking off a few bits.)
  *
  * Very rarely, and usually when your element type's hashCode implementation is poor, the hopscotching will fail even

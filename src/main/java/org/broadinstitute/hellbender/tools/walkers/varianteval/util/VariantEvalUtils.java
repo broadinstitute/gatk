@@ -38,7 +38,7 @@ public class VariantEvalUtils {
     private final static Set<String> standardEvaluatorNames;
 
     static {
-        stratifierClasses = new HashMap<>();
+        stratifierClasses = new LinkedHashMap<>();
         standardStratificationNames = new HashSet<>();
         requiredStratificationNames = new HashSet<>();
 
@@ -56,7 +56,7 @@ public class VariantEvalUtils {
             }
         }
 
-        evaluatorClasses = new HashMap<>();
+        evaluatorClasses = new LinkedHashMap<>();
         standardEvaluatorNames= new HashSet<>();
 
         Reflections reflectionsEval = new Reflections("org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators");
@@ -225,7 +225,7 @@ public class VariantEvalUtils {
      *
      * @return the mapping of track to VC list that should be populated
      */
-    public HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>>
+    public LinkedHashMap<FeatureInput<VariantContext>, LinkedHashMap<String, Collection<VariantContext>>>
     bindVariantContexts(ReferenceContext referenceContext,
                         FeatureContext featureContext,
                         List<FeatureInput<VariantContext>> tracks,
@@ -234,11 +234,11 @@ public class VariantEvalUtils {
                         boolean trackPerSample,
                         boolean trackPerFamily,
                         boolean mergeTracks) {
-        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> bindings = new HashMap<>();
+        LinkedHashMap<FeatureInput<VariantContext>, LinkedHashMap<String, Collection<VariantContext>>> bindings = new LinkedHashMap<>();
 
         FeatureInput<VariantContext> firstTrack = tracks.isEmpty() ? null : tracks.get(0);
         for (FeatureInput<VariantContext> track : tracks) {
-            HashMap<String, Collection<VariantContext>> mapping = new HashMap<>();
+            LinkedHashMap<String, Collection<VariantContext>> mapping = new LinkedHashMap<>();
 
             //TODO: limiting to only those w/ the same start is GATK3 behavior.
             for (VariantContext vc : featureContext.getValues(track, referenceContext.getInterval().getStart())) {
@@ -288,7 +288,7 @@ public class VariantEvalUtils {
 
             if (mergeTracks && bindings.containsKey(firstTrack)) {
                 // go through each binding of sample -> value and add all of the bindings from this entry
-                HashMap<String, Collection<VariantContext>> firstMapping = bindings.get(firstTrack);
+                LinkedHashMap<String, Collection<VariantContext>> firstMapping = bindings.get(firstTrack);
                 for (Map.Entry<String, Collection<VariantContext>> elt : mapping.entrySet()) {
                     Collection<VariantContext> firstMappingSet = firstMapping.get(elt.getKey());
                     if (firstMappingSet != null) {
@@ -305,7 +305,7 @@ public class VariantEvalUtils {
         return bindings;
     }
 
-    private void addMapping(HashMap<String, Collection<VariantContext>> mappings, String sample, VariantContext vc) {
+    private void addMapping(LinkedHashMap<String, Collection<VariantContext>> mappings, String sample, VariantContext vc) {
         if (!mappings.containsKey(sample))
             mappings.put(sample, new ArrayList<>(1));
         mappings.get(sample).add(vc);

@@ -312,7 +312,7 @@ public final class ReblockGVCF extends VariantWalker {
             return new VariantContextBuilder(result).attributes(null).make();
         }
 
-        final Map<String, Object> attrMap = new HashMap<>();
+        final Map<String, Object> attrMap = new LinkedHashMap<>();
         final GenotypeBuilder gb = changeCallToGQ0HomRef(result, attrMap);
 
         //there are some cases where there are low quality variants with homRef calls AND alt alleles!
@@ -365,7 +365,7 @@ public final class ReblockGVCF extends VariantWalker {
 
     @VisibleForTesting
     protected VariantContext cleanUpHighQualityVariant(final VariantContext result, final VariantContext originalVC) {
-        Map<String, Object> attrMap = new HashMap<>();
+        Map<String, Object> attrMap = new LinkedHashMap<>();
         Map<String, Object> origMap = originalVC.getAttributes();
         //copy over info annotations
         for(final InfoFieldAnnotation annotation : annotationEngine.getInfoAnnotations()) {

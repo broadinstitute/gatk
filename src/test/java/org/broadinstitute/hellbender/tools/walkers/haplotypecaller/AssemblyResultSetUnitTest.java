@@ -98,7 +98,7 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
                                                   originalLocation.getEnd() - length / 2);
         final AssemblyRegion newRegion = original.trim(newLocation);
 
-        final Map<Haplotype,Haplotype> originalHaplotypesByTrimmed = new HashMap<>(haplotypesAndResultSets.size());
+        final Map<Haplotype,Haplotype> originalHaplotypesByTrimmed = new LinkedHashMap<>(haplotypesAndResultSets.size());
         for (final Haplotype h : haplotypesAndResultSets.keySet())
             originalHaplotypesByTrimmed.put(h.trim(newRegion.getExtendedSpan()), h);
 
@@ -131,7 +131,7 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
         final SeqGraph seqGraph = rtg.toSequenceGraph();
         final AssemblyResult ar = new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION,seqGraph, rtg);
         final Map<Haplotype,AssemblyResult> result =
-                new HashMap<>();
+                new LinkedHashMap<>();
         for (final Haplotype h : haplotypes)
             result.put(h,ar);
         return Collections.singleton(new Object[]{result, activeRegion}).iterator();

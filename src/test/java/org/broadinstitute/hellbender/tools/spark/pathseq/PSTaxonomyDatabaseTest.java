@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class PSTaxonomyDatabaseTest extends GATKBaseTest {
@@ -17,7 +17,7 @@ public class PSTaxonomyDatabaseTest extends GATKBaseTest {
     @Test
     public void testSerializeDeserialize() {
 
-        final Map<String,Integer> accessionToTaxMap = new HashMap<>();
+        final Map<String,Integer> accessionToTaxMap = new LinkedHashMap<>();
         accessionToTaxMap.put("A",1);
         accessionToTaxMap.put("B",1);
         accessionToTaxMap.put("C",2);

@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,7 +26,7 @@ public class ArHetvarFilter extends TwoPassFuncotationFilter {
 
     private final String annotationTranscript;
     private final List<VariantContext> arCompoundHetVariants = new ArrayList<>();
-    private final Map<String, List<VariantContext>> arHetVariantsByGene = new HashMap<>();
+    private final Map<String, List<VariantContext>> arHetVariantsByGene = new LinkedHashMap<>();
     private final String[] funcotationKeys;
     private boolean firstPassApplied;
     private boolean afterFirstPassApplied;

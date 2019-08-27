@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,7 +18,7 @@ public final class PSPathogenReferenceTaxonProperties {
     private final Map<String, Long> accessions;
 
     public PSPathogenReferenceTaxonProperties() {
-        accessions = new HashMap<>(SVUtils.hashMapCapacity(1));
+        accessions = new LinkedHashMap<>(SVUtils.hashMapCapacity(1));
     }
 
     public PSPathogenReferenceTaxonProperties(final String name) {

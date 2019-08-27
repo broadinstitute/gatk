@@ -145,7 +145,7 @@ public final class CommonSuffixSplitter {
      * @return true if we can safely split up toMerge
      */
     private static boolean safeToSplit(final SeqGraph graph, final SeqVertex bot, final Collection<SeqVertex> toMerge) {
-        final Collection<SeqVertex> outgoingOfBot = new HashSet<>(graph.outgoingVerticesOf(bot));
+        final Collection<SeqVertex> outgoingOfBot = new LinkedHashSet<>(graph.outgoingVerticesOf(bot));
         for ( final SeqVertex m : toMerge ) {
             final Set<BaseEdge> outs = graph.outgoingEdgesOf(m);
             if ( m == bot || outs.size() != 1 || ! graph.outgoingVerticesOf(m).contains(bot) )

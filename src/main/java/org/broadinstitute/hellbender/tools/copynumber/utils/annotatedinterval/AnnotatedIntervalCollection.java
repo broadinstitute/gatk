@@ -78,7 +78,7 @@ public class AnnotatedIntervalCollection {
         }
 
         final List<AnnotatedInterval> updatedAnnotatedIntervals = regions.stream()
-                .map(r -> copyAnnotatedInterval(r, new HashSet<>(annotations)))
+                .map(r -> copyAnnotatedInterval(r, new LinkedHashSet<>(annotations)))
                 .collect(Collectors.toList());
 
         return new AnnotatedIntervalCollection(samFileHeader, annotations, updatedAnnotatedIntervals);
@@ -115,7 +115,7 @@ public class AnnotatedIntervalCollection {
                 final CloseableTribbleIterator<AnnotatedInterval> it = reader.iterator();
                 StreamSupport.stream(it.spliterator(), false)
                         .filter(r -> r != null)
-                        .map(r -> copyAnnotatedInterval(r,  new HashSet<>(finalAnnotations)))
+                        .map(r -> copyAnnotatedInterval(r,  new LinkedHashSet<>(finalAnnotations)))
                         .forEach(r -> regions.add(r));
 
                 return new AnnotatedIntervalCollection(header.getSamFileHeader(), finalAnnotations, regions);
@@ -177,7 +177,7 @@ public class AnnotatedIntervalCollection {
 
     private static void warnAllHeadersOfInterestNotPresent(final Set<String> headersOfInterest, final List<String> header) {
         if ((headersOfInterest != null) && !header.containsAll(headersOfInterest)) {
-            final Set<String> unusedColumnsOfInterest = Sets.difference(new HashSet<>(headersOfInterest), new HashSet<>(header));
+            final Set<String> unusedColumnsOfInterest = Sets.difference(new LinkedHashSet<>(headersOfInterest), new LinkedHashSet<>(header));
             if (unusedColumnsOfInterest.size() > 0) {
                 final List<String> missingColumns = new ArrayList<>(unusedColumnsOfInterest);
                 logger.warn("Some headers of interest specified by the user were not seen in input: " + StringUtils.join(missingColumns, ", "));

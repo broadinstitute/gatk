@@ -139,7 +139,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         this.dataSourceIsB37 = isDataSourceB37;
 
         // Initialize our annotations map:
-        annotationMap = new HashMap<>();
+        annotationMap = new LinkedHashMap<>();
 
         // Create our iterator:
         try ( final PathLineIterator pathLineIterator = new PathLineIterator(xsvInputPath) ) {

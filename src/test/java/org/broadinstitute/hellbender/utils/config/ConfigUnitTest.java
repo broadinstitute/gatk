@@ -473,16 +473,16 @@ public class ConfigUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] createPropertiesToInjectIntoSystem() {
 
-        final Map<String, String> propertyMap1 = new HashMap<>();
+        final Map<String, String> propertyMap1 = new LinkedHashMap<>();
 
-        final Map<String, String> propertyMap2 = new HashMap<>();
+        final Map<String, String> propertyMap2 = new LinkedHashMap<>();
         propertyMap2.put("TESTKEY1", "TESTVAL1");
 
-        final Map<String, String> propertyMap3 = new HashMap<>();
+        final Map<String, String> propertyMap3 = new LinkedHashMap<>();
         propertyMap2.put("TESTKEY1", "TESTVAL1");
         propertyMap2.put("TESTKEY2", "TESTVAL2");
 
-        final Map<String, String> propertyMap4 = new HashMap<>();
+        final Map<String, String> propertyMap4 = new LinkedHashMap<>();
         propertyMap2.put("TESTKEY1", "TESTVAL1");
         propertyMap2.put("TESTKEY2", "TESTVAL2");
         propertyMap2.put("TESTKEY3", "TESTVAL3");
@@ -682,7 +682,7 @@ public class ConfigUnitTest extends GATKBaseTest {
 
     private Map<String, String> getDefaultValuesFromConfig(final Class<GATKConfig> gatkConfigClass) {
 
-        final Map<String, String> defaultValueMap = new HashMap<>();
+        final Map<String, String> defaultValueMap = new LinkedHashMap<>();
 
         // Now we cycle through our interface methods, resolve parameter names,
         // and log their values at the given level:

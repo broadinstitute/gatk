@@ -123,7 +123,7 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
 
             // Add in some system options.
             // None of these should be masked by the options of the same name in the config file.
-            final Map<String, String> systemPropertiesToQuery = new HashMap<>();
+            final Map<String, String> systemPropertiesToQuery = new LinkedHashMap<>();
             systemPropertiesToQuery.put("gatk_stacktrace_on_user_exception", "true");
             systemPropertiesToQuery.put("samjdk.compression_level", "7777");
 

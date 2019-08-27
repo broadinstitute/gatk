@@ -55,12 +55,12 @@ public class F1R2CountsCollector {
         this.header = header;
         this.outputTarGzFile = outputTarGzFile;
 
-        refSiteHistograms = new HashMap<>(samples.size());
-        depthOneAltHistograms = new HashMap<>(samples.size());
-        altTableWriters = new HashMap<>(samples.size());
+        refSiteHistograms = new LinkedHashMap<>(samples.size());
+        depthOneAltHistograms = new LinkedHashMap<>(samples.size());
+        altTableWriters = new LinkedHashMap<>(samples.size());
 
         for (final String sample : samples) {
-            final Map<String, Histogram<Integer>> refSitesHistogramsForThisSample = new HashMap<>(F1R2FilterConstants.ALL_KMERS.size());
+            final Map<String, Histogram<Integer>> refSitesHistogramsForThisSample = new LinkedHashMap<>(F1R2FilterConstants.ALL_KMERS.size());
 
             // Initialize for each reference the histogram of the counts of reference sites by depth
             F1R2FilterConstants.ALL_KMERS.forEach(context -> {

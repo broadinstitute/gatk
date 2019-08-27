@@ -11,7 +11,7 @@ import java.util.*;
  */
 public class BwaMemIndexCache {
 
-    private final static Map<String, BwaMemIndex> instances = new HashMap<>();
+    private final static Map<String, BwaMemIndex> instances = new LinkedHashMap<>();
 
     /**
      * Returns a {@link BwaMemIndex} instance that corresponds to  given index image file.

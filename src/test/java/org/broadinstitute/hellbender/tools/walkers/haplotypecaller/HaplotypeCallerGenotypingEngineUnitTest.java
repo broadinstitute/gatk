@@ -64,14 +64,14 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     public Object[][] makeBasicGenotypingTests() {
 
         for( int contextSize : new int[]{0,1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(1 + contextSize, (byte)'M');
             final String context = Strings.repeat("G", contextSize);
             new BasicGenotypingTestProvider(context + "AGCTCGCATCGCGAGCATCGACTAGCCGATAG" + context, "CGCTCGCATCGCGAGCATCGACTAGCCGATAG", map);
         }
 
         for( int contextSize : new int[]{0,1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(2 + contextSize, (byte)'M');
             map.put(21 + contextSize, (byte)'M');
             final String context = Strings.repeat("G", contextSize);
@@ -79,7 +79,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         }
 
         for( int contextSize : new int[]{0,1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(1 + contextSize, (byte)'M');
             map.put(20 + contextSize, (byte)'I');
             final String context = Strings.repeat("G", contextSize);
@@ -87,7 +87,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         }
 
         for( int contextSize : new int[]{0,1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(1 + contextSize, (byte)'M');
             map.put(20 + contextSize, (byte)'D');
             final String context = Strings.repeat("G", contextSize);
@@ -95,7 +95,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         }
 
         for( int contextSize : new int[]{1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(1, (byte)'M');
             map.put(20, (byte)'D');
             final String context = Strings.repeat("G", contextSize);
@@ -103,7 +103,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         }
 
         for( int contextSize : new int[]{0,1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(2 + contextSize, (byte)'M');
             map.put(20 + contextSize, (byte)'I');
             map.put(30 + contextSize, (byte)'D');
@@ -112,7 +112,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         }
 
         for( int contextSize : new int[]{0,1,5,9,24,36} ) {
-            Map<Integer, Byte> map = new HashMap<>();
+            Map<Integer, Byte> map = new LinkedHashMap<>();
             map.put(1 + contextSize, (byte)'M');
             map.put(20 + contextSize, (byte)'D');
             map.put(28 + contextSize, (byte)'M');
@@ -313,7 +313,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     public void testMakeAnnotatedCallTrimmingAlleles(){
         List<Allele> alleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false));
         List<Allele> mergedAlleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false), Allele.create("A", false));
-        ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<Allele>(SampleList.EMPTY_LIST, new IndexedAlleleList<Allele>(alleles), new HashMap<>());
+        ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<Allele>(SampleList.EMPTY_LIST, new IndexedAlleleList<Allele>(alleles), new LinkedHashMap<>());
 
         // Both a deletion and SNPs are present at this site
         final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000009, alleles).make();

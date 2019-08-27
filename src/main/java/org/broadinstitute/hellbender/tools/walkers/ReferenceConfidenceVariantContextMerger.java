@@ -97,7 +97,7 @@ public final class ReferenceConfidenceVariantContextMerger {
 
         // In this list we hold the mapping of each variant context alleles.
         final List<VCWithNewAlleles> vcAndNewAllelePairs = new ArrayList<>(vcs.size());
-        final Set<String> aggregatedFilters = new HashSet<>();
+        final Set<String> aggregatedFilters = new LinkedHashSet<>();
         boolean sawPassSample = false;
 
         // cycle through and add info from the other vcs

@@ -278,7 +278,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         graph.simplifyGraph();
         final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
-        final Set<String> expected = new HashSet<>(Arrays.asList(one, two));
+        final Set<String> expected = new LinkedHashSet<>(Arrays.asList(one, two));
         for ( final KBestHaplotype path : paths ) {
             final String seq = new String(path.getBases());
             Assert.assertTrue(expected.contains(seq));

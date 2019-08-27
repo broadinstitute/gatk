@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import picard.analysis.artifacts.SequencingArtifactMetrics;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +39,7 @@ public class PreAdapterOrientationScorer {
         Utils.nonNull(metrics, "Input metrics cannot be null");
 
         // Artifact mode to a matrix
-        final Map<Transition, RealMatrix> result = new HashMap<>();
+        final Map<Transition, RealMatrix> result = new LinkedHashMap<>();
 
         // Collapse over context
         for (SequencingArtifactMetrics.PreAdapterDetailMetrics metric : metrics) {
@@ -64,7 +64,7 @@ public class PreAdapterOrientationScorer {
         Utils.nonNull(metrics, "Input metrics cannot be null");
 
         // Artifact mode to a double
-        final Map<Transition, Double> result = new HashMap<>();
+        final Map<Transition, Double> result = new LinkedHashMap<>();
 
         final Map<Transition, RealMatrix> counts = countOrientationBiasMetricsOverContext(metrics);
 

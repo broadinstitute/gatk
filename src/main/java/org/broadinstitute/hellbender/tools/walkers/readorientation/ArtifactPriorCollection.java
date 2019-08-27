@@ -17,7 +17,7 @@ import java.util.*;
  */
 public class ArtifactPriorCollection {
     final String sample;
-    final private Map<String, ArtifactPrior> map = new HashMap<>(F1R2FilterConstants.NUM_KMERS);
+    final private Map<String, ArtifactPrior> map = new LinkedHashMap<>(F1R2FilterConstants.NUM_KMERS);
 
     public ArtifactPriorCollection(final String sample){
         this.sample = sample;

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.mcmc;
 
 import org.apache.commons.math3.random.RandomGenerator;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -48,7 +48,7 @@ public final class ParameterizedModel<V1 extends Enum<V1> & ParameterEnum, S1 ex
     public static final class GibbsBuilder<V2 extends Enum<V2> & ParameterEnum, S2 extends ParameterizedState<V2>, T2 extends DataCollection> {
         private final S2 state;
         private final T2 dataCollection;
-        private final Map<V2, ParameterSampler<?, V2, S2, T2>> samplerMap = new HashMap<>();
+        private final Map<V2, ParameterSampler<?, V2, S2, T2>> samplerMap = new LinkedHashMap<>();
 
         /**
          * Constructor for {@link ParameterizedModel.GibbsBuilder}.

@@ -476,7 +476,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         final VCFHeader header = reader.getFileHeader();
 
         final List<String> infoLineKeys = new ArrayList<>();
-        final Map<String, Boolean> infoFieldFlagMap = new HashMap<>();
+        final Map<String, Boolean> infoFieldFlagMap = new LinkedHashMap<>();
 
         // Get our list of keys and sort them:
         for ( final VCFInfoHeaderLine infoLine : header.getInfoHeaderLines() ) {

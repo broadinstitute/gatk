@@ -24,10 +24,10 @@ public class SnpEffUtil {
 
     // A map holding for every child, it's parent.
     // A node that isn't a key node is a root node.
-    static private final Map<EffectType,EffectType> snpEffectGraph = new HashMap<>();
+    static private final Map<EffectType,EffectType> snpEffectGraph = new LinkedHashMap<>();
 
     //A map from each value of EffectType to a set of it's ancestors
-    static private final Map<EffectType,Set<EffectType>> snpEffectAncestorSet = new HashMap<>();
+    static private final Map<EffectType,Set<EffectType>> snpEffectAncestorSet = new LinkedHashMap<>();
 
     static {
 

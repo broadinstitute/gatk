@@ -100,7 +100,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      */
     public SeqGraph toSequenceGraph() {
         final SeqGraph seqGraph = new SeqGraph(kmerSize);
-        final Map<V, SeqVertex> vertexMap = new HashMap<>();
+        final Map<V, SeqVertex> vertexMap = new LinkedHashMap<>();
 
         // create all of the equivalent seq graph vertices
         for ( final V dv : vertexSet() ) {
@@ -406,7 +406,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         // Remove non-ref edges connected before and after the reference path
-        final Collection<E> edgesToCheck = new HashSet<>();
+        final Collection<E> edgesToCheck = new LinkedHashSet<>();
         edgesToCheck.addAll(incomingEdgesOf(getReferenceSourceVertex()));
         while( !edgesToCheck.isEmpty() ) {
             final E e = edgesToCheck.iterator().next();
@@ -450,7 +450,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * regardless of its direction, from the reference source vertex
      */
     public final void removeVerticesNotConnectedToRefRegardlessOfEdgeDirection() {
-        final Collection<V> toRemove = new HashSet<>(vertexSet());
+        final Collection<V> toRemove = new LinkedHashSet<>(vertexSet());
 
         final V refV = getReferenceSourceVertex();
         if ( refV != null ) {
@@ -475,19 +475,19 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         // get the set of vertices we can reach by going forward from the ref source
-        final Collection<V> onPathFromRefSource = new HashSet<>(vertexSet().size());
+        final Collection<V> onPathFromRefSource = new LinkedHashSet<>(vertexSet().size());
         for ( final V v : new BaseGraphIterator<>(this, getReferenceSourceVertex(), false, true) ) {
             onPathFromRefSource.add(v);
         }
 
         // get the set of vertices we can reach by going backward from the ref sink
-        final Collection<V> onPathFromRefSink = new HashSet<>(vertexSet().size());
+        final Collection<V> onPathFromRefSink = new LinkedHashSet<>(vertexSet().size());
         for ( final V v : new BaseGraphIterator<>(this, getReferenceSinkVertex(), true, false) ) {
             onPathFromRefSink.add(v);
         }
 
         // we want to remove anything that's not in both the sink and source sets
-        final Collection<V> verticesToRemove = new HashSet<>(vertexSet());
+        final Collection<V> verticesToRemove = new LinkedHashSet<>(vertexSet());
         onPathFromRefSource.retainAll(onPathFromRefSink);
         verticesToRemove.removeAll(onPathFromRefSource);
         removeAllVertices(verticesToRemove);
@@ -618,7 +618,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
             return Collections.singleton(source);
         }
 
-        final Set<V> found = new HashSet<>();
+        final Set<V> found = new LinkedHashSet<>();
         found.add(source);
         for ( final V v : neighboringVerticesOf(source) ) {
             found.addAll(verticesWithinDistance(v, distance - 1));
@@ -639,7 +639,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         Utils.validateArg(distance >= 0, () -> "Distance must be >= 0 but got " + distance);
 
         final Set<V> toKeep = verticesWithinDistance(target, distance);
-        final Collection<V> toRemove = new HashSet<>(vertexSet());
+        final Collection<V> toRemove = new LinkedHashSet<>(vertexSet());
         toRemove.removeAll(toKeep);
 
         final BaseGraph<V,E> result = clone();
@@ -695,7 +695,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * order in which the vertices are visited is undefined.
      */
     private static final class BaseGraphIterator<T extends BaseVertex, E extends BaseEdge> implements Iterator<T>, Iterable<T> {
-        final Collection<T> visited = new HashSet<>();
+        final Collection<T> visited = new LinkedHashSet<>();
         final Deque<T> toVisit = new LinkedList<>();
         final BaseGraph<T,E> graph;
         final boolean followIncomingEdges;
