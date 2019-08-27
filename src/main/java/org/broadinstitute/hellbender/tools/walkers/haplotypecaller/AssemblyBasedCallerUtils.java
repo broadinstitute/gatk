@@ -167,7 +167,7 @@ public final class AssemblyBasedCallerUtils {
     }
 
     public static Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final SAMFileHeader header, final Collection<GATKRead> reads ) {
-        final Map<String, List<GATKRead>> returnMap = new HashMap<>();
+        final Map<String, List<GATKRead>> returnMap = new LinkedHashMap<>();
         for (final String sample : samplesList.asListOfSamples()) {
             returnMap.put(sample, new ArrayList<>());
         }
