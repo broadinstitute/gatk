@@ -21,10 +21,10 @@ public final class BlahVetCreation {
      * Expected headers for the Variant Table (VET)
      * start_position, // req
      * reference_bases, // req
-     * alternate_bases, // req ** concat all alt bases with '|' delimiter
+     * alternate_bases, // req ** concat all alt bases with '|' delimiter // TODO--wait, why is this here? looks like its in v1, but not v2
      * alternate_bases.alt, // req
      * alternate_bases.AS_RAW_MQ, // req
-     * alternate_bases.AS_MQ_DP, // req
+     * alternate_bases.AS_MQ_DP, // req // TODO this doesn't exist
      * alternate_bases.AS_RAW_MQRankSum,
      * alternate_bases.AS_QUALapprox, // req
      * alternate_bases.AS_RAW_ReadPosRankSum,
@@ -43,6 +43,7 @@ public final class BlahVetCreation {
     public enum HeaderFieldEnum {
         // TODO is this where the validation step (required vs not) lives  -- fail if there is missing data for a required field
         // and just leave it empty if not required
+        // TODO whenever we strip out data, if the data is not as expected, throw an error
 
         position { // Required
              public String getColumnValue(final VariantContext variant) {
@@ -60,30 +61,56 @@ public final class BlahVetCreation {
             }
         },
 
-        alt {
-            //TODO what if this field is null?
+        alt { // remove "<NON_REF>"
+            //TODO what if this field is null and if <NON_REF> is not there--throw an error
             public String getColumnValue(final VariantContext variant) {
                 List<String> outList = new ArrayList<>();
                 for(Allele a : variant.getAlternateAlleles()) {
-                    outList.add(a.getDisplayString());
+                    if (!a.isNonRefAllele()) { // TODO unit test this
+                        outList.add(a.getDisplayString());
+                    }
                 }
                 return String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, outList);
             }
         },
 
-        AS_RAW_MQ { // Required
+        AS_RAW_MQ {
+            // Required
+            // TODO these are string (floats) -- make them ints --- Louis will know where the helper method is?
+            // TODO sci notation?
             public String getColumnValue(final VariantContext variant) {
                 String out = getAttribute(variant, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, null);
                 if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_RAW_MQ");
                 }
+                if (out.endsWith("|0.00")) {
+                    out = out.substring(0, out.length() - 5);
+                } else {
+                    throw new UserException("Expected AS_RAW_MQ value to end in |0.00");
+                }
                 return out;
             }
         },
 
-        AS_RAW_MQRankSum {
+        AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
             public String getColumnValue(final VariantContext variant) {
-                return getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, "");
+                String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, "");
+                if (out.contentEquals("||") || out.contentEquals("|||") ) {
+                    out = " "; //  TODO is this better than null?
+                    return out;
+                }
+                if (out.startsWith("|")) {
+                    out = out.substring(1);
+                } else {
+                    throw new UserException("Expected AS_RAW_MQRankSum value to begin with a |");
+                }
+                if (out.endsWith("|NaN")) {
+                    out = out.substring(0, out.length() - 4);
+                } else {
+                    throw new UserException("Expected AS_RAW_MQRankSum value to be ||, ||| or to end in |NaN");
+                }
+                return out;
+
             }
         },
 
@@ -94,21 +121,55 @@ public final class BlahVetCreation {
                 if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_QUALapprox");
                 }
+                if (out.contentEquals("||") || out.contentEquals("|||") ) {
+                    out = " "; //  TODO is this better than null? WAIT WHY IS THIS EVER A ||| VAL IF ITS REQUIRED?
+                    return out;
+                }
+                if (out.startsWith("|")) {
+                    out = out.substring(1);
+                } else {
+                    throw new UserException("Expected AS_RAW_MQRankSum value to begin with a |");
+                }
+                if (out.endsWith("|0")) {
+                    out = out.substring(0, out.length() - 2);
+                } else {
+                    throw new UserException("Expected AS_QUALapprox value to be ||, ||| or to end in |0");
+                }
                 return out;
             }
         },
 
-        AS_RAW_ReadPosRankSum {
+        AS_RAW_ReadPosRankSum {  // TODO -- maybe rely on 1/1 for call_GT
             public String getColumnValue(final VariantContext variant) {
-                return getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, "");
+                String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, "");
+                if (out.contentEquals("||") || out.contentEquals("|||") ) {
+                    out = " "; // TODO is this better than null?
+                    return out;
+                }
+                if (out.startsWith("|")) {
+                    out = out.substring(1);
+                } else {
+                    throw new UserException("Expected AS_RAW_ReadPosRankSum value to begin with a |");
+                }
+                if (out.endsWith("|NaN")) {
+                    out = out.substring(0, out.length() - 4);
+                } else {
+                    throw new UserException("Expected AS_RAW_ReadPosRankSum value to be ||, ||| or to end in |NaN");
+                }
+                return out;
             }
         },
 
-        AS_SB_TABLE { // Required
+        AS_SB_TABLE { // Required // TODO -- we could remove the 0,0 | if the call_GT is 1/1
             public String getColumnValue(final VariantContext variant) {
                 String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
                 if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_SB_TABLE");
+                }
+                if (out.endsWith("|0,0")) {
+                    out = out.substring(0, out.length() - 4);
+                } else {
+                    throw new UserException("Expected AS_SB_TABLE value to end in |0,0");
                 }
                 return out;
             }
@@ -147,13 +208,19 @@ public final class BlahVetCreation {
 
         call_AD {
             public String getColumnValue(final VariantContext variant) {
-                return variant.getGenotype(0).hasAD() ? Arrays.stream(variant.getGenotype(0).getAD())
+                String out = variant.getGenotype(0).hasAD() ? Arrays.stream(variant.getGenotype(0).getAD())
                         .mapToObj(String::valueOf)
                         .collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)) : "";
+                if (out.endsWith(",0")) {
+                    out = out.substring(0, out.length() - 2);
+                } else {
+                    throw new UserException("Expected call_AD to have a final value of 0");
+                }
+                return out;
             }
         },
 
-        call_DP {
+        call_DP { // TODO ask Laura if we can drop whole column since it looks similar to AS_VarDP
             public String getColumnValue(final VariantContext variant) {
                 return variant.getGenotype(0).hasDP() ? String.valueOf(variant.getGenotype(0).getDP()): "";
             }
