@@ -72,6 +72,7 @@ public final class DataprocTestUtils {
             "--num-workers", "2",
             "--master-machine-type", "n1-highmem-2",
             "--worker-machine-type", "n1-highmem-2",
+            "--region", "us-central1",
             clusterName
         };
         BaseTest.runProcess(ProcessController.getThreadLocal(), command, "Couldn't create dataproc cluster");
