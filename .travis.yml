@@ -124,6 +124,7 @@ install:
 script:
 # run a basic sanity check to be sure that gatk doesn't explode
 # run tests
+- unset CLOUDSDK_DATAPROC_REGION
 - if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
     echo "Not running any tests for nightly builds";
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
