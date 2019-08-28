@@ -47,7 +47,7 @@ public final class AFCalculationResult {
         Utils.nonNull(alleleCountsOfMLE, "alleleCountsOfMLE cannot be null");
         Utils.nonNull(log10pRefByAllele, "log10pRefByAllele cannot be null");
         Utils.nonNull(allelesUsedInGenotyping, "allelesUsedInGenotyping cannot be null");
-        Utils.validateArg(MathUtils.goodLog10Probability(log10PosteriorOfNoVariant), "log10 posterior must be a valid log probability");
+        Utils.validateArg(MathUtils.isValidLog10Probability(log10PosteriorOfNoVariant), "log10 posterior must be a valid log probability");
 
         if ( allelesUsedInGenotyping.isEmpty() ) {
             throw new IllegalArgumentException("allelesUsedInGenotyping must be non-null list of at least 1 value " + allelesUsedInGenotyping);
