@@ -9,26 +9,26 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
 
-@Analysis(description = "Computes different estimates of theta based on variant sites and genotypes")
+@Analysis(description = "Calculates the average variant allele fraction (p) and counts the number of each type of variant (Hets/Hom Vars/Hom Refs) over variant sites")
 
-public class PVariantEvaluator extends VariantEvaluator {
+public class AFVariantEvaluator extends VariantEvaluator {
     @DataPoint(description = "Average variant allele fraction over all variant sites", format = "%.8f")
     public double avgVarAlleles= 0.0;
     @DataPoint(description = "Number of called sites over all variant sites;", format = "%d")
     public int totalCalledSites;
     @DataPoint(description = "Number of called heterozygous sites;", format = "%d")
     public int totalHetSites;
-    @DataPoint(description = "Number of called heterozygous sites;", format = "%d")
+    @DataPoint(description = "Number of called homozygous variant sites;", format = "%d")
     public int totalHomVarSites;
-    @DataPoint(description = "Number of called heterozygous sites;", format = "%d")
+    @DataPoint(description = "Number of called homozygous reference sites;", format = "%d")
     public int totalHomRefSites;
 
     final private double ploidy = 2.0; // assume ploidy of 2
-    private double sumVariantAFs; // this is the allele fraction we're summing over all sites, to be used to calculate the avgVarAlleles
+    private double sumVariantAlleles; // this is the allele fraction we're summing over all sites, to be used to calculate the avgVarAlleles
 
 
-    public PVariantEvaluator() {
-        sumVariantAFs = 0.0;
+    public AFVariantEvaluator() {
+        sumVariantAlleles = 0.0;
         totalCalledSites = 0;
     }
 
@@ -54,7 +54,7 @@ public class PVariantEvaluator extends VariantEvaluator {
                 this.totalCalledSites += 1;
                 int numReferenceAlleles= genotype.countAllele(vc.getReference());
                 double varAFHere = (ploidy - numReferenceAlleles)/ploidy;
-                this.sumVariantAFs += varAFHere;
+                this.sumVariantAlleles += varAFHere;
 
                 totalHetSites += numReferenceAlleles == 1 ? 1 : 0;
                 totalHomVarSites += numReferenceAlleles == 0 ? 1 : 0;
@@ -66,13 +66,13 @@ public class PVariantEvaluator extends VariantEvaluator {
         if (!vc.hasGenotypes()) {
             // comp  ( sites only thousand genomes )
             this.totalCalledSites += 1;
-            this.sumVariantAFs += vc.getAttributeAsDouble("AF", 0.0);
+            this.sumVariantAlleles += vc.getAttributeAsDouble("AF", 0.0);
         }
     }
 
     @Override
     public void finalizeEvaluation() {
-        this.avgVarAlleles = this.totalCalledSites == 0 ? 0 : this.sumVariantAFs / this.totalCalledSites;
+        this.avgVarAlleles = this.totalCalledSites == 0 ? 0 : this.sumVariantAlleles / this.totalCalledSites;
     }
 }
 

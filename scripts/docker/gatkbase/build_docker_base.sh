@@ -4,9 +4,9 @@
 set -e
 
 
-REPO=broadinstitute
+REPO=skwalker # broadinstitute
 PROJECT=gatk
-VERSION=2.0.3
+VERSION=2.0.4
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################

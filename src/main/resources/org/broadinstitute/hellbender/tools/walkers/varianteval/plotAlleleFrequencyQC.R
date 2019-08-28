@@ -2,7 +2,7 @@ library(dplyr)
 library(ggplot2)
 
 inverseLogitFn = function(score) {
-    v = 10.0^(-score/10.0)
+    v = exp(score)
     v / (1.0 + v)
 }
 
