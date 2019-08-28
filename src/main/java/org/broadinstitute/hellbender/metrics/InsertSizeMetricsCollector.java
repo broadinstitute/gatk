@@ -6,19 +6,28 @@ import htsjdk.samtools.SamPairUtil;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.LineReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutorException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
+import org.eclipse.aether.repository.RemoteRepository;
+import org.renjin.aether.AetherFactory;
+import org.renjin.aether.AetherPackageLoader;
+import org.renjin.eval.Session;
+import org.renjin.eval.SessionBuilder;
+import org.renjin.script.RenjinScriptEngine;
+import org.renjin.script.RenjinScriptEngineFactory;
 
-import java.io.File;
-import java.io.Serializable;
+import javax.script.ScriptException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -154,7 +163,11 @@ public final class InsertSizeMetricsCollector
         else {
             MetricsUtils.saveMetrics(metricsFile, inputArgs.output);
             if (inputArgs.producePlot) {
-                writeHistogramPDF(inputName);
+                try {
+                    writeHistogramRenjin(inputName);
+                } catch (ScriptException e) {
+                    throw new GATKException("Renjin exception", e);
+                }
             }
         }
     }
@@ -180,6 +193,62 @@ public final class InsertSizeMetricsCollector
             executor.addArgs(String.valueOf(inputArgs.histogramWidth));
         }
         executor.exec();
+    }
+
+    private void writeHistogramRenjin(final String inputName) throws ScriptException {
+        // path to Picard R script for producing histograms in PDF files.
+        final String R_SCRIPT = "insertSizeHistogram.R";
+
+        File histFile = new File(inputArgs.histogramPlotFile);
+        IOUtil.assertFileIsWritable(histFile);
+
+        ArrayList<String> args = new ArrayList<>();
+        args.add(inputArgs.output);
+        args.add(histFile.getAbsolutePath());
+        args.add(inputName);
+        if (inputArgs.histogramWidth != null) {
+            args.add(String.valueOf(inputArgs.histogramWidth));
+        }
+        runRenjin(new Resource(R_SCRIPT, InsertSizeMetricsCollector.class), args);
+    }
+
+    public static void runRenjin(Resource rScript, List<String> arguments) {
+        List<RemoteRepository> repositories = new ArrayList<>();
+        repositories.add(AetherFactory.renjinRepo());
+        repositories.add(AetherFactory.mavenCentral());
+
+        ClassLoader parentClassLoader = InsertSizeMetrics.class.getClassLoader();
+
+        AetherPackageLoader loader = new AetherPackageLoader(parentClassLoader, repositories);
+
+        Session session = new SessionBuilder()
+                .withDefaultPackages()
+                .setPackageLoader(loader)
+                .build();
+
+        arguments.add(0, "--args");
+        session.setCommandLineArguments(rScript.getPath(), arguments);
+
+        RenjinScriptEngineFactory factory = new RenjinScriptEngineFactory();
+        RenjinScriptEngine engine = factory.getScriptEngine(session);
+        try {
+            engine.eval(new InputStreamReader(rScript.getResourceContentsAsStream()));
+        } catch (ScriptException e) {
+            throw new GATKException("R fail: ", e);
+        }
+//        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(rScript.getResourceContentsAsStream()))){
+//            reader.lines().forEachOrdered(line -> {
+//                try {
+//                    engine.eval("print(commandArgs(TRUE))");
+//                    engine.eval("print(commandArgs(FALSE))");
+//                    engine.eval(line);
+//                } catch (Exception e) {
+//                    throw new GATKException("Failed on line: "+ line, e);
+//                }
+//            });
+//        } catch (IOException e) {
+//            throw new GATKException("Problem with Rscript", e);
+//        }
     }
 
 }

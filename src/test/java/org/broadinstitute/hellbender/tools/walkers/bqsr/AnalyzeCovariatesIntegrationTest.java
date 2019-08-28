@@ -122,6 +122,7 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
         final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(useCsvFile,usePdfFile,
                 useBQSRFile,useBeforeFile,useAfterFile),empty);
         spec.executeTest("testInOutAbsencePresence", this);
+
     }
 
     @DataProvider

@@ -6,11 +6,8 @@ library(gsalib)
 
 
 
-if ( interactive() ) {
-  args <- c("NA12878.6.1.dedup.realign.recal.bqsr.grp.csv", "NA12878.6.1.dedup.realign.recal.bqsr.grp", NA)
-} else {
-  args <- commandArgs(TRUE)
-} 
+
+args <- commandArgs(TRUE)
 
 data <- read.csv(args[1])
 

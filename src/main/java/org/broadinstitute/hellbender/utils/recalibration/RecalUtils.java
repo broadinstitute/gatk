@@ -7,6 +7,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsCollector;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
@@ -350,14 +352,20 @@ public final class RecalUtils {
      * @param output result plot file name.
      */
     public static void generatePlots(final File csvFile, final File maybeGzipedExampleReportFile, final File output) {
-        final File exampleReportFile = IOUtils.gunzipToTempIfNeeded(maybeGzipedExampleReportFile);
-        final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(loadBQSRScriptResource());
-        executor.addArgs(csvFile.getAbsolutePath());
-        executor.addArgs(exampleReportFile.getAbsolutePath());
-        executor.addArgs(output.getAbsolutePath());
-        LogManager.getLogger(RecalUtils.class).debug("R command line: " + executor.getApproximateCommandLine());
-        executor.exec();
+         final File exampleReportFile = IOUtils.gunzipToTempIfNeeded(maybeGzipedExampleReportFile);
+        Resource resource = loadBQSRScriptResource();
+        ArrayList<String> args = new ArrayList<>();
+        args.add(csvFile.getAbsolutePath());
+        args.add(exampleReportFile.getAbsolutePath());
+        args.add(output.getAbsolutePath());
+        InsertSizeMetricsCollector.runRenjin(resource, args);
+//        final RScriptExecutor executor = new RScriptExecutor();
+//        executor.addScript(loadBQSRScriptResource());
+//        executor.addArgs(csvFile.getAbsolutePath());
+//        executor.addArgs(exampleReportFile.getAbsolutePath());
+//        executor.addArgs(output.getAbsolutePath());
+//        LogManager.getLogger(RecalUtils.class).debug("R command line: " + executor.getApproximateCommandLine());
+//        executor.exec();
     }
 
     private static void writeCsv(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final StandardCovariateList covariates, final boolean printHeader) {

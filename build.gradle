@@ -55,8 +55,8 @@ repositories {
     }
 
     mavenLocal()
+    maven { url "https://nexus.bedatadriven.com/content/groups/public" }
 }
-
 final requiredJavaVersion = "8"
 final htsjdkVersion = System.getProperty('htsjdk.version','2.20.2')
 final picardVersion = System.getProperty('picard.version','2.20.5')
@@ -70,6 +70,7 @@ final testNGVersion = '6.11'
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
 // provided by dataproc).
 final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.81.0-alpha:shaded'
+
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -340,6 +341,13 @@ dependencies {
 
     testCompile "org.mockito:mockito-core:2.10.0"
     testCompile "com.google.jimfs:jimfs:1.1"
+
+    compile "org.renjin:renjin-script-engine:3.5-beta65"
+    compile "org.renjin:renjin-aether-package-loader:3.5-beta65"
+    compile "org.renjin.cran:ggplot2:3.2.0-b8"
+    compile "org.renjin.cran:gplots:3.0.1.1-b1"
+    compile "org.renjin.cran:gsalib:2.1-b241"
+
 }
 
 //add gatk launcher script to the jar as a resource

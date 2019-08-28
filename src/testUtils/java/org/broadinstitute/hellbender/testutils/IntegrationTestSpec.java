@@ -110,6 +110,7 @@ public final class IntegrationTestSpec {
             }
 
             executeTest(name, test, null, expectedFileNames, tmpFiles, formattedArgs, null);
+            int i = 0;
         }
     }
 
