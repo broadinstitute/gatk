@@ -15,7 +15,7 @@ import java.util.LinkedHashSet;
  * This class should be considered an implementation detail of {@link IOUtils#deleteOnExit(Path)} and not used directly.
  */
 class DeleteRecursivelyOnExitPathHook {
-    private static Logger LOG = LogManager.getLogger(DeleteRecursivelyOnExitPathHook.class);
+    private static final Logger LOG = LogManager.getLogger(DeleteRecursivelyOnExitPathHook.class);
     private static LinkedHashSet<Path> paths = new LinkedHashSet<>();
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(DeleteRecursivelyOnExitPathHook::runHooks));
