@@ -69,7 +69,7 @@ final testNGVersion = '6.11'
 // Using the shaded version to avoid conflicts between its protobuf dependency
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
 // provided by dataproc).
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.100.0-alpha:shaded'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.106.0-alpha:shaded'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
