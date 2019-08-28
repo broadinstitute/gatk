@@ -230,7 +230,7 @@ if [ "$(dirname ${GCS_REFERENCE_2BIT})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]
     exit -1
 fi
 
-GCS_SAVE_PATH=${GCS_SAVE_PATH:-"${PROJECT_NAME}/${GCS_USER}"}
+GCS_SAVE_PATH=${GCS_SAVE_PATH:-"${PROJECT_NAME}-${GCS_USER}"}
 
 # configure caching .jar files
 export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/staging/"}
