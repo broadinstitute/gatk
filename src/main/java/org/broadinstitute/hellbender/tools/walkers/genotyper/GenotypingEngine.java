@@ -30,9 +30,7 @@ import java.util.stream.Stream;
  */
 public abstract class GenotypingEngine<Config extends StandardCallerArgumentCollection> {
 
-    protected final AFCalculator newAFCalculator;
-
-    protected final AFCalculatorProvider afCalculatorProvider;
+    protected final AlleleFrequencyCalculator alleleFrequencyCalculator;
 
     protected final Config configuration;
 
@@ -45,8 +43,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     protected final SampleList samples;
 
     private final AFPriorProvider log10AlleleFrequencyPriorsSNPs;
-
-    private final AFPriorProvider log10AlleleFrequencyPriorsIndels;
 
     private final List<SimpleInterval> upstreamDeletionsLoc = new LinkedList<>();
 
@@ -64,66 +60,15 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
-                               final AFCalculatorProvider afCalculatorProvider,
                                final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
         this.samples = Utils.nonNull(samples, "the sample list cannot be null");
-        this.afCalculatorProvider = Utils.nonNull(afCalculatorProvider, "the AF calculator provider cannot be null");
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
         log10AlleleFrequencyPriorsSNPs = composeAlleleFrequencyPriorProvider(numberOfGenomes,
                 configuration.genotypeArgs.snpHeterozygosity, configuration.genotypeArgs.inputPrior);
-        log10AlleleFrequencyPriorsIndels = composeAlleleFrequencyPriorProvider(numberOfGenomes,
-                configuration.genotypeArgs.indelHeterozygosity, configuration.genotypeArgs.inputPrior);
-
-        final double refPseudocount = configuration.genotypeArgs.snpHeterozygosity / Math.pow(configuration.genotypeArgs.heterozygosityStandardDeviation,2);
-        final double snpPseudocount = configuration.genotypeArgs.snpHeterozygosity * refPseudocount;
-        final double indelPseudocount = configuration.genotypeArgs.indelHeterozygosity * refPseudocount;
-        newAFCalculator = new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, configuration.genotypeArgs.samplePloidy);
-    }
-
-    /**
-     * Function that fills vector with allele frequency priors. By default, infinite-sites, neutral variation prior is used,
-     * where Pr(AC=i) = theta/i where theta is heterozygosity
-     * @param N                                Number of chromosomes
-     * @param priors                           (output) array to be filled with priors
-     * @param heterozygosity                   default heterozygosity to use, if inputPriors is empty
-     * @param inputPriors                      Input priors to use (in which case heterozygosity is ignored)
-     */
-    public static void computeAlleleFrequencyPriors(final int N, final double[] priors, final double heterozygosity, final List<Double> inputPriors) {
-        double sum = 0.0;
-
-        if (!inputPriors.isEmpty()) {
-            // user-specified priors
-            if (inputPriors.size() != N) {
-                throw new CommandLineException.BadArgumentValue("inputPrior", "Invalid length of inputPrior vector: vector length must be equal to # samples +1 ");
-            }
-
-            int idx = 1;
-            for (final double prior: inputPriors) {
-                if (prior < 0.0) {
-                    throw new CommandLineException.BadArgumentValue("Bad argument: negative values not allowed", "inputPrior");
-                }
-                priors[idx++] = Math.log10(prior);
-                sum += prior;
-            }
-        }
-        else {
-            // for each i
-            for (int i = 1; i <= N; i++) {
-                final double value = heterozygosity / (double)i;
-                priors[i] = Math.log10(value);
-                sum += value;
-            }
-        }
-
-        // protection against the case of heterozygosity too high or an excessive number of samples (which break population genetics assumptions)
-        if (sum > 1.0) {
-            throw new CommandLineException.BadArgumentValue("heterozygosity","The heterozygosity value is set too high relative to the number of samples to be processed, or invalid values specified if input priors were provided - try reducing heterozygosity value or correct input priors.");
-        }
-        // null frequency for AF=0 is (1 - sum(all other frequencies))
-        priors[0] = Math.log10(1.0 - sum);
+        alleleFrequencyCalculator = AlleleFrequencyCalculator.makeCalculator(configuration.genotypeArgs);
     }
 
     /**
@@ -250,20 +195,18 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
 
-        final AFCalculator afCalculator = configuration.genotypeArgs.useOldAFCalculator ?
-                afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles) : newAFCalculator;
-        final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy, maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
+        final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc);
 
         // posterior probability that at least one alt allele exists in the samples
-        final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.getLog10PosteriorOfAFGT0());
+        final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.log10ProbVariantPresent());
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
                 ! outputAlternativeAlleles.siteIsMonomorphic ||
                         configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES || configuration.annotateAllSitesWithPLs
-                        ? AFresult.getLog10PosteriorOfAFEq0() + 0.0
-                        : AFresult.getLog10PosteriorOfAFGT0() + 0.0 ;
+                        ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0
+                        : AFresult.log10ProbVariantPresent() + 0.0 ;
 
 
         // Add 0.0 removes -0.0 occurrences.
@@ -272,13 +215,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
-                && !forceSiteEmission()
-                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles)) {
-            // technically, at this point our confidence in a reference call isn't accurately estimated
-            //  because it didn't take into account samples with no data, so let's get a better estimate
-            final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
-            final int INDEX_FOR_AC_EQUALS_1 = 1;
-            return limitedContext ? null : estimateReferenceConfidence(vc, stratifiedContexts, AFpriors[INDEX_FOR_AC_EQUALS_1], true, probOfAtLeastOneAltAllele);
+                && !forceSiteEmission() && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles)) {
+            return null;
         }
 
         // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
@@ -385,7 +323,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
                 final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
-                final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
+                final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
 
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
@@ -568,30 +506,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     * Returns the log10 prior probability for all possible allele counts from 0 to N where N is the total number of
-     * genomes (total-ploidy).
-     *
-     * @param vc the target variant-context, use to determine the total ploidy thus the possible ACs.
-     * @param defaultPloidy default ploidy to be assume if we do not have the ploidy for some sample in {@code vc}.
-     * @param model the calculation model (SNP,INDEL or MIXED) whose priors are to be retrieved.
-     * @throws java.lang.NullPointerException if either {@code vc} or {@code model} is {@code null}
-     * @return never {@code null}, an array with exactly <code>total-ploidy(vc) + 1</code> positions.
-     */
-    protected final double[] getAlleleFrequencyPriors( final VariantContext vc, final int defaultPloidy, final GenotypeLikelihoodsCalculationModel model ) {
-        final int totalPloidy = GATKVariantContextUtils.totalPloidy(vc, defaultPloidy);
-        switch (model) {
-            case SNP:
-            case GENERALPLOIDYSNP:
-                return log10AlleleFrequencyPriorsSNPs.forTotalPloidy(totalPloidy);
-            case INDEL:
-            case GENERALPLOIDYINDEL:
-                return log10AlleleFrequencyPriorsIndels.forTotalPloidy(totalPloidy);
-            default:
-                throw new IllegalArgumentException("Unexpected GenotypeCalculationModel " + model);
-        }
-    }
-
-    /**
      * Compute the log10 probability of a sample with sequencing depth and no alt allele is actually truly homozygous reference
      *
      * Assumes the sample is diploid
@@ -646,12 +560,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             if (AFresult.getAllelesUsedInGenotyping().size() > 2) {
                 for (final Allele a : allAllelesToUse) {
                     if (a.isNonReference()) {
-                        perAlleleQuals.add(AFresult.getLog10PosteriorOfAFEq0ForAllele(a));
+                        perAlleleQuals.add(AFresult.getLog10PosteriorOfAlleleAbsent(a));
                     }
                 }
             }
             else {
-                perAlleleQuals.add(AFresult.getLog10PosteriorOfAFEq0());
+                perAlleleQuals.add(AFresult.log10ProbOnlyRefAlleleExists());
             }
 
             attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals);
@@ -708,7 +622,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         //TODO End of lousy part.
 
         final double normalizedLog10ACeq0Posterior = log10ACeq0Posterior - log10PosteriorNormalizationConstant;
-        // This is another condition to return a 0.0 also present in AFCalculator code as well.
+        // This is another condition to return a 0.0 also present in AlleleFrequencyCalculator code as well.
         if (normalizedLog10ACeq0Posterior >= QualityUtils.qualToErrorProbLog10(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING)) {
             return 0.0;
         }
