@@ -108,20 +108,24 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         getDefaultToolVCFHeaderLines().forEach(line -> outputHeader.addMetaDataLine(line));
         sourceDictionary = getBestAvailableSequenceDictionary();
 
+        // If -replace is set, do not need to access sequence dictionary is not checked for validity.
         // Warn and require opt-in via -replace if we're about to clobber a valid sequence
         // dictionary. Check the input file directly via the header rather than using the
         // engine, since it might dig one up from an index.
-        SAMSequenceDictionary oldDictionary =
-                inputHeader == null ? null : inputHeader.getSequenceDictionary();
-        if ( (oldDictionary != null && !oldDictionary.getSequences().isEmpty()) && !replace) {
-            throw new CommandLineException.BadArgumentValue(
-                    String.format(
-                            "The input variant file %s already contains a sequence dictionary. " +
-                            "Use %s to force the dictionary to be replaced.",
-                            getDrivingVariantsFeatureInput().getName(),
-                            REPLACE_ARGUMENT_NAME
-                    )
-            );
+        if (!replace) {
+            SAMSequenceDictionary oldDictionary =
+                    inputHeader == null ? null : inputHeader.getSequenceDictionary();
+            if (oldDictionary != null && !oldDictionary.getSequences().isEmpty())  {
+                throw new CommandLineException.BadArgumentValue(
+                        String.format(
+                                "The input variant file %s already contains a sequence dictionary. " +
+                                        "Use %s to force the dictionary to be replaced.",
+                                getDrivingVariantsFeatureInput().getName(),
+                                REPLACE_ARGUMENT_NAME
+                        )
+                );
+            }
+
         }
 
         outputHeader.setSequenceDictionary(sourceDictionary);
