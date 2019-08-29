@@ -16,8 +16,10 @@ import zipfile
 import pydicom
 import datetime
 import operator
+import tempfile
 import traceback
 import numpy as np
+import nibabel as nib
 from typing import Dict, List, Tuple
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
@@ -45,11 +47,12 @@ MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
-                       'cine_segmented_sax_inlinevf', 't1_p2_1mm_fov256_sag_ti_880']
+                       'cine_segmented_sax_inlinevf', 't1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
-MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20252', '20253', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
+DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20252', '20253', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
+NIFTI_MRI_FIELDS = ['20251']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -68,7 +71,7 @@ def write_tensors(a_id: str,
                   zip_folder: str,
                   output_folder: str,
                   tensors: str,
-                  dicoms: str,
+                  mri_unzip: str,
                   volume_csv: str,
                   lv_mass_csv: str,
                   mri_field_ids: List[int],
@@ -94,7 +97,7 @@ def write_tensors(a_id: str,
     :param zip_folder: Path to folder containing zipped DICOM files
     :param output_folder: Folder to write outputs to (mostly for debugging)
     :param tensors: Folder to populate with HD5 tensors
-    :param dicoms: Folder where zipped DICOM will be decompressed
+    :param mri_unzip: Folder where zipped DICOM will be decompressed
     :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
     :param lv_mass_csv: CSV containing LV mass and other data from a subset of samples with MRI
     :param mri_field_ids: List of MRI field IDs from UKBB
@@ -128,7 +131,8 @@ def write_tensors(a_id: str,
             continue
         try:
             with h5py.File(tensor_path, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
@@ -194,9 +198,14 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
     return nested_dictionary, sample_ids
 
 
-def _sample_has_mris(zip_folder, sample_id) -> bool:
+def _sample_has_dicom_mris(zip_folder, sample_id) -> bool:
     sample_str = str(sample_id)
-    return any([os.path.exists(zip_folder + sample_str + '_' + mri_f + '_2_0.zip') for mri_f in MRI_FIELDS])
+    return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in DICOM_MRI_FIELDS])
+
+
+def _sample_has_nifti_mris(zip_folder, sample_id) -> bool:
+    sample_str = str(sample_id)
+    return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in NIFTI_MRI_FIELDS])
 
 
 def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
@@ -452,7 +461,7 @@ def _write_tensors_from_zipped_dicoms(x: int,
                                       sample_id: int,
                                       stats: Dict[str, int]) -> None:
     sample_str = str(sample_id)
-    for mri_field in mri_field_ids:
+    for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
         for zipped in mris:
             logging.info("Got zipped dicoms for sample: {} with MRI field: {}".format(sample_id, mri_field))
@@ -465,6 +474,17 @@ def _write_tensors_from_zipped_dicoms(x: int,
                                            write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
+
+
+def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str], hd5: h5py.File, sample_id: str, stats: Dict[str, int]) -> None:
+    for mri_field in set(mri_field_ids).intersection(NIFTI_MRI_FIELDS):
+        mris = glob.glob(os.path.join(zip_folder, f'{sample_id}_{mri_field}*.zip'))
+        for zipped in mris:
+            logging.info(f"Got zipped niftis for sample: {sample_id} with MRI field: {mri_field}")
+            with tempfile.TemporaryDirectory() as temp_folder, zipfile.ZipFile(zipped, "r") as zip_ref:
+                zip_ref.extractall(temp_folder)
+                _write_tensors_from_niftis(temp_folder, hd5, mri_field, stats)
+                stats['MRI fields written'] += 1
 
 
 def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
@@ -876,6 +896,22 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             hd5.create_dataset(f'{hd5_prefix}/max_over_min', data=[max_over_min], compression='gzip', dtype=np.float32)
 
 
+def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Dict[str, int]):
+    field_id_to_root = {
+        '20251': 'SWI',
+    }
+    root_folder = os.path.join(folder, field_id_to_root[field_id])
+    niftis = glob.glob(os.path.join(root_folder, '*nii.gz'))
+    for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
+        nifti_mri = nib.load(nifti)
+        data = nifti_mri.get_fdata()
+        nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
+        stats[nii_name] += 1
+        stats[f'{nii_name}_{data.shape}'] += 1
+        hd5_prefix = f'/ndarray/{field_id}/{nii_name}'
+        hd5.create_dataset(hd5_prefix, data=data, compression='gzip', dtype=np.float32)
+
+
 def _xml_path_to_float(root: et, path: str) -> float:
     return float(root.find(path).text)
 
@@ -1216,7 +1252,7 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
         return True
     if sample_id > max_sample_id:
         return True
-    if len(mri_field_ids) > 0 and not _sample_has_mris(zip_folder, sample_id):
+    if len(mri_field_ids) > 0 and not (_sample_has_dicom_mris(zip_folder, sample_id) or _sample_has_nifti_mris(zip_folder, sample_id)):
         return True
     if len(xml_field_ids) > 0 and not _sample_has_ecgs(xml_folder, xml_field_ids, sample_id):
         return True

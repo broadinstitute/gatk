@@ -75,6 +75,7 @@ dependencies:
       - markupsafe==1.0
       - matplotlib==2.1.0
       - mistune==0.8.4
+      - nibabel==2.5.0
       - numpy==1.16.0
       - pandas==0.21.0
       - patsy==0.4.1
