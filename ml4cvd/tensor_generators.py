@@ -77,13 +77,13 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 with h5py.File(tp, 'r') as hd5:
                     dependents = {}
                     for tm in input_maps:
-                        in_batch[tm.input_name()][stats['batch_index']] = tm.tensor_from_file(hd5, dependents)
+                        in_batch[tm.input_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5, dependents)
                     
                     for tm in output_maps:
                         if tm in dependents:
                             out_batch[tm.output_name()][stats['batch_index']] = dependents[tm]
                         else:
-                            out_batch[tm.output_name()][stats['batch_index']] = tm.tensor_from_file(hd5)
+                            out_batch[tm.output_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5)
 
                     paths_in_batch.append(tp)
                     stats['batch_index'] += 1
@@ -156,13 +156,13 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                     with h5py.File(tp, 'r') as hd5:
                         dependents = {}
                         for tm in input_maps:
-                            in_batch[tm.input_name()][stats['batch_index']] = tm.tensor_from_file(hd5, dependents)
+                            in_batch[tm.input_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5, dependents)
                         
                         for tm in output_maps:
                             if tm in dependents:
                                 out_batch[tm.output_name()][stats['batch_index']] = dependents[tm]
                             else:
-                                out_batch[tm.output_name()][stats['batch_index']] = tm.tensor_from_file(hd5)
+                                out_batch[tm.output_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5)
 
                         paths_in_batch.append(tp)
                         stats['batch_index'] += 1

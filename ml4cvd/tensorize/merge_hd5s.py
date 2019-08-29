@@ -3,6 +3,7 @@ import h5py
 import logging
 import argparse
 import traceback
+from collections import Counter
 
 from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
@@ -24,6 +25,7 @@ python .merge_hd5s.py \
 
 
 def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_id, intersect, inplace):
+    stats = Counter()
     if not os.path.exists(os.path.dirname(destination)):
         os.makedirs(os.path.dirname(destination))
 
@@ -45,24 +47,28 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
                 with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
                     try:
-                        _copy_hd5_datasets(source_hd5, destination_hd5)
+                        _copy_hd5_datasets(source_hd5, destination_hd5, stats=stats)
                     except KeyError:
                         logging.warning(f"Key error at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
                     except RuntimeError:
                         logging.warning(f"RuntimeError error at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
         logging.info(f"Done copying source folder {source_folder}")
 
+    for k in stats:
+        logging.info(f"{k} has {stats[k]} tensors")
 
-def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR):
+
+def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, stats=None):
     for k in source_hd5[group_path]:
         if isinstance(source_hd5[group_path][k], h5py.Dataset):
+            stats[group_path + k] += 1
             if source_hd5[group_path][k].chunks is None:
                 destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
             else:
                 destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
         else:
             logging.debug(f"copying group {group_path + k}")
-            _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
+            _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR, stats=stats)
 
 
 def parse_args():
