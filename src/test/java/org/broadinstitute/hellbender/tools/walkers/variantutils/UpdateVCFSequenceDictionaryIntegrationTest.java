@@ -111,6 +111,24 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
                 expectedSequenceDictionary.getSequences().stream().map(seq -> seq.getSequenceLength()).collect(Collectors.toList()));
     }
 
+    @Test
+    public void testBadContigSource() {
+
+        SAMSequenceDictionary actualSequenceDictionary = SAMSequenceDictionaryExtractor.extractDictionary(
+                Paths.get(new File(testDir, "exampleFASTA.dict").getAbsolutePath()));
+
+        SAMSequenceDictionary expectedSequenceDictionary = updateSequenceDictionary(
+                new File(testDir, "variantsWithDictBadContigLength.vcf"),
+                new File(testDir, "exampleFASTA.dict"),
+                null,
+                null,
+                true);
+        Assert.assertEquals(actualSequenceDictionary.getSequences().stream().map(seq -> seq.getSequenceLength()).collect(Collectors.toList()),
+                expectedSequenceDictionary.getSequences().stream().map(seq -> seq.getSequenceLength()).collect(Collectors.toList()));
+
+
+    }
+
     @Test(expectedExceptions=CommandLineException.class)
     public void testMasterDictionaryAmbiguous() {
         // specifying both a source dictionary and a master dictionary is ambiguous

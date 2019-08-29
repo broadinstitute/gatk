@@ -1,0 +1,112 @@
+##fileformat=VCFv4.1
+##contig=<ID=1>
+##contig=<ID=10>
+##contig=<ID=11>
+##contig=<ID=12>
+##contig=<ID=13>
+##contig=<ID=14>
+##contig=<ID=15>
+##contig=<ID=16>
+##contig=<ID=17>
+##contig=<ID=18>
+##contig=<ID=19>
+##contig=<ID=2>
+##contig=<ID=20>
+##contig=<ID=21>
+##contig=<ID=22>
+##contig=<ID=3>
+##contig=<ID=4>
+##contig=<ID=5>
+##contig=<ID=6>
+##contig=<ID=7>
+##contig=<ID=8>
+##contig=<ID=9>
+##contig=<ID=GL000191.1>
+##contig=<ID=GL000192.1>
+##contig=<ID=GL000193.1>
+##contig=<ID=GL000194.1>
+##contig=<ID=GL000195.1>
+##contig=<ID=GL000196.1>
+##contig=<ID=GL000197.1>
+##contig=<ID=GL000198.1>
+##contig=<ID=GL000199.1>
+##contig=<ID=GL000200.1>
+##contig=<ID=GL000201.1>
+##contig=<ID=GL000202.1>
+##contig=<ID=GL000203.1>
+##contig=<ID=GL000204.1>
+##contig=<ID=GL000205.1>
+##contig=<ID=GL000206.1>
+##contig=<ID=GL000207.1>
+##contig=<ID=GL000208.1>
+##contig=<ID=GL000209.1>
+##contig=<ID=GL000210.1>
+##contig=<ID=GL000211.1>
+##contig=<ID=GL000212.1>
+##contig=<ID=GL000213.1>
+##contig=<ID=GL000214.1>
+##contig=<ID=GL000215.1>
+##contig=<ID=GL000216.1>
+##contig=<ID=GL000217.1>
+##contig=<ID=GL000218.1>
+##contig=<ID=GL000219.1>
+##contig=<ID=GL000220.1>
+##contig=<ID=GL000221.1>
+##contig=<ID=GL000222.1>
+##contig=<ID=GL000223.1>
+##contig=<ID=GL000224.1>
+##contig=<ID=GL000225.1>
+##contig=<ID=GL000226.1>
+##contig=<ID=GL000227.1>
+##contig=<ID=GL000228.1>
+##contig=<ID=GL000229.1>
+##contig=<ID=GL000230.1>
+##contig=<ID=GL000231.1>
+##contig=<ID=GL000232.1>
+##contig=<ID=GL000233.1>
+##contig=<ID=GL000234.1>
+##contig=<ID=GL000235.1>
+##contig=<ID=GL000236.1>
+##contig=<ID=GL000237.1>
+##contig=<ID=GL000238.1>
+##contig=<ID=GL000239.1>
+##contig=<ID=GL000240.1>
+##contig=<ID=GL000241.1>
+##contig=<ID=GL000242.1>
+##contig=<ID=GL000243.1>
+##contig=<ID=GL000244.1>
+##contig=<ID=GL000245.1>
+##contig=<ID=GL000246.1>
+##contig=<ID=GL000247.1>
+##contig=<ID=GL000248.1>
+##contig=<ID=GL000249.1>
+##contig=<ID=MT>
+##contig=<ID=X>
+##contig=<ID=Y>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	100	a	G	A	232.46	PASS	.
+1	199	b	GG	G	232.46	PASS	.
+1	200	c	G	A	232.46	PASS	.
+1	203	d	GGGG	G	232.46	PASS	.
+1	280	e	G	A	232.46	PASS	.
+1	284	f	GGG	G	232.46	PASS	.
+1	285	g	G	A	232.46	PASS	.
+1	286	h	G	A	232.46	PASS	.
+1	999	i	G	A	232.46	PASS	.
+1	1000	j	G	A	232.46	PASS	.
+1	1000	k	GGGG	G	232.46	PASS	.
+1	1076	l	G	A	232.46	PASS	.
+1	1150	m	G	A	232.46	PASS	.
+1	1176	n	G	A	232.46	PASS	.
+2	200	o	G	A	232.46	PASS	.
+2	525	p	G	A	232.46	PASS	.
+2	548	q	GGG	G	232.46	PASS	.
+2	640	r	G	A	232.46	PASS	.
+2	700	s	G	A	232.46	PASS	.
+3	1	t	G	A	232.46	PASS	.
+3	300	u	G	A	232.46	PASS	.
+3	300	v	GGGG	G	232.46	PASS	.
+3	400	w	G	A	232.46	PASS	.
+4	600	x	G	A	232.46	PASS	.
+4	775	y	G	A	232.46	PASS	.
+4	776	z	GGGG	G	232.46	PASS	.
