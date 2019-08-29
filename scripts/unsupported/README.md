@@ -1,1 +1,0 @@
-Files in this directory and sub-directory are utterly unsupported and usually directed towards specific tasks performed by Broad-internal GATK developers.
