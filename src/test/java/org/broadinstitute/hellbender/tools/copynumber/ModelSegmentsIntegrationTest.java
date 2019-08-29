@@ -107,7 +107,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                           final String outputPrefix,
                                           final boolean isAllelicCountsPresent,
                                           final boolean isNormalAllelicCountsPresent) {
-        Assert.assertTrue(!(!isAllelicCountsPresent && isNormalAllelicCountsPresent));
+        Assert.assertFalse(!isAllelicCountsPresent && isNormalAllelicCountsPresent);
         for (final String fileTag : Arrays.asList(ModelSegments.BEGIN_FIT_FILE_TAG, ModelSegments.FINAL_FIT_FILE_TAG)) {
             final ModeledSegmentCollection modeledSegments =
                     new ModeledSegmentCollection(new File(outputDir, outputPrefix + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX));
@@ -134,7 +134,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(alleleFractionLegacySegmentsFile.exists());
 
         AllelicCountCollection hetAllelicCounts = null;
-        AllelicCountCollection hetNormalAllelicCounts = null;
+        AllelicCountCollection hetNormalAllelicCounts;
         if (isAllelicCountsPresent) {
             hetAllelicCounts = new AllelicCountCollection(new File(outputDir,
                     outputPrefix + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX));

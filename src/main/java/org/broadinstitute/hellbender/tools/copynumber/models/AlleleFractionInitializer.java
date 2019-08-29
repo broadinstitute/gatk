@@ -129,7 +129,7 @@ final class AlleleFractionInitializer {
      *     reads in minor allele divided by total reads, ignoring outliers.
      * </p>
      */
-    private AlleleFractionState.MinorFractions calculateInitialMinorFractions(final AlleleFractionSegmentedData data) {
+    private static AlleleFractionState.MinorFractions calculateInitialMinorFractions(final AlleleFractionSegmentedData data) {
         final int numSegments = data.getNumSegments();
         final AlleleFractionState.MinorFractions result = new AlleleFractionState.MinorFractions(numSegments);
         for (int segmentIndex = 0; segmentIndex < numSegments; segmentIndex++) {

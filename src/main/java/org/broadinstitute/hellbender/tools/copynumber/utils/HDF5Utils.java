@@ -89,7 +89,7 @@ public final class HDF5Utils {
         }
         file.makeDoubleMatrix(path + INTERVAL_MATRIX_SUB_PATH, matrix);
         file.makeStringArray(path + INTERVAL_CONTIG_NAMES_SUB_PATH,
-                contigNamesToIndexMap.keySet().toArray(new String[contigNamesToIndexMap.keySet().size()]));
+                contigNamesToIndexMap.keySet().toArray(new String[0]));
     }
 
     /**

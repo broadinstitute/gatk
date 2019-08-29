@@ -145,7 +145,7 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
      */
     @VisibleForTesting
     static List<Integer> calculateCopyNumberPLVector(final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution) {
-        final Double largestLogProb = copyNumberPosteriorDistribution.getIntegerCopyNumberStateList().stream()
+        final double largestLogProb = copyNumberPosteriorDistribution.getIntegerCopyNumberStateList().stream()
                 .mapToDouble(copyNumberPosteriorDistribution::getCopyNumberPosterior)
                 .max().orElse(Double.NaN);
         return copyNumberPosteriorDistribution.getIntegerCopyNumberStateList().stream()

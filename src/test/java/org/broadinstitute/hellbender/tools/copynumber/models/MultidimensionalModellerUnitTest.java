@@ -85,8 +85,8 @@ public final class MultidimensionalModellerUnitTest extends GATKBaseTest {
         AlleleFractionModellerUnitTest.assertAlleleFractionPosteriorCenters(modeller.getAlleleFractionModeller(), simulatedDataAF);
     }
 
-    private List<MultidimensionalSegment> constructOversegmentedSegments(final CopyRatioSimulatedData simulatedDataCR,
-                                                                         final AlleleFractionSimulatedData simulatedDataAF) {
+    private static List<MultidimensionalSegment> constructOversegmentedSegments(final CopyRatioSimulatedData simulatedDataCR,
+                                                                                final AlleleFractionSimulatedData simulatedDataAF) {
         final int numSegments = simulatedDataCR.getData().getNumSegments();
         final List<String> contigs = simulatedDataCR.getData().getSegments().getRecords().stream()
                 .map(SimpleInterval::getContig)

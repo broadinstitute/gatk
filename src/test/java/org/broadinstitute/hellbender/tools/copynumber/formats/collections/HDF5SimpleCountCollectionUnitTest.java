@@ -33,6 +33,6 @@ public final class HDF5SimpleCountCollectionUnitTest extends GATKBaseTest {
         Assert.assertEquals(rcc.getMetadata(), metadata);
         Assert.assertEquals(rcc.getIntervals(), intervals);
         Assert.assertEquals(rcc.getCounts().getRowDimension(), 1);
-        Assert.assertFalse(rcc.getCounts().getRow(0) == counts);
+        Assert.assertNotSame(rcc.getCounts().getRow(0), counts);
     }
 }

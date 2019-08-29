@@ -213,7 +213,7 @@ public final class CollectReadCounts extends ReadWalker {
      * A simple wrapper around {@link OverlapDetector} to provide naive caching and ensure that overlap sets
      * only contain a single interval.
      */
-    private final class CachedOverlapDetector<T extends Locatable> {
+    private static final class CachedOverlapDetector<T extends Locatable> {
         private final OverlapDetector<T> overlapDetector;
         private T cachedResult;
 

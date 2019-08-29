@@ -47,8 +47,8 @@ public final class HDF5UtilsUnitTest extends GATKBaseTest {
         try (final HDF5File hdf5FileForReading = new HDF5File(tempOutputHD5, HDF5File.OpenMode.READ_ONLY)) {
             final double[][] result = HDF5Utils.readChunkedDoubleMatrix(hdf5FileForReading, matrixPath);
             final RealMatrix resultAsRealMatrix = new Array2DRowRealMatrix(result, false);
-            Assert.assertTrue(resultAsRealMatrix.getRowDimension() == numRows);
-            Assert.assertTrue(resultAsRealMatrix.getColumnDimension() == numColumns);
+            Assert.assertEquals(numRows, resultAsRealMatrix.getRowDimension());
+            Assert.assertEquals(numColumns, resultAsRealMatrix.getColumnDimension());
             assertEqualsMatrix(resultAsRealMatrix, largeMatrix, DOUBLE_MATRIX_TOLERANCE);
         }
     }

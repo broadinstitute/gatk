@@ -270,7 +270,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
                                           final List<String> contigNames,
                                           final List<Integer> contigLengths,
                                           final File outputFile) {
-        final String contigNamesArg = contigNames.stream().collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));                            //names separated by delimiter
+        final String contigNamesArg = String.join(PlottingUtils.CONTIG_DELIMITER, contigNames);                            //names separated by delimiter
         final String contigLengthsArg = contigLengths.stream().map(Object::toString).collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));  //lengths separated by delimiter
         final RScriptExecutor executor = new RScriptExecutor();
 

@@ -380,7 +380,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
     }
 
     private void writeOriginalSampleFilenames(final List<String> originalSampleFilenames) {
-        file.makeStringArray(ORIGINAL_SAMPLE_FILENAMES_PATH, originalSampleFilenames.toArray(new String[originalSampleFilenames.size()]));
+        file.makeStringArray(ORIGINAL_SAMPLE_FILENAMES_PATH, originalSampleFilenames.toArray(new String[0]));
     }
 
     private void writeOriginalIntervals(final List<SimpleInterval> originalIntervals) {
@@ -392,7 +392,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
     }
 
     private void writePanelSampleFilenames(final List<String> panelSampleFilenames) {
-        file.makeStringArray(PANEL_SAMPLE_FILENAMES_PATH, panelSampleFilenames.toArray(new String[panelSampleFilenames.size()]));
+        file.makeStringArray(PANEL_SAMPLE_FILENAMES_PATH, panelSampleFilenames.toArray(new String[0]));
     }
 
     private void writePanelIntervals(final List<SimpleInterval> panelIntervals) {

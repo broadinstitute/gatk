@@ -76,8 +76,9 @@ public final class CopyRatioKernelSegmenter {
 
         //loop over chromosomes, find changepoints, and create copy-ratio segments
         final List<CopyRatioSegment> segments = new ArrayList<>();
-        for (final String chromosome : denoisedCopyRatiosPerChromosome.keySet()) {
-            final List<CopyRatio> denoisedCopyRatiosInChromosome = denoisedCopyRatiosPerChromosome.get(chromosome);
+        for (final Map.Entry<String, List<CopyRatio>> entry : denoisedCopyRatiosPerChromosome.entrySet()) {
+            final String chromosome = entry.getKey();
+            final List<CopyRatio> denoisedCopyRatiosInChromosome = entry.getValue();
             final int numDenoisedCopyRatiosInChromosome = denoisedCopyRatiosInChromosome.size();
             logger.info(String.format("Finding changepoints in %d data points in chromosome %s...",
                     numDenoisedCopyRatiosInChromosome, chromosome));
@@ -85,8 +86,8 @@ public final class CopyRatioKernelSegmenter {
             if (numDenoisedCopyRatiosInChromosome < MIN_NUM_POINTS_REQUIRED_PER_CHROMOSOME) {
                 logger.warn(String.format("Number of points in chromosome %s (%d) is less than that required (%d), skipping segmentation...",
                         chromosome, numDenoisedCopyRatiosInChromosome, MIN_NUM_POINTS_REQUIRED_PER_CHROMOSOME));
-                final int start = denoisedCopyRatiosPerChromosome.get(chromosome).get(0).getStart();
-                final int end = denoisedCopyRatiosPerChromosome.get(chromosome).get(numDenoisedCopyRatiosInChromosome - 1).getEnd();
+                final int start = entry.getValue().get(0).getStart();
+                final int end = entry.getValue().get(numDenoisedCopyRatiosInChromosome - 1).getEnd();
                 segments.add(new CopyRatioSegment(
                         new SimpleInterval(chromosome, start, end), denoisedCopyRatiosInChromosome));
                 continue;
@@ -104,8 +105,8 @@ public final class CopyRatioKernelSegmenter {
             }
             int previousChangepoint = -1;
             for (final int changepoint : changepoints) {
-                final int start = denoisedCopyRatiosPerChromosome.get(chromosome).get(previousChangepoint + 1).getStart();
-                final int end = denoisedCopyRatiosPerChromosome.get(chromosome).get(changepoint).getEnd();
+                final int start = entry.getValue().get(previousChangepoint + 1).getStart();
+                final int end = entry.getValue().get(changepoint).getEnd();
                 final List<CopyRatio> denoisedCopyRatiosInSegment = denoisedCopyRatiosInChromosome.subList(
                         previousChangepoint + 1, changepoint + 1);
                 segments.add(new CopyRatioSegment(

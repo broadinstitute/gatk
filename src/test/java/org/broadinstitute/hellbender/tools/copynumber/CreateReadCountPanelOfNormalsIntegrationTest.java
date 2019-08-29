@@ -307,9 +307,9 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
         }
     }
 
-    private void testPanelOfNormals(final File annotatedIntervalsFile,
-                                    final int expectedNumberOfEigenvalues,
-                                    final File resultOutputFile) {
+    private static void testPanelOfNormals(final File annotatedIntervalsFile,
+                                           final int expectedNumberOfEigenvalues,
+                                           final File resultOutputFile) {
         try (final HDF5File hdf5PanelOfNormalsFile = new HDF5File(resultOutputFile)) {
             final SVDReadCountPanelOfNormals panelOfNormals = HDF5SVDReadCountPanelOfNormals.read(hdf5PanelOfNormalsFile);
 
@@ -324,7 +324,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
             if (annotatedIntervalsFile != null) {
                 Assert.assertEquals(panelOfNormals.getOriginalIntervalGCContent().length, NUM_INTERVALS);
             } else {
-                Assert.assertEquals(panelOfNormals.getOriginalIntervalGCContent(), null);
+                Assert.assertNull(panelOfNormals.getOriginalIntervalGCContent());
             }
 
             //check filtering of samples and intervals with too many zeros
@@ -334,11 +334,13 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
 
             //check that correct number of significant eigenvalues is found (this is a bit heuristic and may fail if test data is changed
             final double totalVariance = DoubleStream.of(panelOfNormals.getSingularValues()).map(x -> x * x).sum();
-            final double fractionOfVarianceExplainedMissingLastEigenvalue = IntStream.range(0, expectedNumberOfEigenvalues - 1)
-                    .mapToDouble(i -> panelOfNormals.getSingularValues()[i]).map(x -> x * x).sum() / totalVariance;
+            final double fractionOfVarianceExplainedMissingLastEigenvalue = Arrays.stream(
+                    panelOfNormals.getSingularValues(), 0, expectedNumberOfEigenvalues - 1)
+                    .map(x -> x * x).sum() / totalVariance;
             Assert.assertTrue(fractionOfVarianceExplainedMissingLastEigenvalue < FRACTION_OF_VARIANCE_EXPLAINED_THRESHOLD);
-            final double fractionOfVarianceExplained = IntStream.range(0, expectedNumberOfEigenvalues)
-                    .mapToDouble(i -> panelOfNormals.getSingularValues()[i]).map(x -> x * x).sum() / totalVariance;
+            final double fractionOfVarianceExplained = Arrays.stream(
+                    panelOfNormals.getSingularValues(), 0, expectedNumberOfEigenvalues)
+                    .map(x -> x * x).sum() / totalVariance;
             Assert.assertTrue(fractionOfVarianceExplained > FRACTION_OF_VARIANCE_EXPLAINED_THRESHOLD);
 
             //check dimensions of eigenvectors

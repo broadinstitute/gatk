@@ -90,9 +90,8 @@ public final class AllelicCountCollector {
     private static Nucleotide inferAltFromPileupBaseCounts(final Nucleotide.Counter baseCounts,
                                                            final Nucleotide refNucleotide) {
         return BASES.stream()
-                .filter(b -> b != refNucleotide)
-                .sorted((b1, b2) -> Long.compare(baseCounts.get(b2), baseCounts.get(b1)))
-                .findFirst().get();
+                .filter(b -> b != refNucleotide).min((b1, b2) -> Long.compare(baseCounts.get(b2), baseCounts.get(b1)))
+                .get();
     }
 
     /**

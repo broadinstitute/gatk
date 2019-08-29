@@ -135,7 +135,7 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
     @Test(dataProvider = "differentInvalidInput", expectedExceptions = IllegalArgumentException.class, groups = {"python"})
     public void testDifferentInvalidInput(final int sampleIndex,
                                           final List<String> callShards,
-                                          final List<String> modelShards) throws IOException {
+                                          final List<String> modelShards) {
         runToolForSingleSample(callShards, modelShards, sampleIndex,
                 createTempFile("intervals-output-vcf", ".vcf"),
                 createTempFile("segments-output-vcf", ".vcf"),

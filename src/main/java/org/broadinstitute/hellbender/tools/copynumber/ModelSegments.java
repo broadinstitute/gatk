@@ -599,8 +599,8 @@ public final class ModelSegments extends CommandLineProgram {
         return read.apply(file);
     }
 
-    private SampleLocatableMetadata getValidatedMetadata(final CopyRatioCollection denoisedCopyRatios,
-                                                         final AllelicCountCollection allelicCounts) {
+    private static SampleLocatableMetadata getValidatedMetadata(final CopyRatioCollection denoisedCopyRatios,
+                                                                final AllelicCountCollection allelicCounts) {
         final Set<SampleLocatableMetadata> metadataSet = Stream.of(denoisedCopyRatios, allelicCounts)
                 .filter(Objects::nonNull)
                 .map(AbstractRecordCollection::getMetadata)

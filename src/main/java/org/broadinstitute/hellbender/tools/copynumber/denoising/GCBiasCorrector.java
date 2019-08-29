@@ -112,7 +112,7 @@ public final class GCBiasCorrector {
      * @param readCountsByGC integer read counts for each GC bin
      * @return multiplicative correction factors for each GC bin
      */
-    private double[] calculateCorrectionFactors(final List<List<Double>> readCountsByGC) {
+    private static double[] calculateCorrectionFactors(final List<List<Double>> readCountsByGC) {
         final RealVector medians = new ArrayRealVector(readCountsByGC.stream()
                 .mapToDouble(GCBiasCorrector::medianOrDefault)
                 .toArray());

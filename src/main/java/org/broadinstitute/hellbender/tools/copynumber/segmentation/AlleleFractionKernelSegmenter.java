@@ -73,8 +73,9 @@ public final class AlleleFractionKernelSegmenter {
 
         //loop over chromosomes, find changepoints, and create allele-fraction segments
         final List<AlleleFractionSegment> segments = new ArrayList<>();
-        for (final String chromosome : allelicCountsPerChromosome.keySet()) {
-            final List<AllelicCount> allelicCountsInChromosome = allelicCountsPerChromosome.get(chromosome);
+        for (final Map.Entry<String, List<AllelicCount>> entry : allelicCountsPerChromosome.entrySet()) {
+            final String chromosome = entry.getKey();
+            final List<AllelicCount> allelicCountsInChromosome = entry.getValue();
             final int numAllelicCountsInChromosome = allelicCountsInChromosome.size();
             logger.info(String.format("Finding changepoints in %d data points in chromosome %s...",
                     numAllelicCountsInChromosome, chromosome));
@@ -89,7 +90,7 @@ public final class AlleleFractionKernelSegmenter {
                 continue;
             }
 
-            final List<Double> alternateAlleleFractionsInChromosome = allelicCountsPerChromosome.get(chromosome).stream()
+            final List<Double> alternateAlleleFractionsInChromosome = entry.getValue().stream()
                     .map(AllelicCount::getAlternateAlleleFraction)
                     .collect(Collectors.toList());
             final List<Integer> changepoints = new ArrayList<>(new KernelSegmenter<>(alternateAlleleFractionsInChromosome)
@@ -101,8 +102,8 @@ public final class AlleleFractionKernelSegmenter {
             }
             int previousChangepoint = -1;
             for (final int changepoint : changepoints) {
-                final int start = allelicCountsPerChromosome.get(chromosome).get(previousChangepoint + 1).getStart();
-                final int end = allelicCountsPerChromosome.get(chromosome).get(changepoint).getEnd();
+                final int start = entry.getValue().get(previousChangepoint + 1).getStart();
+                final int end = entry.getValue().get(changepoint).getEnd();
                 final List<AllelicCount> allelicCountsInSegment = allelicCountsInChromosome.subList(
                         previousChangepoint + 1, changepoint + 1);
                 segments.add(new AlleleFractionSegment(

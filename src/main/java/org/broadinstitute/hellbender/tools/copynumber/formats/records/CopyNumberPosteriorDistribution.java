@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -73,9 +74,7 @@ public class CopyNumberPosteriorDistribution {
 
         final CopyNumberPosteriorDistribution that = (CopyNumberPosteriorDistribution) o;
 
-        return copyNumberPosteriorDistribution != null
-                ? copyNumberPosteriorDistribution.equals(that.copyNumberPosteriorDistribution)
-                : that.copyNumberPosteriorDistribution == null;
+        return Objects.equals(copyNumberPosteriorDistribution, that.copyNumberPosteriorDistribution);
     }
 
     @Override

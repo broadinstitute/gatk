@@ -183,7 +183,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     private void writeDenoisingPlots(final String sampleName,
                                      final List<String> contigNames,
                                      final List<Integer> contigLengths) {
-        final String contigNamesArg = contigNames.stream().collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));                            //names separated by delimiter
+        final String contigNamesArg = String.join(PlottingUtils.CONTIG_DELIMITER, contigNames);                            //names separated by delimiter
         final String contigLengthsArg = contigLengths.stream().map(Object::toString).collect(Collectors.joining(PlottingUtils.CONTIG_DELIMITER));  //names separated by delimiter
         final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(CopyNumberArgumentValidationUtils.getCanonicalPath(outputDir));
 

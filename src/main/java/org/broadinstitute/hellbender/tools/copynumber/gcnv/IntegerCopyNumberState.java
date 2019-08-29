@@ -45,6 +45,6 @@ public final class IntegerCopyNumberState implements Comparable<IntegerCopyNumbe
 
     @Override
     public String toString() {
-        return GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX + Integer.toString(copyNumber);
+        return GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX + copyNumber;
     }
 }

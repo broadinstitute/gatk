@@ -81,7 +81,7 @@ final class PlottingUtils {
         }
         final Map<String, Integer> fileContigMaxPositionMap = locatableCollection.getIntervals().stream().filter(i -> contigNames.contains(i.getContig()))
                 .collect(Collectors.toMap(SimpleInterval::getContig, SimpleInterval::getEnd, Integer::max));
-        fileContigMaxPositionMap.keySet().forEach(c -> Utils.validateArg(fileContigMaxPositionMap.get(c) <= contigLengthMap.get(c),
+        fileContigMaxPositionMap.forEach((c, integer) -> Utils.validateArg(integer <= contigLengthMap.get(c),
                 String.format("Position present in the file %s exceeds contig length in the sequence dictionary.", file)));
     }
 

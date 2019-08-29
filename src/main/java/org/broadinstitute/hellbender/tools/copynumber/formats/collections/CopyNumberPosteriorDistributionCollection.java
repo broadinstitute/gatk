@@ -116,7 +116,7 @@ public final class CopyNumberPosteriorDistributionCollection extends AbstractSam
             return columnCollection;
         }
 
-        private IntegerCopyNumberState parseIntegerCopyNumber(final String copyNumberStateString) {
+        private static IntegerCopyNumberState parseIntegerCopyNumber(final String copyNumberStateString) {
             if (!copyNumberStateString.startsWith(GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX)) {
                 throw new UserException.BadInput(String.format("The column names of the copy number posterior file must " +
                         "start with %s.", GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX));
