@@ -16,7 +16,7 @@ public class GtfFeature implements Feature {
     private final int phase;
     private final Map<String, String> attributes;
 
-    protected GtfFeature(final String contig, final String source, final String type, final int start, final int end, final Strand strand, final int phase, final Map<String, String> attributes) {
+    public GtfFeature(final String contig, final String source, final String type, final int start, final int end, final Strand strand, final int phase, final Map<String, String> attributes) {
         this.contig = contig;
         this.source = source;
         this.type = type;
@@ -59,6 +59,8 @@ public class GtfFeature implements Feature {
     public String getAttribute(String key) {
         return attributes.get(key);
     }
+
+    public Map<String, String> getAttributes() { return attributes;}
 
     @Override
     public boolean equals(Object other) {

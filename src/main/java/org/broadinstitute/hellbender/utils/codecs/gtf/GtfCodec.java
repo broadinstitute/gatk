@@ -25,6 +25,11 @@ import java.util.List;
 import java.util.Map;
 
 public class GtfCodec extends GffCodec {
+    private final static String GTF_FILE_EXTENSION = "gtf";
+
+    public GtfCodec() {
+        super(GTF_FILE_EXTENSION);
+    }
 
     @Override
     public Map<String,String> parseAttributes(final String attributesString) {

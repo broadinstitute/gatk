@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs.gtf;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.LocationAware;
+import htsjdk.samtools.util.SortingCollection;
 import htsjdk.tribble.AbstractFeatureCodec;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodecHeader;
@@ -21,9 +22,9 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class GffCodec extends AbstractFeatureCodec<GtfFeature, LineIterator> {
-    final Logger logger = LogManager.getLogger(GtfCodec.class);;
+    final Logger logger = LogManager.getLogger(GffCodec.class);
 
-    private static final String FIELD_DELIMITER = "\t";
+    public static final String FIELD_DELIMITER = "\t";
 
     private static final int NUM_FIELDS = 9;
 
@@ -36,14 +37,15 @@ public abstract class GffCodec extends AbstractFeatureCodec<GtfFeature, LineIter
     private static final int GENOMIC_PHASE_INDEX = 7;
     private static final int EXTRA_FIELDS_INDEX = 8;
 
-    private static final String GTF_FILE_EXTENSION = "gtf";
+    private final String FILE_EXTENSION;
 
     private static final String COMMENT_START = "#";
 
     private int currentLineNum = 0;
 
-    protected GffCodec() {
+    protected GffCodec(final String fileExtension) {
         super(GtfFeature.class);
+        FILE_EXTENSION = fileExtension;
     }
 
     @Override
@@ -104,7 +106,7 @@ public abstract class GffCodec extends AbstractFeatureCodec<GtfFeature, LineIter
             // Simple file and name checks to start with:
             Path p = IOUtil.getPath(inputFilePath);
 
-            canDecode = p.getFileName().toString().toLowerCase().endsWith("." + GTF_FILE_EXTENSION);
+            canDecode = p.getFileName().toString().toLowerCase().endsWith("." + FILE_EXTENSION);
 
             if (canDecode) {
 
