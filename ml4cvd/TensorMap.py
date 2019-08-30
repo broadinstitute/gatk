@@ -787,7 +787,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape)
         for channel, idx in tm.channel_map.items():
             tensor[:, idx] = hd5[tm.group][channel]
-            return tm.zero_mean_std1(tensor)
+        return tm.zero_mean_std1(tensor)
     elif tm.is_ecg_text():
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
