@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.pacbio;
+package org.broadinstitute.hellbender.tools.walkers.longreads;
 
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import java.io.File;
 
 /**
- * Shards PacBio subread BAMs, making sure to keep subreads from the same ZMW in the same file",
+ * Shards long read BAMs, keeping reads from the same ZMW in the same file if ZMW information is present",
  *
  * <h3>Input</h3>
  * <ul>
@@ -32,7 +32,7 @@ import java.io.File;
  * <h3>Usage Example</h3>
  * <h4>Split reads in BAM file by sample name, read group and library name</h4>
  * <pre>
- *   gatk SplitSubreadsByZmw \
+ *   gatk ShardLongReads \
  *     -I input.bam \
  *     -O outputDirectory \
  *     --num-reads-per-split 10000
@@ -40,11 +40,11 @@ import java.io.File;
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary = "Shards PacBio subread BAMs, making sure to keep subreads from the same ZMW in the same file",
-        oneLineSummary = "Shards PacBio subread BAMs, making sure to keep subreads from the same ZMW in the same file",
-        programGroup = ReadDataManipulationProgramGroup.class
+    summary = "Shards long read BAMs and keep subreads from the same ZMW in the same file if ZMW information is present",
+    oneLineSummary = "Shards long read BAMs and keep subreads from the same ZMW in the same file if ZMW information is present",
+    programGroup = ReadDataManipulationProgramGroup.class
 )
-public final class SplitSubreadsByZmw extends ReadWalker {
+public final class ShardLongReads extends ReadWalker {
     public static final String READS_PER_SPLIT_LONG_NAME = "num-reads-per-split";
     public static final String READS_PER_SPLIT_SHORT_NAME = "nr";
 
@@ -82,8 +82,8 @@ public final class SplitSubreadsByZmw extends ReadWalker {
         if (numWrittenToShard < NUM_READS_PER_SPLIT) {
             writer.addRead(read);
         } else {
-            int lastZmw = lastRead.getAttributeAsInteger("zm");
-            int thisZmw = read.getAttributeAsInteger("zm");
+            int lastZmw = lastRead.hasAttribute("zm") ? lastRead.getAttributeAsInteger("zm") : 0;
+            int thisZmw = read.hasAttribute("zm") ? read.getAttributeAsInteger("zm") : 1;
 
             if (lastZmw != thisZmw) {
                 writer.close();

@@ -1,10 +1,8 @@
-package org.broadinstitute.hellbender.tools.walkers.pacbio;
+package org.broadinstitute.hellbender.tools.walkers.longreads;
 
 import com.google.common.base.Joiner;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -12,17 +10,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.nio.file.Path;
 
 /**
  * Quickly count errors
@@ -66,6 +58,7 @@ public final class QuicklyCountErrors extends ReadWalker {
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         boolean xseen = false;
+        int pos = read.getAssignedStart();
         for (CigarElement ce : read.getCigarElements()) {
             if (ce.getOperator().equals(CigarOperator.X)) {
                 xseen = true;

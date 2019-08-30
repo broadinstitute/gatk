@@ -1,6 +1,5 @@
-package org.broadinstitute.hellbender.tools.walkers.pacbio;
+package org.broadinstitute.hellbender.tools.walkers.longreads;
 
-import com.google.common.base.Joiner;
 import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -14,8 +13,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -80,14 +77,21 @@ public final class RecoverUncorrectedReads extends ReadWalker {
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         String[] name = read.getName().split("/");
-        String readZmwName = name[0] + "/" + name[1];
-        if (!correctedReadNames.contains(readZmwName)) {
+        if (name.length >= 2) {
+            String readZmwName = name[0] + "/" + name[1];
+            if (!correctedReadNames.contains(readZmwName)) {
+                outputWriter.addRead(read);
+                uncorrectedReads++;
+
+                logger.debug("uncorrected: {}", readZmwName);
+            } else {
+                logger.debug("corrected: {}", readZmwName);
+            }
+        } else {
             outputWriter.addRead(read);
             uncorrectedReads++;
 
-            logger.debug("uncorrected: {}", readZmwName);
-        } else {
-            logger.debug("corrected: {}", readZmwName);
+            logger.debug("uncorrected: {}", read.getName());
         }
     }
 

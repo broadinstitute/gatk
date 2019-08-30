@@ -307,11 +307,11 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testCompOverlap() throws IOException {
-        String eval = getTestFilePath("pacbio.ts.recalibrated.vcf");
+        String eval = getTestFilePath("longreads.ts.recalibrated.vcf");
         String comp = largeFileTestDir + "genotypes_r27_nr.b37_fwd.subset.vcf";
 
         String name = "testCompOverlap";
-        String extraArgs = " -R " + b37_reference_20_21 + " -L " + getTestFilePath("pacbio.hg19.intervals") + " --comp:comphapmap " + comp + " --eval " + eval + " -no-ev -EV CompOverlap -sn NA12878 -no-st -ST Novelty -O %s";
+        String extraArgs = " -R " + b37_reference_20_21 + " -L " + getTestFilePath("longreads.hg19.intervals") + " --comp:comphapmap " + comp + " --eval " + eval + " -no-ev -EV CompOverlap -sn NA12878 -no-st -ST Novelty -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(extraArgs,Arrays.asList(getExpectedFile(name)));
         spec.executeTest(name,this);
     }

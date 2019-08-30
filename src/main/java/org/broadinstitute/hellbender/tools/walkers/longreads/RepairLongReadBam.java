@@ -1,7 +1,6 @@
-package org.broadinstitute.hellbender.tools.walkers.pacbio;
+package org.broadinstitute.hellbender.tools.walkers.longreads;
 
 import htsjdk.samtools.*;
-import ngs.ReadGroup;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -13,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.util.List;
@@ -33,9 +31,9 @@ import java.util.List;
  * </ul>
  *
  * <h3>Usage Example</h3>
- * <h4>Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq</h4>
+ * <h4>Restore annotations from unaligned BAM files that may be discarded during conversion by samtools fastq</h4>
  * <pre>
- *   gatk RepairPacBioBam \
+ *   gatk RepairLongReadBam \
  *     -I unaligned.bam \
  *     -A aligned.bam \
  *     -O restored.bam
@@ -47,7 +45,7 @@ import java.util.List;
         oneLineSummary = "Restore annotations from unaligned BAM files that are discarded during conversion by samtools fastq",
         programGroup = ReadDataManipulationProgramGroup.class
 )
-public final class RepairPacBioBam extends ReadWalker {
+public final class RepairLongReadBam extends ReadWalker {
     @Argument(fullName = "aligned",
             shortName = "A",
             doc="aligned reads")
@@ -83,9 +81,9 @@ public final class RepairPacBioBam extends ReadWalker {
         SamReaderFactory srf = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
         SamReader srs = srf.open(IOUtils.getPath(aligned));
 
-        if (getHeaderForReads() != null && getHeaderForReads().getReadGroups() != null && getHeaderForReads().getReadGroups().size() != 1) {
-            throw new UserException("One (and only one) read group per aligned/unaligned BAM file required");
-        }
+//        if (getHeaderForReads() != null && getHeaderForReads().getReadGroups() != null && getHeaderForReads().getReadGroups().size() != 1) {
+//            throw new UserException("One (and only one) read group per aligned/unaligned BAM file required");
+//        }
 
         it = srs.iterator();
         if (!it.hasNext()) {
