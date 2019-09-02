@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMRecord;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.bdgenomics.adam.converters.SAMRecordConverter;
 import org.bdgenomics.adam.models.SequenceDictionary;
-import org.bdgenomics.adam.models.RecordGroupDictionary;
+import org.bdgenomics.adam.models.ReadGroupDictionary;
 
 /**
  * Converts a GATKRead to a BDG AlignmentRecord
@@ -15,27 +15,27 @@ public class GATKReadToBDGAlignmentRecordConverter {
 
     private SAMFileHeader header;
     private SequenceDictionary dict;
-    private RecordGroupDictionary readGroups;
+    private ReadGroupDictionary readGroups;
 
     public GATKReadToBDGAlignmentRecordConverter(SAMFileHeader header) {
         this.header = header;
         this.dict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-        this.readGroups = RecordGroupDictionary.fromSAMHeader(header);
+        this.readGroups = ReadGroupDictionary.fromSAMHeader(header);
     }
 
     public static AlignmentRecord convert( final GATKRead gatkRead, final SAMFileHeader header ) {
         SequenceDictionary dict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-        RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
+        ReadGroupDictionary readGroups = ReadGroupDictionary.fromSAMHeader(header);
         return GATKReadToBDGAlignmentRecordConverter.convert(gatkRead, header, dict, readGroups);
     }
 
     public static AlignmentRecord convert(
-            final GATKRead gatkRead, final SAMFileHeader header, final SequenceDictionary dict, final RecordGroupDictionary readGroups ) {
+            final GATKRead gatkRead, final SAMFileHeader header, final SequenceDictionary dict, final ReadGroupDictionary readGroups ) {
         return converter.convert(gatkRead.convertToSAMRecord(header));
     }
 
     public static AlignmentRecord convert(
-            final SAMRecord sam, final SequenceDictionary dict, final RecordGroupDictionary readGroups ) {
+            final SAMRecord sam, final SequenceDictionary dict, final ReadGroupDictionary readGroups ) {
         return converter.convert(sam);
     }
 }

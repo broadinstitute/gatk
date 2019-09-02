@@ -55,8 +55,6 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
 
     private static GATKRead basicReadBackedByADAMRecord(final SAMRecord sam) {
         final AlignmentRecord record = new AlignmentRecord();
-        record.setContigName(sam.getContig());
-        record.setRecordGroupSample(sam.getReadGroup().getSample());
         record.setReadName(sam.getReadName());
         record.setSequence(new String(sam.getReadBases()));
         record.setStart((long)sam.getAlignmentStart()-1); //ADAM records are 0-based

@@ -13,7 +13,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.bdgenomics.adam.models.RecordGroupDictionary;
+import org.bdgenomics.adam.models.ReadGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -157,7 +157,7 @@ public final class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header) throws IOException {
         final SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-        final RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
+        final ReadGroupDictionary readGroups = ReadGroupDictionary.fromSAMHeader(header);
         final JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
                 reads.map(read -> {
                     read.setHeaderStrict(header);

@@ -3,8 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.bdgenomics.adam.converters.AlignmentRecordConverter;
-import org.bdgenomics.adam.models.RecordGroupDictionary;
-import org.bdgenomics.adam.models.SAMFileHeaderWritable;
+import org.bdgenomics.adam.models.ReadGroupDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 
 /**
@@ -30,8 +29,8 @@ public final class BDGAlignmentRecordToGATKReadAdapter extends SAMRecordToGATKRe
     private final AlignmentRecord alignmentRecord;
 
     public BDGAlignmentRecordToGATKReadAdapter(final AlignmentRecord alignmentRecord, final SAMFileHeader header) {
-        super(new AlignmentRecordConverter().convert(alignmentRecord, SAMFileHeaderWritable.apply(header),
-                RecordGroupDictionary.fromSAMHeader(header)));
+        super(new AlignmentRecordConverter().convert(alignmentRecord, header,
+                ReadGroupDictionary.fromSAMHeader(header)));
         this.alignmentRecord = alignmentRecord;
     }
 

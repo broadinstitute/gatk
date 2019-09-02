@@ -6,15 +6,19 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.bdgenomics.adam.models.ReferenceRegion;
 import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
+import org.bdgenomics.formats.avro.Strand;
 import org.bdgenomics.utils.io.ByteAccess;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import scala.Tuple2;
 import scala.collection.JavaConversions;
+import scala.collection.immutable.IndexedSeq;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -39,7 +43,10 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
-        this.twoBitSeqEntries = JavaConversions.mapAsJavaMap(twoBitFile.seqRecords());
+        this.twoBitSeqEntries = new LinkedHashMap<>();
+        for (Tuple2<String, TwoBitRecord> pair: JavaConversions.seqAsJavaList(twoBitFile.seqRecords())) {
+            twoBitSeqEntries.put(pair._1, pair._2);
+        }
     }
 
     /**
@@ -74,7 +81,7 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         String contig = interval.getContig();
         long start = interval.getGA4GHStart();
         long end = interval.getGA4GHEnd();
-        return new ReferenceRegion(contig, start, end, null);
+        return new ReferenceRegion(contig, start, end, Strand.UNKNOWN);
     }
 
     private SimpleInterval cropIntervalAtContigEnd( final SimpleInterval interval ) {
