@@ -150,6 +150,7 @@ def parse_args():
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
 
     args = parser.parse_args()
     _process_args(args)

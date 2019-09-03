@@ -8,7 +8,7 @@ import logging
 import operator
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable, Callable
+from typing import Dict, List, Tuple, Iterable, Callable, Any
 
 # Keras imports
 from keras import layers
@@ -26,6 +26,8 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+from ml4cvd.optimizers import get_optimizer
+from ml4cvd.lookahead import Lookahead
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
@@ -270,6 +272,9 @@ def make_multimodal_to_multilabel_model(model_file: str,
                                         pool_z: int,
                                         padding: str,
                                         learning_rate: float,
+                                        optimizer: str = 'adam',
+                                        optimizer_kwargs: Dict[str, Any] = None,
+                                        lookahead: bool = False,
                                         ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -306,11 +311,17 @@ def make_multimodal_to_multilabel_model(model_file: str,
     :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
     :param padding: Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
     :param learning_rate:
+    :param optimizer: which optimizer to use. See optimizers.py.
+    :param optimizer_kwargs: kwargs to initialize optimizer. E.g. for adam: optimizer_kwargs={beta_1:0.9}
+    :param lookahead: Whether to use Lookahead Optimizer (https://arxiv.org/abs/1907.08610)
     :return: a compiled keras model
-	"""
+    """
+    opt = get_optimizer(optimizer, learning_rate, optimizer_kwargs)
+    metric_dict = get_metric_dict(tensor_maps_out)
+    custom_dict = {**metric_dict, type(opt).__name__: opt}
     if model_file is not None:
         logging.info("Attempting to load model file from: {}".format(model_file))
-        m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
+        m = load_model(model_file, custom_objects=custom_dict)
         m.summary()
         logging.info("Loaded model file from: {}".format(model_file))
         return m
@@ -424,7 +435,6 @@ def make_multimodal_to_multilabel_model(model_file: str,
             output_predictions[tm.output_name()] = Dense(units=1, activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.summary()
 
     if model_layers is not None:
@@ -443,6 +453,9 @@ def make_multimodal_to_multilabel_model(model_file: str,
         logging.info('Loaded and froze:{} layers from:{}'.format(frozen, model_freeze))
 
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
+    if lookahead:
+        lookahead_opt = Lookahead()
+        lookahead_opt.inject(m)
     return m
 
 
