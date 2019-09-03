@@ -20,11 +20,11 @@ import java.util.stream.IntStream;
  * Created by David Benjamin on 2/16/17.
  */
 public class CalculateContaminationIntegrationTest extends CommandLineProgramTest {
-    public static final File SPIKEIN_DATA_DIRECTORY = new File(getTestDataDir(), "calculatecontamination");
-    public static final File NA12891_1_PCT_NA12892_99_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.01_NA12892_0.99.table");
-    public static final File NA12891_3_PCT_NA12892_97_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.03_NA12892_0.97.table");
-    public static final File NA12891_5_PCT_NA12892_95_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.05_NA12892_0.95.table");
-    public static final File NA12891_8_PCT_NA12892_92_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.08_NA12892_0.92.table");
+    public static final File CONTAMINATION_TEST_DATA_DIRECTORY = new File(getTestDataDir(), "calculatecontamination");
+    public static final File NA12891_1_PCT_NA12892_99_PCT = new File(CONTAMINATION_TEST_DATA_DIRECTORY, "NA12891_0.01_NA12892_0.99.table");
+    public static final File NA12891_3_PCT_NA12892_97_PCT = new File(CONTAMINATION_TEST_DATA_DIRECTORY, "NA12891_0.03_NA12892_0.97.table");
+    public static final File NA12891_5_PCT_NA12892_95_PCT = new File(CONTAMINATION_TEST_DATA_DIRECTORY, "NA12891_0.05_NA12892_0.95.table");
+    public static final File NA12891_8_PCT_NA12892_92_PCT = new File(CONTAMINATION_TEST_DATA_DIRECTORY, "NA12891_0.08_NA12892_0.92.table");
     public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.001;
 
     @DataProvider(name = "includeHomAlts")
@@ -151,5 +151,22 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
+    }
+
+    @Test
+    public void testSmallGenePanelWithNoHomAlts() {
+        final File inputPileups = new File(CONTAMINATION_TEST_DATA_DIRECTORY, "small_gene_panel.pileups");
+        final File contaminationTable = createTempFile("contamination", ".table");
+
+        final String[] args = {
+                "-I", inputPileups.getAbsolutePath(),
+                "-O", contaminationTable.getAbsolutePath(),
+        };
+        runCommandLine(args);
+
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
+
+        Assert.assertFalse(Double.isNaN(calculatedContamination));
+        Assert.assertTrue(calculatedContamination < 0.2);
     }
 }
