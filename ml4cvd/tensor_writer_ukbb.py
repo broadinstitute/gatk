@@ -23,6 +23,7 @@ import nibabel as nib
 from typing import Dict, List, Tuple
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
+from functools import partial
 
 import matplotlib
 
@@ -36,6 +37,7 @@ from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
+from ml4cvd.defines import DataSetType
 
 
 MRI_MIN_RADIUS = 2
@@ -788,15 +790,37 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                             hd5.create_dataset(rest_group + dataset_name, data=median_wave, compression='gzip')
 
 
+def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: str) -> str:
+    """
+    In the future, TMAPs should be generated using this same function
+    """
+    return f'/{source}/{dtype}/{_datetime_to_str(date)}/{name}'
+
+
+def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value):
+    hd5_path = tensor_path(source, dtype, date, name)
+    if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
+        hd5.create_dataset(hd5_path, data=value, compression='gzip')
+    elif dtype in (DataSetType.STRING,):
+        hd5.create_dataset(hd5_path, data=value, dtype=h5py.special_dtype(vlen=str))
+    else:
+        raise NotImplementedError(f'{dtype} cannot be automatically written yet')  # TODO: Add categorical, etc.
+
+
+def _datetime_to_str(dt: datetime.datetime) -> str:
+    return dt.strftime('%Y-%m-%d_%H-%M-%S')
+
+
 def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
-        instance = ecg.split(JOIN_CHAR)[-2]
-        logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
         root = et.parse(ecg).getroot()
-        hd5.create_dataset('ecg_bike_date_{}'.format(instance), (1,),
-                           data=_date_str_from_ecg(root), dtype=h5py.special_dtype(vlen=str))
+        date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
+        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5)
+        logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
 
-        hd5_group = 'ecg_bike' + HD5_GROUP_CHAR
+        instance = ecg.split(JOIN_CHAR)[-2]
+        write_to_hd5(dtype=DataSetType.STRING, name='instance', value=instance)
+
         median_ecgs = defaultdict(list)
         for median_waves in root.findall('./MedianData/Median/WaveformData'):
             median_ecgs[median_waves.attrib['lead']].extend(list(map(float, median_waves.text.strip().split(','))))
@@ -805,7 +829,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             for lead in median_ecgs:
                 median_idx = min(ECG_BIKE_MEDIAN_SIZE[0], len(median_ecgs[lead]))
                 median_np[:median_idx, ECG_BIKE_LEADS[lead]] = median_ecgs[lead][:median_idx]
-            hd5.create_dataset(hd5_group + 'median_{}'.format(instance), data=median_np, compression='gzip')
+            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='median', value=median_np)
         else:
             stats['missing median bike ECG'] += 1
 
@@ -817,7 +841,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             strip_idx = min(ECG_BIKE_MEDIAN_SIZE[0], len(strip_list))
             strip_np[:strip_idx, ECG_BIKE_LEADS[strip_waves.attrib['lead']]] = strip_list[:strip_idx]
         if counter > 0:
-            hd5.create_dataset(hd5_group + 'strip_{}'.format(instance), data=strip_np, compression='gzip')
+            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='strip', value=strip_np)
         else:
             stats['missing strip bike ECG'] += 1
 
@@ -838,11 +862,16 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             for lead in full_ekgs:
                 full_idx = min(ECG_BIKE_FULL_SIZE[0], len(full_ekgs[lead]))
                 full_np[:full_idx, ECG_BIKE_LEADS[lead]] = full_ekgs[lead][:full_idx]
-            hd5.create_dataset(hd5_group + 'full_{}'.format(instance), data=full_np, compression='gzip')
+            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='full', value=full_np)
         else:
             stats['missing full disclosure bike ECG'] += 1
 
-        # TODO: did not handle instance
+        # Patient info
+        patient_fields = ('Age', 'Height', 'Weight')
+        for field in patient_fields:
+            val = [_xml_path_to_float(root, f'./PatientInfo/{field}')]
+            write_to_hd5(dtype=DataSetType.CONTINUOUS, name=str.lower(field), value=val)
+
         # Trend measurements
         trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount']
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
@@ -857,7 +886,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             trends['Artifact'].append(float(trend_entry.find('Artifact').text.strip('%')) / 100)  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
-            hd5.create_dataset(f'/ecg_bike_trend/{field}', data=trend_list, compression='gzip', dtype=np.float32)
+            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name=f'trend_{str.lower(field)}', value=trend_list)
 
         # Last 60 seconds of raw given that the rest phase is 60s
         phase_durations = {}
@@ -866,34 +895,15 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             phase_duration = SECONDS_PER_MINUTE * int(protocol.find("PhaseDuration/Minute").text) + int(
                 protocol.find("PhaseDuration/Second").text)
             phase_durations[phase_name] = phase_duration
-            hd5.create_dataset(f'/ecg_bike_phase_duration/{phase_name}', data=[phase_duration], dtype=np.float32, compression='gzip')
+            write_to_hd5(dtype=DataSetType.CONTINUOUS, name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
 
         # HR stats
-        hd5_prefix = '/continuous/instance_{instance}'
         max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
         resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
         max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
-        hd5.create_dataset(f'{hd5_prefix}/bike_max_hr', data=[max_hr], compression='gzip', dtype=np.float32)
-        hd5.create_dataset(f'{hd5_prefix}/bike_resting_hr', data=[resting_hr], compression='gzip', dtype=np.float32)
-        hd5.create_dataset(f'{hd5_prefix}/bike_max_pred_hr', data=[max_pred_hr], compression='gzip', dtype=np.float32)
-
-        # Autonomic function metrics
-        if not phase_durations['Rest'] == SECONDS_PER_MINUTE:
-            return  # This happens when someone feels chest pain - then they have no rest period
-
-        rest_start_idx = trends['PhaseName'].index(phase_to_int['Rest'])
-        times = np.array(trends['PhaseTime'][rest_start_idx:])
-        hrs = np.array(trends['HeartRate'][rest_start_idx:])
-        target_times = np.array([10, 20, 30, 40, 50])
-        interp_hrs = np.interp(target_times, times, hrs)
-        heart_rate_recovery = max_hr - interp_hrs.mean()
-
-        hd5_prefix = f'/ecg_bike_autonomic_function/instance_{instance}'
-        hd5.create_dataset(f'{hd5_prefix}/interp_hrs', data=interp_hrs, compression='gzip', dtype=np.float32)
-        hd5.create_dataset(f'{hd5_prefix}/heart_rate_recovery', data=[heart_rate_recovery], compression='gzip', dtype=np.float32)
-        if hrs.min() > 0:  # TODO: When does this happen?
-            max_over_min = max_hr / hrs.min()
-            hd5.create_dataset(f'{hd5_prefix}/max_over_min', data=[max_over_min], compression='gzip', dtype=np.float32)
+        write_to_hd5(dtype=DataSetType.CONTINUOUS, name='max_hr', value=[max_hr])
+        write_to_hd5(dtype=DataSetType.CONTINUOUS, name='resting_hr', value=[resting_hr])
+        write_to_hd5(dtype=DataSetType.CONTINUOUS, name='max_pred_hr', value=[max_pred_hr])
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Dict[str, int]):

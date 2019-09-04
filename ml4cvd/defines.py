@@ -1,3 +1,17 @@
+from enum import Enum, auto
+
+
+class DataSetType(Enum):
+    FLOAT_ARRAY = auto()
+    CONTINUOUS = auto()
+    CATEGORICAL = auto()
+    STRING = auto()
+
+    def __str__(self):
+        """DataSetType.FLOAT_ARRAY becomes float_array"""
+        return str.lower(super().__str__().split('.')[1])
+
+
 EPS = 1e-7
 
 DICOM_EXT = '.dcm'
