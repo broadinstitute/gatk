@@ -270,17 +270,12 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size
         }
-
-        Float sub_vcf_size = size(M2.unfiltered_vcf, "GB")
-        Float sub_bamout_size = size(M2.output_bamOut, "GB")
     }
 
-    call SumFloats as SumSubVcfs {
-        input:
-            sizes = sub_vcf_size,
-            preemptible_attempts = preemptible_attempts,
-            max_retries = max_retries
-    }
+    Int merged_vcf_size = size(M2.unfiltered_vcf, "GB")
+    Int merged_bamout_size = size(M2.output_bamOut, "GB")
+    Int merged_tumor_pileups_size = size(M2.tumor_pileups, "GB")
+    Int merged_normal_pileups_size = size(M2.tumor_pileups, "GB")
 
     if (run_ob_filter) {
         call LearnReadOrientationModel {
@@ -303,17 +298,10 @@ workflow Mutect2 {
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts,
             max_retries = max_retries,
-            disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
+            disk_space = ceil(merged_vcf_size * large_input_to_output_multiplier) + disk_pad
     }
 
     if (make_bamout_or_default) {
-        call SumFloats as SumSubBamouts {
-            input:
-                sizes = sub_bamout_size,
-                preemptible_attempts = preemptible_attempts,
-                max_retries = max_retries
-        }
-
         call MergeBamOuts {
             input:
                 ref_fasta = ref_fasta,
@@ -323,7 +311,7 @@ workflow Mutect2 {
                 output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = ceil(SumSubBamouts.total_size * large_input_to_output_multiplier) + disk_pad,
+                disk_space = ceil(merged_bamout_size * large_input_to_output_multiplier) + disk_pad,
                 max_retries = max_retries
         }
     }
@@ -345,7 +333,7 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
                 max_retries = max_retries,
-                disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
+                disk_space = ceil(merged_tumor_pileups_size * large_input_to_output_multiplier) + disk_pad
         }
 
         if (defined(normal_bam)){
@@ -358,7 +346,7 @@ workflow Mutect2 {
                     gatk_docker = gatk_docker,
                     preemptible_attempts = preemptible_attempts,
                     max_retries = max_retries,
-                    disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
+                    disk_space = ceil(merged_normal_pileups_size * large_input_to_output_multiplier) + disk_pad
             }
         }
 
@@ -1220,32 +1208,6 @@ task oncotate_m2 {
 
     output {
         File oncotated_m2_maf="~{case_id}.maf.annotated"
-    }
-}
-
-# Calculates sum of a list of floats
-task SumFloats {
-    input {
-      Array[Float] sizes
-
-      # Runtime parameters
-      Int? preemptible_attempts
-      Int? max_retries
-    }
-
-    command <<<
-        python -c "print ~{sep="+" sizes}"
-    >>>
-
-    output {
-        Float total_size = read_float(stdout())
-    }
-
-    runtime {
-        docker: "python:2.7"
-        disks: "local-disk " + 10 + " HDD"
-        preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 0])
     }
 }
 
