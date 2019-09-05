@@ -32,24 +32,24 @@ public class AlleleFrequencyQC extends VariantEval {
 
     @Argument(shortName = "pvalue-threshold",
             doc = "Threshold to cut off the pvalue.")
-    protected Double threshold = 0.05;
+    protected double threshold = 0.05;
 
     @Argument(shortName = "allowed-variance",
             doc = "Variance allowed in calculating the modified chi squared statistic.")
-    protected Double allowedVariance = 0.01;
+    protected double allowedVariance = 0.01;
 
     @Argument(shortName = "debug-file",
             doc = "File to save the results from variant eval for debugging", optional = true)
     protected File debugFile;
 
-    private String R_SCRIPT = "plotAlleleFrequencyQC.R";
+    final static private String R_SCRIPT = "plotAlleleFrequencyQC.R";
     protected File metricOutput;
     protected String sample;
 
     @Override
     public void onTraversalStart() {
         NO_STANDARD_MODULES = true;
-        MODULES_TO_USE = Collections.singletonList("PVariantEvaluator");
+        MODULES_TO_USE = Collections.singletonList("VariantAFEvaluator");
         keepSitesWithAC0 = true;
         NO_STANDARD_STRATIFICATIONS = true;
         STRATIFICATIONS_TO_USE = Arrays.asList("AlleleFrequency", "Filter");
@@ -76,19 +76,20 @@ public class AlleleFrequencyQC extends VariantEval {
 
         super.onTraversalSuccess();
 
-        GATKReportTable table= new GATKReport(outFile).getTable(MODULES_TO_USE.get(0));
-        List<String> columnNames = table.getColumnInfo().stream().map(c -> c.getColumnName()).collect(Collectors.toList());
+        final GATKReportTable table= new GATKReport(outFile).getTable(MODULES_TO_USE.get(0));
+        final List<String> columnNames = table.getColumnInfo().stream().map(c -> c.getColumnName()).collect(Collectors.toList());
 
         // this is a map of allele frequency bin : length 2 list of observed allele frequencies ( one for comp, one for eval )
-        Map<Object, List<Object>> afMap = IntStream.range(0, table.getNumRows()).mapToObj(i -> table.getRow(i)).
+
+        final Map<Object, List<Object>> afMap = IntStream.range(0, table.getNumRows()).mapToObj(i -> table.getRow(i)).
                 filter(r -> r[columnNames.indexOf("Filter")].equals("called")).
                 collect(Collectors.groupingBy(r -> r[columnNames.indexOf("AlleleFrequency")],
-                        Collectors.mapping(r -> r[columnNames.indexOf("avgVarAlleles")], Collectors.toList())));
+                        Collectors.mapping(r -> r[columnNames.indexOf("avgVarAF")], Collectors.toList())));
 
-        ChiSquaredDistribution dist = new ChiSquaredDistribution(afMap.size()-1);
-        Double chiSqValue = calculateChiSquaredStatistic(afMap, allowedVariance);
-        Double pVal = 1- dist.cumulativeProbability(chiSqValue);
-        MetricsFile<AlleleFrequencyQCMetric, Integer> metricsFile = new MetricsFile<>();
+        final ChiSquaredDistribution dist = new ChiSquaredDistribution(afMap.size()-1);
+        final double chiSqValue = calculateChiSquaredStatistic(afMap, allowedVariance);
+        final double pVal = 1- dist.cumulativeProbability(chiSqValue);
+        final MetricsFile<AlleleFrequencyQCMetric, Integer> metricsFile = new MetricsFile<>();
         final AlleleFrequencyQCMetric metric = new AlleleFrequencyQCMetric();
 
         metric.SAMPLE = sample;
@@ -113,10 +114,10 @@ public class AlleleFrequencyQC extends VariantEval {
 
     // This creates a modified chi squared statistic that allows for a constant variance (1%) rather than scaling
     // with the expected count values
-    private Double calculateChiSquaredStatistic(Map<Object, List<Object>> afMap, Double variance) {
+    private double calculateChiSquaredStatistic(Map<Object, List<Object>> afMap, double variance) {
         return afMap.values().stream().
                 mapToDouble(afs -> afs.size() >= 2 ?
-                        Math.pow((Double)afs.toArray()[0] -  (Double)afs.toArray()[1], 2.) : 0).
+                        Math.pow((double)afs.toArray()[0] -  (double)afs.toArray()[1], 2.) : 0).
                 sum()/Math.pow(variance, 2.);
     }
 

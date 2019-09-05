@@ -26,6 +26,8 @@ public class AlleleFrequency extends VariantStratifier {
 
     private StratifyingScale scale;
     private boolean useCompAFStratifier;
+    private static final int LOGIT_BIN_WIDTH = 1;
+
 
     private static int logLimit = 30; // go from -30 to 30 using logit function
 
@@ -41,7 +43,7 @@ public class AlleleFrequency extends VariantStratifier {
                 }
                 break;
             case LOGARITHMIC:
-                for (int a = -logLimit; a <= logLimit; a += 1) {
+                for (int a = -logLimit; a <= logLimit; a += LOGIT_BIN_WIDTH) {
                     states.add(String.format("%d", a));
                 }
 
@@ -51,20 +53,19 @@ public class AlleleFrequency extends VariantStratifier {
     public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         if (eval != null) {
             try {
-                Double alleleFraction  = Collections.max(eval.getAttributeAsDoubleList("AF", 0.0));
+                double alleleFrequency = Collections.max(eval.getAttributeAsDoubleList("AF", 0.0));
                 if (useCompAFStratifier) {
                     if (comp != null) {
-                        alleleFraction = Collections.max(comp.getAttributeAsDoubleList("AF", 0.0));
+                        alleleFrequency = Collections.max(comp.getAttributeAsDoubleList("AF", 0.0));
                     } else {
-                        alleleFraction = 0.0; // any site that isn't in the comp should be the expected lowest allele fraction
+                        alleleFrequency = 0.0; // any site that isn't in the comp should be the expected lowest allele fraction
                     }
                 }
                 switch(scale) {
                     case LINEAR:
-                        return Collections.singletonList((Object)String.format("%.3f", (5.0 * MathUtils.roundToNDecimalPlaces(alleleFraction / 5.0, 3))));
+                        return Collections.singletonList(String.format("%.3f", (5.0 * MathUtils.roundToNDecimalPlaces(alleleFrequency / 5.0, 3))));
                     case LOGARITHMIC:
-                        alleleFraction += Math.pow(10.0, -6); // never have AF of 0.0
-                        return Collections.singletonList(String.format("%d", getLogitBucket(alleleFraction)));
+                        return Collections.singletonList(String.format("%d", getLogitBucket(alleleFrequency + Math.pow(10.0, -6))));
                 }
 
             } catch (Exception e) {
@@ -75,9 +76,9 @@ public class AlleleFrequency extends VariantStratifier {
         return Collections.emptyList();
     }
 
-    private int getLogitBucket(Double alleleFraction) {
+    private int getLogitBucket(double alleleFrequency) {
         // calculate logit value
-        Float score = (float)( -10 * Math.log10((alleleFraction/(1-alleleFraction))));
+        Float score = (float)( -10 * Math.log10((alleleFrequency/(1-alleleFrequency))));
 
         // find correct bucket
         return Math.min(logLimit, Math.max(-logLimit, Math.round(score)));
