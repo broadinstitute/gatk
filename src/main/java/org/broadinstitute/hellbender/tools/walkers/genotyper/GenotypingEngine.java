@@ -10,7 +10,10 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -382,30 +385,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return {@code true} iff we force emissions.
      */
     protected abstract boolean forceSiteEmission();
-
-    /**
-     * Returns the log10 prior probability for all possible allele counts from 0 to N where N is the total number of
-     * genomes (total-ploidy).
-     *
-     * @param vc the target variant-context, use to determine the total ploidy thus the possible ACs.
-     * @param defaultPloidy default ploidy to be assume if we do not have the ploidy for some sample in {@code vc}.
-     * @param model the calculation model (SNP,INDEL or MIXED) whose priors are to be retrieved.
-     * @throws java.lang.NullPointerException if either {@code vc} or {@code model} is {@code null}
-     * @return never {@code null}, an array with exactly <code>total-ploidy(vc) + 1</code> positions.
-     */
-    protected final double[] getAlleleFrequencyPriors( final VariantContext vc, final int defaultPloidy, final GenotypeLikelihoodsCalculationModel model ) {
-        final int totalPloidy = GATKVariantContextUtils.totalPloidy(vc, defaultPloidy);
-        switch (model) {
-            case SNP:
-            case GENERALPLOIDYSNP:
-                return log10AlleleFrequencyPriorsSNPs.forTotalPloidy(totalPloidy);
-            case INDEL:
-            case GENERALPLOIDYINDEL:
-                return log10AlleleFrequencyPriorsIndels.forTotalPloidy(totalPloidy);
-            default:
-                throw new IllegalArgumentException("Unexpected GenotypeCalculationModel " + model);
-        }
-    }
 
     protected final boolean passesEmitThreshold(final double conf, final boolean bestGuessIsRef) {
         return (configuration.outputMode == OutputMode.EMIT_ALL_CONFIDENT_SITES || !bestGuessIsRef) &&

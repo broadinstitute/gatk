@@ -1,19 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
+import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.testng.Assert;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,13 +42,6 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
     }
 
     private static GenotypingEngine<?> getGenotypingEngine() {
-        final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
-        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
-        uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
-        return new MinimalGenotypingEngine(uac, SAMPLES);
-    }
-
-    private static GenotypingEngine<?> getNewQualGenotypingEngine() {
         final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
