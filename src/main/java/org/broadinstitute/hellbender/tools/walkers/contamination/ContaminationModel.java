@@ -36,6 +36,8 @@ public class ContaminationModel {
     public static final double UNSCRUPULOUS_HOM_REF_ALLELE_FRACTION = 0.15;
     public static final double UNSCRUPULOUS_HOM_REF_FRACTION_TO_REMOVE_FOR_POSSIBLE_LOH = 0.1;
     public static final double UNSCRUPULOUS_HOM_REF_PERCENTILE = 100 * ( 1 - UNSCRUPULOUS_HOM_REF_FRACTION_TO_REMOVE_FOR_POSSIBLE_LOH);
+    public static final double MINIMUM_UNSCRUPULOUS_HOM_REF_ALT_FRACTION_THRESHOLD = 0.1;
+
     public static final double MAF_STEP_SIZE = 0.04;
     private final double contamination;
     private final double errorRate;
@@ -101,12 +103,13 @@ public class ContaminationModel {
             } else {
                 result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, minMaf);
             }
-            if (result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
+            if (!Double.isNaN(result.getLeft()) && result.getRight() < (result.getLeft() * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)) {
                 return result;
             }
         }
 
-        return calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, 0);
+        final Pair<Double, Double> result = calculateContamination(Strategy.UNSCRUPULOUS_HOM_REF, tumorSites, 0);
+        return Double.isNaN(result.getLeft()) ? Pair.of(0.0, 1.0) : result;
     }
 
     /**
@@ -134,8 +137,9 @@ public class ContaminationModel {
             final List<PileupSummary> candidateHomRefs = tumorSites.stream()
                     .filter(site -> site.getAltFraction() < UNSCRUPULOUS_HOM_REF_ALLELE_FRACTION)
                     .collect(Collectors.toList());
-            final double threshold = new Percentile(UNSCRUPULOUS_HOM_REF_PERCENTILE).evaluate(candidateHomRefs.stream().mapToDouble(PileupSummary::getAltFraction).toArray());
-            genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() < threshold).collect(Collectors.toList());
+            final double altFractionThreshold = Math.max(MINIMUM_UNSCRUPULOUS_HOM_REF_ALT_FRACTION_THRESHOLD,
+                    new Percentile(UNSCRUPULOUS_HOM_REF_PERCENTILE).evaluate(candidateHomRefs.stream().mapToDouble(PileupSummary::getAltFraction).toArray()));
+            genotypingHoms = candidateHomRefs.stream().filter(site -> site.getAltFraction() <= altFractionThreshold).collect(Collectors.toList());
         }
         final List<PileupSummary> homs = subsetSites(tumorSites, genotypingHoms);
         final double tumorErrorRate = calculateErrorRate(tumorSites);
