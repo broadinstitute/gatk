@@ -160,4 +160,59 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(extractedPriorsDir, sample1 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
         Assert.assertTrue(new File(extractedPriorsDir, sample2 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
     }
+
+    // make sure that nothing goes wrong if the target territory is so small that no data exists for some contexts
+    @Test
+    public void testFewSites() throws IOException {
+        // Step 1: CollectF1R2Counts
+        final File extractedDir = createTempDir("extracted");
+        final File scatteredTarGz = createTempFile("counts", ".tar.gz");
+
+
+        runCommandLine(Arrays.asList(
+                "-R", b37_reference_20_21,
+                "-I", hapmapBamSnippet,
+                "-L", "20:10000-10001",
+                "-O", scatteredTarGz.getAbsolutePath()),
+                CollectF1R2Counts.class.getSimpleName());
+
+        IOUtils.extractTarGz(scatteredTarGz.toPath(), extractedDir.toPath());
+
+
+        // Step 2: LearnReadOrientationModel
+        final File priorTarGz = createTempFile("prior", ".tar.gz");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, priorTarGz.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, scatteredTarGz.getAbsolutePath());
+
+        runCommandLine(args.getArgsList(), LearnReadOrientationModel.class.getSimpleName());
+
+        final File extractedPriorDir = createTempDir("extracted_priors");
+        IOUtils.extractTarGz(priorTarGz.toPath(), extractedPriorDir.toPath());
+
+        final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(extractedPriorDir.listFiles()[0]);
+
+        // Step 4: Mutect 2
+        final File unfilteredVcf = GATKBaseTest.createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = GATKBaseTest.createTempFile("filtered", ".vcf");
+        final File bamout = GATKBaseTest.createTempFile("SM-CEMAH", ".bam");
+
+        new Main().instanceMain(makeCommandLineArgs(
+                Arrays.asList(
+                        "-I", hapmapBamSnippet,
+                        "-R", b37_reference_20_21,
+                        "-L", "20:24000000-26000000",
+                        "-O", unfilteredVcf.getAbsolutePath(),
+                        "-bamout", bamout.getAbsolutePath()),
+                Mutect2.class.getSimpleName()));
+
+        new Main().instanceMain(makeCommandLineArgs(
+                Arrays.asList(
+                        "-V", unfilteredVcf.getAbsolutePath(),
+                        "-R", b37_reference_20_21,
+                        "--" + M2FiltersArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTarGz.getAbsolutePath(),
+                        "-O", filteredVcf.getAbsolutePath()),
+                FilterMutectCalls.class.getSimpleName()));
+
+    }
 }

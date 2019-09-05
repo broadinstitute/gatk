@@ -31,7 +31,7 @@ import java.util.stream.IntStream;
 import static org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2FilterConstants.ALL_KMERS;
 
 public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramTest {
-    private static final double EPSILON = 1e-3;
+    private static final double EPSILON = 1e-2;
 
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
@@ -118,12 +118,11 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
                 F1R2FilterConstants.DEFAULT_MAX_DEPTH, logger);
         final ArtifactPrior artifactPrior = engine.learnPriorForArtifactStates();
 
-        final double epsilon = 1e-3;
         IntStream.range(0, F1R2FilterConstants.DEFAULT_MAX_DEPTH).mapToDouble(i -> MathUtils.sum(engine.getRefResonsibilities(i)))
-                .forEach(s -> Assert.assertEquals(s, 1.0, epsilon));
+                .forEach(s -> Assert.assertEquals(s, 1.0, EPSILON));
         IntStream.range(0, numAltExamples).mapToDouble(i -> MathUtils.sum(engine.getAltResonsibilities(i)))
-                .forEach(s -> Assert.assertEquals(s, 1.0, epsilon));
-        Assert.assertEquals(engine.getEffectiveCounts().getL1Norm(), numExamples, epsilon);
+                .forEach(s -> Assert.assertEquals(s, 1.0, EPSILON));
+        Assert.assertEquals(engine.getEffectiveCounts().getL1Norm(), numExamples, EPSILON);
 
         Assert.assertEquals(engine.getEffectiveCounts(artifactState), (double) numAltExamples, EPSILON);
         Assert.assertEquals(engine.getEffectiveCounts(ArtifactState.HOM_REF), (double) numRefExamples, EPSILON);
