@@ -108,9 +108,9 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         getDefaultToolVCFHeaderLines().forEach(line -> outputHeader.addMetaDataLine(line));
         sourceDictionary = getBestAvailableSequenceDictionary();
 
-        // If -replace is set, do not need to access sequence dictionary is not checked for validity.
-        // Warn and require opt-in via -replace if we're about to clobber a valid sequence
-        // dictionary. Check the input file directly via the header rather than using the
+        // If -replace is set, do not need to check the sequence dictionary for validity here -- it will still be
+        // checked in our normal sequence dictionary validation. Warn and require opt-in via -replace if we're about to
+        // clobber a valid sequence dictionary. Check the input file directly via the header rather than using the
         // engine, since it might dig one up from an index.
         if (!replace) {
             SAMSequenceDictionary oldDictionary =
