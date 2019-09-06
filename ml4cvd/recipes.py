@@ -85,9 +85,9 @@ def run(args):
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
-                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.balance_csvs)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                                       args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                                       mixup_alpha=args.mixup_alpha)
 
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -188,8 +188,14 @@ def infer_multimodal_multitask(args):
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
-            if len(otm.shape) == 1:
+            if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
+            elif len(otm.shape) == 1 and otm.is_categorical_any():
+                channel_columns = []
+                for k in otm.channel_map:
+                    channel_columns.append(ot + '_' + k + '_prediction')
+                    channel_columns.append(ot + '_' + k + '_actual')
+                header.extend(channel_columns)
         inference_writer.writerow(header)
 
         while True:
@@ -204,16 +210,18 @@ def infer_multimodal_multitask(args):
 
             csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
-                if len(tm.shape) == 1:
+                if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
                         csv_row.append("NA")
-                    elif abs(tm.rescale(true_label[tm.output_name()][0][0])) < 0.01:  # LV MASSS HACK
-                        csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-            inference_writer.writerow(csv_row)
+                elif len(tm.shape) == 1 and tm.is_categorical_any():
+                    for k in tm.channel_map:
+                        csv_row.append(str(y[0][tm.channel_map[k]]))
+                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
 
+            inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
             if stats['count'] % 500 == 0:
@@ -276,7 +284,8 @@ def segmentation_to_pngs(args):
 
 def plot_while_training(args):
     generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                          mixup_alpha=args.mixup_alpha)
 
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
@@ -437,11 +446,12 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                     }
             }
     """
-    predictions = defaultdict(dict)
-    test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
-    test_paths = []
     models = {}
-    for model_file in models_inputs_outputs.keys():
+    test_paths = []
+    scalar_predictions = {}
+    test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
+
+    for model_file in models_inputs_outputs:
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
@@ -454,25 +464,26 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
+        scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 
+    predictions = defaultdict(dict)
     for j in range(steps):
         input_data, labels, paths = next(generator)
         test_paths.extend(paths)
         for tl in test_labels:
             test_labels[tl].extend(np.copy(labels[tl]))
 
-        for model_name in models:
+        for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
-            y_prediction = models[model_name].predict(input_data)
+            y_predictions = models[model_name].predict(input_data)
 
-            for i, tm in enumerate(args.tensor_maps_out):
-                if tm in outputs and tm.output_name() in test_labels:
-                    if j == 0:
-                        predictions[tm][model_name] = []
-                    if len(args.tensor_maps_out) == 1:
-                        predictions[tm][model_name].extend(np.copy(y_prediction))
-                    else:
-                        predictions[tm][model_name].extend(np.copy(y_prediction[i]))
+            for y, tm in zip(y_predictions, models_inputs_outputs[model_file][output_prefix]):
+                if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+                    y = y_predictions
+                if j == 0 and tm in scalar_predictions[model_name]:
+                    predictions[tm][model_name] = []
+                if tm in scalar_predictions[model_name]:
+                    predictions[tm][model_name].extend(np.copy(y))
 
     for tm in predictions:
         logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")

@@ -34,6 +34,7 @@ TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no
 TMAPS['ryr2_lof'] = TensorMap('RYR2', group='categorical_flag', channel_map={'no_ryr2_lof': 0, 'ryr2_lof': 1})
 TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
 TMAPS['ttntv'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1})
+TMAPS['ttntv_10x'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1}, loss_weight=10.0)
 
 TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
@@ -120,7 +121,7 @@ TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy'
                               channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
                               loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
 
-TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 2.0, 8.0, 8.0, 8.0], 'lvh_fine'),
+TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.2, 8.0, 24.0, 30.0, 36.0], 'lvh_fine'),
                               channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
                                            'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for LVH may be normal variant': 3,
                                            'Left ventricular hypertrophy': 4})
@@ -247,19 +248,32 @@ TMAPS['pp-interval-no0'] = TensorMap('PPInterval', group='continuous', channel_m
 TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
                              normalization={'mean': 165.9, 'std': 26.3})
 
-
 TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
-                        normalization={'mean': 48.7, 'std': 23.1})
+                                     normalization={'mean': 48.7, 'std': 23.1})
 TMAPS['p-duration-sentinel'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
-                            normalization={'mean': 96.1, 'std': 18.85})
+                                         normalization={'mean': 96.1, 'std': 18.85})
 TMAPS['p-offset-sentinel'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
-                          normalization={'mean': 369.1, 'std': 28.42})
+                                       normalization={'mean': 369.1, 'std': 28.42})
 TMAPS['p-onset-sentinel'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
-                         normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0},  sentinel=0, metrics=['logcosh'],
-                             normalization={'mean': 1036.1, 'std': 185.0})
+                                      normalization={'mean': 275.1, 'std': 26.420})
+TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
+                                          normalization={'mean': 1036.1, 'std': 185.0})
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
-                                     normalization={'mean': 165.9, 'std': 26.3})
+                                          normalization={'mean': 165.9, 'std': 26.3})
+
+TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
+                                           normalization={'mean': 89.53, 'std': 12.21})
+TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, sentinel=0,
+                                          normalization={'mean': 426.1, 'std': 32.24})
+TMAPS['qtc-interval-sentinel'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
+                                           normalization={'mean': 419.1, 'std': 20.7})
+TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
+                                            normalization={'mean': 419.1, 'std': 20.7},
+                                            parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'])
+TMAPS['r-axis-sentinel'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
+TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, sentinel=0,
+                                          normalization={'mean': 1040.61, 'std': 175.5})
+TMAPS['t-axis-sentinel'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
 
 TMAPS['ecg-bike-max-hr-no0'] = TensorMap('bike_max_hr', group='continuous', channel_map={'bike_max_hr': 0},
                                          loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 110.03, 'std': 20.04})
@@ -289,6 +303,9 @@ TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='line
 
 TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation='linear', sentinel=0,
                                       channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
+TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
+                                      channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},

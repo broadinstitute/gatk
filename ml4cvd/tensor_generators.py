@@ -28,12 +28,12 @@ np.set_printoptions(threshold=np.inf)
 
 class TensorGenerator(object):
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
-    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False):
+    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
         self.lock = threading.Lock()
         if weights is None:
-            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths)
+            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
         else:
-            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths)
+            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
 
     def __next__(self):
         self.lock.acquire()
@@ -43,11 +43,11 @@ class TensorGenerator(object):
             self.lock.release()
                     
 
-def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths):
-    """Generalizaed data generator of input and output tensors for feed-forward networks.
+def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
+    """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
-    Inifinitely loops over all examples yielding batch_size input and output tensor mappings.
+    Infinitely loops over all examples yielding batch_size input and output tensor mappings.
 
     Arguments:
         batch_size: number of examples in each minibatch
@@ -55,6 +55,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         output_maps: list of TensorMaps that are output from a model
         train_paths: list of hd5 tensors shuffled after every loop or epoch
         keep_paths: If true will also yield the paths to the tensors used in this batch
+        mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
 
     Yields:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
@@ -63,11 +64,13 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
 
     Returns:
         Never!
-    """ 
+    """
     assert len(train_paths) > 0
 
     stats = Counter()
     paths_in_batch = []
+    if mixup_alpha > 0:
+        batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
 
@@ -89,7 +92,11 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                     stats['batch_index'] += 1
                     stats['Tensors presented'] += 1
                     if stats['batch_index'] == batch_size:
-                        if keep_paths:
+                        if mixup_alpha > 0 and keep_paths:
+                            yield _mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)
+                        elif mixup_alpha > 0:
+                            yield _mixup_batch(in_batch, out_batch, mixup_alpha)
+                        elif keep_paths:
                             yield in_batch, out_batch, paths_in_batch
                         else:
                             yield in_batch, out_batch
@@ -118,7 +125,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
 
-def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths):
+def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths, mixup_alpha):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -132,6 +139,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
         weights: list of weights between (0, 1) and in total summing to 1 (i.e a distribution) for how much of each batch 
             should come from each of the lists in train_paths_lists.  Must be the same size as train_paths_lists.
         keep_paths: If true will also yield the paths to the tensors used in this batch
+        mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
 
     Yields:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
@@ -145,6 +153,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
 
     stats = Counter()
     paths_in_batch = []
+    if mixup_alpha > 0:
+        batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
     samples = [int(w*batch_size) for w in weights]
@@ -169,7 +179,11 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                         stats['Tensors presented from list '+str(i)] += 1
                         stats['train_paths_' + str(i)] += 1
                         if stats['batch_index'] == batch_size:
-                            if keep_paths:
+                            if mixup_alpha > 0 and keep_paths:
+                                yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True) + (paths_in_batch[:batch_size // 2],)
+                            elif mixup_alpha > 0:
+                                yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True)
+                            elif keep_paths:
                                 yield in_batch, out_batch, paths_in_batch
                             else:
                                 yield in_batch, out_batch
@@ -333,7 +347,8 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        test_modulo: int,
                                        balance_csvs: List[str],
                                        keep_paths: bool = False,
-                                       keep_paths_test: bool = True) -> Tuple[
+                                       keep_paths_test: bool = True,
+                                       mixup_alpha: float = -1.0) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
@@ -353,13 +368,13 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     """
     if len(balance_csvs) > 0:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
-        weights = [1.0/len(balance_csvs) for _ in range(len(balance_csvs)+1)]
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths)
+        weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
+        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths, mixup_alpha)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths)
+        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_alpha)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
     return generate_train, generate_valid, generate_test
@@ -371,3 +386,29 @@ def _log_first_error(stats: Counter, tensor_path: str):
             stats[k] += 1  # Increment so we only see these messages once
             logging.info(f"At tensor path: {tensor_path}")
             logging.info(f"Got first error: {k}")
+
+
+def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray], alpha: float = 1.0, permute_first: bool = False):
+    for k in in_batch:
+        full_batch = in_batch[k].shape[0]
+        half_batch = full_batch // 2
+        break
+
+    if permute_first:
+        permuted = np.random.permutation(full_batch)
+        for k in in_batch:
+            in_batch[k] = in_batch[k][permuted, ...]
+        for k in out_batch:
+            out_batch[k] = out_batch[k][permuted, ...]
+
+    mixed_ins = {k: np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
+    mixed_outs = {k: np.zeros((half_batch,) + out_batch[k].shape[1:]) for k in out_batch}
+    for i in range(half_batch):
+        weight0 = np.random.beta(alpha, alpha)
+        weight1 = 1 - weight0
+        for k in in_batch:
+            mixed_ins[k][i] = (in_batch[k][i, ...] * weight0) + (in_batch[k][half_batch + i, ...] * weight1)
+        for k in out_batch:
+            mixed_outs[k][i] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half_batch + i, ...] * weight1)
+
+    return mixed_ins, mixed_outs

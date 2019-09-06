@@ -133,7 +133,8 @@ def parse_args():
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
-    parser.add_argument('--learning_rate', default=0.001, type=float, help='Learning rate during training.')
+    parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
+    parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument('--label_weights', nargs='*', type=float,
                         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.')
     parser.add_argument('--patience', default=8, type=int,
@@ -169,14 +170,15 @@ def _process_args(args):
 
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_'+now_string+'.txt')
+    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
-        f.write(f"python {' '.join(sys.argv)}\n\n")
+        f.write(command_line)
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
-    logging.info(f"Command Line was:\n\npython {' '.join(sys.argv)}\n\n")
+    logging.info(f"Command Line was:{command_line}")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
 

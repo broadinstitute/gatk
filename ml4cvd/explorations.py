@@ -104,15 +104,14 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                     plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, truth)
                     plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, prediction)
                     plt.imsave(folder+sample_id+'_mri_slice_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, data[im.input_name()][i, :, :, j, 0])
-                    plt.imsave(folder+sample_id+'_true_donut_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, true_donut)
-                    plt.imsave(folder+sample_id+'_predict_donut_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, predict_donut)
+                    plt.imsave(folder+sample_id + '_true_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, true_donut)
+                    plt.imsave(folder + sample_id + '_predict_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, predict_donut)
 
 
 def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
                         generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
                         test_data: Dict[str, np.ndarray], test_labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
                         training_steps: int, folder: str, write_pngs: bool):
-
     if not os.path.exists(folder):
         os.makedirs(folder)
 
@@ -141,7 +140,7 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                     for yi in range(y.shape[0]):
                         for j in range(y.shape[3]):
                             truth = np.argmax(test_labels[tm.output_name()][yi, :, :, j, :], axis=-1)
-                            prediction = np.argmax(y[yi,:,:,j,:], axis=-1)
+                            prediction = np.argmax(y[yi, :, :, j, :], axis=-1)
                             true_donut = np.ma.masked_where(truth == 2, test_data[im.input_name()][yi, :, :, j, 0])
                             predict_donut = np.ma.masked_where(prediction == 2, test_data[im.input_name()][yi, :, :, j, 0])
                             plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}", prediction)
