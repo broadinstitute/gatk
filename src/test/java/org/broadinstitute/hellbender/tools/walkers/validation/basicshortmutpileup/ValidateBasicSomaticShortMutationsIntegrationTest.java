@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -13,8 +11,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
-
-import static org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.ValidateBasicSomaticShortMutations.*;
 
 public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLineProgramTest {
 
@@ -69,7 +65,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(summaryFile.exists());
 
-        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.readFromFile(outputFile);
+        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(outputFile);
 
         //final List<AnnotatedInterval> variantValidationResults =
         //        AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
@@ -136,7 +132,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(summaryFile.exists());
 
-        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.readFromFile(outputFile);
+        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(outputFile);
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 

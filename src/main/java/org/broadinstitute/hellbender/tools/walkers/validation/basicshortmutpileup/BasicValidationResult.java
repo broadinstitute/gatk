@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -120,26 +119,26 @@ public class BasicValidationResult implements Locatable {
     }
 
     //----- The following two public static methods read and write files
-    public static void writeToFile(final List<BasicValidationResult> records, final File outputTable) {
-        try ( final BasicValidationResult.BasicValidationResultTableWriter writer = new BasicValidationResult.BasicValidationResultTableWriter(IOUtils.fileToPath(outputTable)) ) {
+    public static void write(final List<BasicValidationResult> records, final File file) {
+        try (final BasicValidationResult.BasicValidationResultTableWriter writer = new BasicValidationResult.BasicValidationResultTableWriter(IOUtils.fileToPath(file))) {
             writer.writeHeaderIfApplies();
             writer.writeAllRecords(records);
-        } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
+        } catch (final IOException e){
+            throw new UserException(String.format("Encountered an IO exception while writing to %s.", file));
         }
     }
 
-    public static List<BasicValidationResult> readFromFile(final File tableFile) {
-        try( final BasicValidationResult.BasicValidationResultTableReader reader = new BasicValidationResult.BasicValidationResultTableReader(IOUtils.fileToPath(tableFile)) ) {
+    public static List<BasicValidationResult> read(final File file) {
+        try(final BasicValidationResult.BasicValidationResultTableReader reader = new BasicValidationResult.BasicValidationResultTableReader(IOUtils.fileToPath(file))) {
             return reader.toList();
-        } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
+        } catch (final IOException e){
+            throw new UserException(String.format("Encountered an IO exception while reading from %s.", file));
         }
     }
 
     //-------- The following methods are boilerplate for reading and writing tables
     private static class BasicValidationResultTableWriter extends TableWriter<BasicValidationResult> {
-        private BasicValidationResultTableWriter(final Path output) throws IOException {
+        public BasicValidationResultTableWriter(final Path output) throws IOException {
             super(output, BasicValidationResult.BasicValidationResultTableColumn.COLUMNS);
         }
 

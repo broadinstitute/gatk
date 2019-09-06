@@ -24,11 +24,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -249,7 +245,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess(){
-        BasicValidationResult.writeToFile(results, new File(outputFile));
+        BasicValidationResult.write(results, new File(outputFile));
 
         if (summary != null) {
             try (ConcordanceSummaryRecord.Writer concordanceSummaryWriter = ConcordanceSummaryRecord.getWriter(summary)) {
