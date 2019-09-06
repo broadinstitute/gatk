@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -13,8 +11,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
-
-import static org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.ValidateBasicSomaticShortMutations.*;
 
 public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLineProgramTest {
 
@@ -69,25 +65,27 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(summaryFile.exists());
 
-        final List<AnnotatedInterval> variantValidationResults =
-                AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
+        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(outputFile);
+
+        //final List<AnnotatedInterval> variantValidationResults =
+        //        AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 2);
 
         Assert.assertEquals(variantValidationResults.get(0).getInterval(), new SimpleInterval("20", 10022820, 10022820));
         // The variant in the VCF is A>C, the bam file has A>T, so alt count should be zero.
-        Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(VALIDATION_ALT_COVERAGE), "0");
-        Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(VALIDATION_REF_COVERAGE), "18");
-        Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(IS_NOT_NOISE), "false");
-        Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(DISCOVERY_VCF_FILTER), "");
-        Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(NUM_ALT_READS_IN_VALIDATION_NORMAL), "0");
+        Assert.assertEquals(variantValidationResults.get(0).getValidationAltCount(), 0);
+        Assert.assertEquals(variantValidationResults.get(0).getValidationRefCount(), 18);
+        Assert.assertFalse(variantValidationResults.get(0).isOutOfNoiseFloor());
+        Assert.assertEquals(variantValidationResults.get(0).getFilters(), "");
+        Assert.assertEquals(variantValidationResults.get(0).getNumAltSupportingReadsInNormal(), 0);
 
         Assert.assertEquals(variantValidationResults.get(1).getInterval(), new SimpleInterval("20", 10080550, 10080550));
-        Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(VALIDATION_ALT_COVERAGE), "0");
-        Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(VALIDATION_REF_COVERAGE), "16");
-        Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(IS_NOT_NOISE), "false");
-        Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(DISCOVERY_VCF_FILTER), "artifact_in_normal;germline_risk;t_lod");
-        Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(NUM_ALT_READS_IN_VALIDATION_NORMAL), "0");
+        Assert.assertEquals(variantValidationResults.get(1).getValidationAltCount(), 0);
+        Assert.assertEquals(variantValidationResults.get(1).getValidationRefCount(), 16);
+        Assert.assertFalse(variantValidationResults.get(1).isOutOfNoiseFloor());
+        Assert.assertEquals(variantValidationResults.get(1).getFilters(), "artifact_in_normal;germline_risk;t_lod");
+        Assert.assertEquals(variantValidationResults.get(1).getNumAltSupportingReadsInNormal(), 0);
     }
 
     @Test
@@ -134,8 +132,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(summaryFile.exists());
 
-        final List<AnnotatedInterval> variantValidationResults =
-                AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
+        final List<BasicValidationResult> variantValidationResults = BasicValidationResult.read(outputFile);
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 
@@ -156,24 +153,25 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
                 37, 0);  // One read has low BQ in the insertion, so 9, instead of 10
     }
 
-    private void assertValidationResult(final List<AnnotatedInterval> variantValidationResults,
+    private void assertValidationResult(final List<BasicValidationResult> variantValidationResults,
                                         final SimpleInterval firstBaseInVariant, final String refString,
                                         final String altString, int gtValidationAltCoverage, int gtValidationRefCoverage,
                                         int gtDiscoveryAltCoverage, int gtDiscoveryRefCoverage, int gtNumAltReadsInValidationNormal) {
-        final OverlapDetector<AnnotatedInterval> overlapDetector = OverlapDetector.create(variantValidationResults);
-        final AnnotatedInterval indel = overlapDetector.getOverlaps(firstBaseInVariant).iterator().next();
-        final SortedMap<String, String> indelAnnotations = indel.getAnnotations();
+        final OverlapDetector<BasicValidationResult> overlapDetector = OverlapDetector.create(variantValidationResults);
+        final BasicValidationResult indel = overlapDetector.getOverlaps(firstBaseInVariant).iterator().next();
 
-        Assert.assertEquals(indelAnnotations.get(ValidateBasicSomaticShortMutations.REF), refString);
-        Assert.assertEquals(indelAnnotations.get(ValidateBasicSomaticShortMutations.ALT), altString);
+        Assert.assertEquals(indel.getReference().getBaseString(), refString);
+        Assert.assertTrue(indel.getReference().isReference());
+        Assert.assertTrue(indel.getAlternate().isNonReference());
+        Assert.assertEquals(indel.getAlternate().getBaseString(), altString);
 
-        final int validationAltCoverage = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.VALIDATION_ALT_COVERAGE));
-        final int validationRefCoverage = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.VALIDATION_REF_COVERAGE));
-        final int discoveryAltCoverage = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.DISCOVERY_ALT_COVERAGE));
-        final int discoveryRefCoverage = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.DISCOVERY_REF_COVERAGE));
-        final double power = Double.parseDouble(indelAnnotations.get(ValidateBasicSomaticShortMutations.POWER));
-        final int minCount = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.MIN_VAL_COUNT));
-        final int numSupportingAltReadsInValidationNormal = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.NUM_ALT_READS_IN_VALIDATION_NORMAL));
+        final int validationAltCoverage = indel.getValidationAltCount();
+        final int validationRefCoverage = indel.getValidationRefCount();
+        final int discoveryAltCoverage = indel.getDiscoveryAltCount();
+        final int discoveryRefCoverage = indel.getDiscoveryRefCount();
+        final double power = indel.getPower();
+        final int minCount = indel.getMinValidationReadCount();
+        final long numSupportingAltReadsInValidationNormal = indel.getNumAltSupportingReadsInNormal();
 
         Assert.assertEquals(validationAltCoverage, gtValidationAltCoverage);
         Assert.assertEquals(validationRefCoverage, gtValidationRefCoverage);

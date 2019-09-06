@@ -24,11 +24,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -110,23 +106,6 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         return true;
     }
 
-    // for the table
-    public final static String CONTIG = "CONTIG";
-    public final static String START = "START";
-    public final static String END = "END";
-    public final static String REF = "ref_allele";
-    public final static String ALT = "alt_allele";
-    public final static String DISCOVERY_ALT_COVERAGE = "t_alt_count";
-    public final static String DISCOVERY_REF_COVERAGE = "t_ref_count";
-    public final static String VALIDATION_ALT_COVERAGE = "tv_alt_count";
-    public final static String VALIDATION_REF_COVERAGE = "tv_ref_count";
-    public final static String MIN_VAL_COUNT = "min_val_count";
-    public final static String POWER = "power";
-    public final static String IS_NOT_NOISE = "validated";
-    public final static String IS_ENOUGH_VALIDATION_COVERAGE = "sufficient_tv_alt_coverage";
-    public final static String DISCOVERY_VCF_FILTER = "discovery_vcf_filter";
-    public final static String NUM_ALT_READS_IN_VALIDATION_NORMAL = "num_alt_reads_in_validation_normal";
-
     // for the optional vcf
     public final static String POWER_INFO_FIELD_KEY = "POWER";
     public final static String VALIDATION_AD_INFO_FIELD_KEY = "VAL_AD";
@@ -145,11 +124,6 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public enum Judgment {
         VALIDATED, UNVALIDATED, SKIPPED;
     }
-
-
-    public static String[] headers = {CONTIG, START, END, REF, ALT, DISCOVERY_ALT_COVERAGE, DISCOVERY_REF_COVERAGE,
-            VALIDATION_ALT_COVERAGE, VALIDATION_REF_COVERAGE, MIN_VAL_COUNT, POWER, IS_NOT_NOISE, IS_ENOUGH_VALIDATION_COVERAGE,
-            DISCOVERY_VCF_FILTER, NUM_ALT_READS_IN_VALIDATION_NORMAL};
 
     private List<BasicValidationResult> results = new ArrayList<>();
 
@@ -271,32 +245,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess(){
-        final TableColumnCollection tableColumnCollection = new TableColumnCollection(headers);
-        try (final TableWriter<BasicValidationResult> writer = new TableWriter<BasicValidationResult>(IOUtils.getPath(outputFile), tableColumnCollection) {
-            @Override
-            protected void composeLine(BasicValidationResult record, DataLine dataLine) {
-                dataLine.set(CONTIG, record.getContig());
-                dataLine.set(START, record.getStart());
-                dataLine.set(END, record.getEnd());
-                dataLine.set(REF, record.getReference().getBaseString());
-                dataLine.set(ALT, record.getAlternate().getBaseString());
-                dataLine.set(DISCOVERY_ALT_COVERAGE, record.getDiscoveryAltCount());
-                dataLine.set(DISCOVERY_REF_COVERAGE, record.getDiscoveryRefCount());
-                dataLine.set(VALIDATION_ALT_COVERAGE, record.getValidationAltCount());
-                dataLine.set(VALIDATION_REF_COVERAGE, record.getValidationRefCount());
-                dataLine.set(MIN_VAL_COUNT, record.getMinValidationReadCount());
-                dataLine.set(POWER, record.getPower());
-                dataLine.set(IS_NOT_NOISE, record.isOutOfNoiseFloor());
-                dataLine.set(IS_ENOUGH_VALIDATION_COVERAGE, record.isEnoughValidationReads());
-                dataLine.set(DISCOVERY_VCF_FILTER, record.getFilters() == null ? "" : record.getFilters());
-                dataLine.set(NUM_ALT_READS_IN_VALIDATION_NORMAL, record.getNumAltSupportingReadsInNormal());
-            }
-        }) {
-            writer.writeHeaderIfApplies();
-            writer.writeAllRecords(results);
-        } catch (final IOException ioe) {
-            throw new UserException.CouldNotCreateOutputFile(new File(outputFile), "Could not create file: " + new File(outputFile).getAbsolutePath());
-        }
+        BasicValidationResult.write(results, new File(outputFile));
 
         if (summary != null) {
             try (ConcordanceSummaryRecord.Writer concordanceSummaryWriter = ConcordanceSummaryRecord.getWriter(summary)) {
