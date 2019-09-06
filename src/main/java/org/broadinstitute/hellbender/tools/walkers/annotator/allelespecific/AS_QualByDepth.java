@@ -103,7 +103,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
      *
      * @param vc -- contains the final set of alleles, possibly subset by GenotypeGVCFs
      * @param originalVC -- used to get all the alleles for all gVCFs
-     * @return
+     * @return may be null
      */
     @Override
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
@@ -112,16 +112,15 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
             return null;
         }
 
-        final GenotypesContext genotypes = vc.getGenotypes();
-        if ( genotypes == null || genotypes.isEmpty() ) {
-            return null;
-        }
-
         final List<Integer> standardDepth;
         if (originalVC.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
-            standardDepth = Arrays.stream(originalVC.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "")
-                    .split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX)).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
+            standardDepth = Arrays.stream(originalVC.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "0")
+                    .split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX)).mapToInt(val -> val.length() == 0 ? 0 : Integer.parseInt(val)).boxed().collect(Collectors.toList());
         } else {
+            final GenotypesContext genotypes = vc.getGenotypes();
+            if ( genotypes == null || genotypes.isEmpty() ) {
+                return null;
+            }
             standardDepth = getAlleleDepths(genotypes);
         }
         if (standardDepth == null) { //all no-calls and homRefs
@@ -217,9 +216,6 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
             String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
-            if (values.length != vc.getNAlleles()+1) {  //plus one because the non-ref place holder is still around
-                throw new IllegalStateException("Number of AS_QUALapprox values doesn't match the number of alleles in the variant context.");
-            }
             for (int i = 1; i < vc.getNAlleles(); i++) {
                 alleleQualList.add(Integer.parseInt(values[i]));
             }

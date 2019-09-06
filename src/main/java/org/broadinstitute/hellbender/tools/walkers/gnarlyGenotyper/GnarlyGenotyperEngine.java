@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Iterables;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
@@ -87,7 +88,17 @@ public final class GnarlyGenotyperEngine {
         //GenomicsDB or Evoquer merged all the annotations, but we still need to finalize MQ and QD annotations
         //return a VC with the finalized annotations and dbBuilder gets the raw annotations for the database
 
-        final double QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        final double QUALapprox;
+        if (variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
+            QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        }
+        else if (variant.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
+            List<Integer> alleleSpecificQualList = AS_QualByDepth.parseQualList(variant);
+            QUALapprox = Collections.max(alleleSpecificQualList);
+        }
+        else {
+            QUALapprox = 0;
+        }
         //Don't apply the indel prior to mixed sites if there's a SNP
         final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == variant.getReference().length());
         final boolean isIndel = !hasSnpAllele;

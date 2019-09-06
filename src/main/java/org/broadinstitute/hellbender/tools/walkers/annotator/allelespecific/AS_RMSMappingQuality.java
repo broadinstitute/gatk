@@ -16,6 +16,8 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 /**
@@ -142,7 +144,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
-            myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
+            myData.putAttribute(myData.getAlleles().get(i), alleleData.length() == 0 ? 0 : Double.parseDouble(alleleData));
         }
     }
 
@@ -224,13 +226,23 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     }
 
     private Map<Allele, Integer> getADcounts(final VariantContext vc) {
+        final Map<Allele, Integer> variantADs = new HashMap<>();
+        if (vc.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
+            List<Integer> variantDepths = Arrays.stream(vc.getAttributeAsString(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, "0")
+                    .split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX)).mapToInt(val -> val.length() == 0 ? 0 : Integer.parseInt(val)).boxed().collect(Collectors.toList());
+            List<Allele> allAlleles = vc.getAlleles();
+            for (int i = 0; i < variantDepths.size(); i++) {
+                variantADs.put(allAlleles.get(i), variantDepths.get(i));
+            }
+            return variantADs;
+        }
+
         final GenotypesContext genotypes = vc.getGenotypes();
         if ( genotypes == null || genotypes.size() == 0 ) {
             genotype_logger.warn("VC does not have genotypes -- annotations were calculated in wrong order");
             return null;
         }
 
-        final Map<Allele, Integer> variantADs = new HashMap<>();
         for(final Allele a : vc.getAlleles())
             variantADs.put(a,0);
 
