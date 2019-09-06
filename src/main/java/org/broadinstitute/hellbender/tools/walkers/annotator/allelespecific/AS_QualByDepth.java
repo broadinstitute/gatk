@@ -115,7 +115,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
      *
      * @param vc -- contains the final set of alleles, possibly subset by GenotypeGVCFs
      * @param originalVC -- used to get all the alleles for all gVCFs
-     * @return
+     * @return may be null
      */
     @Override
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
