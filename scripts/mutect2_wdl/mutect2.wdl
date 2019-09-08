@@ -401,7 +401,7 @@ workflow Mutect2 {
                 filter_funcotations = filter_funcotations_or_default,
                 extra_args = funcotator_extra_args,
                 runtime_params = standard_runtime,
-                disk_space = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier)  + disk_pad
+                disk_space = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier)  + funco_tar_size + disk_pad
         }
     }
 
@@ -748,7 +748,7 @@ task MergeStats {
 
 task MergePileupSummaries {
     input {
-      Array[File] input_tables
+      Array[Filef] input_tables
       String output_name
       File ref_dict
       Runtime runtime_params
