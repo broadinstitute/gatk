@@ -872,12 +872,9 @@ task Filter {
     String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
     parameter_meta{
-      intervals: {localization_optional: true}
       ref_fasta: {localization_optional: true}
       ref_fai: {localization_optional: true}
       ref_dict: {localization_optional: true}
-      unfiltered_vcf: {localization_optional: true}
-      unfiltered_vcf_idx: {localization_optional: true}
     }
 
     command {
