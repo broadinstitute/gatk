@@ -748,7 +748,7 @@ task MergeStats {
 
 task MergePileupSummaries {
     input {
-      Array[Filef] input_tables
+      Array[File] input_tables
       String output_name
       File ref_dict
       Runtime runtime_params
