@@ -306,7 +306,6 @@ workflow Mutect2 {
                 output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
                 runtime_params = standard_runtime,
                 disk_space = ceil(merged_bamout_size * large_input_to_output_multiplier) + disk_pad,
-
         }
     }
 
@@ -749,8 +748,7 @@ task MergeStats {
 
 task MergePileupSummaries {
     input {
-      # input_tables needs to be optional because GetPileupSummaries is in an if-block
-      Array[File?] input_tables
+      Array[File] input_tables
       String output_name
       File ref_dict
       Runtime runtime_params
