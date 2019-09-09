@@ -1,6 +1,5 @@
 {
   "Mutect2_Multi.gatk_docker": "__GATK_DOCKER__",
-  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.9.0",
   "Mutect2_Multi.intervals": "/home/travis/build/broadinstitute/gatk/scripts/m2_cromwell_tests/interval_list.interval_list",
   "Mutect2_Multi.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta",
   "Mutect2_Multi.ref_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta.fai",
@@ -10,10 +9,8 @@
   "Mutect2_Multi.funco_reference_version": "hg19",
   "Mutect2_Multi.scatter_count": 2,
   "Mutect2_Multi.run_orientation_bias_mixture_model_filter": true,
-  "Mutect2_Multi.run_oncotator": true,
   "Mutect2_Multi.run_funcotator": true,
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.compress_vcfs": false,
-  "Mutect2_Multi.make_bamout": true,
-  "Mutect2_Multi.onco_ds_local_db_dir": "/root/"
+  "Mutect2_Multi.make_bamout": true
 }
