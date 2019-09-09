@@ -69,11 +69,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     @Override
-    protected boolean forceSiteEmission() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_SITES;
-    }
-
-    @Override
     protected String callSourceString() {
         return "HC_call";
     }

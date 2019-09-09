@@ -182,13 +182,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
-        if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !forceSiteEmission()
+        if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllSites()
                 && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && givenAlleles.isEmpty()) {
             return null;
         }
 
         // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
-        if (! forceSiteEmission() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
+        if (! emitAllSites() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
             return null;
         }
 
@@ -375,16 +375,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return true;
     }
 
-    /**
-     * Indicates whether we have to emit any site no matter what.
-     * <p>
-     *     Note: this has been added to allow differences between UG and HC GGA modes where the latter force emmitions of all given alleles
-     *     sites even if there is no enough confidence.
-     * </p>
-     *
-     * @return {@code true} iff we force emissions.
-     */
-    protected abstract boolean forceSiteEmission();
+    protected boolean emitAllSites() {
+        return configuration.outputMode == OutputMode.EMIT_ALL_SITES;
+    }
 
     protected final boolean passesEmitThreshold(final double conf, final boolean bestGuessIsRef) {
         return (configuration.outputMode == OutputMode.EMIT_ALL_CONFIDENT_SITES || !bestGuessIsRef) &&

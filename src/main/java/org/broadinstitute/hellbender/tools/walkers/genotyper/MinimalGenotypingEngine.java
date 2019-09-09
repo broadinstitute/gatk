@@ -48,10 +48,5 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
     protected String callSourceString() {
         return "UG_call";
     }
-
-    @Override
-    protected boolean forceSiteEmission() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_SITES;
-    }
 }
 
