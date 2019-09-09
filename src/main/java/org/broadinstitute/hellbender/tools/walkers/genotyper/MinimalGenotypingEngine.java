@@ -32,9 +32,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
     public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples, boolean doAlleleSpecificCalcs ) {
         super(configuration, samples, doAlleleSpecificCalcs);
 
-        if ( configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            throw new UserException("GENOTYPE_GIVEN_ALLELES mode not supported in the MinimalGenotypingEngine");
-        } else if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
+       if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
             throw new UserException("Only the diploid SNP model is supported in the MinimalGenotypingEngine");
         } else if ( configuration.COMPUTE_SLOD ) {
             throw new UserException("--computeSLOD not supported in the MinimalGenotypingEngine");
@@ -43,17 +41,12 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES || configuration.annotateAllSitesWithPLs;
+        return configuration.annotateAllSitesWithPLs;
     }
 
     @Override
     protected String callSourceString() {
         return "UG_call";
-    }
-
-    @Override
-    protected boolean forceSiteEmission() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_SITES;
     }
 }
 

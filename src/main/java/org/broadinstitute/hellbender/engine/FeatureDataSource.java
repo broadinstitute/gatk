@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.*;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -509,7 +510,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param interval retrieve all Features overlapping this interval
      * @return a List of all Features in this data source that overlap the provided interval
      */
-    public List<T> queryAndPrefetch(final SimpleInterval interval) {
+    public List<T> queryAndPrefetch(final Locatable interval) {
         if (!supportsRandomAccess) {
             throw new UserException("Input " + featureInput.getFeaturePath() + " must support random access to enable queries by interval. " +
                     "If it's a file, please index it using the bundled tool " + IndexFeatureFile.class.getSimpleName());
@@ -540,7 +541,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *
      * @param interval the query interval that produced a cache miss
      */
-    private void refillQueryCache(final SimpleInterval interval) {
+    private void refillQueryCache(final Locatable interval) {
         // Tribble documentation states that having multiple iterators open simultaneously over the same FeatureReader
         // results in undefined behavior
         closeOpenIterationIfNecessary();

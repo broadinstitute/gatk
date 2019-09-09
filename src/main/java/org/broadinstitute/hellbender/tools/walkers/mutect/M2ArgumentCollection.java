@@ -250,11 +250,4 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Advanced
     @Argument(fullName = "minimum-allele-fraction", shortName = "min-AF", doc = "Lower bound of variant allele fractions to consider when calculating variant LOD", optional = true)
     public double minAF = 0.00;
-
-    @Argument(fullName="alleles", doc="The set of alleles for which to force genotyping regardless of evidence", optional=true)
-    public FeatureInput<VariantContext> alleles;
-
-    @Advanced
-    @Argument(fullName = "genotype-filtered-alleles", doc = "Whether to force genotype even filtered alleles", optional = true)
-    public boolean genotypeFilteredAlleles = false;
 }

@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -140,7 +139,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
-        trimmer.initialize(MTAC.assemblerArgs, header.getSequenceDictionary(), forceCallingAllelesPresent, emitReferenceConfidence());
+        trimmer.initialize(MTAC.assemblerArgs, header.getSequenceDictionary(), emitReferenceConfidence());
         referenceConfidenceModel = new SomaticReferenceConfidenceModel(samplesList, header, 0, genotypingEngine);  //TODO: do something classier with the indel size arg
         final List<String> tumorSamples = ReadUtils.getSamplesFromHeader(header).stream().filter(this::isTumorSample).collect(Collectors.toList());
         f1R2CountsCollector = MTAC.f1r2TarGz == null ? Optional.empty() : Optional.of(new F1R2CountsCollector(MTAC.f1r2Args, header, MTAC.f1r2TarGz, tumorSamples));
@@ -219,7 +218,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         removeUnmarkedDuplicates(originalAssemblyRegion);
 
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
-                .filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList());
+                .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
@@ -355,13 +354,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     @Override
-    public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
-        if ( forceCallingAllelesPresent ) {
-            final VariantContext vcFromGivenAlleles = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(featureContext,
-                    ref.getInterval(), MTAC.genotypeFilteredAlleles, MTAC.alleles);
-            if( vcFromGivenAlleles != null ) {
-                return new ActivityProfileState(ref.getInterval(), 1.0);
-            }
+    public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
+        if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
+            return new ActivityProfileState(ref.getInterval(), 1.0);
         }
 
         final byte refBase = ref.getBase();
@@ -391,7 +386,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 return new ActivityProfileState(refInterval, 0.0);
             }
         } else if (!MTAC.genotypeGermlineSites) {
-            final List<VariantContext> germline = featureContext.getValues(MTAC.germlineResource, refInterval);
+            final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
             if (!germline.isEmpty()){
                 final VariantContext germlineVariant = germline.get(0);
                 final List<Double> germlineAlleleFrequencies = getAttributeAsDoubleList(germlineVariant, VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
@@ -401,7 +396,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             }
         }
 
-        if (!MTAC.genotypePonSites && !featureContext.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
+        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
             return new ActivityProfileState(refInterval, 0.0);
         }
 

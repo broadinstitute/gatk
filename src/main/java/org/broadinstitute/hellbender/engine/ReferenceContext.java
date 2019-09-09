@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -30,7 +31,7 @@ import java.util.Iterator;
  * return empty arrays / iterators. You can determine whether there is a backing source of reference
  * data via {@link #hasBackingDataSource()}, and whether there is an interval via {@link #getInterval}.
  */
-public final class ReferenceContext implements Iterable<Byte> {
+public final class ReferenceContext implements Iterable<Byte>, Locatable {
 
     /**
      * Backing data source. Null if there is no reference data.
@@ -141,6 +142,16 @@ public final class ReferenceContext implements Iterable<Byte> {
                     trimToContigLength(interval.getContig(), window.getEnd()));
         }
     }
+
+    @Override
+    public String getContig() { return interval.getContig(); }
+
+    @Override
+    public int getStart() { return interval.getStart(); }
+
+    @Override
+    public int getEnd() { return interval.getEnd(); }
+
 
     /**
      * Determines whether this ReferenceContext has a backing reference data source. A ReferenceContext with

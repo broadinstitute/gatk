@@ -7,8 +7,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -95,7 +93,7 @@ public class SomaticGenotypingEngine {
             }
 
             // converting ReadLikelihoods<Haplotype> to ReadLikelihoods<Allele>
-            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, null);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes);
             final ReadLikelihoods<Allele> logLikelihoods = logReadLikelihoods.marginalize(alleleMapper,
                     new SimpleInterval(mergedVC).expandWithinContig(HaplotypeCallerGenotypingEngine.ALLELE_EXTENSION, header.getSequenceDictionary()));
 
@@ -120,7 +118,7 @@ public class SomaticGenotypingEngine {
             final PerAlleleCollection<Double> normalArtifactLogOdds = somaticLogOdds(logNormalMatrix);
 
 
-            final Set<Allele> forcedAlleles = getAllelesConsistentWithGivenAlleles(givenAlleles, loc, mergedVC);
+            final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, mergedVC);
             final List<Allele> tumorAltAlleles = mergedVC.getAlternateAlleles().stream()
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
@@ -180,33 +178,6 @@ public class SomaticGenotypingEngine {
                 .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
                 .collect(Collectors.toList());
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
-    }
-
-    private Set<Allele> getAllelesConsistentWithGivenAlleles(List<VariantContext> givenAlleles, int loc, VariantContext mergedVC) {
-        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  AssemblyBasedCallerUtils.getVariantContextsFromGivenAlleles(loc, givenAlleles, false).stream()
-                .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
-
-        return mergedVC.getAlternateAlleles().stream()
-                .map(allele -> ImmutablePair.of(allele, mergedVC.getReference()))
-                .filter(altAndRef -> givenAltAndRefAllelesInOriginalContext.stream().anyMatch(givenAltAndRef -> allelesAreConsistent(givenAltAndRef, altAndRef)))
-                .map(altAndRefPair -> altAndRefPair.getLeft())
-                .collect(Collectors.toSet());
-    }
-
-    // check whether two alleles coming from different variant contexts and with possibly different reference alleles
-    // could in fact be the same.  The condition is that one is a prefix of the other
-    private boolean allelesAreConsistent(final Pair<Allele,Allele> altAndRef1, final Pair<Allele,Allele> altAndRef2) {
-        final Allele alt1 = altAndRef1.getLeft();
-        final Allele alt2 = altAndRef2.getLeft();
-        if (alt1.isSymbolic() || alt2.isSymbolic()) {
-            return false;
-        } else {
-            final int sizeDiff1 = alt1.length() - altAndRef1.getRight().length();
-            final int sizeDiff2 = alt2.length() - altAndRef2.getRight().length();
-            return (sizeDiff1 == sizeDiff2) && (alt1.length() < alt2.length() ?
-                    alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
-                    alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
-        }
     }
 
     // compute the likelihoods that each allele is contained at some allele fraction in the sample

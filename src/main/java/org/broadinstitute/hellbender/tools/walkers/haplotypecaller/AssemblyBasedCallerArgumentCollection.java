@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.Hidden;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -25,7 +25,11 @@ public abstract class AssemblyBasedCallerArgumentCollection {
 
     public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
     public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
-    public static final String EMIT_REFERENCE_CONFIDENCE_LONG_NAME = "emit-ref-confidence";
+    public static final String FORCE_CALL_ALLELES_LONG_NAME = "alleles";
+    public static final String FORCE_CALL_FILTERED_ALLELES_LONG_NAME = "force-call-filtered-alleles";
+    public static final String FORCE_CALL_FILTERED_ALLELES_SHORT_NAME = "genotype-filtered-alleles";
+    public static final String EMIT_REF_CONFIDENCE_LONG_NAME = "emit-ref-confidence";
+    public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -113,7 +117,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
      * For Mutect2, this is a BETA feature that functions similarly to the HaplotypeCaller reference confidence/GVCF mode.
      */
     @Advanced
-    @Argument(fullName=EMIT_REFERENCE_CONFIDENCE_LONG_NAME, shortName="ERC", doc="Mode for emitting reference confidence scores (For Mutect2, this is a BETA feature)", optional = true)
+    @Argument(fullName= EMIT_REF_CONFIDENCE_LONG_NAME, shortName= EMIT_REF_CONFIDENCE_SHORT_NAME, doc="Mode for emitting reference confidence scores (For Mutect2, this is a BETA feature)", optional = true)
     public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     protected abstract int getDefaultMaxMnpDistance();
@@ -125,4 +129,11 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
     public int maxMnpDistance = getDefaultMaxMnpDistance();
+
+    @Argument(fullName= FORCE_CALL_ALLELES_LONG_NAME, doc="The set of alleles to force-call regardless of evidence", optional=true)
+    public FeatureInput<VariantContext> alleles;
+
+    @Advanced
+    @Argument(fullName = FORCE_CALL_FILTERED_ALLELES_LONG_NAME, shortName = FORCE_CALL_FILTERED_ALLELES_SHORT_NAME, doc = "Force-call filtered alleles included in the resource specified by --alleles", optional = true)
+    public boolean forceCallFiltered = false;
 }

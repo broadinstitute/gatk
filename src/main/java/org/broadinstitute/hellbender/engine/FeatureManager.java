@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.vcf.VCFHeader;
@@ -342,7 +343,7 @@ public final class FeatureManager implements AutoCloseable {
      * @return A List of all Features in the backing data source for the provided FeatureInput that overlap
      *         the provided interval (may be empty if there are none, but never null)
      */
-    public <T extends Feature> List<T> getFeatures( final FeatureInput<T> featureDescriptor, final SimpleInterval interval ) {
+    public <T extends Feature> List<T> getFeatures( final FeatureInput<T> featureDescriptor, final Locatable interval ) {
         final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
 
         // No danger of a ClassCastException here, since we verified that the FeatureDataSource for this

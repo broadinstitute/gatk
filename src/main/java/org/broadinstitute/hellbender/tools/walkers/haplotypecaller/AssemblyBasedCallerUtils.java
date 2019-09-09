@@ -8,6 +8,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -527,20 +528,15 @@ public final class AssemblyBasedCallerUtils {
 
     /**
      * Returns a mapping from Allele in the mergedVC, which represents all of the alleles being genotyped at loc,
-     * to a list of Haplotypes that support that allele. If activeAllelesToGenotype contains any entries, haplotypes supporting
-     * spanning events that do not start at this location are included only if they match one of the given alleles, a
-     * necessary check for the desired behavior of HaplotypeCaller's genotype given alleles mode. Otherwise, if the mergedVC
-     * includes a spanning deletion allele, all haplotypes that support spanning deletions will be assigned to that allele in the map.
+     * to a list of Haplotypes that support that allele. If the mergedVC includes a spanning deletion allele, all haplotypes
+     * that support spanning deletions will be assigned to that allele in the map.
+     *
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
-     * @param activeAllelesToGenotype Given alleles being genotyped in the active region, if running in GGA mode; can be null or empty otherwise
      * @return
      */
-    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
-                                                                     final int loc,
-                                                                     final List<Haplotype> haplotypes,
-                                                                     final List<VariantContext> activeAllelesToGenotype) {
+    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes) {
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -591,23 +587,10 @@ public final class AssemblyBasedCallerUtils {
 
                 } else {
                     // the event starts prior to the current location, so it's a spanning deletion
-                    if (activeAllelesToGenotype != null && activeAllelesToGenotype.size() > 0) {
-                        // in HC GGA mode we need to check to make sure that spanning deletion
-                        // events actually match one of the alleles we were given to genotype
-                        final boolean eventMatchesGivenAllele = eventMatchesGivenAllele(activeAllelesToGenotype, spanningEvent);
-                        if (eventMatchesGivenAllele) {
-                            if (!result.containsKey(Allele.SPAN_DEL)) {
-                                result.put(Allele.SPAN_DEL, new ArrayList<>());
-                            }
-                            result.get(Allele.SPAN_DEL).add(h);
-                        }
-
-                    } else {
-                        if (! result.containsKey(Allele.SPAN_DEL)) {
-                            result.put(Allele.SPAN_DEL, new ArrayList<>());
-                        }
-                        result.get(Allele.SPAN_DEL).add(h);
+                    if (! result.containsKey(Allele.SPAN_DEL)) {
+                        result.put(Allele.SPAN_DEL, new ArrayList<>());
                     }
+                    result.get(Allele.SPAN_DEL).add(h);
                     break;
                 }
             }
@@ -872,4 +855,34 @@ public final class AssemblyBasedCallerUtils {
         return new VariantContextBuilder(vc).genotypes(phasedGenotypes).make();
     }
 
+    public static Set<Allele> getAllelesConsistentWithGivenAlleles(final List<VariantContext> givenAlleles, final VariantContext mergedVC) {
+        if (givenAlleles.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVariantContextsFromGivenAlleles(mergedVC.getStart(), givenAlleles, false).stream()
+                .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
+
+        return mergedVC.getAlternateAlleles().stream()
+                .map(allele -> ImmutablePair.of(allele, mergedVC.getReference()))
+                .filter(altAndRef -> givenAltAndRefAllelesInOriginalContext.stream().anyMatch(givenAltAndRef -> allelesAreConsistent(givenAltAndRef, altAndRef)))
+                .map(altAndRefPair -> altAndRefPair.getLeft())
+                .collect(Collectors.toSet());
+    }
+
+    // check whether two alleles coming from different variant contexts and with possibly different reference alleles
+    // could in fact be the same.  The condition is that one is a prefix of the other
+    private static boolean allelesAreConsistent(final Pair<Allele,Allele> altAndRef1, final Pair<Allele,Allele> altAndRef2) {
+        final Allele alt1 = altAndRef1.getLeft();
+        final Allele alt2 = altAndRef2.getLeft();
+        if (alt1.isSymbolic() || alt2.isSymbolic()) {
+            return false;
+        } else {
+            final int sizeDiff1 = alt1.length() - altAndRef1.getRight().length();
+            final int sizeDiff2 = alt2.length() - altAndRef2.getRight().length();
+            return (sizeDiff1 == sizeDiff2) && (alt1.length() < alt2.length() ?
+                    alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
+                    alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
+        }
+    }
 }

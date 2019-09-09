@@ -11,7 +11,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import java.nio.file.Path;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -25,6 +24,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -1728,5 +1728,6 @@ public final class GATKVariantContextUtils {
 
         return true;
     }
+
 }
 
