@@ -98,6 +98,8 @@ final class GnarlyGenotyperEngine {
         if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant)
                 || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0 ) {
 
+            logger.warn("returning null, variant: %s, polymorphic: %s, depth: %d",
+                    variant.isVariant(), GenotypeGVCFs.isProperlyPolymorphic(variant), variant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
             return null;
         }
 
@@ -121,6 +123,7 @@ final class GnarlyGenotyperEngine {
         final boolean isIndel = variant.getReference().length() > 1 || variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
         final double sitePrior = isIndel ? HomoSapiensConstants.INDEL_HETEROZYGOSITY : HomoSapiensConstants.SNP_HETEROZYGOSITY;
         if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
+            logger.warn("returning null because of quality: " + QUALapprox);
             return null;
         }
 
@@ -513,7 +516,7 @@ final class GnarlyGenotyperEngine {
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
         } else {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-            
+
             GenotypeLikelihoodCalculator glCalc;
             if ( allelesToUse.size() <= PIPELINE_MAX_ALT_COUNT ) {
                 glCalc = glcCache.get(allelesToUse.size() - 1);

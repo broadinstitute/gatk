@@ -100,7 +100,7 @@ class EvoquerEngine {
      * Map between contig name and the BigQuery table containing the list of samples
      */
     private final Map<String, String> contigToSampleTableMap;
-    
+
     private final int queryRecordLimit;
 
     private final boolean runQueryOnly;
@@ -206,6 +206,7 @@ class EvoquerEngine {
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
             final String variantQueryString = getVariantQueryString(interval);
+//            final String variantQueryString = getVariantQuery5String(interval);
 
             // Execute the query:
             final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString, runQueryInBatchMode);
@@ -282,7 +283,7 @@ class EvoquerEngine {
 
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
-        
+
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
 
@@ -314,7 +315,7 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
-        
+
         return headerLines;
     }
 
@@ -536,7 +537,7 @@ class EvoquerEngine {
         genotypeBuilder.GQ(gq);
 
         builder.genotypes(genotypeBuilder.make());
-        
+
         return builder.make();
     }
 
@@ -560,6 +561,7 @@ class EvoquerEngine {
         final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
 
         if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
+            logger.warn("finalizedVC num genotypes: " + finalizedVC.getGenotypes().size());
             vcfWriter.add(finalizedVC);
             progressMeter.update(finalizedVC);
         }
@@ -599,7 +601,7 @@ class EvoquerEngine {
 
         // Get the query string:
         final String sampleListQueryString = getSampleListQueryString(sampleTableName);
-        
+
         // Execute the query:
         final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
 
@@ -621,7 +623,7 @@ class EvoquerEngine {
         if ( queryRecordLimit > 0 ) {
             limitString = "LIMIT " + queryRecordLimit;
         }
-        
+
         return String.format(
                 "SELECT position, ARRAY_AGG(STRUCT( sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
                 "FROM `%s` AS pet\n" +
@@ -634,6 +636,27 @@ class EvoquerEngine {
                 getFQVariantTable(interval),
                 interval.getStart(),
                 interval.getEnd());
+    }
+
+    private String getVariantQuery5String( final SimpleInterval interval ) {
+        String limitString = "";
+        if ( queryRecordLimit > 0 ) {
+            limitString = "LIMIT " + queryRecordLimit;
+        }
+
+        String petTable = getFQPositionTable(interval);
+        String vetTable = getFQVariantTable(interval);
+        return String.format(
+                "WITH new_pet AS (SELECT * FROM `%s` WHERE position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d AND state = 'v'))\n" +
+                "SELECT position, ARRAY_AGG(STRUCT( sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
+                "FROM new_pet\n" +
+                "LEFT OUTER JOIN `%s` AS vet\n" +
+                "USING (position, sample)\n" +
+                "GROUP BY position\n" +
+                limitString,
+                petTable, petTable,
+                interval.getEnd(),
+                vetTable);
     }
 
     private String getSampleListQueryString(final String sampleTableName) {
