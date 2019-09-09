@@ -106,7 +106,7 @@ workflow Mutect2_Multi {
                 compress_vcfs = compress_vcfs,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts
+                preemptible = preemptible_attempts
         }
     }
 
