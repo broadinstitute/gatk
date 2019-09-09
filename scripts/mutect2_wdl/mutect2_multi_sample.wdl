@@ -43,12 +43,8 @@ workflow Mutect2_Multi {
     Boolean? make_bamout
 
     # Oncotator inputs
-    Boolean? run_oncotator
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
     String? sequencing_center
     String? sequence_source
-    File? default_config_file
 
     # funcotator inputs
     Boolean? run_funcotator
@@ -62,7 +58,6 @@ workflow Mutect2_Multi {
 
     # runtime
     String gatk_docker
-    String? oncotator_docker
     Int? preemptible_attempts
     File? gatk_override
   }
@@ -97,12 +92,8 @@ workflow Mutect2_Multi {
                 run_orientation_bias_mixture_model_filter = run_orientation_bias_mixture_model_filter,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
-                run_oncotator = run_oncotator,
-                onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
-                default_config_file = default_config_file,
                 run_funcotator = run_funcotator,
                 funco_reference_version = funco_reference_version,
                 funco_data_sources_tar_gz = funco_data_sources_tar_gz,
@@ -115,7 +106,6 @@ workflow Mutect2_Multi {
                 compress_vcfs = compress_vcfs,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                oncotator_docker = oncotator_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
