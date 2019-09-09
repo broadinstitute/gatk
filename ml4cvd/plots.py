@@ -32,7 +32,7 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
-SUBPLOT_SIZE = 6
+SUBPLOT_SIZE = 7
 
 COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'red',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
@@ -562,29 +562,29 @@ def plot_counter(counts, title, prefix='./figures/'):
 
 
 def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
-    labels_to_areas = {}
-    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
-
     lw = 2
+    labels_to_areas = {}
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
+        label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-        logging.info(f"ROC Label {label_text}")
+        logging.info(f'ROC Label {label_text}')
 
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
-    plt.xlabel(FALLOUT_LABEL)
     plt.ylabel(RECALL_LABEL)
-    plt.title('ROC: ' + title + '\n')
-
+    plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
+    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
+
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -596,6 +596,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 2
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
@@ -604,18 +605,18 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p+key)
-            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+            label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f"ROC Label {label_text}")
 
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
-    plt.xlabel(FALLOUT_LABEL)
     plt.ylabel(RECALL_LABEL)
-    plt.title('ROC: ' + title + '\n')
+    plt.xlabel(FALLOUT_LABEL)
+    plt.legend(loc='lower right')
+    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
 
-    plt.legend(loc="lower right")
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -626,7 +627,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
 
 def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
-    lw = 3
+    lw = 2
     row = 0
     col = 0
     total_plots = len(rocs)
@@ -634,22 +635,22 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
+        true_sums = np.sum(truth, axis=0)
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(key)
-            label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
+            label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-            axes[row, col].set_title('ROC: ' + key + '\n')
-            logging.info(f"ROC Label {label_text}")
-
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+            logging.info(f'ROC Label {label_text}')
         axes[row, col].set_xlim([0.0, 1.0])
         axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].legend(loc="lower right")
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].legend(loc='lower right')
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}')
 
         row += 1
         if row == rows:
@@ -658,7 +659,6 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
             if col >= cols:
                 break
 
-    plt.tight_layout()
     figure_path = prefix + 'rocs_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -675,23 +675,24 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
+        true_sums = np.sum(truth, axis=0)
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
             for key in labels:
                 if 'no_' in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+                label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-                axes[row, col].set_title('ROC: ' + key + '\n')
                 logging.info(f"ROC Label {label_text}")
 
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
         axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].legend(loc="lower right")
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}\n')
 
         row += 1
         if row == rows:
@@ -710,25 +711,25 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     # Compute Precision-Recall and plot curve
     lw = 2.0
     labels_to_areas = {}
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for k in labels:
         c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
-        label_text = f"{k} mean precision:{average_precision:.3f}"
+        label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
-        logging.info(f"prAUC Label {label_text}")
+        logging.info(f'prAUC Label {label_text}')
         labels_to_areas[k] = average_precision
 
-    plt.ylim([-0.02, 1.03])
     plt.xlim([0.0, 1.00])
-
+    plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
-    plt.title(title)
-
     plt.legend(loc="lower left")
+    plt.title(f'{title} n={np.sum(true_sums):.0f}')
+
     figure_path = os.path.join(prefix, 'precision_recall_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -741,6 +742,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
 def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve for each model
     lw = 2.0
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
@@ -748,18 +750,17 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = f"{p}_{k} mean precision:{average_precision:.3f}"
+            label_text = f'{p}_{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
             logging.info(f"prAUC Label {label_text}")
 
-    plt.ylim([-0.02, 1.03])
     plt.xlim([0.0, 1.00])
-
+    plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
-    plt.title(title)
-
     plt.legend(loc="lower left")
+    plt.title(f'{title} n={np.sum(true_sums):.0f}')
+
     figure_path = os.path.join(prefix, 'precision_recall_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
