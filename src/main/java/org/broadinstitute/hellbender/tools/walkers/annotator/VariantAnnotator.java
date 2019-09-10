@@ -213,7 +213,7 @@ public class VariantAnnotator extends VariantWalker {
             //TODO this will cause the reads to be assigned and annotated in a different manner than the haplotype caller.
             final List<GATKRead> reads = Utils.stream(readsContext).filter(r -> r.getStart() <= vc.getStart()).collect(Collectors.toList());
 
-            ReadLikelihoods<Allele> likelihoods = new UnfilledReadsLikelihoods<>( variantSamples, new IndexedAlleleList<>(vc.getAlleles()),
+            AlleleLikelihoods<GATKRead, Allele> likelihoods = new UnfilledReadsLikelihoods<>( variantSamples, new IndexedAlleleList<>(vc.getAlleles()),
                     AssemblyBasedCallerUtils.splitReadsBySample(variantSamples, getHeaderForReads(), reads));
 
             VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, refContext, likelihoods, a -> true);

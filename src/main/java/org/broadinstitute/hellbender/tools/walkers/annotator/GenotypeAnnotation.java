@@ -6,7 +6,8 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
 
@@ -29,7 +30,7 @@ public abstract class GenotypeAnnotation extends VariantAnnotation{
                                   final VariantContext vc,
                                   final Genotype g,
                                   final GenotypeBuilder gb,
-                                  final ReadLikelihoods<Allele> likelihoods);
+                                  final AlleleLikelihoods<GATKRead, Allele> likelihoods);
 
     /**
      * Return the descriptions used for the VCF FORMAT meta field.

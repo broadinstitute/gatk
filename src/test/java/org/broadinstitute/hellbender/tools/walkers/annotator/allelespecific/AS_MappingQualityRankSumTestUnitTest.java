@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -72,7 +72,7 @@ public class AS_MappingQualityRankSumTestUnitTest extends ReducibleAnnotationBas
         final int[] refMappingQualities = {100, 110};
         final List<GATKRead> refReads = Arrays.stream(refMappingQualities).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> altReads = Arrays.stream(altMappingQualities).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final ReferenceContext ref= null;

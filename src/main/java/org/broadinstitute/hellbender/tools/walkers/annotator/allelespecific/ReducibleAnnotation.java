@@ -5,7 +5,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ public interface ReducibleAnnotation extends Annotation {
      */
     public abstract Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                         final VariantContext vc,
-                                                        final ReadLikelihoods<Allele> likelihoods);
+                                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods);
 
     /**
      * Combine raw data, typically during the merging of raw data contained in multiple gVCFs as in CombineGVCFs and the

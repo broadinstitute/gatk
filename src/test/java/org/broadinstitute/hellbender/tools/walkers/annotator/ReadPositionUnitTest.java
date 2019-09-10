@@ -47,11 +47,11 @@ public class ReadPositionUnitTest extends GATKBaseTest {
         }
         readMap.put("SAMPLE",reads);
 
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readMap);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readMap);
 
         //we will make the first four reads ref (median position = 2) and the last three alt (median position 10, hence
         // median distance from end = 1)
-        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(0);
+        final LikelihoodMatrix<GATKRead, Allele> matrix = likelihoods.sampleMatrix(0);
 
         // log likelihoods are initialized to 0, so we can "turn on" a read for a particular allele by setting the
         // (allele, read) entry to 10

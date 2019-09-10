@@ -1,27 +1,24 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.ToDoubleFunction;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotator;
 
 /**
- * Dummy Read-Likelihood container that computes partial likelihoods based on the read pileups for snps.
+ * Dummy implementation of likelihoods class, used for GATK annotation engine, that doesn't actually contain likelihoods.
  *
- * Note: this class uses FastUtil collections for speed.
+ * Several GATK annotations use the sample read lists contained in this class as a fall-back when likelihoods are not available.
+ * This comes up in the {@link VariantAnnotator} tool, which annotates variants without the expense of local assembly and pair-HMM.
+ *
  */
-public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<A> {
+public class UnfilledReadsLikelihoods<A extends Allele> extends AlleleLikelihoods<GATKRead, A> {
 
     private Map<String, List<PileupElement>> stratifiedPileups;
 
@@ -42,16 +39,6 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
      */
     public UnfilledReadsLikelihoods(SampleList samples, AlleleList<A> alleles, Map<String, List<GATKRead>> reads) {
         super(samples, alleles, reads);
-    }
-
-    // Internally used constructor.
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private UnfilledReadsLikelihoods(final AlleleList alleles,
-                            final SampleList samples,
-                            final GATKRead[][] readsBySampleIndex,
-                            final Object2IntMap<GATKRead>[] readIndex,
-                            final double[][][] values) {
-       super(alleles, samples, readsBySampleIndex, readIndex, values);
     }
 
     /**
@@ -75,56 +62,25 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
         }
         Map<String, List<PileupElement>> pileupMap = new HashMap<>();
         for (int i = 0; i < samples.numberOfSamples(); i++) {
-            pileupMap.put(samples.getSample(i), ReadPileup.locToReadsPileup(sampleReads(i), loc));
+            pileupMap.put(samples.getSample(i), ReadPileup.locToReadsPileup(sampleEvidence(i), loc));
         }
         stratifiedPileups = Collections.unmodifiableMap(pileupMap);
         return stratifiedPileups;
     }
 
-    /**
-     * Create an independent copy of this read-likelihoods collection
-     */
-    @Override
-    ReadLikelihoods<A> copy() {
-
-        final int sampleCount = samples.numberOfSamples();
-        final int alleleCount = alleles.numberOfAlleles();
-
-        final double[][][] newLikelihoodValues = new double[sampleCount][alleleCount][];
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        final Object2IntMap<GATKRead>[] newReadIndexBySampleIndex = new Object2IntMap[sampleCount];
-        final GATKRead[][] newReadsBySampleIndex = new GATKRead[sampleCount][];
-
-        for (int s = 0; s < sampleCount; s++) {
-            newReadsBySampleIndex[s] = readsBySampleIndex[s].clone();
-            for (int a = 0; a < alleleCount; a++) {
-                newLikelihoodValues[s][a] = valuesBySampleIndex[s][a].clone();
-            }
-        }
-
-        // Finally we create the new read-likelihood
-        return new UnfilledReadsLikelihoods<A>(
-                alleles,
-                samples,
-                newReadsBySampleIndex,
-                newReadIndexBySampleIndex,
-                newLikelihoodValues);
-    }
-
     // Methods Which Modify Reads that must be turned off
     @Override
-    public void changeReads(final Map<GATKRead, GATKRead> readRealignments) {
+    public void changeEvidence(final Map<GATKRead, GATKRead> readRealignments) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
 
     @Override
-    public void filterPoorlyModeledReads(final double maximumErrorPerBase) {
+    public void filterPoorlyModeledEvidence(final ToDoubleFunction<GATKRead> log10MinTrueLikelihood) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
 
     @Override
-    public void addReads(final Map<String,List<GATKRead>> readsBySample, final double initialLikelihood) {
+    public void addEvidence(final Map<String,List<GATKRead>> readsBySample, final double initialLikelihood) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
 
@@ -134,7 +90,7 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
     }
 
     @Override
-    public void filterToOnlyOverlappingReads(final SimpleInterval location) {
+    public void filterToOnlyOverlappingEvidence(final SimpleInterval location) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
 }

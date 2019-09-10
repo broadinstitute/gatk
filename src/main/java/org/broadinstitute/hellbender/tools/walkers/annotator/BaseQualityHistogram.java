@@ -1,20 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Multiset;
 import com.google.common.collect.TreeMultiset;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.commons.lang.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Int;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,7 +22,7 @@ public class BaseQualityHistogram extends InfoFieldAnnotation {
 
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
         if ( likelihoods == null ) {
             return Collections.emptyMap();
@@ -35,8 +32,8 @@ public class BaseQualityHistogram extends InfoFieldAnnotation {
                 .collect(Collectors.toMap(a -> a, a -> TreeMultiset.create()));
 
         Utils.stream(likelihoods.bestAllelesBreakingTies())
-                .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
-                .forEach(ba -> BaseQuality.getBaseQuality(ba.read, vc).ifPresent(v -> values.get(ba.allele).add(v)));
+                .filter(ba -> ba.isInformative() && isUsableRead(ba.evidence))
+                .forEach(ba -> BaseQuality.getBaseQuality(ba.evidence, vc).ifPresent(v -> values.get(ba.allele).add(v)));
 
 
         final List<Integer> distinctBaseQualities = likelihoods.alleles().stream()

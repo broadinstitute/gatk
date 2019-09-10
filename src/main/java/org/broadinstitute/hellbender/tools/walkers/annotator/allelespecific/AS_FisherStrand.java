@@ -6,9 +6,9 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
@@ -50,7 +50,7 @@ public class AS_FisherStrand extends AS_StrandBiasTest implements AS_StandardAnn
     }
 
     @Override
-    protected Map<String, Object> calculateAnnotationFromLikelihoods(final ReadLikelihoods<Allele> likelihoods,
+    protected Map<String, Object> calculateAnnotationFromLikelihoods(final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                                                      final VariantContext vc) {
         // either SNP with no alignment context, or indels: per-read likelihood map needed
         final int[][] table = StrandBiasTest.getContingencyTable(likelihoods, vc, MIN_COUNT);

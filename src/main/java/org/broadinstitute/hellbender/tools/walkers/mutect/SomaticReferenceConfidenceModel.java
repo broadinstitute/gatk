@@ -6,8 +6,8 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceResult;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.NaturalLogUtils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -60,8 +60,8 @@ public class SomaticReferenceConfidenceModel extends ReferenceConfidenceModel {
         final SomaticRefVsAnyResult result = new SomaticRefVsAnyResult();
         final Map<String, List<GATKRead>> perSampleReadMap = new HashMap<>();
         perSampleReadMap.put(samples.getSample(0), pileup.getReads());
-        final ReadLikelihoods<Allele> readLikelihoods = new ReadLikelihoods<>(samples, new IndexedAlleleList<>(Arrays.asList(Allele.create(refBase,true), Allele.NON_REF_ALLELE)), perSampleReadMap);
-        final ReadLikelihoods<Allele> readLikelihoods2 = new ReadLikelihoods<>(samples, new IndexedAlleleList<>(Arrays.asList(Allele.create(refBase,true), Allele.NON_REF_ALLELE)), perSampleReadMap);
+        final AlleleLikelihoods<GATKRead, Allele> readLikelihoods = new AlleleLikelihoods<>(samples, new IndexedAlleleList<>(Arrays.asList(Allele.create(refBase,true), Allele.NON_REF_ALLELE)), perSampleReadMap);
+        final AlleleLikelihoods<GATKRead, Allele> readLikelihoods2 = new AlleleLikelihoods<>(samples, new IndexedAlleleList<>(Arrays.asList(Allele.create(refBase,true), Allele.NON_REF_ALLELE)), perSampleReadMap);
         final Iterator<PileupElement> pileupIter = pileup.iterator();
         for (int i = 0; i < pileup.size(); i++) {
             final PileupElement element = pileupIter.next();

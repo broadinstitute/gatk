@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -140,7 +140,7 @@ public class ReferenceConfidenceModel {
                                                        final Collection<Haplotype> calledHaplotypes,
                                                        final SimpleInterval paddedReferenceLoc,
                                                        final AssemblyRegion activeRegion,
-                                                       final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                       final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
                                                        final PloidyModel ploidyModel,
                                                        final List<VariantContext> variantCalls) {
         return calculateRefConfidence(refHaplotype, calledHaplotypes, paddedReferenceLoc, activeRegion, readLikelihoods,
@@ -172,7 +172,7 @@ public class ReferenceConfidenceModel {
                                                        final Collection<Haplotype> calledHaplotypes,
                                                        final SimpleInterval paddedReferenceLoc,
                                                        final AssemblyRegion activeRegion,
-                                                       final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                       final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
                                                        final PloidyModel ploidyModel,
                                                        final List<VariantContext> variantCalls,
                                                        final boolean applyPriors,
@@ -221,7 +221,7 @@ public class ReferenceConfidenceModel {
         // This is important as if multiple reference blocks are computed for a low complexity active region some reads may incorrectly
         // be using caching values computed for a different reference block.
         if (USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES) {
-            readLikelihoods.sampleReads(0).forEach(r -> r.clearTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME));
+            readLikelihoods.sampleEvidence(0).forEach(r -> r.clearTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME));
         }
 
         return results;

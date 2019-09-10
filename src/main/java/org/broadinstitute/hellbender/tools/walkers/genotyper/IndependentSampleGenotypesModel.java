@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,12 +36,13 @@ public final class IndependentSampleGenotypesModel {
         calculators = new GenotypeLikelihoodCalculators();
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
         final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
-        final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = AlleleLikelihoodMatrixMapper.newInstance(permutation);
+        final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper(permutation);
 
         final int sampleCount = data.numberOfSamples();
         final PloidyModel ploidyModel = data.ploidyModel();
@@ -56,7 +58,7 @@ public final class IndependentSampleGenotypesModel {
                 likelihoodsCalculator = getLikelihoodsCalculator(samplePloidy, alleleCount);
             }
 
-            final LikelihoodMatrix<A> sampleLikelihoods = alleleLikelihoodMatrixMapper.apply(data.readLikelihoods().sampleMatrix(i));
+            final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(i));
             genotypeLikelihoods.add(likelihoodsCalculator.genotypeLikelihoods(sampleLikelihoods));
         }
         return new GenotypingLikelihoods<>(genotypingAlleles, ploidyModel, genotypeLikelihoods);

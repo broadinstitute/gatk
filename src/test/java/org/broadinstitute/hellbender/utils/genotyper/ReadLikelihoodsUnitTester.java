@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public final class ReadLikelihoodsUnitTester {
 
-    public static ReadLikelihoods<Allele> readLikelihoods(final int alleleCount, final int[] readCount) {
+    public static AlleleLikelihoods<GATKRead, Allele> readLikelihoods(final int alleleCount, final int[] readCount) {
         final int sampleCount = readCount.length;
         final AlleleList<Allele> alleleList = AlleleListUnitTester.alleleList(alleleCount, 100, true);
         final SampleList sampleList = SampleListUnitTester.sampleList(sampleCount);
@@ -23,9 +23,9 @@ public final class ReadLikelihoodsUnitTester {
         for (int i = 0; i < sampleCount; i++) {
             sampleToReads.put(sampleList.getSample(i),readList(i,readCount[i]));
         }
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList,alleleList, sampleToReads);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList,alleleList, sampleToReads);
         for (int s = 0; s < sampleCount; s++) {
-            final LikelihoodMatrix<Allele> sampleLikelihoods = likelihoods.sampleMatrix(s);
+            final LikelihoodMatrix<GATKRead, Allele> sampleLikelihoods = likelihoods.sampleMatrix(s);
             for (int a = 0; a < alleleCount; a++)
                 for (int r = 0; r < readCount[s]; r++)
                     sampleLikelihoods.set(a, r, testLikelihood(s, a, r));

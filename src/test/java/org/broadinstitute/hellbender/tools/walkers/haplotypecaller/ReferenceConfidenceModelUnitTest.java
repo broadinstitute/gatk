@@ -15,8 +15,8 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -502,7 +502,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             data.getActiveRegion().add(data.makeRead(0, data.getRefLength()));
         }
 
-        final ReadLikelihoods<Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+        final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
 
         final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
         final IndependentSampleGenotypesModel genotypingModel = new IndependentSampleGenotypesModel();
@@ -528,7 +528,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                 final List<VariantContext> calls = Collections.emptyList();
 
                 data.getActiveRegion().add(data.makeRead(start, readLen));
-                final ReadLikelihoods<Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+                final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
 
                 final List<Integer> expectedDPs = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), 0));
                 for ( int i = start; i < readLen + start; i++ ) expectedDPs.set(i, 1);
@@ -569,7 +569,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                         data.getActiveRegion().add(data.makeRead(0, data.getRefLength()));
                     }
 
-                    final ReadLikelihoods<Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+                    final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
 
                     final List<Integer> expectedDPs = Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads);
                     final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls);
@@ -590,10 +590,10 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
      * @param region the active region containing reads
      * @return a map from sample -> PerReadAlleleLikelihoodMap that maps each read to ref
      */
-    public static ReadLikelihoods<Haplotype> createDummyStratifiedReadMap(final Haplotype refHaplotype,
+    public static AlleleLikelihoods<GATKRead, Haplotype> createDummyStratifiedReadMap(final Haplotype refHaplotype,
                                                                           final SampleList samples,
                                                                           final AssemblyRegion region) {
-        return new ReadLikelihoods<>(samples, new IndexedAlleleList<>(refHaplotype),
+        return new AlleleLikelihoods<>(samples, new IndexedAlleleList<>(refHaplotype),
                 splitReadsBySample(samples, region.getReads(), region.getHeader()));
     }
 

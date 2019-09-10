@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +20,7 @@ public final class IndependentSampleGenotypesModelUnitTest {
 
     @Test(dataProvider="ploidyAndMaximumAlleleAndReadCountsData")
     public void testCalculateLikelihoods(final int[] ploidies, final int alleleCount, final int discardAlleleCount, final int[] readCounts) {
-        final ReadLikelihoods<Allele> likelihoods = ReadLikelihoodsUnitTester.readLikelihoods(alleleCount, readCounts);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = ReadLikelihoodsUnitTester.readLikelihoods(alleleCount, readCounts);
         final AlleleList<Allele> genotypingAlleleList = discardAlleleCount == 0 ? likelihoods : discardAllelesAtRandom(likelihoods,discardAlleleCount);
         final SampleList sampleList = SampleListUnitTester.sampleList(ploidies.length);
         final PloidyModel ploidyModel = new HeterogeneousPloidyModel(sampleList,ploidies);

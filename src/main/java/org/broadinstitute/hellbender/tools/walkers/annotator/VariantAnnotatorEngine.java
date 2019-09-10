@@ -13,7 +13,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
@@ -48,8 +49,8 @@ public final class VariantAnnotatorEngine {
  *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
  *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
  *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, ReadLikelihoods)}
-*               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)},
+     * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, AlleleLikelihoods)}
+*               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, AlleleLikelihoods)},
      * @param keepCombined If true, retain the combined raw annotation values instead of removing them after finalizing
      */
     public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
@@ -255,7 +256,7 @@ public final class VariantAnnotatorEngine {
     public VariantContext annotateContext(final VariantContext vc,
                                           final FeatureContext features,
                                           final ReferenceContext ref,
-                                          final ReadLikelihoods<Allele> likelihoods,
+                                          final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                           final Predicate<VariantAnnotation> addAnnot) {
         Utils.nonNull(vc, "vc cannot be null");
         Utils.nonNull(features, "features cannot be null");
@@ -292,7 +293,7 @@ public final class VariantAnnotatorEngine {
 
     private GenotypesContext annotateGenotypes(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final ReadLikelihoods<Allele> likelihoods,
+                                               final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                                final Predicate<VariantAnnotation> addAnnot) {
         if ( genotypeAnnotations.isEmpty() ) {
             return vc.getGenotypes();

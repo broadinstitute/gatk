@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -25,7 +25,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc, "vc is null");
 
         final GenotypesContext genotypes = vc.getGenotypes();
@@ -78,9 +78,9 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         }
     }
 
-    protected void fillQualsFromLikelihood(VariantContext vc, ReadLikelihoods<Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
-        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies()) {
-            final GATKRead read = bestAllele.read;
+    protected void fillQualsFromLikelihood(VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
+        for (final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies()) {
+            final GATKRead read = bestAllele.evidence;
             final Allele allele = bestAllele.allele;
             if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
                 final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
@@ -104,7 +104,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
      * @param bestAllele the most likely allele for this read
      * @return a Double representing the element to be used in the rank sum test, or null if it should not be used
      */
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, ReadLikelihoods<Allele>.BestAllele bestAllele) {
+    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final AlleleLikelihoods<GATKRead, Allele>.BestAllele bestAllele) {
         return getElementForRead(read, refLoc);
     }
 

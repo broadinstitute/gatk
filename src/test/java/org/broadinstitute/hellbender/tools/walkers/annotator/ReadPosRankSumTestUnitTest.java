@@ -59,7 +59,7 @@ public final class ReadPosRankSumTestUnitTest extends GATKBaseTest {
         final int[] startRefs = {1, 2};
         final List<GATKRead> refReads = Arrays.asList(makeRead(startRefs[0], 30), makeRead(startRefs[1], 30));
         final List<GATKRead> altReads = Arrays.asList(makeRead(startAlts[0], 30), makeRead(startAlts[1], 30));
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);

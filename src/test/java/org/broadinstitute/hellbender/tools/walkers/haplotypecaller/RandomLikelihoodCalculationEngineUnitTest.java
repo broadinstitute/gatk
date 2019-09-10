@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.base.Strings;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
-import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -44,11 +41,11 @@ public final class RandomLikelihoodCalculationEngineUnitTest {
         assemblyResultSet.add(hap2);
 
 
-        final ReadLikelihoods<Haplotype> likes = lce.computeReadLikelihoods(assemblyResultSet, samples, perSampleReadList);
-        final LikelihoodMatrix<Haplotype> mtx = likes.sampleMatrix(0);
+        final AlleleLikelihoods<GATKRead, Haplotype> likes = lce.computeReadLikelihoods(assemblyResultSet, samples, perSampleReadList);
+        final LikelihoodMatrix<GATKRead, Haplotype> mtx = likes.sampleMatrix(0);
 
         Assert.assertEquals(mtx.numberOfAlleles(), 2);
-        Assert.assertEquals(mtx.numberOfReads(), 1);
+        Assert.assertEquals(mtx.evidenceCount(), 1);
         final double v1 = mtx.get(0, 0);
         final double v2 = mtx.get(1, 0);
 

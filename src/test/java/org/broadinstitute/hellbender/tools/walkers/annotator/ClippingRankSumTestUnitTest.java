@@ -5,7 +5,7 @@ import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
@@ -50,7 +50,7 @@ public final class ClippingRankSumTestUnitTest {
         final int[] altHardClips = {1, 2};
         final List<GATKRead> refReads = Arrays.stream(refHardClips).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> altReads = Arrays.stream(altHardClips).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods(SAMPLE_1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final ReferenceContext ref= null;

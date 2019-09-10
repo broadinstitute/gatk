@@ -92,7 +92,7 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
         actualCounts[2] += addG;
         actualCounts[3] += addT;
 
-        final int[] results = AlleleBiasedDownsamplingUtils.runSmartDownsampling(actualCounts, (int) (pileupSize * contaminationFraction));
+        final int[] results = AlleleBiasedDownsamplingUtils.targetAlleleCounts(actualCounts, (int) (pileupSize * contaminationFraction));
         Assert.assertTrue(countsAreEqual(results, targetCounts));
     }
 
@@ -124,12 +124,10 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
             }
         }
 
-        Assert.assertEquals(AlleleBiasedDownsamplingUtils.totalReads(readMap), actualCount);
-
-        final List<GATKRead> results = AlleleBiasedDownsamplingUtils.selectAlleleBiasedReads(readMap, pileupSize, contaminationFraction);
+        final List<GATKRead> results = AlleleBiasedDownsamplingUtils.selectAlleleBiasedEvidence(readMap, contaminationFraction);
         //TODO should add assertions to test that the reads are downsampled properly by allele.
         final long toRemove = actualCount - expectedCount;
-        Assert.assertEquals(results.size(), toRemove);
+        Assert.assertEquals(results.size(), toRemove, 1);
     }
 
     private static boolean countsAreEqual(final int[] counts1, final int[] counts2) {

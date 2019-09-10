@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -89,7 +86,7 @@ public final class RMSMappingQualityUnitTest {
 
 
         final List<GATKRead> reads = Arrays.stream(MQs).mapToObj(mq -> ArtificialAnnotationUtils.makeRead(20, mq)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods("sample1", reads, -1.0, REF, ALT);
 
 
@@ -109,7 +106,7 @@ public final class RMSMappingQualityUnitTest {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of("sample1", reads);
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList("sample1"));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(Allele.create("A")));
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
 
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
@@ -162,7 +159,7 @@ public final class RMSMappingQualityUnitTest {
 
         final List<GATKRead> reads = Arrays.stream(MQs).mapToObj(mq -> ArtificialAnnotationUtils.makeRead(30, mq)).collect(Collectors.toList());
 
-        final ReadLikelihoods<Allele> likelihoods =
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods =
                 ArtificialAnnotationUtils.makeLikelihoods("sample1", reads, -10.0, REF, ALT);
 
         final VariantContext vc = makeVC();
@@ -183,7 +180,7 @@ public final class RMSMappingQualityUnitTest {
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of("sample1", reads);
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList("sample1"));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(Allele.create("A")));
-        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(sampleList, alleleList, readsBySample);
 
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
@@ -340,7 +337,7 @@ public final class RMSMappingQualityUnitTest {
 
         final List<GATKRead> refReads = IntStream.range(0, 5).mapToObj(i -> ArtificialAnnotationUtils.makeRead(30, 5)).collect(Collectors.toList());
         final List<GATKRead> altReads = IntStream.range(0, 10).mapToObj(i -> ArtificialAnnotationUtils.makeRead(30, 5)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100, -100 ,refAllele, altAllele);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100, -100 ,refAllele, altAllele);
 
         // Testing the likelihoods map
         Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc, likelihoods), 15);
@@ -359,7 +356,7 @@ public final class RMSMappingQualityUnitTest {
                 .chr("1").start(15L).stop(15L).make();
         final List<GATKRead> refReads = Collections.emptyList();
         final List<GATKRead> altReads = Collections.emptyList();
-        final ReadLikelihoods<Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100, -100 ,refAllele, altAllele);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100, -100 ,refAllele, altAllele);
         Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc,likelihoods), -1);
     }
 }

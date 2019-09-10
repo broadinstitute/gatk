@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Arrays;
 import java.util.List;
@@ -19,12 +19,12 @@ import java.util.stream.Collectors;
  * Created by davidben on 1/26/17.
  */
 //TODO: consider making the constructor a static method that returns an anonymous class instance in AlleleSubsettingUtils
-public class SubsettedLikelihoodMatrix<A extends Allele> implements LikelihoodMatrix<A> {
-    private final LikelihoodMatrix<A> matrix;
+public class SubsettedLikelihoodMatrix<EVIDENCE extends Locatable, A extends Allele> implements LikelihoodMatrix<EVIDENCE, A> {
+    private final LikelihoodMatrix<EVIDENCE, A> matrix;
     private final List<A> alleles;
     private final Int2IntMap newToOldIndexMap;
 
-    public SubsettedLikelihoodMatrix(final LikelihoodMatrix<A> matrix, final List<A> alleles) {
+    public SubsettedLikelihoodMatrix(final LikelihoodMatrix<EVIDENCE, A> matrix, final List<A> alleles) {
         this.matrix = Utils.nonNull(matrix);
         this.alleles = Utils.nonNull(alleles);
         final int[] newIndices = new IndexRange(0, alleles.size()).mapToInteger(n -> n);
@@ -33,46 +33,46 @@ public class SubsettedLikelihoodMatrix<A extends Allele> implements LikelihoodMa
         newToOldIndexMap = new Int2IntArrayMap(newIndices, oldIndices);
     }
 
-    public static <A extends Allele> SubsettedLikelihoodMatrix<A> excludingAllele(final LikelihoodMatrix<A> matrix, final Allele excludedAllele) {
+    public static <EVIDENCE extends Locatable, A extends Allele> SubsettedLikelihoodMatrix<EVIDENCE,A> excludingAllele(final LikelihoodMatrix<EVIDENCE,A> matrix, final Allele excludedAllele) {
         final List<A> alleles = matrix.alleles().stream().filter(a -> !basesMatch(a,excludedAllele)).collect(Collectors.toList());
         Utils.validateArg(alleles.size() == matrix.numberOfAlleles() - 1, "More than one allele excluded.");
-        return new SubsettedLikelihoodMatrix<A>(matrix, alleles);
+        return new SubsettedLikelihoodMatrix<EVIDENCE,A>(matrix, alleles);
     }
 
     //TODO: take this hack out
     public static boolean basesMatch(final Allele a, final Allele b) { return a.getBases() == b.getBases() || Arrays.equals(a.getBases(), b.getBases()); }
 
     @Override
-    public List<GATKRead> reads() { return matrix.reads(); }
+    public List<EVIDENCE> evidence() { return matrix.evidence(); }
 
     @Override
     public List<A> alleles() { return alleles; }
 
     @Override
-    public void set(final int alleleIndex, final int readIndex, final double value) {
+    public void set(final int alleleIndex, final int evidenceIndex, final double value) {
         throw new UnsupportedOperationException("Subsetted likelihood matrices are immutable.");
     }
 
     @Override
-    public double get(final int alleleIndex, final int readIndex) { return matrix.get(newToOldIndexMap.get(alleleIndex), readIndex); }
+    public double get(final int alleleIndex, final int evidenceIndex) { return matrix.get(newToOldIndexMap.get(alleleIndex), evidenceIndex); }
 
     @Override
     public int indexOfAllele(final A allele) { return alleles.indexOf(allele); }
 
     @Override
-    public int indexOfRead(final GATKRead read) { return matrix.indexOfRead(read); }
+    public int indexOfEvidence(final EVIDENCE evidence) { return matrix.indexOfEvidence(evidence); }
 
     @Override
     public int numberOfAlleles() { return alleles.size(); }
 
     @Override
-    public int numberOfReads() { return matrix.numberOfReads(); }
+    public int evidenceCount() { return matrix.evidenceCount(); }
 
     @Override
     public A getAllele(final int alleleIndex) { return alleles.get(alleleIndex); }
 
     @Override
-    public GATKRead getRead(final int readIndex) { return matrix.getRead(readIndex); }
+    public EVIDENCE getEvidence(final int evidenceIndex) { return matrix.getEvidence(evidenceIndex); }
 
     @Override
     public void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset) {

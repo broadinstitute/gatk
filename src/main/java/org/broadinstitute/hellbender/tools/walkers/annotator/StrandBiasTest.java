@@ -6,9 +6,8 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticGenotypingEngine;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -27,7 +26,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
     //template method for calculating strand bias annotations using the three different methods
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         Utils.nonNull(vc);
         if ( !vc.isVariant() ) {
             return Collections.emptyMap();
@@ -43,7 +42,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         }
 
         if (likelihoods != null) {
-            if (vc.isSNP() && !likelihoods.hasFilledLikelihoods() && (likelihoods.readCount() != 0)) {
+            if (vc.isSNP() && !likelihoods.hasFilledLikelihoods() && (likelihoods.evidenceCount() != 0)) {
                 return calculateAnnotationFromStratifiedContexts(likelihoods.getStratifiedPileups(vc), vc);
             }
 
@@ -59,7 +58,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
     protected abstract Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
                                                                                      final VariantContext vc);
 
-    protected abstract Map<String, Object> calculateAnnotationFromLikelihoods(final ReadLikelihoods<Allele> likelihoods,
+    protected abstract Map<String, Object> calculateAnnotationFromLikelihoods(final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                                                               final VariantContext vc);
 
     /**
@@ -128,7 +127,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
      *   allele2   #       #
      * @return a 2x2 contingency table
      */
-    public static int[][] getContingencyTable( final ReadLikelihoods<Allele> likelihoods,
+    public static int[][] getContingencyTable( final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                                final VariantContext vc,
                                                final int minCount) {
         return getContingencyTable(likelihoods, vc, minCount, likelihoods.samples());
@@ -141,7 +140,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
      *   allele2   #       #
      * @return a 2x2 contingency table
      */
-    public static int[][] getContingencyTable( final ReadLikelihoods<Allele> likelihoods,
+    public static int[][] getContingencyTable( final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                                final VariantContext vc,
                                                final int minCount,
                                                final Collection<String> samples) {
@@ -157,7 +156,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             final int[] sampleTable = new int[ARRAY_SIZE];
             likelihoods.bestAllelesBreakingTies(sample).stream()
                     .filter(ba -> ba.isInformative())
-                    .forEach(ba -> updateTable(sampleTable, ba.allele, ba.read, ref, allAlts));
+                    .forEach(ba -> updateTable(sampleTable, ba.allele, ba.evidence, ref, allAlts));
             if (passesMinimumThreshold(sampleTable, minCount)) {
                 copyToMainTable(sampleTable, table);
             }

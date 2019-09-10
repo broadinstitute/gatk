@@ -532,10 +532,10 @@ public final class PairHMMUnitTest extends GATKBaseTest {
 
     }
 
-    private LikelihoodMatrix<Haplotype> matrix(final List<Haplotype> haplotypes) {
-        return new LikelihoodMatrix<Haplotype>() {
+    private LikelihoodMatrix<GATKRead, Haplotype> matrix(final List<Haplotype> haplotypes) {
+        return new LikelihoodMatrix<GATKRead, Haplotype>() {
             @Override
-            public List<GATKRead> reads() {
+            public List<GATKRead> evidence() {
                 throw new UnsupportedOperationException();
             }
 
@@ -545,12 +545,12 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public void set(int alleleIndex, int readIndex, double value) {
+            public void set(int alleleIndex, int evidenceIndex, double value) {
 //                throw new UnsupportedOperationException();
             }
 
             @Override
-            public double get(int alleleIndex, int readIndex) {
+            public double get(int alleleIndex, int evidenceIndex) {
                 throw new UnsupportedOperationException();
             }
 
@@ -560,7 +560,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public int indexOfRead(GATKRead read) {
+            public int indexOfEvidence(GATKRead evidence) {
                 throw new UnsupportedOperationException();
             }
 
@@ -570,7 +570,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public int numberOfReads() {
+            public int evidenceCount() {
                 throw new UnsupportedOperationException();
             }
 
@@ -580,7 +580,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public GATKRead getRead(int readIndex) {
+            public GATKRead getEvidence(int evidenceIndex) {
                 throw new UnsupportedOperationException();
             }
 

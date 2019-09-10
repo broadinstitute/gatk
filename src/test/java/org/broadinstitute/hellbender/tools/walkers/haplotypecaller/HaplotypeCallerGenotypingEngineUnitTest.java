@@ -14,8 +14,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -313,7 +313,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     public void testMakeAnnotatedCallTrimmingAlleles(){
         List<Allele> alleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false));
         List<Allele> mergedAlleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false), Allele.create("A", false));
-        ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<Allele>(SampleList.EMPTY_LIST, new IndexedAlleleList<Allele>(alleles), new HashMap<>());
+        AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<GATKRead, Allele>(SampleList.EMPTY_LIST, new IndexedAlleleList<Allele>(alleles), new HashMap<>());
 
         // Both a deletion and SNPs are present at this site
         final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000009, alleles).make();

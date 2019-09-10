@@ -251,10 +251,10 @@ public final class GenotypeLikelihoodCalculator {
      *
      * @return never {@code null}.
      */
-    public <A extends Allele> GenotypeLikelihoods genotypeLikelihoods(final LikelihoodMatrix<A> likelihoods) {
+    public <EVIDENCE, A extends Allele> GenotypeLikelihoods genotypeLikelihoods(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
         Utils.nonNull(likelihoods);
         Utils.validateArg(likelihoods.numberOfAlleles() == alleleCount, "mismatch between allele list and alleleCount");
-        final int readCount = likelihoods.numberOfReads();
+        final int readCount = likelihoods.evidenceCount();
         ensureReadCapacity(readCount);
 
         /// [x][y][z] = z * LnLk(Read_x | Allele_y)
@@ -409,8 +409,8 @@ public final class GenotypeLikelihoodCalculator {
      *
      * @return never {@code null}.
      */
-    private <A extends Allele> double[] readLikelihoodComponentsByAlleleCount(final LikelihoodMatrix<A> likelihoods) {
-        final int readCount = likelihoods.numberOfReads();
+    private <EVIDENCE, A extends Allele> double[] readLikelihoodComponentsByAlleleCount(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
+        final int readCount = likelihoods.evidenceCount();
         final int alleleDataSize = readCount * (ploidy + 1);
 
         // frequency1Offset = readCount to skip the useless frequency == 0. So now we are at the start frequency == 1

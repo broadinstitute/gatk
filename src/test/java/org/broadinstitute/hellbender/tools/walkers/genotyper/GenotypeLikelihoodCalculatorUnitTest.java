@@ -4,9 +4,10 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoodsUnitTester;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -48,21 +49,21 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
 
     @Test(dataProvider = "ploidyAndMaximumAlleleAndReadCountsData", dependsOnMethods = "testPloidyAndMaximumAllele")
     public void testLikelihoodCalculation(final int ploidy, final int alleleCount, final int[] readCount) {
-        final ReadLikelihoods<Allele> readLikelihoods = ReadLikelihoodsUnitTester.readLikelihoods(alleleCount, readCount);
+        final AlleleLikelihoods<GATKRead, Allele> readLikelihoods = ReadLikelihoodsUnitTester.readLikelihoods(alleleCount, readCount);
         final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, alleleCount);
         final int genotypeCount = calculator.genotypeCount();
         final int testGenotypeCount = Math.min(30000, genotypeCount);
         final int sampleCount = readCount.length;
         for (int s = 0; s < sampleCount ; s++) {
-            final LikelihoodMatrix<Allele> sampleLikelihoods = readLikelihoods.sampleMatrix(s);
+            final LikelihoodMatrix<GATKRead, Allele> sampleLikelihoods = readLikelihoods.sampleMatrix(s);
             final GenotypeLikelihoods genotypeLikelihoods = calculator.genotypeLikelihoods(sampleLikelihoods);
             final double[] genotypeLikelihoodsDoubles = genotypeLikelihoods.getAsVector();
             Assert.assertEquals(genotypeLikelihoodsDoubles.length, genotypeCount);
             for (int i = 0; i < testGenotypeCount; i++) {
                 final GenotypeAlleleCounts genotypeAlleleCounts = calculator.genotypeAlleleCountsAt(i);
                 Assert.assertNotNull(genotypeLikelihoods);
-                final double[] readGenotypeLikelihoods = new double[sampleLikelihoods.numberOfReads()];
-                for (int r = 0; r < sampleLikelihoods.numberOfReads(); r++) {
+                final double[] readGenotypeLikelihoods = new double[sampleLikelihoods.evidenceCount()];
+                for (int r = 0; r < sampleLikelihoods.evidenceCount(); r++) {
                     final double[] compoments = new double[genotypeAlleleCounts.distinctAlleleCount()];
                     for (int ar = 0; ar < genotypeAlleleCounts.distinctAlleleCount(); ar++) {
                         final int a = genotypeAlleleCounts.alleleIndexAt(ar);
