@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
@@ -57,9 +56,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param samples {@inheritDoc}
      * @param doPhysicalPhasing whether to try physical phasing.
      */
-    public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples,
-                                           final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
-        super(configuration.standardArgs, samples, afCalculatorProvider, false);
+    public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples, final boolean doPhysicalPhasing) {
+        super(configuration.standardArgs, samples, false);
         hcArgs = configuration;
         this.doPhysicalPhasing = doPhysicalPhasing;
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
@@ -71,19 +69,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     @Override
-    protected boolean forceSiteEmission() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_SITES || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
-    }
-
-    @Override
     protected String callSourceString() {
         return "HC_call";
     }
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return allele.equals(Allele.NON_REF_ALLELE,false) || referenceConfidenceMode != ReferenceConfidenceMode.NONE
-                || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
+        return allele.equals(Allele.NON_REF_ALLELE,false) || referenceConfidenceMode != ReferenceConfidenceMode.NONE;
     }
 
 
@@ -100,7 +92,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param ref                                    Reference bytes at active region
      * @param refLoc                                 Corresponding active region genome location
      * @param activeRegionWindow                     Active window
-     * @param activeAllelesToGenotype                Alleles to genotype
+     * @param givenAlleles                Alleles to genotype
      * @param emitReferenceConfidence whether we should add a &lt;NON_REF&gt; alternative allele to the result variation contexts.
      * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
      *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
@@ -119,7 +111,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                                                       final SimpleInterval refLoc,
                                                       final SimpleInterval activeRegionWindow,
                                                       final FeatureContext tracker,
-                                                      final List<VariantContext> activeAllelesToGenotype,
+                                                      final List<VariantContext> givenAlleles,
                                                       final boolean emitReferenceConfidence,
                                                       final int maxMnpDistance,
                                                       final SAMFileHeader header,
@@ -131,13 +123,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         Utils.nonNull(refLoc, "refLoc must be non-null");
         Utils.validateArg(refLoc.size() == ref.length, " refLoc length must match ref bytes");
         Utils.nonNull(activeRegionWindow, "activeRegionWindow must be non-null");
-        Utils.nonNull(activeAllelesToGenotype, "activeAllelesToGenotype must be non-null");
+        Utils.nonNull(givenAlleles, "givenAlleles must be non-null");
         Utils.validateArg(refLoc.contains(activeRegionWindow), "refLoc must contain activeRegionWindow");
         ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
 
         // update the haplotypes so we're ready to call, getting the ordered list of positions on the reference
         // that carry events among the haplotypes
-        final SortedSet<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, ref, refLoc, activeAllelesToGenotype, maxMnpDistance);
+        final SortedSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, maxMnpDistance);
 
         // Walk along each position in the key set and create each event to be outputted
         final Set<Haplotype> calledHaplotypes = new HashSet<>();
@@ -155,27 +147,20 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 continue;
             }
 
-            final List<VariantContext> activeEventVariantContexts;
-            if( activeAllelesToGenotype.isEmpty() ) {
-                activeEventVariantContexts = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
-            } else { // we are in GGA mode!
-                activeEventVariantContexts = AssemblyBasedCallerUtils.getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
-            }
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
 
-            final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced =
-                    replaceSpanDels(activeEventVariantContexts,
-                            Allele.create(ref[loc - refLoc.getStart()], true),
-                            loc);
+            final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced = replaceSpanDels(eventsAtThisLoc,
+                    Allele.create(ref[loc - refLoc.getStart()], true), loc);
 
             VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced);
 
             if( mergedVC == null ) {
                 continue;
             }
-
+            
             int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
 
-            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
+            final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes);
 
             if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
@@ -195,7 +180,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), header);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), givenAlleles);
             if( call != null ) {
 
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -417,42 +402,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     protected static GenotypeLikelihoodsCalculationModel getGLModel(final VariantContext vc) {
         final boolean isSNP = vc.getAlleles().stream().filter(a -> !a.isSymbolic()).allMatch(a -> a.length() == 1);
         return isSNP ? GenotypeLikelihoodsCalculationModel.SNP : GenotypeLikelihoodsCalculationModel.INDEL;
-    }
-
-    /**
-     * Go through the haplotypes we assembled, and decompose them into their constituent variant contexts
-     *
-     * @param haplotypes the list of haplotypes we're working with
-     * @param ref the reference bases (over the same interval as the haplotypes)
-     * @param refLoc the span of the reference bases
-     * @param activeAllelesToGenotype alleles we want to ensure are scheduled for genotyping (GGA mode)
-     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
-     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
-     *                       are merged until a substitution is separated from the previous one by a greater distance.
-     *                       That is, if maxMnpDistance = 1, substitutions at positions 10,11,12,14,15,17 are partitioned into a MNP
-     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
-     * @return never {@code null} but perhaps an empty list if there is no variants to report.
-     */
-    private TreeSet<Integer> decomposeHaplotypesIntoVariantContexts(final List<Haplotype> haplotypes,
-                                                                    final byte[] ref,
-                                                                    final SimpleInterval refLoc,
-                                                                    final List<VariantContext> activeAllelesToGenotype,
-                                                                    final int maxMnpDistance) {
-        final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
-
-        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
-        // event maps in the Haplotype objects!
-        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, maxMnpDistance);
-
-        if ( inGGAMode ) {
-            startPosKeySet.clear();
-            for( final VariantContext compVC : activeAllelesToGenotype ) {
-                startPosKeySet.add(compVC.getStart());
-            }
-        }
-
-        return startPosKeySet;
     }
 
     // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection

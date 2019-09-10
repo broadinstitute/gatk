@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantCon
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
@@ -103,14 +102,13 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false, false);
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection();
-        GeneralPloidyFailOverAFCalculatorProvider calculatorProvider = new GeneralPloidyFailOverAFCalculatorProvider(uac.genotypeArgs);
 
-        GenotypingEngine<?> genotypingEngine = new MinimalGenotypingEngine(uac, new IndexedSampleList(result.getSampleNamesOrderedByName()), calculatorProvider);
+        GenotypingEngine<?> genotypingEngine = new MinimalGenotypingEngine(uac, new IndexedSampleList(result.getSampleNamesOrderedByName()));
         genotypingEngine.setAnnotationEngine(annotatorEngine);
         GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
                 ? GenotypeLikelihoodsCalculationModel.INDEL
                 : GenotypeLikelihoodsCalculationModel.SNP;
-        VariantContext withGenotypes = genotypingEngine.calculateGenotypes(result, model, null);
+        VariantContext withGenotypes = genotypingEngine.calculateGenotypes(result, model);
         withGenotypes = new VariantContextBuilder(withGenotypes).attributes(result.getAttributes()).make();
         VariantContext finalized = annotatorEngine.finalizeAnnotations(withGenotypes, result);
         finalized =  GATKVariantContextUtils.reverseTrimAlleles(finalized);

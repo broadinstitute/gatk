@@ -15,15 +15,15 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -31,6 +31,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -423,20 +426,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         // test filter field
         Assert.assertEquals(merged.getFilters(), cfg.expected.getFilters());
-    }
-
-    @Test
-    public void testEqualSites() throws Exception {
-        final VariantContext v1 = new VariantContextBuilder("foo", "1", 10, 10, Collections.singletonList(Aref)).make();
-        final VariantContext v2 = new VariantContextBuilder("foo", "1", 11, 11, Collections.singletonList(Aref)).make();
-        final VariantContext v1WithAlleles = new VariantContextBuilder("foo", "1", 11, 11, Arrays.asList(T, Aref)).make();
-        Assert.assertTrue(GATKVariantContextUtils.equalSites(v1, v1));
-        Assert.assertTrue(GATKVariantContextUtils.equalSites(v2, v2));
-
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v1, v2));
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v1, v1WithAlleles));
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v2, v1));
-        Assert.assertFalse(GATKVariantContextUtils.equalSites(v1WithAlleles, v1));
     }
 
     // --------------------------------------------------------------------------------
@@ -1187,14 +1176,14 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final VariantContext vcBase = new VariantContextBuilder("test", "20", 10, 10, AC).make();
 
         // haploid, one alt allele
-        final double[] haploidRefPL = MathUtils.normalizeFromRealSpace(new double[]{0.9, 0.1});
-        final double[] haploidAltPL = MathUtils.normalizeFromRealSpace(new double[]{0.1, 0.9});
+        final double[] haploidRefPL = MathUtils.normalizeSumToOne(new double[]{0.9, 0.1});
+        final double[] haploidAltPL = MathUtils.normalizeSumToOne(new double[]{0.1, 0.9});
         final double[] haploidUninformative = new double[]{0, 0};
 
         // diploid, one alt allele
-        final double[] homRefPL = MathUtils.normalizeFromRealSpace(new double[]{0.9, 0.09, 0.01});
-        final double[] hetPL = MathUtils.normalizeFromRealSpace(new double[]{0.09, 0.9, 0.01});
-        final double[] homVarPL = MathUtils.normalizeFromRealSpace(new double[]{0.01, 0.09, 0.9});
+        final double[] homRefPL = MathUtils.normalizeSumToOne(new double[]{0.9, 0.09, 0.01});
+        final double[] hetPL = MathUtils.normalizeSumToOne(new double[]{0.09, 0.9, 0.01});
+        final double[] homVarPL = MathUtils.normalizeSumToOne(new double[]{0.01, 0.09, 0.9});
         final double[] uninformative = new double[]{0, 0, 0};
 
         final Genotype base = new GenotypeBuilder("NA12878").DP(10).GQ(50).make();
@@ -1561,84 +1550,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     // Test methods for merging reference confidence VCs
     //
     // --------------------------------------------------------------------------------
-
-
-    @Test(dataProvider = "indexOfAlleleData")
-    public void testIndexOfAllele(final Allele reference, final List<Allele> altAlleles, final List<Allele> otherAlleles) {
-        final List<Allele> alleles = new ArrayList<>(altAlleles.size() + 1);
-        alleles.add(reference);
-        alleles.addAll(altAlleles);
-        final VariantContext vc = makeVC("Source", alleles);
-
-        for (int i = 0; i < alleles.size(); i++) {
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,true,true),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc, alleles.get(i), false, true, true),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,true,false),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),false,true,false),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i),true),true,true,true),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i),true),true,true,false),-1);
-            if (i == 0) {
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,false,true),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),false,false,true),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,false,false),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),false,false,false),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i).getBases(),true),false,true,true),i);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i).getBases(),false),false,true,true),-1);
-            } else {
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,alleles.get(i),true),i - 1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,alleles.get(i),false), i - 1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,Allele.create(alleles.get(i),true),true),i-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,Allele.create(alleles.get(i),true),false),-1);
-            }
-        }
-
-        for (final Allele other : otherAlleles) {
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc, other, true, true, true), -1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,false,true,true),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,true,true,false),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,false,true,false),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,true,false,true),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,false,false,true),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,true,false,false),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc, other, false, false, false),-1);
-        }
-    }
-
-    @DataProvider(name = "indexOfAlleleData")
-    public Iterator<Object[]> indexOfAlleleData() {
-
-        final Allele[] ALTERNATIVE_ALLELES = new Allele[] { T, C, G, ATC, ATCATC};
-
-        final int lastMask = 0x1F;
-
-        return new Iterator<Object[]>() {
-
-            int nextMask = 0;
-
-            @Override
-            public boolean hasNext() {
-                return nextMask <= lastMask;
-            }
-
-            @Override
-            public Object[] next() {
-
-                int mask = nextMask++;
-                final List<Allele> includedAlleles = new ArrayList<>(5);
-                final List<Allele> excludedAlleles = new ArrayList<>(5);
-                for (int i = 0; i < ALTERNATIVE_ALLELES.length; i++) {
-                    ((mask & 1) == 1 ? includedAlleles : excludedAlleles).add(ALTERNATIVE_ALLELES[i]);
-                    mask >>= 1;
-                }
-                return new Object[] { Aref , includedAlleles, excludedAlleles};
-            }
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
-    }
 
     @Test(dataProvider = "totalPloidyData")
     public void testTotalPloidy(final int[] ploidies, final int defaultPloidy, final int expected) {

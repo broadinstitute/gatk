@@ -22,7 +22,7 @@ public class ArtifactPriorCollection {
     public ArtifactPriorCollection(final String sample){
         this.sample = sample;
         for (final String kmer : F1R2FilterConstants.ALL_KMERS){
-            map.put(kmer, new ArtifactPrior(kmer, new double[F1R2FilterConstants.NUM_STATES], 0, 0));
+            map.put(kmer, new ArtifactPrior(kmer, LearnReadOrientationModelEngine.getFlatPrior(F1R2FilterUtils.getMiddleBase(kmer)), 0, 0));
         }
     }
 

@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_Q
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.FixedAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -202,7 +201,7 @@ public final class ReblockGVCF extends VariantWalker {
         hcArgs.standardArgs.annotateAllSitesWithPLs = true;
         hcArgs.standardArgs.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
         hcArgs.emitReferenceConfidence = ReferenceConfidenceMode.GVCF;   //this is important to force emission of all alleles at a multiallelic site
-        return new HaplotypeCallerGenotypingEngine(hcArgs, samples, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs.standardArgs), true);
+        return new HaplotypeCallerGenotypingEngine(hcArgs, samples, true);
 
     }
 
@@ -242,7 +241,7 @@ public final class ReblockGVCF extends VariantWalker {
             final GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
                     ? GenotypeLikelihoodsCalculationModel.INDEL
                     : GenotypeLikelihoodsCalculationModel.SNP;
-            result = genotypingEngine.calculateGenotypes(originalVC, model, null);
+            result = genotypingEngine.calculateGenotypes(originalVC, model);
         }
 
         if (result == null) {

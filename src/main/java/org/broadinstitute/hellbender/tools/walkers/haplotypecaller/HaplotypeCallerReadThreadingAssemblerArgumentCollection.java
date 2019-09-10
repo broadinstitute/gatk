@@ -32,14 +32,6 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
     @Argument(fullName="recover-dangling-heads", doc="This argument is deprecated since version 3.3", optional = true)
     public boolean DEPRECATED_RecoverDanglingHeads = false;
 
-    /**
-     * This argument is specifically intended for 1000G consensus analysis mode. Setting this flag will inject all
-     * provided alleles to the assembly graph but will not forcibly genotype all of them.
-     */
-    @Advanced
-    @Argument(fullName="consensus", doc="1000G consensus mode", optional = true)
-    public boolean consensusMode = false;
-
     @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, kmerSizes,
@@ -59,7 +51,4 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
 
         return assemblyEngine;
     }
-
-    @Override
-    public boolean consensusMode() { return consensusMode; }
 }

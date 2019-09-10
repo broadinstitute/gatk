@@ -2,15 +2,17 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @SuppressWarnings("unchecked")
 public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
@@ -95,17 +97,6 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         final int start = 10;
         final int stop = start+refLength-1;
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().make();
-    }
-
-    private VariantContext makeHomRefBlock(final String source, final Allele refAllele, final Genotype... genotypes) {
-        final int start = 10;
-        final int stop = start;
-        final Map<String, Object> infoMap = new HashMap<>();
-        infoMap.put(VCFConstants.END_KEY,100);
-        final List<Allele> alleles = new ArrayList<>();
-        alleles.add(refAllele);
-        alleles.add(Allele.NON_REF_ALLELE);
-        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).unfiltered().attributes(infoMap).make();
     }
 
     @Test
@@ -540,24 +531,6 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         }
     }
 
-    private boolean arraysApproxEqual(final double[] a, final double[] b, final double tol) {
-        if ( a.length != b.length ) {
-            return false;
-        }
-
-        for ( int idx = 0; idx < a.length; idx++ ) {
-            if ( Math.abs(a[idx]-b[idx]) > tol ) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private String errMsgArray(final double[] a, final double[] b) {
-        return String.format("Expected %s, Observed %s", Arrays.toString(a), Arrays.toString(b));
-    }
-
     @Test
     public void testPosteriorMultiAllelic() {
         // AA AB BB AC BC CC AD BD CD DD
@@ -590,12 +563,12 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
                 -3.8952723, -1.5445506, -3.4951749, -2.6115263, -2.9125508, -0.5618292, -2.2135895,
                 -1.5316722};
 
-        Assert.assertTrue(arraysApproxEqual(expecPrior5, PosteriorProbabilitiesUtils.getDirichletPrior(counts_five,2,false),1e-5),errMsgArray(expecPrior5, PosteriorProbabilitiesUtils.getDirichletPrior(counts_five,2,false)));
+        assertEqualsDoubleArray(expecPrior5, PosteriorProbabilitiesUtils.getDirichletPrior(counts_five,2,false),1e-5);
 
-        Assert.assertTrue(arraysApproxEqual(expected_one,post1,1e-6),errMsgArray(expected_one,post1));
-        Assert.assertTrue(arraysApproxEqual(expected_two,post2,1e-5),errMsgArray(expected_two,post2));
-        Assert.assertTrue(arraysApproxEqual(expected_three,post3,1e-5),errMsgArray(expected_three,post3));
-        Assert.assertTrue(arraysApproxEqual(expected_four,post4,1e-5),errMsgArray(expected_four,post4));
-        Assert.assertTrue(arraysApproxEqual(expected_five,post5,1e-5),errMsgArray(expected_five,post5));
+        assertEqualsDoubleArray(expected_one,post1,1e-6);
+        assertEqualsDoubleArray(expected_two,post2,1e-5);
+        assertEqualsDoubleArray(expected_three,post3,1e-5);
+        assertEqualsDoubleArray(expected_four,post4,1e-5);
+        assertEqualsDoubleArray(expected_five,post5,1e-5);
     }
 }

@@ -85,7 +85,7 @@ public class BandPassActivityProfile extends ActivityProfile {
         for( int iii = 0; iii < bandSize; iii++ ) {
             kernel[iii] = MathUtils.normalDistribution(filterSize, sigma, iii);
         }
-        return MathUtils.normalizeFromRealSpace(kernel);
+        return MathUtils.normalizeSumToOne(kernel);
     }
 
     /**

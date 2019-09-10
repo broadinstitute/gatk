@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 
 
@@ -19,9 +18,8 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
      * @param configuration the UG configuration.
      * @param samples list of samples
      */
-    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples,
-                                   final AFCalculatorProvider afCalculatorProvider) {
-        this(configuration, samples, afCalculatorProvider, false);
+    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples) {
+        this(configuration, samples, false);
     }
 
     /**
@@ -31,13 +29,10 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
      * @param samples list of samples
      * @param doAlleleSpecificCalcs Whether to calculate genotyping annotations needed for allele specific annotations
      */
-    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples,
-                                    final AFCalculatorProvider afCalculatorProvider, boolean doAlleleSpecificCalcs ) {
-        super(configuration, samples, afCalculatorProvider, doAlleleSpecificCalcs);
+    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples, boolean doAlleleSpecificCalcs ) {
+        super(configuration, samples, doAlleleSpecificCalcs);
 
-        if ( configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            throw new UserException("GENOTYPE_GIVEN_ALLELES mode not supported in the MinimalGenotypingEngine");
-        } else if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
+       if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
             throw new UserException("Only the diploid SNP model is supported in the MinimalGenotypingEngine");
         } else if ( configuration.COMPUTE_SLOD ) {
             throw new UserException("--computeSLOD not supported in the MinimalGenotypingEngine");
@@ -46,17 +41,12 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES || configuration.annotateAllSitesWithPLs;
+        return configuration.annotateAllSitesWithPLs;
     }
 
     @Override
     protected String callSourceString() {
         return "UG_call";
-    }
-
-    @Override
-    protected boolean forceSiteEmission() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_SITES;
     }
 }
 

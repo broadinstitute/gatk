@@ -28,16 +28,15 @@ public class VariantContextVariantAdapterTest extends GATKBaseTest {
             }
             // Now, test to see that every variant is in in the expected set.
             Assert.assertEquals(variantList.size(), expectedVariantList.size());
-            for (GATKVariant v : variantList) {
-                boolean matchFound = false;
-                for (GATKVariant vv : expectedVariantList) {
-                    if (VariantUtils.variantsAreEqual(v, vv)) {
-                        matchFound = true;
-                    }
-                }
-                Assert.assertTrue(matchFound, v.toString());
+            variantList.forEach(v ->
+                Assert.assertTrue(expectedVariantList.stream().anyMatch(vv -> variantsAreEqual(v, vv)), v.toString()));
             }
-        }
+    }
+
+    private static boolean variantsAreEqual(GATKVariant v1, GATKVariant v2) {
+        return v1.getContig() != null && v1.getContig().equals(v2.getContig()) &&
+                v1.getStart() == v2.getStart() && v1.getEnd() == v2.getEnd() &&
+                v1.isSnp() == v2.isSnp() && v1.isIndel() == v2.isIndel();
     }
 
     @DataProvider(name = "VariantDataProvider")

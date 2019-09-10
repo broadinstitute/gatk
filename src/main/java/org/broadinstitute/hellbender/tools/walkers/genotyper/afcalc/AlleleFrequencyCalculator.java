@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.Dirichlet;
@@ -23,7 +24,7 @@ import java.util.stream.IntStream;
 /**
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class AlleleFrequencyCalculator extends AFCalculator {
+public final class AlleleFrequencyCalculator {
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
@@ -41,22 +42,26 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
         this.defaultPloidy = defaultPloidy;
     }
 
-    public AFCalculationResult getLog10PNonRef(final VariantContext vc) {
-        // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
-        return getLog10PNonRef(vc, defaultPloidy, 0, null);
+    public static AlleleFrequencyCalculator makeCalculator(final GenotypeCalculationArgumentCollection genotypeArgs) {
+        final double refPseudocount = genotypeArgs.snpHeterozygosity / Math.pow(genotypeArgs.heterozygosityStandardDeviation,2);
+        final double snpPseudocount = genotypeArgs.snpHeterozygosity * refPseudocount;
+        final double indelPseudocount = genotypeArgs.indelHeterozygosity * refPseudocount;
+        return new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, genotypeArgs.samplePloidy);
     }
-    //TODO: this should be a class of static methods once the old AFCalculator is gone.
+
+    public AFCalculationResult calculate(final VariantContext vc) {
+        // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
+        return calculate(vc, defaultPloidy);
+    }
+
     /**
      * Compute the probability of the alleles segregating given the genotype likelihoods of the samples in vc
      *
      * @param vc the VariantContext holding the alleles and sample information.  The VariantContext
      *           must have at least 1 alternative allele
-     * @param refSnpIndelPseudocounts a total hack.  A length-3 vector containing Dirichlet prior pseudocounts to
-     *                                be given to ref, alt SNP, and alt indel alleles.  Hack won't be necessary when we destroy the old AF calculators
      * @return result (for programming convenience)
      */
-    @Override
-    public AFCalculationResult getLog10PNonRef(final VariantContext vc, final int defaultPloidy, final int maximumAlternativeAlleles, final double[] refSnpIndelPseudocounts) {
+    public AFCalculationResult calculate(final VariantContext vc, final int defaultPloidy) {
         Utils.nonNull(vc, "VariantContext cannot be null");
         final int numAlleles = vc.getNAlleles();
         final List<Allele> alleles = vc.getAlleles();
@@ -146,12 +151,7 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
         final Map<Allele, Double> log10PRefByAllele = IntStream.range(1, numAlleles).boxed()
                 .collect(Collectors.toMap(alleles::get, a -> log10POfZeroCountsByAllele[a]));
 
-        // we compute posteriors here and don't have the same prior that AFCalculationResult expects.  Therefore, we
-        // give it our posterior as its "likelihood" along with a flat dummy prior
-        final double[] dummyFlatPrior = {-1e-10, -1e-10};   //TODO: HACK must be negative for AFCalcResult
-        final double[] log10PosteriorOfNoVariantYesVariant = {log10PNoVariant, MathUtils.log10OneMinusPow10(log10PNoVariant)};
-
-        return new AFCalculationResult(integerAltAlleleCounts, alleles, log10PosteriorOfNoVariantYesVariant, dummyFlatPrior, log10PRefByAllele);
+        return new AFCalculationResult(integerAltAlleleCounts, alleles, log10PNoVariant, log10PRefByAllele);
     }
 
     // effectiveAlleleCounts[allele a] = SUM_{genotypes g} (posterior_probability(g) * num_copies of a in g), which we denote as SUM [n_g p_g]
@@ -199,15 +199,4 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
             return new IndexRange(0, ploidy).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
         }
     }
-
-    @Override   //Note: unused
-    protected AFCalculationResult getResultFromFinalState(final VariantContext vc, final double[] priors, final StateTracker st) { return null; }
-
-    @Override//Note: unused
-    protected AFCalculationResult computeLog10PNonRef(final VariantContext vc, final int defaultPloidy,
-                                                               final double[] priors, final StateTracker st) { return null; }
-
-    @Override   //Note: unused
-    protected StateTracker getStateTracker(final boolean reset, final int maximumAlternativeAlleleCount) { return null; }
-
 }

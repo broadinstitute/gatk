@@ -1139,9 +1139,12 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             final List<CodonVariation> codonVariations = new ArrayList<>();
             final Iterator<SNV> snvIterator = snvs.iterator();
             SNV snv = null;
+            final int orfStart = exonList.get(0).getStart();
             while ( snvIterator.hasNext() ) {
                 final SNV testSNV = snvIterator.next();
-                if ( isExonic(testSNV.getRefIndex()) ) {
+                final int refIndex = testSNV.getRefIndex();
+                // can't be an insert before the 1st codon and must be exonic
+                if ( (refIndex != orfStart || testSNV.getRefCall() != NO_CALL) && isExonic(refIndex) ) {
                     snv = testSNV;
                     break;
                 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -150,7 +151,7 @@ class FeatureCache<CACHED_FEATURE extends Feature> {
      * @param interval the interval to check against the contents of our cache
      * @return true if all records overlapping the provided interval are already contained in our cache, otherwise false
      */
-    public boolean cacheHit( final SimpleInterval interval ) {
+    public boolean cacheHit( final Locatable interval ) {
         final boolean cacheHit = cachedInterval != null && cachedInterval.contains(interval);
 
         if ( cacheHit ) {

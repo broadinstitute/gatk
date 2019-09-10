@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.alg.CycleDetector;
 
@@ -14,6 +15,9 @@ import java.util.stream.Collectors;
  */
 public final class KBestHaplotypeFinder {
 
+    public static final Comparator<KBestHaplotype> K_BEST_HAPLOTYPE_COMPARATOR = Comparator.comparingDouble(KBestHaplotype::score)
+            .reversed()
+            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); // This is an arbitrary deterministic tie breaker. 
     private final SeqGraph graph;
     final Set<SeqVertex> sinks;
     final Set<SeqVertex> sources;
@@ -66,7 +70,7 @@ public final class KBestHaplotypeFinder {
      */
     public List<KBestHaplotype> findBestHaplotypes(final int maxNumberOfHaplotypes) {
         final List<KBestHaplotype> result = new ArrayList<>();
-        final PriorityQueue<KBestHaplotype> queue = new PriorityQueue<>(Comparator.comparingDouble(KBestHaplotype::score).reversed());
+        final PriorityQueue<KBestHaplotype> queue = new PriorityQueue<>(K_BEST_HAPLOTYPE_COMPARATOR);
         sources.forEach(source -> queue.add(new KBestHaplotype(source, graph)));
 
         final Map<SeqVertex, MutableInt> vertexCounts = graph.vertexSet().stream()
@@ -86,7 +90,6 @@ public final class KBestHaplotypeFinder {
                     }
 
                     for (final BaseEdge edge : outgoingEdges) {
-                        final SeqVertex targetVertex = graph.getEdgeTarget(edge);
                         queue.add(new KBestHaplotype(pathToExtend, edge, totalOutgoingMultiplicity));
                     }
                 }

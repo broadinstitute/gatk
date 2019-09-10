@@ -142,7 +142,8 @@ public class LearnReadOrientationModelEngine {
     // Learn the prior probabilities for the artifact states by the EM algorithm
     public ArtifactPrior learnPriorForArtifactStates() {
         // Initialize the prior for artifact
-        double[] statePrior = getFlatPrior(refAllele);
+        final double[] pseudocounts = getFlatPrior(refAllele);
+        double[] statePrior = Arrays.copyOf(pseudocounts, F1R2FilterConstants.NUM_STATES);
         double l2Distance;
 
         do {
@@ -150,7 +151,7 @@ public class LearnReadOrientationModelEngine {
 
             // Responsibilities are updated by side effect to save space
             takeEstep(statePrior);
-            statePrior = takeMstep();
+            statePrior = takeMstep(pseudocounts);
 
             // TODO: make sure EM increases the likelihood
             // newLikelihood >= oldLikelihood : "M step must increase the likelihood";
@@ -220,7 +221,7 @@ public class LearnReadOrientationModelEngine {
      * We do so by maximizing the expectation of the complete data likelihood with respect to the posterior
      * for the artifact states from the E-step
      */
-    private double[] takeMstep() {
+    private double[] takeMstep(final double[] pseudocounts) {
         // First we compute the effective counts of each state, N_k in the docs. We do this separately over alt and ref sites
         final double[] effectiveAltCountsFromDesignMatrix = MathUtils.sumArrayFunction(0, altDesignMatrix.size(), n -> altResponsibilities.getRow(n));
         double[] effectiveAltCountsFromHistograms = new double[F1R2FilterConstants.NUM_STATES];
@@ -245,7 +246,7 @@ public class LearnReadOrientationModelEngine {
                 i -> MathArrays.scale(refHistogram.get(i + 1).getValue(), refResponsibilities.getRow(i)));
 
         effectiveCounts = new ArrayRealVector(MathArrays.ebeAdd(effectiveAltCounts, effectiveRefCounts));
-        return effectiveCounts.mapMultiply(1.0/numExamples).toArray();
+        return MathUtils.normalizeSumToOne(effectiveCounts.add(new ArrayRealVector(pseudocounts)).toArray());
     }
 
     /**
@@ -292,7 +293,7 @@ public class LearnReadOrientationModelEngine {
     private static double computeLogPosterior(final int altDepth, final int altF1R2Depth, final int depth,
                                               final double statePrior, final BetaDistributionShape afPseudoCounts,
                                               final BetaDistributionShape f1r2PseudoCounts){
-        Utils.validateArg(MathUtils.isAProbability(statePrior), String.format("statePrior must be a probability but got %f", statePrior));
+        Utils.validateArg(MathUtils.isValidProbability(statePrior), String.format("statePrior must be a probability but got %f", statePrior));
 
         return Math.log(statePrior)
                 + new BetaBinomialDistribution(null, afPseudoCounts.getAlpha(), afPseudoCounts.getBeta(), depth).logProbability(altDepth)

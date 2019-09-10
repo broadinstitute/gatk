@@ -15,7 +15,7 @@ if [[ "$#" -lt 3 ]]; then
   [2] GCS cluster name (required)
   [3] cluster output directory (required)
   [4] GCS user name (defaults to local user name)
-  [5] GCS save bucket/path (defaults to \$PROJECT_NAME/\$GCS_USER if
+  [5] GCS save bucket/path (defaults to \$PROJECT_NAME-\$GCS_USER if
       omitted or empty)
   [6] path to local log file (default to empty, i.e. no log)
   [*] additional arguments that were passed to
@@ -31,7 +31,7 @@ PROJECT_NAME=$1
 CLUSTER_NAME=$2
 OUTPUT_DIR=$3
 GCS_USER=${4:-${USER}}
-GCS_SAVE_PATH=${5:-"${PROJECT_NAME}/${GCS_USER}"}
+GCS_SAVE_PATH=${5:-"${PROJECT_NAME}-${GCS_USER}"}
 LOCAL_LOG_FILE=${6:-"/dev/null"}
 COPY_FASTQ=${COPY_FASTQ:-"Y"}
 
@@ -44,7 +44,6 @@ GCS_SAVE_PATH=${GCS_SAVE_PATH%/} # remove trailing slash to avoid double slashes
 echo "CLUSTER_INFO=\$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter='clusterName=${CLUSTER_NAME}')"
 CLUSTER_INFO=$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter="clusterName=${CLUSTER_NAME}" --format="csv(NAME, WORKER_COUNT, PREEMPTIBLE_WORKER_COUNT, STATUS, ZONE)")
 ZONE=$(echo "${CLUSTER_INFO}" | tail -1 | cut -d"," -f 5)
-echo "Zone = $ZONE"
 if [ -z "${ZONE}" ]; then
     # cluster is down.
     echo "Cluster \"${CLUSTER_NAME}\" is down. Only log and command args will be uploaded"
@@ -52,6 +51,7 @@ if [ -z "${ZONE}" ]; then
 else
     # get the latest time-stamped results directory from the cluster
     # (may not be current date stamp if multiple jobs run on same cluster)
+    echo "Zone = $ZONE"
     MASTER="${CLUSTER_NAME}-m"
     RESULTS_DIR="$(dirname ${OUTPUT_DIR})"
     RESULTS_DIR=$(gcloud compute ssh ${MASTER} --project ${PROJECT_NAME} --zone ${ZONE} --command="hadoop fs -ls ${RESULTS_DIR} | tail -n 1")

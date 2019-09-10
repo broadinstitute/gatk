@@ -222,7 +222,7 @@ public final class QualityUtils {
      * @return a quality score (0-maxQual)
      */
     public static byte errorProbToQual(final double errorRate, final byte maxQual) {
-        Utils.validateArg(MathUtils.goodProbability(errorRate), () -> "errorRate must be good probability but got " + errorRate);
+        Utils.validateArg(MathUtils.isValidProbability(errorRate), () -> "errorRate must be good probability but got " + errorRate);
         final double d = Math.round(-10.0*Math.log10(errorRate));
         return boundQual((int)d, maxQual);
     }
@@ -266,7 +266,7 @@ public final class QualityUtils {
      * @return a phred-scaled quality score (0-maxQualScore) as a byte
      */
     public static byte trueProbToQual(final double trueProb, final byte maxQual) {
-        Utils.validateArg(MathUtils.goodProbability(trueProb), () -> "trueProb must be good probability but got " + trueProb);
+        Utils.validateArg(MathUtils.isValidProbability(trueProb), () -> "trueProb must be good probability but got " + trueProb);
         final double lp = Math.round(-10.0*MathUtils.log10OneMinusX(trueProb));
         return boundQual((int)lp, maxQual);
     }
@@ -316,7 +316,7 @@ public final class QualityUtils {
      * @return a phred-scaled version of the error rate
      */
     public static double phredScaleLog10ErrorRate(final double errorRateLog10) {
-        Utils.validateArg(MathUtils.goodLog10Probability(errorRateLog10), () -> "errorRateLog10 must be good probability but got " + errorRateLog10);
+        Utils.validateArg(MathUtils.isValidLog10Probability(errorRateLog10), () -> "errorRateLog10 must be good probability but got " + errorRateLog10);
         
         // abs is necessary for edge base with errorRateLog10 = 0 producing -0.0 doubles
         return Math.abs(-10.0 * Math.max(errorRateLog10, MIN_LOG10_SCALED_QUAL));

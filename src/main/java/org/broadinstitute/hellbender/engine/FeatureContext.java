@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -165,7 +166,7 @@ public class FeatureContext {
      *         this FeatureContext's query interval as expanded by the specified number of leading/trailing bases.
      *         Empty List if there is no backing data source and/or interval.
      */
-    public <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final SimpleInterval queryInterval) {
+    public <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final Locatable queryInterval) {
         if (featureManager == null || queryInterval == null || featureDescriptor == null) {
             return Collections.emptyList();
         }

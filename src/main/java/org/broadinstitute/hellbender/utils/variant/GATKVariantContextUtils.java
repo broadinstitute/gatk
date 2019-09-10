@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
@@ -12,7 +11,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import java.nio.file.Path;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -26,6 +24,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -1314,97 +1313,6 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Are vc1 and 2 equal including their position and alleles?
-     * @param vc1 non-null VariantContext
-     * @param vc2 non-null VariantContext
-     * @return true if vc1 and vc2 are equal, false otherwise
-     */
-    public static boolean equalSites(final VariantContext vc1, final VariantContext vc2) {
-        Utils.nonNull(vc1, "vc1 is null");
-        Utils.nonNull(vc2, "vc2 is null");
-
-        if ( vc1.getStart() != vc2.getStart() ) return false;
-        if ( vc1.getEnd() != vc2.getEnd() ) return false;
-        if ( !vc1.getContig().equals(vc2.getContig())) return false;
-        return vc1.getAlleles().equals(vc2.getAlleles());
-    }
-
-    /**
-     * Returns the absolute 0-based index of an allele.
-     *
-     * <p/>
-     * If the allele is equal to the reference, the result is 0, if it equal to the first alternative the result is 1
-     * and so forth.
-     * <p/>
-     * Therefore if you want the 0-based index within the alternative alleles you need to do the following:
-     *
-     * <p/>
-     * You can indicate whether the Java object reference comparator {@code ==} can be safelly used by setting {@code useEquals} to {@code false}.
-     *
-     * @param vc the target variant context.
-     * @param allele the target allele.
-     * @param ignoreRefState whether the reference states of the allele is important at all. Has no effect if {@code useEquals} is {@code false}.
-     * @param considerRefAllele whether the reference allele should be considered. You should set it to {@code false} if you are only interested in alternative alleles.
-     * @param useEquals whether equal method should be used in the search: {@link Allele#equals(Allele,boolean)}.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null}.
-     * @return {@code -1} if there is no such allele that satify those criteria, a value between 0 and {@link VariantContext#getNAlleles()} {@code -1} otherwise.
-     */
-    public static int indexOfAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState, final boolean considerRefAllele, final boolean useEquals) {
-        Utils.nonNull(allele);
-        return useEquals ? indexOfEqualAllele(vc,allele,ignoreRefState,considerRefAllele) : indexOfSameAllele(vc,allele,considerRefAllele);
-    }
-
-    /**
-     * Returns the relative 0-based index of an alternative allele.
-     * <p/>
-     * The the query allele is the same as the first alternative allele, the result is 0,
-     * if it is equal to the second 1 and so forth.
-     *
-     *
-     * <p/>
-     * Notice that the ref-status of the query {@code allele} is ignored.
-     *
-     * @param vc the target variant context.
-     * @param allele the query allele.
-     * @param useEquals  whether equal method should be used in the search: {@link Allele#equals(Allele,boolean)}.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null}.
-     *
-     * @return {@code -1} if there is no such allele that satisfy those criteria, a value between 0 and the number
-     *  of alternative alleles - 1.
-     */
-    public static int indexOfAltAllele(final VariantContext vc, final Allele allele, final boolean useEquals) {
-        final int absoluteIndex = indexOfAllele(vc,allele,true,false,useEquals);
-        return absoluteIndex == -1 ? -1 : absoluteIndex - 1;
-    }
-
-    // Implements index search using equals.
-    private static int indexOfEqualAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState,
-                                          final boolean considerRefAllele) {
-        int i = 0;
-        for (final Allele a : vc.getAlleles())
-            if (a.equals(allele,ignoreRefState))
-                return i == 0 ? (considerRefAllele ? 0 : -1) : i;
-            else
-                i++;
-        return -1;
-    }
-
-    // Implements index search using ==.
-    private static int indexOfSameAllele(final VariantContext vc, final Allele allele, final boolean considerRefAllele) {
-        int i = 0;
-
-        for (final Allele a : vc.getAlleles())
-            if (a == allele)
-                return i == 0 ? (considerRefAllele ? 0 : -1) : i;
-            else
-                i++;
-
-        return -1;
-    }
-
-    /**
      * Add chromosome counts (AC, AN and AF) to the VCF header lines
      *
      * @param headerLines the VCF header lines
@@ -1820,5 +1728,6 @@ public final class GATKVariantContextUtils {
 
         return true;
     }
+
 }
 

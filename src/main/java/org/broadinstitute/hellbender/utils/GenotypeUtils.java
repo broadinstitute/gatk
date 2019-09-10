@@ -73,7 +73,7 @@ public final class GenotypeUtils {
                         varIndex = idxVector[2];
                     }
                 }
-                biallelicLikelihoods = MathUtils.normalizeFromRealSpace(new double[] {normalizedLikelihoods[idxAA], normalizedLikelihoods[hetIndex], normalizedLikelihoods[varIndex]});
+                biallelicLikelihoods = MathUtils.normalizeSumToOne(new double[] {normalizedLikelihoods[idxAA], normalizedLikelihoods[hetIndex], normalizedLikelihoods[varIndex]});
             }
             else {
                 biallelicLikelihoods = normalizedLikelihoods;

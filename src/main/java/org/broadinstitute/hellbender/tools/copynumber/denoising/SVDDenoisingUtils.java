@@ -35,8 +35,7 @@ public final class SVDDenoisingUtils {
     private static final Logger logger = LogManager.getLogger(SVDDenoisingUtils.class);
 
     private static final double EPSILON = 1E-9;
-    private static final double INV_LN2 = MathUtils.INV_LOG_2;
-    private static final double LN2_EPSILON = Math.log(EPSILON) * INV_LN2;
+    private static final double LN2_EPSILON = Math.log(EPSILON) * MathUtils.INV_LOG_2;
 
     private SVDDenoisingUtils() {}
 
@@ -459,7 +458,8 @@ public final class SVDDenoisingUtils {
 
     private static void transformToFractionalCoverage(final RealMatrix matrix) {
         logger.info("Transforming read counts to fractional coverage...");
-        final double[] sampleSums = MathUtils.rowSums(matrix);
+        final double[] sampleSums = IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> MathUtils.sum(matrix.getRow(r))).toArray();
         matrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
             public double visit(int sampleIndex, int intervalIndex, double value) {
@@ -498,6 +498,6 @@ public final class SVDDenoisingUtils {
     }
 
     private static double safeLog2(final double x) {
-        return x < EPSILON ? LN2_EPSILON : Math.log(x) * INV_LN2;
+        return x < EPSILON ? LN2_EPSILON : Math.log(x) * MathUtils.INV_LOG_2;
     }
 }

@@ -108,11 +108,6 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = "indel-size-to-eliminate-in-ref-model", doc = "The size of an indel to check for in the reference model", optional = true)
     public int indelSizeToEliminateInRefModel = 10;
 
-
-    @Advanced
-    @Argument(fullName = "use-alleles-trigger", doc = "Use additional trigger on variants found in an external alleles file", optional = true)
-    public boolean USE_ALLELES_TRIGGER = false;
-
     /**
      * If set, certain "early exit" optimizations in HaplotypeCaller, which aim to save compute and time by skipping
      * calculations if an ActiveRegion is determined to contain no variants, will be disabled. This is most likely to be useful if

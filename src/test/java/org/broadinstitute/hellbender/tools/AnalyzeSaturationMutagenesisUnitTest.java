@@ -260,8 +260,14 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
                         new SNV(2, NO_CALL, CALL_T, QUAL_30),
                         new SNV(2, NO_CALL, CALL_T, QUAL_30),
                         new SNV(2, NO_CALL, CALL_T, QUAL_30))),
+                Collections.emptyList());
+        Assert.assertEquals(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
+                        new SNV(5, NO_CALL, CALL_T, QUAL_30),
+                        new SNV(5, NO_CALL, CALL_T, QUAL_30),
+                        new SNV(5, NO_CALL, CALL_T, QUAL_30))),
                 Collections.singletonList(
-                        CodonVariation.createInsertion(0, 63)));
+                        CodonVariation.createInsertion(1, 63)));
     }
 
     @Test
