@@ -20,14 +20,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+
 /**
- *  This tool uses Variant Eval to bin variants in Thousand Genomes to compare average variant allele frequencies
- *  between a new VCF and expected allele frequencies from Thousand Genomes. This was designed with arrays in mind,
- *  as a way to discover potential bugs in our pipeline. It uses the results from the variant eval to generate a
- *  simplified metric that returns a modified chi squared statistic (sum of the squared difference between the two allele
- *  frequencies in each bin, allowing a constant variance) as well as its associated p-value. The original variant eval
- *  results can be returned by giving the debug variable a filename
- * **/
+ *  This tool uses VariantEval to bin variants in Thousand Genomes by allele frequency. For each bin, we compare the
+ *  expected allele frequency from Thousand Genomes with the observed allele frequency in the input VCF. This was
+ *  designed with arrays in mind, as a way to discover potential bugs in our pipeline. It uses the results from
+ *  VariantEval to generate a simplified metric that returns a modified chi squared statistic (sum of the squared
+ *  difference between the two allele frequencies in each bin, allowing a constant variance) as well as its associated
+ *  p-value. The original VariantEval results can be returned by giving the debug variable a filename.
+**/
 public class AlleleFrequencyQC extends VariantEval {
 
     @Argument(shortName = "pvalue-threshold",
