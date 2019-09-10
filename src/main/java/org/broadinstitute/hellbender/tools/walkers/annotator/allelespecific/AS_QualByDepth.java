@@ -216,7 +216,8 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         else if (vc.hasAttribute(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY)) {
             String asQuals = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").replaceAll("\\[\\]\\s","");
             String[] values = asQuals.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
-            for (int i = 1; i < vc.getNAlleles(); i++) {
+            //Laurent's most recent Hail output does not contain a value for the reference
+            for (int i = 0; i < vc.getAlternateAlleles().size(); i++) {
                 alleleQualList.add(Integer.parseInt(values[i]));
             }
         }
