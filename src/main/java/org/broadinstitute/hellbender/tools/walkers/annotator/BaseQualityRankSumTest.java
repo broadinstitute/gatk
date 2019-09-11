@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Collections;
 import java.util.List;
@@ -43,9 +40,4 @@ public final class BaseQualityRankSumTest extends RankSumTest implements Standar
         return OptionalDouble.of(read.getBaseQuality(ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refLoc, ReadUtils.ClippingTail.RIGHT_TAIL)));
     }
 
-    @Override
-    // When we have a pileupe element we only need its underlying read in order to com
-    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
-        return OptionalDouble.of(p.getQual());
-    }
 }

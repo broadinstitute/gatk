@@ -98,7 +98,7 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
 
         Map<String, List<GATKRead>> emptyMap = new HashMap<>();
         emptyMap.put(SAMPLE, Collections.emptyList());
-        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new UnfilledReadsLikelihoods<Allele>(new IndexedSampleList(SAMPLE), new IndexedAlleleList<>(ALLELES), emptyMap);
+        final AlleleLikelihoods<GATKRead, Allele> likelihoods = new AlleleLikelihoods<>(new IndexedSampleList(SAMPLE), new IndexedAlleleList<>(ALLELES), emptyMap);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
 
@@ -106,7 +106,6 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
         new DepthPerAlleleBySample().annotate(null, vc, gAC, gb, likelihoods);
         final int[] ad = gb.make().getAD();
         Assert.assertEquals(ad, null);
-
     }
 
 }

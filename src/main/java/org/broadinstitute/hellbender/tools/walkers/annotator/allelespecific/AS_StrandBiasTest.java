@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -80,7 +79,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
                                                final AlleleLikelihoods<GATKRead, Allele> likelihoods ) {
 
         //for allele-specific annotations we only call from HC and we only use likelihoods
-        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
+        if ( likelihoods == null) {
             return Collections.emptyMap();
         }
         // calculate the annotation from the likelihoods
@@ -303,13 +302,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     //Allele-specific annotations cannot be called from walkers other than HaplotypeCaller
     protected Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes){
         return Collections.emptyMap();
-    }
-
-    @Override
-    //Allele-specific annotations cannot be called from walkers other than HaplotypeCaller
-    protected Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
-                                                                            final VariantContext vc){
-        return new HashMap<>();
     }
 
     public static String rawValueAsString(int[][] table) {

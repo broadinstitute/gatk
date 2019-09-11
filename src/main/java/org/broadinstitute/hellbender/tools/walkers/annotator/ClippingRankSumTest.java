@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,10 +38,4 @@ public final class ClippingRankSumTest extends RankSumTest {
         return OptionalDouble.of(AlignmentUtils.getNumHardClippedBases(read));
     }
 
-    @Override
-    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
-        Utils.nonNull(p);
-        // default to returning the same value
-        return getElementForRead(p.getRead(),refLoc);
-    }
- }
+}
