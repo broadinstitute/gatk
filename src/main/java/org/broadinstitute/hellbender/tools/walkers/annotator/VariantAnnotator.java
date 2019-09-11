@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -13,17 +14,22 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 /**
@@ -156,6 +162,12 @@ public class VariantAnnotator extends VariantWalker {
     @Argument(fullName="resource-allele-concordance", shortName="rac", doc="Check for allele concordances when using an external resource VCF file", optional=true)
     protected Boolean expressionAlleleConcordance = false;
 
+    /**
+     * Bases with a quality below this threshold will not be used for calling.
+     */
+    @Argument(fullName = AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME,  doc = "Minimum base quality required to confidently assign a read to an allele", optional = true)
+    public byte minBaseQualityScore = 10;
+
     public List<ReadFilter> getDefaultReadFilters() {
         return Lists.newArrayList( new WellformedReadFilter(),
                 ReadFilterLibrary.NOT_DUPLICATE,
@@ -209,19 +221,48 @@ public class VariantAnnotator extends VariantWalker {
 
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
-            //TODO remove this filter and update the tests, this implementation filters out reads that start in a spanning deleting according to variant context in order to match gatk3,
-            //TODO this will cause the reads to be assigned and annotated in a different manner than the haplotype caller.
-            final List<GATKRead> reads = Utils.stream(readsContext).filter(r -> r.getStart() <= vc.getStart()).collect(Collectors.toList());
-
-            AlleleLikelihoods<GATKRead, Allele> likelihoods = new UnfilledReadsLikelihoods<>( variantSamples, new IndexedAlleleList<>(vc.getAlleles()),
-                    AssemblyBasedCallerUtils.splitReadsBySample(variantSamples, getHeaderForReads(), reads));
-
-            VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, refContext, likelihoods, a -> true);
+            VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, refContext, makeLikelihoods(vc, readsContext), a -> true);
             vcfWriter.add(annotatedVC);
-
         } else {
             vcfWriter.add(vc);
         }
+    }
+
+    private AlleleLikelihoods<GATKRead, Allele> makeLikelihoods(final VariantContext vc, final ReadsContext readsContext) {
+        //TODO remove this filter and update the tests, this implementation filters out reads that start in a spanning deleting according to variant context in order to match gatk3,
+        //TODO this will cause the reads to be assigned and annotated in a different manner than the haplotype caller.
+        final List<GATKRead> reads = Utils.stream(readsContext).filter(r -> r.getStart() <= vc.getStart()).collect(Collectors.toList());
+        final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(variantSamples,
+                new IndexedAlleleList<>(vc.getAlleles()), AssemblyBasedCallerUtils.splitReadsBySample(variantSamples, getHeaderForReads(), reads));
+
+        final ReadPileup readPileup = GATKProtectedVariantContextUtils.getPileup(vc, readsContext);
+        final Map<String, ReadPileup> pileupsBySample = readPileup.splitBySample(getHeaderForReads(), "__UNKNOWN__");
+
+        final Allele refAllele = vc.getReference();
+        final List<Allele> altAlleles = vc.getAlternateAlleles();
+        final int numAlleles = vc.getNAlleles();
+
+        // manually fill each sample's likelihoods one read at a time, assigning probability 1 to the matching allele, if present
+        for (final Map.Entry<String, ReadPileup> samplePileups : pileupsBySample.entrySet()) {
+            final LikelihoodMatrix<GATKRead, Allele> sampleMatrix = result.sampleMatrix(result.indexOfSample(samplePileups.getKey()));
+
+            final MutableInt readIndex = new MutableInt(0);
+            for (final PileupElement pe : samplePileups.getValue()) {
+                // initialize all alleles as equally unlikely
+                IntStream.range(0, numAlleles).forEach(a -> sampleMatrix.set(a, readIndex.intValue(), Double.NEGATIVE_INFINITY));
+
+                // if present set the matching allele as likely
+                final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pe, refAllele, altAlleles, minBaseQualityScore);
+                if (pileupAllele != null) {
+                    sampleMatrix.set(sampleMatrix.indexOfAllele(pileupAllele), readIndex.intValue(), 0);
+                }
+
+
+                readIndex.increment();
+            }
+        }
+
+        return result;
     }
 
     /**
