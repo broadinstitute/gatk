@@ -35,6 +35,8 @@ env:
   - HELLBENDER_TEST_LOGS=/hellbender-test-logs/build_reports/
   - HELLBENDER_TEST_PROJECT=broad-dsde-dev
   - HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json
+  #Work around for https://github.com/googleapis/google-cloud-java/issues/5884
+  - export GOOGLE_CLOUD_PROJECT=$HELLBENDER_TEST_PROJECT
   #for uploading artifacts
   - ARTIFACTORY_USERNAME=gatkci
   #artifactory password
