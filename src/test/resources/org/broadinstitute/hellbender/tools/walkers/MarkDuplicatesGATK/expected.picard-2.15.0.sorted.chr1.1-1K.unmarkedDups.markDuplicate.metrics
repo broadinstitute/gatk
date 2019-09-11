@@ -5,29 +5,29 @@
 
 ## METRICS CLASS	picard.sam.DuplicationMetrics
 LIBRARY	UNPAIRED_READS_EXAMINED	READ_PAIRS_EXAMINED	SECONDARY_OR_SUPPLEMENTARY_RDS	UNMAPPED_READS	UNPAIRED_READ_DUPLICATES	READ_PAIR_DUPLICATES	READ_PAIR_OPTICAL_DUPLICATES	PERCENT_DUPLICATION	ESTIMATED_LIBRARY_SIZE
-Solexa-16398	0	0	0	0	0	0	0	?	
-Solexa-16399	0	0	0	0	0	0	0	?	
-Solexa-16400	0	0	0	0	0	0	0	?	
-Solexa-16402	0	0	0	0	0	0	0	?	
-Solexa-16403	0	0	0	0	0	0	0	?	
+Solexa-16398	0	0	0	0	0	0	0	0	
+Solexa-16399	0	0	0	0	0	0	0	0	
+Solexa-16400	0	0	0	0	0	0	0	0	
+Solexa-16402	0	0	0	0	0	0	0	0	
+Solexa-16403	0	0	0	0	0	0	0	0	
 Solexa-16404	3	9	0	3	0	2	0	0.190476	17
 Solexa-16406	1	10	0	1	0	0	0	0	
-Solexa-16407	0	0	0	0	0	0	0	?	
-Solexa-16408	0	0	0	0	0	0	0	?	
-Solexa-16410	0	0	0	0	0	0	0	?	
-Solexa-16411	0	0	0	0	0	0	0	?	
+Solexa-16407	0	0	0	0	0	0	0	0	
+Solexa-16408	0	0	0	0	0	0	0	0	
+Solexa-16410	0	0	0	0	0	0	0	0	
+Solexa-16411	0	0	0	0	0	0	0	0	
 Solexa-16412	3	6	0	3	0	1	0	0.133333	15
-Solexa-16414	0	0	0	0	0	0	0	?	
-Solexa-16415	0	0	0	0	0	0	0	?	
+Solexa-16414	0	0	0	0	0	0	0	0	
+Solexa-16415	0	0	0	0	0	0	0	0	
 Solexa-16416	2	2	0	2	0	0	0	0	
-Solexa-16418	0	0	0	0	0	0	0	?	
+Solexa-16418	0	0	0	0	0	0	0	0	
 Solexa-16419	4	4	0	4	0	0	0	0	
-Solexa-16420	0	0	0	0	0	0	0	?	
-Solexa-16421	0	0	0	0	0	0	0	?	
-Solexa-16422	0	0	0	0	0	0	0	?	
-Solexa-16423	0	0	0	0	0	0	0	?	
-Solexa-16424	0	0	0	0	0	0	0	?	
-Solexa-16425	0	0	0	0	0	0	0	?	
-Solexa-16426	0	0	0	0	0	0	0	?	
+Solexa-16420	0	0	0	0	0	0	0	0	
+Solexa-16421	0	0	0	0	0	0	0	0	
+Solexa-16422	0	0	0	0	0	0	0	0	
+Solexa-16423	0	0	0	0	0	0	0	0	
+Solexa-16424	0	0	0	0	0	0	0	0	
+Solexa-16425	0	0	0	0	0	0	0	0	
+Solexa-16426	0	0	0	0	0	0	0	0	
 
 
