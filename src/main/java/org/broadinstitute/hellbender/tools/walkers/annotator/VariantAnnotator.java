@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBased
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -103,7 +104,10 @@ import java.util.stream.IntStream;
 @BetaFeature
 @DocumentedFeature
 public class VariantAnnotator extends VariantWalker {
+    public static final String EXPRESSION_LONG_NAME = "expression";
+    public static final String EXPRESSION_SHORT_NAME = "E";
     private VariantContextWriter vcfWriter;
+    private static final int REFERENCE_PADDING = 100;
 
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate. Note that dbSNP is not used in any way for the calculations themselves.
@@ -117,7 +121,7 @@ public class VariantAnnotator extends VariantWalker {
      * filtered in the comp track will be ignored. Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
      */
     @Advanced
-    @Argument(fullName = "comp", doc = "Comparison VCF file(s)", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.COMPARISON_LONG_NAME, shortName = StandardArgumentDefinitions.COMPARISON_SHORT_NAME, doc = "Comparison VCF file(s)", optional = true)
     public List<FeatureInput<VariantContext>> comps = new ArrayList<>();
 
     /**
@@ -132,7 +136,7 @@ public class VariantAnnotator extends VariantWalker {
      * position, one is chosen randomly. Check for allele concordance if using --resource-allele-concordance, otherwise
      * the match is based on position only.
      */
-    @Argument(fullName="resource", doc="External resource VCF file", optional=true)
+    @Argument(fullName= StandardArgumentDefinitions.RESOURCE_LONG_NAME, doc="External resource VCF file", optional=true)
     public List<FeatureInput<VariantContext>> resources;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -151,7 +155,7 @@ public class VariantAnnotator extends VariantWalker {
      * Note that if there are multiple records in the resource file that overlap the given position, one is chosen
      * randomly.
      */
-    @Argument(fullName="expression", shortName="E", doc="One or more specific expressions to apply to variant calls", optional=true)
+    @Argument(fullName= EXPRESSION_LONG_NAME, shortName= EXPRESSION_SHORT_NAME, doc="One or more specific expressions to apply to variant calls", optional=true)
     protected Set<String> expressionsToUse = new HashSet<>();
 
     /**
@@ -221,7 +225,8 @@ public class VariantAnnotator extends VariantWalker {
 
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
-            VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, refContext, makeLikelihoods(vc, readsContext), a -> true);
+            final ReferenceContext expandedRefContext = new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, getSequenceDictionaryForDrivingVariants()));
+            VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, expandedRefContext, makeLikelihoods(vc, readsContext), a -> true);
             vcfWriter.add(annotatedVC);
         } else {
             vcfWriter.add(vc);

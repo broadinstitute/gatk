@@ -675,8 +675,12 @@ public final class ReadUtils {
     }
 
     public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
+        return getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refCoord, tail, false);
+    }
+
+    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
         final int leftmostSafeVariantPosition = Math.max(read.getSoftStart(), refCoord);
-        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), leftmostSafeVariantPosition, tail, false);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), leftmostSafeVariantPosition, tail, allowGoalNotReached);
     }
 
     /**

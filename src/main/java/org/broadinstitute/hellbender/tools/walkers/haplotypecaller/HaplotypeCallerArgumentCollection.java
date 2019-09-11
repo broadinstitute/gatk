@@ -63,7 +63,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * filtered in the comp track will be ignored. Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
      */
     @Advanced
-    @Argument(fullName = "comp", shortName = "comp", doc = "Comparison VCF file(s)", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.COMPARISON_LONG_NAME, shortName = StandardArgumentDefinitions.COMPARISON_SHORT_NAME, doc = "Comparison VCF file(s)", optional = true)
     public List<FeatureInput<VariantContext>> comps = new ArrayList<>();
 
     /**

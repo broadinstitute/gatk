@@ -9,11 +9,13 @@ import java.io.Serializable;
 
 public final class DbsnpArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
+    public static final String DBSNP_LONG_NAME = "dbsnp";
+    public static final String DBSNP_SHORT_NAME = "D";
 
     /**
      * A dbSNP VCF file.
      */
-    @Argument(fullName="dbsnp", shortName = "D", doc="dbSNP file", optional=true)
+    @Argument(fullName= DBSNP_LONG_NAME, shortName = DBSNP_SHORT_NAME, doc="dbSNP file", optional=true)
     public FeatureInput<VariantContext> dbsnp;
 
 }

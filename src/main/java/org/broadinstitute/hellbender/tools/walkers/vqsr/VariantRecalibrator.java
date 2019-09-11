@@ -188,8 +188,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * Bad - A database of known bad variants can be used to supplement the set of worst ranked variants (compared to the
      * Gaussian mixture model) that the program selects from the data to model "bad" variants.
      */
-    @Argument(fullName="resource",
-            shortName = "resource",
+    @Argument(fullName=StandardArgumentDefinitions.RESOURCE_LONG_NAME,
             doc="A list of sites for which to apply a prior probability of being correct but which aren't used by the algorithm (training and truth sets are required to run)",
             optional=false)
     private List<FeatureInput<VariantContext>> resource = new ArrayList<>();

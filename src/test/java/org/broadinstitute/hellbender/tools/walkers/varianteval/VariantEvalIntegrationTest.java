@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -653,7 +654,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         ArgumentsBuilder argBuilder= new ArgumentsBuilder();
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addArgument("eval", getTestFilePath("validationReportEval.noGenotypes.vcf"));
-        argBuilder.addArgument("comp", getTestFilePath("validationReportComp.noGenotypes.vcf"));
+        argBuilder.addArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME, getTestFilePath("validationReportComp.noGenotypes.vcf"));
         argBuilder.addInterval(new SimpleInterval("20"));
         argBuilder.addArgument("EV", "PrintMissingComp");
         argBuilder.addOutput(outputFile);

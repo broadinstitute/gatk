@@ -134,8 +134,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
             optional=true)
     private List<Double> indelTranches = new ArrayList<>(Arrays.asList(99.4));
 
-    @Argument(fullName="resource",
-            shortName = "resource",
+    @Argument(fullName=StandardArgumentDefinitions.RESOURCE_LONG_NAME,
             doc="A list of validated VCFs with known sites of common variation",
             optional=false)
     private List<FeatureInput<VariantContext>> resources = new ArrayList<>();

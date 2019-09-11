@@ -1,121 +1,350 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.primitives.Doubles;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.readers.LineIterator;
-import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.utils.VCFHeaderReader;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.codehaus.plexus.util.cli.Arg;
+import org.reflections.Reflections;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
-    final static String STANDARD_ANNOTATIONS = " -G StandardAnnotation ";
-    private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
-            "QD",//TODO QD has a cap value and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
-            "FS");//TODO There's some bug in either gatk3 or gatk4 fisherstrand that's making them not agree still, I'm not sure which is correct
-    private static final List<String> HEADER_LINES_TO_IGNORE = Arrays.asList(
-            "reference",
-            "HaplotypeScore",
-            "GATKCommandLine.VariantAnnotator",
-            "RAW_MQ"
-    );
+    // small VCF with a few IDs filled in.  Contains multiallelic sites.
+    private final File BASIC_INPUT = getTestFile("input.vcf");
 
-    //TODO because of differences between how GATK3 and GATK4 handle capturing reads for spanning deletions (Namely 3 only looks for reads overlapping the first site, 4 gets all reads over the span)
-    //TODO then we want to ignore affected attributes for concordance tests
-    private static final List<String> DEPTH_ATTRIBUTES_TO_IGNORE = Arrays.asList(
-            "QD",
-            "DP",
-            "MQ");
+    // the above subsetted to indel sites with some INFO and FILTER fields added.
+    private final File INDELS = getTestFile("indels.vcf");
 
-    //==================================================================================================================
-    // Testing
-    //==================================================================================================================
-    private void assertVariantContextsMatch(File input, File expected, List<String> extraArgs, String reference) throws IOException {
-        assertVariantContextsMatch(input, expected, extraArgs,reference, ATTRIBUTES_TO_IGNORE);
-    }
+    private static final String FOO = "foo";
+    private static final String FOO2 = FOO + 2;
 
-    private void assertVariantContextsMatch(File input, File expected, List<String> extraArgs, String reference, List<String> ignoreAtrributes) throws IOException {
-        final VCFHeader header = getHeaderFromFile(expected);
+    private static final String FOO_FILTER = FOO + ".FILTER";
+    private static final String FOO_ID = FOO + ".ID";
+    private static final String AC = VCFConstants.ALLELE_COUNT_KEY;
+    private static final String FOO_AC = FOO + "." + AC;
 
-        runVariantAnnotatorAndAssertSomething(input, expected, extraArgs, (a, e) -> {
-            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
-        }, reference);
-    }
+    private static final double GENEROUS_RELATIVE_TOLERANCE = 0.2;
 
-    private void assertHeadersMatch(File input, File expected, List<String> linesToIgnore) throws IOException {
-        final VCFHeader expectedHeader = getHeaderFromFile(expected);
-        final VCFHeader inputHeader = getHeaderFromFile(input);
+    // the purpose of VariantAnnotator is to emulate the annotations that HaplotypeCaller and Mutect2 would emit after
+    // local assembly and calculating likelihoods with Pair-HMM.  Thus our basic test is to compare the annotations of
+    // VariantAnnotator to those of Mutect2
+    @Test
+    public void testAgainstMutect2() throws Exception {
+        final File bam = new File(largeFileTestDir + "mutect/dream_synthetic_bams/", "tumor_4.bam");
+        final File mutect2AnnotatedVcf = createTempFile("mutect2-annotated", ".vcf");
+        final File mutect2UnannotatedVcf = createTempFile("mutect2-unannotated", ".vcf");
+        final File reannotatedVcf = createTempFile("reannotated", ".vcf");
+        final File reference = new File(b37Reference);
 
-        final Iterator<VCFHeaderLine> itr = expectedHeader.getMetaDataInSortedOrder().stream().filter(line -> !shouldFilterLine(line, linesToIgnore)).iterator();
-        final Iterator<VCFHeaderLine> itr2 = inputHeader.getMetaDataInSortedOrder().stream().filter(line -> !shouldFilterLine(line, linesToIgnore)).iterator();
-        Assert.assertEquals(itr, itr2);
-    }
+        // run Mutect2 on an interval that has indels and multiallelics
+        final ArgumentsBuilder mutect2Args = new ArgumentsBuilder()
+                .addInput(bam)
+                .addOutput(mutect2AnnotatedVcf)
+                .addReference(reference)
+                .addInterval(new SimpleInterval("20", 50_000_000, 52_000_000))
+                .addBooleanArgument(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true);
 
-    private boolean shouldFilterLine(VCFHeaderLine line, List<String> linesToIgnore) {
-        return (line != null)
-                && ((line instanceof VCFIDHeaderLine && linesToIgnore.contains(((VCFIDHeaderLine)line).getID()))
-                    || linesToIgnore.contains(line.getKey()));
-    }
+        final ArgumentsBuilder mutect2ArgsWithoutAnnotations = new ArgumentsBuilder()
+                .addInput(bam)
+                .addOutput(mutect2UnannotatedVcf)
+                .addReference(reference)
+                .addInterval(new SimpleInterval("20", 50_000_000, 52_000_000))
+                .addBooleanArgument(StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS, true);
 
-    private void runVariantAnnotatorAndAssertSomething(File input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
-        final File output = createTempFile("variantAnnotator", ".vcf");
+        new Main().instanceMain(makeCommandLineArgs(mutect2Args.getArgsList(), Mutect2.class.getSimpleName()));
 
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        if (reference!=null) {
-            args.addReference(new File(reference));
+        new Main().instanceMain(makeCommandLineArgs(mutect2ArgsWithoutAnnotations.getArgsList(), Mutect2.class.getSimpleName()));
+
+        // annotate the unannotated Mutect2 output
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(bam)
+                .addVCF(mutect2UnannotatedVcf)
+                .addReference(reference)
+                .addOutput(reannotatedVcf)
+                .addBooleanArgument(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true);
+
+        runCommandLine(args.getArgsArray());
+
+        // check a representative sampling of annotations
+        final Set<VariantAnnotation> representativeInfoIntegerAnnotations = ImmutableSet.of(new BaseQuality(), new MappingQuality(), new FragmentLength(), new ChromosomeCounts());
+        final Set<VariantAnnotation> representativeInfoStringAnnotations = ImmutableSet.of(new ReferenceBases());
+        final Set<VariantAnnotation> representativeInfoBooleanAnnotations = ImmutableSet.of(new TandemRepeat());
+
+        final Set<GenotypeAnnotation> representativeGenotypeAnnotations = ImmutableSet.of(new DepthPerAlleleBySample(), new DepthPerSampleHC(), new OrientationBiasReadCounts());
+
+        // check the header
+        final Set<String> infoHeaderKeys = getHeaderFromFile(reannotatedVcf).getInfoHeaderLines().stream().map(VCFInfoHeaderLine::getID).collect(Collectors.toSet());
+        Stream.of(representativeInfoBooleanAnnotations, representativeInfoIntegerAnnotations, representativeInfoStringAnnotations)
+                .flatMap(Set::stream)
+                .flatMap(annotation -> annotation.getKeyNames().stream())
+                .forEach(key -> Assert.assertTrue(infoHeaderKeys.contains(key)));
+
+        final Set<String> formatHeaderKeys = getHeaderFromFile(reannotatedVcf).getFormatHeaderLines().stream().map(VCFFormatHeaderLine::getID).collect(Collectors.toSet());
+        representativeGenotypeAnnotations.stream().flatMap(a -> a.getKeyNames().stream()).forEach(key -> Assert.assertTrue(formatHeaderKeys.contains(key)));
+
+        // check the annotated values
+        final List<VariantContext> mutect2AnnotatedVariants = VariantContextTestUtils.getVariantContexts(mutect2AnnotatedVcf);
+        final List<VariantContext> reannotatedVariants = VariantContextTestUtils.getVariantContexts(reannotatedVcf);
+
+        Assert.assertEquals(mutect2AnnotatedVariants.size(), reannotatedVariants.size());
+
+        final MutableInt matchingInfoFieldValues = new MutableInt(0);
+        final MutableInt nonMatchingInfoFieldValues = new MutableInt(0);
+
+        final MutableInt matchingFormatFieldValues = new MutableInt(0);
+        final MutableInt nonMatchingFormatFieldValues = new MutableInt(0);
+
+        for (int n = 0; n < reannotatedVariants.size(); n++) {
+            final VariantContext mutect2VC = mutect2AnnotatedVariants.get(n);
+            final VariantContext reannotatedVC = reannotatedVariants.get(n);
+            Assert.assertEquals(keyForVariant(mutect2VC), keyForVariant(reannotatedVC));
+
+            // check INFO field annotations
+            representativeInfoBooleanAnnotations.stream()
+                    .flatMap(a -> a.getKeyNames().stream())
+                    .forEach(key -> Assert.assertEquals(mutect2VC.hasAttribute(key), reannotatedVC.hasAttribute(key)));
+
+            representativeInfoIntegerAnnotations.stream()
+                    .flatMap(a -> a.getKeyNames().stream())
+                    .forEach(key -> {
+                                final double[] mutect2Values = Doubles.toArray(mutect2VC.getAttributeAsDoubleList(key, 1.0));
+                                final double[] reannotatedValues = Doubles.toArray(reannotatedVC.getAttributeAsDoubleList(key, 1.0));
+                        (approximatelyEqual(mutect2Values, reannotatedValues) ? matchingInfoFieldValues : nonMatchingInfoFieldValues).increment();
+                            });
+
+            representativeInfoStringAnnotations.stream()
+                    .flatMap(a -> a.getKeyNames().stream())
+                    .forEach(key -> Assert.assertEquals(mutect2VC.getAttribute(key), reannotatedVC.getAttribute(key)));
+
+            // check FORMAT annotations
+            final Genotype mutect2Genotype = mutect2VC.getGenotype(0);
+            final Genotype reannotatedGenotype = reannotatedVC.getGenotype(0);
+
+            representativeGenotypeAnnotations.stream()
+                    .flatMap(a -> a.getKeyNames().stream())
+                    .forEach(key -> {
+                        final double[] mutect2Values = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(mutect2Genotype, key, () -> null, 1.0);
+                        final double[] reannotatedValues = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(reannotatedGenotype, key, () -> null, 1.0);
+                        (approximatelyEqual(mutect2Values, reannotatedValues) ? matchingFormatFieldValues : nonMatchingFormatFieldValues).increment();
+                    });
         }
-        args.addOutput(output).addArgument("V", input.getAbsolutePath());
 
-
-        // Handling a difference in syntax between GATK3 and GATK4 wrt. annotation groups
-        additionalArguments = additionalArguments.stream().map(a -> a.contains("Standard") ? a + "Annotation" : a).collect(Collectors.toList());
-        additionalArguments.forEach(args::add);
-
-        Utils.resetRandomGenerator();
-        runCommandLine(args);
-
-        assertHeadersMatch(output, expected, HEADER_LINES_TO_IGNORE);
-        final List<VariantContext> expectedVC = getVariantContexts(expected);
-        final List<VariantContext> actualVC = getVariantContexts(output);
-        assertForEachElementInLists(actualVC, expectedVC, assertion);
+        Assert.assertTrue(matchingInfoFieldValues.intValue() > 40 * nonMatchingInfoFieldValues.intValue());
+        Assert.assertTrue(matchingFormatFieldValues.intValue() > 15 * nonMatchingFormatFieldValues.intValue());
     }
 
-    /**
-     * Returns a list of VariantContext records from a VCF file
-     *
-     * @param vcfFile VCF file
-     * @return list of VariantContext records
-     * @throws IOException if the file does not exist or can not be opened
-     */
-    private static List<VariantContext> getVariantContexts(final File vcfFile) throws IOException {
-        final VCFCodec codec = new VCFCodec();
-        final FileInputStream s = new FileInputStream(vcfFile);
-        final LineIterator lineIteratorVCF = codec.makeSourceFromStream(new PositionalBufferedStream(s));
-        codec.readHeader(lineIteratorVCF);
+    // test the comp annotation with one and two files
+    @Test
+    public void testComp() {
+        final File inputVCF = BASIC_INPUT;
+        final File outputVCF = createTempFile("output", ".vcf");
+        final File compVcf = INDELS;
 
-        final List<VariantContext> VCs = new ArrayList<>();
-        while (lineIteratorVCF.hasNext()) {
-            final String line = lineIteratorVCF.next();
-            Assert.assertFalse(line == null);
-            VCs.add(codec.decode(line));
+        final Set<String> unfilteredCompVariants = VariantContextTestUtils.streamVcf(compVcf)
+                .filter(VariantContext::isNotFiltered)
+                .map(VariantAnnotatorIntegrationTest::keyForVariant)
+                .collect(Collectors.toSet());
+
+        final ArgumentsBuilder argsForOneComp = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addFileArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO, compVcf);
+
+        runCommandLine(argsForOneComp.getArgsList());
+
+        for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
+            Assert.assertEquals(outputVC.hasAttribute(FOO), unfilteredCompVariants.contains(keyForVariant(outputVC)));
         }
 
-        return VCs;
+        // add the input as a comp -- every site shold get this annotation
+        final ArgumentsBuilder argsForTwoComps = new ArgumentsBuilder(argsForOneComp.getArgsArray())
+                .addFileArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO2, inputVCF);
+
+        runCommandLine(argsForTwoComps.getArgsList());
+
+        for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
+            Assert.assertEquals(outputVC.hasAttribute(FOO), unfilteredCompVariants.contains(keyForVariant(outputVC)));
+            Assert.assertTrue(outputVC.hasAttribute(FOO2));
+        }
+
+    }
+
+    // test dbSNP annotation
+    // the input VCF -- up to the ID field -- is as follows:
+    //  20	10002353	rs372143558     in dbSNP with same tag
+    //  20	10002374	.               not in dbSNP
+    //  20	10002443	rs1;rs2         in dbSNP with tag rs188831105
+    //  20	10002458	.               in dbSNP with tag rs34527371
+    //  20	10002460	rstestnot       not in dbSNP
+    //  20	10002470	rstest          in dbSNP with tag rs2327260
+    //  20	10002470	rstest          in dbSNP with tag rs3062214
+    //  20	10002478	.               in dbSNP with tag rs33961276
+    //  we expect the correct tag to be added to the ID field if necessary and the "DB" INFO tag to be added iff the variant is in dbSNP
+    @Test
+    public void testDBSNP() {
+        final File inputVCF = BASIC_INPUT;
+        final File outputVCF = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addArgument(DbsnpArgumentCollection.DBSNP_LONG_NAME, dbsnp_138_b37_20_21_vcf);
+
+        runCommandLine(args.getArgsList());
+
+        final List<VariantContext> inputVCs = VariantContextTestUtils.getVariantContexts(inputVCF);
+        final List<VariantContext> outputVCs = VariantContextTestUtils.getVariantContexts(outputVCF);
+
+        Assert.assertTrue(inputVCs.size() == outputVCs.size());
+        for (int n = 0; n < inputVCs.size(); n++) {
+            final VariantContext inputVC = inputVCs.get(n);
+            final VariantContext outputVC = outputVCs.get(n);
+
+            // all but two variants are in dbSNP, one of which has the right tag
+            final boolean inDbSNP = !(n == 1 || n == 4);
+            final boolean inDbSNPWithSameKey = n == 0;
+            final boolean inDbSNPWithDifferentKey = inDbSNP && !inDbSNPWithSameKey;
+
+            // check the INFO tag
+            Assert.assertEquals(outputVC.hasAttribute(VCFConstants.DBSNP_KEY), inDbSNP);
+
+            // check the ID field has the correct ID appended if necessary
+            if (inDbSNP) {
+                Assert.assertTrue(!inputVC.hasID() || outputVC.getID().startsWith(inputVC.getID()));
+                Assert.assertEquals(outputVC.getID().length() > inputVC.getID().length(), inDbSNPWithDifferentKey);
+            }
+        }
+    }
+
+    // test the -resource argument and associated ID, FILTER and INFO field annotation
+    @Test
+    public void testResource() {
+        final File inputVCF = BASIC_INPUT;
+        final File outputVCF = createTempFile("output", ".vcf");
+        final File resourceVcf = INDELS;
+
+        final Map<Integer, VariantContext> resourceVariantsByStart = VariantContextTestUtils.streamVcf(resourceVcf)
+                .collect(Collectors.toMap(VariantContext::getStart, vc -> vc));
+
+        final Map<String, VariantContext> resourceVariantsByStartAndAlleles = VariantContextTestUtils.streamVcf(resourceVcf)
+                .collect(Collectors.toMap(VariantAnnotatorIntegrationTest::keyForVariant, vc -> vc));
+
+        final String[] baseArgs = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addFileArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":" + FOO, resourceVcf)
+                .getArgsArray();
+
+        // test the --expression foo.FILTER annotation
+        final ArgumentsBuilder filterArgs = new ArgumentsBuilder(baseArgs).addArgument(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_FILTER);
+        runCommandLine(filterArgs.getArgsList());
+        for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
+            final VariantContext resourceVariant = resourceVariantsByStart.get(outputVC.getStart());
+            if (resourceVariant != null) {
+                Assert.assertTrue(outputVC.hasAttribute(FOO_FILTER));
+                Assert.assertEquals(outputVC.getAttribute(FOO_FILTER), resourceVariant.isNotFiltered() ? "PASS" : String.join(";", new ArrayList<>(resourceVariant.getFilters())));
+            } else {
+                Assert.assertFalse(outputVC.hasAttribute(FOO_FILTER));
+            }
+        }
+
+        // test the --expression foo.ID annotation
+        final ArgumentsBuilder idArgs = new ArgumentsBuilder(baseArgs).addArgument(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_ID);
+        runCommandLine(idArgs.getArgsList());
+        for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
+            final VariantContext resourceVariant = resourceVariantsByStart.get(outputVC.getStart());
+            if (resourceVariant != null && resourceVariant.hasID()) {
+                Assert.assertTrue(outputVC.hasAttribute(FOO_ID));
+                Assert.assertEquals(outputVC.getAttribute(FOO_ID), resourceVariant.getID());
+            } else {
+                Assert.assertFalse(outputVC.hasAttribute(FOO_ID));
+            }
+        }
+
+        // test the --expression foo.AC annotation as an example of a resource INFO field that can be array-valued
+        final ArgumentsBuilder infoArgs = new ArgumentsBuilder(baseArgs).addArgument(VariantAnnotator.EXPRESSION_LONG_NAME, FOO_AC);
+        runCommandLine(infoArgs.getArgsList());
+        for (final VariantContext outputVC : VariantContextTestUtils.getVariantContexts(outputVCF)) {
+            final VariantContext resourceVariant = resourceVariantsByStartAndAlleles.get(keyForVariant(outputVC));
+            if (resourceVariant != null && resourceVariant.hasAttribute(AC)) {
+                Assert.assertTrue(outputVC.hasAttribute(FOO_AC));
+                Assert.assertEquals(outputVC.getAttribute(FOO_AC), resourceVariant.getAttribute(AC));
+            } else {
+                Assert.assertFalse(outputVC.hasAttribute(FOO_AC));
+            }
+        }
+    }
+
+    @Test
+    public void testNoReads() {
+        final File inputVCF = BASIC_INPUT;
+        final File outputVCF = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addInterval(new SimpleInterval("20", 1, 1));
+
+        runCommandLine(args.getArgsList());
+    }
+
+    @Test
+    public void testDeNovo() {
+        final File inputVCF = getTestFile("trioGGVCF.vcf.gz");
+        final File outputVCF = createTempFile("output", ".vcf");
+        final File pedigree = new File(getToolTestDataDir(), "trio.ped");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(inputVCF)
+                .addOutput(outputVCF)
+                .addArgument(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, PossibleDeNovo.class.getSimpleName())
+                .addFileArgument(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, pedigree);
+
+        runCommandLine(args.getArgsList());
+
+        final int[] lociWithLowConfidenceDeNovo = VariantContextTestUtils.streamVcf(outputVCF)
+                .filter(vc -> vc.hasAttribute(GATKVCFConstants.LO_CONF_DENOVO_KEY))
+                .mapToInt(VariantContext::getStart)
+                .toArray();
+
+        final int[] lociWithHighConfidenceDeNovo = VariantContextTestUtils.streamVcf(outputVCF)
+                .filter(vc -> vc.hasAttribute(GATKVCFConstants.HI_CONF_DENOVO_KEY))
+                .mapToInt(VariantContext::getStart)
+                .toArray();
+
+        // known possible de novo sites
+        Assert.assertEquals(lociWithLowConfidenceDeNovo, new int[] {10088967});
+        Assert.assertEquals(lociWithHighConfidenceDeNovo, new int[] {10130767, 10197999});
+    }
+
+    private static String keyForVariant( final VariantContext variant ) {
+        return String.format("%s:%d-%d %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getAlleles());
     }
 
     private static VCFHeader getHeaderFromFile(final File vcfFile) throws IOException {
@@ -124,219 +353,17 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
-        Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"
-                + actual.stream().map(Object::toString).collect(Collectors.joining("\n","actual:\n","\n"))
-                +  expected.stream().map(Object::toString).collect(Collectors.joining("\n","expected:\n","\n")));
-        for (int i = 0; i < actual.size(); i++) {
-
-            assertion.accept(actual.get(i), expected.get(i));
+    private boolean approximatelyEqual(final double[] array1, final double[] array2) {
+        if (array1 == null || array2 == null) {
+            return array1 == null && array2 == null;
         }
-    }
-
-    //==================================================================================================================
-    // Tests
-    //==================================================================================================================
-
-    @Test
-    public void GATK3LargeConcordanceTest() throws IOException {
-        assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"), new File(getToolTestDataDir() + "expected/integrationTest.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam), b37_reference_20_21);
-    }
-
-    @Test
-    public void testHasAnnotsNotAsking() throws IOException {
-        final File expected = new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf");
-        final VCFHeader header = getHeaderFromFile(expected);
-        runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
-                (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (!e.getGenotypes().stream().anyMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
-                    }
-                },
-                b37_reference_20_21);
-    }
-
-    @Test
-    public void testHasAnnotsAsking() throws IOException {
-        final File expected = new File(getToolTestDataDir() + "expected/testHasAnnotsAsking1.vcf");
-        final VCFHeader header = getHeaderFromFile(expected);
-        runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHasAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
-                (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
-                    }
-                },
-                b37_reference_20_21);
-    }
-
-    @Test
-    public void testNoAnnotsNotAsking() throws IOException {
-        final File expected = new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf");
-        final VCFHeader header = getHeaderFromFile(expected);
-        runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
-                (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
-                    }
-                },
-                b37_reference_20_21);
-    }
-
-    @Test
-    public void testNoAnnotsAsking() throws IOException {
-        final File expected = new File(getToolTestDataDir() + "expected/testHasNoAnnotsAsking1.vcf");
-        final VCFHeader header = getHeaderFromFile(expected);
-        runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
-                (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
-                    }
-                },
-                b37_reference_20_21);
-    }
-    @Test
-    public void testOverwritingHeader() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample4.vcf"), getTestFile("expected/testReplaceHeader.vcf"), Arrays.asList("-G", "Standard", "-L", "20:10,001,292"), b37_reference_20_21);
-    }
-    @Test
-    public void testNoReads() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"), getTestFile("expected/testNoReads.vcf"), Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf"), b37_reference_20_21);
-    }
-    @Test
-    public void testMultipleIdsWithDbsnp() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfdbsnpwithIDs.vcf"), getTestFile("expected/testMultipleIdsWithDbsnp.vcf"), Arrays.asList("-G", "Standard", "-L",getToolTestDataDir() + "vcfdbsnpwithIDs.vcf", "--dbsnp", dbsnp_138_b37_20_21_vcf), null);
-    }
-    @Test
-    public void testDBTagWithHapMap() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
-                getTestFile("expected/testDBTagWithHapMap.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp:H3", getToolTestDataDir() + "fakeHM3.vcf"),
-                b37_reference_20_21, Collections.emptyList());
-    }
-
-    // Specific results from this method have not been rigorously vetted, this test asserts that the annotations we expect are present (compared to gatk3 but not gatk3 output because of non-ported annotations )
-    @Test
-    public void testWithAllAnnotations() throws IOException {
-        assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"),
-                getTestFile("expected/testWithAllAnnotations.vcf"),
-                //TODO remove the -AX here when https://github.com/broadinstitute/gatk/issues/3944 is resolved
-                Arrays.asList("--"+ StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
-                 b37_reference_20_21);
-    }
-
-    @Test
-    public void testDBTagWithTwoComps() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
-                getTestFile("expected/testDBTagWithTwoComps.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp:H3", getToolTestDataDir() + "fakeHM3.vcf", "--comp:foo", getToolTestDataDir() + "fakeHM3.vcf"),
-                b37_reference_20_21, Collections.emptyList());
-    }
-
-    @Test
-    public void testNoQuals() throws IOException {
-        // NOTE, this test is asserting that the QD calculation is dependant on existing QUAL field, the values themselves are subject to random jitter
-        assertVariantContextsMatch(getTestFile("noQual.vcf"),
-                getTestFile("expected/noQual.vcf"),
-                Arrays.asList( "-L", getToolTestDataDir() + "noQual.vcf", "-I", NA12878_20_21_WGS_bam, "-A", "QualByDepth"),
-                b37_reference_20_21, Collections.emptyList());
-    }
-
-    @Test
-    public void testUsingExpression() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
-                new File(getToolTestDataDir() + "expected/testUsingExpression.vcf"),
-                Arrays.asList("--resource-allele-concordance",  "--resource:foo", getToolTestDataDir() + "targetAnnotations.vcf",
-                        "-G", "Standard", "-E", "foo.AF", "-L", getToolTestDataDir()+"vcfexample3empty.vcf"), b37_reference_20_21);
-    }
-
-    @Test
-    public void testUsingExpressionAlleleMisMatch() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty-mod.vcf"),
-                new File(getToolTestDataDir() + "expected/testUsingExpressionAlleleMisMatch.vcf"),
-                Arrays.asList("--resource-allele-concordance",  "--resource:foo",  getToolTestDataDir() + "targetAnnotations.vcf",
-                        "-G", "Standard", "-E", "foo.AF", "-L", getToolTestDataDir()+"vcfexample3empty-mod.vcf"), b37_reference_20_21);
-    }
-
-    @Test
-    public void testPossibleDenovoAnnotation() throws IOException {
-        assertVariantContextsMatch(getTestFile("trioGGVCF.vcf.gz"),
-                new File(getToolTestDataDir() + "trioVA.denovo.vcf"),
-                Arrays.asList("-A", "PossibleDeNovo", "--" + StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "trio.ped"), b37_reference_20_21);
-    }
-
-    @Test
-    public void testUsingExpressionMultiAllele() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty-multiAllele.vcf"),
-                getTestFile("expected/testUsingExpressionMultiAllele.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty-multiAllele.vcf", "--resource:foo", getToolTestDataDir() + "targetAnnotations-multiAllele.vcf", "-E", "foo.AF", "-E", "foo.AC"),
-                b37_reference_20_21, Collections.emptyList());
-    }
-
-    @Test
-    public void testFilterInExpression() throws IOException {
-        /* The order of filters in the output seems platform-dependent. May need to change htsjdk to make the order consistent across platforms. [Sato] */
-        assertVariantContextsMatch(getTestFile("vcfexample3empty-multiAllele.vcf"),
-                getTestFile("expected/testFilterInExpression.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty-multiAllele.vcf", "--resource:foo", getToolTestDataDir() + "annotationResourceWithFilter.vcf", "-E", "foo.FILTER"),
-                b37_reference_20_21, Collections.emptyList());
-    }
-
-    @Test
-    public void testUsingExpressionWithID() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
-                getTestFile("expected/testUsingExpressionWithID.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--resource:foo", getToolTestDataDir() + "targetAnnotations.vcf", "-E", "foo.ID"),
-                b37_reference_20_21, Collections.emptyList());
-    }
-
-
-    @Test
-    public void testAlleleTrimming() throws IOException {
-        // This test makes sure that the expression code works in a complex case with many overlapping variant contexts
-        assertVariantContextsMatch(getTestFile("AlleleTrim.vcf"),
-                getTestFile("expected/testAlleleTrimming.vcf"),
-                Arrays.asList( "--resource:exac", getToolTestDataDir() + "exacAlleleTrim.vcf", "-E", "exac.AC_Adj", "-A", "InbreedingCoeff"),
-                null, Collections.emptyList());
-    }
-
-    @Test
-    public void testStrandBiasBySample() throws IOException {
-        // Created variants via HalotypeCaller GATK3 with no default annotations
-        final File outputVCF = getTestFile("HCOutputNoAnnotations.vcf");
-
-        // Created variant via HalotypeCaller GATK3; include StrandBiasBySample, exclude FisherStrand annotation
-        //             re-Annotate the variant with VariantAnnotator using FisherStrand annotation
-        final File outputVCFNoFS = getTestFile("HCOutputNoFSAnnotation.vcf");
-
-        final File outputWithAddedFS = createTempFile("variantannotator", ".vcf");
-
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(new File(b37_reference_20_21));
-        args.addVCF(outputVCFNoFS);
-        args.addOutput(outputWithAddedFS);
-        args.add("-L 20:10130000-10134800");
-        args.add("-A FisherStrand");
-        runCommandLine(args);
-
-        // confirm that the FisherStrand values are identical for the two pipelines
-        Iterator<Feature> outFeatureInput = new FeatureDataSource<>(outputVCF).iterator();
-        Iterator<Feature> expectedFeatureInput = new FeatureDataSource<>(outputVCF).iterator();
-
-        while( outFeatureInput.hasNext() && expectedFeatureInput.hasNext() ) {
-            final VariantContext vc = (VariantContext) outFeatureInput.next();
-            final VariantContext vcAnn = (VariantContext) expectedFeatureInput.next();
-
-            Assert.assertTrue(vc.hasAttribute("FS"));
-            Assert.assertTrue(vcAnn.hasAttribute("FS"));
-            Assert.assertEquals(vc.getAttributeAsDouble("FS", 0.0), vcAnn.getAttributeAsDouble("FS", -1.0));
+        if (array1.length != array2.length) {
+            return false;
         }
 
-        Assert.assertFalse(outFeatureInput.hasNext());
-        Assert.assertFalse(expectedFeatureInput.hasNext());
+        final double diffSum = MathUtils.sum(MathUtils.applyToArray(MathArrays.ebeSubtract(array1, array2), Math::abs));
+        final double absSum = MathUtils.sum(MathArrays.ebeAdd(MathUtils.applyToArray(array1, Math::abs), MathUtils.applyToArray(array2, Math::abs)));
+        return diffSum / absSum < GENEROUS_RELATIVE_TOLERANCE;
     }
-
 }
+
