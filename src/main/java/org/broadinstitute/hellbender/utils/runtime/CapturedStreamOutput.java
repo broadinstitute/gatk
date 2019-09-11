@@ -92,6 +92,7 @@ public class CapturedStreamOutput extends StreamOutput {
      *
      * @throws IOException When unable to read or write.
      */
+    @SuppressWarnings("deprecation")
     public void read() throws IOException {
         int readCount = 0;
         try {

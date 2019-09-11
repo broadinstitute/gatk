@@ -71,6 +71,7 @@ public final class ProcessController extends ProcessControllerBase<CapturedStrea
      * @param settings Settings to be run.
      * @return The output of the command.
      */
+    @SuppressWarnings("deprecation")
     public ProcessOutput exec(ProcessSettings settings) {
         StreamOutput stdout;
         StreamOutput stderr;
@@ -161,6 +162,7 @@ public final class ProcessController extends ProcessControllerBase<CapturedStrea
      * TODO: Try to use NIO to interrupt streams.
      */
     @Override
+    @SuppressWarnings("deprecation")
     protected void tryCleanShutdown() {
         destroyed = true;
 
