@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
-import org.broadinstitute.hellbender.utils.CompressedDataList;
+import org.broadinstitute.hellbender.utils.MultiSet;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -84,7 +84,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
             return Collections.emptyMap();
         }
 
-        final AlleleSpecificAnnotationData<CompressedDataList<Integer>> myRawData = initializeNewRawAnnotationData(vc.getAlleles());
+        final AlleleSpecificAnnotationData<MultiSet<Integer>> myRawData = initializeNewRawAnnotationData(vc.getAlleles());
         calculateRawData(vc, likelihoods, myRawData);
         Map<Allele, Double> myRankSumStats = calculateRankSum(myRawData.getAttributeMap(), myRawData.getRefAllele());
         final String annotationString = makeRawAnnotationString(vc.getAlleles(),myRankSumStats);
@@ -101,12 +101,12 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @param vcAlleles alleles to segment the annotation data on
      * @return A set of CompressedDataLists representing the the values for the reads supporting each allele
      */
-    protected AlleleSpecificAnnotationData<CompressedDataList<Integer>> initializeNewRawAnnotationData(final List<Allele> vcAlleles) {
-        Map<Allele, CompressedDataList<Integer>> perAlleleValues = new HashMap<>();
+    protected AlleleSpecificAnnotationData<MultiSet<Integer>> initializeNewRawAnnotationData(final List<Allele> vcAlleles) {
+        Map<Allele, MultiSet<Integer>> perAlleleValues = new HashMap<>();
         for (Allele a : vcAlleles) {
-            perAlleleValues.put(a, new CompressedDataList<>());
+            perAlleleValues.put(a, new MultiSet<>());
         }
-        final AlleleSpecificAnnotationData<CompressedDataList<Integer>> ret = new AlleleSpecificAnnotationData<>(vcAlleles, perAlleleValues.toString());
+        final AlleleSpecificAnnotationData<MultiSet<Integer>> ret = new AlleleSpecificAnnotationData<>(vcAlleles, perAlleleValues.toString());
         ret.setAttributeMap(perAlleleValues);
         return ret;
     }
@@ -157,12 +157,12 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
         final int refLoc = vc.getStart();
 
-        final Map<Allele, CompressedDataList<Integer>> perAlleleValues = myData.getAttributeMap();
+        final Map<Allele, MultiSet<Integer>> perAlleleValues = myData.getAttributeMap();
         for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {
             if (bestAllele.isInformative() && isUsableRead(bestAllele.read, refLoc)) {
                 final OptionalDouble value = getElementForRead(bestAllele.read, refLoc, bestAllele);
                 if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && perAlleleValues.containsKey(bestAllele.allele)) {
-                    perAlleleValues.get(bestAllele.allele).add((int) value.getAsDouble());
+                    perAlleleValues.get(bestAllele.allele).addAll((int) value.getAsDouble());
                 }
             }
         }
@@ -314,7 +314,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         return annotationString;
     }
 
-    public Map<Allele,Double> calculateRankSum(final Map<Allele, CompressedDataList<Integer>> perAlleleValues, final Allele ref) {
+    public Map<Allele,Double> calculateRankSum(final Map<Allele, MultiSet<Integer>> perAlleleValues, final Allele ref) {
         final Map<Allele, Double> perAltRankSumResults = new HashMap<>();
         //shortcut to not try to calculate rank sum if there are no reads that unambiguously support the ref
         if (perAlleleValues.get(ref).isEmpty())

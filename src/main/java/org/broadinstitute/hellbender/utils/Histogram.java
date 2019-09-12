@@ -3,33 +3,37 @@ package org.broadinstitute.hellbender.utils;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Class used for storing a list of doubles as a run length encoded histogram that compresses the data into bins spaced
  * at defined intervals.
  */
-public class Histogram {
-    private Double binSize;
-    private String precisionFormat;
-    private String printDelim;
-    final private Double BIN_EPSILON = 0.01;
+public final class Histogram {
 
-    private CompressedDataList<Integer> dataList = new CompressedDataList<>();
+    private final String PRINT_DELIM = ",";
+
+    private static final double BIN_EPSILON = 0.01;
+
+
+    private final double binSize;
+    private final String precisionFormat;
+
+    private MultiSet<Long> dataList = new MultiSet<>();
 
     /**
      * Create an empty histogram object with a default bin size of 0.1
      */
     public Histogram() {
         this.binSize = 0.1;
-        precisionFormat = "%.1f";
+        this.precisionFormat = "%.1f";
     }
 
     /**
      * Create an empty histogram object with a with a specified bin size
      * @param binSize size of the bins to compress the data into
      */
-    public Histogram(final Double binSize) {
+    public Histogram(final double binSize) {
         this.binSize = binSize;
         precisionFormat = "%." + Math.round(-Math.log10(binSize)) + "f";
     }
@@ -44,7 +48,7 @@ public class Histogram {
         }
         long binKey = getBinnedValue(d);
         if (isValidBinKey(binKey)) {
-            dataList.add((int) binKey);
+            dataList.add(binKey);
         } else {
             throw new GATKException("Histogram values are suspiciously extreme.  Failed to add " + d + " to the Histogram.");
         }
@@ -61,7 +65,7 @@ public class Histogram {
         }
         long binKey = getBinnedValue(d);
         if (isValidBinKey(binKey)) {
-            dataList.add((int) binKey, count);
+            dataList.add(binKey, count);
         } else {
             throw new GATKException("Histogram values are suspiciously extreme.  Failed to add " + d + " to the Histogram.");
         }
@@ -72,10 +76,10 @@ public class Histogram {
      * @param h histogram to add
      */
     public void add(final Histogram h) {
-        if (!this.binSize.equals(h.binSize)) {
+        if (this.binSize != h.binSize) {
             throw new GATKException("Histogram bin sizes are mismatched -- cannot add bin size " + this.binSize + " to " + h.binSize);
         }
-        this.dataList.add(h.dataList);
+        this.dataList.addAll(h.dataList);
     }
 
     /**
@@ -83,10 +87,10 @@ public class Histogram {
      * @param d Value to test
      * @return Number of items in the bin mapped by the provided key
      */
-    public Integer get(final Double d) {
+    public Integer get(final double d) {
         long binKey = getBinnedValue(d);
         if (isValidBinKey(binKey)) {
-            return dataList.getValueCounts().get((int) binKey);
+            return dataList.multificity(binKey);
         } else {
             throw new GATKException("Requested value is suspiciously extreme.  Failed to retrieve " + d + " from the Histogram.");
         }
@@ -98,34 +102,30 @@ public class Histogram {
      */
 
     public Double median() {
-        int numItems = 0;
-        for(final int count : dataList.valueCounts.values()) {
-            numItems += count;
-        }
+        final long numItems = dataList.longSize();
         boolean oddNumberValues = true;
         if(numItems % 2 == 0) {
             oddNumberValues = false;
         }
-        int medianIndex = (numItems+1)/2;
+        final long medianIndex = (numItems+1)/2;
+        final Long[] sortedBinKeys = dataList.distinct().stream().sorted().toArray(Long[]::new);
 
-        int counter = 0;
-        Double firstMedian = null;
-        for(final Integer key : dataList.valueCounts.keySet()) {
-            counter += dataList.valueCounts.get(key);
-            if( counter > medianIndex) {
-                if (firstMedian == null) {
+        long leftSize = 0;
+        int firstMedian = -1;
+        for (int i = 0; i < sortedBinKeys.length; i++) {
+            final long key = sortedBinKeys[i];
+            leftSize += dataList.multificity(sortedBinKeys[i]);
+            if (leftSize > medianIndex) {
+                if (firstMedian < 0) {
                     return key * binSize;
+                } else {
+                    return binSize * (sortedBinKeys[firstMedian] + key) / 2.0;
                 }
-                else {
-                    return (firstMedian+key)/2.0*binSize;
-                }
-            }
-            if( counter == medianIndex) {
+            } else if (leftSize == medianIndex) {
                 if (oddNumberValues) {
                     return key * binSize;
-                }
-                else {
-                    firstMedian = (double) key;
+                } else {
+                    firstMedian = i;
                 }
             }
         }
@@ -142,20 +142,14 @@ public class Histogram {
 
     @Override
     public String toString(){
-        printDelim = ",";
-        String str = "";
-        Object[] keys = dataList.valueCounts.keySet().toArray();
-        if (keys.length == 0) {
-            return Double.toString(Double.NaN);
+        if (dataList.isEmpty()) {
+            return "" + Double.NaN;
+        } else {
+            return dataList.distinct().stream().sorted()
+                    .map(binKey -> "" + String.format(precisionFormat, (binKey * binSize)) + PRINT_DELIM + dataList.multificity(binKey))
+                    .collect(Collectors.joining(PRINT_DELIM));
+
         }
-        Arrays.sort(keys);
-        for (Object i: keys){
-            if(!str.isEmpty()) {
-                str += printDelim;
-            }
-            str+=(String.format(precisionFormat,(double)(int)i*binSize)+printDelim+dataList.valueCounts.get(i));  //key i needs to be output with specified precision
-        }
-        return str;
     }
 
     /**
