@@ -51,9 +51,9 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
             final File inputReferenceFile,
             final String masterSequenceDictionary,
             final boolean replace,
-            final boolean dontValidate) throws FileNotFoundException, URISyntaxException {
+            final boolean disableSequenceDictionaryValidation) throws FileNotFoundException, URISyntaxException {
         final SAMSequenceDictionary resultingDictionary =
-                updateSequenceDictionary(inputVariantsFile, inputSourceFile, inputReferenceFile, masterSequenceDictionary, replace, dontValidate);
+                updateSequenceDictionary(inputVariantsFile, inputSourceFile, inputReferenceFile, masterSequenceDictionary, replace, disableSequenceDictionaryValidation);
 
         // get the original sequence dictionary from the source for comparison
         SAMSequenceDictionary sourceDictionary =
@@ -94,8 +94,8 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
             final File inputReferenceFile,
             final String masterSequenceDictionary,
             final boolean replace,
-            final boolean dontValidate) {
-        updateSequenceDictionary(inputVariantsFile, inputSourceFile, inputReferenceFile, masterSequenceDictionary, replace, dontValidate);
+            final boolean disableSequenceDictionaryValidation) {
+        updateSequenceDictionary(inputVariantsFile, inputSourceFile, inputReferenceFile, masterSequenceDictionary, replace, disableSequenceDictionaryValidation);
     }
 
     @Test
@@ -120,9 +120,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
 
     @Test(expectedExceptions= TribbleException.class)
     public void testBadContigLengthWithValidation() {
-        // throw an error if trying to force a replace with an invalid sequence dictionary if don't disable sequence validation
-
-        // specifying both a source dictionary and a master dictionary is ambiguous
+        // throw an error if trying to force a replace with an invalid sequence dictionary without disabling sequence validation
         updateSequenceDictionary(
                 new File(testDir, "variantsWithDictBadContigLength.vcf"),
                 new File(testDir, "exampleFASTA.dict"),
@@ -150,7 +148,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
         final File inputReferenceFile,
         final String masterSequenceDictionary,
         final boolean replace,
-        final boolean dontValidate)
+        final boolean disableSequenceDictionaryValidation)
     {
         ArgumentsBuilder argBuilder = new ArgumentsBuilder();
 
@@ -164,8 +162,8 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
         if (replace) {
             argBuilder.addArgument(UpdateVCFSequenceDictionary.REPLACE_ARGUMENT_NAME, Boolean.toString(replace));
         }
-        if (dontValidate) {
-            argBuilder.addArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, Boolean.toString(dontValidate));
+        if (disableSequenceDictionaryValidation) {
+            argBuilder.addArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, Boolean.toString(disableSequenceDictionaryValidation));
         }
         if (masterSequenceDictionary != null) {
             argBuilder.addArgument(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionary);
