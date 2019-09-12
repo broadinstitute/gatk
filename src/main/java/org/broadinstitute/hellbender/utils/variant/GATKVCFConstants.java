@@ -118,7 +118,6 @@ public final class GATKVCFConstants {
     public static final String SEQUENCING_QUAL_KEY =  "SEQQ";
     public static final String POLYMERASE_SLIPPAGE_QUAL_KEY =  "STRQ";
     public static final String STRAND_QUAL_KEY =  "STRANDQ";
-    public static final String REALIGNMENT_COUNTS_KEY =   "RCNTS";
     public static final String CONTAMINATION_QUAL_KEY =  "CONTQ";
     public static final String READ_ORIENTATION_QUAL_KEY =  "ROQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
@@ -128,6 +127,9 @@ public final class GATKVCFConstants {
     public static final String MEDIAN_MAPPING_QUALITY_KEY = "MMQ";
     public static final String MEDIAN_FRAGMENT_LENGTH_KEY = "MFRL";
     public static final String MEDIAN_READ_POSITON_KEY = "MPOS";
+    public static final String UNITIG_SIZES_KEY = "UNITIGS";
+    public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY = "ALIGN_DIFF";
+    public static final String JOINT_ALIGNMENT_COUNT_KEY = "NALIGNS";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";

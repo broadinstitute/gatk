@@ -8,21 +8,15 @@ public class RealignmentArgumentCollection {
     public static final double DEFAULT_DROP_RATIO = 0.2;
     public static final double DEFAULT_SEED_SPLIT_FACTOR = 0.5;
     public static final int DEFAULT_MAX_REASONABLE_FRAGMENT_LENGTH = 100000;
-    public static final int DEFAULT_MIN_ALIGNER_SCORE_DIFFERENCE = 20;
-    public static final double DEFAULT_MIN_MISMATCH_RATIO = 2.5;
-    public static final int DEFAULT_NUM_REGULAR_CONTIGS = 25;
+    public static final double DEFAULT_MIN_ALIGNER_SCORE_DIFFERENCE_PER_BASE = 0.2;
+    public static final double DEFAULT_MIN_MISMATCH_DIFFERENCE_PER_BASE = 0.02;
+    public static final int DEFAULT_NUM_REGULAR_CONTIGS = 250000;
 
     /**
      * BWA-mem index image created by {@link BwaMemIndexImageCreator}
      */
     @Argument(fullName = "bwa-mem-index-image", shortName = "index", doc = "BWA-mem index image")
     public String bwaMemIndexImage;
-
-    /**
-     * Turn off the default mate-aware realignment
-     */
-    @Argument(fullName = "dont-use-mates", doc = "Realign individual reads without using their mates", optional = true)
-    public boolean dontUseMates = false;
 
     /**
      * Maximum fragment length to be considered a reasonable pair alignment
@@ -33,14 +27,14 @@ public class RealignmentArgumentCollection {
     /**
      * Minimum difference between best and second-best alignment for a read to be considered well-mapped
      */
-    @Argument(fullName = "min-aligner-score-difference", doc = "Minimum difference between best and second-best alignment for a read to be considered well-mapped", optional = true)
-    public int minAlignerScoreDifference = DEFAULT_MIN_ALIGNER_SCORE_DIFFERENCE;
+    @Argument(fullName = "min-aligner-score-difference-per-base", doc = "Minimum difference between best and second-best alignment for a read to be considered well-mapped", optional = true)
+    public double minAlignerScoreDifferencePerBase = DEFAULT_MIN_ALIGNER_SCORE_DIFFERENCE_PER_BASE;
 
     /**
      * Minimum ratio between the number of mismatches in the second best and best alignments
      */
-    @Argument(fullName = "min-mismatch-ratio", doc = "Minimum ratio between the number of mismatches in the second best and best alignments", optional = true)
-    public double minMismatchRatio = DEFAULT_MIN_MISMATCH_RATIO;
+    @Argument(fullName = "min-mismatch-difference-per-base", doc = "Minimum ratio between the number of mismatches in the second best and best alignments", optional = true)
+    public double minMismatchDifferencePerBase = DEFAULT_MIN_MISMATCH_DIFFERENCE_PER_BASE;
 
     /**
      * Number of regular i.e. non-alt contigs

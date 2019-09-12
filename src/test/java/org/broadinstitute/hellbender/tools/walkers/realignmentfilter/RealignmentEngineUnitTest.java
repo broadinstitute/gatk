@@ -4,7 +4,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import org.apache.commons.math3.util.Pair;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -14,6 +15,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class RealignmentEngineUnitTest {
     private static final SAMFileHeader HEADER = ArtificialReadUtils.createArtificialSamHeader();
@@ -53,15 +55,13 @@ public class RealignmentEngineUnitTest {
         }
     }
 
-    @Test
-    public void testCheckRealignments() {
-        final BwaMemAlignment aln90 = makeAlignment(0,90, 1, false);
-        final BwaMemAlignment aln80 = makeAlignment(1,80, 1, true);
-        final BwaMemAlignment aln70 = makeAlignment(0,70, 1, false);
-        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln70), 1, 0.0).isGood());
-        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80), 5, 0.0).isGood());
-        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80, aln70), 5,0.0).isGood());
-        Assert.assertFalse(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80, aln70), 11,0.0).isGood());
+    // note that we realigned the original aligned bases of the read and mate, not the raw sequenced bases
+    // thus one of them has been reverse-complemented and we look for pairs that map to the same strand
+    private static List<Pair<BwaMemAlignment, BwaMemAlignment>> findPlausiblePairs(List<BwaMemAlignment> readRealignments, List<BwaMemAlignment> mateRealignments, int maxReasonableFragmentLength) {
+        return RealignmentEngine.findJointAlignments(Arrays.asList(readRealignments, mateRealignments), maxReasonableFragmentLength).stream()
+                .filter(list -> list.size() == 2)
+                .map(list -> ImmutablePair.of(list.get(0), list.get(1)))
+                .collect(Collectors.toList());
     }
 
     @Test
@@ -81,23 +81,23 @@ public class RealignmentEngineUnitTest {
         // reads are 1,3,5,7,9; mates are 2,4,6,8,10 -- only pair is 9 & 10
         final List<BwaMemAlignment> readAlignments1 = Arrays.asList(aln1, aln3, aln5, aln7, aln9);
         final List<BwaMemAlignment> mateAlignments1 = Arrays.asList(aln2, aln4, aln6, aln8, aln10);
-        final List<Pair<BwaMemAlignment, BwaMemAlignment>> pairs1 = RealignmentEngine.findPlausiblePairs(readAlignments1, mateAlignments1, maxFragmentLength);
+        final List<Pair<BwaMemAlignment, BwaMemAlignment>> pairs1 = findPlausiblePairs(readAlignments1, mateAlignments1, maxFragmentLength);
         Assert.assertEquals(pairs1.size(),1);
-        Assert.assertEquals(pairs1.get(0).getFirst(), aln9);
-        Assert.assertEquals(pairs1.get(0).getSecond(), aln10);
+        Assert.assertEquals(pairs1.get(0).getLeft(), aln9);
+        Assert.assertEquals(pairs1.get(0).getRight(), aln10);
 
         // reads are 1,2,3,4,5; mates are 6,7,8,9,10 -- only pair is 5 & 7
         final List<BwaMemAlignment> readAlignments2 = Arrays.asList(aln1, aln2, aln3, aln4, aln5);
         final List<BwaMemAlignment> mateAlignments2 = Arrays.asList(aln6, aln7, aln8, aln9, aln10);
-        final List<Pair<BwaMemAlignment, BwaMemAlignment>> pairs2 = RealignmentEngine.findPlausiblePairs(readAlignments2, mateAlignments2, maxFragmentLength);
+        final List<Pair<BwaMemAlignment, BwaMemAlignment>> pairs2 = findPlausiblePairs(readAlignments2, mateAlignments2, maxFragmentLength);
         Assert.assertEquals(pairs2.size(),1);
-        Assert.assertEquals(pairs2.get(0).getFirst(), aln5);
-        Assert.assertEquals(pairs2.get(0).getSecond(), aln7);
+        Assert.assertEquals(pairs2.get(0).getLeft(), aln5);
+        Assert.assertEquals(pairs2.get(0).getRight(), aln7);
 
         // reads are 1,2,5,6,9; mates are 3,4,7,8,10 -- pairs are 1 & 3, 2 & 4, 5 & 7, 9 & 10
         final List<BwaMemAlignment> readAlignments3 = Arrays.asList(aln1, aln2, aln5, aln6, aln9);
         final List<BwaMemAlignment> mateAlignments3 = Arrays.asList(aln3, aln4, aln7, aln8, aln10);
-        final List<Pair<BwaMemAlignment, BwaMemAlignment>> pairs3 = RealignmentEngine.findPlausiblePairs(readAlignments3, mateAlignments3, maxFragmentLength);
+        final List<Pair<BwaMemAlignment, BwaMemAlignment>> pairs3 = findPlausiblePairs(readAlignments3, mateAlignments3, maxFragmentLength);
         Assert.assertEquals(pairs3.size(),4);
     }
 

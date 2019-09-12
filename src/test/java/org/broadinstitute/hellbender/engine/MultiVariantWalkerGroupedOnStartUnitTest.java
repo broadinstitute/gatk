@@ -7,7 +7,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -16,7 +15,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,54 +25,10 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
     public static final Allele REF = Allele.create("A", true);
     public static final Allele ALT = Allele.create("C", false);
 
-    // This test is disabled until mocking classes with mockito is allowed in GATK4.
-    @Test(enabled = false )
-    public void testGetExpandedReferenceContext() {
-        ReferenceContext referenceContext1 = Mockito.mock(ReferenceContext.class);
-        when(referenceContext1.getWindow()).thenReturn(new SimpleInterval("20",1000,1100));
-        when(referenceContext1.getBases()).thenReturn(new byte[]{'A'});
-
-        ReferenceContext referenceContext2 = Mockito.mock(ReferenceContext.class);
-        when(referenceContext2.getWindow()).thenReturn(new SimpleInterval("20",1000,1050));
-        when(referenceContext2.getBases()).thenReturn(new byte[]{'C'});
-
-        ReferenceContext referenceContext3 = Mockito.mock(ReferenceContext.class);
-        when(referenceContext3.getWindow()).thenReturn(new SimpleInterval("20",1050,1100));
-        when(referenceContext3.getBases()).thenReturn(new byte[]{'G'});
-
-        ReferenceContext referenceContext4 = Mockito.mock(ReferenceContext.class);
-        when(referenceContext4.getWindow()).thenReturn(new SimpleInterval("20",1050,1150));
-        when(referenceContext4.getBases()).thenReturn(new byte[]{'T'});
-
-        List<VariantContext> VCs = new ArrayList<>();
-        VariantContext A = new VariantContextBuilder().loc("20",1001,1099).alleles(Arrays.asList(REF, Allele.NON_REF_ALLELE)).attribute(VCFConstants.END_KEY, 1099).make();
-
-        VCs.add(A);
-        ReferenceContext contextState = MultiVariantWalkerGroupedOnStart.getExpandedReferenceContext(VCs, null, referenceContext1);
-        Assert.assertEquals(contextState.getWindow().getEnd(),1100);
-        Assert.assertEquals(contextState.getBases()[0],'A');
-
-        VCs.add(A);
-        contextState = MultiVariantWalkerGroupedOnStart.getExpandedReferenceContext(VCs, contextState, referenceContext1);
-        Assert.assertEquals(contextState.getWindow().getEnd(),1100);
-        Assert.assertEquals(contextState.getBases()[0],'A');
-
-        VCs.clear();
-        VCs.add(A);
-        contextState = MultiVariantWalkerGroupedOnStart.getExpandedReferenceContext(VCs, contextState, referenceContext4);
-        Assert.assertEquals(contextState.getWindow().getEnd(),1150);
-        Assert.assertEquals(contextState.getBases()[0],'T');
-
-        VCs.add(A);
-        contextState = MultiVariantWalkerGroupedOnStart.getExpandedReferenceContext(VCs, contextState, referenceContext3);
-        Assert.assertEquals(contextState.getWindow().getEnd(),1150);
-        Assert.assertEquals(contextState.getBases()[0],'T');
-    }
-
     private final class DummyExampleGroupingMultiVariantWalker extends MultiVariantWalkerGroupedOnStart {
         List<List<VariantContext>> seenVariants = new ArrayList<>();
         @Override
-        public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
+        public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext, final List<ReadsContext> readsContexts) {
             seenVariants.add(variantContexts);
         }
     }
