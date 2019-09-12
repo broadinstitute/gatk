@@ -46,7 +46,6 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
     @Test (expectedExceptions = java.lang.IllegalArgumentException.class)
     // test asserting that if the reference dictionary exists but is not valid we get a more helpful exception than a null pointer exception
     public void testBrokenReferenceDictionaryErrorMessage() throws IOException {
-        createTempFile("reference", ".dict"); // file because we want an empty file that "exists" for the reference
         File out = createTempFile("GTStrippedOutput", "vcf");
 
         Path refCopy = Files.copy(IOUtils.getPath(hg19_chr1_1M_Reference), createTempPath("reference", ".fasta"), StandardCopyOption.REPLACE_EXISTING);
