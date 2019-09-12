@@ -5,10 +5,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Arrays;
@@ -48,7 +45,7 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY); }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY;}
+    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY);}
 
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {

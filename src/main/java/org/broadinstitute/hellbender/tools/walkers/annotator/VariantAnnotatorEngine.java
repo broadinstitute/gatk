@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
@@ -75,7 +76,8 @@ public final class VariantAnnotatorEngine {
         keepRawCombinedAnnotations = keepCombined;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
-                reducibleKeys.add(((ReducibleAnnotation) annot).getRawKeyName());
+                for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames())
+                reducibleKeys.add(rawKey);
             }
         }
     }
@@ -198,12 +200,16 @@ public final class VariantAnnotatorEngine {
         for (final InfoFieldAnnotation annotationType : infoAnnotations) {
             if (annotationType instanceof ReducibleAnnotation) {
                 ReducibleAnnotation currentASannotation = (ReducibleAnnotation) annotationType;
-                if (annotationMap.containsKey(currentASannotation.getRawKeyName())) {
-                    final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>) annotationMap.get(currentASannotation.getRawKeyName());
-                    final Map<String, Object> annotationsFromCurrentType = currentASannotation.combineRawData(allelesList, annotationValue);
-                    combinedAnnotations.putAll(annotationsFromCurrentType);
-                    //remove the combined annotations so that the next method only processes the non-reducible ones
-                    annotationMap.remove(currentASannotation.getRawKeyName());
+                for (final String rawKey : currentASannotation.getRawKeyNames()) {
+                    if (annotationMap.containsKey(rawKey)) {
+                        final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>) annotationMap.get(currentASannotation.getRawKeyNames().get(0));
+                        final Map<String, Object> annotationsFromCurrentType = currentASannotation.combineRawData(allelesList, annotationValue);
+                        combinedAnnotations.putAll(annotationsFromCurrentType);
+                        //remove the combined annotations so that the next method only processes the non-reducible ones
+                        for (final String rk : currentASannotation.getRawKeyNames()) {
+                            annotationMap.remove(rk);
+                        }
+                    }
                 }
             }
         }
@@ -230,11 +236,14 @@ public final class VariantAnnotatorEngine {
                     variantAnnotations.putAll(annotationsFromCurrentType);
                 }
                 //clean up raw annotation data after annotations are finalized
-                if (!keepRawCombinedAnnotations) {
-                    variantAnnotations.remove(currentASannotation.getRawKeyName());
+                for (final String rawKey: currentASannotation.getRawKeyNames()) {
+                    if (!keepRawCombinedAnnotations) {
+                        variantAnnotations.remove(rawKey);
+                    }
                 }
             }
         }
+        variantAnnotations.remove(GATKVCFConstants.AS_QUAL_KEY); //this is manual because the "rawKeys" get added by genotyping
 
         // generate a new annotated VC
         final VariantContextBuilder builder = new VariantContextBuilder(vc).attributes(variantAnnotations);

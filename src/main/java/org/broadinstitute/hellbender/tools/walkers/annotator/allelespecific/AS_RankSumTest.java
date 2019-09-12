@@ -92,7 +92,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         if (annotationString == null){
             return Collections.emptyMap();
         }
-        return Collections.singletonMap(getRawKeyName(), annotationString);
+        return Collections.singletonMap(getRawKeyNames().get(0), annotationString);
     }
 
     /**
@@ -178,10 +178,10 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @return
      */
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyName())) {
+        if (!vc.hasAttribute(getRawKeyNames().get(0))) {
             return new HashMap<>();
         }
-        final String rawRankSumData = vc.getAttributeAsString(getRawKeyName(),null);
+        final String rawRankSumData = vc.getAttributeAsString(getRawKeyNames().get(0),null);
         if (rawRankSumData == null) {
             return new HashMap<>();
         }
@@ -230,7 +230,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
         }
         final String annotationString = makeCombinedAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        return Collections.singletonMap(getRawKeyName(), annotationString);
+        return Collections.singletonMap(getRawKeyNames().get(0), annotationString);
     }
 
     // Parses the raw data string into a Histogram and sets the inputs attribute map accordingly

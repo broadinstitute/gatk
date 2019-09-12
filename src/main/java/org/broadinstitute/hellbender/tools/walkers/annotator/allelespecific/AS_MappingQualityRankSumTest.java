@@ -40,7 +40,7 @@ public class AS_MappingQualityRankSumTest extends AS_RankSumTest implements AS_S
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY); }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY;}
+    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY);}
 
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {

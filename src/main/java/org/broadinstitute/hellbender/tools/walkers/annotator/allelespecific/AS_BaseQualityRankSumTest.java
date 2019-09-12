@@ -4,7 +4,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTest;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Arrays;
@@ -43,7 +42,7 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
     }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_RAW_BASE_QUAL_RANK_SUM_KEY;}
+    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RAW_BASE_QUAL_RANK_SUM_KEY);}
 
     /**
      * Get the element for the given read at the given reference position

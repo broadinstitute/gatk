@@ -40,7 +40,7 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
         Assert.assertEquals(cov.getRawDescriptions().size(), 1);
         Assert.assertEquals(cov.getRawDescriptions().get(0).getID(), GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY);
-        Assert.assertEquals(new RMSMappingQuality().getRawKeyName(), GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY);
+        Assert.assertEquals(new RMSMappingQuality().getRawKeyNames().get(0), GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY);
         Assert.assertEquals(new RMSMappingQuality().getKeyNames(), Sets.newHashSet(VCFConstants.RMS_MAPPING_QUALITY_KEY, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
     }
 
@@ -201,7 +201,7 @@ public final class RMSMappingQualityUnitTest {
         final RMSMappingQuality annotator = RMSMappingQuality.getInstance();
 
         final Map<String, Object> combined = annotator.combineRawData(vcAlleles, combinedVCdata);
-        final String combinedListString = (String)combined.get(annotator.getRawKeyName());
+        final String combinedListString = (String)combined.get(annotator.getRawKeyNames().get(0));
         Assert.assertEquals(combinedListString, "69640,20");
 
         final VariantContext vc = new VariantContextBuilder(makeVC())
@@ -224,7 +224,7 @@ public final class RMSMappingQualityUnitTest {
         final RMSMappingQuality annotator = RMSMappingQuality.getInstance();
 
         final Map<String, Object> combined = annotator.combineRawData(vcAlleles, combinedVCdata);
-        final String combinedListString = (String)combined.get(annotator.getRawKeyName());
+        final String combinedListString = (String)combined.get(annotator.getRawKeyNames().get(0));
         Assert.assertEquals(combinedListString, "11925002601,5500001");
 
         final VariantContext vc = new VariantContextBuilder(makeVC())

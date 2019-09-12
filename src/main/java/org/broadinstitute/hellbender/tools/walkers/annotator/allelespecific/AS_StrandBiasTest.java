@@ -35,7 +35,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_SB_TABLE_KEY; }
+    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_SB_TABLE_KEY); }
 
     /**
      * Method which determines how the Strand Bias read direction allele data must be combined into a final annotation
@@ -72,7 +72,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
         final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), perAlleleValues);
-        annotations.put(getRawKeyName(), annotationString);
+        annotations.put(getRawKeyNames().get(0), annotationString);
         return annotations;
     }
 
@@ -125,7 +125,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
             combineAttributeMap(currentValue, combinedData);
         }
         final String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        return Collections.singletonMap(getRawKeyName(), annotationString);
+        return Collections.singletonMap(getRawKeyNames().get(0), annotationString);
     }
 
     protected String encode(List<Integer> alleleValues) {
@@ -149,10 +149,10 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
      */
     @Override
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyName())) {
+        if (!vc.hasAttribute(getRawKeyNames().get(0))) {
             return new HashMap<>();
         }
-        String rawContingencyTableData = vc.getAttributeAsString(getRawKeyName(),null);
+        String rawContingencyTableData = vc.getAttributeAsString(getRawKeyNames().get(0),null);
         if (rawContingencyTableData == null) {
             return new HashMap<>();
         }

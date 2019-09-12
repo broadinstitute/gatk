@@ -203,12 +203,14 @@ public final class GnarlyGenotyperEngine {
                 final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.getDeclaredConstructor().newInstance();
                 if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                     final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
-                    if (variant.hasAttribute(ann.getRawKeyName())) {
-                        if (!stripASAnnotations) {
-                            final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
-                            finalValue.forEach((key, value) -> vcfBuilder.attribute(key, value));
-                            if (annotationDBBuilder != null) {
-                                annotationDBBuilder.attribute(ann.getRawKeyName(), variant.getAttribute(ann.getRawKeyName()));
+                    for (final String rawKey : ann.getRawKeyNames()) {
+                        if (variant.hasAttribute(rawKey)) {
+                            if (!stripASAnnotations) {
+                                final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
+                                finalValue.forEach((key, value) -> vcfBuilder.attribute(key, value));
+                                if (annotationDBBuilder != null) {
+                                    annotationDBBuilder.attribute(rawKey, variant.getAttribute(rawKey));
+                                }
                             }
                         }
                     }
@@ -225,8 +227,10 @@ public final class GnarlyGenotyperEngine {
                     final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.getDeclaredConstructor().newInstance();
                     if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                         final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
-                        if (variant.hasAttribute(ann.getRawKeyName())) {
-                            vcfBuilder.rmAttribute(ann.getRawKeyName());
+                        for (final String rawKey : ann.getRawKeyNames()) {
+                            if (variant.hasAttribute(rawKey)) {
+                                vcfBuilder.rmAttribute(rawKey);
+                            }
                         }
                     }
                 } catch (final Exception e) {

@@ -415,6 +415,7 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getEnd(), expected.getEnd(), "end");
         Assert.assertEquals(actual.getID(), expected.getID(), "id");
         Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "alleles for " + expected + " vs " + actual);
+        Assert.assertTrue(checkIgnoredAttributesExist(expected.getAttributes(), actual.getAttributes(), attributesToIgnore));
         assertAttributesEquals(filterIgnoredAttributes(actual.getAttributes(), attributesToIgnore),
                                filterIgnoredAttributes(expected.getAttributes(), attributesToIgnore));
 
@@ -425,6 +426,17 @@ public final class VariantContextTestUtils {
 
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
     }
+
+    private static boolean checkIgnoredAttributesExist(final Map<String,Object> expectedAttributes,
+                                                       final Map<String,Object> actualAttributes,
+                                                       final List<String> attributesToIgnore) {
+        List<String> expectedIgnoredAttributes = attributesToIgnore.stream()
+                .filter(p -> expectedAttributes.entrySet().contains(p) && p != null)
+                .collect(Collectors.toList());
+        return expectedIgnoredAttributes.stream().filter(p -> actualAttributes.entrySet().contains(p) && p != null)
+                .collect(Collectors.toList()).isEmpty();
+    }
+
 
     private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
         return attributes.entrySet().stream()
@@ -503,7 +515,7 @@ public final class VariantContextTestUtils {
      *
      * @param actual                Variant context to test for equality
      * @param expected              Expected result
-     * @param attributesToIgnore    Attributes we want to exclude from comparision
+     * @param attributesToIgnore    Attributes we want to exclude from numerical comparision, but ensure they exist
      * @param header                Header used to map behavior of annotations
      */
     public static void assertVariantContextsAreEqualAlleleOrderIndependent(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore, VCFHeader header) {

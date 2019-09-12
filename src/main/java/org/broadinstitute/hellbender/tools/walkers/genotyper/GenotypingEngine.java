@@ -400,17 +400,17 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         if (doAlleleSpecificCalcs){
-            List<Double> perAlleleQuals = new ArrayList<>();
+            List<Integer> perAlleleQuals = new ArrayList<>();
             //Per-allele quals are not calculated for biallelic sites
             if (AFresult.getAllelesUsedInGenotyping().size() > 2) {
                 for (final Allele a : allAllelesToUse) {
                     if (a.isNonReference()) {
-                        perAlleleQuals.add(AFresult.getLog10PosteriorOfAlleleAbsent(a));
+                        perAlleleQuals.add((int)Math.round(AFresult.getLog10PosteriorOfAlleleAbsent(a)*-10));
                     }
                 }
             }
             else {
-                perAlleleQuals.add(AFresult.log10ProbOnlyRefAlleleExists());
+                perAlleleQuals.add((int)Math.round(AFresult.log10ProbOnlyRefAlleleExists()*-10));
             }
 
             attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals);
