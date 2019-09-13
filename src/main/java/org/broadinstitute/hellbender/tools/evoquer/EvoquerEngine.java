@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
-import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -24,6 +22,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -81,6 +81,8 @@ class EvoquerEngine {
 
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
 
+    private final GnarlyGenotyperEngine gnarlyGenotyper;
+
     private final String projectID;
 
     /** Set of sample names seen in the variant data from BigQuery. */
@@ -125,6 +127,7 @@ class EvoquerEngine {
                    final ReferenceDataSource refSource,
                    final boolean runQueryOnly,
                    final boolean disableGnarlyGenotyper,
+                   final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean runQueryInBatchMode,
                    final boolean printDebugInformation,
                    final ProgressMeter progressMeter ) {
@@ -159,6 +162,7 @@ class EvoquerEngine {
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false);
     }
 
     EvoquerEngine( final List<String> sampleNames,
@@ -167,6 +171,7 @@ class EvoquerEngine {
                    final VariantAnnotatorEngine annotationEngine,
                    final ReferenceDataSource refSource,
                    final boolean disableGnarlyGenotyper,
+                   final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean printDebugInformation,
                    final ProgressMeter progressMeter ) {
 
@@ -191,6 +196,7 @@ class EvoquerEngine {
         this.sampleNames.addAll(sampleNames);
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false);
     }
 
     /**
@@ -557,7 +563,7 @@ class EvoquerEngine {
         // the NON_REF allele to still be present, and will give incorrect results if it's not.
         final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], disableGnarlyGenotyper, false);
 
-        final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : GnarlyGenotyperEngine.finalizeGenotype(mergedVC);
+        final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
 
         if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
             vcfWriter.add(finalizedVC);

@@ -87,7 +87,16 @@ public final class GnarlyGenotyperEngine {
         //GenomicsDB or Evoquer merged all the annotations, but we still need to finalize MQ and QD annotations
         //return a VC with the finalized annotations and dbBuilder gets the raw annotations for the database
 
-        final double QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        double QUALapprox = 0.0;
+        if ( variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY) ) {
+            QUALapprox = variant.getAttributeAsInt(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0);
+        } else {
+            final List<Integer> as_quals = Arrays.stream(variant.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "").split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX)).mapToInt(Integer::parseInt).boxed().collect(Collectors.toList());
+            for ( final int as_qual : as_quals ) {
+                QUALapprox += as_qual;  // TODO: HACK FOR NOW!!! (Laura said this was ok as a stopgap)
+            }
+        }
+
         //Don't apply the indel prior to mixed sites if there's a SNP
         final boolean hasSnpAllele = variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() == variant.getReference().length());
         final boolean isIndel = !hasSnpAllele;
@@ -107,9 +116,10 @@ public final class GnarlyGenotyperEngine {
         //vcfBuilder gets the finalized annotations and annotationDBBuilder (if present) gets the raw annotations for the database
         final VariantContextBuilder vcfBuilder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
 
-        final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
-        final double QD = QUALapprox / (double)variantDP;
-        vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
+        // TODO: need to get this annotation working for Evoquer
+        //final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
+        //final double QD = QUALapprox / (double)variantDP;
+        //vcfBuilder.attribute(GATKVCFConstants.QUAL_BY_DEPTH_KEY, QD).log10PError(QUALapprox/-10.0-Math.log10(sitePrior));
         if (!keepAllSites) {
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
         }
@@ -188,8 +198,10 @@ public final class GnarlyGenotyperEngine {
             }
         }
 
-        vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
+        // TODO: FS annotation not working in Evoquer
+        //vcfBuilder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
         vcfBuilder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
+
         vcfBuilder.alleles(targetAlleles);
         vcfBuilder.genotypes(calledGenotypes);
 
