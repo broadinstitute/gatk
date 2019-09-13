@@ -188,6 +188,11 @@ public final class BlahVetCreation {
                 if (out == null) {
                     throw new IllegalArgumentException("Cannot be missing required value for alternate_bases.AS_VarDP");
                 }
+                if (out.endsWith("|0")) {
+                    out = out.substring(0, out.length() - 2);
+                } else {
+                    throw new UserException("Expected AS_VarDP value to end in |0");
+                }
                 return out;
             }
         },
