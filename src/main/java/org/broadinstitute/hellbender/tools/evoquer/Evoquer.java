@@ -156,6 +156,9 @@ public class Evoquer extends GATKTool {
     @Argument(fullName = "gnarly-genotyper-keep-all-sites", doc="Retain low quality and non-variant sites in the GnarlyGenotyper, applying appropriate filters", optional=true)
     private boolean keepAllSitesInGnarlyGenotyper = false;
 
+    @Argument(fullName = "gnarly-genotyper-keep-all-sites", doc="Retain low quality and non-variant sites in the GnarlyGenotyper, applying appropriate filters", optional=true)
+    private boolean keepAllSitesInGnarlyGenotyper = false;
+
     @Argument(
             fullName = "print-debug-information",
             doc = "If true, print extra debugging output",
