@@ -129,6 +129,9 @@ public class Evoquer extends GATKTool {
     )
     private boolean runQueryInBatchMode = false;
 
+    @Argument(fullName = "gnarly-genotyper-keep-all-sites", doc="Retain low quality and non-variant sites in the GnarlyGenotyper, applying appropriate filters", optional=true)
+    private boolean keepAllSitesInGnarlyGenotyper = false;
+
     @Argument(
             fullName = "print-debug-information",
             doc = "If true, print extra debugging output",
@@ -200,6 +203,7 @@ public class Evoquer extends GATKTool {
                     reference,
                     runQueryOnly,
                     disableGnarlyGenotyper,
+                    keepAllSitesInGnarlyGenotyper,
                     runQueryInBatchMode,
                     printDebugInformation,
                     progressMeter);
@@ -217,6 +221,7 @@ public class Evoquer extends GATKTool {
                     annotationEngine,
                     reference,
                     disableGnarlyGenotyper,
+                    keepAllSitesInGnarlyGenotyper,
                     printDebugInformation,
                     progressMeter);
         } else {
