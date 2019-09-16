@@ -31,6 +31,11 @@ import java.io.File;
  * variants in the target file. The dictionary lines start with '##contig='.
  * </p>
  *
+ * <p>
+ *     By specifying both --replace and --disable-sequence-dictionary-validation, one can force replace an invalid
+ *     sequence dictionary in a variant file with a valid sequence dictionary in another file.
+ * </p>
+ *
  * <h3>Usage example</h3>
  *
  * <h4>Use the contig dictionary from a BAM (SQ lines) to replace an existing dictionary in the header of a VCF.</h4>
@@ -108,20 +113,24 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         getDefaultToolVCFHeaderLines().forEach(line -> outputHeader.addMetaDataLine(line));
         sourceDictionary = getBestAvailableSequenceDictionary();
 
-        // Warn and require opt-in via -replace if we're about to clobber a valid sequence
-        // dictionary. Check the input file directly via the header rather than using the
+        // If -replace is set, do not need to check the sequence dictionary for validity here -- it will still be
+        // checked in our normal sequence dictionary validation. Warn and require opt-in via -replace if we're about to
+        // clobber a valid sequence dictionary. Check the input file directly via the header rather than using the
         // engine, since it might dig one up from an index.
-        SAMSequenceDictionary oldDictionary =
-                inputHeader == null ? null : inputHeader.getSequenceDictionary();
-        if ( (oldDictionary != null && !oldDictionary.getSequences().isEmpty()) && !replace) {
-            throw new CommandLineException.BadArgumentValue(
-                    String.format(
-                            "The input variant file %s already contains a sequence dictionary. " +
-                            "Use %s to force the dictionary to be replaced.",
-                            getDrivingVariantsFeatureInput().getName(),
-                            REPLACE_ARGUMENT_NAME
-                    )
-            );
+        if (!replace) {
+            SAMSequenceDictionary oldDictionary =
+                    inputHeader == null ? null : inputHeader.getSequenceDictionary();
+            if (oldDictionary != null && !oldDictionary.getSequences().isEmpty())  {
+                throw new CommandLineException.BadArgumentValue(
+                        String.format(
+                                "The input variant file %s already contains a sequence dictionary. " +
+                                        "Use %s to force the dictionary to be replaced.",
+                                getDrivingVariantsFeatureInput().getName(),
+                                REPLACE_ARGUMENT_NAME
+                        )
+                );
+            }
+
         }
 
         outputHeader.setSequenceDictionary(sourceDictionary);
