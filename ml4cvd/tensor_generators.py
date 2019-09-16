@@ -158,10 +158,11 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
     samples = [int(w*batch_size) for w in weights]
-
+    logging.info(f'Samples: {samples} from background and balance CSV(s) from weights: {weights}')
     while True:
         for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
-            for tp in np.random.choice(tensor_list, num_samples):
+            while stats[f'group{i}_samples'] < num_samples:
+                tp = np.random.choice(tensor_list)
                 try:
                     with h5py.File(tp, 'r') as hd5:
                         dependents = {}
@@ -178,6 +179,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                         stats['batch_index'] += 1
                         stats['Tensors presented from list '+str(i)] += 1
                         stats['train_paths_' + str(i)] += 1
+                        stats[f'group{i}_samples'] += 1
                         if stats['batch_index'] == batch_size:
                             if mixup_alpha > 0 and keep_paths:
                                 yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True) + (paths_in_batch[:batch_size // 2],)
@@ -189,6 +191,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
+                            for k in range(len(samples)):
+                                stats[f'group{k}_samples'] = 0
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
@@ -314,10 +318,11 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             if splits[-1].lower() != TENSOR_EXT:
                 continue
                 
-            sample_id = os.path.basename(splits[0])
             group = 0
+            sample_id = os.path.basename(splits[0])
             if sample_id in sample2group:
                 group = sample2group[sample_id]
+
             dice = np.random.rand()
             if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))

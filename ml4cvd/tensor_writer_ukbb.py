@@ -999,14 +999,6 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 def append_float_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
-    # link_file = '/mnt/ml4cvd/projects/jamesp/data/ukb_app17488_app7089_link.csv'
-    # link_ids = {}
-    # with open(link_file, 'r') as link:
-    #     lol = list(csv.reader(link, delimiter=delimiter))
-    #     logging.info(f"LINK CSV of floats header:{lol[0]}")
-    #     for row in lol[1:]:
-    #         #sample_id = row[0]
-    #         link_ids[row[0]] = row[1]
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
@@ -1034,6 +1026,8 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                             else:
                                 hd5.create_dataset(hd5_key, data=[value])
                                 stats['created'] += 1
+                        else:
+                            stats[f'could not cast field {field} to float'] += 1
                 else:
                     stats['sample id missing']
         except:

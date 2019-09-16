@@ -614,8 +614,8 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)                        
     plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):

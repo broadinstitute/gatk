@@ -18,7 +18,7 @@ from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files
 from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, \
-    make_character_model_plus, embed_model_predict, make_translation_model
+    make_character_model_plus, embed_model_predict, make_multimodal_multitask_new
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 
 
@@ -41,6 +41,8 @@ def run(args):
             infer_multimodal_multitask(args)
         elif 'translate' == args.mode:
             train_translation_model(args)
+        elif 'new' == args.mode:
+            train_multimodal_multitask_new(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
@@ -70,7 +72,7 @@ def run(args):
         elif 'sort_csv' == args.mode:
             sort_csv(args.app_csv, args.volume_csv)
         elif 'append_float_csv' == args.mode:
-            append_float_csv(args.tensors, args.app_csv, 'continuous', '\t')
+            append_float_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
         else:
@@ -151,15 +153,30 @@ def compare_multimodal_scalar_task_models(args):
     _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
 
 
+def train_multimodal_multitask_new(args):
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                                       args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                                       mixup_alpha=args.mixup_alpha)
+
+    model = make_multimodal_multitask_new(**args.__dict__)
+
+    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+
+    out_path = os.path.join(args.output_folder, args.id + '/')
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
+
+
 def train_translation_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
                                                                                        args.batch_size, args.valid_ratio, args.test_ratio,
                                                                                        args.test_modulo, args.balance_csvs)
 
-    model = make_translation_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out, args.activation,
-                                   args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks,
-                                   args.block_size, args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect,
-                                   args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
+    model = make_multimodal_multitask_new(args.tensor_maps_in, args.tensor_maps_out, args.activation,
+                                          args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks,
+                                          args.block_size, args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect,
+                                          args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
