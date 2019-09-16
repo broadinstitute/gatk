@@ -146,6 +146,8 @@ public final class SequenceDictionaryUtils {
                                              final SAMSequenceDictionary dict2,
                                              final boolean requireSuperset,
                                              final boolean checkContigOrdering ) {
+        Utils.nonNull(dict1, "Something went wrong with sequence dictionary detection, check that "+name1+" has a valid sequence dictionary");
+        Utils.nonNull(dict2, "Something went wrong with sequence dictionary detection, check that "+name2+" has a valid sequence dictionary");
 
         final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2, checkContigOrdering);
 
