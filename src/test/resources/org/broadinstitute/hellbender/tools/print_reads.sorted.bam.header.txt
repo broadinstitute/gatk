@@ -1,0 +1,11 @@
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr1	LN:101
+@SQ	SN:chr2	LN:101
+@SQ	SN:chr3	LN:101
+@SQ	SN:chr4	LN:101
+@SQ	SN:chr5	LN:101
+@SQ	SN:chr6	LN:101
+@SQ	SN:chr7	LN:454
+@SQ	SN:chr8	LN:202
+@RG	ID:0	SM:Hi,Mom!	PL:ILLUMINA
+@PG	ID:1	VN:2.0	PN:Hey!
