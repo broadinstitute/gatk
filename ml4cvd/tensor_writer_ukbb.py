@@ -24,6 +24,7 @@ from typing import Dict, List, Tuple
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 from functools import partial
+from itertools import product
 
 import matplotlib
 
@@ -34,10 +35,13 @@ import xml.etree.ElementTree as et
 from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
-from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
+from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 from ml4cvd.defines import DataSetType
+
+
+STATS_TYPE = Dict[str, List[float]]
 
 
 MRI_MIN_RADIUS = 2
@@ -794,11 +798,12 @@ def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: 
     """
     In the future, TMAPs should be generated using this same function
     """
-    return f'/{source}/{dtype}/{_datetime_to_str(date)}/{name}'
+    return f'/{source}/{dtype}/{name}/{_datetime_to_str(date)}'
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value):
+def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: STATS_TYPE):
     hd5_path = tensor_path(source, dtype, date, name)
+    stats[hd5_path.strip(f'{_datetime_to_str(date)}/')] += 1
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
         hd5.create_dataset(hd5_path, data=value, compression='gzip')
     elif dtype in (DataSetType.STRING,):
@@ -808,18 +813,25 @@ def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: 
 
 
 def _datetime_to_str(dt: datetime.datetime) -> str:
-    return dt.strftime('%Y-%m-%d_%H-%M-%S')
+    return dt.strftime(DATE_FORMAT)
+
+
+def path_date_to_datetime(date: str) -> datetime.datetime:
+    return datetime.datetime.strptime(date, DATE_FORMAT)
 
 
 def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         root = et.parse(ecg).getroot()
         date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
-        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5)
+        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5, stats=stats)
         logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
 
         instance = ecg.split(JOIN_CHAR)[-2]
         write_to_hd5(dtype=DataSetType.STRING, name='instance', value=instance)
+
+        protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName').text
+        write_to_hd5(dtype=DataSetType.STRING, name='protocol', value=protocol)
 
         median_ecgs = defaultdict(list)
         for median_waves in root.findall('./MedianData/Median/WaveformData'):
@@ -874,16 +886,39 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
 
         # Trend measurements
         trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount']
+        trend_lead_measurements = [
+            'JPointAmplitude',
+            'STAmplitude20ms',
+            'STAmplitude',
+            'RAmplitude',
+            'R1Amplitude',
+            'STSlope',
+            'STIntegral',
+        ]
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
-        trends = defaultdict(list)
+        lead_to_int = {'I': 0, '2': 1, '3': 2}
 
-        for trend_entry in root.findall("./TrendData/TrendEntry"):
+        trend_entries = root.findall("./TrendData/TrendEntry")
+
+        trends = {trend: np.full(len(trend_entries), np.nan) for trend in trend_entry_fields + ['time', 'PhaseTime', 'PhaseTime', 'PhaseName', 'Artifact']}
+        trends.update({trend: np.full((len(trend_entries), 3), np.nan) for trend in trend_lead_measurements})
+
+        for i, trend_entry in enumerate(trend_entries):
             for field in trend_entry_fields:
-                trends[field].append(float(trend_entry.find(field).text))
-            trends['time'].append(SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text))
-            trends['PhaseTime'].append(SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text))
-            trends['PhaseName'].append(phase_to_int[trend_entry.find('PhaseName').text])
-            trends['Artifact'].append(float(trend_entry.find('Artifact').text.strip('%')) / 100)  # Artifact is reported as a percentage
+                field_val = trend_entry.find(field)
+                if field_val:
+                    field_val = _to_float_or_false(field_val.text)
+                    trends[field][i] = field_val or np.nan
+            for lead_field, lead in product(trend_lead_measurements, trend_entry.findall('LeadMeasurements')):
+                lead_num = lead.attrib['lead']
+                field_val = lead.find(lead_field)
+                if field_val is not None:
+                    field_val = _to_float_or_false(field_val.text.strip('?'))
+                    trends[lead_field][i, lead_to_int[lead_num]] = field_val or np.nan
+            trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
+            trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
+            trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
+            trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
             write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name=f'trend_{str.lower(field)}', value=trend_list)
@@ -1262,4 +1297,3 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
         return True
 
     return False
-
