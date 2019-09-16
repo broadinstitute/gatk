@@ -22,7 +22,6 @@ public final class PrintBAMHeaderIntegrationTest extends CommandLineProgramInteg
         final File outFile = GATKBaseTest.createTempFile("NA12878.chr17_69k_70k.dictFix.bam.header", ".txt");
         final String[] args = new String[] {
                 "--input" , inFile.getAbsolutePath(),
-                "--" + StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD,
                 "--output", outFile.getAbsolutePath()
         };
         runCommandLine(args);
