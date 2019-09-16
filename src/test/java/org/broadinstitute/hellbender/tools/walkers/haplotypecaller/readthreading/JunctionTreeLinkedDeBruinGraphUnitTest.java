@@ -20,7 +20,7 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
+public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
     //TODO test for newSmithWatermanAlignmentMode
 
     @DataProvider (name = "loopingReferences")
@@ -35,7 +35,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test (dataProvider = "loopingReferences")
     public void testRecoveryOfLoopingReferenceSequences(final String ref, final int kmerSize) {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(kmerSize);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         assembler.buildGraphIfNecessary();
         List<MultiDeBruijnVertex> refVertexes = assembler.getReferencePath(assembler.findKmer(new Kmer(ref.getBytes(), 0, kmerSize)), ReadThreadingGraph.TraversalDirection.downwards, Optional.empty());
@@ -47,7 +47,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     @Test
     // This test is intended to assert that a potentially dangerous infinite loop is closed
     public void testDanglingEndRecoveryInfiniteHeadLoop() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         final String ref = "AACTGGGCTAGAGAGCGTT";
         final String loopingDanglingHead = "TTCGAAGGTCGAAG"; // "TCGAA" is repeated, causing dangling head recovery to fail
 
@@ -70,7 +70,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     @Test
     // As above, pruning the dangling end recovery path can cause the infinite loop recovery to fall over
     public void testDanglingEndRecoveryInfiniteHeadLoopWithPruning() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         final String ref = "AACTGGGCTAGAGAGCGTT";
         final String loopingDanglingHead = "TTCGAAGGTCGAA"; // "TCGAA" is repeated, causing dangling head recovery to fail
         final String loopingDanglingHeadShortened = "TTCGAAGGTC"; // "TCGAA" is repeated, causing dangling head recovery to fail
@@ -95,7 +95,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testKirensTestExample() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "ACTGATTTCGATGCGATGCGATGCCACGGTGG"; // a loop of length 3 in the middle
 
         assembler.addSequence("anonymous", getBytes(ref), true);
@@ -110,7 +110,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testGraphPruningSanityCheck() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "TTTTTAAAAACCCCCGGGGGATATATCGCGCG"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting
 
         String altRead1 = "TTTTTGAAAACCCTCGGGGGATAAATCGCGCG"; // 3 SNPs
@@ -147,7 +147,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     @Test
     // The simplest case where we expect two uninformative junction trees to be constructed
     public void testSimpleJunctionTreeExample() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "GGGGAAATTTCCCGGGG";
 
         // A simple snip het
@@ -164,11 +164,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2);
 
-        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TTCCC")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TTCCC")));
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
 
@@ -186,7 +186,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     // This is a test enforcing that the behavior around nodes are both outDegree > 1 while also having downstream children with inDegree > 1.
     // We are asserting that the JunctionTree generated by this case lives on the node itself
     public void testEdgeCaseInvolvingHighInDegreeAndOutDegreeCars() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(4);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(4);
         String ref = "AAAACAC"+"CCGA"+"ATGTGGGG"+"A"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting
 
         // A simple snip het
@@ -201,11 +201,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 6);
 
-        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("CCGA")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TCGA")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("CCGA")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TCGA")));
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
 
@@ -220,7 +220,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     // This is a test enforcing that the behavior around nodes are both outDegree > 1 while also having downstream children with inDegree > 1.
     // We are asserting that the JunctionTree generated by this case lives on the node itself
     public void testGraphRecoveryWhenKmerIsRepeated() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "AAATCTTCGGGGGGGGGGGGGGTTTCTGGG"; // the first site has an interesting graph structure and the second site is used to ensurethe graph is intersting
 
         // A simple snip het
@@ -231,11 +231,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 3);
 
-        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("CGGGG")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GGGGG")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("CGGGG")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GGGGG")));
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
 
@@ -260,7 +260,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     @Test
     // The simplest case where we expect two uninformative junction trees to be constructed
     public void testPruneGraph() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "GGGGAAATTTCCCGGGG";
 
         // A simple snip het
@@ -279,13 +279,13 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.pruneJunctionTrees(0);
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 0);
     }
 
     @Test
     public void testSimpleJunctionTreeIncludeRefInJunctionTreeNoStopEnd() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "GGGGAAATTTCCCGGGG"; // Ref starts 1 base before/after any of the reads
 
         // A simple snip het
@@ -302,11 +302,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2);
 
-        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCC")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCC")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
         //NOTE there is no "TTCCC" edge here because it only existed as a reference path
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
@@ -320,7 +320,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     @Test
     // NOTE this test is less useful now that the starting JT has been removed
     public void testSimpleJunctionTreeIncludeRefInJunctionTreeNoWithStartEndChanges() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "GGGAAATTTCCCGGG"; // Reads span to the start/stop of the ref, thus we have to worry about symbolic alleles
 
         // A simple snip het
@@ -337,12 +337,12 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2);
 
-        ExperimentalReadThreadingGraph.ThreadingTree starttree = junctionTrees.get(assembler.findKmer(new Kmer("GGGAA")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCC")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree starttree = junctionTrees.get(assembler.findKmer(new Kmer("GGGAA")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCC")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GTCCC")));
         //NOTE there is no "TTCCC" edge here because it only existed as a reference path
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
@@ -355,7 +355,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testSimpleJunctionTreeIncludeRefInJunctionTreeTwoSites() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "GGAAAT"+"T"+"TCCGGC"+"T"+"CGTTTAG"; //Two variant sites in close proximity
 
         // A simple snip het
@@ -372,11 +372,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(true);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(true);
         Assert.assertEquals(junctionTrees.size(), 2);
 
-        ExperimentalReadThreadingGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCG")));
-        ExperimentalReadThreadingGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TTCCG")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("ATCCG")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("TTCCG")));
         //NOTE there is no "TTCCC" edge here because it only existed as a reference path
         Assert.assertNotNull(tree1); // Make sure we actually have tree data for that site
         Assert.assertNotNull(tree2); // Make sure we actually have tree data for that site
@@ -393,7 +393,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testSimpleJuncionTreeLoopingReference() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "ATGGTTAGGGGAAATTTAAATTTAAAGCGCCCCCG"; // AAATT, AATTT, ATTTA, TTTAA, and TTAAA are all repeated in a loop
 
         assembler.addSequence("reference", getBytes(ref), true);
@@ -402,11 +402,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         }
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2); //
 
-        ExperimentalReadThreadingGraph.ThreadingTree outsideTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
-        ExperimentalReadThreadingGraph.ThreadingTree insideTree = junctionTrees.get(assembler.findKmer(new Kmer("TAAAT")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree outsideTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree insideTree = junctionTrees.get(assembler.findKmer(new Kmer("TAAAT")));
         Assert.assertNotNull(outsideTree); // Make sure we actually have tree data for that site
         Assert.assertNotNull(insideTree); // Make sure we actually have tree data for that site
 
@@ -421,7 +421,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testSimpleJuncionTreeThriceLoopingReference() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(5);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "ATGGTTAGGGGAAATTTAAATTTAAATTTAAAGCGCCCCCG"; // AAATT, AATTT, ATTTA, TTTAA, and TTAAA are all repeated in a loop
 
         assembler.addSequence("reference", getBytes(ref), true);
@@ -431,11 +431,11 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         }
         assembler.generateJunctionTrees();
 
-        Map<MultiDeBruijnVertex, ExperimentalReadThreadingGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
+        Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2); //
 
-        ExperimentalReadThreadingGraph.ThreadingTree outsideTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
-        ExperimentalReadThreadingGraph.ThreadingTree insideTree = junctionTrees.get(assembler.findKmer(new Kmer("TAAAT")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree outsideTree = junctionTrees.get(assembler.findKmer(new Kmer("GAAAT")));
+        JunctionTreeLinkedDeBruinGraph.ThreadingTree insideTree = junctionTrees.get(assembler.findKmer(new Kmer("TAAAT")));
         Assert.assertNotNull(outsideTree); // Make sure we actually have tree data for that site
         Assert.assertNotNull(insideTree); // Make sure we actually have tree data for that site
 
@@ -458,7 +458,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         return alignment.replace("-","").getBytes();
     }
 
-    private void assertNonUniqueKmersInvolveLoops(final ExperimentalReadThreadingGraph assembler, String... nonUniques) {
+    private void assertNonUniqueKmersInvolveLoops(final JunctionTreeLinkedDeBruinGraph assembler, String... nonUniques) {
         final Set<String> actual = new HashSet<>();
         assembler.buildGraphIfNecessary();
         Assert.assertTrue(assembler.getNonUniqueKmers().isEmpty());
@@ -470,7 +470,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testSimpleHaplotypeRethreading() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(11);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
         final String ref   = "CATGCACTTTAAAACTTGCCTTTTTAACAAGACTTCCAGATG";
         final String alt   = "CATGCACTTTAAAACTTGCCGTTTTAACAAGACTTCCAGATG";
         assembler.addSequence("anonymous", getBytes(ref), true);
@@ -484,7 +484,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test(enabled = ! DEBUG)
     public void testNonUniqueMiddle() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(3);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(3);
         final String ref   = "GACACACAGTCA";
         final String read1 = "GACAC---GTCA";
         final String read2 =   "CAC---GTCA";
@@ -496,7 +496,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test(enabled = ! DEBUG)
     public void testReadsCreateNonUnique() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(3);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(3);
         final String ref   = "GCAC--GTCA"; // CAC is unique
         final String read1 = "GCACACGTCA"; // makes CAC non unique because it has a duplication
         final String read2 =    "CACGTCA"; // shouldn't be allowed to match CAC as start
@@ -512,7 +512,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
     @Test(enabled = ! DEBUG)
     // NOTE that now we do still count the reference as edge multiplicity
     public void testCountingOfStartEdges() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(3);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(3);
         final String ref   = "NNNGTCAAA"; // ref has some bases before start
         final String read1 =    "GTCAAA"; // starts at first non N base
 
@@ -535,7 +535,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test(enabled = !DEBUG)
     public void testCountingOfStartEdgesWithMultiplePrefixes() {
-        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(3);
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(3);
         assembler.setIncreaseCountsThroughBranches(true);
         final String ref   = "NNNGTCAXX"; // ref has some bases before start
         final String alt1  = "NNNCTCAXX"; // alt1 has SNP right after N
@@ -578,7 +578,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         }
 
         // test that there are cycles detected for small kmer
-        final ExperimentalReadThreadingGraph rtgraph25 = new ExperimentalReadThreadingGraph(25);
+        final JunctionTreeLinkedDeBruinGraph rtgraph25 = new JunctionTreeLinkedDeBruinGraph(25);
         rtgraph25.addSequence("ref", ref.getBytes(), true);
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         for ( final GATKRead read : reads ) {
@@ -588,7 +588,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         Assert.assertTrue(rtgraph25.hasCycles());
 
         // test that there are no cycles detected for large kmer
-        final ExperimentalReadThreadingGraph rtgraph75 = new ExperimentalReadThreadingGraph(75);
+        final JunctionTreeLinkedDeBruinGraph rtgraph75 = new JunctionTreeLinkedDeBruinGraph(75);
         rtgraph75.addSequence("ref", ref.getBytes(), true);
         for ( final GATKRead read : reads ) {
             rtgraph75.addRead(read, header);
@@ -614,7 +614,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         reads.add(ReadUtils.emptyRead(reads.get(0)));
 
         // test that there are cycles detected for small kmer
-        final ExperimentalReadThreadingGraph rtgraph25 = new ExperimentalReadThreadingGraph(25);
+        final JunctionTreeLinkedDeBruinGraph rtgraph25 = new JunctionTreeLinkedDeBruinGraph(25);
         rtgraph25.addSequence("ref", ref.getBytes(), true);
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         for ( final GATKRead read : reads ) {
@@ -630,7 +630,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final int length = 100;
         final byte[] ref = Utils.dupBytes((byte) 'A', length);
 
-        final ExperimentalReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(25);
+        final JunctionTreeLinkedDeBruinGraph rtgraph = new JunctionTreeLinkedDeBruinGraph(25);
         rtgraph.addSequence("ref", ref, true);
 
         // add reads with Ns at any position
@@ -683,7 +683,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 //     */
 //    @Test(dataProvider = "KmerSizeData")
 //    public void testDynamicKmerSizing(final int min, final int max, final int expectKmer, final List<String> seqs, final List<String> expectedNonUniques) {
-//        final ExperimentalReadThreadingGraph assembler = new ExperimentalReadThreadingGraph(min, max);
+//        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(min, max);
 //        for ( String seq : seqs ) assembler.addSequence(seq.getBytes(), false);
 //        assembler.buildGraphIfNecessary();
 //        Assert.assertEquals(assembler.getKmerSize(), expectKmer);
@@ -724,7 +724,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final String alt = commonPrefix + altEnd;
 
         // create the graph and populate it
-        final ExperimentalReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(kmerSize);
+        final JunctionTreeLinkedDeBruinGraph rtgraph = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         rtgraph.addSequence("ref", ref.getBytes(), true);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
@@ -743,7 +743,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         Assert.assertTrue(altSink != null, "We did not find a non-reference sink");
 
         // confirm that the SW alignment agrees with our expectations
-        final ExperimentalReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink, 0, 4, false, SmithWatermanJavaAligner
+        final JunctionTreeLinkedDeBruinGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink, 0, 4, false, SmithWatermanJavaAligner
                 .getInstance());
 
         if ( result == null ) {
@@ -754,7 +754,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         Assert.assertTrue(cigar.equals(result.cigar.toString()), "SW generated cigar = " + result.cigar.toString());
 
         // confirm that the goodness of the cigar agrees with our expectations
-        Assert.assertEquals(ExperimentalReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true), cigarIsGood);
+        Assert.assertEquals(JunctionTreeLinkedDeBruinGraph.cigarIsOkayToMerge(result.cigar, false, true), cigarIsGood);
 
         // confirm that the tail merging works as expected
         if ( cigarIsGood ) {
@@ -790,7 +790,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final String alt2 = commonPrefix + altEnd2;
 
         // create the graph and populate it
-        final ExperimentalReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(kmerSize);
+        final JunctionTreeLinkedDeBruinGraph rtgraph = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         rtgraph.addSequence("ref", ref.getBytes(), true);
         final GATKRead read1 = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
         final GATKRead read2 = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
@@ -807,10 +807,10 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
             }
 
             // confirm that the SW alignment agrees with our expectations
-            final ExperimentalReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
+            final JunctionTreeLinkedDeBruinGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
                     0, 4, true, SmithWatermanJavaAligner.getInstance());
             Assert.assertNotNull(result);
-            Assert.assertTrue(ExperimentalReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
+            Assert.assertTrue(JunctionTreeLinkedDeBruinGraph.cigarIsOkayToMerge(result.cigar, false, true));
 
             // confirm that the tail merging works as expected
             final int mergeResult = rtgraph.mergeDanglingTail(result);
@@ -829,8 +829,8 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
 
     @Test
     public void testWholeTailIsInsertion() {
-        final ExperimentalReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(10);
-        final ExperimentalReadThreadingGraph.DanglingChainMergeHelper result = new ExperimentalReadThreadingGraph.DanglingChainMergeHelper(null, null, "AXXXXX".getBytes(), "AAAAAA".getBytes(), TextCigarCodec.decode("5I1M"));
+        final JunctionTreeLinkedDeBruinGraph rtgraph = new JunctionTreeLinkedDeBruinGraph(10);
+        final JunctionTreeLinkedDeBruinGraph.DanglingChainMergeHelper result = new JunctionTreeLinkedDeBruinGraph.DanglingChainMergeHelper(null, null, "AXXXXX".getBytes(), "AAAAAA".getBytes(), TextCigarCodec.decode("5I1M"));
         final int mergeResult = rtgraph.mergeDanglingTail(result);
         Assert.assertEquals(mergeResult, 0);
     }
@@ -841,7 +841,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final int kmerSize = 4;
         final String testString = "AATGGGGCAATACTA";
 
-        final ExperimentalReadThreadingGraph graph = new ExperimentalReadThreadingGraph(kmerSize);
+        final JunctionTreeLinkedDeBruinGraph graph = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         graph.addSequence(testString.getBytes(), true);
         graph.buildGraphIfNecessary();
 
@@ -887,7 +887,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final int kmerSize = 5;
 
         // create the graph and populate it
-        final ExperimentalReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(kmerSize);
+        final JunctionTreeLinkedDeBruinGraph rtgraph = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         rtgraph.addSequence("ref", ref.getBytes(), true);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
@@ -907,7 +907,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         Assert.assertTrue(altSource != null, "We did not find a non-reference source");
 
         // confirm that the SW alignment agrees with our expectations
-        final ExperimentalReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
+        final JunctionTreeLinkedDeBruinGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
                 .getInstance());
 
         if ( result == null ) {
@@ -939,7 +939,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         final int kmerSize = 5;
 
         // create the graph and populate it
-        final ExperimentalReadThreadingGraph rtgraph = new ExperimentalReadThreadingGraph(kmerSize);
+        final JunctionTreeLinkedDeBruinGraph rtgraph = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         rtgraph.addSequence("ref", ref.getBytes(), true);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
@@ -959,7 +959,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         Assert.assertTrue(altSource != null, "We did not find a non-reference source");
 
         // confirm that the SW alignment agrees with our expectations
-        final ExperimentalReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
+        final JunctionTreeLinkedDeBruinGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
                 .getInstance());
 
         if ( result == null ) {
@@ -1002,7 +1002,7 @@ public class ExperimentalReadThreadingGraphUnitTest extends BaseTest {
         boolean foundDup = false;
 
         for ( int i = 0; i < seq.length; i++ ) {
-            final int matchSize = ExperimentalReadThreadingGraph.longestSuffixMatch(seq, kmer, i);
+            final int matchSize = JunctionTreeLinkedDeBruinGraph.longestSuffixMatch(seq, kmer, i);
             if ( matchSize > length ) {
                 longestPos = i;
                 length = matchSize;

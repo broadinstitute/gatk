@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ExperimentalReadThreadingGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -18,15 +18,15 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
     Map<V, List<E>> contiguousSequences = new HashMap<>();
 
-    // Graph to be operated on, in this case cast as an ExperimentalReadThreadingGraph
-    ExperimentalReadThreadingGraph experimentalReadThreadingGraph;
+    // Graph to be operated on, in this case cast as an JunctionTreeLinkedDeBruinGraph
+    JunctionTreeLinkedDeBruinGraph junctionTreeLinkedDeBruinGraph;
 
     public JunctionTreeKBestHaplotypeFinder(final BaseGraph<V, E> graph, final Set<V> sources, Set<V> sinks, final int branchWeightThreshold) {
         super(sinks, sources, graph);
-        if (graph instanceof ExperimentalReadThreadingGraph) {
-            experimentalReadThreadingGraph = (ExperimentalReadThreadingGraph) graph;
+        if (graph instanceof JunctionTreeLinkedDeBruinGraph) {
+            junctionTreeLinkedDeBruinGraph = (JunctionTreeLinkedDeBruinGraph) graph;
         } else {
-            throw new RuntimeException("ExperimentalKBesthaplotypeFinder requires an ExperimentalReadThreadingGraph be provided");
+            throw new RuntimeException("ExperimentalKBesthaplotypeFinder requires an JunctionTreeLinkedDeBruinGraph be provided");
         }
         Utils.validate(weightThresholdToUse > 0, "Pruning Weight Threshold must be a positive number greater than 0");
     }
@@ -114,7 +114,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             if (chain.isEmpty()){
                 // Keep going until we reach a fork, reference sink, or fork
                 while ( outgoingEdges.size() == 1 && // Case (2)
-                        experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) == null && // Case (1)
+                        junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) == null && // Case (1)
                         !sinks.contains(vertexToExtend))// Case (3)
                     {
                     final E edge = outgoingEdges.iterator().next();
@@ -141,10 +141,10 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             // code to decide what to do at that interesting node
             ////////////////////////////////////////////////////////////
             // In the event we have a junction tree on top of a vertex with outDegree > 1, we add this first before we traverse paths
-            if ( experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) != null) { //TODO make the condition for this actually based on the relevant junction tree
+            if ( junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) != null) { //TODO make the condition for this actually based on the relevant junction tree
                 // TODO chain can be null but we still need to inherit a thing, probably happens whenever we pick up a tree.
                 // ignore starting junction tree
-                pathToExtend.addJunctionTree(experimentalReadThreadingGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
+                pathToExtend.addJunctionTree(junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
             }
 
             //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat

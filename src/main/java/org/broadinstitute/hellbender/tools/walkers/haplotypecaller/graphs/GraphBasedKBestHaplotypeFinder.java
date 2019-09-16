@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Efficient algorithm to obtain the list of best haplotypes given the {@link SeqGraph instace}.
+ * Efficient algorithm to obtain the list of best haplotypes given the {@link BaseGraph instance}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -17,7 +17,7 @@ public class GraphBasedKBestHaplotypeFinder<V extends BaseVertex, E extends Base
     /**
      * Constructs a new best haplotypes finder.
      *
-     * @param graph the seq-graph to search.
+     * @param graph the graph to search.
      * @param sources source vertices for all haplotypes.
      * @param sinks sink vertices for all haplotypes.
      *

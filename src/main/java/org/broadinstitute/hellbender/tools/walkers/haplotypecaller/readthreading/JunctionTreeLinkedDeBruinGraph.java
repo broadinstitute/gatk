@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import org.apache.commons.collections.ListUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -20,15 +19,22 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.lang.annotation.Target;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Experimental version of the ReadThreadingGraph which does not support seqGraph construction but does support the ability
- * to
+ * Experimental version of the ReadThreadingGraph with support for threading reads to generate JunctionTrees for resolving
+ * connectivity information at longer ranges.
+ *
+ * Note that many of the non-DeBruin graph alterations that are made to ReadThreadingGraph are not made here:
+ * - Non-Unique kmers are not duplicated by this graph
+ * - Kmers are not Zipped together to form a SeqGraph
+ * - The reference path is stored in its entirety rather than being calculated on the fly
+ *
+ * For ease of debugging, this graph supports the method {@link #printSimplifiedGraph()} which generates a SequenceGraph and
+ * adds the junction trees to the output .dot file.
  */
-public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface {
+public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface {
     private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
@@ -37,7 +43,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
 
-    public ExperimentalReadThreadingGraph(int kmerSize) {
+    public JunctionTreeLinkedDeBruinGraph(int kmerSize) {
         this(kmerSize, false, (byte)6, 1);
     }
 
@@ -45,7 +51,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    ExperimentalReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
+    JunctionTreeLinkedDeBruinGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
     }
 
@@ -189,7 +195,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
                 // Only want to create a new tree if we walk into a node with
                 // NOTE: we do this deciding on our path
                 if (vertexWarrantsJunctionTree(prevVertex)) {
-                    nodesToExtend.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
+                    nodesToExtend.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree()).getAndIncrementRootNode());
                 }
 
                 // If this node has an out-degree > 1, add the edge we took to existing trees
@@ -371,7 +377,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
     // Generate a SeqGraph that is special
     @Override
     public SeqGraph toSequenceGraph() {
-        throw new UnsupportedOperationException("Cannot construct a sequence graph using ExperimentalReadThreadingGraph");
+        throw new UnsupportedOperationException("Cannot construct a sequence graph using JunctionTreeLinkedDeBruinGraph");
     }
 
 
@@ -647,10 +653,8 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
      */
     public class ThreadingTree {
         private ThreadingNode rootNode;
-        private MultiDeBruijnVertex graphBase;
 
-        private ThreadingTree(MultiDeBruijnVertex vertex) {
-            graphBase = vertex;
+        private ThreadingTree() {
             rootNode = new ThreadingNode(null);
         }
 
@@ -669,12 +673,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             return !rootNode.childrenNodes.isEmpty();
         }
 
-        // Returns a list of all the paths (illustrated as sequential edges) observed from this point throug hthe graph
-        private List<List<MultiSampleEdge>> enumeratePathsPresent() {
-            return rootNode.getEdgesThroughNode();
-        }
-
-        // Returns the junction choices as a list of suffixes to follow
+        // Returns the junction choices as a list of suffixes to follow (this is used for writing human readable tests)
         @VisibleForTesting
         List<String> getPathsPresentAsBaseChoiceStrings() {
             return rootNode.getEdgesThroughNode().stream()
@@ -763,7 +762,7 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
 
         // Recursively prunes nodes based on the provided threshold, removing branches without sufficient support.
         private void pruneNode(final int threshold) {
-            childrenNodes = Maps.filterValues( childrenNodes, node -> node.getCount() >= threshold);
+            childrenNodes = Maps.filterValues( childrenNodes, node -> node.getEvidenceCount() >= threshold);
             childrenNodes.forEach((edge, node) -> node.pruneNode(threshold));
         }
 
@@ -777,13 +776,13 @@ public class ExperimentalReadThreadingGraph extends ReadThreadingGraphInterface 
             return Collections.unmodifiableMap(childrenNodes);
         }
 
-        // Returns true if there are no paths eminating from this node
-        public boolean isEmpty() {
+        // Returns true if there are no paths emanating from this node
+        public boolean hasNoEvidence() {
             return childrenNodes.isEmpty();
         }
 
         // Return the count of total evidence supporting this node in the tree
-        public int getCount() {
+        public int getEvidenceCount() {
             return count;
         }
 

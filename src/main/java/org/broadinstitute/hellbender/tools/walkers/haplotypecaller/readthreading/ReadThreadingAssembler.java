@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -156,11 +155,11 @@ public final class ReadThreadingAssembler {
                     nonRefSeqGraphs.add(result.getSeqGraph());
                 } else {
                     sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
-                    ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).generateJunctionTrees();
+                    ((JunctionTreeLinkedDeBruinGraph)result.getThreadingGraph()).generateJunctionTrees();
                     if (debugGraphTransformations) {
                         result.getThreadingGraph().printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + result.getKmerSize() + ".0.4.JT_unpruned.dot"), 10000);
                     }
-                    ((ExperimentalReadThreadingGraph)result.getThreadingGraph()).pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
+                    ((JunctionTreeLinkedDeBruinGraph)result.getThreadingGraph()).pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
                     if (debugGraphTransformations) {
                         result.getThreadingGraph().printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + result.getKmerSize() + ".0.5.JT_pruned.dot"), 10000);
                     }
@@ -453,7 +452,7 @@ public final class ReadThreadingAssembler {
 
         // TODO figure out how you want to hook this in
         final ReadThreadingGraphInterface rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
-                new ExperimentalReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+                new JunctionTreeLinkedDeBruinGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 

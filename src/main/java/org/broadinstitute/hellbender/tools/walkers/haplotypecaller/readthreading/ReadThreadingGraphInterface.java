@@ -5,7 +5,6 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
@@ -26,7 +25,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * Read threading graph class intended to contain duplicated code between {@link ReadThreadingGraph} and {@link ExperimentalReadThreadingGraph}.
+ * Read threading graph class intended to contain duplicated code between {@link ReadThreadingGraph} and {@link JunctionTreeLinkedDeBruinGraph}.
  *
  *
  */

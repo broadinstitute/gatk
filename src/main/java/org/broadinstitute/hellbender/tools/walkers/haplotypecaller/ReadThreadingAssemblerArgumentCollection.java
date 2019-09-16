@@ -160,7 +160,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      *        sites. Use this mode at your own risk.
      */
     @Hidden
-    @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified debrujin graph", optional = true)
+    @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified de Bruijn graph", optional = true)
     public boolean disableSeqGraphConstruciton = false;
 
     @Advanced
