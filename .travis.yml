@@ -49,9 +49,9 @@ matrix:
      - jdk: oraclejdk8
        env: SCALA_VERSION=2.11 TEST_TYPE=integration TEST_VERBOSITY=minimal TEST_REQUIRE_GCLOUD=true
      - jdk: openjdk11
-       env: SCALA_VERSION=2.12 TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
+       env: SCALA_VERSION=2.12 TEST_TYPE=integration TEST_VERBOSITY=minimal
      - jdk: openjdk11
-       env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+       env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_VERBOSITY=minimal
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
