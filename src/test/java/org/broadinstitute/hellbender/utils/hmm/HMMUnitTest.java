@@ -261,7 +261,7 @@ public final class HMMUnitTest extends GATKBaseTest {
         for (int position = positions.size() - 1; position >= 0; position--) {
             for (final TestHMM.State state : TestHMM.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
-                final double observedValue = forwardBackwardResult.logBackwardProbability(new Integer(position), state);
+                final double observedValue = forwardBackwardResult.logBackwardProbability(Integer.valueOf(position), state);
                 final double observedValueUsingIndex = forwardBackwardResult.logBackwardProbability(position, state);
                 Assert.assertEquals(observedValueUsingIndex, observedValue);
                 final double epsilon = 0.001 * Math.min(Math.abs(expectedValue),
@@ -500,7 +500,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(2), (TestHMM.State)null);
+        result.logProbability(Integer.valueOf(2), (TestHMM.State)null);
     }
 
 
@@ -529,7 +529,7 @@ public final class HMMUnitTest extends GATKBaseTest {
             Assert.fail("this part of the test must not fail");
 
         }
-        result.logDataLikelihood(new Integer(14));
+        result.logDataLikelihood(Integer.valueOf(14));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -559,7 +559,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logBackwardProbability(new Integer(2), null);
+        result.logBackwardProbability(Integer.valueOf(2), null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -589,7 +589,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logForwardProbability(new Integer(2), null);
+        result.logForwardProbability(Integer.valueOf(2), null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -649,7 +649,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(14), TestHMM.State.A);
+        result.logProbability(Integer.valueOf(14), TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -679,7 +679,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(2), Arrays.asList(TestHMM.State.A, TestHMM.State.A, TestHMM.State.B));
+        result.logProbability(Integer.valueOf(2), Arrays.asList(TestHMM.State.A, TestHMM.State.A, TestHMM.State.B));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -769,7 +769,7 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(4), TestHMM.State.A);
+        result.logProbability(Integer.valueOf(4), TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

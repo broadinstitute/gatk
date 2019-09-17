@@ -16,8 +16,8 @@ public class HistogramUnitTest {
         for (int i = 0; i <= 100; i++) {
             bimodalHist.add(1 + i / 1000.0);
         }
-        Assert.assertEquals(bimodalHist.get(1.0), new Integer(100), "");
-        Assert.assertEquals(bimodalHist.get(1.1), new Integer(1), "");
+        Assert.assertEquals(bimodalHist.get(1.0), Integer.valueOf(100), "");
+        Assert.assertEquals(bimodalHist.get(1.1), Integer.valueOf(1), "");
     }
 
     @Test
@@ -26,7 +26,7 @@ public class HistogramUnitTest {
         for (int i = 0; i < 100; i++) {
             hist.add(1.2);
         }
-        Assert.assertEquals(hist.get(1.2), new Integer(100));
+        Assert.assertEquals(hist.get(1.2), Integer.valueOf(100));
         Assert.assertEquals(hist.median(), 1.2, EPSILON);
     }
 
@@ -36,8 +36,8 @@ public class HistogramUnitTest {
         for (int i = 0; i <= 100; i++) {
             bimodalHist.add(1 + i / 1000.0, 2);
         }
-        Assert.assertEquals(bimodalHist.get(1.0), new Integer(200), "");
-        Assert.assertEquals(bimodalHist.get(1.1), new Integer(2), "");
+        Assert.assertEquals(bimodalHist.get(1.0), Integer.valueOf(200), "");
+        Assert.assertEquals(bimodalHist.get(1.1), Integer.valueOf(2), "");
     }
 
     @Test

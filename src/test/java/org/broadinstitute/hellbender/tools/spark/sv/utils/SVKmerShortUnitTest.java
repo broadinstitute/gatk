@@ -104,7 +104,7 @@ public class SVKmerShortUnitTest {
             //Generate random indices to mask
             List<Byte> maskIndices = new ArrayList<>(K);
             for (int j = 0; j < K; j++) {
-                maskIndices.add(new Byte((byte) j));
+                maskIndices.add((byte) j);
             }
             Collections.shuffle(maskIndices);
             int maskSize = rand.nextInt(K - 3) + 2;

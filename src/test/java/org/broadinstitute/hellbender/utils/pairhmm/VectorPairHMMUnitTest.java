@@ -42,7 +42,7 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
                 loaded = false;
             }
 
-            final Pair<PairHMM, Boolean> hmm_load = new ImmutablePair<PairHMM, Boolean>(avxPairHMM, new Boolean(loaded));
+            final Pair<PairHMM, Boolean> hmm_load = new ImmutablePair<PairHMM, Boolean>(avxPairHMM, loaded);
             list.add(hmm_load);
         }
 
