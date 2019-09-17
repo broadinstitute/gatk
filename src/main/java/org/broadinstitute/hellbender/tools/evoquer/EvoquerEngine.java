@@ -88,6 +88,8 @@ class EvoquerEngine {
     /** Set of sample names seen in the variant data from BigQuery. */
     private final Set<String> sampleNames = new HashSet<>();
 
+    private final Set<Long> seenPositions = new HashSet<>();
+
     /**
      * Map between contig name and the BigQuery table containing position data from that contig.
      */
@@ -420,6 +422,13 @@ class EvoquerEngine {
             ++totalNumberOfSites;
 
             final long currentPosition = Long.parseLong(row.get(POSITION_FIELD_NAME).toString());
+
+            if (!seenPositions.contains(currentPosition)) {
+                seenPositions.add(currentPosition);
+            } else {
+                logger.warn("Duplicate variant at site " + currentPosition + " will be ignored.");
+                break;
+            }
 
             if ( printDebugInformation ) {
                 logger.info(contig + ":" + currentPosition + ": found record: " + row);
