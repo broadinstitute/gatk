@@ -7,7 +7,7 @@ import apache_beam as beam
 from apache_beam import Pipeline
 from google.cloud import storage
 
-from ml4cvd.defines import TENSOR_EXT, GCS_BUCKET, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
+from ml4cvd.defines import TENSOR_EXT, GCS_BUCKET, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, dataset_name_from_meaning
 
 
 def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str, tensor_type: str):
@@ -105,14 +105,6 @@ def _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5):
         hd5.create_dataset(hd5_dataset_name, data=[float_value])
     except ValueError:
         logging.warning(f"Cannot cast to float from '{row['value']}' for field id '{row['fieldid']}' and sample id '{sample_id}'")
-
-
-def dataset_name_from_meaning(group: str, fields: List[str]) -> str:
-    clean_fields = []
-    for f in fields:
-        clean_fields.append(''.join(e for e in f if e.isalnum() or e == ' '))
-    joined = JOIN_CHAR.join(clean_fields).replace('  ', CONCAT_CHAR).replace(' ', CONCAT_CHAR)
-    return group + HD5_GROUP_CHAR + joined
 
 
 def _get_categorical_query(dataset):

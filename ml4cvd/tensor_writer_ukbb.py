@@ -35,10 +35,10 @@ import xml.etree.ElementTree as et
 from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
+from ml4cvd.defines import DataSetType, dataset_name_from_meaning
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
-from ml4cvd.defines import DataSetType
 
 
 STATS_TYPE = Dict[str, List[float]]
@@ -300,7 +300,7 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
     for fid in categorical_field_ids:
         try:
             for data_row in sql_cursor.execute(data_query % (fid, sample_id)):
-                dataset_name = _dataset_name_from_meaning('categorical',
+                dataset_name = dataset_name_from_meaning('categorical',
                                                           [field_meanings[fid], str(data_row[0]),
                                                            str(data_row[1]), str(data_row[2])])
                 float_category = _to_float_or_false(data_row[3])
@@ -319,8 +319,7 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
     continuous_query += "WHERE p.fieldid=%d and p.sample_id=%d;"
     for fid in continuous_field_ids:
         for data_row in sql_cursor.execute(continuous_query % (fid, sample_id)):
-            dataset_name = _dataset_name_from_meaning('continuous', [str(fid), field_meanings[fid],
-                                                                     str(data_row[0]), str(data_row[1])])
+            dataset_name = dataset_name_from_meaning('continuous', [str(fid), field_meanings[fid], str(data_row[0]), str(data_row[1])])
             float_continuous = _to_float_or_false(data_row[2])
             if float_continuous is not False:
                 hd5.create_dataset(dataset_name, data=[float_continuous])
@@ -434,14 +433,6 @@ def _write_tensors_from_icds(hd5: h5py.File,
             if sample_id in dates[disease]:
                 disease_date = dates[disease][sample_id].strftime('%Y-%m-%d')
                 hd5.create_dataset(disease + '_date', (1,), data=disease_date, dtype=h5py.special_dtype(vlen=str))
-
-
-def _dataset_name_from_meaning(group: str, fields: List[str]) -> str:
-    clean_fields = []
-    for f in fields:
-        clean_fields.append(''.join(e for e in f if e.isalnum() or e == ' '))
-    joined = JOIN_CHAR.join(clean_fields).replace('  ', CONCAT_CHAR).replace(' ', CONCAT_CHAR)
-    return group + HD5_GROUP_CHAR + joined
 
 
 def _to_float_or_false(s):

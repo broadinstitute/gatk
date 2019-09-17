@@ -6,12 +6,12 @@ import numpy as np
 from typing import List
 from typing.io import TextIO
 
+from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
-from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, \
-    DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
-from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
+from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, dataset_name_from_meaning
+from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, JOIN_CHAR
 
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
@@ -224,6 +224,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
     SELECT 
         sample_id, 
         FieldID, 
+        instance,
         array_idx,
         COALESCE(c.value, p.value) new_value, 
         COALESCE(c.missing, FALSE) missing
@@ -232,13 +233,12 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         ON TRUE
         AND SAFE_CAST(p.value AS FLOAT64) = SAFE_CAST(c.coding AS FLOAT64)
         AND p.coding_file_id = c.coding_file_id
-    WHERE TRUE
-        AND instance = 0 
     )
 
     SELECT 
         t.FieldID, 
-        Field, 
+        Field,
+        t.instance,
         AVG(CAST(new_value AS FLOAT64)) mean, 
         STDDEV(CAST(new_value AS FLOAT64)) std,
         MAX(array_idx) AS max_array
@@ -247,22 +247,21 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
     WHERE TRUE
         AND ValueType IN ('Integer', 'Continuous') 
         AND NOT missing
-    GROUP BY t.FieldID, Field ORDER BY t.FieldID
+    GROUP BY t.FieldID, t.instance, Field ORDER BY t.FieldID
     """
 
     field_data_for_tensor_maps = db_client.execute(query)
 
     f.write(f"\n\n#  Continuous tensor maps\n")
     for row in field_data_for_tensor_maps:
-        name = str(row.FieldID) + "_" + row.Field.replace("-", "").replace(" ", "-").replace("(", "").replace(")", "")
-        name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
+        name = dataset_name_from_meaning(None, [str(row.FieldID), row.Field, str(row.instance)])
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
-            channel_map += f"'{name}_0_{i}': {i}, "
+            channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         if include_missing:
             channel_map += "'not-missing': " + str(row.max_array + 1)
         channel_map += "}"
-        f.write(f"TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
+        f.write(f"TMAPS['{row.FieldID}_{row.instance}'] = TensorMap('{name}', group='{group}', loss='logcosh', normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
 
 
 def _segmented_map(name):
