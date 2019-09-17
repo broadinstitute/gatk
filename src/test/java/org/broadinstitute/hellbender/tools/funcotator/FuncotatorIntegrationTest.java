@@ -1143,10 +1143,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getContig).collect(Collectors.toList());
             }
             else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Start_Position) ) {
-                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getStart).map(x -> new Integer(x)).map(Object::toString).collect(Collectors.toList());
+                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getStart).map(Object::toString).collect(Collectors.toList());
             }
             else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_End_Position) ) {
-                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getEnd).map(x -> new Integer(x)).map(Object::toString).collect(Collectors.toList());
+                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getEnd).map(Object::toString).collect(Collectors.toList());
             }
             else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Hugo_Symbol) ) {
                 mafFieldValues = maf.getRecords().stream().map(x -> x.getAnnotationValue(MafOutputRendererConstants.FieldName_Hugo_Symbol)).map(a -> a.isEmpty() ? "Unknown" : a).collect(Collectors.toList());

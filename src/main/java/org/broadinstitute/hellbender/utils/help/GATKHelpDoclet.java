@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.utils.help;
 
-import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.RootDoc;
-
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.GSONWorkUnit;
@@ -19,6 +16,7 @@ import java.util.Map;
  * by methods that are used by the GATK runtime. This class has a dependency on com.sun.javadoc classes,
  * which may not be present since they're not provided as part of the normal GATK runtime classpath.
  */
+@SuppressWarnings("removal")
 public class GATKHelpDoclet extends HelpDoclet {
 
     private final static String GATK_FREEMARKER_INDEX_TEMPLATE_NAME = "generic.index.template.html";
@@ -29,7 +27,7 @@ public class GATKHelpDoclet extends HelpDoclet {
      * @param rootDoc
      * @throws IOException
      */
-    public static boolean start(final RootDoc rootDoc) throws IOException {
+    public static boolean start(final com.sun.javadoc.RootDoc rootDoc) throws IOException {
         return new GATKHelpDoclet().startProcessDocs(rootDoc);
     }
 
@@ -55,7 +53,7 @@ public class GATKHelpDoclet extends HelpDoclet {
     @Override
     protected DocWorkUnit createWorkUnit(
             final DocumentedFeature documentedFeature,
-            final ClassDoc classDoc,
+            final com.sun.javadoc.ClassDoc classDoc,
             final Class<?> clazz)
     {
         return new GATKDocWorkUnit(

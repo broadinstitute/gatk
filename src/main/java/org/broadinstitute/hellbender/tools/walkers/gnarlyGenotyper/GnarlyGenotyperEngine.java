@@ -200,7 +200,7 @@ public final class GnarlyGenotyperEngine {
 
         for (final Class c : allASAnnotations) {
             try {
-                final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
+                final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.getDeclaredConstructor().newInstance();
                 if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                     final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
                     if (variant.hasAttribute(ann.getRawKeyName())) {
@@ -222,7 +222,7 @@ public final class GnarlyGenotyperEngine {
         if (!keepAllSites) {
             for (final Class c : allASAnnotations) {
                 try {
-                    final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.newInstance();
+                    final InfoFieldAnnotation annotation = (InfoFieldAnnotation) c.getDeclaredConstructor().newInstance();
                     if (annotation instanceof AS_StandardAnnotation && annotation instanceof ReducibleAnnotation) {
                         final ReducibleAnnotation ann = (ReducibleAnnotation) annotation;
                         if (variant.hasAttribute(ann.getRawKeyName())) {

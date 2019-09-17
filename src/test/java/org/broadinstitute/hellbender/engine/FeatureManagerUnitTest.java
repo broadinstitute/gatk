@@ -49,7 +49,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
 
         // We should also get the correct codec if we pass in the explicit expected Feature type to getCodecForFile()
         @SuppressWarnings("unchecked")
-        final Class<? extends Feature> expectedCodecFeatureType = expectedCodecClass.newInstance().getFeatureType();
+        final Class<? extends Feature> expectedCodecFeatureType = expectedCodecClass.getDeclaredConstructor().newInstance().getFeatureType();
         Assert.assertEquals(FeatureManager.getCodecForFile(file, expectedCodecFeatureType).getClass(), expectedCodecClass,
                 "Wrong codec selected for file " + file.getAbsolutePath() + " after subsetting to the expected Feature type");
     }

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.help;
 
-import com.sun.javadoc.ClassDoc;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.DocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -15,12 +14,13 @@ import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
  * by methods that are used by the GATK runtime. This class has a dependency on com.sun.javadoc classes,
  * which may not be present since they're not provided as part of the normal GATK runtime classpath.
  */
+@SuppressWarnings("removal")
 public class GATKDocWorkUnit extends DocWorkUnit {
 
     public GATKDocWorkUnit(
             final DocWorkUnitHandler workUnitHandler,
             final DocumentedFeature documentedFeatureAnnotation,
-            final ClassDoc classDoc,
+            final com.sun.javadoc.ClassDoc classDoc,
             final Class<?> clazz) {
         super(workUnitHandler, documentedFeatureAnnotation, classDoc, clazz);
     }

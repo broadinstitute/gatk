@@ -112,6 +112,7 @@ public abstract class ProcessControllerBase<CAPTURE_POLICY extends CapturedStrea
     abstract void tryCleanShutdown();
 
     @Override
+    @SuppressWarnings("deprecation")
     protected void finalize() throws Throwable {
         try {
             tryCleanShutdown();

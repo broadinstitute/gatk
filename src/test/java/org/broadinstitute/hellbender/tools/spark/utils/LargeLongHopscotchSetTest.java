@@ -132,7 +132,7 @@ public final class LargeLongHopscotchSetTest extends GATKBaseTest {
         Assert.assertTrue(hopscotchSet.size() == hashSet.size());
         LongIterator itrL = hopscotchSet.iterator();
         while (itrL.hasNext()) {
-            Assert.assertTrue(hashSet.contains(new Long(itrL.next())));
+            Assert.assertTrue(hashSet.contains(itrL.next()));
         }
         for (Long val : hashSet) {
             Assert.assertTrue(hopscotchSet.contains(val.longValue()));
@@ -155,7 +155,7 @@ public final class LargeLongHopscotchSetTest extends GATKBaseTest {
         for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
             final long randLong = randomLong(rng);
             hopscotchSet.add(randLong);
-            hashSet.add(new Long(randLong));
+            hashSet.add(randLong);
         }
         Assert.assertEquals(hashSet.size(), hopscotchSet.size());
         for (final Long val : hashSet) {

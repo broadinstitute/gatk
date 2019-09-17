@@ -88,10 +88,10 @@ public class VariantContextTestUtilsUnitTest extends GATKBaseTest {
     public Object[][] getIntegerValuesToNormalize(){
         final Object aSpecificObject = new Object();
         return new Object[][] {
-                {"27", new Integer(27)},
-                {"-27", new Integer(-27)},
-                {"0", new Integer(0)},
-                {"-27014", new Integer(-27014)},
+                {"27", 27},
+                {"-27", -27},
+                {"0", 0},
+                {"-27014", -27014},
                 {1, 1},
                 {1, 1},
                 {-1, -1},

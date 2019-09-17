@@ -24,6 +24,7 @@ import org.genomicsdb.reader.GenomicsDBFeatureReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -348,8 +349,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             featureInput.setFeatureCodecClass((Class<FeatureCodec<T, ?>>) codec.getClass());
         } else {
             try {
-                codec = codecClass.newInstance();
-            } catch (final InstantiationException | IllegalAccessException e) {
+                codec = codecClass.getDeclaredConstructor().newInstance();
+            } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                 throw new GATKException("Unable to automatically instantiate codec " + codecClass.getName());
             }
         }

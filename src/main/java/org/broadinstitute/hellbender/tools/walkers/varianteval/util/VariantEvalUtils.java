@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.Varian
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.RequiredStratification;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.StandardStratification;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.VariantStratifier;
+import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.samples.Sample;
 import org.reflections.Reflections;
 
@@ -120,17 +121,10 @@ public class VariantEvalUtils {
             if (stratifierClasses.containsKey(module)) {
                 Class<? extends VariantStratifier> c = stratifierClasses.get(module);
 
-                try {
-                    VariantStratifier vs = c.newInstance();
-                    vs.setVariantEvalWalker(variantEvalWalker);
-                    vs.initialize();
-
-                    strats.add(vs);
-                } catch (InstantiationException e) {
-                    throw new GATKException("Unable to instantiate stratification module '" + c.getSimpleName() + "'");
-                } catch (IllegalAccessException e) {
-                    throw new GATKException("Illegal access error when trying to instantiate stratification module '" + c.getSimpleName() + "'");
-                }
+                VariantStratifier vs = ClassUtils.makeInstanceOf(c);
+                vs.setVariantEvalWalker(variantEvalWalker);
+                vs.initialize();
+                strats.add(vs);
             }
         }
 
