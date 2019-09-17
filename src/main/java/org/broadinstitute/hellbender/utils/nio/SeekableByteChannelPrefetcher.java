@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.common.base.Stopwatch;
-
-import java.nio.Buffer;
 import java.util.concurrent.ThreadFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
@@ -144,7 +142,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
 
         public WorkUnit resetForIndex(long blockIndex) {
             this.blockIndex = blockIndex;
-            ((Buffer) buf).clear(); // for Java 11, see https://github.com/jruby/jruby/issues/5450
+            buf.clear();
             futureBuf = null;
             return this;
         }
