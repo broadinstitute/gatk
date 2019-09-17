@@ -187,6 +187,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
      * @throws InstantiationException if thrown when calling the {@code pluginClass} constructor
      */
     @Override
+    @SuppressWarnings("deprecation")
     public Annotation createInstanceForPlugin(Class<?> pluggableClass) throws IllegalAccessException, InstantiationException {
         Annotation annot = null;
         final String simpleName = pluggableClass.getSimpleName();
