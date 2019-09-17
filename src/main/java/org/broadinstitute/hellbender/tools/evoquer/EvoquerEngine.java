@@ -444,6 +444,10 @@ class EvoquerEngine {
                         unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 60));
                         break;
                     case "*":   // Spanning Deletion
+                        // naive approach
+                        unmergedCalls.add(createVariantContextForSpanningDelete(sampleName, contig, currentPosition, refAllele));
+                        // if that doesn't work then we will need to keep a list of the samples with this spanning deletion and then after processing
+                        // all the samples at that postion see if that postition also had a variant and then muck with the indexes
                         break;
                     case "m":   // Missing
                         // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
@@ -523,6 +527,39 @@ class EvoquerEngine {
         builder.genotypes(genotypeBuilder.make());
 
         return builder.make();
+    }
+
+    private VariantContext createVariantContextForSpanningDelete(final String sample, final String contig, final long start, final Allele refAllele) {
+        final VariantContextBuilder builder = new VariantContextBuilder();
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+
+        builder.chr(contig);
+        builder.start(start);
+
+        final List<Allele> alleles = new ArrayList<>();
+        alleles.add(refAllele);
+        alleles.add(Allele.SPAN_DEL);
+        builder.alleles(alleles);
+
+        builder.stop(start);
+
+        genotypeBuilder.name(sample);
+
+        builder.attribute(VCFConstants.END_KEY, Long.toString(start));
+
+        // is this correct? why in the build for ref is the ref added twice?
+        final List<Allele> genotypeAlleles = new ArrayList<>();
+        genotypeAlleles.add(refAllele);
+        genotypeAlleles.add(Allele.SPAN_DEL);
+        genotypeBuilder.alleles(genotypeAlleles);
+
+        // is there a gq for a spanning deletion?
+//        genotypeBuilder.GQ(gq);
+
+        builder.genotypes(genotypeBuilder.make());
+
+        return builder.make();
+
     }
 
     private VariantContext createRefSiteVariantContext(final String sample, final String contig, final long start, final Allele refAllele, final int gq) {
