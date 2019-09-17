@@ -358,7 +358,7 @@ dependencies {
 
     testCompile sourceSets.testUtils.output
 
-    testCompile "org.mockito:mockito-core:2.10.0"
+    testCompile "org.mockito:mockito-core:2.28.2"
     testCompile "com.google.jimfs:jimfs:1.1"
 }
 
