@@ -392,11 +392,6 @@ public class BigQueryUtils {
         // Decoder object will be reused to avoid re-allocation and too much garbage collection.
         private BinaryDecoder decoder = null;
 
-        private AvroProto.AvroRows currentAvroRows;
-
-        // GenericRecord object will be reused.
-        private GenericRecord nextRow = null;
-
         public StorageAPIAvroReader( final String tableProject,
                                      final String tableDataset,
                                      final String tableName,
@@ -443,39 +438,8 @@ public class BigQueryUtils {
                         .build();
 
                 this.serverStream = client.readRowsCallable().call(readRowsRequest).iterator();
-
-                loadNextRow();
             } catch ( IOException e ) {
                 throw new GATKException("I/O Error", e);
-            }
-        }
-
-        private void loadNextRow() {
-            try {
-                if ( decoder != null && ! decoder.isEnd() ) {
-                    nextRow = datumReader.read(null, decoder);
-                } else {
-                    fetchNextAvroRows();
-
-                    if ( decoder != null && ! decoder.isEnd() ) {
-                        nextRow = datumReader.read(null, decoder);
-                    } else {
-                        nextRow = null; // end of traversal
-                    }
-                }
-            } catch ( IOException e ) {
-                throw new GATKException("I/O error", e);
-            }
-        }
-
-        private void fetchNextAvroRows() {
-            if ( serverStream.hasNext() ) {
-                currentAvroRows = serverStream.next().getAvroRows();
-                decoder = DecoderFactory.get()
-                        .binaryDecoder(currentAvroRows.getSerializedBinaryRows().toByteArray(), decoder);
-            } else {
-                currentAvroRows = null;
-                decoder = null;
             }
         }
 
@@ -525,7 +489,13 @@ public class BigQueryUtils {
 
         @Override
         public boolean hasNext() {
-            return nextRow != null;
+            boolean hasNext = false;
+            try {
+                hasNext = (decoder != null && !decoder.isEnd()) || this.serverStream.hasNext();
+            } catch (IOException e) {
+                throw new GATKException("I/O error", e);
+            }
+            return hasNext;
         }
 
         @Override
@@ -533,10 +503,15 @@ public class BigQueryUtils {
             if ( ! hasNext() ) {
                 throw new NoSuchElementException("next() called when ! hasNext()");
             }
-
-            final GenericRecord recordToReturn = nextRow;
-            loadNextRow();
-            return recordToReturn;
+            try {
+                while ( (decoder == null || decoder.isEnd()) && serverStream.hasNext()) {
+                    decoder = DecoderFactory.get().binaryDecoder(
+                            serverStream.next().getAvroRows().getSerializedBinaryRows().toByteArray(), decoder);
+                }
+                return datumReader.read(null, decoder);
+            } catch ( IOException e ) {
+                throw new GATKException("I/O error", e);
+            }
         }
 
         @Override

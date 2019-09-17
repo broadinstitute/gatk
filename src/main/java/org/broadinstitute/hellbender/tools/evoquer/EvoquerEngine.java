@@ -379,10 +379,8 @@ class EvoquerEngine {
         schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
         validateSchema(columnNames);
 
-        for ( final GenericRecord row : avroReader ) {
-            if ( runQueryOnly ) {
-                continue;
-            }
+        if (runQueryOnly) return;
+        avroReader.forEach(row -> {
 
             ++totalNumberOfSites;
 
@@ -449,7 +447,7 @@ class EvoquerEngine {
             }
 
             finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
-        }
+        });
     }
 
     private void validateSchema(final Set<String> columnNames) {
