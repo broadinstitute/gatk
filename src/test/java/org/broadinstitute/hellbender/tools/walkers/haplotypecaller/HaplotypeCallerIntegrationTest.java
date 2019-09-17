@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.util.FileExtensions;
+import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -1188,6 +1189,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      * Can optionally ignore GVCF blocks in the concordance calculation.
      */
     public static double calculateConcordance( final File actual, final File expected, final boolean ignoreGVCFBlocks ) {
+        final String sampleName = VariantContextTestUtils.streamVcf(expected).findFirst().get().getGenotype(0).getSampleName();
+        return calculateConcordance(actual, expected, ignoreGVCFBlocks, sampleName);
+    }
+
+    /*
+     * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and a specified genotype.
+     * Can optionally ignore GVCF blocks in the concordance calculation.
+     */
+    public static double calculateConcordance( final File actual, final File expected, final boolean ignoreGVCFBlocks, final String sampleName) {
         final Set<String> actualVCFKeys = new HashSet<>();
         final Set<String> expectedVCFKeys = new HashSet<>();
         int concordant = 0;
@@ -1200,13 +1210,13 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
             for ( final VariantContext vc : actualSource ) {
                 if ( ! ignoreGVCFBlocks || ! isGVCFReferenceBlock(vc) ) {
-                    actualVCFKeys.add(keyForVariant(vc));
+                    actualVCFKeys.add(keyForVariant(vc, sampleName));
                 }
             }
 
             for ( final VariantContext vc : expectedSource ) {
                 if ( ! ignoreGVCFBlocks || ! isGVCFReferenceBlock(vc) ) {
-                    expectedVCFKeys.add(keyForVariant(vc));
+                    expectedVCFKeys.add(keyForVariant(vc, sampleName));
                 }
             }
 
@@ -1229,8 +1239,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         return (double)concordant / (double)(concordant + discordant);
     }
 
-    private static String keyForVariant( final VariantContext variant ) {
-        Genotype genotype = variant.getGenotype(0);
+    private static String keyForVariant( final VariantContext variant, final String sampleName ) {
+        Genotype genotype = variant.getGenotype(sampleName);
         if (genotype.isPhased()) { // unphase it for comparisons, since we rely on comparing the genotype string below
             genotype = new GenotypeBuilder(genotype).phased(false).make();
         }
