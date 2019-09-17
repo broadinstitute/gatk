@@ -21,7 +21,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
-    //TODO test for newSmithWatermanAlignmentMode
 
     @DataProvider (name = "loopingReferences")
     public static Object[][] loopingReferences() {
@@ -38,7 +37,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(kmerSize);
         assembler.addSequence("anonymous", getBytes(ref), true);
         assembler.buildGraphIfNecessary();
-        List<MultiDeBruijnVertex> refVertexes = assembler.getReferencePath(assembler.findKmer(new Kmer(ref.getBytes(), 0, kmerSize)), ReadThreadingGraph.TraversalDirection.downwards, Optional.empty());
+        List<MultiDeBruijnVertex> refVertexes = assembler.getReferencePath(ReadThreadingGraph.TraversalDirection.downwards);
         final StringBuilder builder = new StringBuilder(refVertexes.get(0).getSequenceString());
         refVertexes.stream().skip(1).forEach(v -> builder.append(v.getSuffixString()));
         Assert.assertEquals(builder.toString(), ref);
@@ -92,9 +91,8 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         Assert.assertTrue(true, "If we reached here than the above code didn't infinitely loop");
     }
 
-
     @Test
-    public void testKirensTestExample() {
+    public void testJunctionTreePaperTestExample() {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "ACTGATTTCGATGCGATGCGATGCCACGGTGG"; // a loop of length 3 in the middle
 
@@ -102,10 +100,12 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(ref), false);
 
         // This graph should have generated 3 junction trees (one at GAAAA, one at TCGGG, and one at AATCG)
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))) != null);
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))) != null);
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGAT"))).isPresent());
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GCGAT"))).isPresent());
+
+        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGAT"))).get().getPathsPresentAsBaseChoiceStrings().get(0), "GGC_");
     }
 
     @Test
@@ -127,21 +127,22 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(altRead5), false);
 
         // This graph should have generated 3 junction trees (one at GAAAA, one at TCGGG, and one at AATCG)
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))) != null);
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))) != null);
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))) != null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).isPresent());
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))).isPresent());
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))).isPresent());
 
-        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).getPathsPresentAsBaseChoiceStrings().get(0), "TA_");
+        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).get().getPathsPresentAsBaseChoiceStrings().get(0), "TA_");
 
         // Now we prune requiring at least 2 bases of support (which should kill all but the first graph and then only the first two nodes of the first graph)
         assembler.pruneJunctionTrees(2);
 
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))) != null);
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))) == null);
-        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))) == null);
+        Assert.assertTrue(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).isPresent());
+        Assert.assertFalse(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("TCGGG"))).isPresent());
+        Assert.assertFalse(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("AATCG"))).isPresent());
 
-        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).getPathsPresentAsBaseChoiceStrings().get(0), "T");
+        Assert.assertEquals(assembler.getJunctionTreeForNode(assembler.findKmer( new Kmer("GAAAA"))).get().getPathsPresentAsBaseChoiceStrings().get(0), "T");
     }
 
     @Test
@@ -162,6 +163,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(altRead1), false);
         assembler.addSequence("anonymous", getBytes(altRead2), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
@@ -199,6 +201,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(read1), false);
         assembler.addSequence("anonymous", getBytes(read2), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
@@ -229,10 +232,11 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(ref), true);
         assembler.addSequence("anonymous", getBytes(refRead), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
-        Assert.assertEquals(junctionTrees.size(), 3);
+        Assert.assertEquals(junctionTrees.size(), 2);
 
         JunctionTreeLinkedDeBruinGraph.ThreadingTree tree1 = junctionTrees.get(assembler.findKmer(new Kmer("CGGGG")));
         JunctionTreeLinkedDeBruinGraph.ThreadingTree tree2 = junctionTrees.get(assembler.findKmer(new Kmer("GGGGG")));
@@ -275,6 +279,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(altRead1), false);
         assembler.addSequence("anonymous", getBytes(altRead2), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         assembler.pruneJunctionTrees(0);
@@ -300,6 +305,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(altARead1), false);
         assembler.addSequence("anonymous", getBytes(altARead2), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
@@ -335,6 +341,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(altARead1), false);
         assembler.addSequence("anonymous", getBytes(altARead2), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
@@ -370,6 +377,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.addSequence("anonymous", getBytes(altTCRead1), false);
         assembler.addSequence("anonymous", getBytes(altTCRead2), false);
 
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(true);
@@ -400,6 +408,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         for (int i = 0; i + 20 < ref.length(); i++) {
             assembler.addSequence("anonymous", getBytes(ref.substring(i, i + 20)), false);
         }
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
@@ -429,6 +438,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
             // 20 bases should be exactly enough to recover the whole path through the loop (from GGAAAT to TTAAAG)
             assembler.addSequence("anonymous", getBytes(ref.substring(i, i + 23)), false);
         }
+        assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
@@ -461,7 +471,6 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
     private void assertNonUniqueKmersInvolveLoops(final JunctionTreeLinkedDeBruinGraph assembler, String... nonUniques) {
         final Set<String> actual = new HashSet<>();
         assembler.buildGraphIfNecessary();
-        Assert.assertTrue(assembler.getNonUniqueKmers().isEmpty());
         for (String kmer : nonUniques) {
             MultiDeBruijnVertex vertex = assembler.findKmer(new Kmer(kmer));
             Assert.assertTrue(assembler.incomingEdgesOf(vertex).size() > 1 || assembler.outgoingEdgesOf(vertex).size() > 1);
@@ -547,18 +556,18 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         assembler.buildGraphIfNecessary();
         assembler.printGraph(createTempFile("test",".dot"), 0);
 
-        final List<String> oneCountVertices = Arrays.asList("NNN", "NNC", "NCT", "GTC");
-        final List<String> twoCountVertices = Arrays.asList("CAX", "AXX", "CTC", "TCA");
+        final List<String> oneCountVertices = Arrays.asList("NNN", "NNC", "NCT", "NNG", "NGT");
+        final List<String> twoCountVertices = Arrays.asList("CTC", "TCA", "GTC");
 
         for ( final MultiSampleEdge edge : assembler.edgeSet() ) {
             final MultiDeBruijnVertex source = assembler.getEdgeSource(edge);
             final MultiDeBruijnVertex target = assembler.getEdgeTarget(edge);
             final int expected;
-            if (source.getSequenceString().equals("GTC") && target.getSequenceString().equals("TCA")) {
-                expected = 1;
-            } else {
-                expected = oneCountVertices.contains(target.getSequenceString()) ? 2 : (twoCountVertices.contains(target.getSequenceString()) ? 3 : 1);
-            }
+//            if (source.getSequenceString().equals("GTC") && target.getSequenceString().equals("TCA")) {
+//                expected = 1;
+//            } else {
+                expected = oneCountVertices.contains(target.getSequenceString()) ? 1 : ((twoCountVertices.contains(target.getSequenceString()) ? 2 : 3));
+//            }
             Assert.assertEquals(edge.getMultiplicity(), expected, "Bases at edge " + edge + " from " + source + " to " + target + " has bad multiplicity");
         }
     }

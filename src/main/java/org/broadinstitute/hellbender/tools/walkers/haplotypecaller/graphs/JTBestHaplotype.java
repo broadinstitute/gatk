@@ -17,21 +17,21 @@ import java.util.stream.Collectors;
  * data off of the list as well as incrementing all of the trees in the list to point at the next element based on the chosen path.
  */
 public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
-    private JunctionTreeManager treesInQueue; // An object for storing and managing operations on the queue of junction trees active for this path
+    private JunctionTreeManager junctionTreeManager; // An object for storing and managing operations on the queue of junction trees active for this path
     private int decisionEdgesTakenSinceLastJunctionTreeEvidence;
 
     // NOTE, this constructor is used by JunctionTreeKBestHaplotypeFinder, in both cases paths are chosen by non-junction tree paths
     public JTBestHaplotype(final JTBestHaplotype<V, E> previousPath, final List<E> edgesToExtend, final double edgePenalty) {
         super(previousPath, edgesToExtend, edgePenalty);
-        treesInQueue = new JunctionTreeManager(previousPath.treesInQueue);
-        decisionEdgesTakenSinceLastJunctionTreeEvidence = treesInQueue.hasJunctionTreeEvidence() ? 0 : previousPath.decisionEdgesTakenSinceLastJunctionTreeEvidence;
+        junctionTreeManager = new JunctionTreeManager(previousPath.junctionTreeManager);
+        decisionEdgesTakenSinceLastJunctionTreeEvidence = junctionTreeManager.hasJunctionTreeEvidence() ? 0 : previousPath.decisionEdgesTakenSinceLastJunctionTreeEvidence;
     }
 
     // Constructor to be used for internal calls from {@link #getApplicableNextEdgesBasedOnJunctionTrees()}
     private JTBestHaplotype(final JTBestHaplotype<V, E> previousPath, final List<E> chain, final int edgeMultiplicity, final int totalOutgoingMultiplicity, final boolean thisPathBasedOnJT) {
         super(previousPath, chain, computeLogPenaltyScore( edgeMultiplicity, totalOutgoingMultiplicity));
-        treesInQueue = new JunctionTreeManager(previousPath.treesInQueue);
-        treesInQueue.traverseEdgeForAllTrees(chain.get(chain.size() - 1));
+        junctionTreeManager = new JunctionTreeManager(previousPath.junctionTreeManager);
+        junctionTreeManager.traverseEdgeForAllTrees(chain.get(chain.size() - 1));
         // I'm aware that the chain is only an estimate of the proper length, especially if we got here due to being under the weight threshold for a given tree... the chain lenght is a heuristic as it is...
         decisionEdgesTakenSinceLastJunctionTreeEvidence = thisPathBasedOnJT ? 0 : previousPath.decisionEdgesTakenSinceLastJunctionTreeEvidence + 1;
     }
@@ -39,35 +39,33 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     // JTBestHaplotype constructor for construction an entirely new haplotype builder.
     public JTBestHaplotype(final V initialVertex, final BaseGraph<V,E> graph) {
         super(initialVertex, graph);
-        treesInQueue = new JunctionTreeManager();
+        junctionTreeManager = new JunctionTreeManager();
         decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
     }
 
     public boolean hasJunctionTreeEvidence() {
-        return treesInQueue.hasJunctionTreeEvidence();
+        return junctionTreeManager.hasJunctionTreeEvidence();
     }
 
-    //TODO this needs to be the same logic as the blow method, this is temporary
     // returns true if there is a symbolic edge pointing to the reference end or if there is insufficient node data
     public boolean hasStoppingEvidence(final int weightThreshold) {
-        int currentActiveNodeIndex = 0;
-        JunctionTreeLinkedDeBruinGraph.ThreadingNode oldestTree = !treesInQueue.hasJunctionTreeEvidence() ? null : treesInQueue.get(currentActiveNodeIndex);
-        int totalOut = getTotalOutForBranch(oldestTree);
 
-        // Keep removing trees until we find one under our threshold TODO this should be in a helper method
-        while (oldestTree != null && totalOut < weightThreshold) {
-            // We remove old branches from the tree only if they no longer have any evidence, otherwise we look at younger branches
-            if (totalOut <= 0) {
-                treesInQueue.removeEldestTree();
-            } else { // Otherwise look at the next tree in the list
-                currentActiveNodeIndex++;
+        // Traverse the non-empty trees until we find one with evidence over our threshold. If we ever find a symbolic end vertex then we stop.
+        for (JunctionTreeLinkedDeBruinGraph.ThreadingNode tree : junctionTreeManager.removeEmptyNodesAndReturnIterator()) {
+            int totalOut = getTotalOutForBranch(tree);
+
+            // Are any of these vertexes symbolic stops?
+            if (tree.getChildrenNodes().values().stream()
+                    .anyMatch(JunctionTreeLinkedDeBruinGraph.ThreadingNode::isSymbolicEnd)) {
+                return true;
             }
-            oldestTree = currentActiveNodeIndex >= treesInQueue.size() ? null : treesInQueue.get(currentActiveNodeIndex);
-            totalOut = getTotalOutForBranch(oldestTree);
+            if ( totalOut >= weightThreshold) {
+                return false;
+            }
         }
 
-        return oldestTree == null || oldestTree.getChildrenNodes().values().stream()
-                .anyMatch(JunctionTreeLinkedDeBruinGraph.ThreadingNode::isSymbolicEnd);
+        // None of our junction trees cover the stop vertex, close it
+        return true;
     }
 
     // Tally the total outgoing weight for a particular branch
@@ -92,22 +90,18 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     //TODO for reviewer - is this the best way to structure this? I'm not sure how to decide about end nodes based on this, passing them back seesm wrong
     @SuppressWarnings({"unchecked"})
     public List<JTBestHaplotype<V, E>> getApplicableNextEdgesBasedOnJunctionTrees(final List<E> chain, final Set<E> outgoingEdges, final int weightThreshold) {
-        Set<MultiSampleEdge> edgesAccountedForByJunctionTrees = new HashSet<>(); // Since we check multiple junction trees for paths, make sure we are getting
+        Set<MultiSampleEdge> edgesAccountedForByJunctionTrees = new HashSet<>(); // Since we check multiple junction trees for paths, keep track of which paths we have taken to adding duplicate paths to the graph
         List<JTBestHaplotype<V, E>> output = new ArrayList<>();
-        int currentActiveNodeIndex = 0;
-        JunctionTreeLinkedDeBruinGraph.ThreadingNode oldestTree = !treesInQueue.hasJunctionTreeEvidence() ? null : treesInQueue.get(currentActiveNodeIndex);
-        while (oldestTree != null) {
-            int totalOut = getTotalOutForBranch(oldestTree);
+        for ( JunctionTreeLinkedDeBruinGraph.ThreadingNode tree : junctionTreeManager.removeEmptyNodesAndReturnIterator()) {
+            int totalOut = getTotalOutForBranch(tree);
 
             // If the total evidence emerging from a given branch
-
-            //TODO add SOME sanity check to ensure that the vertex we stand on and the edges we are polling line up
-            for (Map.Entry<MultiSampleEdge, JunctionTreeLinkedDeBruinGraph.ThreadingNode> childNode : oldestTree.getChildrenNodes().entrySet()) {
+            for (Map.Entry<MultiSampleEdge, JunctionTreeLinkedDeBruinGraph.ThreadingNode> childNode : tree.getChildrenNodes().entrySet()) {
                 if (!outgoingEdges.contains(childNode.getKey())) {
                     throw new GATKException("While constructing graph, there was an incongruity between a JunctionTree edge and the edge present on graph traversal");
                 }
 
-                // Don't add edges to the symbolic end vertex here at all, thats handled elsewhere, also don't add the same edge again if we pulled it in from a younger tree.
+                // Don't add edges to the symbolic end vertex here at all, that's handled by {@link #hasStoppingEvidence()}, also don't add the same edge again if we pulled it in from a younger tree.
                 if (!childNode.getValue().isSymbolicEnd() && // ignore symbolic end branches, those are handled elsewhere
                         !edgesAccountedForByJunctionTrees.contains(childNode.getKey())) {
                     edgesAccountedForByJunctionTrees.add(childNode.getKey());
@@ -118,17 +112,10 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
                 }
             }
 
-            // If there isn't enough outgoing evidence, then we
-            if (totalOut < weightThreshold){
-                // We remove old branches from the tree only if they no longer have any evidence, otherwise we look at younger branches
-                if (totalOut <= 0) {
-                    treesInQueue.removeEldestTree();
-                } else { // Otherwise look at the next tree in the list
-                    currentActiveNodeIndex++;
-                }
-                oldestTree = currentActiveNodeIndex >= treesInQueue.size() ? null : treesInQueue.get(currentActiveNodeIndex);
-            } else {
-                // We know that the eldest tree had enough weight to ignore younger trees
+            // If there isn't enough outgoing evidence, then we poll the next oldest tree for evidence
+            // This is done to alleviate the problem that the oldest junction tree may have little evidence and drop connectivity
+            // information better represented by one of the younger trees in the path.
+            if (totalOut >= weightThreshold) {
                 return output;
             }
         }
@@ -175,7 +162,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
      * @param junctionTreeForNode Junction tree to add
      */
     public void addJunctionTree(final JunctionTreeLinkedDeBruinGraph.ThreadingTree junctionTreeForNode) {
-        if (treesInQueue.addJunctionTree(junctionTreeForNode)) {
+        if (junctionTreeManager.addJunctionTree(junctionTreeForNode)) {
             decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
         }
     }
@@ -214,12 +201,17 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
 
         // method to handle incrementing all of the nodes in the tree simultaneously
         public void traverseEdgeForAllTrees(E edgeTaken) {
-            activeNodes = activeNodes.stream().map(node -> {
-                if (!node.getChildrenNodes().containsKey(edgeTaken)) {
-                    return null;
-                }
-                return node.getChildrenNodes().get(edgeTaken);
-            }).filter(Objects::nonNull).filter(node -> !node.hasNoEvidence()).collect(Collectors.toList());
+            activeNodes = activeNodes.stream()
+                    .filter(node -> node.getChildrenNodes().containsKey(edgeTaken))
+                    .map(node -> node.getChildrenNodes().get(edgeTaken))
+                    .filter(node -> !node.hasNoEvidence())
+                    .collect(Collectors.toList());
+        }
+
+        // Returns an iterable list of nodes that have sufficient data in the tree (performs pruning of empty nodes)
+        public Iterable<JunctionTreeLinkedDeBruinGraph.ThreadingNode> removeEmptyNodesAndReturnIterator() {
+            activeNodes = activeNodes.stream().filter(node -> getTotalOutForBranch(node) > 0).collect(Collectors.toList());
+            return activeNodes;
         }
 
         private JunctionTreeLinkedDeBruinGraph.ThreadingNode get(int i) {
@@ -230,7 +222,7 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
             return activeNodes == null ? 0 : activeNodes.size();
         }
 
-        private void removeEldestTree() {
+        private void removeOldestTree() {
             activeNodes.remove(0);
         }
 

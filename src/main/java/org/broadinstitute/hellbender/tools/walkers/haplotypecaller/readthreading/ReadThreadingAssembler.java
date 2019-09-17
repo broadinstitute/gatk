@@ -155,14 +155,7 @@ public final class ReadThreadingAssembler {
                     nonRefSeqGraphs.add(result.getSeqGraph());
                 } else {
                     sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
-                    ((JunctionTreeLinkedDeBruinGraph)result.getThreadingGraph()).generateJunctionTrees();
-                    if (debugGraphTransformations) {
-                        result.getThreadingGraph().printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + result.getKmerSize() + ".0.4.JT_unpruned.dot"), 10000);
-                    }
-                    ((JunctionTreeLinkedDeBruinGraph)result.getThreadingGraph()).pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
-                    if (debugGraphTransformations) {
-                        result.getThreadingGraph().printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + result.getKmerSize() + ".0.5.JT_pruned.dot"), 10000);
-                    }
+                    result.getThreadingGraph().postProcessForHaplotypeFinding(debugGraphOutputPath, refHaplotype.getLocation());
                     // add it to graphs with meaningful non-reference features
                     assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
                     nonRefRTGraphs.add(result.getThreadingGraph());

@@ -5,6 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
@@ -45,20 +46,17 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
     /**
      * A map from kmers -> their corresponding vertex in the graph
      */
-    protected final Map<Kmer, MultiDeBruijnVertex> uniqueKmers = new LinkedHashMap<>();
+    protected final Map<Kmer, MultiDeBruijnVertex> kmerToVertexMap = new LinkedHashMap<>();
     protected final boolean debugGraphTransformations;
     protected final byte minBaseQualityToUseInAssembly;
     protected boolean startThreadingOnlyAtExistingVertex = false;
     protected List<MultiDeBruijnVertex> referencePath = null;
-    /**
-     * A set of non-unique kmers that cannot be used as merge points in the graph
-     */
-    protected Set<Kmer> nonUniqueKmers;
+
     private int maxMismatchesInDanglingHead = -1;
     protected boolean alreadyBuilt;
     private boolean increaseCountsThroughBranches = false; // this may increase the branches without bounds
     // --------------------------------------------------------------------------------
-    // state variables, initialized in resetToInitialState()
+    // state variables, initialized in setToInitialState()
     // --------------------------------------------------------------------------------
     protected Kmer refSource;
 
@@ -81,7 +79,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
 
-        resetToInitialState();
+        setToInitialState();
     }
 
 
@@ -149,31 +147,6 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
     }
 
     /**
-     * Return the collection of outgoing vertices that expand this vertex with a particular base.
-     *
-     * @param v original vertex.
-     * @param b expanding base.
-     * @return never null, but perhaps an empty set. You cannot assume that you can modify the result.
-     */
-    @VisibleForTesting
-    Set<MultiDeBruijnVertex> getNextVertices(final MultiDeBruijnVertex v, final byte b) {
-        Utils.nonNull(v, "the input vertex cannot be null");
-        Utils.validateArg(vertexSet().contains(v), "the vertex must be present in the graph");
-        final List<MultiDeBruijnVertex> result = new LinkedList<>();
-        for (final MultiDeBruijnVertex w : outgoingVerticesOf(v)) {
-            if (w.getSuffix() == b) {
-                result.add(w);
-            }
-        }
-        switch (result.size()) {
-            case 0: return Collections.emptySet();
-            case 1: return Collections.singleton(result.get(0));
-            default:
-                    return new HashSet<>(result);
-        }
-    }
-
-    /**
      * Find vertex and its position in seqForKmers where we should start assembling seqForKmers
      *
      * @param seqForKmers the sequence we want to thread into the graph
@@ -203,12 +176,12 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * @param kmer the query kmer.
      * @return {@code true} if we can start thread the sequence at this kmer, {@code false} otherwise.
      */
-    protected boolean isThreadingStart(final Kmer kmer, final boolean startThreadingOnlyAtExistingVertex) {
-        Utils.nonNull(kmer);
-        return startThreadingOnlyAtExistingVertex ? uniqueKmers.containsKey(kmer) : !nonUniqueKmers.contains(kmer);
-    }
+    protected abstract boolean isThreadingStart(final Kmer kmer, final boolean startThreadingOnlyAtExistingVertex);
 
-    protected abstract void resetToInitialState();
+    /**
+     * Perform any necessary steps in the constructor.
+     */
+    protected abstract void setToInitialState();
 
     /**
      * Add the all bases in sequence to the graph
@@ -250,16 +223,10 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      */
     private void addSequence(final String seqName, final String sampleName, final byte[] sequence, final int start, final int stop, final int count, final boolean isRef) {
         // note that argument testing is taken care of in SequenceForKmers
-        if ( alreadyBuilt ) {
-            throw new IllegalStateException("Graph already built");
-        }
+        Utils.validate(!alreadyBuilt, "Attempting to add sequence to a graph that has already been built");
 
         // get the list of sequences for this sample
-        List<SequenceForKmers> sampleSequences = pending.get(sampleName);
-        if ( sampleSequences == null ) { // need to create
-            sampleSequences = new LinkedList<>();
-            pending.put(sampleName, sampleSequences);
-        }
+        List<SequenceForKmers> sampleSequences = pending.computeIfAbsent(sampleName, s -> new LinkedList<>());
 
         // add the new sequence to the list of sequences for sample
         sampleSequences.add(new SequenceForKmers(seqName, sequence, start, stop, count, isRef));
@@ -270,12 +237,12 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * @param seqForKmers a non-null sequence
      */
     protected void threadSequence(final SequenceForKmers seqForKmers) {
-        final int uniqueStartPos = findStart(seqForKmers);
-        if ( uniqueStartPos == -1 ) {
+        final int startPos = findStart(seqForKmers);
+        if ( startPos == -1 ) {
             return;
         }
 
-        final MultiDeBruijnVertex startingVertex = getOrCreateKmerVertex(seqForKmers.sequence, uniqueStartPos);
+        final MultiDeBruijnVertex startingVertex = getOrCreateKmerVertex(seqForKmers.sequence, startPos);
 
         // increase the counts of all edges incoming into the starting vertex supported by going back in sequence
         if (INCREASE_COUNTS_BACKWARDS) {
@@ -298,7 +265,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
 
         // loop over all of the bases in sequence, extending the graph by one base at each point, as appropriate
         MultiDeBruijnVertex vertex = startingVertex;
-        for ( int i = uniqueStartPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
+        for ( int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
             vertex = extendChainByOne(vertex, seqForKmers.sequence, i, seqForKmers.count, seqForKmers.isRef);
             if ( seqForKmers.isRef ) {
                  referencePath.add(vertex);
@@ -332,7 +299,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         }
 
         // Capture the set of non-unique kmers for the given kmer size (if applicable)
-        nonUniqueKmers = determineNonUniques(kmerSize);
+        preprocessReadsIfNecessary();
 
         if ( DEBUG_NON_UNIQUE_CALC ) {
             ReadThreadingGraph.logger.info("using " + kmerSize + " kmer size for this assembly with the following non-uniques");
@@ -356,10 +323,13 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         // clear
         removePendingSequencesIfNecessary();
         alreadyBuilt = true;
-        for (final MultiDeBruijnVertex v : uniqueKmers.values()) {
+        for (final MultiDeBruijnVertex v : kmerToVertexMap.values()) {
             v.setAdditionalInfo(v.getAdditionalInfo() + '+');
         }
     }
+
+    // perform any necessary preprocessing on the graph (such as non-unique kmer determination) before the graph is constructed
+    protected abstract void preprocessReadsIfNecessary();
 
     protected abstract void removePendingSequencesIfNecessary();
 
@@ -369,7 +339,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         if (result) {
             final byte[] sequence = V.getSequence();
             final Kmer kmer = new Kmer(sequence);
-            uniqueKmers.remove(kmer);
+            kmerToVertexMap.remove(kmer);
         }
         return result;
     }
@@ -862,8 +832,6 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         return true;
     }
 
-    protected abstract Set<Kmer> determineNonUniques(int kmerSize);
-
     private void increaseCountsInMatchedKmers(final SequenceForKmers seqForKmers,
                                               final MultiDeBruijnVertex vertex,
                                               final byte[] originalKmer,
@@ -891,7 +859,7 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      */
     private MultiDeBruijnVertex getOrCreateKmerVertex(final byte[] sequence, final int start) {
         final Kmer kmer = new Kmer(sequence, start, kmerSize);
-        final MultiDeBruijnVertex vertex = getUniqueKmerVertex(kmer, true);
+        final MultiDeBruijnVertex vertex = getKmerVertex(kmer, true);
         return ( vertex != null ) ? vertex : createVertex(kmer);
     }
 
@@ -899,20 +867,18 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
      * Get the unique vertex for kmer, or null if not possible.
      *
      * @param allowRefSource if true, we will allow kmer to match the reference source vertex
-     * @return a vertex for kmer, or null if it's not unique
+     * @return a vertex for kmer, or null (either because it doesn't exist or is non-unique for graphs that have such a distinction)
      */
-    private MultiDeBruijnVertex getUniqueKmerVertex(final Kmer kmer, final boolean allowRefSource) {
+    protected MultiDeBruijnVertex getKmerVertex(final Kmer kmer, final boolean allowRefSource) {
         if ( ! allowRefSource && kmer.equals(refSource) ) {
             return null;
         }
 
-        return uniqueKmers.get(kmer);
+        return kmerToVertexMap.get(kmer);
     }
 
     /**
-     * Create a new vertex for kmer.  Add it to the uniqueKmers map if appropriate.
-     *
-     * kmer must not have a entry in unique kmers, or an error will be thrown
+     * Create a new vertex for kmer.  Add it to the kmerToVertexMap map if appropriate.
      *
      * @param kmer the kmer we want to create a vertex for
      * @return the non-null created vertex
@@ -926,15 +892,18 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
         if ( vertexSet().size() != prevSize + 1) {
             throw new IllegalStateException("Adding vertex " + newVertex + " to graph didn't increase the graph size");
         }
-
-        // add the vertex to the unique kmer map, if it is in fact unique
-        if ( ! nonUniqueKmers.contains(kmer) && ! uniqueKmers.containsKey(kmer) ) // TODO -- not sure this last test is necessary
-        {
-            uniqueKmers.put(kmer, newVertex);
-        }
+        trackKmer(kmer, newVertex);
 
         return newVertex;
     }
+
+    /**
+     * Define the behavior for how the graph should keep track of a potentially new kmer.
+     *
+     * @param kmer (potentially) new kmer to track
+     * @param newVertex corresponding vertex for that kmer
+     */
+    protected abstract void trackKmer(Kmer kmer, MultiDeBruijnVertex newVertex);
 
     /**
      * Workhorse routine of the assembler.  Given a sequence whose last vertex is anchored in the graph, extend
@@ -962,17 +931,16 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
 
         // none of our outgoing edges had our unique suffix base, so we check for an opportunity to merge back in
         final Kmer kmer = new Kmer(sequence, kmerStart, kmerSize);
-        final MultiDeBruijnVertex uniqueMergeVertex = getUniqueKmerVertex(kmer, false);
+        final MultiDeBruijnVertex mergeVertex = getNextKmerVertexForChainExtension(kmer, isRef, prevVertex);
 
-        if ( isRef && uniqueMergeVertex != null ) {
-            throw new IllegalStateException("Found a unique vertex to merge into the reference graph " + prevVertex + " -> " + uniqueMergeVertex);
-        }
-
-        // either use our unique merge vertex, or create a new one in the chain
-        final MultiDeBruijnVertex nextVertex = uniqueMergeVertex == null ? createVertex(kmer) : uniqueMergeVertex;
+        // either use our merge vertex, or create a new one in the chain
+        final MultiDeBruijnVertex nextVertex = mergeVertex == null ? createVertex(kmer) : mergeVertex;
         addEdge(prevVertex, nextVertex, ((MyEdgeFactory)getEdgeFactory()).createEdge(isRef, count));
         return nextVertex;
     }
+
+    // get the next kmerVertex for ChainExtension and validate if necessary.
+    protected abstract MultiDeBruijnVertex getNextKmerVertexForChainExtension(final Kmer kmer, final boolean isRef, final MultiDeBruijnVertex prevVertex);
 
     /**
      * Add a read to the sequence graph.  Finds maximal consecutive runs of bases with sufficient quality
@@ -1008,18 +976,12 @@ public abstract class ReadThreadingGraphInterface extends BaseGraph<MultiDeBruij
 
     protected abstract boolean baseIsUsableForAssembly(byte base, byte qual);
 
-    /**
-     * Get the set of non-unique kmers in this graph.  For debugging purposes
-     * @return a non-null set of kmers
-     */
-    @VisibleForTesting
-    Set<Kmer> getNonUniqueKmers() {
-        return nonUniqueKmers;
-    }
+    // Method that will be called immediately before haplotype finding in the event there are alteations that must be made to the graph based on implementation
+    public abstract void postProcessForHaplotypeFinding(File debugGraphOutputPath, Locatable refHaplotype);
 
     @Override
     public MultiDeBruijnVertex findKmer(final Kmer k) {
-        return uniqueKmers.get(k);
+        return kmerToVertexMap.get(k);
     }
 
     protected enum TraversalDirection {

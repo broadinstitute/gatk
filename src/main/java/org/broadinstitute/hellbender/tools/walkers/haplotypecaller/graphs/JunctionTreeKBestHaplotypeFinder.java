@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -13,22 +14,19 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     public static final int DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED = 2;
     public static final int DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE = 7;
     public static final int DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH = 10;
-    private int weightThresholdToUse = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
+    private int weightThreshold = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
-    Map<V, List<E>> contiguousSequences = new HashMap<>();
+    Map<V, List<E>> graphKmerChainCache = new HashMap<>();
 
     // Graph to be operated on, in this case cast as an JunctionTreeLinkedDeBruinGraph
     JunctionTreeLinkedDeBruinGraph junctionTreeLinkedDeBruinGraph;
 
     public JunctionTreeKBestHaplotypeFinder(final BaseGraph<V, E> graph, final Set<V> sources, Set<V> sinks, final int branchWeightThreshold) {
         super(sinks, sources, graph);
-        if (graph instanceof JunctionTreeLinkedDeBruinGraph) {
-            junctionTreeLinkedDeBruinGraph = (JunctionTreeLinkedDeBruinGraph) graph;
-        } else {
-            throw new RuntimeException("ExperimentalKBesthaplotypeFinder requires an JunctionTreeLinkedDeBruinGraph be provided");
-        }
-        Utils.validate(weightThresholdToUse > 0, "Pruning Weight Threshold must be a positive number greater than 0");
+        Utils.validate(graph instanceof JunctionTreeLinkedDeBruinGraph, "JunctionTreeKBestHaplotypeFinder requires an JunctionTreeLinkedDeBruinGraph be provided");
+        junctionTreeLinkedDeBruinGraph = (JunctionTreeLinkedDeBruinGraph) graph;
+        ParamUtils.isPositive(weightThreshold, "Pruning Weight Threshold must be a positive number greater than 0");
     }
 
     /**
@@ -52,19 +50,17 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
         this(graph, graph.getReferenceSourceVertex(), graph.getReferenceSinkVertex());
     }
 
-    // We want to accept graphs with cycles at this stage if we think they are still resolvable
     @Override
-    protected BaseGraph<V, E> removeCyclesIfNecessary(BaseGraph<V, E> graph, Set<V> sources, Set<V> sinks) {
-        return graph;
+    public boolean keepCycles() {
+        return true;
     }
 
     @VisibleForTesting
-    public JunctionTreeKBestHaplotypeFinder<V, E> setWeightThresholdToUse(final int outgoingWeight) {
-        Utils.validate(weightThresholdToUse > 0, "Pruning Weight Threshold must be a positive number greater than 0");
-        weightThresholdToUse = outgoingWeight;
+    public JunctionTreeKBestHaplotypeFinder<V, E> setWeightThreshold(final int outgoingWeight) {
+        Utils.validate(weightThreshold > 0, "Pruning Weight Threshold must be a positive number greater than 0");
+        weightThreshold = outgoingWeight;
         return this;
     }
-
 
     /**
      * The primary engine for finding haplotypes based on junction trees.
@@ -109,12 +105,12 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             Set<E> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
 
             // Check if we have cached the current vertex in a contiguous sequence
-            final List<E> chain = contiguousSequences.computeIfAbsent(vertexToExtend, k -> new ArrayList<>());
+            final List<E> chain = graphKmerChainCache.computeIfAbsent(vertexToExtend, k -> new ArrayList<>());
             // if not, step forward until a vertex meets one of conditions (1), (2), or (3) are met
             if (chain.isEmpty()){
                 // Keep going until we reach a fork, reference sink, or fork
                 while ( outgoingEdges.size() == 1 && // Case (2)
-                        junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) == null && // Case (1)
+                        !junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend).isPresent() && // Case (1)
                         !sinks.contains(vertexToExtend))// Case (3)
                     {
                     final E edge = outgoingEdges.iterator().next();
@@ -127,7 +123,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                     outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
                 }
                 // Cache the chain result
-                contiguousSequences.put(pathToExtend.getLastVertex(), chain);
+                graphKmerChainCache.put(pathToExtend.getLastVertex(), chain);
 
             } else {
                 // We have already expanded this part of the graph, use it.
@@ -141,15 +137,11 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             // code to decide what to do at that interesting node
             ////////////////////////////////////////////////////////////
             // In the event we have a junction tree on top of a vertex with outDegree > 1, we add this first before we traverse paths
-            if ( junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend) != null) { //TODO make the condition for this actually based on the relevant junction tree
-                // TODO chain can be null but we still need to inherit a thing, probably happens whenever we pick up a tree.
-                // ignore starting junction tree
-                pathToExtend.addJunctionTree(junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend));
-            }
+            junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) vertexToExtend).ifPresent(pathToExtend::addJunctionTree);
 
             //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat
             // If we are at a reference end then we close out the path
-            if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(weightThresholdToUse)) {
+            if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(weightThreshold)) {
                 //TODO this will probably be resolved using a junction tree on that node and treating it as an edge to extend
                 //todo the proposal here would be to check if there is an active tree left for us at this point and if so keep going
                 if (chain.isEmpty()) {
@@ -162,7 +154,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             // We must be at a point where the path diverges, use junction trees to resolve if possible
             if (outgoingEdges.size() > 1) {
-                List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, outgoingEdges, weightThresholdToUse);
+                List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, outgoingEdges, weightThreshold);
                 if (jTPaths.isEmpty() && !sinks.contains(vertexToExtend)) {
 //                    throw new GATKException("Found no path based on the junction trees or exisiting paths, this should not have happened");
                     System.out.println("Found nothing Queue has this many: "+queue.size()+"\nPath that failed to extend was junction tree: "+pathToExtend.getVertices());
@@ -172,6 +164,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             // Otherwise just take the next node forward
             } else {
                 // If there are no outgoing edges from this node, then just kill this branch from the queue
+                // NOTE: this branch in the future might be responsible for dangling end merging
                 if (outgoingEdges.size() > 0) {
                     //TODO evaluate the expense of asking this quesion, there are ways to mitigate the cost. This particuar case is almost always triggered
                     // Defensive check, if we see the same vertex

@@ -3,17 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.ArrayUtils;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -31,7 +27,7 @@ import java.util.stream.Collectors;
  * - Kmers are not Zipped together to form a SeqGraph
  * - The reference path is stored in its entirety rather than being calculated on the fly
  *
- * For ease of debugging, this graph supports the method {@link #printSimplifiedGraph()} which generates a SequenceGraph and
+ * For ease of debugging, this graph supports the method {@link #printSimplifiedGraph(File, int)}} which generates a SequenceGraph and
  * adds the junction trees to the output .dot file.
  */
 public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface {
@@ -39,9 +35,10 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
 
-    private final OneShotLogger oneShotDanglingTailLogger = new OneShotLogger(this.getClass());
-
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
+
+    // TODO should this be constructed here or elsewhere
+    private Set<Kmer> kmers = new HashSet<>();
 
     public JunctionTreeLinkedDeBruinGraph(int kmerSize) {
         this(kmerSize, false, (byte)6, 1);
@@ -62,10 +59,10 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
      * @return the position of the starting vertex in seqForKmer, or -1 if it cannot find one
      */
 
-    protected int findStartForJuncitonThreading(final SequenceForKmers seqForKmers) {
+    protected int findStartForJunctionThreading(final SequenceForKmers seqForKmers) {
         for ( int i = seqForKmers.start; i < seqForKmers.stop - kmerSize; i++ ) {
             final Kmer kmer1 = new Kmer(seqForKmers.sequence, i, kmerSize);
-            if ( isJTStart(kmer1) ) {
+            if ( kmerToVertexMap.containsKey(kmer1) ) {
                 return i;
             }
         }
@@ -74,12 +71,17 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     }
 
     @Override
-    protected void resetToInitialState() {
+    protected void setToInitialState() {
         // We don't clear pending here in order to later build the read threading
-        nonUniqueKmers = null;
-        uniqueKmers.clear();
+        kmerToVertexMap.clear();
         refSource = null;
         alreadyBuilt = false;
+    }
+
+    @Override
+    // We don't need to track non-uniques here so this is a no-op
+    protected void preprocessReadsIfNecessary() {
+        return;
     }
 
     @Override
@@ -94,27 +96,17 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         return false;
     }
 
-
     /**
-     * Compute the smallest kmer size >= minKmerSize and <= maxKmerSize that has no non-unique kmers
-     * among all sequences added to the current graph.  Will always return a result for maxKmerSize if
-     * all smaller kmers had non-unique kmers.
+     * Checks whether a kmer can be the threading start based on the current threading start location policy.
      *
-     * @param kmerSize the kmer size to check for non-unique kmers of
-     * @return a non-null NonUniqueResult
-     */
-    @Override
-    protected Set<Kmer> determineNonUniques(final int kmerSize) {
-        return Collections.emptySet();
-    }
-
-    /**
-     * In this version of the graph, we treat all kmers as valid starts
+     * @see #setThreadingStartOnlyAtExistingVertex(boolean)
+     *
      * @param kmer the query kmer.
-     * @return
+     * @return {@code true} if we can start thread the sequence at this kmer, {@code false} otherwise.
      */
-    protected boolean isJTStart(final Kmer kmer) {
-        return uniqueKmers.containsKey(kmer);
+    protected boolean isThreadingStart(final Kmer kmer, final boolean startThreadingOnlyAtExistingVertex) {
+        Utils.nonNull(kmer);
+        return !startThreadingOnlyAtExistingVertex || kmers.contains(kmer);
     }
 
     /**
@@ -129,45 +121,22 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     protected List<MultiDeBruijnVertex> getReferencePath(final MultiDeBruijnVertex start,
                                                          final TraversalDirection direction,
                                                          final Optional<MultiSampleEdge> blacklistedEdge) {
-        return direction == TraversalDirection.downwards ? referencePath : Lists.reverse(referencePath);
+        if ( direction == TraversalDirection.downwards ) {
+            return getReferencePathForwardFromKmer(start, blacklistedEdge);
+        } else {
+            return getReferencePathBackwardsForKmer(start);
+        }
     }
 
-
-    /**
-     * Workhorse routine of the assembler.  Given a sequence whose last vertex is anchored in the graph, extend
-     * the graph one bp according to the bases in sequence.
-     *
-     * @param prevVertex a non-null vertex where sequence was last anchored in the graph
-     * @param sequence the sequence we're threading through the graph
-     * @param kmerStart the start of the current kmer in graph we'd like to add
-     * @param count the number of observations of this kmer in graph (can be > 1 for GGA)
-     * @param isRef is this the reference sequence?
-     * @return a non-null vertex connecting prevVertex to in the graph based on sequence
-     */
+    // Since there are no non-unique kmers to worry about we just add it to our map
     @Override
-    protected MultiDeBruijnVertex extendChainByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
-        final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
-        //final int countToUse = isRef ? 0 : count; //NOTE we do not count reference multiplicity in the graph now
-        final int countToUse = count; // Adding reference weight to paths back in...
+    protected void trackKmer(Kmer kmer, MultiDeBruijnVertex newVertex) {
+        kmerToVertexMap.putIfAbsent(kmer, newVertex);
+    }
 
-        final int nextPos = kmerStart + kmerSize - 1;
-        for ( final MultiSampleEdge outgoingEdge : outgoingEdges ) {
-            final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
-            if ( target.getSuffix() == sequence[nextPos] ) {
-                // we've got a match in the chain, so simply increase the count of the edge by 1 and continue
-                outgoingEdge.incMultiplicity(countToUse);
-                return target;
-            }
-        }
-
-        // none of our outgoing edges had our unique suffix base, so we check for an opportunity to merge back in
-        final Kmer kmer = new Kmer(sequence, kmerStart, kmerSize);
-        final MultiDeBruijnVertex mkergeVertex = uniqueKmers.get(kmer);
-
-        // either use our unique merge vertex, or create a new one in the chain
-        final MultiDeBruijnVertex nextVertex = mkergeVertex == null ? createVertex(kmer) : mkergeVertex;
-        addEdge(prevVertex, nextVertex, ((MyEdgeFactory)getEdgeFactory()).createEdge(isRef, countToUse));
-        return nextVertex;
+    @VisibleForTesting
+    List<MultiDeBruijnVertex> getReferencePath(final TraversalDirection direction) {
+        return Collections.unmodifiableList(direction == TraversalDirection.downwards ? referencePath : Lists.reverse(referencePath));
     }
 
     @Override
@@ -185,23 +154,20 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
      * @param kmerStart index of where the current kmer starts
      * @return The next vertex in the sequence. Null if the corresponding edge doesn't exist.
      */
-    protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, List<ThreadingNode> nodesToExtend) {
+    protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final JunctionTreeThreadingHelper nodesHelper) {
         final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
 
         final int nextPos = kmerStart + kmerSize - 1;
         for (final MultiSampleEdge outgoingEdge : outgoingEdges) {
             final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
             if (target.getSuffix() == sequence[nextPos]) {
-                // Only want to create a new tree if we walk into a node with
+                // Only want to create a new tree if we walk into a node that meets our junction tree criteria
                 // NOTE: we do this deciding on our path
-                if (vertexWarrantsJunctionTree(prevVertex)) {
-                    nodesToExtend.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree()).getAndIncrementRootNode());
-                }
+                nodesHelper.addTreeIfNecessary(prevVertex);
 
                 // If this node has an out-degree > 1, add the edge we took to existing trees
                 if (outgoingEdges.size() != 1) {
-                    // TODO, make an object to encapsulate this operation better
-                    addEdgeToJunctionTreeNodes(nodesToExtend, outgoingEdge);
+                    nodesHelper.addEdgeToJunctionTreeNodes(outgoingEdge);
                 }
 
                 return target;
@@ -209,63 +175,6 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         }
         return null;
     }
-
-    // Helper method that adds a single edge to all of the nodes in nodesToExtend.
-    private static void addEdgeToJunctionTreeNodes(List<ThreadingNode> nodesToExtend, MultiSampleEdge outgoingEdge) {
-        List<ThreadingNode> newNodes = nodesToExtend.stream().map(n -> n.addEdge(outgoingEdge)).collect(Collectors.toList());
-        nodesToExtend.clear();
-        nodesToExtend.addAll(newNodes);
-    }
-
-    // Helper method used to determine whether a vertex meets the criteria to hold a junction tree
-    // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
-    // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
-    private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
-
-        for (MultiSampleEdge edge : outgoingEdgesOf(vertex)) {
-            if (inDegreeOf(getEdgeTarget(edge)) > 1) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //TODO this is a placeholder for when these mechanisms should be more smart, as of right now I can live with the consequnces
-    //TODO the primary issue with this approach is the problem with choosing reference paths for smith waterman...
-
-    /**
-     * Generates the CIGAR string from the Smith-Waterman alignment of the dangling path (where the
-     * provided vertex is the source) and the reference path.
-     *
-     * @param aligner
-     * @param vertex   the source of the dangling head
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
-     * @param recoverAll recover even branches with forks
-     * @return a SmithWaterman object which can be null if no proper alignment could be generated
-     */
-    @VisibleForTesting
-    @Override
-    DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
-
-        // find the highest common descendant path between vertex and the reference source if available
-        final List<MultiDeBruijnVertex> altPath = findPathDownwardsToHighestCommonDescendantOfReference(vertex, pruneFactor, !recoverAll);
-        if ( altPath == null || isRefSink(altPath.get(0)) || altPath.size() < minDanglingBranchLength + 1 ) // add 1 to include the LCA
-        {
-            return null;
-        }
-
-        // now get the reference path from the LCA
-        final List<MultiDeBruijnVertex> refPath = getReferencePathBackwardsForKmer(altPath.get(0));
-
-        // create the Smith-Waterman strings to use
-        final byte[] refBases = getBasesForPath(refPath, true);
-        final byte[] altBases = getBasesForPath(altPath, true);
-
-        // run Smith-Waterman to determine the best alignment (and remove trailing deletions since they aren't interesting)
-        final SmithWatermanAlignment alignment = aligner.align(refBases, altBases, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.LEADING_INDEL);
-        return new DanglingChainMergeHelper(altPath, refPath, altBases, refBases, AlignmentUtils.removeTrailingDeletions(alignment.getCigar()));
-    }
-
 
     /**
      * NOTE: we override the old behavior here to allow for looping/nonunique references to be handled properly
@@ -285,39 +194,6 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     @Override
     public final MultiDeBruijnVertex getReferenceSinkVertex( ) {
         return referencePath != null && !referencePath.isEmpty()? referencePath.get(referencePath.size() - 1) : null;
-    }
-
-    /**
-     * Generates the CIGAR string from the Smith-Waterman alignment of the dangling path (where the
-     * provided vertex is the sink) and the reference path.
-     *
-     * @param aligner
-     * @param vertex   the sink of the dangling chain
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
-     * @param recoverAll recover even branches with forks
-     * @return a SmithWaterman object which can be null if no proper alignment could be generated
-     */
-    @Override
-    DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
-        final int minTailPathLength = Math.max(1, minDanglingBranchLength); // while heads can be 0, tails absolutely cannot
-
-        // find the lowest common ancestor path between this vertex and the diverging master path if available
-        final List<MultiDeBruijnVertex> altPath = findPathUpwardsToLowestCommonAncestor(vertex, pruneFactor, !recoverAll);
-        if ( altPath == null || isRefSource(altPath.get(0)) || altPath.size() < minTailPathLength + 1 ) // add 1 to include the LCA
-        {
-            return null;
-        }
-
-        // now get the reference path from the LCA
-        final List<MultiDeBruijnVertex> refPath = getReferencePathForwardFromKmer(altPath.get(0), Optional.ofNullable(getHeaviestIncomingEdge(altPath.get(1))));
-
-        // create the Smith-Waterman strings to use
-        final byte[] refBases = getBasesForPath(refPath, false);
-        final byte[] altBases = getBasesForPath(altPath, false);
-
-        // run Smith-Waterman to determine the best alignment (and remove trailing deletions since they aren't interesting)
-        final SmithWatermanAlignment alignment = aligner.align(refBases, altBases, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.LEADING_INDEL);
-        return new DanglingChainMergeHelper(altPath, refPath, altBases, refBases, AlignmentUtils.removeTrailingDeletions(alignment.getCigar()));
     }
 
     /**
@@ -380,7 +256,6 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         throw new UnsupportedOperationException("Cannot construct a sequence graph using JunctionTreeLinkedDeBruinGraph");
     }
 
-
     /**
      * Print out the graph in the dot language for visualization for the graph after merging the graph into a seq graph.
      * Junction trees will naively add junction trees to the corresponding zipped SeqGraph node for its root vertex.
@@ -388,6 +263,7 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
      * NOTE: this is intended for debugging complex assembly graphs while preserving junction tree data.
      * @param destination File to write to
      */
+    @VisibleForTesting
     public final void printSimplifiedGraph(final File destination, final int pruneFactor) {
         try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
             printSimplifiedGraph(stream, true, pruneFactor);
@@ -423,15 +299,11 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
                 }
                 return output;
             }
+            // Helper class to be used for zipping linear chains for easy print outputting
             private Map<SeqVertex, SeqVertex> zipLinearChainsWithVertexMapping() {
                 Map<SeqVertex, SeqVertex> vertexMapping = new HashMap<>();
                 // create the list of start sites [doesn't modify graph yet]
-                final Collection<SeqVertex> zipStarts = new LinkedList<>();
-                for ( final SeqVertex source : vertexSet() ) {
-                    if ( isLinearChainStart(source) ) {
-                        zipStarts.add(source);
-                    }
-                }
+                final Collection<SeqVertex> zipStarts = vertexSet().stream().filter(this::isLinearChainStart).collect(Collectors.toList());
 
                 if ( zipStarts.isEmpty() ) // nothing to do, as nothing could start a chain
                 {
@@ -522,9 +394,33 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         return bytes;
     }
 
+    @Override
+    // since we don't have to validate unique vertex merging we just find the vertex and pass
+    protected MultiDeBruijnVertex getNextKmerVertexForChainExtension(final Kmer kmer, final boolean isRef, final MultiDeBruijnVertex prevVertex) {
+        return kmerToVertexMap.get(kmer);
+    }
+
+    /**
+     * Generate the junction trees and prune them (optionally printing the graph stages as output)
+     *
+     * @param debugGraphOutputPath path for graph output files
+     * @param refHaplotype ref haplotype location
+     */
+    public void postProcessForHaplotypeFinding(final File debugGraphOutputPath, final Locatable refHaplotype) {
+        generateJunctionTrees();
+        if (debugGraphTransformations) {
+            printGraph(new File(debugGraphOutputPath, refHaplotype + "-sequenceGraph." + kmerSize + ".0.4.JT_unpruned.dot"), 10000);
+        }
+        pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
+        if (debugGraphTransformations) {
+            printGraph(new File(debugGraphOutputPath, refHaplotype + "-sequenceGraph." + kmerSize + ".0.5.JT_pruned.dot"), 10000);
+        }
+    }
+
+
     // Generate threading trees
     public void generateJunctionTrees() {
-        buildGraphIfNecessary();
+        Utils.validate(alreadyBuilt, "Assembly graph has not been constructed, please call BuildGraphIfNecessary() before trying to thread reads to the graph");
         // Adding handle vertex to support symbolic end alleles
         addVertex(SYMBOLIC_END_VETEX);
         SYMBOLIC_END_EDGE = addEdge(getReferenceSinkVertex(), SYMBOLIC_END_VETEX);
@@ -557,15 +453,15 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         }
 
         // List we will use to keep track of sequences
-        List<ThreadingNode> nodesUpdated = new ArrayList<>(3);
+        JunctionTreeThreadingHelper nodeHelper = new JunctionTreeThreadingHelper();
 
         // Find the first kmer in the read that exists on the graph
-        final int startPos = findStartForJuncitonThreading(seqForKmers);
+        final int startPos = findStartForJunctionThreading(seqForKmers);
         if ( startPos == -1 ) {
             return;
         }
 
-        final MultiDeBruijnVertex startingVertex = uniqueKmers.get(new Kmer(seqForKmers.sequence, startPos, kmerSize));
+        final MultiDeBruijnVertex startingVertex = kmerToVertexMap.get(new Kmer(seqForKmers.sequence, startPos, kmerSize));
 
         // loop over all of the bases in sequence, extending the graph by one base at each point, as appropriate
         MultiDeBruijnVertex lastVertex = startingVertex;
@@ -573,13 +469,13 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         for ( int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
             final MultiDeBruijnVertex vertex;
             if (kmersPastSinceLast == 0) {
-                vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodesUpdated);
+                vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodeHelper);
             } else {
                 Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
-                vertex = uniqueKmers.get(kmer);
+                vertex = kmerToVertexMap.get(kmer);
                 // TODO this might cause problems
                 if (vertex != null) {
-                   nodesUpdated.addAll(attemptToResolveThreadingBetweenVertexes(lastVertex, nodesUpdated, vertex));
+                   attemptToResolveThreadingBetweenVertexes(lastVertex, nodeHelper, vertex);
                 }
             }
             // If for whatever reason vertex = null, then we have fallen off the corrected graph so we don't update anything
@@ -593,7 +489,7 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
 
         // As a final step, if the last vetex happens to be the ref-stop vertex then we want to append a symbolic node to the junciton trees
         if (lastVertex == getReferenceSinkVertex()) {
-            addEdgeToJunctionTreeNodes(nodesUpdated, SYMBOLIC_END_EDGE);
+            nodeHelper.addEdgeToJunctionTreeNodes(SYMBOLIC_END_EDGE);
         }
     }
 
@@ -624,13 +520,13 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         return output;
     }
 
-    public ThreadingTree getJunctionTreeForNode(MultiDeBruijnVertex vertex) {
-        return readThreadingJunctionTrees.get(vertex);
+    public Optional<ThreadingTree> getJunctionTreeForNode(MultiDeBruijnVertex vertex) {
+        return Optional.ofNullable(readThreadingJunctionTrees.get(vertex));
     }
 
     // TODO this needs to be filled out and resolved
     // TODO as an extension, this should be made to intelligently pick nodes if there is a fork (possibly an expensive step)
-    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, List<ThreadingNode> threadingNodes, MultiDeBruijnVertex vertex) {
+    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, JunctionTreeThreadingHelper threadingNodes, MultiDeBruijnVertex vertex) {
         threadingNodes.clear(); // Clear the nodes currently as they might cause issues down the line.
         return Collections.emptyList();
     }
@@ -792,4 +688,37 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         }
     }
 
+    /**
+     * A convenient helper class designed to pull much of the direct interaction with junction trees in the threading code
+     * into a single place.
+     */
+    private class JunctionTreeThreadingHelper {
+        List<ThreadingNode> trackedNodes = new ArrayList<>(3);
+
+        // Helper method used to determine whether a vertex meets the criteria to hold a junction tree
+        // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
+        // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
+        private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
+            return outgoingEdgesOf(vertex).stream().anyMatch(edge -> inDegreeOf(getEdgeTarget(edge)) > 1);
+        }
+
+        // Helper method that adds a single edge to all of the nodes in nodesToExtend.
+        private void addEdgeToJunctionTreeNodes(final MultiSampleEdge outgoingEdge) {
+            List<ThreadingNode> newNodes = trackedNodes.stream().map(n -> n.addEdge(outgoingEdge)).collect(Collectors.toList());
+            trackedNodes.clear();
+            trackedNodes.addAll(newNodes);
+        }
+
+        // removes all of the nodes currently on the tree for safety if there are gaps in a reads traversal
+        private void clear() {
+            trackedNodes.clear();
+        }
+
+        // Adds a junction tree prevVertex if the vertex warrants a junciton tree
+        private void addTreeIfNecessary(MultiDeBruijnVertex prevVertex) {
+            if (vertexWarrantsJunctionTree(prevVertex)) {
+                trackedNodes.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree()).getAndIncrementRootNode());
+            }
+        }
+    }
 }
