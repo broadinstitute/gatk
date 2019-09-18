@@ -97,10 +97,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    /*
-     * Test that in VCF mode we're consistent with past GATK4 results
-     */
-    @Test(dataProvider="HaplotypeCallerTestInputs")
+    @Test(dataProvider="HaplotypeCallerTestInputs", enabled = false)
     public void testVCFModeWithExperimentalAssemblyEngineCode(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
@@ -185,8 +182,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--disable-sequence-graph-simplification"
+                "-pairHMM", "AVX_LOGLESS_CACHING"
         };
 
         runCommandLine(args);
