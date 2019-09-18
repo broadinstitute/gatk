@@ -188,7 +188,6 @@ public class EvoquerIntegrationTest extends CommandLineProgramTest {
                 .collect(Collectors.toList());
         Assert.assertEquals(variants.size(), 1);
 
-        //Spanning deletions don't work yet
-        //Assert.assertEquals(variants.get(0).getAlleles().toString(), "[G*, A, *]");
+        Assert.assertEquals(variants.get(0).getAlleles().toString(), "[G*, A, *]");
     }
 }

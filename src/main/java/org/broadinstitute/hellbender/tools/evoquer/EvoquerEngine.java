@@ -444,10 +444,7 @@ class EvoquerEngine {
                         unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 60));
                         break;
                     case "*":   // Spanning Deletion
-                        // naive approach
                         unmergedCalls.add(createVariantContextForSpanningDelete(sampleName, contig, currentPosition, refAllele));
-                        // if that doesn't work then we will need to keep a list of the samples with this spanning deletion and then after processing
-                        // all the samples at that postion see if that postition also had a variant and then muck with the indexes
                         break;
                     case "m":   // Missing
                         // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
