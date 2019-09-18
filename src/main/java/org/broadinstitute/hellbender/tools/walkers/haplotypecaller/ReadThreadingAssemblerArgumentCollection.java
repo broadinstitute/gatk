@@ -163,6 +163,13 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified de Bruijn graph", optional = true)
     public boolean disableSeqGraphConstruciton = false;
 
+    /**
+     * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the GraphBasedKBestHaplotypeFinder
+     */
+    @Hidden
+    @Argument(fullName="experimental-dangling-branch-recovery", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified debrujin graph", optional = true)
+    public boolean experimentalDanglingBranchRecoveryMode = false;
+
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
     public boolean debugAssembly;

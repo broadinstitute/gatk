@@ -97,6 +97,102 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testRecoveryOfAPathDroppedByJunctionTrees() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
+        String ref = "AAAACAC"+"C"+"ATGTGCGG"+"T"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
+
+        // A simple snip het
+        String read1 = "AAAACAC"+"T"+"CTGTGCGG"+"C"+"GGGTT"; // CGAC merges with the below read
+        String read2 =                "TGTGCGG"+"A"+"GGGTT"; // doesn't show up in the first graph
+
+        assembler.addSequence("reference", getBytes(ref), true);
+
+        assembler.addSequence("anonymous", getBytes(read1), false);
+        assembler.addSequence("anonymous", getBytes(read1), false);
+        assembler.addSequence("anonymous", getBytes(read1), false);
+
+        assembler.addSequence("anonymous", getBytes(read2), false);
+
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+
+        Assert.assertEquals(bestPaths.size(), 2);
+        Assert.assertEquals(bestPaths.get(0), read1);
+        Assert.assertEquals(bestPaths.get(1), "AAAACAC"+"T"+"C" + read2); //asserting that the front of read 1 was appended to read 2 for haplotype construction
+    }
+
+    @Test
+    // TODO this test should be updated if we decide to worry about recovering
+    public void testRecoveryOfAPathDroppedByJunctionTreeFailureDueToStillBeingUnreachable() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
+        String ref = "AAAACAC"+"C"+"ATGTGCGG"+"TTTAGAGAG"+"GGGTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
+
+        // A simple snip het
+        String read1 = "AAAACAC"+"T"+"CTGTGCGG"+"C"+"GGGTT"; // CGAC merges with the below read
+        String read2 =                    "TAGAGTG"+"GGGTT"; // creates a branch off of the uncovered reference path
+
+        assembler.addSequence("reference", getBytes(ref), true);
+
+        assembler.addSequence("anonymous", getBytes(read1), false);
+        assembler.addSequence("anonymous", getBytes(read1), false);
+        assembler.addSequence("anonymous", getBytes(read1), false);
+
+        assembler.addSequence("anonymous", getBytes(read2), false);
+
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+
+        Assert.assertEquals(bestPaths.size(), 1);
+        Assert.assertEquals(bestPaths.get(0), read1);
+    }
+
+    @Test
+    public void testRecoveryOfDroppedPathChoosingMostLikePathDespiteThatPathHavingAWorseScore() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        String ref =            "AAAACAC"+"C"+"ATGTGCGG"+"A"+"TTTAGAGAG"+"C"+"GGGTTCC"+"A"+"GAGAGATATA"+"C"+"GAGTTTTGTTT"; // the first site has an interesting graph structure and the second site is used to ensure the graph isinterestingg
+
+        String completePath1 =  "AAAACAC"+"T"+"ATGTGCGG"+"A"+"TTTAGAGAG"+"A"+"GGGTTCC"+"T"+"GAGAGATATA"+"C"+"GAGTTTTGTTT";
+        String completePath2 =  "AAAACAC"+"G"+"ATGTGCGG"+"A"+"TTTAGAGAG"+"A"+"GGGTTCC"+"A"+"GAGAGATATA"+"G"+"GAGTTTTGTTT";
+        String incompletePath =                "TGTGCGG"+"C"+"TTTAGAGAG"+"A"+"GGGTTCC"+"A"+"GAGAGATATA"+"G"+"GAGTTTTGTTT"; // njote that this point is a copy of path 2 after its first C variant
+
+        // Ensure that completePath1 will have the highest score by weighting it heavily
+        assembler.addSequence("reference", getBytes(ref), true);
+
+        assembler.addSequence("anonymous", getBytes(completePath1), false);
+        assembler.addSequence("anonymous", getBytes(completePath1), false);
+        assembler.addSequence("anonymous", getBytes(completePath1), false);
+        assembler.addSequence("anonymous", getBytes(completePath1), false);
+        assembler.addSequence("anonymous", getBytes(completePath1), false);
+
+        // followed by lower weight complete path 2
+        assembler.addSequence("anonymous", getBytes(completePath2), false);
+        assembler.addSequence("anonymous", getBytes(completePath2), false);
+        assembler.addSequence("anonymous", getBytes(completePath2), false);
+
+        // And the incomplete path
+        assembler.addSequence("anonymous", getBytes(incompletePath), false);
+        assembler.addSequence("anonymous", getBytes(incompletePath), false);
+
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+                .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
+
+
+        Assert.assertEquals(bestPaths.size(), 3);
+        Assert.assertEquals(bestPaths.get(0), completePath1);
+        Assert.assertEquals(bestPaths.get(1), completePath2);
+        Assert.assertEquals(bestPaths.get(2), "AAAACAC"+"G"+"A" + incompletePath); // asserting that path 2 (the most similar path) was used for the head of incomplete path
+    }
+
+    @Test
     // This test demonstrates a potential source of infinite looping, specifically the chain extension
     public void testDegernerateLoopingDanglingEndInChainGatheringCode() {
         final String ref = "GACACTCACGCACGGCC";
@@ -690,7 +786,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final Set<MultiDeBruijnVertex> ends = createVertices(graph, nEndNodes, middleBottom, null);
 
         final int expectedNumOfPaths = nStartNodes * nBranchesPerBubble * nEndNodes;
-        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> haplotypes = new JunctionTreeKBestHaplotypeFinder<>(graph, starts, ends, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE).findBestHaplotypes();
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> haplotypes = new JunctionTreeKBestHaplotypeFinder<>(graph, starts, ends, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, false).findBestHaplotypes();
         Assert.assertEquals(haplotypes.size(), expectedNumOfPaths);
         IntStream.range(1, haplotypes.size()).forEach(n -> Assert.assertTrue(haplotypes.get(n-1).score() >= haplotypes.get(n).score()));
     }
@@ -1099,4 +1195,84 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
         return path;
     }
+
+
+    @Test
+    public void testCreateMapOfPivotalEdgesInTopoglogicalOrderBasicExample() {
+        int readlength = 20;
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        String ref = "TAAACAAG"+"G"+"TTGGGTTCG"+"A"+"GCGGGGTTC"+"T"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
+        String alt1 = "TAAACAAG"+"T"+"TTGGGTTCG"+"G"+"GCGGGGTTC"+"A"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
+
+        // Generate some reads that do not span the entire active region
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        for (int i = 0; i + readlength < ref.length(); i++) {
+            assembler.addSequence("anonymous", getBytes(alt1.substring(i, i + readlength)), false);
+        }
+
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+
+        final JunctionTreeKBestHaplotypeFinder bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
+
+        LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
+        Iterator edgesInOrder = pivotalEdges.iterator();
+        ListIterator<String> expectedEdgeKmerTargetsFOrPivotalEdges = Arrays.asList(new String[]{"AACAAGT","GGTTCGG","GGGTTCA","CGAAGTC","TAATATG"}).listIterator();
+
+        // Asserting that the order of edges is as expected
+        Assert.assertEquals(pivotalEdges.size(), 5);
+        while (edgesInOrder.hasNext()) {
+            MultiSampleEdge nextEdge = (MultiSampleEdge)edgesInOrder.next();
+            String expectedKmerEdge = expectedEdgeKmerTargetsFOrPivotalEdges.next();
+            String nextTarget = assembler.getEdgeTarget(nextEdge).getSequenceString();
+            Assert.assertEquals(nextTarget, expectedKmerEdge);
+        }
+
+    }
+
+    @Test
+    // this test asserts that included in pivotal edges are edges that are only reachable by following uncovered reference path
+    public void testCreateMapOfPivotalEdgesInTopoglogicalOrderHiddenReferenceSequence() {
+        int readlength = 20;
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(7);
+        String ref =  "TAAACAAG"+"G"+"TTGGGTTCG"+"AGCGGT"+"CTCGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // Reference with 5 sites all separated by at least kmer size
+        String alt1 = "TAAACAAG"+"T"+"TTGGGTTCG"+"GGCGGA"+"CTCGAAGT"+"C"+"CTTGGTAATAT"+"G"+"GGGGGCCCC"; // Alt with different values for all sites
+        String alt2 =                        "AGCGGTCT"+"G"+"CGAAGT"+"T"+"CTTGGTAATAT"+"A"+"GGGGGCCCC"; // A snippet of reference sequence starting after an uncovered reference edge
+
+        // Generate some reads that do not span the entire active region
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        for (int i = 0; i + readlength < ref.length(); i++) {
+            assembler.addSequence("anonymous", getBytes(alt1.substring(i, i + readlength)), false);
+        }
+
+        for (int i = 0; i + readlength < alt2.length(); i++) {
+            assembler.addSequence("anonymous", getBytes(alt2.substring(i, i + readlength)), false);
+        }
+
+        assembler.buildGraphIfNecessary();
+        assembler.generateJunctionTrees();
+
+        final JunctionTreeKBestHaplotypeFinder bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
+
+        LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
+        Iterator edgesInOrder = pivotalEdges.iterator();
+        ListIterator<String> expectedEdgeKmerTargetsFOrPivotalEdges = Arrays.asList(new String[]{"AACAAGT","GGTTCGG", // edges corresoinding to the start of alt1 path
+                "CGGTCTG", // Edge corresponding to the G insertion (This would be dropped if we didn't include reference edges with no support in this calculation)
+                "CGAAGTC",
+                "TAATATA","TAATATG" // Edges correspoindg to the ref and alt respectively, the order is arbitrary because the shortest path is what is taken to determine distance
+        }).listIterator();
+
+        // Asserting that the order of edges is as expected
+        Assert.assertEquals(pivotalEdges.size(), 6);
+        while (edgesInOrder.hasNext()) {
+            MultiSampleEdge nextEdge = (MultiSampleEdge)edgesInOrder.next();
+            String expectedKmerEdge = expectedEdgeKmerTargetsFOrPivotalEdges.next();
+            String nextTarget = assembler.getEdgeTarget(nextEdge).getSequenceString();
+            Assert.assertEquals(nextTarget, expectedKmerEdge);
+        }
+
+    }
+
+
+
 }
