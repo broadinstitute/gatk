@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.2.0
+FROM lbergelson/gatk-base-ubuntu-19
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH
