@@ -453,12 +453,12 @@ public class BigQueryUtils {
         private void loadNextRow() {
             try {
                 if ( decoder != null && ! decoder.isEnd() ) {
-                    nextRow = datumReader.read(nextRow, decoder);
+                    nextRow = datumReader.read(null, decoder);
                 } else {
                     fetchNextAvroRows();
 
                     if ( decoder != null && ! decoder.isEnd() ) {
-                        nextRow = datumReader.read(nextRow, decoder);
+                        nextRow = datumReader.read(null, decoder);
                     } else {
                         nextRow = null; // end of traversal
                     }
