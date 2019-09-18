@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.genomicsdb.importer.GenomicsDBImporter;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
 
@@ -37,6 +38,36 @@ public class GenomicsDBUtils {
     private static final String GDB_TYPE_FLOAT = "float";
     private static final String GDB_TYPE_INT = "int";
 
+  /**
+   * See org.genomicsdb.importer.Constants for hardcoded allele-specific annotation fields to be
+   * treated as an array of int/float vectors. All other allele-specific fields that need to be treated
+   * as an array of int/float vectors will have to explicitly overridden in this method.
+   *
+   * @param importer
+   */
+  public static void updateImportProtobufMapping(GenomicsDBImporter importer) {
+      // Example code in case an allele-specific method has to overridden
+/*
+      GenomicsDBVidMapProto.VidMappingPB vidMapPB = importer.getProtobufVidMapping();
+      if (vidMapPB == null) {
+          return;
+      }
+
+      // In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
+      // Each GenomicsDBFieldInfo object contains information about a specific field in the
+      // GenomicsDB store
+      // We iterate over the list and create a field name to list index map
+      final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
+              getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+
+      //Fields that need to be treated as array of int/float vectors need to be updated via protobuf
+      vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+              GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM, true);
+
+      importer.updateProtobufVidMapping(vidMapPB);
+*/
+  }
+
     /**
      *
      * @param workspace path to the GenomicsDB workspace
@@ -53,7 +84,6 @@ public class GenomicsDBUtils {
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace)
                         .setReferenceGenome(genomicsDBOptions.getReference().toAbsolutePath().toString())
-                        .setVidMappingFile(vidmapJson)
                         .setCallsetMappingFile(callsetJson)
                         .setVcfHeaderFilename(vcfHeader)
                         .setProduceGTField(false)
@@ -127,6 +157,8 @@ public class GenomicsDBUtils {
             //C++ modules of GenomicsDB for this specific query. Other queries will continue to use the information
             //in the JSON file
             exportConfigurationBuilder.setVidMapping(vidMapPB);
+        } else {
+            exportConfigurationBuilder.setVidMappingFile(vidmapJson);
         }
 
         return exportConfigurationBuilder.build();
@@ -202,6 +234,15 @@ public class GenomicsDBUtils {
         return vidMapPB;
     }
 
+    public static GenomicsDBVidMapProto.VidMappingPB updateAlleleSpecificINFOFieldCombineOperation(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final String newCombineOperation) {
+        return updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, fieldName,
+                newCombineOperation, false);
+    }
+
     /**
      * Update vid Protobuf object with a new variable length descriptor, as for allele-specific annotations
      * @param vidMapPB input vid object
@@ -214,7 +255,8 @@ public class GenomicsDBUtils {
             final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
             final Map<String, Integer> fieldNameToIndexInVidFieldsList,
             final String fieldName,
-            final String newCombineOperation)
+            final String newCombineOperation,
+            final boolean isGenomicsDBImportOperation)
     {
         int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
                 ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
@@ -225,27 +267,28 @@ public class GenomicsDBUtils {
             GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder infoBuilder =
                     updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
 
-            GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
-                    GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
-            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
-            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
-            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM);
-            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
+            if (isGenomicsDBImportOperation && !infoBuilder.getVCFFieldCombineOperation().equals(newCombineOperation)) {
+                GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
+                        GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
+                lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
+                infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+                lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
+                infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+                infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM);
+                infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
+            }
 
             if (newCombineOperation.equals(HISTOGRAM_SUM)) {
-                //Each element of the vector is a tuple <float, int>
                 infoBuilder.addType(GDB_TYPE_FLOAT);
                 infoBuilder.addType(GDB_TYPE_INT);
                 infoBuilder.setVCFFieldCombineOperation(HISTOGRAM_SUM);
             } else {
-                infoBuilder.setVCFFieldCombineOperation(ELEMENT_WISE_SUM);
                 if (newCombineOperation.equals(ELEMENT_WISE_FLOAT_SUM)) {
                     infoBuilder.addType(GDB_TYPE_FLOAT);
-                } else if (newCombineOperation.equals(STRAND_BIAS_TABLE_COMBINE)) {
+                } else {
                     infoBuilder.addType(GDB_TYPE_INT);
                 }
+                infoBuilder.setVCFFieldCombineOperation(ELEMENT_WISE_SUM);
             }
 
             //Rebuild full vidMap

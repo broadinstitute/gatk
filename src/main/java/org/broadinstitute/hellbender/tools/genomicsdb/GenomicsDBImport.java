@@ -729,6 +729,10 @@ public final class GenomicsDBImport extends GATKTool {
         GenomicsDBImporter importer;
         try {
             importer = new GenomicsDBImporter(importConfig);
+            // See org.genomicsdb.importer.Constants for hardcoded allele-specific annotation fields to be treated
+            // as array of int/float vectors.
+            // Otherwise, modify importer directly from updateImportProtobufMapping
+            org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.updateImportProtobufMapping(importer);
             importer.executeImport(maxNumIntervalsToImportInParallel);
         } catch (final IOException e) {
             throw new UserException("Error initializing GenomicsDBImporter", e);
