@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
+import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -134,7 +135,7 @@ public final class ReadThreadingAssembler {
             correctedReads = assemblyRegion.getReads();
         }
 
-        final List<ReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
+        final List<ReadThreadingGraphInterface> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
         final AssemblyResultSet resultSet = new AssemblyResultSet();
         resultSet.setRegionForGenotyping(assemblyRegion);
@@ -143,7 +144,7 @@ public final class ReadThreadingAssembler {
         final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
-        final Map<ReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
+        final Map<ReadThreadingGraphInterface,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
         for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
@@ -156,6 +157,7 @@ public final class ReadThreadingAssembler {
                     nonRefSeqGraphs.add(result.getSeqGraph());
                 } else {
                     sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
+                    result.getThreadingGraph().postProcessForHaplotypeFinding(debugGraphOutputPath, refHaplotype.getLocation());
                     // add it to graphs with meaningful non-reference features
                     assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
                     nonRefRTGraphs.add(result.getThreadingGraph());
@@ -196,9 +198,13 @@ public final class ReadThreadingAssembler {
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
             for (final KBestHaplotype<V, E> kBestHaplotype :
-                    new KBestHaplotypeFinder<V, E>(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
+                    (generateSeqGraph ?
+                            new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
+                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE))
+                            .findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
+                    // TODO this score seems to be irrelevant at this point...
                     if (kBestHaplotype.isReference()) {
                         refHaplotype.setScore(kBestHaplotype.score());
                     }
@@ -282,7 +288,7 @@ public final class ReadThreadingAssembler {
         }
     }
 
-    private AssemblyResult getResultSetForRTGraph(final ReadThreadingGraph rtGraph) {
+    private AssemblyResult getResultSetForRTGraph(final ReadThreadingGraphInterface rtGraph) {
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -438,7 +444,9 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+        // TODO figure out how you want to hook this in
+        final ReadThreadingGraphInterface rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
+                new JunctionTreeLinkedDeBruinGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
@@ -458,8 +466,8 @@ public final class ReadThreadingAssembler {
         // and unnecessarily abort assembly
         chainPruner.pruneLowWeightChains(rtgraph);
 
-        // sanity check: make sure there are no cycles in the graph
-        if ( rtgraph.hasCycles() ) {
+        // sanity check: make sure there are no cycles in the graph, unless we are in experimental mode
+        if ( generateSeqGraph && rtgraph.hasCycles() ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
             }
@@ -482,7 +490,7 @@ public final class ReadThreadingAssembler {
         return result;
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraphInterface rtgraph, final SmithWatermanAligner aligner) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if

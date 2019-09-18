@@ -149,14 +149,14 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public int maxUnprunedVariants = 100;
 
     /**
-     * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the KBestHaplotypeFinder
+     * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the GraphBasedKBestHaplotypeFinder
      *
      * NOTE: --disable-sequence-graph-simplification is currently an experimental feature that does not directly match with
      *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
      *        sites. Use this mode at your own risk.
      */
     @Hidden
-    @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified debrujin graph", optional = true)
+    @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified de Bruijn graph", optional = true)
     public boolean disableSeqGraphConstruciton = false;
 
     @Advanced

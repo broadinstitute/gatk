@@ -58,6 +58,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         long startTime = System.nanoTime();
 
+        new String(reference);
+
         if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
         }
