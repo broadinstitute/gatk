@@ -125,6 +125,11 @@ def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessag
     }
 }
 
+
+def looksLikeWereInAGitRepository(){
+    file(".git").isDirectory() || (file(".git").exists() && file(".git").text.startsWith("gitdir"))
+}
+
 // Ensure that we have the right JDK version, a clone of the git repository, and resolve any required git-lfs
 // resource files that are needed to run the build but are still lfs stub files.
 def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequisitesMessage) {
@@ -134,7 +139,7 @@ def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPre
                 "The ClassLoader obtained from the Java ToolProvider is null. "
                 + "A Java $requiredJavaVersion JDK must be installed. $buildPrerequisitesMessage")
     }
-    if (!file(".git").isDirectory()) {
+    if (!looksLikeWereInAGitRepository()) {
         throw new GradleException("The GATK Github repository must be cloned using \"git clone\" to run the build. "
                 + "$buildPrerequisitesMessage")
     }
