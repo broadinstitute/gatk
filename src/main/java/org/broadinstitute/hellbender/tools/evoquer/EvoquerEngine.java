@@ -536,6 +536,7 @@ class EvoquerEngine {
         final List<Allele> alleles = new ArrayList<>();
         alleles.add(refAllele);
         alleles.add(Allele.SPAN_DEL);
+        alleles.add(Allele.NON_REF_ALLELE);
         builder.alleles(alleles);
 
         builder.stop(start);
