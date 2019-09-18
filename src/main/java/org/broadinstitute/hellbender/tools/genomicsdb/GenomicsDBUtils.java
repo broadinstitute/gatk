@@ -104,8 +104,8 @@ public class GenomicsDBUtils {
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, ELEMENT_WISE_SUM);
 
-        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
+        //vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+        //        GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
 
         //Update combine operations for GnarlyGenotyper
         //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
@@ -117,8 +117,8 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.VARIANT_DEPTH_KEY, SUM);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
-        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_FLOAT_SUM);
+        //vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+        //        GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_FLOAT_SUM);
 
 
         if (vidMapPB != null) {
@@ -224,15 +224,6 @@ public class GenomicsDBUtils {
             //To update the list element corresponding to fieldName, we get the builder for that specific list element
             GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder infoBuilder =
                     updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
-
-            GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
-                    GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
-            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
-            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
-            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM);
-            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
 
             if (newCombineOperation.equals(HISTOGRAM_SUM)) {
                 //Each element of the vector is a tuple <float, int>
