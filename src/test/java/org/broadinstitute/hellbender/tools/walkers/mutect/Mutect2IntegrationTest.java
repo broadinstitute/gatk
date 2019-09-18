@@ -197,6 +197,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @Test
+    public void testWhySiteFails() {
+        String[] args = ("-I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.tumor.bam -I" +
+                " gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.normal.bam -R /Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta" +
+                " -normal synthetic.challenge.set1.normal -bamout bamout.bam -O calls.vcf -L 15:33482411-33484411 --debug-graph-transformations").split(" ");
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testInfiniteLoop() {
+        String[] args = ("-R gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta -I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.tumor.bam -tumor synthetic.challenge.set1.tumor " +
+                "-I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.normal.bam -normal synthetic.challenge.set1.normal " +
+                "--germline-resource gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf -pon gs://fc-8803b178-2553-4f68-9560-caf1d3d37997/pon/wgs_125_plus_targeted_dream.vcf " +
+                "-L 1:2616022-3015494 -O output.vcf --bam-output bamout.bam --max-mnp-distance 0 --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6").split(" ");
+        runCommandLine(args);
+    }
+
     @Test(dataProvider = "twoTumorData")
     public void testTwoDreamTumorSamples(final List<File> tumors, final List<File> normals,
                                          final File truth, final File mask, final double requiredSensitivity) throws Exception {

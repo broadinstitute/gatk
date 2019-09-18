@@ -5,7 +5,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -34,7 +37,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
-
+    
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
 
     // TODO should this be constructed here or elsewhere

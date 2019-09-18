@@ -93,7 +93,8 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
         for (int i = 0; i < edges.size(); i++) {
             if ( ! p.graph.getEdgeSource(edges.get(i)).equals(tmpVertex) ) {
                 throw new IllegalStateException("Edges added to path must be contiguous.");
-            } tmpVertex = p.graph.getEdgeTarget(edges.get(i));
+            }
+            tmpVertex = p.graph.getEdgeTarget(edges.get(i));
         }
 
         graph = p.graph;
