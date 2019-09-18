@@ -206,11 +206,11 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
      * @return  non-null sequence of bases corresponding to this path
      */
     public byte[] getBases() {
-        if( getEdges().isEmpty() ) { return graph.getAdditionalSequence(lastVertex, true); }
+        if( getEdges().isEmpty() ) { return BaseGraph.getAdditionalSequence(lastVertex, true); }
 
-        byte[] bases = graph.getAdditionalSequence(graph.getEdgeSource(edgesInOrder.get(0)), true);
+        byte[] bases = BaseGraph.getAdditionalSequence(graph.getEdgeSource(edgesInOrder.get(0)), true);
         for( final E e : edgesInOrder ) {
-            bases = ArrayUtils.addAll(bases, graph.getAdditionalSequence(graph.getEdgeTarget(e), false));
+            bases = ArrayUtils.addAll(bases, BaseGraph.getAdditionalSequence(graph.getEdgeTarget(e), false));
         }
         return bases;
     }
