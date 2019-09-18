@@ -61,7 +61,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     @Override
     public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY);}   //new key for the two-value MQ data to prevent version mismatch catastrophes
 
-    public static String getDeprecatedRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}   //new key for the two-value MQ data to prevent version mismatch catastrophes
+    public static String getDeprecatedRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}   //old key that used the janky depth estimation method
 
     @Override
     public List<String> getKeyNames() {
@@ -135,7 +135,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         else if (vc.hasAttribute(getDeprecatedRawKeyName())) {
             if (!allowOlderRawKeyValues) {
                 throw new UserException.BadInput("Presence of '-"+getDeprecatedRawKeyName()+"' annotation is detected. This GATK version expects key "
-                        + getRawKeyNames() + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyNames().get(0) + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. This could indicate that the provided input was produced with an older version of GATK. " +
                         "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation. There " +
                         "may be differences in how newer GATK versions calculate DP and MQ that may result in worse MQ results. Use at your own risk.");
@@ -155,7 +155,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             }
             else {
                 logger.warn("MQ annotation data is not properly formatted. This GATK version expects key "
-                        + getRawKeyNames() + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyNames().get(0) + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. Attempting to use deprecated MQ calculation.");
                 final long numOfReads = getNumOfReads(vc, null);
                 rawMQdata = Math.round(Double.parseDouble(rawMQdata)) + "," + numOfReads;   //deprecated format was double so it needs to be converted to long
