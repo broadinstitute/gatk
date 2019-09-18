@@ -40,6 +40,7 @@ public final class ReadThreadingAssembler {
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
     private final boolean generateSeqGraph;
+    private boolean experimentalEndRecoveryMode = false;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -81,6 +82,10 @@ public final class ReadThreadingAssembler {
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebrujinGraphs;
+        if (!generateSeqGraph) {
+            logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an exeperimental assembly graph mode that has not been fully validated\n\n");
+        }
+
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
@@ -199,7 +204,7 @@ public final class ReadThreadingAssembler {
             for (final KBestHaplotype<V, E> kBestHaplotype :
                     (generateSeqGraph ?
                             new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
-                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE))
+                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
                             .findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
@@ -295,7 +300,10 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, null, rtGraph);
         }
 
-        rtGraph.removePathsNotConnectedToRef();
+        //TODO this will need to have a new step added to evaluate more elegantly what JUST_ASSEMBLED_REFERENCE means, as
+        // TODO this is an optimization step, in the processing of the graph we have already excised paths not connected to the reference
+        // TODO and in RT mode we have not mutated the graph at all. Thus we want to perform this expensive cleaning step only once
+        //rtGraph.removePathsNotConnectedToRef();
 
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtGraph);
     }
@@ -510,7 +518,7 @@ public final class ReadThreadingAssembler {
         }
 
         // remove all heading and trailing paths
-        if ( removePathsNotConnectedToRef ) {
+        if ( removePathsNotConnectedToRef) {
             rtgraph.removePathsNotConnectedToRef();
         }
 
@@ -543,9 +551,6 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
 
         } else {
-            if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
-            }
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
@@ -555,8 +560,8 @@ public final class ReadThreadingAssembler {
             if (debug) {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
-            rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
+            //TODO this is disabled for performance reasons, since the graph hasn't been mutated at all
+            //rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
             final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
             final AssemblyResult.Status status = cleaned.getStatus();
@@ -685,5 +690,15 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
+    }
+
+    public void setExperimentalDanglingEndRecoveryMode(boolean experimentalDanglingBranchRecoveryMode) {
+        if (experimentalDanglingBranchRecoveryMode) {
+            if (!generateSeqGraph) {
+                throw new UserException("Argument '--experimental-dangling-branch-recover' requires '--disable-sequence-graph-simplification' to be set");
+            }
+            recoverDanglingBranches = false;
+            experimentalEndRecoveryMode = true;
+        }
     }
 }

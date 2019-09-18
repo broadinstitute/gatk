@@ -126,6 +126,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testOfThing() {
+        String[] args = "-I /Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam -R src/test/resources/large/Homo_sapiens_assembly19.fasta.gz -O test.genome.output.JT.5choices.pruneplus.vcf -L 15:77875643-80000000 --debug-haplotype-discovery --haplotype-debug-histogram-output histogram.JT.5choices.redescovery.txt -ERC GVCF --smith-waterman JAVA --disable-sequence-graph-simplification".split(" ");
+        runCommandLine(args);
+    }
+
     /*
      * Test that in VCF mode we're consistent with past GATK4 results
      *

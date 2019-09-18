@@ -132,7 +132,14 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Hidden
     @Argument(fullName="linked-de-bruijn-graph", doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
-    public boolean useLinkedDeBrujinGraph = false;
+    public boolean useLinkedDeBrujinGraph = true;
+
+    /**
+     * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the GraphBasedKBestHaplotypeFinder
+     */
+    @Hidden
+    @Argument(fullName="experimental-dangling-branch-recovery", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified debrujin graph", optional = true)
+    public boolean experimentalDanglingBranchRecoveryMode = false;
 
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
