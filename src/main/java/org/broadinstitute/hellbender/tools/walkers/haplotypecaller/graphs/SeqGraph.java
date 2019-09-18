@@ -8,14 +8,12 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.EdgeFactory;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * A graph that contains base sequence at each node
  */
-public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
+public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
 
     private final Logger logger = LogManager.getLogger(SeqGraph.class);
 
@@ -181,7 +179,7 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
      * @param source a non-null vertex
      * @return true if source might start a linear chain
      */
-    private boolean isLinearChainStart(final SeqVertex source) {
+    protected boolean isLinearChainStart(final SeqVertex source) {
         return outDegreeOf(source) == 1
                 && ( inDegreeOf(source) != 1
                      || outDegreeOf(incomingVerticesOf(source).iterator().next()) > 1 );
@@ -197,7 +195,7 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
      * @return a list of vertices that comprise a linear chain starting with zipStart.  The resulting
      *         list will always contain at least zipStart as the first element.
      */
-    private LinkedList<SeqVertex> traceLinearChain(final SeqVertex zipStart) {
+    protected LinkedList<SeqVertex> traceLinearChain(final SeqVertex zipStart) {
         final LinkedList<SeqVertex> linearChain = new LinkedList<>();
         linearChain.add(zipStart);
 
@@ -244,13 +242,17 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
      * @return true if we actually merged at least two vertices together
      */
     private boolean mergeLinearChain(final LinkedList<SeqVertex> linearChain) {
+        return null != mergeLinearChainVertex(linearChain);
+    }
+    @VisibleForTesting
+    protected SeqVertex mergeLinearChainVertex(final LinkedList<SeqVertex> linearChain) {
         Utils.validateArg(!linearChain.isEmpty(), () -> "BUG: cannot have linear chain with 0 elements but got " + linearChain);
 
         final SeqVertex first = linearChain.getFirst();
         final SeqVertex last = linearChain.getLast();
 
         if ( first == last ) {
-            return false; // only one element in the chain, cannot be extended
+            return null; // only one element in the chain, cannot be extended
         }
 
         // create the combined vertex, and add it to the graph
@@ -264,7 +266,7 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
         for( final BaseEdge edge : incomingEdgesOf(first) )  { addEdge(getEdgeSource(edge), addedVertex, edge.copy()); }
 
         removeAllVertices(linearChain);
-        return true;
+        return addedVertex;
     }
 
     private static SeqVertex mergeLinearChainVertices(final Iterable<SeqVertex> vertices) {

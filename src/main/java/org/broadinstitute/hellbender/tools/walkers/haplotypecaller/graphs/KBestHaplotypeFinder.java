@@ -1,107 +1,42 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.apache.commons.lang3.mutable.MutableInt;
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.alg.CycleDetector;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * Efficient algorithm to obtain the list of best haplotypes given the {@link SeqGraph instace}.
- *
- * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ * A common interface for the different KBestHaplotypeFinder implementations to conform to
  */
-public final class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> {
+public abstract class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> {
 
-    public static final Comparator<KBestHaplotype> K_BEST_HAPLOTYPE_COMPARATOR = Comparator.comparingDouble(KBestHaplotype::score)
-            .reversed()
-            .thenComparing(KBestHaplotype::getBases, BaseUtils.BASES_COMPARATOR.reversed()); // This is an arbitrary deterministic tie breaker.
-    private final BaseGraph<V, E> graph;
+    protected final BaseGraph<V, E> graph;
     final Set<V> sinks;
     final Set<V> sources;
 
-    /**
-     * Constructs a new best haplotypes finder.
-     *
-     * @param graph the seq-graph to search.
-     * @param sources source vertices for all haplotypes.
-     * @param sinks sink vertices for all haplotypes.
-     *
-     * @throws IllegalArgumentException if <ul>
-     *     <li>any of {@code graph}, {@code sources} or {@code sinks} is {@code null} or</li>
-     *     <li>any of {@code sources}' or any {@code sinks}' member is not a vertex in {@code graph}.</li>
-     * </ul>
-     */
-    public KBestHaplotypeFinder(final BaseGraph<V, E> graph, final Set<V> sources, final Set<V> sinks) {
+    public KBestHaplotypeFinder(final Set<V> sinks, final Set<V> sources, final BaseGraph<V, E> graph) {
         Utils.nonNull(graph, "graph cannot be null");
         Utils.nonNull(sources, "sources cannot be null");
         Utils.nonNull(sinks, "sinks cannot be null");
         Utils.validateArg(graph.containsAllVertices(sources), "source does not belong to the graph");
         Utils.validateArg(graph.containsAllVertices(sinks), "sink does not belong to the graph");
 
+        this.sinks = sinks;
+        this.sources = sources;
         //TODO dealing with cycles here due to a bug in some of the graph transformations that produces cycles.
         //TODO Once that is solve, the if-else below should be substituted by a throw if there is any cycles,
         //TODO just the line commented out below if you want to trade early-bug-fail for speed.
-        //this.graph = graph;
-        this.graph = new CycleDetector<>(graph).detectCycles() ? removeCyclesAndVerticesThatDontLeadToSinks(graph,sources,sinks) : graph;
-
-        this.sinks = sinks;
-        this.sources = sources;
+        this.graph = removeCyclesIfNecessary(graph, sources, sinks);
     }
 
-    /**
-     * Constructor for the special case of a single source and sink
-     */
-    public KBestHaplotypeFinder(final BaseGraph<V, E> graph, final V source, final V sink) {
-        this(graph, Collections.singleton(source), Collections.singleton(sink));
-    }
-
-    /**
-     * Constructor for the default case of all sources and sinks
-     */
-    public KBestHaplotypeFinder(final BaseGraph<V, E> graph) {
-        this(graph, graph.getSources(), graph.getSinks());
-    }
-
-    /**
-     * Implement Dijkstra's algorithm as described in https://en.wikipedia.org/wiki/K_shortest_path_routing
-     */
-    public List<KBestHaplotype<V, E>> findBestHaplotypes(final int maxNumberOfHaplotypes) {
-        final List<KBestHaplotype<V, E>> result = new ArrayList<>();
-        final PriorityQueue<KBestHaplotype<V, E>> queue = new PriorityQueue<>(K_BEST_HAPLOTYPE_COMPARATOR).reversed());
-        sources.forEach(source -> queue.add(new KBestHaplotype<>(source, graph)));
-
-        final Map<V, MutableInt> vertexCounts = graph.vertexSet().stream()
-                .collect(Collectors.toMap(v -> v, v -> new MutableInt(0)));
-
-        while (!queue.isEmpty() && result.size() < maxNumberOfHaplotypes) {
-            final KBestHaplotype<V, E> pathToExtend = queue.poll();
-            final V vertexToExtend = pathToExtend.getLastVertex();
-            if (sinks.contains(vertexToExtend)) {
-                result.add(pathToExtend);
-            } else {
-                if (vertexCounts.get(vertexToExtend).getAndIncrement() < maxNumberOfHaplotypes) {
-                    final Set<E> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
-                    int totalOutgoingMultiplicity = 0;
-                    for (final BaseEdge edge : outgoingEdges) {
-                        totalOutgoingMultiplicity += edge.getMultiplicity();
-                    }
-
-                    for (final E edge : outgoingEdges) {
-                        final V targetVertex = graph.getEdgeTarget(edge);
-                        queue.add(new KBestHaplotype<>(pathToExtend, edge, totalOutgoingMultiplicity));
-                }
-            }
+    private BaseGraph<V, E> removeCyclesIfNecessary(BaseGraph<V, E> graph, Set<V> sources, Set<V> sinks) {
+        if (keepCycles()) {
+            return graph;
+        } else {
+            return new CycleDetector<>(graph).detectCycles() ? removeCyclesAndVerticesThatDontLeadToSinks(graph, sources, sinks) : graph;
         }
-        return result;
-    }
-
-    public List<KBestHaplotype<V, E>> findBestHaplotypes() {
-       return findBestHaplotypes(Integer.MAX_VALUE);
     }
 
     /**
@@ -119,7 +54,7 @@ public final class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge
         }
 
         Utils.validate(foundSomePath, () -> "could not find any path from the source vertex to the sink vertex after removing cycles: "
-                    + Arrays.toString(sources.toArray()) + " => " + Arrays.toString(sinks.toArray()));
+                + Arrays.toString(sources.toArray()) + " => " + Arrays.toString(sinks.toArray()));
 
         Utils.validate(!(edgesToRemove.isEmpty() && vertexToRemove.isEmpty()), "cannot find a way to remove the cycles");
 
@@ -144,11 +79,11 @@ public final class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge
      *  {@code false} otherwise.
      */
     private boolean findGuiltyVerticesAndEdgesToRemoveCycles(final BaseGraph<V, E> graph,
-                                                                    final V currentVertex,
-                                                                    final Set<V> sinks,
-                                                                    final Set<E> edgesToRemove,
-                                                                    final Set<V> verticesToRemove,
-                                                                    final Set<V> parentVertices) {
+                                                             final V currentVertex,
+                                                             final Set<V> sinks,
+                                                             final Set<E> edgesToRemove,
+                                                             final Set<V> verticesToRemove,
+                                                             final Set<V> parentVertices) {
         if (sinks.contains(currentVertex)) {
             return true;
         }
@@ -170,5 +105,15 @@ public final class KBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge
             verticesToRemove.add(currentVertex);
         }
         return reachesSink;
+    }
+
+    // Switch to be used in deciding whether or not to alter the graph for cycle safety.
+    public abstract boolean keepCycles();
+
+    public abstract List<KBestHaplotype<V, E>> findBestHaplotypes(int maxNumberOfHaplotypes);
+
+    @VisibleForTesting
+    public List<KBestHaplotype<V, E>> findBestHaplotypes() {
+        return findBestHaplotypes(Integer.MAX_VALUE);
     }
 }

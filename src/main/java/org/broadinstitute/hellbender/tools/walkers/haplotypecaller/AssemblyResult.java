@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraphInterface;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
@@ -10,7 +11,7 @@ import org.broadinstitute.hellbender.utils.Utils;
  */
 public final class AssemblyResult {
     private final Status status;
-    private final ReadThreadingGraph threadingGraph;
+    private final ReadThreadingGraphInterface threadingGraph;
     private final SeqGraph graph;
 
     /**
@@ -18,7 +19,7 @@ public final class AssemblyResult {
      * @param status the status, cannot be null
      * @param graph the resulting graph of the assembly, can only be null if result is failed
      */
-    public AssemblyResult(final Status status, final SeqGraph graph, final ReadThreadingGraph threadingGraph) {
+    public AssemblyResult(final Status status, final SeqGraph graph, final ReadThreadingGraphInterface threadingGraph) {
         Utils.nonNull(status, "status cannot be null");
         Utils.validateArg( status == Status.FAILED || (graph != null || threadingGraph != null) , "graph is null but status is " + status);
 
@@ -27,7 +28,7 @@ public final class AssemblyResult {
         this.threadingGraph = threadingGraph;
     }
 
-    public ReadThreadingGraph getThreadingGraph() {
+    public ReadThreadingGraphInterface getThreadingGraph() {
         return threadingGraph;
     }
 

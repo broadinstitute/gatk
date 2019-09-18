@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraphInterface;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -433,7 +434,7 @@ public final class AssemblyResultSet {
      *
      * @return {@code null} if there is no read-threading-graph amongst assembly results with that kmerSize.
      */
-    public ReadThreadingGraph getUniqueReadThreadingGraph(final int kmerSize) {
+    public ReadThreadingGraphInterface getUniqueReadThreadingGraph(final int kmerSize) {
         final AssemblyResult assemblyResult = assemblyResultByKmerSize.get(kmerSize);
         if (assemblyResult == null) {
             return null;
