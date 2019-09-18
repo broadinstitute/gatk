@@ -41,6 +41,7 @@ public final class ReadThreadingAssembler {
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
     private final boolean generateSeqGraph;
+    private boolean experimentalEndRecoveryMode = false;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -200,7 +201,7 @@ public final class ReadThreadingAssembler {
             for (final KBestHaplotype<V, E> kBestHaplotype :
                     (generateSeqGraph ?
                             new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
-                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE))
+                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
                             .findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
@@ -672,5 +673,15 @@ public final class ReadThreadingAssembler {
 
     public void setRemovePathsNotConnectedToRef(final boolean removePathsNotConnectedToRef) {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
+    }
+
+    public void setExperimentalDanglingEndRecoveryMode(boolean experimentalDanglingBranchRecoveryMode) {
+        if (experimentalDanglingBranchRecoveryMode) {
+            if (!generateSeqGraph) {
+                throw new UserException("Argument '--experimental-dangling-branch-recover' requires '--disable-sequence-graph-simplification' to be set");
+            }
+            recoverDanglingBranches = false;
+            experimentalEndRecoveryMode = true;
+        }
     }
 }
