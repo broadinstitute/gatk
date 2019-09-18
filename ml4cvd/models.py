@@ -20,7 +20,7 @@ from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers.convolutional import _Conv, Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from keras.layers.convolutional import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from keras.layers.convolutional import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from keras.layers.convolutional import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
@@ -549,8 +549,8 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
             last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
-            dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
-            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
+            dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
+            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -831,7 +831,7 @@ def _conv_block2d(x: K.placeholder,
 
 def _conv_block_new(x: K.placeholder,
                     layers: Dict[str, K.placeholder],
-                    conv_layers: List[_Conv],
+                    conv_layers: List[Layer],
                     pool_layers: List[Layer],
                     dimension: int,
                     activation: str,
@@ -864,20 +864,21 @@ def _conv_block_new(x: K.placeholder,
 def _dense_block_new(x: K.placeholder,
                      layers: Dict[str, K.placeholder],
                      block_size: int,
-                     conv_layers: List[_Conv],
-                     pool_layer: Layer,
+                     conv_layers: List[Layer],
+                     pool_layers: List[Layer],
                      dimension: int,
                      activation: str,
                      normalization: str,
                      regularization: str,
                      regularization_rate: float):
+    num_blocks = len(conv_layers) // block_size
     for i, conv_layer in enumerate(conv_layers):
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
-        if i % block_size == 0:
-            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
+        if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
+            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i//num_blocks](x)
             dense_connections = [x]
         else:
             dense_connections += [x]
