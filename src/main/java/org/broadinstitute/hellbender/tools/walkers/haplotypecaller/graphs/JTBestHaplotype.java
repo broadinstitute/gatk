@@ -47,6 +47,10 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         return junctionTreeManager.hasJunctionTreeEvidence();
     }
 
+    public boolean wasLastEdgeFollowedBasedOnJTEvidence() {
+        return decisionEdgesTakenSinceLastJunctionTreeEvidence == 0;
+    }
+
     // returns true if there is a symbolic edge pointing to the reference end or if there is insufficient node data
     public boolean hasStoppingEvidence(final int weightThreshold) {
 
