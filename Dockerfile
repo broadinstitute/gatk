@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM skwalker/gatk:gatkbase-2.1.0
+FROM broadinstitute/gatk:gatkbase-2.2.0
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH
