@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * Note: not final but only intended to be subclassed for testing.
  */
-public class ReadThreadingGraph extends ReadThreadingGraphInterface {
+public class ReadThreadingGraph extends AbstractReadThreadingGraph {
 
     protected static final Logger logger = LogManager.getLogger(ReadThreadingGraph.class);
 
@@ -49,6 +49,7 @@ public class ReadThreadingGraph extends ReadThreadingGraphInterface {
     @VisibleForTesting
     protected ReadThreadingGraph(final int kmerSizeFromString, final EdgeFactory<MultiDeBruijnVertex, MultiSampleEdge> edgeFactory) {
         super(kmerSizeFromString, new MyEdgeFactory(1));
+        nonUniqueKmers = null;
     }
 
     /**
@@ -57,31 +58,20 @@ public class ReadThreadingGraph extends ReadThreadingGraphInterface {
      */
     ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
-    }
-
-    /**
-     * Reset this assembler to its initial state, so we can create another assembly with a different set of reads
-     */
-    @Override
-    protected void setToInitialState() {
-        pending.clear();
         nonUniqueKmers = null;
-        kmerToVertexMap.clear();
-        refSource = null;
-        alreadyBuilt = false;
     }
 
     /**
      * Since we want to duplicate non-unique kmers in the graph code we must determine what those kmers are
      */
     @Override
-    protected void preprocessReadsIfNecessary() {
-        nonUniqueKmers = determineNonUniques(kmerSize);
+    protected void preprocessReads() {
+        nonUniqueKmers = determineNonUniques(kmerSize, getAllPendingSequences());
     }
 
     @Override
-    protected void removePendingSequencesIfNecessary() {
-        pending.clear();
+    protected boolean shouldRemoveReadsAfterGraphConstruction() {
+        return true;
     }
 
     /**
@@ -91,7 +81,7 @@ public class ReadThreadingGraph extends ReadThreadingGraphInterface {
      * @return true if the graph has low complexity, false otherwise
      */
     @Override
-    public boolean isLowComplexity() {
+    public boolean isLowQualityGraph() {
         return nonUniqueKmers.size() * 4 > kmerToVertexMap.size();
     }
 
@@ -129,8 +119,7 @@ public class ReadThreadingGraph extends ReadThreadingGraphInterface {
      * @param kmerSize the kmer size to check for non-unique kmers of
      * @return a non-null NonUniqueResult
      */
-    private Set<Kmer> determineNonUniques(final int kmerSize) {
-        final Collection<SequenceForKmers> withNonUniques = getAllPendingSequences();
+    private static Set<Kmer> determineNonUniques(final int kmerSize, Collection<SequenceForKmers> withNonUniques) {
         final Set<Kmer> nonUniqueKmers = new HashSet<>();
 
         // loop over all sequences that have non-unique kmers in them from the previous iterator
@@ -193,19 +182,6 @@ public class ReadThreadingGraph extends ReadThreadingGraphInterface {
     @VisibleForTesting
     Set<Kmer> getNonUniqueKmers() {
         return nonUniqueKmers;
-    }
-
-    /**
-     * Determines whether a base can safely be used for assembly.
-     * Currently disallows Ns and/or those with low quality
-     *
-     * @param base  the base under consideration
-     * @param qual  the quality of that base
-     * @return true if the base can be used for assembly, false otherwise
-     */
-    @Override
-    protected boolean baseIsUsableForAssembly(final byte base, final byte qual) {
-        return base != BaseUtils.Base.N.base && qual >= minBaseQualityToUseInAssembly;
     }
 
     @Override

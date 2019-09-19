@@ -14,8 +14,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
-import org.broadinstitute.hellbender.utils.Histogram;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -135,7 +133,7 @@ public final class ReadThreadingAssembler {
             correctedReads = assemblyRegion.getReads();
         }
 
-        final List<ReadThreadingGraphInterface> nonRefRTGraphs = new LinkedList<>();
+        final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
         final AssemblyResultSet resultSet = new AssemblyResultSet();
         resultSet.setRegionForGenotyping(assemblyRegion);
@@ -144,7 +142,7 @@ public final class ReadThreadingAssembler {
         final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
-        final Map<ReadThreadingGraphInterface,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
+        final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
         for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
@@ -287,7 +285,7 @@ public final class ReadThreadingAssembler {
         }
     }
 
-    private AssemblyResult getResultSetForRTGraph(final ReadThreadingGraphInterface rtGraph) {
+    private AssemblyResult getResultSetForRTGraph(final AbstractReadThreadingGraph rtGraph) {
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -454,7 +452,7 @@ public final class ReadThreadingAssembler {
         }
 
         // TODO figure out how you want to hook this in
-        final ReadThreadingGraphInterface rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
+        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
                 new JunctionTreeLinkedDeBruinGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
@@ -484,7 +482,7 @@ public final class ReadThreadingAssembler {
         }
 
         // sanity check: make sure the graph had enough complexity with the given kmer
-        if ( ! allowLowComplexityGraphs && rtgraph.isLowComplexity() ) {
+        if ( ! allowLowComplexityGraphs && rtgraph.isLowQualityGraph() ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it does not produce a graph with enough complexity");
             }
@@ -499,7 +497,7 @@ public final class ReadThreadingAssembler {
         return result;
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraphInterface rtgraph, final SmithWatermanAligner aligner) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
         if (debugGraphTransformations) {
             printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
         }

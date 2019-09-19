@@ -1,7 +1,9 @@
-package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
+package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -66,7 +68,7 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
         final Matcher pathMatcher = PATH_PATTERN.matcher(pathString);
 
         boolean referenceFound = false;
-        final Map<String,MultiDeBruijnVertex> vertexById = new HashMap<>();
+        final Map<String, MultiDeBruijnVertex> vertexById = new HashMap<>();
 
         // Loop between path strings and add them one by one.
         while (pathMatcher.find()) {

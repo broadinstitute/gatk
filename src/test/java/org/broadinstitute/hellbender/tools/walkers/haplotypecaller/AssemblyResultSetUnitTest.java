@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.TestingReadThreadingGraph;
+import org.broadinstitute.hellbender.testutils.TestingReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;

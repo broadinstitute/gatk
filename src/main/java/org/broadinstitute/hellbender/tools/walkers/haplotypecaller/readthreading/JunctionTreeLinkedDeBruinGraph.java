@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  * For ease of debugging, this graph supports the method {@link #printSimplifiedGraph(File, int)}} which generates a SequenceGraph and
  * adds the junction trees to the output .dot file.
  */
-public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface {
+public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
@@ -71,28 +71,20 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     }
 
     @Override
-    protected void setToInitialState() {
-        // We don't clear pending here in order to later build the read threading
-        kmerToVertexMap.clear();
-        refSource = null;
-        alreadyBuilt = false;
-    }
-
-    @Override
     // We don't need to track non-uniques here so this is a no-op
-    protected void preprocessReadsIfNecessary() {
+    protected void preprocessReads() {
         return;
     }
 
     @Override
     // We don't want to remove pending sequences as they are the data we need for read threading
-    protected void removePendingSequencesIfNecessary() {
-        return;
+    protected boolean shouldRemoveReadsAfterGraphConstruction() {
+        return false;
     }
 
     @Override
-    //TODO come up with some huristic for when we think one of these graphs is "too difficult" to call properly
-    public boolean isLowComplexity() {
+    //TODO come up with some heuristic for when we think one of these graphs is "too difficult" to call properly
+    public boolean isLowQualityGraph() {
         return false;
     }
 
@@ -137,11 +129,6 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     @VisibleForTesting
     List<MultiDeBruijnVertex> getReferencePath(final TraversalDirection direction) {
         return Collections.unmodifiableList(direction == TraversalDirection.downwards ? referencePath : Lists.reverse(referencePath));
-    }
-
-    @Override
-    protected boolean baseIsUsableForAssembly(byte base, byte qual) {
-        return base != BaseUtils.Base.N.base && qual >= minBaseQualityToUseInAssembly;
     }
 
     /**
@@ -446,7 +433,7 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
      *
      * @param seqForKmers
      */
-    public void threadSequenceForJuncitonTree(final SequenceForKmers seqForKmers) {
+    private void threadSequenceForJuncitonTree(final SequenceForKmers seqForKmers) {
         // Maybe handle this differently, the reference junction tree should be held seperatedly from everything else.
         if (seqForKmers.isRef) {
             return;
@@ -663,7 +650,7 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
         }
 
         // Returns a unique name based on the memory id that conforms to the restrictions placed on .dot file nodes
-        public String getDotName() {
+        String getDotName() {
             return "TreadingNode_" + Integer.toHexString(hashCode());
         }
 
