@@ -125,7 +125,8 @@ def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessag
     }
 }
 
-
+// Check that we're in a folder which git recognizes as a git repository.
+// This works for either a standard git clone or one created with `git worktree add`
 def looksLikeWereInAGitRepository(){
     file(".git").isDirectory() || (file(".git").exists() && file(".git").text.startsWith("gitdir"))
 }
@@ -140,8 +141,9 @@ def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPre
                 + "A Java $requiredJavaVersion JDK must be installed. $buildPrerequisitesMessage")
     }
     if (!looksLikeWereInAGitRepository()) {
-        throw new GradleException("The GATK Github repository must be cloned using \"git clone\" to run the build. "
-                + "$buildPrerequisitesMessage")
+        throw new GradleException("This doesn't appear to be a git folder. " +
+                "The GATK Github repository must be cloned using \"git clone\" to run the build. " +
+                "\n$buildPrerequisitesMessage")
     }
     // Large runtime resource files must be present at build time to be compiled into the jar, so
     // try to resolve them to real files if any of them are stubs.
