@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.0.3
+FROM broadinstitute/gatk:gatkbase-2.2.0
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH

@@ -1,0 +1,150 @@
+##fileformat=VCFv4.2
+##ApplyRecalibration="analysis_type=ApplyRecalibration input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[1] excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/combined.phase1.chr1.raw.snps.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false recal_file=/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/recal/ALL.noHRUN.chr1.wgs.recal tranches_file=/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/recal/ALL.noHRun.wgs.tranches out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub ts_filter_level=99.0 ignore_filter=null mode=SNP"
+##CombineVariants="analysis_type=CombineVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[1:123000001-126000000] excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/AFR/AFR.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/ASN/ASN.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/AMR/AMR.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/EUR/EUR.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/AFR.admix/AFR.admix.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/ASN.admix/ASN.admix.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/AMR.admix/AMR.admix.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/EUR.admix/EUR.admix.phase1.chr1.42.raw.snps.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/v2b/calls/chr1/ALL/ALL.phase1.chr1.42.raw.snps.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub genotypemergeoption=PRIORITIZE filteredrecordsmergetype=KEEP_IF_ANY_UNFILTERED rod_priority_list=ALL,AFR.admix,AMR.admix,EUR.admix,ASN.admix,AFR,AMR,EUR,ASN printComplexMerges=false filteredAreUncalled=false minimalVCF=false setKey=pop assumeIdenticalSamples=false minimumN=1 masterMerge=false mergeInfoWithMaxAC=true"
+##FILTER=<ID=TruthSensitivityTranche99.00to99.15,Description="Truth sensitivity tranche level at VSQ Lod: 4.7482 <= x < 5.0701">
+##FILTER=<ID=TruthSensitivityTranche99.15to99.30,Description="Truth sensitivity tranche level at VSQ Lod: 4.3618 <= x < 4.7482">
+##FILTER=<ID=TruthSensitivityTranche99.30to99.50,Description="Truth sensitivity tranche level at VSQ Lod: 3.7082 <= x < 4.3618">
+##FILTER=<ID=TruthSensitivityTranche99.50to99.75,Description="Truth sensitivity tranche level at VSQ Lod: 2.2118 <= x < 3.7082">
+##FILTER=<ID=TruthSensitivityTranche99.75to99.77,Description="Truth sensitivity tranche level at VSQ Lod: 1.9601 <= x < 2.2118">
+##FILTER=<ID=TruthSensitivityTranche99.77to99.80,Description="Truth sensitivity tranche level at VSQ Lod: 1.4469 <= x < 1.9601">
+##FILTER=<ID=TruthSensitivityTranche99.80to99.82,Description="Truth sensitivity tranche level at VSQ Lod: 1.0993 <= x < 1.4469">
+##FILTER=<ID=TruthSensitivityTranche99.82to99.83,Description="Truth sensitivity tranche level at VSQ Lod: 0.9193 <= x < 1.0993">
+##FILTER=<ID=TruthSensitivityTranche99.83to99.84,Description="Truth sensitivity tranche level at VSQ Lod: 0.7228 <= x < 0.9193">
+##FILTER=<ID=TruthSensitivityTranche99.84to99.85,Description="Truth sensitivity tranche level at VSQ Lod: 0.5027 <= x < 0.7228">
+##FILTER=<ID=TruthSensitivityTranche99.85to99.87,Description="Truth sensitivity tranche level at VSQ Lod: -0.0128 <= x < 0.5027">
+##FILTER=<ID=TruthSensitivityTranche99.87to99.88,Description="Truth sensitivity tranche level at VSQ Lod: -0.2657 <= x < -0.0128">
+##FILTER=<ID=TruthSensitivityTranche99.88to99.89,Description="Truth sensitivity tranche level at VSQ Lod: -0.5671 <= x < -0.2657">
+##FILTER=<ID=TruthSensitivityTranche99.89to99.90,Description="Truth sensitivity tranche level at VSQ Lod: -0.9162 <= x < -0.5671">
+##FILTER=<ID=TruthSensitivityTranche99.90to99.91,Description="Truth sensitivity tranche level at VSQ Lod: -1.2368 <= x < -0.9162">
+##FILTER=<ID=TruthSensitivityTranche99.91to99.92,Description="Truth sensitivity tranche level at VSQ Lod: -1.6803 <= x < -1.2368">
+##FILTER=<ID=TruthSensitivityTranche99.92to99.93,Description="Truth sensitivity tranche level at VSQ Lod: -2.1816 <= x < -1.6803">
+##FILTER=<ID=TruthSensitivityTranche99.93to99.94,Description="Truth sensitivity tranche level at VSQ Lod: -2.8718 <= x < -2.1816">
+##FILTER=<ID=TruthSensitivityTranche99.94to100.00+,Description="Truth sensitivity tranche level at VQS Lod < -Infinity">
+##FILTER=<ID=TruthSensitivityTranche99.94to100.00,Description="Truth sensitivity tranche level at VSQ Lod: -Infinity <= x < -2.8718">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants  --output ten_sites_thousand_genomes.vcf --variant thousand_genomes_subset.vcf --intervals only_10_sites.vcf --reference /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta  --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version=4.1.0.0-55-g210520b-SNAPSHOT,Date="April 26, 2019 12:05:31 PM EDT">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Filtered Depth">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=Dels,Number=1,Type=Float,Description="Fraction of Reads Containing Spanning Deletions">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">
+##INFO=<ID=HaplotypeScore,Number=1,Type=Float,Description="Consistency of the site with at most two segregating haplotypes">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SB,Number=1,Type=Float,Description="Strand Bias">
+##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds ratio of being a true variant versus being false under the trained gaussian mixture model">
+##INFO=<ID=pop,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
+##UnifiedGenotyper="analysis_type=UnifiedGenotyper input_file=[/humgen/1kg/phase1_cleaned_bams/bams/chr1/CHB.phase1.chr1.42.cleaned.bam, /humgen/1kg/phase1_cleaned_bams/bams/chr1/CHS.phase1.chr1.42.cleaned.bam, /humgen/1kg/phase1_cleaned_bams/bams/chr1/CLM.phase1.chr1.42.cleaned.bam, /humgen/1kg/phase1_cleaned_bams/bams/chr1/JPT.phase1.chr1.42.cleaned.bam, /humgen/1kg/phase1_cleaned_bams/bams/chr1/MXL.phase1.chr1.42.cleaned.bam, /humgen/1kg/phase1_cleaned_bams/bams/chr1/PUR.phase1.chr1.42.cleaned.bam] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[1:123000001-126000000] excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/1kg/processing/production_wgs_phase1/consensus/ALL.phase1.wgs.unionBC1.pass.sites.vcf, /humgen/gsa-hpprojects/GATK/data/dbsnp_132_b37.leftAligned.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=50 baq=CALCULATE_AS_NECESSARY baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false genotype_likelihoods_model=SNP p_nonref_model=EXACT heterozygosity=0.0010 pcr_error_rate=1.0E-4 genotyping_mode=GENOTYPE_GIVEN_ALLELES output_mode=EMIT_VARIANTS_ONLY standard_min_confidence_threshold_for_calling=4.0 standard_min_confidence_threshold_for_emitting=4.0 noSLOD=false assume_single_sample_reads=null abort_at_too_much_coverage=-1 min_base_quality_score=17 min_mapping_quality_score=20 max_deletion_fraction=0.05 min_indel_count_for_genotyping=5 indel_heterozygosity=1.25E-4 indelGapContinuationPenalty=10.0 indelGapOpenPenalty=45.0 indelHaplotypeSize=80 doContextDependentGapPenalties=true getGapPenaltiesFromData=false indel_recal_file=indel.recal_data.csv indelDebug=false dovit=false GSA_PRODUCTION_ONLY=false exactCalculation=LINEAR_EXPERIMENTAL ignoreSNPAlleles=false output_all_callable_bases=false genotype=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub debug_file=null metrics_file=null annotation=[]"
+##contig=<ID=1,length=249250621,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=2,length=243199373,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=3,length=198022430,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=4,length=191154276,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=5,length=180915260,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=6,length=171115067,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=7,length=159138663,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=8,length=146364022,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=9,length=141213431,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=10,length=135534747,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=11,length=135006516,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=12,length=133851895,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=13,length=115169878,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=14,length=107349540,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=15,length=102531392,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=16,length=90354753,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=17,length=81195210,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=18,length=78077248,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=19,length=59128983,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=20,length=63025520,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=21,length=48129895,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=22,length=51304566,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=X,length=155270560,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=Y,length=59373566,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=MT,length=16569,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000207.1,length=4262,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000226.1,length=15008,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000229.1,length=19913,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000231.1,length=27386,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000210.1,length=27682,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000239.1,length=33824,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000235.1,length=34474,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000201.1,length=36148,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000247.1,length=36422,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000245.1,length=36651,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000197.1,length=37175,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000203.1,length=37498,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000246.1,length=38154,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000249.1,length=38502,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000196.1,length=38914,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000248.1,length=39786,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000244.1,length=39929,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000238.1,length=39939,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000202.1,length=40103,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000234.1,length=40531,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000232.1,length=40652,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000206.1,length=41001,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000240.1,length=41933,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000236.1,length=41934,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000241.1,length=42152,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000243.1,length=43341,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000242.1,length=43523,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000230.1,length=43691,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000237.1,length=45867,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000233.1,length=45941,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000204.1,length=81310,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000198.1,length=90085,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000208.1,length=92689,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000191.1,length=106433,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000227.1,length=128374,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000228.1,length=129120,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000214.1,length=137718,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000221.1,length=155397,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000209.1,length=159169,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000218.1,length=161147,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000220.1,length=161802,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000213.1,length=164239,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000211.1,length=166566,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000199.1,length=169874,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000217.1,length=172149,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000216.1,length=172294,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000215.1,length=172545,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000205.1,length=174588,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000219.1,length=179198,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000224.1,length=179693,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000223.1,length=180455,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000195.1,length=182896,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000212.1,length=186858,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000222.1,length=186861,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000200.1,length=187035,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000193.1,length=189789,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000194.1,length=191469,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000225.1,length=211173,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000192.1,length=547496,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=NC_007605,length=171823,assembly=Homo_sapiens_assembly19.fasta>
+##reference=file:///seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	775426	rs2905037	G	A	129808.79	PASS	AC=1863;AF=0.99519;AN=1872;BaseQRankSum=2.887;DB;DP=5037;Dels=0.00;FS=2.950;HRun=0;HaplotypeScore=0.1993;InbreedingCoeff=-0.0523;MQ=46.61;MQ0=402;MQRankSum=-1.446;QD=26.72;ReadPosRankSum=3.292;SB=-68041.23;VQSLOD=7.2525;pop=ALL
+1	838665	rs28678693	T	C	5708.59	PASS	AC=105;AF=0.05486;AN=1914;BaseQRankSum=-4.523;DB;DP=4430;Dels=0.00;FS=1.834;HRun=1;HaplotypeScore=0.3512;InbreedingCoeff=0.0523;MQ=94.29;MQ0=0;MQRankSum=0.707;QD=13.50;ReadPosRankSum=-0.761;SB=-1839.38;VQSLOD=9.3351;pop=ALL
+1	857828	rs6694982	A	G	552.69	PASS	AC=25;AF=0.0548;AN=456;BaseQRankSum=-7.769;DB;DP=1265;Dels=0.00;FS=0.527;HRun=2;HaplotypeScore=0.3722;InbreedingCoeff=0.0783;MQ=93.61;MQ0=0;MQRankSum=3.605;QD=4.39;ReadPosRankSum=0.298;SB=-523.25;VQSLOD=7.6857;pop=AFR
+1	866893	rs2880024	T	C	42635.44	PASS	AC=683;AF=0.34990;AN=1952;BaseQRankSum=-13.622;DB;DP=4807;Dels=0.00;FS=3.202;HRun=1;HaplotypeScore=0.2942;InbreedingCoeff=0.2650;MQ=86.17;MQ0=0;MQRankSum=7.671;QD=17.91;ReadPosRankSum=0.147;SB=-19751.63;VQSLOD=9.4083;pop=ALL
+1	917470	.	G	A	49.96	PASS	AC=1;AF=0.00066;AN=1526;BaseQRankSum=1.774;DP=3318;Dels=0.00;FS=4.258;HRun=0;HaplotypeScore=0.3158;InbreedingCoeff=-0.1053;MQ=72.04;MQ0=1;MQRankSum=0.711;QD=6.49;ReadPosRankSum=0.065;SB=6.09;VQSLOD=6.2902;pop=ALL
+1	957898	rs2799064	G	T	20783.25	PASS	AC=500;AF=0.32051;AN=1560;BaseQRankSum=-1.777;DB;DP=3308;Dels=0.00;FS=36.252;HRun=0;HaplotypeScore=0.3477;InbreedingCoeff=0.1934;MQ=63.72;MQ0=0;MQRankSum=8.210;QD=14.08;ReadPosRankSum=3.433;SB=-11528.02;VQSLOD=6.5611;pop=ALL
+1	970455	rs116522930	G	A	429.91	PASS	AC=16;AF=0.0506;AN=316;BaseQRankSum=0.930;DB;DP=598;Dels=0.00;FS=22.548;HRun=0;HaplotypeScore=0.1914;InbreedingCoeff=0.0092;MQ=68.54;MQ0=0;MQRankSum=1.120;QD=11.02;ReadPosRankSum=0.013;SB=-341.63;VQSLOD=5.3634;pop=AFR.admix
+1	983005	.	G	A	64.01	PASS	AC=1;AF=0.00061;AN=1652;BaseQRankSum=0.379;DP=3719;Dels=0.00;FS=3.831;HRun=0;HaplotypeScore=0.2802;InbreedingCoeff=-0.0808;MQ=70.34;MQ0=0;MQRankSum=2.755;QD=9.73;ReadPosRankSum=-1.129;SB=3.48;VQSLOD=6.2713;pop=ALL
+1	987012	rs74045090	G	A	123.84	PASS	AC=1;AF=0.00063;AN=1594;BaseQRankSum=1.510;DB;DP=3274;Dels=0.00;FS=0.000;HRun=0;HaplotypeScore=0.3015;InbreedingCoeff=-0.0874;MQ=74.49;MQ0=0;MQRankSum=1.526;QD=13.09;ReadPosRankSum=0.132;SB=-50.26;VQSLOD=6.3695;pop=ALL
+1	990417	rs2465136	T	C	34826.59	PASS	AC=637;AF=0.32937;AN=1934;BaseQRankSum=-30.100;DB;DP=4346;Dels=0.00;FS=0.124;HRun=0;HaplotypeScore=0.3487;InbreedingCoeff=0.2115;MQ=96.70;MQ0=0;MQRankSum=2.827;QD=17.30;ReadPosRankSum=-0.631;SB=-12263.65;VQSLOD=9.5103;pop=ALL
+1	62953183	rs1168025	C	T	170869.10	PASS	AC=2064;AF=0.99518;AN=2074;BaseQRankSum=4.066;DB;DP=5652;Dels=0.00;FS=0.000;HRun=0;HaplotypeScore=0.1636;InbreedingCoeff=-0.0543;MQ=123.71;MQ0=0;MQRankSum=2.580;QD=30.43;ReadPosRankSum=1.783;SB=-93987.29;VQSLOD=11.1166;pop=ALL

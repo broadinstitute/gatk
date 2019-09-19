@@ -435,6 +435,16 @@ public final class GATKReportTable {
     }
 
     /**
+     * Get entire row from the given row index in the table
+     *
+     * @param rowIndex the  index of the column
+     * @return the entire row at the specified index
+     */
+    public Object[] getRow(final int rowIndex) {
+        return underlyingData.get(rowIndex);
+    }
+
+    /**
      * Get a value from the given position in the table
      *
      * @param rowIndex       the row ID
