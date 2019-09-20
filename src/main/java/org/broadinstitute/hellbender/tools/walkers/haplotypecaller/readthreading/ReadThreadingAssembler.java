@@ -83,6 +83,10 @@ public final class ReadThreadingAssembler {
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = false;
+        if (!generateSeqGraph) {
+            logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an exeperimental assembly graph mode that has not been fully validated\n\n");
+        }
+
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;

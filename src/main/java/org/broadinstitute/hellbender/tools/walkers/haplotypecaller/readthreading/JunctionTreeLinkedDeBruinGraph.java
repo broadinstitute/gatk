@@ -37,9 +37,7 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
     private static final long serialVersionUID = 1l;
     private static final MultiDeBruijnVertex SYMBOLIC_END_VETEX = new MultiDeBruijnVertex(new byte[]{'_'});
     private MultiSampleEdge SYMBOLIC_END_EDGE;
-
-    private static final Logger logger = LogManager.getLogger(JunctionTreeLinkedDeBruinGraph.class);
-
+    
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
 
     // TODO should this be constructed here or elsewhere
@@ -47,7 +45,6 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
 
     public JunctionTreeLinkedDeBruinGraph(int kmerSize) {
         this(kmerSize, false, (byte)6, 1);
-        logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an exeperimental assembly graph mode that has not been fully validated\n\n");
     }
 
     /**
@@ -56,7 +53,6 @@ public class JunctionTreeLinkedDeBruinGraph extends ReadThreadingGraphInterface 
      */
     JunctionTreeLinkedDeBruinGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
-        logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an exeperimental assembly graph mode that has not been fully validated\n\n");
     }
 
     /**
