@@ -492,6 +492,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
                                   pool_type: int=None,
                                   padding: str=None,
                                   learning_rate: float=None,
+                                  optimizer: str='adam',
                                   **kwargs) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -528,12 +529,16 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
     :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
     :param padding: Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
     :param learning_rate:
+    :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
-	"""
+    """
     logging.info(f'Got kwargs {kwargs}')
+    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    metric_dict = get_metric_dict(tensor_maps_out)
+    custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
-        m = load_model(kwargs['model_file'], custom_objects=get_metric_dict(tensor_maps_out))
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict)
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -618,7 +623,6 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
             output_predictions[tm.output_name()] = Dense(units=1, activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.summary()
 
     if 'model_layers' in kwargs and kwargs['model_layers'] is not None:
@@ -628,7 +632,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
     if 'model_freeze' in kwargs and kwargs['model_freeze'] is not None:
         frozen = 0
         m.load_weights(kwargs['model_freeze'], by_name=True)
-        m_freeze = load_model(kwargs['model_freeze'], custom_objects=get_metric_dict(tensor_maps_out))
+        m_freeze = load_model(kwargs['model_freeze'], custom_objects=custom_dict)
         frozen_layers = [layer.name for layer in m_freeze.layers]
         for l in m.layers:
             if l.name in frozen_layers:
