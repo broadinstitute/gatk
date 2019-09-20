@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.RuntimeIOException;
@@ -36,6 +37,7 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.HeaderlessSAMRecordCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -44,7 +46,12 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -524,9 +531,30 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, true, VCpriors);
         }
 
+        PrintStream outputStream = null;
+        if (hcArgs.assemblyStateOutput != null) {
+            try {
+                outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput + features.getInterval() + ".summarydump")));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            outputStream.println("Number of reads in region: " + region.getReads().size() + "     they are:");
+            for ( SAMRecord read : region.getReads().stream().map(r -> r.convertToSAMRecord(region.getHeader())).sorted(new HeaderlessSAMRecordCoordinateComparator(region.getHeader())).collect(Collectors.toList())) {
+                outputStream.println(read.getReadName() + "   " + read.getFlags());
+            }
+        }
+
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
-        
+
+        if ( outputStream != null) {
+            outputStream.println("\n\n\n\nThere were "+ untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
+            for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
+                outputStream.println(haplotype);
+            }
+            outputStream.close();
+        }
+
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents);
