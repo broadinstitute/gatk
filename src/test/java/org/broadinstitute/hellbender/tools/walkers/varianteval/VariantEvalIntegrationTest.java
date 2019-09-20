@@ -654,7 +654,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         ArgumentsBuilder argBuilder= new ArgumentsBuilder();
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addArgument("eval", getTestFilePath("validationReportEval.noGenotypes.vcf"));
-        argBuilder.addArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME, getTestFilePath("validationReportComp.noGenotypes.vcf"));
+        argBuilder.addArgument(StandardArgumentDefinitions.COMPARISON_SHORT_NAME, getTestFilePath("validationReportComp.noGenotypes.vcf"));
         argBuilder.addInterval(new SimpleInterval("20"));
         argBuilder.addArgument("EV", "PrintMissingComp");
         argBuilder.addOutput(outputFile);

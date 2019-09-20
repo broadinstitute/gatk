@@ -317,7 +317,7 @@ public class VariantEval extends MultiVariantWalker {
         sampleDB = initializeSampleDB();
 
         comps.addAll(compsProvided);
-        compsProvided.forEach(x -> inputToNameMap.put(x, x.hasUserSuppliedName() ? x.getName() : StandardArgumentDefinitions.COMPARISON_LONG_NAME));
+        compsProvided.forEach(x -> inputToNameMap.put(x, x.hasUserSuppliedName() ? x.getName() : StandardArgumentDefinitions.COMPARISON_SHORT_NAME));
         if ( dbsnp.dbsnp != null ) {
             comps.add(dbsnp.dbsnp);
             inputToNameMap.put(dbsnp.dbsnp, "dbsnp");
