@@ -4,6 +4,8 @@ from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
 from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
+from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
+from ml4cvd.defines import DataSetType
 
 
 def _get_lead_cm(length):
@@ -17,9 +19,6 @@ def _get_lead_cm(length):
 
 
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
-
-TMAPS = dict()
-
 TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_cm)
 TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_cm)
 TMAPS['rs2042995'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_cm)
@@ -796,3 +795,23 @@ TMAPS['categorical-phenotypes-134'] = TensorMap(
                      'Workplace-had-a-lot-of-diesel-exhaust_Rarelynever_0_0': 90,
                      'Workplace-had-a-lot-of-diesel-exhaust_Rarelynever_0_1': 91,
                      'Workplace-very-dusty_Rarelynever_0_0': 127, 'Workplace-very-dusty_Rarelynever_0_1': 128})
+
+
+TMAPS['ecg-bike-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss='logcosh', metrics=['mape'],
+                                     normalization={'mean': 110.03, 'std': 20.04}, shape=(1,),
+                                     tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', group='ecg_bike', loss='logcosh', shape=(1,),
+                                         metrics=['mape'], normalization={'mean': 71.2, 'std': 12.57},
+                                         tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-age'] = TensorMap('age', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+                                  normalization={'mean': 60, 'std': 7.65},
+                                  tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-max-pred-hr'] = TensorMap('max_pred_hr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+                                          normalization={'mean': 167.5, 'std': 5.81},
+                                          tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
+                                       tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['ecg-bike-trend-load'] = TensorMap('trend_load', shape=(106, 1), group='ecg_bike',
+                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['ecg-bike-trend-grade'] = TensorMap('trend_grade', shape=(106, 1), group='ecg_bike',
+                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)

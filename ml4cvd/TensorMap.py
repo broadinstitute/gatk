@@ -10,6 +10,7 @@ from keras.utils import to_categorical
 from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.defines import CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
 from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
+from ml4cvd.defines import DataSetType
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
 
@@ -110,7 +111,8 @@ class TensorMap(object):
                  normalization=None,
                  annotation_units=32,
                  imputation=None,
-                 tensor_from_file=None):
+                 tensor_from_file=None,
+                 dtype=None):
         """TensorMap constructor
 
 
@@ -132,6 +134,7 @@ class TensorMap(object):
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param imputation: Method of imputation for missing values. Options are mean or random.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
+        :param dtype: DataSetType of tensor map
         """
         self.name = name
         self.loss = loss
@@ -152,6 +155,7 @@ class TensorMap(object):
         self.imputation = imputation
         self.tensor_from_file = tensor_from_file
         self.initialization = None  # Not yet implemented
+        self.dtype = dtype
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
@@ -242,7 +246,7 @@ class TensorMap(object):
         return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation()
 
     def is_continuous(self):
-        return self.group == 'continuous'
+        return self.group == 'continuous' or self.dtype == DataSetType.CONTINUOUS
 
     def is_multi_field_continuous(self):
         return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS or self.group == TENSOR_MAP_GROUP_CONTINUOUS
@@ -297,7 +301,9 @@ class TensorMap(object):
             return np_tensor
 
         if 'mean' in self.normalization and 'std' in self.normalization:
-            not_missing_in_channel_map = NOT_MISSING in self.channel_map
+            not_missing_in_channel_map = False
+            if self.channel_map is not None:
+                not_missing_in_channel_map = NOT_MISSING in self.channel_map
             if self.is_continuous() and not_missing_in_channel_map:
                 for i in range(0, len(np_tensor)):
                     if self.channel_map[NOT_MISSING] == i:

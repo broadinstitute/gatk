@@ -888,7 +888,6 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         ]
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
         lead_to_int = {'I': 0, '2': 1, '3': 2}
-
         trend_entries = root.findall("./TrendData/TrendEntry")
 
         trends = {trend: np.full(len(trend_entries), np.nan) for trend in trend_entry_fields + ['time', 'PhaseTime', 'PhaseTime', 'PhaseName', 'Artifact']}
