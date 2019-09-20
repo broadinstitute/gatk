@@ -1040,6 +1040,18 @@ public final class GATKVariantContextUtils {
      * <DEL>/C => <DEL>/C
      *
      * @param alleles a non-null list of alleles that we want to clip
+     * @param isReverse if true, clip from the end of the allele if false, clip from the beginning of the allele.
+     * When isReverse is true:
+     * AC/A => AC/A
+     * AT/AT => A/A
+     * CCG/CG => CC/C
+     * TGCC/TGCC => T/T
+     * When isReverse is false:
+     * AC/A => AC/A
+     * ACG/A => ACG/A
+     * AGG/AG => GG/G
+     * ACG/AC => CG/C
+     * G/GGGGG => G/GGGGG
      * @return the offset into the alleles where we can safely clip, inclusive, or
      *   -1 if no clipping is tolerated.  So, if the result is 0, then we can remove
      *   the first base of every allele.  If the result is 1, we can remove the
@@ -1060,7 +1072,7 @@ public final class GATKVariantContextUtils {
      * <DEL>/C => <DEL>/C
      * @param alleles a non-null list of alleles that we want to clip
      * @return the number of bases from the end of the alleles where we can safely clip or
-     *   -1 if the clipping method isnt applicable. So, if the result is 1, then we can remove
+     *   -1 if the clipping method isn't applicable. So, if the result is 1, then we can remove
      *   the last base of every allele.  If the result is 2, we can remove the
      *   second base.
      */
