@@ -531,28 +531,29 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, true, VCpriors);
         }
 
-        PrintStream outputStream = null;
         if (hcArgs.assemblyStateOutput != null) {
-            try {
-                outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput + features.getInterval() + ".summarydump")));
+            try (PrintStream outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput + features.getInterval() + ".reads.dump")))) {
+                outputStream.println("Number of reads in region: " + region.getReads().size() + "     they are:");
+                for (GATKRead read : region.getReads()) {
+                    outputStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
+                }
             } catch (IOException e) {
                 e.printStackTrace();
-            }
-            outputStream.println("Number of reads in region: " + region.getReads().size() + "     they are:");
-            for ( SAMRecord read : region.getReads().stream().map(r -> r.convertToSAMRecord(region.getHeader())).sorted(new HeaderlessSAMRecordCoordinateComparator(region.getHeader())).collect(Collectors.toList())) {
-                outputStream.println(read.getReadName() + "   " + read.getFlags());
             }
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
-        if ( outputStream != null) {
-            outputStream.println("\n\n\n\nThere were "+ untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
-            for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
-                outputStream.println(haplotype);
+        if (hcArgs.assemblyStateOutput != null) {
+            try (PrintStream outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput + features.getInterval() + ".haplotypes.dump")))) {
+                outputStream.println("\n\n\n\nThere were "+ untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
+                for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
+                    outputStream.println(haplotype);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            outputStream.close();
         }
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
