@@ -157,7 +157,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Hidden
     @Argument(fullName="disable-sequence-graph-simplification", doc = "If enabled, haplotype caller will detect haplotypes on the unmodified de Bruijn graph", optional = true)
-    public boolean disableSeqGraphConstruciton = false;
+    public boolean disableSeqGraphConstruciton = true;
 
     /**
      * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the GraphBasedKBestHaplotypeFinder

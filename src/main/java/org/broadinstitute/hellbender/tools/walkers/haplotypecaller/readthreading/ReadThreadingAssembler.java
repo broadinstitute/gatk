@@ -82,7 +82,7 @@ public final class ReadThreadingAssembler {
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
-        this.generateSeqGraph = generateSeqGraph;
+        this.generateSeqGraph = false;
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
@@ -298,7 +298,9 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, null, rtGraph);
         }
 
-        rtGraph.removePathsNotConnectedToRef();
+        // TODO this is an optimization step, in the processing of the graph we have already excised paths not connected to the reference
+        // TODO and in RT mode we have not mutated the graph at all. Thus we want to perform this expensive cleaning step only once
+        //rtGraph.removePathsNotConnectedToRef();
 
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtGraph);
     }
@@ -502,7 +504,7 @@ public final class ReadThreadingAssembler {
         }
 
         // remove all heading and trailing paths
-        if ( removePathsNotConnectedToRef ) {
+        if ( removePathsNotConnectedToRef) {
             rtgraph.removePathsNotConnectedToRef();
         }
 
@@ -531,9 +533,6 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
 
         } else {
-            if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
-            }
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
@@ -543,7 +542,6 @@ public final class ReadThreadingAssembler {
             if (debug) {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
             rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
             final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
