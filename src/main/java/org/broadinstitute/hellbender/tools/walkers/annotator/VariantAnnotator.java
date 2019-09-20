@@ -225,7 +225,8 @@ public class VariantAnnotator extends VariantWalker {
 
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
-            final ReferenceContext expandedRefContext = new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, getSequenceDictionaryForDrivingVariants()));
+            final ReferenceContext expandedRefContext = !hasReference() ? refContext :
+                    new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, getBestAvailableSequenceDictionary()));
             VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, expandedRefContext, makeLikelihoods(vc, readsContext), a -> true);
             vcfWriter.add(annotatedVC);
         } else {
