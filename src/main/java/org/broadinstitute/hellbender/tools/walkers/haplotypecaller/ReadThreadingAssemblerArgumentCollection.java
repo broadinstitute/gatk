@@ -21,6 +21,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
 
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
+    public static final String KMER_SIZE_LONG_NAME = "kmer-size";
+    public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
 
 
     //---------------------------------------------------------------------------------------------------------------
@@ -58,7 +60,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * Multiple kmer sizes can be specified, using e.g. `--kmer-size 10 --kmer-size 25`.
      */
     @Advanced
-    @Argument(fullName="kmer-size", doc="Kmer size to use in the read threading assembler", optional = true)
+    @Argument(fullName= KMER_SIZE_LONG_NAME, doc="Kmer size to use in the read threading assembler", optional = true)
     public List<Integer> kmerSizes = Lists.newArrayList(10,25);
 
     /**
@@ -66,7 +68,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * resolved. Disabling this behavior may cause the program to give up on assembling the ActiveRegion.
      */
     @Advanced
-    @Argument(fullName="dont-increase-kmer-sizes-for-cycles", doc="Disable iterating over kmer sizes when graph cycles are detected", optional = true)
+    @Argument(fullName= DONT_INCREASE_KMER_SIZE_LONG_NAME, doc="Disable iterating over kmer sizes when graph cycles are detected", optional = true)
     public boolean dontIncreaseKmerSizesForCycles = false;
 
     /**

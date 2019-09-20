@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 
@@ -91,6 +92,15 @@ public interface CommandLineProgramTester {
      */
     default Object runCommandLine(final List<String> args, final String toolName) {
         return new Main().instanceMain(makeCommandLineArgs(args, toolName));
+    }
+
+    /**
+     * Lets you explicitly specify a tool to run with the provided arguments
+     *
+     * Default behavior uses {@link Main} with the command line arguments created by {@link #makeCommandLineArgs(List, String)}.
+     */
+    default Object runCommandLine(final ArgumentsBuilder args, final String toolName) {
+        return new Main().instanceMain(makeCommandLineArgs(args.getArgsList(), toolName));
     }
 
     default Object runCommandLine(final String[] args) {
