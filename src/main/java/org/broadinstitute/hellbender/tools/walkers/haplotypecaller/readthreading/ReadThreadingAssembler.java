@@ -547,7 +547,7 @@ public final class ReadThreadingAssembler {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
             //TODO this is disabled for performance reasons, since the graph hasn't been mutated at all
-            rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
+            //rtgraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
             final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
             final AssemblyResult.Status status = cleaned.getStatus();
