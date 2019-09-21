@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -51,6 +52,11 @@ public final class TandemRepeat extends InfoFieldAnnotation implements StandardM
         map.put(GATKVCFConstants.REPEAT_UNIT_KEY, new String(repeatUnit));
         map.put(GATKVCFConstants.REPEATS_PER_ALLELE_KEY, numUnits);
         return Collections.unmodifiableMap(map);
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 
     @Override

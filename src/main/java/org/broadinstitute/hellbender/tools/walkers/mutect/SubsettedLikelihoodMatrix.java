@@ -57,7 +57,7 @@ public class SubsettedLikelihoodMatrix<A extends Allele> implements LikelihoodMa
     public double get(final int alleleIndex, final int readIndex) { return matrix.get(newToOldIndexMap.get(alleleIndex), readIndex); }
 
     @Override
-    public int indexOfAllele(final A allele) { return alleles.indexOf(allele); }
+    public int indexOfAllele(final Allele allele) { return alleles.indexOf(allele); }
 
     @Override
     public int indexOfRead(final GATKRead read) { return matrix.indexOfRead(read); }

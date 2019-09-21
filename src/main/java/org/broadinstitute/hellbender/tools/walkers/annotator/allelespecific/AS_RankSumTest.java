@@ -162,7 +162,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
             if (bestAllele.isInformative() && isUsableRead(bestAllele.read, refLoc)) {
                 final OptionalDouble value = getElementForRead(bestAllele.read, refLoc, bestAllele);
                 if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && perAlleleValues.containsKey(bestAllele.allele)) {
-                    perAlleleValues.get(bestAllele.allele).addAll((int) value.getAsDouble());
+                    perAlleleValues.get(bestAllele.allele).add((int) value.getAsDouble());
                 }
             }
         }

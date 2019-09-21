@@ -68,7 +68,7 @@ public class GenotypeUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getGenotypeCountsParameters")
     public void testRounding(VariantContext vc, GenotypesContext gt, boolean round, GenotypeCounts expected) {
-        final GenotypeCounts actual = GenotypeUtils.computeDiploidGenotypeCounts(vc, gt, round);
+        final GenotypeCounts actual = GenotypeUtils.computeDiploidGenotypeCounts(vc.getNAlleles(), gt, round);
         Assert.assertEquals(actual.getRefs(), expected.getRefs(), DELTA_PRECISION);
         Assert.assertEquals(actual.getHets(), expected.getHets(), DELTA_PRECISION);
         Assert.assertEquals(actual.getHoms(), expected.getHoms(), DELTA_PRECISION);
@@ -148,7 +148,7 @@ public class GenotypeUtilsUnitTest extends GATKBaseTest {
         genotypesArray.add(g);
         final GenotypesContext genotypes = GenotypesContext.create(genotypesArray);
 
-        final GenotypeCounts actual = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, rounded);
+        final GenotypeCounts actual = GenotypeUtils.computeDiploidGenotypeCounts(vc.getNAlleles(), genotypes, rounded);
         Assert.assertEquals(actual.getRefs(), expected.getRefs(), DELTA_PRECISION);
         Assert.assertEquals(actual.getHets(), expected.getHets(), DELTA_PRECISION);
         Assert.assertEquals(actual.getHoms(), expected.getHoms(), DELTA_PRECISION);

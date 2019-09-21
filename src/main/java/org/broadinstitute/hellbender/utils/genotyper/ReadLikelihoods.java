@@ -290,7 +290,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * @return -1 if the allele is not included, 0 or greater otherwise.
      */
     @Override
-    public int indexOfAllele(final A allele) {
+    public int indexOfAllele(final Allele allele) {
         return alleles.indexOfAllele(allele);
     }
 
@@ -302,6 +302,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
     public int numberOfAlleles() {
         return alleles.numberOfAlleles();
     }
+
 
     /**
      * Returns the allele given its index.
@@ -1402,7 +1403,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         @Override
-        public int indexOfAllele(final A allele) {
+        public int indexOfAllele(final Allele allele) {
             Utils.nonNull(allele);
             return ReadLikelihoods.this.indexOfAllele(allele);
         }

@@ -2,10 +2,15 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import it.unimi.dsi.fastutil.ints.AbstractIntList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntLists;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -137,13 +142,16 @@ public final class GenotypeLikelihoodCalculator {
      */
     private double[] readGenotypeLikelihoodComponents;
 
+    private GenotypeLikelihoodCalculators parent;
+
     /**
      * Creates a new calculator providing its ploidy and number of genotyping alleles.
      */
-    protected GenotypeLikelihoodCalculator(final int ploidy, final int alleleCount,
+    protected GenotypeLikelihoodCalculator(final GenotypeLikelihoodCalculators parent, final int ploidy, final int alleleCount,
                                            final int[][] alleleFirstGenotypeOffsetByPloidy,
                                            final GenotypeAlleleCounts[][] genotypeTableByPloidy) {
         Utils.validateArg(ploidy > 0, () -> "ploidy must be at least 1 but was " + ploidy);
+        this.parent = parent;
         this.alleleFirstGenotypeOffsetByPloidy = alleleFirstGenotypeOffsetByPloidy;
         genotypeAlleleCounts = genotypeTableByPloidy[ploidy];
         this.alleleCount = alleleCount;
@@ -200,6 +208,56 @@ public final class GenotypeLikelihoodCalculator {
             alleleHeap.add(alleleIndices[i]);
         }
         return alleleHeapToIndex();
+    }
+
+    /**
+     * Returns a list with the indexes of all the genotypes that contains a subset of allele indexes.
+     * @param alleleIndices
+     * @return never {@code null}, and at least one element.
+     */
+    public IntList allelesToIndexes(final int ... alleleIndices) {
+        if (alleleIndices.length == ploidy) {
+            return IntLists.singleton(allelesToIndex(alleleIndices));
+        } else {
+            final GenotypeLikelihoodCalculator suffixCalculator = parent.getInstance(ploidy - alleleIndices.length, alleleCount);
+            final int[] allAlleleIndices = Arrays.copyOf(alleleIndices, ploidy);
+            return new AbstractIntList() {
+                @Override
+                public int getInt(int i) {
+                    final GenotypeAlleleCounts suffixCounts = suffixCalculator.genotypeAlleleCountsAt(i);
+                    suffixCounts.copyAlleleIndexes(allAlleleIndices, alleleIndices.length);
+                    return allelesToIndex(allAlleleIndices);
+                }
+
+                @Override
+                public int size() {
+                    return suffixCalculator.genotypeCount();
+                }
+            };
+        }
+    }
+
+    public IntList allelesContainingIndexes(final int ... allelesIndices) {
+        final boolean[] allelePresent = new boolean[alleleCount];
+        for (final int index : allelesIndices) {
+            if (index >= 0 && index < alleleCount) {
+                allelePresent[index] = true;
+            } else {
+                throw new IllegalArgumentException("the argument contains invalid allele indexes: " + index);
+            }
+        }
+        final IntList result = new IntArrayList(Math.min(genotypeCount, 10000));
+        for (int g = 0; g < genotypeCount; g++) {
+            final GenotypeAlleleCounts counts = genotypeAlleleCountsAt(g);
+            for (int k = 0; k < counts.distinctAlleleCount(); k++) {
+                final int index = counts.alleleIndexAt(k);
+                if (allelePresent[index]) {
+                    result.add(g);
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     /**

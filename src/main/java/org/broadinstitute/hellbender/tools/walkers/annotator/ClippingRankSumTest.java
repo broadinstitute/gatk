@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -12,6 +15,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalDouble;
 
 /**
@@ -47,4 +51,9 @@ public final class ClippingRankSumTest extends RankSumTest {
         // default to returning the same value
         return getElementForRead(p.getRead(),refLoc);
     }
- }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
+    }
+}

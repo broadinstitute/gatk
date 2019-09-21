@@ -315,7 +315,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants) :
                 regenotypeVC(mergedVC, ref, features, includeNonVariants);
-        final VariantContext finalVC = populationAnnotations == null ? regenotypedVC : applyPopulationAnnotations(regenotypedVC);
+        final VariantContext finalVC = populationAnnotations == null ? regenotypedVC : applyPopulationAnnotations(regenotypedVC, features);
         if (finalVC != null) {
 
             final SimpleInterval variantStart = new SimpleInterval(finalVC.getContig(), finalVC.getStart(), finalVC.getStart());
@@ -339,7 +339,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         if (popAnno == null) {
             return genotypedVC;
         }
-        return applyPopulationAnnotations(genotypedVC, popAnno);
+        return null;
+        //return applyPopulationAnnotations(genotypedVC, popAnno);
     }
 
     private VariantContext applyPopulationAnnotation(final VariantContext cohort, final VariantContext pop) {
@@ -348,24 +349,25 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                    new IndexedAlleleList<>(cohort.getAlleles()));
         builder.alleles(newAlleleList.asListOfAlleles());
         final GenotypesContext cohortGenotypes = cohort.getGenotypes();
-        final List<Genotype> genotypes = updateAlleleList(cohortGenotypes, newAlleleList);
+        final List<Genotype> genotypes = updateAlleleList(cohortGenotypes, new IndexedAlleleList<>(cohort.getAlleles()), newAlleleList);
         final LinkedHashSet<String> annotationKeys = new LinkedHashSet<>(pop.getAttributes().keySet());
         annotationKeys.addAll(cohort.getAttributes().keySet());
         for (final String annotationKey : annotationKeys) {
 
         }
+        return null;
     }
 
-    private List<Genotype> updateAlleleList(final GenotypesContext cohortGenotypes, final MergedAlleleList<Allele> newAlleleList) {
+    private List<Genotype> updateAlleleList(final GenotypesContext cohortGenotypes, final AlleleList<Allele> oldAlleleList, final MergedAlleleList<Allele> newAlleleList) {
         return cohortGenotypes.stream()
-                .map(old -> updateAlleleList(old, newAlleleList))
+                .map(old -> updateAlleleList(old, oldAlleleList, newAlleleList))
                 .collect(Collectors.toList());
     }
 
-    private List<Genotype> updateAlleleList(final Genotype old, final AlleleList<Allele> oldAlleleList, final MergedAlleleList<Allele> newAlleleList) {
+    private Genotype updateAlleleList(final Genotype old, final AlleleList<Allele> oldAlleleList, final MergedAlleleList<Allele> newAlleleList) {
         final GenotypeBuilder builder = new GenotypeBuilder();
         if (old.hasAD()) {
-            builder.AD(newAlleleList.mapIntPerAlleleAttribute(oldAlleleList, old.getAD(), 0));
+            builder.AD(newAlleleList.mapAlleleAnnotation(oldAlleleList, old.getAD(), VCFHeaderLineCount.R, 0));
         }
         if (old.hasDP()) {
             builder.DP(old.getDP());
@@ -378,8 +380,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         }
         builder.alleles(old.getAlleles());
         for (final Map.Entry<String, Object> attr : old.getExtendedAttributes().entrySet()) {
-
+            return null;
         }
+        return null;
     }
 
     // If includeNonVariants is set, we're using group-by-locus traversal. To match GATK3 GenotypeGVCFs,

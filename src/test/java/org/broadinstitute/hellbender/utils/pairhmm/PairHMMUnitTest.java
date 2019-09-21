@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.base.Strings;
+import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -555,7 +556,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public int indexOfAllele(Haplotype allele) {
+            public int indexOfAllele(Allele allele) {
                 throw new UnsupportedOperationException();
             }
 

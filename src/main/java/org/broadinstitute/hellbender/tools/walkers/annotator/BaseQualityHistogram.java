@@ -12,6 +12,7 @@ import org.apache.commons.lang.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Int;
@@ -61,6 +62,11 @@ public class BaseQualityHistogram extends InfoFieldAnnotation {
         return Arrays.asList(new VCFInfoHeaderLine(KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
                 "Base quality counts for each allele represented sparsely as alternating entries of qualities and counts for each allele." +
                 "For example [10,1,0,20,0,1] means one ref base with quality 10 and one alt base with quality 20."));
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 
     @Override

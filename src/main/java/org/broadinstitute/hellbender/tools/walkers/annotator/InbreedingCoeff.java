@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -86,9 +87,14 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements Standar
         return Collections.singletonMap(getKeyNames().get(0), String.format("%.4f", F));
     }
 
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
+    }
+
     @VisibleForTesting
     static Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
-        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
+        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc.getNAlleles(), genotypes, ROUND_GENOTYPE_COUNTS);
 
         final double refCount = t.getRefs();
         final double hetCount = t.getHets();

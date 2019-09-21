@@ -1,30 +1,50 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
-import it.unimi.dsi.fastutil.doubles.DoubleList;
-import it.unimi.dsi.fastutil.ints.AbstractIntList;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
-import it.unimi.dsi.fastutil.ints.IntLists;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
+import it.unimi.dsi.fastutil.ints.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.Log10Cache;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.ToDoubleBiFunction;
-import java.util.function.ToDoubleFunction;
-import java.util.function.ToIntFunction;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * A list that is the product of merging to other allele lists.
+ * <p>
+ *     Shared alleles across the original lists will be present only once
+ *     in the output list.
+ * </p>
+ * <p>
+ *     This takes in consideration difference in length of the reference alleles
+ *     in the input lists (e.g. coming from a SNP variant context vs a INDEL variant context)
+ * </p>
+ * <p>
+ *     Then this class includes convenient methods to allele and genotype annotations from
+ *     the original (or arbitrary) allele list to the new one.
+ * </p>
+ *
+ *
+ * @param <A> allele type-parameter.
+ */
 public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
+
+    public static final Comparator<Allele> ALLELE_COMPARATOR = (a, b) -> {
+        if (a.isReference() == b.isReference()) {
+            if (a.isSymbolic() == b.isSymbolic()) {
+                return a.getDisplayString().compareTo(b.getDisplayString());
+            } else {
+                return a.isSymbolic() ? 1 : -1;
+            }
+        } else {
+            return a.isReference() ? -1 : 1;
+        }
+    };
+
     private final AlleleList<A> left;
     private final AlleleList<A> right;
     private final AlleleList<A> result;
@@ -36,7 +56,8 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
 
     private final GenotypeLikelihoodCalculators GT_LK_CALCULATORS = new GenotypeLikelihoodCalculators();
 
-    private MergedAlleleList(final AlleleList<A> left, final AlleleList<A> right, final AlleleList<A> result, final IntList indexOfLeftAllelesOnResult,
+    private MergedAlleleList(final AlleleList<A> left, final AlleleList<A> right, final AlleleList<A> result,
+                             final IntList indexOfLeftAllelesOnResult,
                              final IntList indexOfRightAllelesOnResult) {
         this.left = left;
         this.right = right;
@@ -49,23 +70,26 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     private static <A extends Allele> A extendWithBasesIfPossible(final A original, final byte[] bases) {
         if (original.getClass() != Allele.class) {
             return original;
-        }
-        for (final byte base : original.getBases()) {
-            switch (base) {
-                case 'a':
-                case 'A':
-                case 'c':
-                case 'C':
-                case 't':
-                case 'T':
-                case 'n':
-                case 'N':
-                    continue;
-                default:
-                    return original;
+        } else if (original.isSymbolic() || original.isNoCall()) { // in theory no-call are neither symbolic or symbolic.
+            return original;
+        } else {
+            for (final byte base : original.getBases()) {
+                switch (base) {
+                    case 'a':
+                    case 'A':
+                    case 'c':
+                    case 'C':
+                    case 't':
+                    case 'T':
+                    case 'n':
+                    case 'N':
+                        continue;
+                    default:
+                        return original;
+                }
             }
+            return (A) Allele.create(Utils.concat(original.getBases(), bases), original.isReference());
         }
-        return (A) Allele.create(Utils.concat(original.getBases(), bases), original.isReference());
     }
 
     @Override
@@ -84,53 +108,37 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     }
 
     public static <A extends Allele> MergedAlleleList<A> merge(final AlleleList<A> left, final AlleleList<A> right) {
-        if (left == right) { // may happen often in some cases.
+        if (left == right || left.sameAlleles(right)) { // may happen often in some cases.
             final IntList indexOnList = new FirstNIntegers(left.numberOfAlleles());
             return new MergedAlleleList<>(left, left, left, indexOnList, indexOnList);
         } else {
-            final int leftSize = left.numberOfAlleles();
-            int leftRefIdx = -1;
-            int rightRefIdx = -1;
-            for (int i = 0; i < leftSize; i++) {
-                final A allele = left.getAllele(i);
-                if (allele.isReference()) {
-                    if (leftRefIdx != -1) {
-                        throw new IllegalArgumentException("more than one reference in input left allele list");
-                    } else {
-                        leftRefIdx = i;
-                    }
-                }
-            }
-            final int rightSize = right.numberOfAlleles();
-            boolean sameList = leftSize == rightSize;
-            for (int j = 0; j < rightSize; j++) {
-                final A allele = right.getAllele(j);
-                if (allele.isReference()) {
-                    if (rightRefIdx != -1) {
-                        throw new IllegalArgumentException("more than one reference in input left allele list");
-                    } else {
-                        rightRefIdx = j;
-                    }
-                }
-                sameList &= allele.equals(left.getAllele(j));
-            }
-            if (sameList) {
-                final IntList indexOnList = new FirstNIntegers(leftSize);
-                return new MergedAlleleList<>(left, left, left, indexOnList, indexOnList);
-            } else {
-                return mergeDifferentAlleleList(left, right, leftRefIdx, rightRefIdx);
-            }
+            final int leftRefIdx = left.indexOfUniqueReference();
+            final int rightRefIdx = right.indexOfUniqueReference();
+            return mergeDifferentAlleleList(left, right, leftRefIdx, rightRefIdx);
         }
     }
 
-    private static <A extends Allele> MergedAlleleList<A> mergeDifferentAlleleList(final AlleleList<A> originalLeft, final AlleleList<A> originalRight,
-                                                                final int leftRefIdx, final int rightRefIdx) {
+    private static <A extends Allele> MergedAlleleList<A> mergeDifferentAlleleList(
+            final AlleleList<A> originalLeft, final AlleleList<A> originalRight,
+            final int originalLeftRefIdx, final int originalRightRefIdx) {
         final AlleleList<A> left;
         final AlleleList<A> right;
+        final int leftRefIdx;
+        final int rightRefIdx;
+        if (originalLeftRefIdx >= 0 && originalRightRefIdx < 0) {
+            leftRefIdx = originalLeftRefIdx;
+            rightRefIdx = originalRight.indexOfAllele(Allele.create(originalLeft.getAllele(leftRefIdx), true));
+        } else if (originalLeftRefIdx < 0 && originalRightRefIdx >= 0) {
+            rightRefIdx = originalRightRefIdx;
+            leftRefIdx = originalLeft.indexOfAllele(Allele.create(originalRight.getAllele(rightRefIdx), true));
+        } else {
+            leftRefIdx = originalLeftRefIdx;
+            rightRefIdx = originalRightRefIdx;
+        }
         if (leftRefIdx >= 0 && rightRefIdx >= 0) {
             final A leftRef = originalLeft.getAllele(leftRefIdx);
             final A rightRef = originalRight.getAllele(rightRefIdx);
-            if (leftRef.equals(rightRef)) {
+            if (leftRef.equals(rightRef, true)) {
                 left = originalLeft;
                 right = originalRight;
             } else if (leftRef.getDisplayString().startsWith(rightRef.getDisplayString())) {
@@ -152,25 +160,90 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
             left = originalLeft;
             right = originalRight;
         }
-        final AlleleList<A> result = new IndexedAlleleList<A>(Stream.concat(left.asListOfAlleles().stream(),
-                right.asListOfAlleles().stream())
-                .sorted().distinct().collect(Collectors.toList()));
-        final IntList leftIndexes = new IntArrayList(left.asListOfAlleles().stream().mapToInt(result::indexOfAllele).toArray());
-        final IntList rightIndexes = new IntArrayList(right.asListOfAlleles().stream().mapToInt(result::indexOfAllele).toArray());
+        final AlleleList<A> result;
+        if (originalLeftRefIdx == leftRefIdx && originalRightRefIdx == rightRefIdx) {
+            result = new IndexedAlleleList<>(Stream.concat(left.asListOfAlleles().stream(),
+                    right.asListOfAlleles().stream())
+                    .sorted(ALLELE_COMPARATOR).distinct().collect(Collectors.toList()));
+        } else {
+            final Allele refAllele = originalLeftRefIdx > 0 ? left.getAllele(leftRefIdx) : right.getAllele(rightRefIdx);
+            result = new IndexedAlleleList<>(Stream.concat(left.asListOfAlleles().stream(),
+                    right.asListOfAlleles().stream())
+                    .sorted(ALLELE_COMPARATOR)
+                    .filter(a -> a.isReference() || !a.equals(refAllele, true)).distinct().collect(Collectors.toList()));
+        }
+        final IntList leftIndexes = result.alleleIndexMap(left, true, true);
+        final IntList rightIndexes = result.alleleIndexMap(right, true, true);
         return new MergedAlleleList<>(originalLeft, originalRight, result, leftIndexes, rightIndexes);
     }
 
-    public int[] mapIntPerAlleleAttribute(final AlleleList<A> oldAlleleList, final int[] oldValues, final int missingValue) {
+
+    public <T> List<T> mapAlleleAnnotation(final AlleleList<A> alleles, final List<T> values, final VCFHeaderLineCount count, final T missingValue) {
+        switch (count) {
+            case INTEGER:
+            case UNBOUNDED:
+                return values;
+            case A:
+                return mapAlleleAnnotation(alleles, values, false, missingValue);
+            case R:
+                return mapAlleleAnnotation(alleles, values, true, missingValue);
+            default:
+                throw new IllegalArgumentException("unsupported annotation VCF count type: " + count);
+        }
+    }
+
+    public int[] mapAlleleAnnotation(final AlleleList<A> alleles, final int[] values, final VCFHeaderLineCount count, final int missingValue) {
+        final List<Integer> valueList = new AbstractList<Integer>() {
+            @Override
+            public Integer get(int index) {
+                return values[index];
+            }
+
+            @Override
+            public int size() {
+                return values.length;
+            }
+        };
+        final List<Integer> result = mapAlleleAnnotation(alleles, valueList, count, missingValue);
+        return result.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    public <T> List<T> mapAlleleAnnotation(final AlleleList<A> oldAlleleList, final List<T> oldValues, final boolean includeReference, final T missingValue) {
         Utils.nonNull(oldAlleleList);
         Utils.nonNull(oldValues);
-        Utils.validate(oldValues.length == oldAlleleList.numberOfAlleles(), "");
-        final IntList indexOfOldAlleles = calculateIndexesOfAlleles(oldAlleleList);
-        final int[] newValues = new int[result.numberOfAlleles()];
-        for (int i = 0; i < newValues.length; i++) {
-            final int oldIndex = indexOfOldAlleles.getInt(i);
-            newValues[i] = oldIndex < 0 ? missingValue : oldValues[oldIndex];
+        int referenceIndex = oldAlleleList.indexOfUniqueReference();
+        if (referenceIndex == -1 && oldAlleleList.indexOfReference() != -1) {
+            referenceIndex = oldAlleleList.indexOfAllele(result.getReferenceAllele(), true, false);
         }
-        return newValues;
+        if (includeReference) {
+            Utils.validate(oldValues.size() == oldAlleleList.numberOfAlleles(), "bad input length");
+            return unsafeMapAlleleAnnotation(oldAlleleList, oldValues, true, missingValue);
+        } else if (referenceIndex == -1) {
+            throw new IllegalArgumentException("cannot determine the reference allele");
+        } else {
+            if (oldValues.size() == oldAlleleList.numberOfAlleles() + 1) { // the input does not have a value for the ref.
+                final List<T> paddedReferenceValue = new ArrayList<>(oldValues.size() + 1);
+                paddedReferenceValue.addAll(oldValues.subList(0, referenceIndex));
+                paddedReferenceValue.add(null);
+                paddedReferenceValue.addAll(oldValues.subList(referenceIndex, oldValues.size()));
+                return unsafeMapAlleleAnnotation(oldAlleleList, paddedReferenceValue, false, missingValue);
+            } else if (oldValues.size() == oldAlleleList.numberOfAlleles()) { // the input contains a value for the ref.
+                return unsafeMapAlleleAnnotation(oldAlleleList, oldValues, false, missingValue);
+            } else {
+                throw new IllegalArgumentException("wrong number of values");
+            }
+        }
+    }
+
+    private <T> List<T>  unsafeMapAlleleAnnotation(final AlleleList<A> oldAlleleList, final List<T> oldValues, final boolean includeReference, final T missingValue) {
+        final IntList indexOfOldAlleles = result.alleleIndexMap(oldAlleleList, true, true);
+        final int numberOfAlleles = numberOfAlleles();
+        final List<T> result = new ArrayList<>(numberOfAlleles);
+        for (int i = 0; i < numberOfAlleles; i++) {
+            final int oldIndex = indexOfOldAlleles.getInt(i);
+            result.add(oldIndex < 0 ? missingValue : oldValues.get(oldIndex));
+        }
+        return result;
     }
 
     /**
@@ -181,41 +254,68 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
      * @return
      */
     public double[] mapGenotypeLikelihoods(final AlleleList<A> oldAlleleList, final int ploidy, final double[] likelihoods) {
-        final List<IntList> indexOfGenotypes = calculateIndexesOfGenotypes(oldAlleleList, ploidy);
+        final List<List<GenotypeMatch>> indexOfGenotypes = calculateIndexesOfGenotypes(oldAlleleList, ploidy);
         final double[] result = new double[indexOfGenotypes.size()];
-        final double minLikelihood = MathUtils.arrayMin(likelihoods);
+        final double[] normalizedLikelihoods = normalizeLikelihoods(likelihoods, false);
+        final double zeroLikelihood = calculateZeroLikelihood(normalizedLikelihoods);
+        double[] log10SumBuffer = null;
+        double[] log10SumBuffer2 = null;
         for (int i = 0; i < result.length; i++) {
-            final IntList oldGenotypes = indexOfGenotypes.get(i);
+            final List<GenotypeMatch> oldGenotypes = indexOfGenotypes.get(i);
             final int oldGenotypesSize = oldGenotypes.size();
-            if (oldGenotypesSize == 0 || oldGenotypesSize == likelihoods.length) {
-                result[i] = minLikelihood - MathUtils.log10(ploidy);
-            } else if (oldGenotypes.size() == 1) {
-                result[i] = likelihoods[oldGenotypes.getInt(0)];
+            if (oldGenotypesSize == 0) {
+                result[i] = zeroLikelihood;
+            } else if (oldGenotypesSize == 1) {
+                final GenotypeMatch match = oldGenotypes.get(0);
+                result[i] = normalizedLikelihoods[match.genotypeIndex] + match.log10Factor;
             } else {
-                int minLikelihoodIndex = oldGenotypes.get(0);
-                double minLikelihoodValue = likelihoods[oldGenotypes.get(minLikelihoodIndex)];
-                for (int j = 1; j < oldGenotypes.size(); j++) {
-                    int candidateIndex = oldGenotypes.get(j);
-                    if (likelihoods[candidateIndex] < minLikelihoodValue) {
-                        minLikelihoodValue = likelihoods[candidateIndex];
-                        minLikelihoodIndex = candidateIndex;
-                    }
+                log10SumBuffer = log10SumBuffer == null ? new double[likelihoods.length] : log10SumBuffer;
+                log10SumBuffer2 = log10SumBuffer2 == null ? new double[likelihoods.length] : log10SumBuffer2;
+                for (int j = 0; j < oldGenotypesSize; j++) {
+                    final GenotypeMatch match = oldGenotypes.get(j);
+                    log10SumBuffer[j] = 2 * normalizedLikelihoods[match.genotypeIndex];
+                    log10SumBuffer2[j] = normalizedLikelihoods[match.genotypeIndex];
+                    log10SumBuffer[j] += match.log10Factor;
                 }
-                final GenotypeLikelihoodCalculator oldCalculator = GT_LK_CALCULATORS.getInstance(ploidy, oldAlleleList.numberOfAlleles());
-                final GenotypeAlleleCounts example = oldCalculator.genotypeAlleleCountsAt(minLikelihoodIndex);
-                int matched = 0;
-                for (int k = 0; k < example.distinctAlleleCount(); k++) {
-                    if (this.result.containsAllele(oldAlleleList.getAllele(example.alleleIndexAt(k)))) {
-                        matched += example.alleleCountAt(k);
-                    }
-                }
-                result[i] = minLikelihoodValue + MathUtils.log10(matched) - MathUtils.log10(ploidy);
+                final double normalizer = MathUtils.log10SumLog10(log10SumBuffer2, 0, oldGenotypesSize);
+                result[i] = Math.max(MathUtils.log10SumLog10(log10SumBuffer, 0, oldGenotypesSize) - normalizer, zeroLikelihood);
             }
         }
-        return result;
-
+        return normalizeLikelihoods(result, true);
     }
 
+    private double[] normalizeLikelihoods(final double[] likelihoods, final boolean canUseInput) {
+
+        final int maxIndex = MathUtils.maxElementIndex(likelihoods);
+        if (likelihoods[maxIndex] == 0.0) {
+            return likelihoods;
+        } else {
+            final int length = likelihoods.length;
+            final double max = likelihoods[maxIndex];
+            final double[] result = canUseInput ? likelihoods : new double[length];
+            for (int i = 0; i < length; i++) {
+                result[i] = likelihoods[i] - max;
+            }
+            return result;
+        }
+    }
+
+    private double calculateZeroLikelihood(final double[] likelihoods) {
+        double worst = likelihoods[0];
+        double secondWorst = worst;
+        final int length = likelihoods.length;
+        for (int i = 1; i < length; i++) {
+            final double lk = likelihoods[i];
+            if (lk < worst) {
+                secondWorst = worst;
+                worst = lk;
+            } else if (lk < secondWorst) {
+                secondWorst = lk;
+            }
+        }
+        final double diff = secondWorst - worst;
+        return diff < MathUtils.log10(2) ? worst - MathUtils.log10(2) : worst - diff;
+    }
 
     private static class FirstNIntegers extends AbstractIntList {
 
@@ -240,24 +340,17 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         }
     }
 
-
     private static <A extends Allele, B extends Allele> IntList calculateIndexesOfAlleles(final AlleleList<A> originalAlleles, final AlleleList<B> resultAlleles) {
-        final int resultLength = originalAlleles.numberOfAlleles();
+        final int resultLength = resultAlleles.numberOfAlleles();
         if (resultLength == 0) {
             return IntLists.EMPTY_LIST;
         } else if (resultLength == 1) {
-            final int index = resultAlleles.indexOfAllele(originalAlleles.getAllele(0));
-            if (index > 0) {
-                return IntLists.singleton(index);
-            } else {
-                return IntLists.singleton(resultAlleles.nonRefAlleleIndex());
-            }
+            return IntLists.singleton(originalAlleles.indexOfAllele(resultAlleles.getAllele(0), resultAlleles.getUniqueReferenceAllele(), true, true));
         } else {
+            final Allele resultReference = resultAlleles.getUniqueReferenceAllele();
             final IntList result = new IntArrayList(resultLength);
-            final int nonRefIndex = originalAlleles.nonRefAlleleIndex();
             for (int i = 0; i < resultLength; i++) {
-                final int index = originalAlleles.indexOfAllele(resultAlleles.getAllele(i));
-                result.add(index >= 0 ? index : nonRefIndex);
+                result.add(originalAlleles.indexOfAllele(resultAlleles.getAllele(i), resultReference, true, true));
             }
             return result;
         }
@@ -273,7 +366,19 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         }
     }
 
-    private <A extends Allele> List<IntList> calculateIndexesOfGenotypes(final AlleleList<A> original, final int ploidy) {
+    private static class GenotypeMatch {
+        private final int genotypeIndex;
+        private final int matchedAlleles;
+        private final double log10Factor;
+
+        private GenotypeMatch(final int genotypeIndex, final int matchedAlleles, final double factor) {
+           this.genotypeIndex = genotypeIndex;
+           this.matchedAlleles = matchedAlleles;
+           this.log10Factor = factor;
+        }
+    }
+
+    private <A extends Allele> List<List<GenotypeMatch>> calculateIndexesOfGenotypes(final AlleleList<A> original, final int ploidy) {
         final IntList indexOfOriginalAlleles = calculateIndexesOfAlleles(original);
 
         final GenotypeLikelihoodCalculator resultCalculator = GT_LK_CALCULATORS.getInstance(ploidy, result.numberOfAlleles());
@@ -281,7 +386,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         if (resultLength == 0) {
             return Collections.emptyList();
         } else {
-            final List<IntList> result = new ArrayList<>(resultLength);
+            final List<List<GenotypeMatch>> result = new ArrayList<>(resultLength);
             final int[] alleleIndexBuffer = new int[ploidy];
             int[] alleleCountsByIndexBuffer = null;
             final GenotypeLikelihoodCalculator originalCalculator = GT_LK_CALCULATORS.getInstance(ploidy, original.numberOfAlleles());
@@ -294,24 +399,33 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
                     notFound |= index == -1;
                 }
                 if (!notFound) {
-                    result.add(IntLists.singleton(originalCalculator.allelesToIndex(alleleIndexBuffer)));
+                    result.add(Collections.singletonList(new GenotypeMatch(originalCalculator.allelesToIndex(alleleIndexBuffer), ploidy, 0)));
                 } else {
-                    alleleCountsByIndexBuffer = alleleCountsByIndexBuffer == null ? alleleCountsByIndexBuffer : new int[original.numberOfAlleles()];
-                    final IntList resultList = new IntArrayList(20); // 20 will cover most small cases.
-                    final int originalGenotypeCount = originalCalculator.genotypeCount();
-                    for (final int alleleIndex : alleleIndexBuffer) {
-                        if (alleleIndex >= 0) {
-                            alleleCountsByIndexBuffer[alleleIndex]++;
-                        }
+                    final Int2IntMap allelesIndicesPresent = new Int2IntArrayMap(originalCalculator.alleleCount());
+                    allelesIndicesPresent.defaultReturnValue(0);
+                    for (int k = 0; k < ploidy; k++) {
+                       if (alleleIndexBuffer[k] >= 0) {
+                           allelesIndicesPresent.put(alleleIndexBuffer[k], allelesIndicesPresent.get(alleleIndexBuffer[k]) + 1);
+                       }
                     }
-                    for (int j = 0; j < originalGenotypeCount; j++) {
-                        final GenotypeAlleleCounts originalGenotypeAlleleCounts = originalCalculator.genotypeAlleleCountsAt(j);
-                        if (originalGenotypeAlleleCounts.greaterOrEqualAlleleCountsByIndex(alleleCountsByIndexBuffer)) {
-                            resultList.add(j);
+                    if (allelesIndicesPresent.isEmpty()) {
+                        result.add(Collections.emptyList());
+                    } else {
+                        final int[] uniqueAlleleIndicesPresent = allelesIndicesPresent.keySet().toIntArray();
+                        final IntList intersectingGenotypeIndexes = originalCalculator.allelesContainingIndexes(uniqueAlleleIndicesPresent);
+                        final List<GenotypeMatch> matches = new ArrayList<>(intersectingGenotypeIndexes.size());
+                        for (final int index : intersectingGenotypeIndexes) {
+                            int matched = 0;
+                            final GenotypeAlleleCounts counts = originalCalculator.genotypeAlleleCountsAt(index);
+                            for (int alleleRank = 0; alleleRank < counts.distinctAlleleCount(); alleleRank++) {
+                                final int alleleIndex = counts.alleleIndexAt(alleleRank);
+                                final int alleleCount = counts.alleleCountAt(alleleRank);
+                                matched += Math.min(alleleCount, allelesIndicesPresent.get(alleleIndex));
+                            }
+                            matches.add(new GenotypeMatch(index, matched, Math.log10(matched) - Math.log10(ploidy)));
                         }
+                        result.add(matches);
                     }
-                    Arrays.fill(alleleCountsByIndexBuffer, 0);
-                    result.add(resultList);
                 }
             }
             return result;

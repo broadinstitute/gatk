@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -13,6 +16,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalDouble;
 
 /**
@@ -59,5 +63,10 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
     public boolean isUsableRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return super.isUsableRead(read, refLoc) && read.getSoftEnd() >= refLoc;
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 }

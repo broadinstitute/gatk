@@ -110,6 +110,9 @@ public enum Nucleotide {
     // total number of constants is best to cache it in a constant.
     private static final int NUMBER_OF_CONSTANTS;
 
+    // cached invalid's ordinal
+    private static final int INVALID_ORDINAL = INVALID.ordinal();
+
     /**
      * Values indexed by their unsigned byte encodings. Non-valid encodings point to {@link #INVALID}.
      */
@@ -287,7 +290,7 @@ public enum Nucleotide {
         if ((ch & 0xFF00) != 0) {
             return INVALID;
         } else {
-            return baseToValue[ch & 0xFF];
+            return baseToValue[ch];
         }
     }
 
@@ -392,14 +395,63 @@ public enum Nucleotide {
      *  </p>
      *  <p>
      *      Notice that if either or both input bases make reference to an invalid nucleotide (i.e. <pre> {@link #decode}(x) == {@link #INVALID}},
-     *      this method will return {@code false} even if {@code a == b}.
+     *      this method will simply compare both base values.
      *  </p>
      * @param a the first base to compare (however order is not relevant).
      * @param b the second base to compare (however order is not relevant).
      * @return {@code true} iff {@code {@link #decode}}.same({@link #decode}(b))}}
      */
     public static boolean same(final byte a, final byte b) {
-        return baseToValue[a & 0xFF] == baseToValue[b & 0xFF] && baseToValue[a & 0xFF] != INVALID;
+        final int aOrdinal = baseToOrdinal[a & 0xFF];
+        final int bOrdinal = baseToOrdinal[b & 0xFF];
+        return aOrdinal != INVALID_ORDINAL ? aOrdinal == bOrdinal : a == b;
+    }
+
+    /**
+     * Returns true if two byte arrays contained bases have the same sequence.
+     * <p>
+     *     this operation is commutative.
+     * </p>
+     * <p>
+     *     When the input sequence contain non-valid bases, these are simply matched directly.
+     * </p>
+     * @param as first operand.
+     * @param bs second operand.
+     *
+     * @throws IllegalArgumentException if either or both input arrays are null.
+     * @return {@code true} if both sequences are the same, {@code false otherwise}.
+     */
+    public static boolean same(final byte[] as, final byte[] bs) {
+        Utils.nonNull(as);
+        Utils.nonNull(bs);
+        return as.length == bs.length && startsWithUnsafe(as, bs);
+    }
+
+    /**
+     * Checks whether a byte base sequence is a prefix of another.
+     * @param template the enclosing sequence.
+     * @param prefix the candidate prefix sequence.
+     * @return {@code true} if {@code prefix} is a prefix of {@code template}.
+     */
+    public static boolean startsWith(final byte[] template, final byte[] prefix) {
+        Utils.nonNull(template);
+        Utils.nonNull(prefix);
+        return startsWithUnsafe(template, prefix);
+    }
+
+    // Assumes input arrays are not null.
+    private static boolean startsWithUnsafe(final byte[] template, final byte[] prefix) {
+        if (template.length < prefix.length) {
+            return false;
+        } else {
+            final int length = prefix.length;
+            for (int i = 0; i < length; i++) {
+                if (!same(template[i], prefix[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     /**

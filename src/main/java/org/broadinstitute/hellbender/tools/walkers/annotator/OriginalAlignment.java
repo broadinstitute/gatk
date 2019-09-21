@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -66,6 +67,11 @@ public class OriginalAlignment extends InfoFieldAnnotation {
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(KEY));
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 
     @Override

@@ -247,6 +247,25 @@ public final class BaseUtils {
         new IndexRange(fromIndex, toIndex).forEach(i -> dest[i] = baseIndexToSimpleBase(rnd.nextInt(4)));
     }
 
+    /**
+     * @param template
+     * @param prefix
+     * @return
+     */
+    public static boolean startWith(final byte[] template, final byte[] prefix) {
+        Utils.nonNull(template);
+        Utils.nonNull(prefix);
+        if (template.length < prefix.length) {
+            return false;
+        }
+        for (int i = 0; i < prefix.length; i++) {
+            if (baseIndexMap[template[i]] != baseIndexMap[prefix[i]]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static byte getComplement(final byte base) {
         switch(base) {
             case 'a':

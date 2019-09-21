@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
@@ -64,5 +65,10 @@ public final class MappingQualityZero extends InfoFieldAnnotation {
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 }

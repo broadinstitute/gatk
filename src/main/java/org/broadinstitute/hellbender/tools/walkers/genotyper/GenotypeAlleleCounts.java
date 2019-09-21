@@ -699,7 +699,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     public void copyAlleleIndexes(final int[] dest, final int offset) {
         Utils.nonNull(dest);
         ParamUtils.isPositiveOrZero(offset, "offset");
-        Utils.validate(offset + ploidy < dest.length, "the copy operation would go beyond the end of the array");
+        Utils.validate(offset + ploidy <= dest.length, "the copy operation would go beyond the end of the array");
         for (int i = 0, j = offset; i < sortedAlleleCounts.length;) {
             final int index = sortedAlleleCounts[i++];
             final int freq = sortedAlleleCounts[i++];
@@ -723,10 +723,10 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         Utils.nonNull(alleleCountsByIndex);
         for (int i = 0; i < alleleCountsByIndex.length; i++) {
             final int count = alleleCountsByIndex[i];
-            if (count > 0 && alleleCountFor(i) < count) {
-                return false;
+            if (count > 0 && alleleCountFor(i) > 0) {
+                return true;
             }
         }
-        return true;
+        return false;
     }
 }

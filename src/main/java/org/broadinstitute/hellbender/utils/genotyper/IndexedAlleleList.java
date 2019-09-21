@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.IndexedSet;
 
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * Allele list implementation using and indexed-set.
@@ -63,7 +64,7 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
     }
 
     @Override
-    public int indexOfAllele(final A allele) {
+    public int indexOfAllele(final Allele allele) {
         Utils.nonNull(allele);
         return alleles.indexOf(allele);
     }
@@ -72,5 +73,9 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
     public A getAllele(final int index) {
         Utils.validIndex(index, alleles.size());
         return alleles.get(index);
+    }
+
+    public String toString() {
+        return alleles.stream().map(Object::toString).collect(Collectors.joining(","));
     }
 }

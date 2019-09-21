@@ -56,7 +56,7 @@ public interface AlleleLikelihoodMatrixMapper<A extends Allele> extends UnaryOpe
             }
 
             @Override
-            public int indexOfAllele(final A allele) {
+            public int indexOfAllele(final Allele allele) {
                 Utils.nonNull(allele);
                 return permutation.indexOfAllele(allele);
             }

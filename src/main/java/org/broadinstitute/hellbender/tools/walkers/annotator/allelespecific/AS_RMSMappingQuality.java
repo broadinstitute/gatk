@@ -84,9 +84,13 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
     }
 
+    private <A extends Allele> Map<String, Object> mergeRawRMS(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
+    }
+
     private <A extends Allele> Map<String, Object> mergeCookedRMS(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
         if (cohort.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY) && population.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY)) {
-            final
+            throw new UnsupportedOperationException("to be implemented");
         } else {
             return Collections.emptyMap();
         }

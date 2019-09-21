@@ -266,7 +266,7 @@ public final class GenotypeLikelihoodCalculators {
         }
 
         // At this point the tables must have at least the requested capacity, likely to be much more.
-        return new GenotypeLikelihoodCalculator(ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
+        return new GenotypeLikelihoodCalculator(this, ploidy, alleleCount, alleleFirstGenotypeOffsetByPloidy, genotypeTableByPloidy);
     }
 
     /**

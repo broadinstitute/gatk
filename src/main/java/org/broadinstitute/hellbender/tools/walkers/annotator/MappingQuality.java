@@ -1,15 +1,18 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.primitives.Ints;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalInt;
 
 /**
@@ -41,5 +44,10 @@ public class MappingQuality extends PerAlleleAnnotation implements StandardMutec
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         return OptionalInt.of(read.getMappingQuality());
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 }

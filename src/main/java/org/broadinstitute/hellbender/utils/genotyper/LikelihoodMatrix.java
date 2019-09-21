@@ -58,7 +58,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @return -1 if such allele does not exist, otherwise its index which 0 or greater.
      */
     @Override
-    public int indexOfAllele(final A allele);
+    public int indexOfAllele(final Allele allele);
 
     /**
      * Queries the index of a read in the matrix.

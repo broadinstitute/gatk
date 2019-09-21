@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.mockito.internal.util.collections.Sets;
@@ -629,6 +630,12 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, ReadLikelihoods<Allele> likelihoods) {
             return Collections.singletonMap("Child",Integer.toString(argument));
         }
+
+        @Override
+        public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+            return null;
+        }
+
         @Override
         public List<String> getKeyNames() {
             return Collections.singletonList("Test");
@@ -652,6 +659,12 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
                 return Collections.emptyMap();
             }
         }
+
+        @Override
+        public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+            return null;
+        }
+
         @Override
         public List<String> getKeyNames() {
             return Collections.singletonList("Test");

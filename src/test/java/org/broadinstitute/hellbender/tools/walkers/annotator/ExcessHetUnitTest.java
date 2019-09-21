@@ -56,7 +56,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
                 makeG("s9", T, T, 7099, 2530, 0, 7099, 366, 3056),
                 makeG("s10", Aref, T, 2530, 0, 7099, 366, 3056, 14931));
 
-        final double result = ExcessHet.calculateEH(test1, test1.getGenotypes()).getValue();
+        final double result = ExcessHet.calculateEH(test1.getNAlleles(), test1.getGenotypes()).getValue();
         Assert.assertEquals(result, 5.85, DELTA_PRECISION, "Pass");
     }
 
@@ -75,7 +75,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
                 makeG("s9", T, T, 7099, 2530, 0, 7099, 366, 3056),
                 makeG("s10", Aref, T, 2530, 0, 7099, 366, 3056, 14931));
 
-        final double result = ExcessHet.calculateEH(test1, test1.getGenotypes()).getValue();
+        final double result = ExcessHet.calculateEH(test1.getNAlleles(), test1.getGenotypes()).getValue();
         Assert.assertEquals(result, 5.85, DELTA_PRECISION, "Pass");
     }
 
@@ -94,7 +94,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
                 makeG("s9", Aref, T, 5732, 0, 10876, 6394, 11408, 17802),
                 makeG("s10", Aref, T, 2780, 0, 25045, 824, 23330, 30939));
 
-        final double result2 = ExcessHet.calculateEH(test2, test2.getGenotypes()).getValue();
+        final double result2 = ExcessHet.calculateEH(test2.getNAlleles(), test2.getGenotypes()).getValue();
         final double result = 25.573;
         Assert.assertEquals(result2, result, DELTA_PRECISION, "Pass");
 
@@ -123,7 +123,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         Set<String> founderIDs = new HashSet<String>();
         founderIDs.addAll(Arrays.asList("s1","s2","s3","s4","s5"));
 
-        final double result2 = ExcessHet.calculateEH(test2, test2.getGenotypes(founderIDs)).getValue();
+        final double result2 = ExcessHet.calculateEH(test2.getNAlleles(), test2.getGenotypes(founderIDs)).getValue();
         final double result = 11.972;
         Assert.assertEquals(result2, result, DELTA_PRECISION, "Pass");
 
@@ -153,7 +153,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         int numHetGTs = 1;
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double singletonValue = ExcessHet.calculateEH(singleton, singleton.getGenotypes()).getValue();
+        final double singletonValue = ExcessHet.calculateEH(singleton.getNAlleles(), singleton.getGenotypes()).getValue();
 
         final int targetNumHetGTs = 20;
         for (int i = numHetGTs; i < targetNumHetGTs; i++) {
@@ -161,7 +161,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         }
 
         final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double EHcommon = ExcessHet.calculateEH(common, common.getGenotypes()).getValue();
+        final double EHcommon = ExcessHet.calculateEH(common.getNAlleles(), common.getGenotypes()).getValue();
 
         Assert.assertTrue(Math.abs(singletonValue) < Math.abs(EHcommon), String.format("singleton=%f common=%f", singletonValue, EHcommon));
     }
@@ -179,7 +179,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         int numHetGTs = 1;
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double singletonValue = ExcessHet.calculateEH(singleton, singleton.getGenotypes()).getValue();
+        final double singletonValue = ExcessHet.calculateEH(singleton.getNAlleles(), singleton.getGenotypes()).getValue();
 
         for (int i = numHetGTs; i < 100; i++) {
             allGTs.add(makeG("het" + i, Aref, T, hetPLs));
@@ -187,7 +187,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         }
 
         final VariantContext hundredton = makeVC("hundredton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double hundredtonValue = ExcessHet.calculateEH(hundredton, hundredton.getGenotypes()).getValue();
+        final double hundredtonValue = ExcessHet.calculateEH(hundredton.getNAlleles(), hundredton.getGenotypes()).getValue();
 
         Assert.assertTrue(Math.abs(singletonValue) < Math.abs(hundredtonValue), String.format("singleton=%f hundredton=%f", singletonValue, hundredtonValue));
 
@@ -195,7 +195,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
             allGTs.add(makeG("het" + i, Aref, T, hetPLs));
 
         final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double commonValue = ExcessHet.calculateEH(common, common.getGenotypes()).getValue();
+        final double commonValue = ExcessHet.calculateEH(common.getNAlleles(), common.getGenotypes()).getValue();
 
         Assert.assertTrue(Math.abs(hundredtonValue) < Math.abs(commonValue), String.format("hundredton=%f common=%f", hundredtonValue, commonValue));
     }
@@ -213,7 +213,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         singletonGTs.add(makeG("het0", Aref, T, hetPLs));
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), singletonGTs.toArray(new Genotype[singletonGTs.size()]));
-        final double singletonValue = ExcessHet.calculateEH(singleton, singleton.getGenotypes()).getValue();
+        final double singletonValue = ExcessHet.calculateEH(singleton.getNAlleles(), singleton.getGenotypes()).getValue();
 
         final List<Genotype> allHetGTs = new ArrayList<>();
         for (int i = 0; i < numGTs; i++) {
@@ -221,7 +221,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         }
 
         final VariantContext allHet = makeVC("allHet", Arrays.asList(Aref, T), allHetGTs.toArray(new Genotype[allHetGTs.size()]));
-        final double hetsValue = ExcessHet.calculateEH(allHet, allHet.getGenotypes()).getValue();
+        final double hetsValue = ExcessHet.calculateEH(allHet.getNAlleles(), allHet.getGenotypes()).getValue();
 
         Assert.assertTrue(Math.abs(singletonValue) < Math.abs(hetsValue), String.format("singleton=%f allHets=%f", singletonValue, hetsValue));
 

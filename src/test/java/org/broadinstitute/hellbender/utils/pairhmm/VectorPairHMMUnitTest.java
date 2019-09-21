@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
@@ -147,7 +148,7 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public int indexOfAllele(Haplotype allele) {
+            public int indexOfAllele(Allele allele) {
                 throw new UnsupportedOperationException();
             }
 

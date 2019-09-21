@@ -87,6 +87,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
         if (cohort.hasGenotypes() && pop.hasGenotypes()) {
 
         }
+        return null;
     }
 
     @VisibleForTesting
@@ -262,7 +263,7 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
                 throw new IllegalStateException("Genotype counts for ExcessHet (" + getRawKeyName() + ") should have three values: homozygous reference, heterozygous with one ref allele, and homozygous variant/heterozygous non-reference");
             }
             final GenotypeCounts t = new GenotypeCounts(counts.get(0), counts.get(1), counts.get(2));
-            final Pair<Integer, Double> sampleCountEH = calculateEH(vc, t, counts.get(0)+counts.get(1)+counts.get(2));
+            final Pair<Integer, Double> sampleCountEH = calculateEH(vc.getNAlleles(), t, counts.get(0)+counts.get(1)+counts.get(2));
             final int sampleCount = sampleCountEH.getLeft();
             final double eh =  sampleCountEH.getRight();
 

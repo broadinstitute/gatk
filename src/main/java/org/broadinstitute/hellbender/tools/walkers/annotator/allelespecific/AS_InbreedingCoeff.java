@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.HeterozygosityCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -73,6 +74,11 @@ public final class AS_InbreedingCoeff extends InfoFieldAnnotation implements AS_
             ICvalues.add(calculateIC(vc, a, heterozygosityUtils));
         }
         return Collections.singletonMap(getKeyNames().get(0),  AnnotationUtils.encodeValueList(ICvalues, "%.4f"));
+    }
+
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
     }
 
     @VisibleForTesting

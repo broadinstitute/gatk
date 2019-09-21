@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -81,4 +82,8 @@ public class AS_FisherStrand extends AS_StrandBiasTest implements AS_StandardAnn
         return annotationMap;
     }
 
+    @Override
+    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
+        return null;
+    }
 }
