@@ -127,6 +127,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     private static final int MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY = 2;
 
+    private PrintStream outputStream;
+
 
     /**
      * Reads with length lower than this number, after clipping off overhands outside the active region,
@@ -166,7 +168,15 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
         forceCallingAllelesPresent = hcArgs.alleles != null;
         initialize(createBamOutIndex, createBamOutMD5);
+        if (hcArgs.assemblyStateOutput != null) {
+            try {
+                outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
+
 
     /**
      * Common method to use in order to remove unwanted annotations from the list returned by the plugin specifically
@@ -531,28 +541,20 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, true, VCpriors);
         }
 
-        if (hcArgs.assemblyStateOutput != null) {
-            try (PrintStream outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput + features.getInterval() + ".reads.dump")))) {
-                outputStream.println("Number of reads in region: " + region.getReads().size() + "     they are:");
-                for (GATKRead read : region.getReads()) {
-                    outputStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+        if (outputStream != null) {
+            outputStream.println("\n\n\n\n"+region.getSpan()+"\nNumber of reads in region: " + region.getReads().size() + "     they are:");
+            for (GATKRead read : region.getReads()) {
+                outputStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
             }
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
-        if (hcArgs.assemblyStateOutput != null) {
-            try (PrintStream outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput + features.getInterval() + ".haplotypes.dump")))) {
-                outputStream.println("\n\n\n\nThere were "+ untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
-                for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
-                    outputStream.println(haplotype);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+        if (outputStream != null) {
+            outputStream.println("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
+            for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
+                outputStream.println(haplotype);
             }
         }
 
@@ -726,6 +728,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
+        if (outputStream != null) {
+            outputStream.close();
+        }
         // Write assembly region debug output if present
         assemblyEngine.printDebugHistograms();
 
