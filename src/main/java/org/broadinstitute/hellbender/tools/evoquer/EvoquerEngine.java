@@ -213,7 +213,7 @@ class EvoquerEngine {
 
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
-            final String variantQueryString = getVariantQueryString(interval);
+            final String variantQueryString = getOptimizedNoDupSpanningDelsVariantQueryString(interval);
 
             // Execute the query:
             final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString, runQueryInBatchMode);
@@ -704,6 +704,32 @@ class EvoquerEngine {
                 getFQPositionTable(interval),
                 interval.getStart(),
                 interval.getEnd(),
+                getFQVariantTable(interval));
+    }
+
+    private String getOptimizedNoDupSpanningDelsVariantQueryString(final SimpleInterval interval) {
+        String limitString = "";
+        if (queryRecordLimit > 0) {
+            limitString = "LIMIT " + queryRecordLimit;
+        }
+
+        return String.format(
+                "WITH new_pet AS (SELECT * FROM `%s` WHERE position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d AND state = 'v')\n" +
+                        "EXCEPT DISTINCT\n" +
+                        "(SELECT p1.* FROM `%s` as p1 LEFT OUTER JOIN `%s` AS p2\n" +
+                        "USING (position, sample) WHERE p1.state = '*' AND p2.state = 'v'))\n" +
+                        "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
+                        "FROM new_pet\n" +
+                        "LEFT OUTER JOIN `%s` AS vet\n" +
+                        "USING (position, sample)\n" +
+                        "GROUP BY position\n" +
+                        limitString,
+                getFQPositionTable(interval),
+                getFQPositionTable(interval),
+                interval.getStart(),
+                interval.getEnd(),
+                getFQPositionTable(interval),
+                getFQPositionTable(interval),
                 getFQVariantTable(interval));
     }
 
