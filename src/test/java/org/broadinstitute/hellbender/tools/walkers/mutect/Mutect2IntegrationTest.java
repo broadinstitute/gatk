@@ -216,6 +216,15 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(numPassVariants < 10);
     }
 
+    @Test
+    public void testInfiniteLoop() {
+        String[] args = ("-R gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta -I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.tumor.bam -tumor synthetic.challenge.set1.tumor " +
+                "-I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.normal.bam -normal synthetic.challenge.set1.normal " +
+                "--germline-resource gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf -pon gs://fc-8803b178-2553-4f68-9560-caf1d3d37997/pon/wgs_125_plus_targeted_dream.vcf " +
+                "-L 1:2616022-3015494 -O output.vcf --bam-output bamout.bam --max-mnp-distance 0 --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6").split(" ");
+        runCommandLine(args);
+    }
+
     private String getSampleName(File bam) throws IOException {
         final File nameFile = createTempFile("sample_name", ".txt");
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", bam.getAbsolutePath(), "-O", nameFile.getAbsolutePath(), "-encode"), "GetSampleName"));

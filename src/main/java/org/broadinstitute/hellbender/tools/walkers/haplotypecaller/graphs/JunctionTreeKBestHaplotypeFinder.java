@@ -101,7 +101,14 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             if ( queue.isEmpty() ) {
                 E firstEdge = unvisitedPivotalEdges.stream().findFirst().get();
                 unvisitedPivotalEdges.remove(firstEdge);
-                queue.add(new JTBestHaplotype<>(new JTBestHaplotype<V, E>(graph.getEdgeSource(firstEdge), graph), Collections.singletonList(firstEdge), 0)); //TODO decide on an edge penalty here
+                // TODO this may change when the logic changes... but it seems like a no-brainer check for now
+                // Check at this stage that are not starting a path that can never succeed
+                V pivotalVerex = graph.getEdgeSource(firstEdge);
+                List<JTBestHaplotype<V, E>> candidatePaths = result.stream().filter(path -> path.containsVertex(pivotalVerex)).collect(Collectors.toList());
+                if (!candidatePaths.isEmpty()) {
+                    // this is a failure state for now
+                    queue.add(new JTBestHaplotype<>(new JTBestHaplotype<V, E>(graph.getEdgeSource(firstEdge), graph), Collections.singletonList(firstEdge), 0)); //TODO decide on an edge penalty here
+                }
                 continue;
             }
 
