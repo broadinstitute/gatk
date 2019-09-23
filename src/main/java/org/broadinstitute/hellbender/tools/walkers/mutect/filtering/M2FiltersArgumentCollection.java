@@ -39,7 +39,7 @@ public class M2FiltersArgumentCollection {
     /**
      * Mitochondria mode includes the filter{@link ChimericOriginalAlignmentFilter} and {@link PolymorphicNuMTFilter},
      * and excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter}, {@link PolymeraseSlippageFilter},
-     * {@link FilteredHaplotypeFilter}, and {@link GermlineFilter}
+     * {@link FilteredHaplotypeFilter}, {@link FragmentLengthFilter}, and {@link GermlineFilter}
      */
     @Argument(fullName = M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc = "Set filters to mitochondrial defaults")
     public boolean mitochondria = false;
