@@ -54,6 +54,13 @@ workflow CNNScoreVariantsWorkflow {
             gatk_docker = gatk_docker
     }
 
+    if (length(SplitIntervals.interval_files) < 1) {
+        call CNNTasks.ErrorWithMessage {
+          input:
+            message="Split interval list is of zero length.  Check the GATK version and output extension in the SplitIntervals task."
+        }
+    }
+
     scatter (calling_interval in SplitIntervals.interval_files) {
 
         call CNNTasks.CNNScoreVariants {
