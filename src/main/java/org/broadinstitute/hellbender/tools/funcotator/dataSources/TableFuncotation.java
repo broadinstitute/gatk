@@ -195,21 +195,6 @@ public class TableFuncotation implements Funcotation {
     /**
      *  See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
      *
-     * @param data Map for field name to field value.  The field value will be converted to a String.  Never {@code null}
-     * @param altAllele See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
-     * @param dataSourceName See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
-     * @param metadata See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
-     * @return See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
-     */
-    public static TableFuncotation create(final Map<String, Object> data, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
-        final List<String> fieldNames = new ArrayList<>(data.keySet());
-        final List<String> fieldValues = fieldNames.stream().map(f -> data.get(f).toString()).collect(Collectors.toList());
-        return create(fieldNames, fieldValues, altAllele, dataSourceName, metadata);
-    }
-
-    /**
-     *  See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
-     *
      * @param data Map for field name to field value.  Never {@code null}
      * @param altAllele See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
      * @param dataSourceName See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}

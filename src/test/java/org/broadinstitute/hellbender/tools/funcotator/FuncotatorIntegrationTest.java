@@ -301,6 +301,13 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT
                 },
                 {
+                        FuncotatorTestConstants.SINGLE_LINE,
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        FuncotatorTestConstants.SINGLE_LINE_EXPECTED
+                },
+                {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
@@ -696,6 +703,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "Oreganno_Build:BUILDED_GOOD_REAL_BIG");
 
         // Run the beast:
+        final File tmp = new File(System.getProperty("java.io.tmpdir"));
+        if (!tmp.exists() || !tmp.isDirectory() || !tmp.canRead() || !tmp.canWrite()){
+            Assert.fail("@PFTcreateDB - Issue with java.io.tmpdir");
+        }
         runCommandLine(arguments);
 
         // Only test for content-correctness if the output file was specified:
