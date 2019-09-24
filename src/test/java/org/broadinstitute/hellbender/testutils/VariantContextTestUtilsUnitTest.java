@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.testutils;
 
+import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -229,6 +231,20 @@ public class VariantContextTestUtilsUnitTest extends GATKBaseTest {
         } else {
             Assert.assertThrows(AssertionError.class, () -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(actual, expected, Collections.emptyList(), header));
         }
+    }
+
+    @Test
+    public void testAttributeExistenceCheck() {
+        Map<String,Object> vcAttributes1 = new LinkedHashMap<>();
+        Map<String,Object> vcAttributes2 = new LinkedHashMap<>();
+        vcAttributes1.put(GATKVCFConstants.QUAL_BY_DEPTH_KEY, 34.5);
+        vcAttributes2.put(GATKVCFConstants.QUAL_BY_DEPTH_KEY, 29.7);
+        List<String> ignoreKeys = new ArrayList<>();
+        ignoreKeys.add(GATKVCFConstants.QUAL_BY_DEPTH_KEY);
+        Assert.assertTrue(VariantContextTestUtils.checkIgnoredAttributesExist(vcAttributes1, vcAttributes2, ignoreKeys));
+        ignoreKeys.add(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY);
+        vcAttributes1.put(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY, "33.6,32.1");
+        Assert.assertFalse(VariantContextTestUtils.checkIgnoredAttributesExist(vcAttributes1, vcAttributes2, ignoreKeys));
     }
 }
 

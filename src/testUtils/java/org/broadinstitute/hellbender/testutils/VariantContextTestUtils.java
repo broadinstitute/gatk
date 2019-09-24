@@ -427,13 +427,14 @@ public final class VariantContextTestUtils {
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
     }
 
-    private static boolean checkIgnoredAttributesExist(final Map<String,Object> expectedAttributes,
+    @VisibleForTesting
+    protected static boolean checkIgnoredAttributesExist(final Map<String,Object> expectedAttributes,
                                                        final Map<String,Object> actualAttributes,
                                                        final List<String> attributesToIgnore) {
         List<String> expectedIgnoredAttributes = attributesToIgnore.stream()
-                .filter(p -> expectedAttributes.entrySet().contains(p) && p != null)
+                .filter(p -> expectedAttributes.keySet().contains(p) && p != null)
                 .collect(Collectors.toList());
-        return expectedIgnoredAttributes.stream().filter(p -> actualAttributes.entrySet().contains(p) && p != null)
+        return expectedIgnoredAttributes.stream().filter(p -> p != null && !actualAttributes.keySet().contains(p))
                 .collect(Collectors.toList()).isEmpty();
     }
 
