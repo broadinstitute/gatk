@@ -53,6 +53,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     private static final int SUM_OF_SQUARES_INDEX = 0;
     private static final int TOTAL_DEPTH_INDEX = 1;
     private static final String OUTPUT_PRECISION = "%.2f";
+    private static final int PRIMARY_RAW_KEY_INDEX = 0;
     public static final String RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT = "allow-old-rms-mapping-quality-annotation-data";
 
     @Argument(fullName = RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, doc="Override to allow old RMSMappingQuality annotated VCFs to function", optional=true)
@@ -60,6 +61,9 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
     @Override
     public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY);}   //new key for the two-value MQ data to prevent version mismatch catastrophes
+
+    @Override
+    public int getPrimaryRawKeyIndex() { return PRIMARY_RAW_KEY_INDEX; }
 
     public static String getDeprecatedRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}   //old key that used the janky depth estimation method
 
@@ -101,7 +105,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         final ReducibleAnnotationData<List<Long>> myData = new ReducibleAnnotationData<>(null);
         calculateRawData(vc, likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
-        annotations.put(getRawKeyNames().get(0), annotationString);
+        annotations.put(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
         return annotations;
     }
 
@@ -117,7 +121,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         }
         final Map<String, Object> annotations = new HashMap<>();
         String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        annotations.put(getRawKeyNames().get(0), annotationString);
+        annotations.put(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
         return annotations;
     }
 
@@ -129,13 +133,13 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
         String rawMQdata;
-        if (vc.hasAttribute(getRawKeyNames().get(0))) {
-            rawMQdata = vc.getAttributeAsString(getRawKeyNames().get(0), null);
+        if (vc.hasAttribute(getRawKeyNames().get(getPrimaryRawKeyIndex()))) {
+            rawMQdata = vc.getAttributeAsString(getRawKeyNames().get(getPrimaryRawKeyIndex()), null);
         }
         else if (vc.hasAttribute(getDeprecatedRawKeyName())) {
             if (!allowOlderRawKeyValues) {
                 throw new UserException.BadInput("Presence of '-"+getDeprecatedRawKeyName()+"' annotation is detected. This GATK version expects key "
-                        + getRawKeyNames().get(0) + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyNames().get(getPrimaryRawKeyIndex()) + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. This could indicate that the provided input was produced with an older version of GATK. " +
                         "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation. There " +
                         "may be differences in how newer GATK versions calculate DP and MQ that may result in worse MQ results. Use at your own risk.");
@@ -155,7 +159,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             }
             else {
                 logger.warn("MQ annotation data is not properly formatted. This GATK version expects key "
-                        + getRawKeyNames().get(0) + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + getRawKeyNames().get(getPrimaryRawKeyIndex()) + " with a tuple of sum of squared MQ values and total reads over variant "
                         + "genotypes as the value. Attempting to use deprecated MQ calculation.");
                 final long numOfReads = getNumOfReads(vc, null);
                 rawMQdata = Math.round(Double.parseDouble(rawMQdata)) + "," + numOfReads;   //deprecated format was double so it needs to be converted to long
@@ -244,7 +248,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
      * otherwise return the original vc
      */
     public VariantContext finalizeRawMQ(final VariantContext vc) {
-        final String rawMQdata = vc.getAttributeAsString(getRawKeyNames().get(0), null);
+        final String rawMQdata = vc.getAttributeAsString(getRawKeyNames().get(getPrimaryRawKeyIndex()), null);
         if (rawMQdata == null) {
             if (!vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
                 return vc;

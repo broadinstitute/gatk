@@ -58,7 +58,8 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
 
         new AS_RMSMappingQuality().calculateRawData(vc, likelihoods, myData);
         Map<String, List<?>> testAnnotationData = new HashMap<>();
-        testAnnotationData.put(new AS_RMSMappingQuality().getRawKeyNames().get(0), Collections.singletonList(myData));
+        AS_RMSMappingQuality annotationClass = new AS_RMSMappingQuality();
+        testAnnotationData.put(annotationClass.getRawKeyNames().get(annotationClass.getPrimaryRawKeyIndex()), Collections.singletonList(myData));
 
         Map<String, Object> value = vae.combineAnnotations(alleles, testAnnotationData);
         Assert.assertEquals(value.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), "285.00|385.00");

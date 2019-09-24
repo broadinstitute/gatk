@@ -50,6 +50,10 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
     private static final OneShotLogger allele_logger = new OneShotLogger(AS_RMSMappingQuality.class);
     private static final OneShotLogger genotype_logger = new OneShotLogger(AS_RMSMappingQuality.class);
+    private static final int PRIMARY_RAW_KEY_INDEX = 0;
+
+    @Override
+    public int getPrimaryRawKeyIndex() { return PRIMARY_RAW_KEY_INDEX; }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -81,7 +85,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         final ReducibleAnnotationData<Double> myData = new ReducibleAnnotationData<>(null);
         getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
-        annotations.put(getRawKeyNames().get(0), annotationString);
+        annotations.put(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
         return annotations;
     }
 
@@ -119,7 +123,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
         final Map<String, Object> annotations = new HashMap<>();
         String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        annotations.put(getRawKeyNames().get(0), annotationString);
+        annotations.put(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
         return annotations;
     }
 
@@ -157,10 +161,10 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyNames().get(0))) {
+        if (!vc.hasAttribute(getRawKeyNames().get(getPrimaryRawKeyIndex()))) {
             return new HashMap<>();
         }
-        final String rawMQdata = vc.getAttributeAsString(getRawKeyNames().get(0),null);
+        final String rawMQdata = vc.getAttributeAsString(getRawKeyNames().get(getPrimaryRawKeyIndex()),null);
         if (rawMQdata == null) {
             return new HashMap<>();
         }

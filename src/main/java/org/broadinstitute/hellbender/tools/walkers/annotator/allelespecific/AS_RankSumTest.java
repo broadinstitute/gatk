@@ -25,6 +25,12 @@ import java.util.*;
 public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private static final Logger logger = LogManager.getLogger(AS_RankSumTest.class);
     public static final String RAW_DELIM = ",";
+    private static final int PRIMARY_RAW_KEY_INDEX = 0;
+
+    @Override
+    public int getPrimaryRawKeyIndex() {
+        return PRIMARY_RAW_KEY_INDEX;
+    }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -92,7 +98,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         if (annotationString == null){
             return Collections.emptyMap();
         }
-        return Collections.singletonMap(getRawKeyNames().get(0), annotationString);
+        return Collections.singletonMap(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
     }
 
     /**
@@ -178,10 +184,10 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @return
      */
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyNames().get(0))) {
+        if (!vc.hasAttribute(getRawKeyNames().get(getPrimaryRawKeyIndex()))) {
             return new HashMap<>();
         }
-        final String rawRankSumData = vc.getAttributeAsString(getRawKeyNames().get(0),null);
+        final String rawRankSumData = vc.getAttributeAsString(getRawKeyNames().get(getPrimaryRawKeyIndex()),null);
         if (rawRankSumData == null) {
             return new HashMap<>();
         }
@@ -230,7 +236,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
         }
         final String annotationString = makeCombinedAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        return Collections.singletonMap(getRawKeyNames().get(0), annotationString);
+        return Collections.singletonMap(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
     }
 
     // Parses the raw data string into a Histogram and sets the inputs attribute map accordingly

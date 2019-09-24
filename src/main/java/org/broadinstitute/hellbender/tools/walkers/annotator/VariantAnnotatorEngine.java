@@ -71,13 +71,12 @@ public final class VariantAnnotatorEngine {
             }
         }
         variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput, featureInputs);
-        reducibleKeys = new HashSet<>();
+        reducibleKeys = new LinkedHashSet<>();
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
-                for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames())
-                reducibleKeys.add(rawKey);
+                reducibleKeys.addAll(((ReducibleAnnotation) annot).getRawKeyNames());
             }
         }
     }
@@ -201,14 +200,15 @@ public final class VariantAnnotatorEngine {
             if (annotationType instanceof ReducibleAnnotation) {
                 ReducibleAnnotation currentASannotation = (ReducibleAnnotation) annotationType;
                 for (final String rawKey : currentASannotation.getRawKeyNames()) {
+                    //here we're assuming that each annotation combines data corresponding to its primary raw key
+                    //AS_QD relies on two keys but doesn't have a combine operation because either GenomicsDB combines the keys
                     if (annotationMap.containsKey(rawKey)) {
-                        final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>) annotationMap.get(currentASannotation.getRawKeyNames().get(0));
+                        final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>)
+                                annotationMap.get(rawKey);
                         final Map<String, Object> annotationsFromCurrentType = currentASannotation.combineRawData(allelesList, annotationValue);
                         combinedAnnotations.putAll(annotationsFromCurrentType);
                         //remove all the raw keys for the annotation because we already used all of them in combineRawData
-                        for (final String rk : currentASannotation.getRawKeyNames()) {
-                            annotationMap.remove(rk);
-                        }
+                        annotationMap.keySet().removeAll(currentASannotation.getRawKeyNames());
                     }
                 }
             }
@@ -236,10 +236,8 @@ public final class VariantAnnotatorEngine {
                     variantAnnotations.putAll(annotationsFromCurrentType);
                 }
                 //clean up raw annotation data after annotations are finalized
-                for (final String rawKey: currentASannotation.getRawKeyNames()) {
-                    if (!keepRawCombinedAnnotations) {
-                        variantAnnotations.remove(rawKey);
-                    }
+                if (!keepRawCombinedAnnotations) {
+                    variantAnnotations.keySet().removeAll(currentASannotation.getRawKeyNames());
                 }
             }
         }
