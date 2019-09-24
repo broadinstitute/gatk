@@ -61,18 +61,21 @@ public class ReadWalkerIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider
     private Object[][] provideForTestReadStartFilter() {
+
+        final int readsToLinesMultiplier = 3;
+
         return new Object[][] {
                 {
                         Collections.emptyList(),
-                        24
+                        8 * readsToLinesMultiplier
                 },
                 {
                         Collections.singletonList(new SimpleInterval("chr7", 1,1)),
-                        9
+                        3 * readsToLinesMultiplier
                 },
                 {
                         Collections.singletonList(new SimpleInterval("chr7", 300,404)),
-                        6
+                        2 * readsToLinesMultiplier
                 },
                 {
                         Collections.singletonList(new SimpleInterval("chr7", 303,404)),
@@ -80,14 +83,22 @@ public class ReadWalkerIntegrationTest extends CommandLineProgramTest {
                 },
                 {
                         Collections.singletonList(new SimpleInterval("chr7", 120,404)),
-                        6
+                        2 * readsToLinesMultiplier
+                },
+                {
+                        Collections.singletonList(new SimpleInterval("chr7", 15,17)),
+                        1 * readsToLinesMultiplier
+                },
+                {
+                        Collections.singletonList(new SimpleInterval("chr7", 19,30)),
+                        1 * readsToLinesMultiplier
                 },
                 {
                         Arrays.asList(
                                 new SimpleInterval("chr7", 1,1),
                                 new SimpleInterval("chr7", 21, 21)
                         ),
-                        12
+                        4 * readsToLinesMultiplier
                 },
         };
     }
