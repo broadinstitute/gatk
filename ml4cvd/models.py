@@ -882,7 +882,7 @@ def _dense_block_new(x: K.placeholder,
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
-            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i//num_blocks](x)
+            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i//block_size](x)
             dense_connections = [x]
         else:
             dense_connections += [x]
