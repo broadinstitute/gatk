@@ -302,6 +302,8 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE, null, rtGraph);
         }
 
+        //TODO this will need to have a new step added to evaluate more elegantly what JUST_ASSEMBLED_REFERENCE means, as
+
         // TODO this is an optimization step, in the processing of the graph we have already excised paths not connected to the reference
         // TODO and in RT mode we have not mutated the graph at all. Thus we want to perform this expensive cleaning step only once
         //rtGraph.removePathsNotConnectedToRef();

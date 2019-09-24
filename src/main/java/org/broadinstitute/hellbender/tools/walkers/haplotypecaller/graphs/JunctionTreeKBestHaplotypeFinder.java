@@ -13,7 +13,10 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
     public static final int DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED = 2;
     public static final int DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE = 5;
-    public static final int DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH = 2;
+    public static final int DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH = 1;
+    // Workarounds for relatively rare complex sites that loop pathologically and do not generate ending paths
+    public static final int DEFAULT_MAX_PATHS_TO_CONSIDER_WITHOUT_RESULT = 1000;
+    public static final int DEFAULT_MAX_PATHS_TO_EVER_CONSIDER = 10000;
     private int weightThreshold = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
@@ -97,6 +100,14 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
         // Iterate over paths in the queue, unless we are out of paths of maxHaplotypes to find
         while (result.size() < maxNumberOfHaplotypes && (!queue.isEmpty() || !unvisitedPivotalEdges.isEmpty())) {
+            // TODO this may change at some point
+            // stopgap to handle edge cases (save ourselves the risk of infinite looping)
+            if (result.isEmpty() ?
+                    queue.size() > DEFAULT_MAX_PATHS_TO_CONSIDER_WITHOUT_RESULT : // restrict the number of branching paths examined
+                    queue.size() > DEFAULT_MAX_PATHS_TO_EVER_CONSIDER) {
+                break;
+            }
+
             // breakout condition, pop a new path onto the tree from unvisited pivotal edges if
             if ( queue.isEmpty() ) {
                 E firstEdge = unvisitedPivotalEdges.stream().findFirst().get();
