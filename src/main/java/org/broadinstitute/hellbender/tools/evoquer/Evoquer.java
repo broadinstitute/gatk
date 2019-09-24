@@ -138,6 +138,13 @@ public class Evoquer extends GATKTool {
             optional = true)
     private boolean printDebugInformation = false;
 
+    @Argument(
+            fullName = "use-optimized-query",
+            doc = "If true, use the optimized query which does not include positions where there is no variant",
+            optional = true
+    )
+    private boolean useOptimizedQuery = false;
+
     private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
     private boolean precomputedResultsMode;
@@ -238,7 +245,7 @@ public class Evoquer extends GATKTool {
 
         if ( ! precomputedResultsMode ) {
             for ( final SimpleInterval interval : getTraversalIntervals() ) {
-                evoquerEngine.evokeInterval(interval);
+                evoquerEngine.evokeInterval(interval, useOptimizedQuery);
             }
         } else {
             final List<String> precomputedResultsURIs = loadAllLines(precomputedQueryResultsFile);

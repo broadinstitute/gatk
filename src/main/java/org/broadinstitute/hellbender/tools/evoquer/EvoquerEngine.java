@@ -204,14 +204,19 @@ class EvoquerEngine {
      * contain variants.
      * @param interval {@link SimpleInterval} over which to query the BigQuery table.
      */
-    void evokeInterval(final SimpleInterval interval) {
+    void evokeInterval(final SimpleInterval interval, final boolean useOptimizedQuery) {
         if ( precomputedResultsMode ) {
             throw new GATKException("Cannot do live queries in precomputedResultsMode");
         }
 
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
-            final String variantQueryString = getVariantQueryString(interval);
+            String variantQueryString;
+            if (useOptimizedQuery) {
+                variantQueryString = getOptimizedVariantQueryString(interval);
+            } else {
+                variantQueryString = getVariantQueryString(interval);
+            }
 
             // Execute the query:
             final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString, runQueryInBatchMode);
