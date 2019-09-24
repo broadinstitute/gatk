@@ -376,7 +376,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     protected boolean emitAllSites() {
-        return configuration.outputMode == OutputMode.EMIT_ALL_SITES;
+        return configuration.outputMode == OutputMode.EMIT_ALL_ACTIVE_SITES;
     }
 
     protected final boolean passesEmitThreshold(final double conf, final boolean bestGuessIsRef) {
