@@ -7,8 +7,8 @@ import htsjdk.tribble.annotation.Strand;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfExonFeature;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfTranscriptFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfExonFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfTranscriptFeature;
 
 import java.util.List;
 

@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 
 import java.util.Comparator;
 import java.util.Set;

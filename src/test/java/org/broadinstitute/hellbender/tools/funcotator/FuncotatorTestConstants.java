@@ -17,6 +17,8 @@ public class FuncotatorTestConstants {
     public static final String REFERENCE_VERSION_HG19 = "hg19";
     public static final String REFERENCE_VERSION_HG38 = "hg38";
 
+    public static final String REFERENCE_VERSION_ECOLI = "ASM584v2";
+
     // ----------------------------------------------------------------------
     // Data source variables:
 
@@ -82,6 +84,9 @@ public class FuncotatorTestConstants {
     public static final String HG19_3_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "b37.3.tar.gz";
     public static final String HG38_3_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "hg38.3.tar.gz";
     public static final String HG19_2_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "b37.2.tar.gz";
+
+    public static final String ECOLI_REFERENCE_FILE_NAME = FUNCOTATOR_TEST_DIR + "e.coli_K12_MG1655.NC_000913.3.fasta";
+    public static final String ECOLI_VCF_FILE_NAME = FUNCOTATOR_TEST_DIR + "e_coli_K12_MG1655.vcf";
 
     // A MUC16-only datasource that contains all transcripts:
     public static final String MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16.gtf";

@@ -45,7 +45,7 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
 
         // Set up our arguments:
         final FuncotatorVariantArgumentCollection funcotatorArguments = new FuncotatorVariantArgumentCollection();
-        funcotatorArguments.referenceVersion = BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19;
+        funcotatorArguments.referenceVersion = BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19;
         funcotatorArguments.transcriptSelectionMode = TranscriptSelectionMode.CANONICAL;
         funcotatorArguments.lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 

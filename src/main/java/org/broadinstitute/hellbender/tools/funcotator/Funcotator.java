@@ -770,7 +770,7 @@ public class Funcotator extends VariantWalker {
         // Initialize all of our data sources:
         // Sort data sources to make them process in the same order each time:
         funcotatorArgs.dataSourceDirectories.sort(Comparator.naturalOrder());
-        final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(funcotatorArgs.referenceVersion.toString(), funcotatorArgs.dataSourceDirectories);
+        final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(funcotatorArgs.referenceVersion, funcotatorArgs.dataSourceDirectories);
 
         logger.info("Finalizing data sources (this step can be long if data sources are cloud-based)...");
         // Create the data sources from the input:

@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.vcf.VcfFuncota
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 

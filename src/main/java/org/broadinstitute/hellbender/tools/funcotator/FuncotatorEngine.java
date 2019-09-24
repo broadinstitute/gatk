@@ -255,7 +255,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
                         defaultToolVcfHeaderLines.stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)),
-                        funcotatorArgs.referenceVersion.toString(),
+                        funcotatorArgs.referenceVersion,
                         funcotatorArgs.excludedFields,
                         gatkToolInstance.getVersion()
                 );
@@ -472,7 +472,7 @@ public final class FuncotatorEngine implements AutoCloseable {
         boolean mustConvertInputContigsToHg19 = false;
 
         if ( funcotatorArgs.forceB37ToHg19ContigNameConversion ||
-                ( funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersion.hg19) &&
+                ( funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19) &&
                         FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants) )) {
 
             // NOTE AND WARNING:
