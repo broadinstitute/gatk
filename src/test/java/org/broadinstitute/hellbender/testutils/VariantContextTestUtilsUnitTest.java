@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.testutils;
 
-import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -227,9 +225,9 @@ public class VariantContextTestUtilsUnitTest extends GATKBaseTest {
         VCFHeader header = VariantContextTestUtils.getCompleteHeader();
 
         if (shouldSucceed) {
-            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(actual, expected, Collections.emptyList(), header);
+            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(actual, expected, Collections.emptyList(), Collections.emptyList(), header);
         } else {
-            Assert.assertThrows(AssertionError.class, () -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(actual, expected, Collections.emptyList(), header));
+            Assert.assertThrows(AssertionError.class, () -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(actual, expected, Collections.emptyList(), Collections.emptyList(), header));
         }
     }
 

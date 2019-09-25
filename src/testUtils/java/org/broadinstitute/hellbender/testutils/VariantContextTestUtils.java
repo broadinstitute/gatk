@@ -8,7 +8,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
-import java.util.regex.Pattern;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.output.NullOutputStream;
@@ -38,7 +37,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -408,22 +406,32 @@ public final class VariantContextTestUtils {
         }
     }
 
-    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
+    /**
+     * VariantContext comparison function for testing
+     * @param actual    vc derived from running test command
+     * @param expected  vc we're hoping to get
+     * @param attributesToIgnore    attributes (INFO or FORMAT) that may or may not exist in actual or expected
+     * @param attributesWithJitter  attributes (INFO or FORMAT) that should existing in actual and expected, but may not match in value
+     */
+    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore, List<String> attributesWithJitter) {
         Assert.assertNotNull(actual, "VariantContext expected not null");
         Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
         Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
         Assert.assertEquals(actual.getEnd(), expected.getEnd(), "end");
         Assert.assertEquals(actual.getID(), expected.getID(), "id");
         Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "alleles for " + expected + " vs " + actual);
-        Assert.assertTrue(checkIgnoredAttributesExist(expected.getAttributes(), actual.getAttributes(), attributesToIgnore));
-        assertAttributesEquals(filterIgnoredAttributes(actual.getAttributes(), attributesToIgnore),
-                               filterIgnoredAttributes(expected.getAttributes(), attributesToIgnore));
+        Assert.assertTrue(checkIgnoredAttributesExist(expected.getAttributes(), actual.getAttributes(), attributesWithJitter));
+        final List<String> attributesToFilter = new ArrayList<>(attributesToIgnore);
+        attributesToFilter.addAll(attributesWithJitter);
+        assertAttributesEquals(filterIgnoredAttributes(actual.getAttributes(), attributesToFilter),
+                               filterIgnoredAttributes(expected.getAttributes(), attributesToFilter));
 
         Assert.assertEquals(actual.filtersWereApplied(), expected.filtersWereApplied(), "filtersWereApplied");
         Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "isFiltered");
         Assert.assertEquals(actual.getFilters(), expected.getFilters(), "filters");
         BaseTest.assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
 
+        //right now no FORMAT attributes have jitter
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
     }
 
@@ -513,20 +521,24 @@ public final class VariantContextTestUtils {
      *   is made about any other genotype fields which depend on the number of Alleles which might result in false negatives.
      * - This test requires that all attribute keys from the variant context are present, if one is writing a test and needs
      *   a complete header, consider {GATKVCFHeaderLine.getCompleteHeader()}
-     *
      * @param actual                Variant context to test for equality
      * @param expected              Expected result
      * @param attributesToIgnore    Attributes we want to exclude from numerical comparision, but ensure they exist
+     * @param attributesWithJitter
      * @param header                Header used to map behavior of annotations
      */
-    public static void assertVariantContextsAreEqualAlleleOrderIndependent(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore, VCFHeader header) {
+    public static void assertVariantContextsAreEqualAlleleOrderIndependent(final VariantContext actual,
+                                                                           final VariantContext expected,
+                                                                           final List<String> attributesToIgnore,
+                                                                           List<String> attributesWithJitter,
+                                                                           VCFHeader header) {
         if (actual.getAlleles().equals(expected.getAlleles())) {
-            assertVariantContextsAreEqual(actual, expected, attributesToIgnore);
+            assertVariantContextsAreEqual(actual, expected, attributesToIgnore, attributesWithJitter);
 
         } else {
             VariantContext actualReordered = sortAlleles(actual, header);
             VariantContext expectedReordered = sortAlleles(expected, header);
-            assertVariantContextsAreEqual(actualReordered, expectedReordered, attributesToIgnore);
+            assertVariantContextsAreEqual(actualReordered, expectedReordered, attributesToIgnore, attributesWithJitter);
         }
     }
 

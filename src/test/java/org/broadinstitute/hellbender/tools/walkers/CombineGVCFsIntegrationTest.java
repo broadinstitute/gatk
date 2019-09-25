@@ -151,7 +151,7 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = getHeaderFromFile(expected);
 
         runCombineGVCFSandAssertSomething(inputs, expected, extraArgs, (a, e) -> {
-            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, attributesToIgnore, header);
+            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, attributesToIgnore, Collections.emptyList(), header);
         }, reference);
     }
 
@@ -248,7 +248,7 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> expectedVC = getVariantContexts(getTestFile("tetraploidRun.GATK3.g.vcf"));
         final List<VariantContext> actualVC = getVariantContexts(output);
         final VCFHeader header = getHeaderFromFile(output);
-        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), Collections.emptyList(), header));
 
     }
 
@@ -473,7 +473,7 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> expectedVC = getVariantContexts(getTestFile("twoSamples.MT.g.vcf"));
         final VCFHeader header = getHeaderFromFile(output);
-        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), Collections.emptyList(), header));
     }
 
     //test for combining with a multi-sample input GVCF because we'll need to do a hierarchical merge in the absence of GenomicsDB support for somatic GVCFs
@@ -502,7 +502,7 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> expectedVC = getVariantContexts(output2);
         final List<VariantContext> actualVC = getVariantContexts(output);
         final VCFHeader header = getHeaderFromFile(output);
-        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Collections.emptyList(), header));
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Collections.emptyList(), Collections.emptyList(), header));
     }
 
     @Test

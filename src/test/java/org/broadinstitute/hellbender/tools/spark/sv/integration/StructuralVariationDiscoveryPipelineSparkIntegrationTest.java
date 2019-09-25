@@ -205,7 +205,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             Assert.assertTrue(actualVcs.isEmpty());
 
         GATKBaseTest.assertCondition(actualVcs, expectedVcs,
-                (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
+                (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore, Collections.emptyList()));
 
         if ( experimentalOutputPathForNonComplex != null ) {
             final java.nio.file.Path path = IOUtils.getPath(experimentalOutputPathForNonComplex);
@@ -216,7 +216,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             final List<String> moreAttributesToIgnoreForNow = new ArrayList<>(attributesToIgnore);
             moreAttributesToIgnoreForNow.addAll(Collections.singletonList("EXTERNAL_CNV_CALLS"));
             GATKBaseTest.assertCondition(actualVcs, expectedVcs,
-                    (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, moreAttributesToIgnoreForNow));
+                    (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, moreAttributesToIgnoreForNow, Collections.emptyList()));
         }
     }
 

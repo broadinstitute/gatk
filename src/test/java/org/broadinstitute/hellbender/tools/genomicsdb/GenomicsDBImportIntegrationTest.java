@@ -552,7 +552,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                                 .map(g -> g.getGenotypeString().equals(".")?new GenotypeBuilder(g).alleles(GATKVariantContextUtils.noCallAlleles(2)).make():g)
                                 .collect(Collectors.toList());
                         a = new VariantContextBuilder(a).genotypes(genotypes).make();
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, attributesToIgnore, VCF_HEADER);
+                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, attributesToIgnore, Collections.emptyList(), VCF_HEADER);
 
                         // Test only that the genotypes match
                     } else {

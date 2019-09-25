@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.base.Strings;
-import htsjdk.samtools.SAMTestUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -357,7 +355,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
                         Allele.SPAN_DEL)).make();
 
         VariantContextTestUtils.assertVariantContextsAreEqual(spanDelReplacement,
-                expectedSpanDelReplacement, Collections.emptyList());
+                expectedSpanDelReplacement, Collections.emptyList(), Collections.emptyList());
 
         final VariantContext spanDelWithGt = new VariantContextBuilder("source", "1", 999995, 1000005,
                 Arrays.asList(Allele.create("AAAAAAAAAAA", true),
@@ -369,7 +367,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
                 HaplotypeCallerGenotypingEngine.replaceWithSpanDelVC(spanDelWithGt, Allele.create("A", true), 1000000);
 
         VariantContextTestUtils.assertVariantContextsAreEqual(spanDelWithGTReplacement,
-                expectedSpanDelReplacement, Collections.emptyList());
+                expectedSpanDelReplacement, Collections.emptyList(), Collections.emptyList());
 
     }
 }

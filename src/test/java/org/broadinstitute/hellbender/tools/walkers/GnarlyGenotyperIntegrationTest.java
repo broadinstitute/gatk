@@ -1,13 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -18,7 +14,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -120,7 +115,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
              final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
             GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                     (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
-                            Collections.emptyList()));
+                            Collections.emptyList(), Collections.emptyList()));
         }
     }
 }
