@@ -175,14 +175,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = new File(FILTERING_DIR, "NA12878.vcf");
         final File contamination = new File(FILTERING_DIR, "contamination.table");
         final File segments = new File(FILTERING_DIR, "segments.table");
-        final File stats = new File(FILTERING_DIR, "merged.stats");
 
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference,
                 args -> args.addFileArgument(M2FiltersArgumentCollection.TUMOR_SEGMENTATION_LONG_NAME, segments),
-                args -> args.addFileArgument(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination),
-                args -> args.addFileArgument(FilterMutectCalls.FILTERING_STATS_LONG_NAME, stats));
+                args -> args.addFileArgument(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination));
 
         final long numPassVariants = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
