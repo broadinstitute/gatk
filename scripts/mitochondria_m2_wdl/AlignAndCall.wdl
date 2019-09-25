@@ -10,6 +10,7 @@ workflow AlignAndCall {
   input {
     File unmapped_bam
     Float? autosomal_coverage
+    String sample_name
 
     File mt_dict
     File mt_fasta
@@ -160,6 +161,7 @@ workflow AlignAndCall {
       raw_vcf = LiftoverAndCombineVcfs.final_vcf,
       raw_vcf_index = LiftoverAndCombineVcfs.final_vcf_index,
       raw_vcf_stats = MergeStats.stats,
+      sample_name = sample_name,
       ref_fasta = mt_fasta,
       ref_fai = mt_fasta_index,
       ref_dict = mt_dict,
@@ -449,6 +451,7 @@ task Filter {
     File raw_vcf_stats
     Boolean compress
     Float? vaf_cutoff
+    String sample_name
 
     String? m2_extra_filtering_args
     Int max_alt_allele_count
@@ -466,7 +469,7 @@ task Filter {
     Int? preemptible_tries
   }
 
-  String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
+  String output_vcf = sample_name + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
   Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
   Int disk_size = ceil(size(raw_vcf, "GB") + ref_size) + 20
