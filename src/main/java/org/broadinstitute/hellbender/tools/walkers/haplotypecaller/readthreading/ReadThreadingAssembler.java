@@ -267,20 +267,20 @@ public final class ReadThreadingAssembler {
         }
     }
 
-    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph) {
-        printDebugGraphTransform(seqGraph, "sequenceGraph.1.dot");
+    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype) {
+        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.0.non_ref_removed.dot");
 
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
         seqGraph.zipLinearChains();
-        printDebugGraphTransform(seqGraph, "sequenceGraph.2.zipped.dot");
+        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.1.zipped.dot");
 
         // now go through and prune the graph, removing vertices no longer connected to the reference chain
         seqGraph.removeSingletonOrphanVertices();
         seqGraph.removeVerticesNotConnectedToRefRegardlessOfEdgeDirection();
 
-        printDebugGraphTransform(seqGraph, "sequenceGraph.3.pruned.dot");
+        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.2.pruned.dot");
         seqGraph.simplifyGraph();
-        printDebugGraphTransform(seqGraph, "sequenceGraph.4.merged.dot");
+        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.3.merged.dot");
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -300,7 +300,7 @@ public final class ReadThreadingAssembler {
             seqGraph.addVertex(dummy);
             seqGraph.addEdge(complete, dummy, new BaseEdge(true, 0));
         }
-        printDebugGraphTransform(seqGraph, "sequenceGraph.5.final.dot");
+        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.4.final.dot");
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
     }
 
@@ -485,7 +485,7 @@ public final class ReadThreadingAssembler {
         printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
         initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
-        final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph);
+        final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype);
         final AssemblyResult.Status status = cleaned.getStatus();
         return new AssemblyResult(status, cleaned.getGraph(), rtgraph);
     }
