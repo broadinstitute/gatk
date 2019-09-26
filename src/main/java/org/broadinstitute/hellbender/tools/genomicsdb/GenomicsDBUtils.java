@@ -20,10 +20,10 @@ import java.util.Map;
 
 /**
  * Utility class containing various methods for working with GenomicsDB
- * Contains code to modify the GenomicsDB query output format using the Protobuf API
+ * Contains code to modify the GenomicsDB import input or query output format using the Protobuf API
  *
  * References:
- * GenomicsDB Protobuf structs: https://github.com/Intel-HLS/GenomicsDB/blob/master/src/resources/genomicsdb_vid_mapping.proto
+ * GenomicsDB Protobuf structs: https://github.com/GenomicsDB/GenomicsDB/blob/master/src/resources/genomicsdb_vid_mapping.proto
  * Protobuf generated Java code guide:
  * https://developers.google.com/protocol-buffers/docs/javatutorial#the-protocol-buffer-api
  * https://developers.google.com/protocol-buffers/docs/reference/java-generated
@@ -271,23 +271,32 @@ public class GenomicsDBUtils {
                 GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
                         GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
                 lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
+
+                infoBuilder.clearLength();
                 infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
                 lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
                 infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+
+                infoBuilder.clearVcfDelimiter();
                 infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM);
                 infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
+
+                infoBuilder.clearType();
+                if (newCombineOperation.equals(HISTOGRAM_SUM)) {
+                  infoBuilder.addType(GDB_TYPE_FLOAT);
+                  infoBuilder.addType(GDB_TYPE_INT);
+                } else {
+                  if (newCombineOperation.equals(ELEMENT_WISE_FLOAT_SUM)) {
+                    infoBuilder.addType(GDB_TYPE_FLOAT);
+                  } else {
+                    infoBuilder.addType(GDB_TYPE_INT);
+                  }
+                }
             }
 
             if (newCombineOperation.equals(HISTOGRAM_SUM)) {
-                infoBuilder.addType(GDB_TYPE_FLOAT);
-                infoBuilder.addType(GDB_TYPE_INT);
                 infoBuilder.setVCFFieldCombineOperation(HISTOGRAM_SUM);
             } else {
-                if (newCombineOperation.equals(ELEMENT_WISE_FLOAT_SUM)) {
-                    infoBuilder.addType(GDB_TYPE_FLOAT);
-                } else {
-                    infoBuilder.addType(GDB_TYPE_INT);
-                }
                 infoBuilder.setVCFFieldCombineOperation(ELEMENT_WISE_SUM);
             }
 
