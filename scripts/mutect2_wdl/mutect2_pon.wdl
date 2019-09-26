@@ -34,7 +34,7 @@ workflow Mutect2_Panel {
 
     # runtime
     String gatk_docker
-    Int? preemptible_attempts
+    Int? preemptible
     Int? max_retries
   }
 
@@ -53,7 +53,7 @@ workflow Mutect2_Panel {
                 m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts,
+                preemptible = preemptible,
                 max_retries = max_retries
         }
     }
@@ -81,7 +81,7 @@ workflow Mutect2_Panel {
                     output_vcf_name = pon_name,
                     create_pon_extra_args = create_pon_extra_args,
                     gatk_override = gatk_override,
-                    preemptible_attempts = preemptible_attempts,
+                    preemptible = preemptible,
                     max_retries = max_retries,
                     gatk_docker = gatk_docker
             }
@@ -95,7 +95,7 @@ workflow Mutect2_Panel {
             compress = select_first([compress, false]),
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
-            preemptible_attempts = preemptible_attempts,
+            preemptible = preemptible,
             max_retries = max_retries
     }
 
@@ -123,7 +123,7 @@ task CreatePanel {
       # runtime
       String gatk_docker
       Int? mem
-      Int? preemptible_attempts
+      Int? preemptible
       Int? max_retries
       Int? disk_space
     }
@@ -146,7 +146,7 @@ task CreatePanel {
         bootDiskSizeGb: 12
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible, 3])
         maxRetries: select_first([max_retries, 0])
     }
 
