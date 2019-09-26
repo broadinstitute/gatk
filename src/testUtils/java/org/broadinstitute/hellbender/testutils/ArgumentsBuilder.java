@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -85,6 +87,14 @@ public final class ArgumentsBuilder {
         return this;
     }
 
+    /**
+     * add a reference file argument using {@link StandardArgumentDefinitions#REFERENCE_LONG_NAME}
+     */
+    public ArgumentsBuilder addReference(String reference){
+        addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+        return this;
+    }
+
 
     /**
      * add a vcf file argument using {@link StandardArgumentDefinitions#VARIANT_LONG_NAME}
@@ -116,6 +126,16 @@ public final class ArgumentsBuilder {
     }
 
     /**
+     * add an argument with a number as its parameter
+     */
+    public ArgumentsBuilder addNumericArgument(String argumentName, final Number value){
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        add(String.valueOf(value));
+        return this;
+    }
+
+    /**
      * add an argument with a given value to this builder
      */
     public ArgumentsBuilder addArgument(final String argumentName, final String argumentValue) {
@@ -140,6 +160,10 @@ public final class ArgumentsBuilder {
         add("-L");
         add(IntervalUtils.locatableToString(interval));
         return this;
+    }
+
+    public ArgumentsBuilder addMask(final File mask){
+        return addFileArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask);
     }
 
     /**
