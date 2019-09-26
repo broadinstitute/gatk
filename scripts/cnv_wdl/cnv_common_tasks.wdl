@@ -463,6 +463,7 @@ task CollectSampleQualityMetrics {
     Int maximum_number_events
 
     # Runtime parameters
+    String gatk_docker
     Int? mem_gb
     Int? disk_space_gb
     Boolean use_ssd = false
@@ -484,6 +485,7 @@ task CollectSampleQualityMetrics {
     >>>
 
     runtime {
+        docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 20]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
@@ -500,6 +502,7 @@ task CollectModelQualityMetrics {
     Array[File] gcnv_model_tars
 
     # Runtime parameters
+    String gatk_docker
     Int? mem_gb
     Int? disk_space_gb
     Boolean use_ssd = false
@@ -532,6 +535,7 @@ task CollectModelQualityMetrics {
     >>>
 
     runtime {
+        docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
