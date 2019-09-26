@@ -13,9 +13,11 @@
 
   "Evoquer.batch_mode": "true",
   "Evoquer.disable_gnarly_genotyper": "false",
+  "Evoquer.use_spdel_optimized_query": "true",
 
-  "Evoquer.mem_gb": "4",
+  "Evoquer.mem_gb": "8",
   "Evoquer.disk_space_gb": "100",
   "Evoquer.cpu": "2",
+  "Evoquer.max_retries": "3",
   "Evoquer.preemptible_attempts": "3"
 }

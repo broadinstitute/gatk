@@ -145,6 +145,13 @@ public class Evoquer extends GATKTool {
     )
     private boolean useOptimizedQuery = false;
 
+    @Argument(
+            fullName = "use-spdel-optimized-query",
+            doc = "If true, use the optimized query which does not include positions where there is no variant and also removes * records where there is already a v record for that sample",
+            optional = true
+    )
+    private boolean useSpDelOptimizedQuery = false;
+
     private VariantContextWriter vcfWriter = null;
     private EvoquerEngine evoquerEngine;
     private boolean precomputedResultsMode;
@@ -245,7 +252,7 @@ public class Evoquer extends GATKTool {
 
         if ( ! precomputedResultsMode ) {
             for ( final SimpleInterval interval : getTraversalIntervals() ) {
-                evoquerEngine.evokeInterval(interval, useOptimizedQuery);
+                evoquerEngine.evokeInterval(interval, useOptimizedQuery, useSpDelOptimizedQuery);
             }
         } else {
             final List<String> precomputedResultsURIs = loadAllLines(precomputedQueryResultsFile);

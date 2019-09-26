@@ -102,7 +102,7 @@ class EvoquerEngine {
      * Map between contig name and the BigQuery table containing the list of samples
      */
     private final Map<String, String> contigToSampleTableMap;
-    
+
     private final int queryRecordLimit;
 
     private final boolean runQueryOnly;
@@ -204,7 +204,7 @@ class EvoquerEngine {
      * contain variants.
      * @param interval {@link SimpleInterval} over which to query the BigQuery table.
      */
-    void evokeInterval(final SimpleInterval interval, final boolean useOptimizedQuery) {
+    void evokeInterval(final SimpleInterval interval, final boolean useOptimizedQuery, final boolean useSpDelOptimizedQuery) {
         if ( precomputedResultsMode ) {
             throw new GATKException("Cannot do live queries in precomputedResultsMode");
         }
@@ -212,7 +212,9 @@ class EvoquerEngine {
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
             String variantQueryString;
-            if (useOptimizedQuery) {
+            if (useSpDelOptimizedQuery) {
+                variantQueryString = getOptimizedNoDupSpanningDelsVariantQueryString(interval);
+            } else if (useOptimizedQuery) {
                 variantQueryString = getOptimizedVariantQueryString(interval);
             } else {
                 variantQueryString = getVariantQueryString(interval);
@@ -293,7 +295,7 @@ class EvoquerEngine {
 
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
-        
+
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
 
@@ -325,7 +327,7 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
-        
+
         return headerLines;
     }
 
@@ -440,6 +442,7 @@ class EvoquerEngine {
                         unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele, 60));
                         break;
                     case "*":   // Spanning Deletion
+//                        unmergedCalls.add(createVariantContextForSpanningDelete(sampleName, contig, currentPosition, refAllele));
                         break;
                     case "m":   // Missing
                         // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
@@ -521,6 +524,40 @@ class EvoquerEngine {
         return builder.make();
     }
 
+    private VariantContext createVariantContextForSpanningDelete(final String sample, final String contig, final long start, final Allele refAllele) {
+        final VariantContextBuilder builder = new VariantContextBuilder();
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+
+        builder.chr(contig);
+        builder.start(start);
+
+        final List<Allele> alleles = new ArrayList<>();
+        alleles.add(refAllele);
+        alleles.add(Allele.SPAN_DEL);
+        alleles.add(Allele.NON_REF_ALLELE);
+        builder.alleles(alleles);
+
+        builder.stop(start);
+
+        genotypeBuilder.name(sample);
+
+        builder.attribute(VCFConstants.END_KEY, Long.toString(start));
+
+        // is this correct? why in the build for ref is the ref added twice?
+        final List<Allele> genotypeAlleles = new ArrayList<>();
+        genotypeAlleles.add(refAllele);
+        genotypeAlleles.add(Allele.SPAN_DEL);
+        genotypeBuilder.alleles(genotypeAlleles);
+
+        // is there a gq for a spanning deletion?
+//        genotypeBuilder.GQ(gq);
+
+        builder.genotypes(genotypeBuilder.make());
+
+        return builder.make();
+
+    }
+
     private VariantContext createRefSiteVariantContext(final String sample, final String contig, final long start, final Allele refAllele, final int gq) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
@@ -547,7 +584,7 @@ class EvoquerEngine {
         genotypeBuilder.GQ(gq);
 
         builder.genotypes(genotypeBuilder.make());
-        
+
         return builder.make();
     }
 
@@ -610,7 +647,7 @@ class EvoquerEngine {
 
         // Get the query string:
         final String sampleListQueryString = getSampleListQueryString(sampleTableName);
-        
+
         // Execute the query:
         final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
 
@@ -632,7 +669,7 @@ class EvoquerEngine {
         if ( queryRecordLimit > 0 ) {
             limitString = "LIMIT " + queryRecordLimit;
         }
-        
+
         return String.format(
                 "SELECT position, ARRAY_AGG(STRUCT( sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
                 "FROM `%s` AS pet\n" +
@@ -665,6 +702,32 @@ class EvoquerEngine {
                 getFQPositionTable(interval),
                 interval.getStart(),
                 interval.getEnd(),
+                getFQVariantTable(interval));
+    }
+
+    private String getOptimizedNoDupSpanningDelsVariantQueryString(final SimpleInterval interval) {
+        String limitString = "";
+        if (queryRecordLimit > 0) {
+            limitString = "LIMIT " + queryRecordLimit;
+        }
+
+        return String.format(
+                "WITH new_pet AS (SELECT * FROM `%s` WHERE position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d AND state = 'v')\n" +
+                        "EXCEPT DISTINCT\n" +
+                        "(SELECT p1.* FROM `%s` as p1 LEFT OUTER JOIN `%s` AS p2\n" +
+                        "USING (position, sample) WHERE p1.state = '*' AND p2.state = 'v'))\n" +
+                        "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
+                        "FROM new_pet\n" +
+                        "LEFT OUTER JOIN `%s` AS vet\n" +
+                        "USING (position, sample)\n" +
+                        "GROUP BY position\n" +
+                        limitString,
+                getFQPositionTable(interval),
+                getFQPositionTable(interval),
+                interval.getStart(),
+                interval.getEnd(),
+                getFQPositionTable(interval),
+                getFQPositionTable(interval),
                 getFQVariantTable(interval));
     }
 
