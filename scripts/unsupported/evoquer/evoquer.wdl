@@ -16,6 +16,7 @@
 #     File gatk4_jar_override           -  Override Jar file containing GATK 4.  Use this when overriding the docker JAR or when using a backend without docker.
 #     Int  mem_gb                       -  Amount of memory to give to the machine running each task in this workflow (in gb).
 #     Int  preemptible_attempts         -  Number of times to allow each task in this workflow to be preempted.
+#     Int  max_retries                  -  Number of times to allow each task in this workflow to be retried for reasons other than preemption.
 #     Int  disk_space_gb                -  Amount of storage disk space (in Gb) to give to each machine running each task in this workflow.
 #     Int  cpu                          -  Number of CPU cores to give to each machine running each task in this workflow.
 #     Int  boot_disk_size_gb            -  Amount of boot disk space (in Gb) to give to each machine running each task in this workflow.
@@ -46,6 +47,7 @@ workflow Evoquer {
     File? gatk4_jar_override
     Int?  mem_gb
     Int?  preemptible_attempts
+    Int?  max_retries
     Int?  disk_space_gb
     Int?  cpu
     Int?  boot_disk_size_gb
@@ -68,6 +70,7 @@ workflow Evoquer {
                 gatk_override         = gatk4_jar_override,
                 mem                   = mem_gb,
                 preemptible_attempts  = preemptible_attempts,
+                max_retries           = max_retries,
                 disk_space_gb         = disk_space_gb,
                 cpu                   = cpu,
                 boot_disk_size_gb     = boot_disk_size_gb
@@ -106,6 +109,7 @@ task EvoquerTask {
     File? gatk_override
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
@@ -168,6 +172,7 @@ task EvoquerTask {
         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
         bootDiskSizeGb: select_first([boot_disk_size_gb, default_boot_disk_size_gb])
         preemptible: if defined(preemptible_attempts) then preemptible_attempts else 0
+        maxRetries: if defined(max_retries) then max_retries else 0
         cpu: select_first([cpu, 1])
     }
 
