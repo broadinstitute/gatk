@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.mafOutput;
 
+import org.broadinstitute.hellbender.tools.funcotator.GCContentFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.ReferenceContextFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
 import java.util.*;
@@ -243,8 +245,8 @@ public class MafOutputRendererConstants {
     static final List<String> OutputFieldNameMap_TCGAscape_Amplification_Peaks          = Arrays.asList(FieldName_TCGAscape_Amplification_Peaks, "TCGAScape_Amplification_Peaks");
     static final List<String> OutputFieldNameMap_TCGAscape_Deletion_Peaks               = Arrays.asList(FieldName_TCGAscape_Deletion_Peaks, "TCGAScape_Deletion_Peaks");
     static final List<String> OutputFieldNameMap_DrugBank                               = Arrays.asList(FieldName_DrugBank, "Simple_Uniprot_DrugBank", "UniProt_DrugBank");
-    static final List<String> OutputFieldNameMap_ref_context                            = Arrays.asList(FieldName_ref_context, "Gencode_19_referenceContext", "Gencode_27_referenceContext", "Gencode_28_referenceContext", "ref_context");
-    static final List<String> OutputFieldNameMap_gc_content                             = Arrays.asList(FieldName_gc_content, "Gencode_19_gcContent", "Gencode_27_gcContent", "Gencode_28_gcContent", "gc_content");
+    static final List<String> OutputFieldNameMap_ref_context                            = Arrays.asList(FieldName_ref_context, ReferenceContextFuncotationFactory.REFERENCE_CONTEXT_FIELD_NAME);
+    static final List<String> OutputFieldNameMap_gc_content                             = Arrays.asList(FieldName_gc_content, GCContentFuncotationFactory.GC_CONTENT_FIELD_NAME);
     static final List<String> OutputFieldNameMap_CCLE_ONCOMAP_overlapping_mutations     = Arrays.asList(FieldName_CCLE_ONCOMAP_overlapping_mutations, "CCLE_By_GP_overlapping_mutations");
     static final List<String> OutputFieldNameMap_CCLE_ONCOMAP_total_mutations_in_gene   = Arrays.asList(FieldName_CCLE_ONCOMAP_total_mutations_in_gene, "CCLE_By_Gene_total_mutations_in_gene");
     static final List<String> OutputFieldNameMap_CGC_Mutation_Type                      = Arrays.asList(FieldName_CGC_Mutation_Type, "CGC_Mutation Type");

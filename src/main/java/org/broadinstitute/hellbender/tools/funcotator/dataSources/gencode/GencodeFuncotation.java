@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  */
 public class GencodeFuncotation implements Funcotation {
 
-    //==================================================================================================================
+//==================================================================================================================
 
     //------------------------------------------------------------
     // Fields for serialization:
@@ -55,15 +55,7 @@ public class GencodeFuncotation implements Funcotation {
     private String                  cDnaChange;                         //           CDS
     private String                  codonChange;                        //           CDS
     private String                  proteinChange;                      //           CDS
-    private Double                  gcContent;
 
-    /**
-     * The reference context string is a string of N (configurable) bases around the
-     * locus of the variant on the reference genome.
-     * The reference context string is always represented by bases from the + strand around the variant, regardless of
-     * the strandedness of the variant itself.
-     */
-    private String                  referenceContext;                   // Already calculated.
 
     private List<String>            otherTranscripts;                   // TRIVIAL
 
@@ -101,8 +93,6 @@ public class GencodeFuncotation implements Funcotation {
     private String cDnaChangeSerializedOverride           = null;
     private String codonChangeSerializedOverride          = null;
     private String proteinChangeSerializedOverride        = null;
-    private String gcContentSerializedOverride            = null;
-    private String referenceContextSerializedOverride     = null;
     private String otherTranscriptsSerializedOverride     = null;
 
     private FuncotationMetadata metadata;
@@ -140,8 +130,6 @@ public class GencodeFuncotation implements Funcotation {
         this.cDnaChange = that.cDnaChange;
         this.codonChange = that.codonChange;
         this.proteinChange = that.proteinChange;
-        this.gcContent = that.gcContent;
-        this.referenceContext = that.referenceContext;
         this.otherTranscripts = that.otherTranscripts;
         this.dataSourceName = that.dataSourceName;
         this.locusLevel = that.locusLevel;
@@ -168,8 +156,6 @@ public class GencodeFuncotation implements Funcotation {
         this.cDnaChangeSerializedOverride = that.cDnaChangeSerializedOverride;
         this.codonChangeSerializedOverride = that.codonChangeSerializedOverride;
         this.proteinChangeSerializedOverride = that.proteinChangeSerializedOverride;
-        this.gcContentSerializedOverride = that.gcContentSerializedOverride;
-        this.referenceContextSerializedOverride = that.referenceContextSerializedOverride;
         this.otherTranscriptsSerializedOverride = that.otherTranscriptsSerializedOverride;
         this.metadata = that.metadata;
     }
@@ -216,8 +202,6 @@ public class GencodeFuncotation implements Funcotation {
             case "cDnaChange":                     cDnaChangeSerializedOverride = overrideValue;                     break;
             case "codonChange":                    codonChangeSerializedOverride = overrideValue;                    break;
             case "proteinChange":                  proteinChangeSerializedOverride = overrideValue;                  break;
-            case "gcContent":                      gcContentSerializedOverride = overrideValue;                      break;
-            case "referenceContext":               referenceContextSerializedOverride = overrideValue;               break;
             case "otherTranscripts":               otherTranscriptsSerializedOverride = overrideValue;               break;
             default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
@@ -251,8 +235,6 @@ public class GencodeFuncotation implements Funcotation {
                         getDataSourceName() + "_" + version + "_cDnaChange",
                         getDataSourceName() + "_" + version + "_codonChange",
                         getDataSourceName() + "_" + version + "_proteinChange",
-                        getDataSourceName() + "_" + version + "_gcContent",
-                        getDataSourceName() + "_" + version + "_referenceContext",
                         getDataSourceName() + "_" + version + "_otherTranscripts"
                 )
         );
@@ -306,10 +288,6 @@ public class GencodeFuncotation implements Funcotation {
                     return (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : ""));
                 case "proteinChange":
                     return (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : ""));
-                case "gcContent":
-                    return (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? String.valueOf(gcContent) : ""));
-                case "referenceContext":
-                    return (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : ""));
                 case "otherTranscripts":
                     return (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""));
             }
@@ -366,9 +344,6 @@ public class GencodeFuncotation implements Funcotation {
         if (codonChange != null ? !codonChange.equals(that.codonChange) : that.codonChange != null) return false;
         if (proteinChange != null ? !proteinChange.equals(that.proteinChange) : that.proteinChange != null)
             return false;
-        if (gcContent != null ? !gcContent.equals(that.gcContent) : that.gcContent != null) return false;
-        if (referenceContext != null ? !referenceContext.equals(that.referenceContext) : that.referenceContext != null)
-            return false;
         if (otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null)
             return false;
         if (dataSourceName != null ? !dataSourceName.equals(that.dataSourceName) : that.dataSourceName != null)
@@ -417,10 +392,6 @@ public class GencodeFuncotation implements Funcotation {
             return false;
         if (proteinChangeSerializedOverride != null ? !proteinChangeSerializedOverride.equals(that.proteinChangeSerializedOverride) : that.proteinChangeSerializedOverride != null)
             return false;
-        if (gcContentSerializedOverride != null ? !gcContentSerializedOverride.equals(that.gcContentSerializedOverride) : that.gcContentSerializedOverride != null)
-            return false;
-        if (referenceContextSerializedOverride != null ? !referenceContextSerializedOverride.equals(that.referenceContextSerializedOverride) : that.referenceContextSerializedOverride != null)
-            return false;
         if (otherTranscriptsSerializedOverride != null ? !otherTranscriptsSerializedOverride.equals(that.otherTranscriptsSerializedOverride) : that.otherTranscriptsSerializedOverride != null)
             return false;
         return metadata != null ? metadata.equals(that.metadata) : that.metadata == null;
@@ -447,8 +418,6 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (cDnaChange != null ? cDnaChange.hashCode() : 0);
         result = 31 * result + (codonChange != null ? codonChange.hashCode() : 0);
         result = 31 * result + (proteinChange != null ? proteinChange.hashCode() : 0);
-        result = 31 * result + (gcContent != null ? gcContent.hashCode() : 0);
-        result = 31 * result + (referenceContext != null ? referenceContext.hashCode() : 0);
         result = 31 * result + (otherTranscripts != null ? otherTranscripts.hashCode() : 0);
         result = 31 * result + (dataSourceName != null ? dataSourceName.hashCode() : 0);
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
@@ -475,8 +444,6 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride.hashCode() : 0);
         result = 31 * result + (codonChangeSerializedOverride != null ? codonChangeSerializedOverride.hashCode() : 0);
         result = 31 * result + (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride.hashCode() : 0);
-        result = 31 * result + (gcContentSerializedOverride != null ? gcContentSerializedOverride.hashCode() : 0);
-        result = 31 * result + (referenceContextSerializedOverride != null ? referenceContextSerializedOverride.hashCode() : 0);
         result = 31 * result + (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride.hashCode() : 0);
         result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
         return result;
@@ -636,14 +603,6 @@ public class GencodeFuncotation implements Funcotation {
         this.proteinChange = proteinChange;
     }
 
-    public Double getGcContent() {
-        return gcContent;
-    }
-
-    public void setGcContent(final Double gcContent) {
-        this.gcContent = gcContent;
-    }
-
     public List<String> getOtherTranscripts() {
         return otherTranscripts;
     }
@@ -674,20 +633,6 @@ public class GencodeFuncotation implements Funcotation {
 
     public void setTranscriptLength(final Integer transcriptLength) {
         this.transcriptLength = transcriptLength;
-    }
-    public String getReferenceContext() {
-        return referenceContext;
-    }
-
-    /**
-     * Set the reference context string.  The reference context string is a string of N (configurable) bases around the
-     * locus of the variant on the reference genome.
-     * The reference context string is always represented by bases from the + strand around the variant, regardless of
-     * the strandedness of the variant itself.
-     * @param referenceContext The string of bases around a variant to set as the referenceContext.
-     */
-    public void setReferenceContext(final String referenceContext) {
-        this.referenceContext = referenceContext;
     }
 
     public void setVersion(final String version) {

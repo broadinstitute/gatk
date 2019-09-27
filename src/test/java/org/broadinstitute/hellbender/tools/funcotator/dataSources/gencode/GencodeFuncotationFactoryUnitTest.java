@@ -717,8 +717,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                             .setGenomeChange("g.chr3:178921515_178921517GCA>TTG")
                             .setAnnotationTranscript(transcript1.getTranscriptName())
                             .setStrand(gene.getGenomicStrand())
-                            .setReferenceContext("TATAAATAGTGCACTCAGAATAA")
-                            .setGcContent(0.3399503722084367)
                             .setLocusLevel(Integer.valueOf(gene.getLocusLevel().toString()))
                             // This is OK because there are no exons:
                             .setTranscriptLength(0)
@@ -1164,60 +1162,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         createFuncotationForTestGencodeFuncotationComparatorUnitTest(transcriptId1 + ".5", GencodeGtfFeature.FeatureTag.APPRIS_PRINCIPAL, 1, GencodeFuncotation.VariantClassification.NONSTOP, 5000),
                         transcriptId2.compareTo(transcriptId1)
                 }
-        };
-    }
-
-    @DataProvider
-    Object[][] provideDataForTestCalculateGcContent() {
-
-                          // Base Position:
-                          //
-                          //1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-                          //0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
-                          //0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
-        final String seq = "AAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCC";
-        final String contig = "test";
-
-        return new Object[][] {
-                // MNPs:
-                { Allele.create("A", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  1, 0.0 },
-                { Allele.create("A", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  9, 0.0 },
-                { Allele.create("A", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1), 10, 1.0/11.0 },
-                { Allele.create("C", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  1, 1 },
-                { Allele.create("C", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  9, 1 },
-                { Allele.create("C", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100), 10, 10.0/11.0 },
-                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  1, 1.0/3.0 },
-                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  9, 9.0/19.0 },
-                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 10, 11.0/21.0 },
-                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 50, 50.0/100.0 },
-                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),   1, 0.0 },
-                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),   9, 4.0 / 14.0 },
-                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),  10, 5.0/15.0 },
-                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),   1, 1 },
-                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),   9, 10.0/15.0 },
-                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),  10, 10.0/16.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),   1, 6.0/8.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),   9, 10.0/24.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),  10, 11.0/26.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),  50, 50.0/100.0 },
-
-                // Insertions:
-                { Allele.create("A", true), Allele.create("AG"),    FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  1, 0.0 },
-                { Allele.create("A", true), Allele.create("AGG"),   FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  9, 0.0 },
-                { Allele.create("A", true), Allele.create("AGGG"),  FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1), 10, 1.0/11.0 },
-                { Allele.create("C", true), Allele.create("CG"),    FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  1, 1 },
-                { Allele.create("C", true), Allele.create("CGG"),   FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  9, 1 },
-                { Allele.create("C", true), Allele.create("CGGG"),  FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100), 10, 1 },
-                { Allele.create("T", true), Allele.create("TG"),    FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  1, 1.0/2.0 },
-                { Allele.create("T", true), Allele.create("TGG"),   FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  9, 9.0/18.0 },
-                { Allele.create("T", true), Allele.create("TGGG"),  FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 10, 10.0/20.0 },
-                { Allele.create("T", true), Allele.create("TGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 49, 49.0/98.0 },
-
-                // Deletions:
-                { Allele.create("AAAAA",  true), Allele.create("A"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),  10,  5.0/15.0 },
-                { Allele.create("GCCCCC", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),  10, 10.0/15.0  },
-                { Allele.create("TGGGGG", true), Allele.create("T"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),  10, 10.0/25.0 },
-                { Allele.create("TG", true),     Allele.create("T"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 51),  10, 10.0/21.0 },
         };
     }
 
@@ -1683,15 +1627,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                    final GencodeFuncotation b,
                                                    final int expected) {
         Assert.assertEquals( comparator.compare(a,b), expected );
-    }
-
-    @Test (dataProvider = "provideDataForTestCalculateGcContent")
-    void testCalculateGcContent(final Allele refAllele,
-                                final Allele altAllele,
-                                final ReferenceContext referenceContext,
-                                final int windowSize,
-                                final double expected) {
-        Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( refAllele, altAllele, referenceContext, windowSize ), expected, doubleEqualsEpsilon);
     }
 
     @DataProvider

@@ -14,10 +14,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.funcotator.AnnotatedIntervalToSegmentVariantContextConverter;
-import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
@@ -48,7 +45,7 @@ public class FuncotatorTestUtils {
      * Since funcotation factories need an instance of {@link FeatureContext} to funcotate, this convenience method can
      *  create a new instance for test methods.
      *
-     * @param funcotationFactories {@link List} of {@link DataSourceFuncotationFactory} that should be used to generate the
+     * @param funcotationFactories {@link List} of {@link FuncotationFactory} that should be used to generate the
      *                                         {@link FeatureContext}.  Never {@code null}, but empty list is acceptable.
      * @param dummyToolInstanceName A name to use for the "tool".  Any string will work here.  Never {@code null}.
      * @param interval genomic interval for the result.  Typically, this would be the interval of the variant.  Never {@link null}.
@@ -60,7 +57,7 @@ public class FuncotatorTestUtils {
      * @return a {@link FeatureContext} ready for querying the funcotation factories on the given interval.  Never {@code null}.
      */
     @VisibleForTesting
-    public static FeatureContext createFeatureContext(final List<DataSourceFuncotationFactory> funcotationFactories, final String dummyToolInstanceName,
+    public static FeatureContext createFeatureContext(final List<FuncotationFactory> funcotationFactories, final String dummyToolInstanceName,
                                                       final SimpleInterval interval, final int featureQueryLookahead, final int cloudPrefetchBuffer,
                                                       final int cloudIndexPrefetchBuffer, final Path reference) {
         Utils.nonNull(funcotationFactories);
@@ -69,6 +66,8 @@ public class FuncotatorTestUtils {
 
         final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsWithType =
                 funcotationFactories.stream()
+                        .filter(ff -> ff instanceof DataSourceFuncotationFactory)
+                        .map(ff -> (DataSourceFuncotationFactory)ff)
                         .collect(Collectors.toMap(ff -> ff.getMainSourceFileAsFeatureInput(), ff -> ff.getAnnotationFeatureClass()));
 
         return FeatureContext.createFeatureContextForTesting(featureInputsWithType, dummyToolInstanceName, interval,
@@ -108,28 +107,25 @@ public class FuncotatorTestUtils {
      * @param cDnaChange This method will not check validity of the specified value.
      * @param codonChange This method will not check validity of the specified value.
      * @param proteinChange This method will not check validity of the specified value.
-     * @param gcContent This method will not check validity.  Must be >= 0.0 and =< 1.0
-     * @param referenceContext This method will not check validity of the specified value.  This method will not even check that you are specifying valid bases.
      * @param otherTranscripts This method will not check validity of the specified value.
      * @param version Gencode version.  Use "19" for hg19/b37 and "28" for hg38.  This method will not check validity,
      *                but much of the rendering code will fail if this field is not valid.
      * @return a gencode funcotation representing the above parameters.  Never {@code null}
      */
     public static GencodeFuncotation createGencodeFuncotation(final String hugoSymbol, final String ncbiBuild,
-                                                                 final String chromosome, final int start, final int end,
-                                                                 final GencodeFuncotation.VariantClassification variantClassification,
-                                                                 final GencodeFuncotation.VariantClassification secondaryVariantClassification,
-                                                                 final GencodeFuncotation.VariantType variantType,
-                                                                 final String refAllele,
-                                                                 final String tumorSeqAllele2, final String genomeChange,
-                                                                 final String annotationTranscript, final Strand transcriptStrand,
-                                                                 final Integer transcriptExon,
-                                                                  final Integer transcriptStartPos,
-                                                                  final Integer transcriptEndPos,
-                                                                 final String cDnaChange, final String codonChange,
-                                                                 final String proteinChange, final Double gcContent,
-                                                                 final String referenceContext,
-                                                                 final List<String> otherTranscripts, final String version) {
+                                                              final String chromosome, final int start, final int end,
+                                                              final GencodeFuncotation.VariantClassification variantClassification,
+                                                              final GencodeFuncotation.VariantClassification secondaryVariantClassification,
+                                                              final GencodeFuncotation.VariantType variantType,
+                                                              final String refAllele,
+                                                              final String tumorSeqAllele2, final String genomeChange,
+                                                              final String annotationTranscript, final Strand transcriptStrand,
+                                                              final Integer transcriptExon,
+                                                              final Integer transcriptStartPos,
+                                                              final Integer transcriptEndPos,
+                                                              final String cDnaChange, final String codonChange,
+                                                              final String proteinChange,
+                                                              final List<String> otherTranscripts, final String version) {
 
 
         ParamUtils.isPositive(start, "Start position is 1-based and must be greater that zero.");
@@ -137,7 +133,6 @@ public class FuncotatorTestUtils {
         ParamUtils.isPositive(transcriptExon, "Transcript exon is a 1-based index.");
         ParamUtils.isPositive(transcriptStartPos, "Transcript start position is a 1-based index.");
         ParamUtils.isPositive(transcriptEndPos, "Transcript end position is a 1-based index.");
-        ParamUtils.inRange(gcContent, 0.0, 1.0, "GC Content must be between 0.0 and 1.0.");
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
@@ -164,8 +159,6 @@ public class FuncotatorTestUtils {
         funcotationBuilder.setcDnaChange( cDnaChange );
         funcotationBuilder.setCodonChange( codonChange );
         funcotationBuilder.setProteinChange( proteinChange );
-        funcotationBuilder.setGcContent( gcContent );
-        funcotationBuilder.setReferenceContext( referenceContext );
         funcotationBuilder.setOtherTranscripts( otherTranscripts );
 
         return funcotationBuilder.build();
@@ -459,8 +452,7 @@ public class FuncotatorTestUtils {
                 dummyTranscriptName, Strand.FORWARD,
         1, 1500, 1500,
         " ", " ",
-        "p.L300P", 0.5,
-        "ACTGATCGATCGA",Collections.singletonList("FAKE00002.5"), "27");
+        "p.L300P", Collections.singletonList("FAKE00002.5"), "27");
     }
 
     /**

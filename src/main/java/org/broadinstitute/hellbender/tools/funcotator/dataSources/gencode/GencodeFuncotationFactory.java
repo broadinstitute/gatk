@@ -79,11 +79,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private static final int spliceSiteVariantWindowBases = 2;
 
     /**
-     * Number of bases to the left and right of a variant in which to calculate the GC content.
-     */
-    private static final int gcContentWindowSizeBases = 200;
-
-    /**
      * The number of leading bases to include when building the variant sequence for UTR variants.
      * Used to determine if there is a de novo start.
      */
@@ -449,8 +444,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                     getName() + "_" + getVersion() + "_cDnaChange",
                     getName() + "_" + getVersion() + "_codonChange",
                     getName() + "_" + getVersion() + "_proteinChange",
-                    getName() + "_" + getVersion() + "_gcContent",
-                    getName() + "_" + getVersion() + "_referenceContext",
                     getName() + "_" + getVersion() + "_otherTranscripts"
             ));
     }
@@ -883,16 +876,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
 
-        // Get the reference bases for our current variant:
-        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, transcript.getGenomicStrand(), referenceWindow);
-
-        // Set the reference context with the bases from the sequence comparison
-        // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
-        gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
-
-        // Get GC Content:
-        gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
-
         gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE);
 
         gencodeFuncotationBuilder.setDataSourceName(dataSourceName);
@@ -1076,20 +1059,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set our transcript positions:
         setTranscriptPosition(variant, altAllele, transcript, gencodeFuncotationBuilder);
 
-        // Get the reference bases for our current variant:
-        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, exon.getGenomicStrand(), referenceWindow);
-
-        // Set the reference context with the bases from the sequence comparison
-        // NOTE: The reference context is ALWAYS from the + strand
-        gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
-
         // Get our exon positions:
         final SimpleInterval exonOverlapInterval = FuncotatorUtils.getOverlappingExonPositions(variant.getReference(), altAllele, variant.getContig(), variant.getStart(), variant.getEnd(), transcript.getGenomicStrand(), exonPositionList);
 
         // Set the GC content:
         // Set the cDNA change:
         gencodeFuncotationBuilder
-                .setGcContent(calculateGcContent(variant.getReference(), altAllele, reference, gcContentWindowSizeBases))
                 .setcDnaChange(
                     FuncotatorUtils.getCodingSequenceChangeString(
                         FuncotatorUtils.getStartPositionInTranscript(variant, exonPositionList, transcript.getGenomicStrand()),
@@ -1195,19 +1170,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set our transcript positions:
         setTranscriptPosition(variant, altAllele, sequenceComparison.getTranscriptAlleleStart(), gencodeFuncotationBuilder);
 
-        // Set the reference context with the bases from the sequence comparison
-        // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
-        if ( sequenceComparison.getStrand() == Strand.POSITIVE ) {
-            gencodeFuncotationBuilder.setReferenceContext(sequenceComparison.getReferenceBases());
-        }
-        else {
-            gencodeFuncotationBuilder.setReferenceContext(ReadUtils.getBasesReverseComplement(sequenceComparison.getReferenceBases().getBytes()));
-        }
-
         // Set the GC content
         // Set the cDNA change:
-        gencodeFuncotationBuilder.setGcContent(sequenceComparison.getGcContent())
-                                 .setcDnaChange(FuncotatorUtils.getCodingSequenceChangeString(
+        gencodeFuncotationBuilder.setcDnaChange(FuncotatorUtils.getCodingSequenceChangeString(
                                          sequenceComparison.getCodingSequenceAlleleStart(),
                                          sequenceComparison.getReferenceAllele(),
                                          sequenceComparison.getAlternateAllele(),
@@ -1532,9 +1497,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
 
-        // Set GC Content:
-        gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
-
         // Get the strand:
         final Strand strand = transcript.getGenomicStrand();
 
@@ -1543,10 +1505,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // (spanning the entire length of both the reference and the variant, regardless of which is longer).
         final Allele                        strandCorrectedAltAllele = FuncotatorUtils.getStrandCorrectedAllele(altAllele, strand);
         final StrandCorrectedReferenceBases referenceBases           = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, strand, referenceWindow);
-
-        // Set our reference sequence in the Gencode Funcotation Builder:
-        // NOTE: The reference context is ALWAYS from the + strand
-        gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set whether it's the 5' or 3' UTR:
         if ( is5PrimeUtr(utr, transcript) ) {
@@ -1641,13 +1599,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, transcript);
 
-        // Set our reference sequence in the Gencode Funcotation Builder:
-
-        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, transcript.getGenomicStrand(), referenceWindow);
-
-        // NOTE: The reference context is ALWAYS from the + strand:
-        gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
-
         // Set the VariantClassification:
         if ( transcript.getGeneType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING ) {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
@@ -1655,9 +1606,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         else {
             gencodeFuncotationBuilder.setVariantClassification(convertGeneTranscriptTypeToVariantClassification(transcript.getGeneType()));
         }
-
-        // Set GC Content:
-        gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
         // Need to check if we're within the window for splice site variants:
         final GencodeGtfExonFeature spliceSiteExon = getExonWithinSpliceSiteWindow(variant, altAllele, transcript, spliceSiteVariantWindowBases);
@@ -1869,13 +1817,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final Allele                        altAllele      = FuncotatorUtils.getStrandCorrectedAllele(alternateAllele, transcript.getGenomicStrand());
         final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), alternateAllele, reference, transcript.getGenomicStrand(), referenceWindow);
 
-        // Set our reference sequence in the SequenceComparison:
-        sequenceComparison.setReferenceWindow(referenceWindow);
-        sequenceComparison.setReferenceBases(referenceBases.getBaseString());
-
-        // Set our GC content:
-        sequenceComparison.setGcContent(calculateGcContent(variant.getReference(), altAllele, reference, gcContentWindowSizeBases));
-
         // Get the ref allele:
         sequenceComparison.setReferenceAllele(refAllele.getBaseString());
 
@@ -2065,61 +2006,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         return new String(transcriptTailPaddingBases);
-    }
-
-    /**
-     * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around a variant.
-     * Note: Since Guanine and Cytosine are complementary bases, strandedness makes no difference.
-     * @param refAllele Reference {@link Allele} for the locus in question.
-     * @param altAllele Alternate {@link Allele} for the locus in question.
-     * @param referenceContext The {@link ReferenceContext} for a variant.  Assumed to already be centered on the variant of interest.  Must not be {@code null}.
-     * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.  Must be >=1.
-     * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around a variant.
-     */
-    public static double calculateGcContent( final Allele refAllele,
-                                             final Allele altAllele,
-                                             final ReferenceContext referenceContext,
-                                             final int windowSize ) {
-
-        // TODO: this seems to do something similar to FuncotatorUtils::getBasesInWindowAroundReferenceAllele - should this method call into that?
-
-        Utils.nonNull( referenceContext );
-        ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
-
-        final int leadingWindowSize;
-        final int trailingWindowSize = windowSize;
-
-        if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ||
-                GATKVariantContextUtils.isDeletion(refAllele, altAllele)) {
-            // If we have an insertion, we take 1 less base from the front
-            // because the insertion happens between two codons.
-            // The preceding padding base is there as a convenience in VCF files.
-            // Thus the prior <windowSize> bases will contain this leading padding base.
-
-            // If we have a deletion, the convention in VCF files is to include a
-            // padding base at the front prior to the deleted bases so the alternate
-            // allele can be non-empty.
-            // Because of this we subtract 1 from the leading window size.
-
-            leadingWindowSize = windowSize - 1;
-        }
-        else {
-            leadingWindowSize = windowSize;
-        }
-
-        // Get the bases:
-        byte[] bases = referenceContext.getBases(leadingWindowSize, trailingWindowSize);
-
-        // Get the gcCount:
-        long gcCount = 0;
-        for ( final byte base : bases ) {
-            if ( BaseUtils.basesAreEqual(base, BaseUtils.Base.G.base) || BaseUtils.basesAreEqual(base, BaseUtils.Base.C.base) ) {
-                ++gcCount;
-            }
-        }
-
-        // Calculate the ratio itself:
-        return ((double)gcCount) / ((double) bases.length);
     }
 
     /**
@@ -2400,9 +2286,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
-        // Get GC Content:
-        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
-
         final String alleleString = altAllele.getBaseString().isEmpty() ? altAllele.toString() : altAllele.getBaseString();
 
         funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.IGR )
@@ -2419,9 +2302,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         funcotationBuilder.setNcbiBuild(ncbiBuildVersion);
-
-        // Set our reference context in the the FuncotatonBuilder:
-        funcotationBuilder.setReferenceContext(FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, Strand.POSITIVE, referenceWindow).getBaseString());
 
         // Set our version:
         funcotationBuilder.setVersion(version);
@@ -2454,11 +2334,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
-        // NOTE: The reference context is ALWAYS from the + strand
-        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, Strand.POSITIVE, referenceWindow);
-        final String referenceBasesString = referenceBases.getBaseString(Strand.POSITIVE);
-
-        final double gcContent = calculateGcContent(variant.getReference(), altAllele, reference, gcContentWindowSizeBases);
 
         funcotationBuilder.setHugoSymbol(transcript.getGeneName())
                 .setChromosome(variant.getContig())
@@ -2471,8 +2346,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 .setTumorSeqAllele2(altAllele.getBaseString())
                 .setGenomeChange(getGenomeChangeString(variant, altAllele))
                 .setAnnotationTranscript(transcript.getTranscriptId())
-                .setReferenceContext(referenceBasesString)
-                .setGcContent(gcContent)
                 .setNcbiBuild(ncbiBuildVersion)
                 .setGeneTranscriptType(transcript.getTranscriptType());
 
@@ -2524,9 +2397,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
-        // Get GC Content:
-        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altSymbolicAllele, reference, gcContentWindowSizeBases ) );
-
         final String alleleString = altSymbolicAllele.getBaseString().isEmpty() ? altSymbolicAllele.toString() : altSymbolicAllele.getBaseString();
 
         funcotationBuilder.setVariantClassification( variantClassification )
@@ -2543,11 +2413,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         funcotationBuilder.setHugoSymbol( annotationTranscript.getGeneName() );
 
         funcotationBuilder.setNcbiBuild(ncbiBuildVersion);
-
-        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
-
-        // Set our reference context in the the FuncotatonBuilder:
-        funcotationBuilder.setReferenceContext( referenceBases.getBaseString() );
 
         // Set our version:
         funcotationBuilder.setVersion(version);
@@ -2585,9 +2450,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
-        // Get GC Content:
-        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
-
         final String alleleString = altAllele.getBaseString().isEmpty() ? altAllele.toString() : altAllele.getBaseString();
 
         funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE )
@@ -2604,11 +2466,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         funcotationBuilder.setHugoSymbol( annotationTranscript.getGeneName() );
 
         funcotationBuilder.setNcbiBuild(ncbiBuildVersion);
-
-        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
-
-        // Set our reference context in the the FuncotatonBuilder:
-        funcotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set our version:
         funcotationBuilder.setVersion(version);

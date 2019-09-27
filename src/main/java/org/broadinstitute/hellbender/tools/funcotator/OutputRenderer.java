@@ -30,9 +30,9 @@ public abstract class OutputRenderer implements AutoCloseable {
     protected LinkedHashMap<String, String> manualAnnotations;
 
     /**
-     * {@link List} of the {@link DataSourceFuncotationFactory} objects that are being used in this run of {@link Funcotator}.
+     * {@link List} of the {@link FuncotationFactory} objects that are being used in this run of {@link Funcotator}.
      */
-    protected List<DataSourceFuncotationFactory> dataSourceFactories;
+    protected List<FuncotationFactory> funcotationFactories;
 
     /**
      * The version of the tool used to produce the output file.
@@ -62,8 +62,8 @@ public abstract class OutputRenderer implements AutoCloseable {
      */
     public String getDataSourceInfoString() {
 
-        return dataSourceFactories.stream()
-                .map(DataSourceFuncotationFactory::getInfoString)
+        return funcotationFactories.stream()
+                .map(FuncotationFactory::getInfoString)
                 .collect(Collectors.joining(" | "));
     }
 

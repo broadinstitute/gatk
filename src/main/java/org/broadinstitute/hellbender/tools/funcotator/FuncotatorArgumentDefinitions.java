@@ -65,6 +65,12 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-conversion";
 
+    public static final String REFERENCE_CONTEXT_WINDOW_SIZE_NAME = "reference-window";
+    public static final int REFERENCE_CONTEXT_WINDOW_SIZE_DEFAULT_VALUE = 10;
+
+    public static final String GC_CONTENT_WINDOW_SIZE_NAME = "gc-content-window-size";
+    public static final int GC_CONTENT_WINDOW_SIZE_DEFAULT_VALUE = 200;
+
     // ------------------------------------------------------------
     // Helper Types:
 

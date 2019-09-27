@@ -776,7 +776,7 @@ public class Funcotator extends VariantWalker {
         // Create the data sources from the input:
         // This will also create and register the FeatureInputs (created by the Data Sources)
         // with the GATK Engine, so we do not have to plumb them in after the fact.
-        final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
+        final List<FuncotationFactory> funcotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
                 configData,
                 annotationOverridesMap,
                 funcotatorArgs.transcriptSelectionMode,
@@ -787,6 +787,9 @@ public class Funcotator extends VariantWalker {
                 false
         );
 
+        // Add ComputedFuncotationFactories
+        funcotationFactories.addAll(DataSourceUtils.createComputedFuncotationFactories(funcotatorArgs.gcContentWindowSize, funcotatorArgs.referenceContextWindowSize));
+
         logger.info("Initializing Funcotator Engine...");
         // Create our engine to do our work and drive this Funcotation train!
         funcotatorEngine = new FuncotatorEngine(
@@ -795,7 +798,7 @@ public class Funcotator extends VariantWalker {
                 VcfFuncotationMetadata.create(
                     new ArrayList<>(vcfHeader.getInfoHeaderLines())
                 ),
-                dataSourceFuncotationFactories
+                funcotationFactories
         );
 
         // Create our output renderer:

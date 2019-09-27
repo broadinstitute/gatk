@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator.vcfOutput;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -81,7 +80,7 @@ public class VcfOutputRenderer extends OutputRenderer {
      * Create a {@link VcfOutputRenderer}.
      *
      * @param vcfWriter a pre-initialized {@link VariantContextWriter} used for writing the output (must not be null).
-     * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
+     * @param funcotationFactories {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
      * @param existingHeader {@link VCFHeader} of input VCF file to preserve (must not be null).
      * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added (must not be null).
      * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added (must not be null).
@@ -90,7 +89,7 @@ public class VcfOutputRenderer extends OutputRenderer {
      * @param toolVersion The version number of the tool used to produce the VCF file (must not be null).
      */
     public VcfOutputRenderer(final VariantContextWriter vcfWriter,
-                             final List<DataSourceFuncotationFactory> dataSources,
+                             final List<FuncotationFactory> funcotationFactories,
                              final VCFHeader existingHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
@@ -100,7 +99,7 @@ public class VcfOutputRenderer extends OutputRenderer {
         super(toolVersion);
 
         Utils.nonNull(vcfWriter);
-        Utils.nonNull(dataSources);
+        Utils.nonNull(funcotationFactories);
         Utils.nonNull(existingHeader);
         Utils.nonNull(unaccountedForDefaultAnnotations);
         Utils.nonNull(unaccountedForOverrideAnnotations);
@@ -109,7 +108,7 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         this.vcfWriter = vcfWriter;
         this.existingHeader = existingHeader;
-        this.dataSourceFactories = dataSources;
+        this.funcotationFactories = funcotationFactories;
 
         // Merge the annotations into our manualAnnotations:
         manualAnnotations = new LinkedHashMap<>();
@@ -121,7 +120,7 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         // Please note that this assumes that there is no conversion between the name given by the datasource (or user)
         //  and the output name.
-        finalFuncotationFieldNames = Stream.concat(getDataSourceFieldNamesForHeaderAsList(dataSourceFactories).stream(), manualAnnotations.keySet().stream())
+        finalFuncotationFieldNames = Stream.concat(getFuncotationFactoryFieldNamesForHeaderAsList(funcotationFactories).stream(), manualAnnotations.keySet().stream())
                 .filter(f -> !excludedOutputFields.contains(f))
                 .collect(Collectors.toList());
 
@@ -267,7 +266,7 @@ public class VcfOutputRenderer extends OutputRenderer {
 
     /**
      * Create a header for a VCF file.
-     * Uses {@link VcfOutputRenderer#dataSourceFactories} to get a list of fields to report producing (preserving their order).
+     * Uses {@link VcfOutputRenderer#funcotationFactories} to get a list of fields to report producing (preserving their order).
      * Includes fields from the manual annotation maps.
      * @return The {@link VCFHeader} object with relevant information for {@link Funcotator}.
      */
@@ -295,16 +294,16 @@ public class VcfOutputRenderer extends OutputRenderer {
     }
 
     /**
-     * Creates a {@link List} of {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
+     * Creates a {@link List} of {@link String} containing the field names from our {@link VcfOutputRenderer#funcotationFactories} suitable for putting in the VCF header.
      *
      * Gencode annotations are put first and then the rest.
      *
-     * @param dataSourceFactories A {@link List} of {@link DataSourceFuncotationFactory} objects from which to pull field names.
-     * @return A {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
+     * @param funcotationFactories A {@link List} of {@link FuncotationFactory} objects from which to pull field names.
+     * @return A {@link String} containing the field names from our {@link VcfOutputRenderer#funcotationFactories} suitable for putting in the VCF header.
      */
-    private static List<String> getDataSourceFieldNamesForHeaderAsList(final List<DataSourceFuncotationFactory> dataSourceFactories) {
-        return dataSourceFactories.stream().sorted(DataSourceUtils::datasourceComparator)
-                        .map(DataSourceFuncotationFactory::getSupportedFuncotationFields)
+    private static List<String> getFuncotationFactoryFieldNamesForHeaderAsList(final List<FuncotationFactory> funcotationFactories) {
+        return funcotationFactories.stream().sorted(DataSourceUtils::funcotationFactoryComparator)
+                        .map(FuncotationFactory::getSupportedFuncotationFields)
                         .flatMap(LinkedHashSet::stream)
                         .map(Object::toString).collect(Collectors.toList());
     }
