@@ -1556,6 +1556,34 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(has28BaseDeletion);
     }
 
+    @Test
+    public void testDownsamplingAnnotation() {
+        final File outputFromDownsampledReads = createTempFile("downsampledCalls", ".vcf");
+        final String bam = largeFileTestDir + "downsamplingInput.bam";
+        final String reference = hg38Reference;
+        final String intervalString = "chr4:49105537";
+        final String additionalArg = "-ip 300";
+
+        // Run both with and without --max-alternate-alleles over our interval, so that we can
+        // prove that the argument is working as intended.
+        final String[] argsForDownsampling = {
+                "-I", bam,
+                "-R", reference,
+                "-L", intervalString,
+                "-O", outputFromDownsampledReads.getAbsolutePath(),
+                "-ip", "300"
+        };
+        runCommandLine(argsForDownsampling);
+
+        //this is only 19 VCs so we can read it all into memory
+        final List<VariantContext> downsampledCalls = VariantContextTestUtils.readEntireVCFIntoMemory(outputFromDownsampledReads.getAbsolutePath()).getRight();
+        for (final VariantContext vc : downsampledCalls) {
+            Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.DOWNSAMPLED_KEY));
+        }
+
+
+    }
+
     /**
      * Helper method for testMaxAlternateAlleles
      *

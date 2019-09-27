@@ -196,6 +196,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
 
             logger.debug("Processing assembly region at " + assemblyRegion.getSpan() + " isActive: " + assemblyRegion.isActive() + " numReads: " + assemblyRegion.getReads().size());
             writeAssemblyRegion(assemblyRegion);
+            if (shard.wasDownsampled()) { assemblyRegion.setWasDownsampled(true); }
 
             apply(assemblyRegion,
                     new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),

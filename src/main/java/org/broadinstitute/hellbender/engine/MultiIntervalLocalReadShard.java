@@ -111,6 +111,10 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
         this.downsampler = downsampler;
     }
 
+    public boolean wasDownsampled() {
+        return downsampler.getNumberOfDiscardedItems() > 0;
+    }
+
     /**
      * Reads in this shard will be transformed after filtering and before downsampling
      *
