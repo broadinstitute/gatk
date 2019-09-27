@@ -215,7 +215,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);
         assemblyEngine = hcArgs.createReadThreadingAssembler();
-        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
+        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, hcArgs.standardArgs.CONTAMINATION_FRACTION);
 
         trimmer.initialize(hcArgs.assemblerArgs, readsHeader.getSequenceDictionary(), emitReferenceConfidence());
     }

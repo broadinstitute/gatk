@@ -136,7 +136,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
-        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
+        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs, 0);
         genotypingEngine = new SomaticGenotypingEngine(MTAC, normalSamples, annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer.initialize(MTAC.assemblerArgs, header.getSequenceDictionary(), emitReferenceConfidence());

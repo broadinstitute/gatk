@@ -40,7 +40,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     private final byte constantGCP;
 
-    private final double log10globalReadMismappingRate;
+    private final double log10globalReadMisattributionRate;
 
     private final PairHMM pairHMM;
 
@@ -86,7 +86,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      *
      * @param constantGCP the gap continuation penalty to use with the PairHMM
      * @param hmmType the type of the HMM to use
-     * @param log10globalReadMismappingRate the global mismapping probability, in log10(prob) units.  A value of
+     * @param log10globalReadMisattributionRate the global mismapping probability, in log10(prob) units.  A value of
      *                                      -3 means that the chance that a read doesn't actually belong at this
      *                                      location in the genome is 1 in 1000.  The effect of this parameter is
      *                                      to cap the maximum likelihood difference between the reference haplotype
@@ -99,9 +99,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
-                                              final double log10globalReadMismappingRate,
+                                              final double log10globalReadMisattributionRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
+        this( constantGCP, arguments, hmmType, log10globalReadMisattributionRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
     }
 
     /**
@@ -109,7 +109,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      *
      * @param constantGCP the gap continuation penalty to use with the PairHMM
      * @param hmmType the type of the HMM to use
-     * @param log10globalReadMismappingRate the global mismapping probability, in log10(prob) units.  A value of
+     * @param log10globalReadMisattributionRate the global mismapping probability, in log10(prob) units.  A value of
      *                                      -3 means that the chance that a read doesn't actually belong at this
      *                                      location in the genome is 1 in 1000.  The effect of this parameter is
      *                                      to cap the maximum likelihood difference between the reference haplotype
@@ -124,7 +124,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
-                                              final double log10globalReadMismappingRate,
+                                              final double log10globalReadMisattributionRate,
                                               final PCRErrorModel pcrErrorModel,
                                               final byte baseQualityScoreThreshold) {
         Utils.nonNull(hmmType, "hmmType is null");
@@ -132,11 +132,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         if (constantGCP < 0){
             throw new IllegalArgumentException("gap continuation penalty must be non-negative");
         }
-        if (log10globalReadMismappingRate > 0){
-            throw new IllegalArgumentException("log10globalReadMismappingRate must be negative");
+        if (log10globalReadMisattributionRate > 0){
+            throw new IllegalArgumentException("log10globalReadMisattributionRate must be negative");
         }
         this.constantGCP = constantGCP;
-        this.log10globalReadMismappingRate = log10globalReadMismappingRate;
+        this.log10globalReadMisattributionRate = log10globalReadMisattributionRate;
         this.pcrErrorModel = pcrErrorModel;
         this.pairHMM = hmmType.makeNewHMM(arguments);
 
@@ -184,7 +184,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
-        result.normalizeLikelihoods(log10globalReadMismappingRate);
+        result.normalizeLikelihoods(log10globalReadMisattributionRate);
         result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(EXPECTED_ERROR_RATE_PER_BASE));
         return result;
     }

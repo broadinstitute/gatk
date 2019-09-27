@@ -40,7 +40,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by davidben on 9/8/16.
@@ -205,13 +204,15 @@ public final class AssemblyBasedCallerUtils {
      *
      * @return never {@code null}.
      */
-    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs) {
-        final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? - Double.MAX_VALUE
-                : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, double contaminationFraction) {
+        //read could come from cross-sample contamination or mapping error
+        final double log10GlobalReadMisattributionRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
+                : contaminationFraction > 0 ? QualityUtils.qualToErrorProbLog10(Math.min(likelihoodArgs.phredScaledGlobalReadMismappingRate, QualityUtils.phredScaleErrorRate(contaminationFraction)))
+                :  QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
         switch ( likelihoodArgs.likelihoodEngineImplementation) {
             case PairHMM:
-                return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
+                return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMisattributionRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
             case Random:
                 return new RandomLikelihoodCalculationEngine();
             default:
