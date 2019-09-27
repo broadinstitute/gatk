@@ -358,9 +358,8 @@ task SamtoolsMergeBAMs {
 
 #Print given message to stderr and return an error
 task ErrorWithMessage{
-    input {
-        String message
-    }
+    String message
+    
     command <<<
     >&2 echo "Error: ~{message}"
     exit 1
