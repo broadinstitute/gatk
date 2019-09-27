@@ -206,9 +206,10 @@ public final class AssemblyBasedCallerUtils {
      */
     public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, double contaminationFraction) {
         //read could come from cross-sample contamination or mapping error
-        final double log10GlobalReadMisattributionRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
+        /*final double log10GlobalReadMisattributionRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
                 : contaminationFraction > 0 ? QualityUtils.qualToErrorProbLog10(Math.min(likelihoodArgs.phredScaledGlobalReadMismappingRate, QualityUtils.phredScaleErrorRate(contaminationFraction)))
-                :  QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
+                :  QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);*/
+        final double log10GlobalReadMisattributionRate = QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
         switch ( likelihoodArgs.likelihoodEngineImplementation) {
             case PairHMM:
