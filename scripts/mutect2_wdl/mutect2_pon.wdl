@@ -137,10 +137,6 @@ task CreatePanel {
     Int command_mem = machine_mem - 1
 
         parameter_meta{
-          intervals: {localization_optional: true}
-          ref_fasta: {localization_optional: true}
-          ref_fai: {localization_optional: true}
-          ref_dict: {localization_optional: true}
           gnomad: {localization_optional: true}
           gnomad_idx: {localization_optional: true}
         }
