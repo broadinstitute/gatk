@@ -250,6 +250,8 @@ public class Evoquer extends GATKTool {
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
+        logger.info("value of useOptimizedQuery: " + useOptimizedQuery);
+        logger.info("value of useSpDelOptimizedQuery: " + useSpDelOptimizedQuery);
         if ( ! precomputedResultsMode ) {
             for ( final SimpleInterval interval : getTraversalIntervals() ) {
                 evoquerEngine.evokeInterval(interval, useOptimizedQuery, useSpDelOptimizedQuery);
