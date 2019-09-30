@@ -72,7 +72,7 @@ public final class LongHopscotchSetTest extends GATKBaseTest {
             Assert.assertTrue(capacity >= size);
             Assert.assertTrue(capacity < 2 * size);
             final List<Integer> legalSizes = IntStream.of(SetSizeUtils.legalSizes).boxed().collect(Collectors.toList());
-            Assert.assertTrue(legalSizes.contains(new Integer((int) capacity)));
+            Assert.assertTrue(legalSizes.contains((int) capacity));
         }
     }
 
@@ -106,7 +106,7 @@ public final class LongHopscotchSetTest extends GATKBaseTest {
         final List<Long> filteredVals = new LinkedList<>();
         for (long testVal : testVals) {
             if (KEY_TO_REMOVE == testVal) {
-                filteredVals.add(new Long(testVal));
+                filteredVals.add(testVal);
             }
         }
         final int onesCount = filteredVals.size();
@@ -186,7 +186,7 @@ public final class LongHopscotchSetTest extends GATKBaseTest {
             for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
                 final long randLong = randomLong(rng);
                 hopscotchSet.add(randLong);
-                hashSet.add(new Long(randLong));
+                hashSet.add(randLong);
             }
             Assert.assertEquals(hashSet.size(), hopscotchSet.size(), trialMsg);
             for (final Long val : hashSet) {

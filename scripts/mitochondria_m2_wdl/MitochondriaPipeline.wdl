@@ -11,8 +11,9 @@ workflow MitochondriaPipeline {
   input {
     File wgs_aligned_input_bam_or_cram
     File wgs_aligned_input_bam_or_cram_index
+    String sample_name
     String contig_name = "chrM"
-    Float? autosomal_coverage
+    Float autosomal_coverage = 30
 
     # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
     # affected by this number. Default is 151.
@@ -70,6 +71,7 @@ workflow MitochondriaPipeline {
     vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
     f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
     contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
+    sample_name: "Name of file in final output vcf"
   }
 
   call SubsetBamToChrM {
@@ -94,6 +96,7 @@ workflow MitochondriaPipeline {
     input:
       unmapped_bam = RevertSam.unmapped_bam,
       autosomal_coverage = autosomal_coverage,
+      sample_name = sample_name,
       mt_dict = mt_dict,
       mt_fasta = mt_fasta,
       mt_fasta_index = mt_fasta_index,

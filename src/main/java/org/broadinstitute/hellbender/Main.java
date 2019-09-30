@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
@@ -346,12 +347,12 @@ public class Main {
             if (simpleNameToClass.containsKey(args[0])) {
                 final Class<?> clazz = simpleNameToClass.get(args[0]);
                 try {
-                    final Object commandLineProgram = clazz.newInstance();
+                    final Object commandLineProgram = clazz.getDeclaredConstructor().newInstance();
                     // wrap Picard CommandLinePrograms in a PicardCommandLineProgramExecutor
                     return commandLineProgram instanceof picard.cmdline.CommandLineProgram ?
                             new PicardCommandLineProgramExecutor((picard.cmdline.CommandLineProgram) commandLineProgram) :
                             (CommandLineProgram) commandLineProgram;
-                } catch (final InstantiationException | IllegalAccessException e) {
+                } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -395,8 +396,8 @@ public class Main {
                 CommandLineProgramGroup programGroup = programGroupClassToProgramGroupInstance.get(property.programGroup());
                 if (null == programGroup) {
                     try {
-                        programGroup = property.programGroup().newInstance();
-                    } catch (final InstantiationException | IllegalAccessException e) {
+                        programGroup = property.programGroup().getDeclaredConstructor().newInstance();
+                    } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                         throw new RuntimeException(e);
                     }
                     programGroupClassToProgramGroupInstance.put(property.programGroup(), programGroup);

@@ -84,7 +84,7 @@ public final class LongBloomFilterTest {
         final LongBloomFilter bloomFilter = new LongBloomFilter(HHASH_NVALS, FPP);
         for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
             final long randLong = randomLong(rng);
-            hashSet.add(new Long(randLong));
+            hashSet.add(randLong);
             bloomFilter.add(randLong);
         }
         for (final Long val : hashSet) {
@@ -94,7 +94,7 @@ public final class LongBloomFilterTest {
         int num_total = 0;
         for (int valNo = 0; valNo != FPR_NVALS; ++valNo) {
             final long randLong = randomLong(rng);
-            if (!hashSet.contains(new Long(randLong))) {
+            if (!hashSet.contains(randLong)) {
                 num_total++;
                 if (bloomFilter.contains(randLong)) {
                     num_false_pos++;

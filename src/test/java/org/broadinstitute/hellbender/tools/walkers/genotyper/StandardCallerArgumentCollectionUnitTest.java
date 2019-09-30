@@ -28,7 +28,7 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
     @Test(dataProvider="collectionClasses")
     public void testParameterLessInitialization(final Class<? extends StandardCallerArgumentCollection> clazz) {
            try {
-               clazz.newInstance();
+               clazz.getDeclaredConstructor().newInstance();
            } catch (final Exception ex) {
                Assert.fail();
            }
@@ -52,8 +52,8 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
         return result;
     }
 
-    public <T extends StandardCallerArgumentCollection> T randomArgumentCollection(final Class<T> clazz) throws IllegalAccessException, InstantiationException {
-        final T result = clazz.newInstance();
+    public <T extends StandardCallerArgumentCollection> T randomArgumentCollection(final Class<T> clazz) throws Exception {
+        final T result = clazz.getDeclaredConstructor().newInstance();
         final Random rnd = Utils.getRandomGenerator();
         for (final Field field : clazz.getFields()) {
             final int fieldModifiers = field.getModifiers();

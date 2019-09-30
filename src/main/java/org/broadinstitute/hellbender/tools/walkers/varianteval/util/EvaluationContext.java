@@ -8,7 +8,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
+import org.broadinstitute.hellbender.utils.ClassUtils;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -30,15 +32,9 @@ public class EvaluationContext {
         this.evaluationInstances = new ArrayList<>(evaluationClasses.size());
 
         for ( final Class<? extends VariantEvaluator> c : evaluationClasses ) {
-            try {
-                final VariantEvaluator eval = c.newInstance();
-                if ( doInitialize ) eval.initialize(walker);
-                evaluationInstances.add(eval);
-            } catch (InstantiationException e) {
-                throw new GATKException("Unable to instantiate eval module '" + c.getSimpleName() + "'", e);
-            } catch (IllegalAccessException e) {
-                throw new GATKException("Illegal access error when trying to instantiate eval module '" + c.getSimpleName() + "'", e);
-            }
+            final VariantEvaluator eval = ClassUtils.makeInstanceOf(c);
+            if ( doInitialize ) eval.initialize(walker);
+            evaluationInstances.add(eval);
         }
     }
 

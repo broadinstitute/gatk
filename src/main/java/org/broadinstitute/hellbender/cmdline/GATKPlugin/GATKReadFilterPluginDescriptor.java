@@ -137,6 +137,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
     // Instantiate a new ReadFilter derived object and save it in the list
     @Override
+    @SuppressWarnings("deprecation")
     public ReadFilter createInstanceForPlugin(final Class<?> pluggableClass) throws IllegalAccessException, InstantiationException {
         ReadFilter readFilter = null;
         final String simpleName = pluggableClass.getSimpleName();

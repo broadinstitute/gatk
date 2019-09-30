@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,8 +69,8 @@ public final class ClassUtils {
     public static <T> T makeInstanceOf(final Class<T> clazz) {
         if (canMakeInstances(clazz)) {
             try {
-                return clazz.newInstance();
-            } catch (final InstantiationException | IllegalAccessException e) {
+                return clazz.getDeclaredConstructor().newInstance();
+            } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                 throw new GATKException("Problem making an instance of " + clazz + " Do check that the class has a non-arg constructor", e);
             }
         }

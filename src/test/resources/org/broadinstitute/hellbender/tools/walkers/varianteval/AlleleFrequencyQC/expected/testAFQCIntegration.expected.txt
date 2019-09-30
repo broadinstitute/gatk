@@ -1,0 +1,4 @@
+## METRICS CLASS	org.broadinstitute.hellbender.metrics.analysis.AlleleFrequencyQCMetric
+SAMPLE	METRIC_TYPE	METRIC_VALUE	CHI_SQ_VALUE
+NA12878	Allele Frequency	0.626135	55.902796	
+
