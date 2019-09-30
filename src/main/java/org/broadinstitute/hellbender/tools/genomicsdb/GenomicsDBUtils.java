@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.genomicsdb.importer.GenomicsDBImporter;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
 
@@ -19,10 +20,10 @@ import java.util.Map;
 
 /**
  * Utility class containing various methods for working with GenomicsDB
- * Contains code to modify the GenomicsDB query output format using the Protobuf API
+ * Contains code to modify the GenomicsDB import input using the Protobuf API
  *
  * References:
- * GenomicsDB Protobuf structs: https://github.com/Intel-HLS/GenomicsDB/blob/master/src/resources/genomicsdb_vid_mapping.proto
+ * GenomicsDB Protobuf structs: https://github.com/GenomicsDB/GenomicsDB/blob/master/src/resources/genomicsdb_vid_mapping.proto
  * Protobuf generated Java code guide:
  * https://developers.google.com/protocol-buffers/docs/javatutorial#the-protocol-buffer-api
  * https://developers.google.com/protocol-buffers/docs/reference/java-generated
@@ -33,9 +34,53 @@ public class GenomicsDBUtils {
     private static final String ELEMENT_WISE_FLOAT_SUM = "element_wise_float_sum";
     private static final String SUM = "sum";
     private static final String HISTOGRAM_SUM = "histogram_sum";
+    private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
     private static final String STRAND_BIAS_TABLE_COMBINE = "strand_bias_table";
     private static final String GDB_TYPE_FLOAT = "float";
     private static final String GDB_TYPE_INT = "int";
+
+    /**
+     * Info and Allele-specific fields that need to be treated differently
+     * will have to be explicitly overridden in this method during import.
+     * Note that the recommendation is to perform this operation during the import phase
+     * as only a very limited set of mappings can be changed during export.
+     *
+     * @param importer
+     */
+    public static void updateImportProtobufVidMapping(GenomicsDBImporter importer) {
+        //Get the in-memory Protobuf structure representing the vid information.
+        GenomicsDBVidMapProto.VidMappingPB vidMapPB = importer.getProtobufVidMapping();
+        if (vidMapPB == null) {
+            throw new UserException("Could not get protobuf vid mappping object from GenomicsDBImporter");
+        }
+
+        // In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects.
+        // Each GenomicsDBFieldInfo object contains information about a specific field in the
+        // GenomicsDB store and this list is iterated to create a field name to list index map.
+        final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
+                getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, ELEMENT_WISE_SUM);
+
+        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
+
+        //Update combine operations for GnarlyGenotyper
+        //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_QUAL_APPROX_KEY, SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.VARIANT_DEPTH_KEY, SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
+        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_FLOAT_SUM);
+
+        importer.updateProtobufVidMapping(vidMapPB);
+    }
 
     /**
      *
@@ -87,48 +132,6 @@ public class GenomicsDBUtils {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
 
-        //Parse the vid json and create an in-memory Protobuf structure representing the information in the JSON file
-        GenomicsDBVidMapProto.VidMappingPB vidMapPB;
-        try {
-            vidMapPB = getProtobufVidMappingFromJsonFile(vidmapJson);
-        } catch (final IOException e) {
-            throw new UserException("Could not open vid json file " + vidmapJson, e);
-        }
-
-        //In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
-        //Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
-        //We iterate over the list and create a field name to list index map
-        final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
-                getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
-
-        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, ELEMENT_WISE_SUM);
-
-        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
-
-        //Update combine operations for GnarlyGenotyper
-        //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
-        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, SUM);
-        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.RAW_QUAL_APPROX_KEY, SUM);
-        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.VARIANT_DEPTH_KEY, SUM);
-        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
-        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_FLOAT_SUM);
-
-
-        if (vidMapPB != null) {
-            //Use rebuilt vidMap in exportConfiguration
-            //NOTE: this does NOT update the JSON file, the vidMapPB is a temporary structure that's passed to
-            //C++ modules of GenomicsDB for this specific query. Other queries will continue to use the information
-            //in the JSON file
-            exportConfigurationBuilder.setVidMapping(vidMapPB);
-        }
-
         return exportConfigurationBuilder.build();
     }
 
@@ -139,24 +142,8 @@ public class GenomicsDBUtils {
     }
 
     /**
-     * Parse the vid json and create an in-memory Protobuf structure representing the
-     * information in the JSON file
-     *
-     * @param vidmapJson vid JSON file
-     * @return Protobuf object
-     */
-    public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
-            throws IOException {
-        final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
-        try (final Reader reader = Files.newBufferedReader(IOUtils.getPath(vidmapJson))) {
-            JsonFormat.merge(reader, vidMapBuilder);
-        }
-        return vidMapBuilder.build();
-    }
-
-    /**
      * In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
-     * Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
+     * Each GenomicsDBFieldInfo object contains information about a specific field in the GenomicsDB store
      * We iterate over the list and create a field name to list index map
      *
      * @param vidMapPB Protobuf vid mapping object
@@ -227,6 +214,9 @@ public class GenomicsDBUtils {
 
             GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
                     GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
+            infoBuilder.clearLength();
+            infoBuilder.clearVcfDelimiter();
+            infoBuilder.clearType();
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
