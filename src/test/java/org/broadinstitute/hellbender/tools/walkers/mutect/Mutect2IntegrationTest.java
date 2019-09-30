@@ -217,6 +217,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testWhySiteFails() {
+        String[] args = ("-I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.tumor.bam -I" +
+                " gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.normal.bam -R /Users/emeryj/hellbender/references/Homo_sapiens_assembly19.fasta" +
+                " -normal synthetic.challenge.set1.normal -bamout bamout.bam -O calls.vcf -L 15:33482411-33484411 --debug-graph-transformations").split(" ");
+        runCommandLine(args);
+    }
+
+    @Test
     public void testInfiniteLoop() {
         String[] args = ("-R gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta -I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.tumor.bam -tumor synthetic.challenge.set1.tumor " +
                 "-I gs://broad-public-datasets/TCGA_DREAM/synthetic.challenge.set1.normal.bam -normal synthetic.challenge.set1.normal " +
