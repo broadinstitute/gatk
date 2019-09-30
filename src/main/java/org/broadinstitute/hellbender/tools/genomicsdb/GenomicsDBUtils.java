@@ -34,10 +34,10 @@ public class GenomicsDBUtils {
     private static final String ELEMENT_WISE_FLOAT_SUM = "element_wise_float_sum";
     private static final String SUM = "sum";
     private static final String HISTOGRAM_SUM = "histogram_sum";
-    private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
     private static final String STRAND_BIAS_TABLE_COMBINE = "strand_bias_table";
     private static final String GDB_TYPE_FLOAT = "float";
     private static final String GDB_TYPE_INT = "int";
+    // private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
 
     /**
      * Info and Allele-specific fields that need to be treated differently
