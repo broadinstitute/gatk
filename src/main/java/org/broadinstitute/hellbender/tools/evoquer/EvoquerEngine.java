@@ -213,13 +213,10 @@ class EvoquerEngine {
             // Get the query string:
             String variantQueryString;
             if (useSpDelOptimizedQuery) {
-                logger.info("using the sp del query");
                 variantQueryString = getOptimizedNoDupSpanningDelsVariantQueryString(interval);
             } else if (useOptimizedQuery) {
-                logger.info("using the optimized query");
                 variantQueryString = getOptimizedVariantQueryString(interval);
             } else {
-                logger.info("using the original query");
                 variantQueryString = getVariantQueryString(interval);
             }
 
