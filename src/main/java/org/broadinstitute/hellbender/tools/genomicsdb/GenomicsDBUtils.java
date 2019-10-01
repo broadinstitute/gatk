@@ -77,7 +77,7 @@ public class GenomicsDBUtils {
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_FLOAT_SUM);
+                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, STRAND_BIAS_TABLE_COMBINE);
 
         importer.updateProtobufVidMapping(vidMapPB);
     }
@@ -139,6 +139,22 @@ public class GenomicsDBUtils {
                                                                                               final String callsetJson, final String vidmapJson,
                                                                                               final String vcfHeader) {
         return createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, null);
+    }
+
+    /**
+     * Parse the vid json and create an in-memory Protobuf structure representing the
+     * information in the JSON file
+     *
+     * @param vidmapJson vid JSON file
+     * @return Protobuf object
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
+            throws IOException {
+        final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
+        try (final Reader reader = Files.newBufferedReader(IOUtils.getPath(vidmapJson))) {
+            JsonFormat.merge(reader, vidMapBuilder);
+        }
+        return vidMapBuilder.build();
     }
 
     /**
@@ -233,7 +249,7 @@ public class GenomicsDBUtils {
                 infoBuilder.setVCFFieldCombineOperation(ELEMENT_WISE_SUM);
                 if (newCombineOperation.equals(ELEMENT_WISE_FLOAT_SUM)) {
                     infoBuilder.addType(GDB_TYPE_FLOAT);
-                } else if (newCombineOperation.equals(STRAND_BIAS_TABLE_COMBINE)) {
+                } else {
                     infoBuilder.addType(GDB_TYPE_INT);
                 }
             }
