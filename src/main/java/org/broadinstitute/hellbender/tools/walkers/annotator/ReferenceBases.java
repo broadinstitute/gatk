@@ -62,11 +62,6 @@ public class ReferenceBases extends InfoFieldAnnotation {
         return Arrays.asList(new VCFInfoHeaderLine(ReferenceBases.REFERENCE_BASES_KEY, 1, VCFHeaderLineType.String, "local reference bases."));
     }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
     public static String getNMiddleBases(final String bases, final int n){
         Utils.validateArg(bases.length() >= n, "bases must have n or more bases. bases = " + bases);
         Utils.validateArg( bases.length() % 2 == 1, "the length of bases must be an odd number");

@@ -60,11 +60,6 @@ public final class GenotypeSummaries extends InfoFieldAnnotation {
     }
 
     @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
-    @Override
     public List<String> getKeyNames() {
         return Arrays.asList(
                 GATKVCFConstants.NOCALL_CHROM_KEY,

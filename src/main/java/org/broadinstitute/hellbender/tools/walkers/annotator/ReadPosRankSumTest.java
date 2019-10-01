@@ -180,9 +180,4 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
         }
         return endClippedBasesCounter;
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

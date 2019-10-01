@@ -52,9 +52,4 @@ public final class BaseQualityRankSumTest extends RankSumTest implements Standar
     protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
         return OptionalDouble.of(p.getQual());
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

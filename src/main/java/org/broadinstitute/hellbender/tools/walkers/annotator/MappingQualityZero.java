@@ -66,9 +66,4 @@ public final class MappingQualityZero extends InfoFieldAnnotation {
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

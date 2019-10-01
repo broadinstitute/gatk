@@ -50,8 +50,8 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     private final AlleleList<A> result;
     private final IntList indexOfLeftAlleles;
     private final IntList indexOfRightAlleles;
-    private List<IntList[]> indexesOfLeftGenotypes;
-    private List<IntList[]> indexesOfRightGenotypes;
+    private List<List<GenotypeMatch>> indexesOfLeftGenotypes;
+    private List<List<GenotypeMatch>> indexesOfRightGenotypes;
 
 
     private final GenotypeLikelihoodCalculators GT_LK_CALCULATORS = new GenotypeLikelihoodCalculators();
@@ -178,7 +178,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     }
 
 
-    public <T> List<T> mapAlleleAnnotation(final AlleleList<A> alleles, final List<T> values, final VCFHeaderLineCount count, final T missingValue) {
+    public <T> List<T> mapAlleleAnnotation(final AlleleList<?> alleles, final List<T> values, final VCFHeaderLineCount count, final T missingValue) {
         switch (count) {
             case INTEGER:
             case UNBOUNDED:
@@ -192,7 +192,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         }
     }
 
-    public int[] mapAlleleAnnotation(final AlleleList<A> alleles, final int[] values, final VCFHeaderLineCount count, final int missingValue) {
+    public int[] mapAlleleAnnotation(final AlleleList<?> alleles, final int[] values, final VCFHeaderLineCount count, final int missingValue) {
         final List<Integer> valueList = new AbstractList<Integer>() {
             @Override
             public Integer get(int index) {
@@ -208,7 +208,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         return result.stream().mapToInt(Integer::intValue).toArray();
     }
 
-    public <T> List<T> mapAlleleAnnotation(final AlleleList<A> oldAlleleList, final List<T> oldValues, final boolean includeReference, final T missingValue) {
+    public <T> List<T> mapAlleleAnnotation(final AlleleList<?> oldAlleleList, final List<T> oldValues, final boolean includeReference, final T missingValue) {
         Utils.nonNull(oldAlleleList);
         Utils.nonNull(oldValues);
         int referenceIndex = oldAlleleList.indexOfUniqueReference();
@@ -235,7 +235,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         }
     }
 
-    private <T> List<T>  unsafeMapAlleleAnnotation(final AlleleList<A> oldAlleleList, final List<T> oldValues, final boolean includeReference, final T missingValue) {
+    private <T> List<T>  unsafeMapAlleleAnnotation(final AlleleList<?> oldAlleleList, final List<T> oldValues, final boolean includeReference, final T missingValue) {
         final IntList indexOfOldAlleles = result.alleleIndexMap(oldAlleleList, true, true);
         final int numberOfAlleles = numberOfAlleles();
         final List<T> result = new ArrayList<>(numberOfAlleles);
@@ -247,30 +247,84 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
     }
 
     /**
-     * Merge likelihoods.
-     * @param oldAlleleList
-     * @param ploidy
-     * @param likelihoods
-     * @return
+     * Maps likelihoods on a different allele list as they have been calculated on
+     * the merged allele list.
+     *
+     * <p>
+     *     The input source allele list could be one of the merged list or a different one.
+     * </p>
+     * <p>
+     *     When merged list alleles cannot be mapped to the source allele one we try two strategies to
+     *     rescue the affected likelihoods:
+     *     <p>1. If the input source list has the special {@code <NON_REF>} allele we use it in-leu for
+     *     all missing alleles in the merged list.
+     *     </p>
+     *     <p>2. If {@code <NON_REF>} is not present we calculate the genotype likelihoods based on
+     *     the likelihoods of all the input genotypes that is shares one allele with using the following formula:
+     *      <pre>
+     *          lk = sum_i(lk[i] ^ 2 * #shared_alleles(gt[i], gt) / ploidy ) / sum_i(lk[i])
+     *          i in [0,#source_gts] where #shared_alleels(gt, gt[i]) > 0
+     *          lk[i] the ith source likelihood.
+     *          #shared_alleles(a, b): number of alleles call shared between both genotypes.
+     *      </pre>
+     *     </p>
+     *     <p>
+     *         In the second approach we try to calculate the likelihood of a genotype as a weighted sum
+     *         of the source genotypes where more likely have a greater weight. Then contribution of each
+     *         of those source genotypes is "degraded" based on the number of non-shared allele calls.
+     *     </p>
+     *
+     *     <p>
+     *         Example merged list has A*,B,C whereas input source list has A*,B. So C is not present
+     *         in the input:
+     *
+     *         lk_out(A*,A*) = lk_in(A*,A*) # no problem.
+     *         lk_out(A*,B) = lk_in(A*,B) ...
+     *         ...
+     *         lk_out(A*,C)  = combine(lk_in(A*,A*), lk_in(A*,B)) using formula
+     *                       = (lk_in(A*,A*)^2 * 0.5 + lk_in(A*,B)^2 * 0.5) /
+     *                         (lk_in(A*,A*) + lk_in(A*,B))
+     *         lk_out(B,C)   = (lk_in(B,B)^2 * 0.5 + lk_in(A*,B)^2 * 0.5) /
+     *                               (lk_in(B,B) + lk_in(A*,B))
+     *         lk_out(C,C)   = zero # as calculated below:
+     *     </p>
+     *
+     *     <p>
+     *         We set the lowest possible (zero) likelihood as the lowest input likelihood divide by 2 or
+     *         the the lowest input likelihood divided by its ratio vs the second lowest whichever is less BUT
+     *         never less than the ratio between the worst and the best likelihoods:
+     *         So for input 0, 10, 20. It would be 30 (20 + (20 - 10)). For input 0, 10, 10 would be 13.01 (10 + 3.01 (=log10(2)*-10))
+     *         for input 0, 0, 0 it would be 0 (using the third rule).
+     *
+     *     </p>
+     *
+     * </p>
+     *
+     * @param sourceAlleles the source allele list.
+     * @param ploidy the ploidy for the sample involved.
+     * @param sourceLikelihoods the source likelihoods.
+     * @return never {@code null}, an array with the corresponding likelihoods for the
+     *   merged list.
      */
-    public double[] mapGenotypeLikelihoods(final AlleleList<A> oldAlleleList, final int ploidy, final double[] likelihoods) {
-        final List<List<GenotypeMatch>> indexOfGenotypes = calculateIndexesOfGenotypes(oldAlleleList, ploidy);
-        final double[] result = new double[indexOfGenotypes.size()];
-        final double[] normalizedLikelihoods = normalizeLikelihoods(likelihoods, false);
+    public double[] mapGenotypeLikelihoods(final AlleleList<A> sourceAlleles, final int ploidy, final double[] sourceLikelihoods) {
+        final List<List<GenotypeMatch>> genotypeMap = calculateGenotypeMap(sourceAlleles, ploidy);
+        final int resultLength = genotypeMap.size();
+        final double[] resultLikelihoods = new double[resultLength];
+        final double[] normalizedLikelihoods = normalizeLikelihoods(sourceLikelihoods, false);
         final double zeroLikelihood = calculateZeroLikelihood(normalizedLikelihoods);
-        double[] log10SumBuffer = null;
-        double[] log10SumBuffer2 = null;
-        for (int i = 0; i < result.length; i++) {
-            final List<GenotypeMatch> oldGenotypes = indexOfGenotypes.get(i);
+        double[] log10SumBuffer = null;  // may not be needed so lazily instantiated.
+        double[] log10SumBuffer2 = null; // may not be needed so lazily instantiated.
+        for (int i = 0; i < resultLength; i++) {
+            final List<GenotypeMatch> oldGenotypes = genotypeMap.get(i);
             final int oldGenotypesSize = oldGenotypes.size();
             if (oldGenotypesSize == 0) {
-                result[i] = zeroLikelihood;
+                resultLikelihoods[i] = zeroLikelihood;
             } else if (oldGenotypesSize == 1) {
                 final GenotypeMatch match = oldGenotypes.get(0);
-                result[i] = normalizedLikelihoods[match.genotypeIndex] + match.log10Factor;
+                resultLikelihoods[i] = normalizedLikelihoods[match.genotypeIndex] + match.log10Factor;
             } else {
-                log10SumBuffer = log10SumBuffer == null ? new double[likelihoods.length] : log10SumBuffer;
-                log10SumBuffer2 = log10SumBuffer2 == null ? new double[likelihoods.length] : log10SumBuffer2;
+                log10SumBuffer = log10SumBuffer == null ? new double[sourceLikelihoods.length] : log10SumBuffer;
+                log10SumBuffer2 = log10SumBuffer2 == null ? new double[sourceLikelihoods.length] : log10SumBuffer2;
                 for (int j = 0; j < oldGenotypesSize; j++) {
                     final GenotypeMatch match = oldGenotypes.get(j);
                     log10SumBuffer[j] = 2 * normalizedLikelihoods[match.genotypeIndex];
@@ -278,10 +332,10 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
                     log10SumBuffer[j] += match.log10Factor;
                 }
                 final double normalizer = MathUtils.log10SumLog10(log10SumBuffer2, 0, oldGenotypesSize);
-                result[i] = Math.max(MathUtils.log10SumLog10(log10SumBuffer, 0, oldGenotypesSize) - normalizer, zeroLikelihood);
+                resultLikelihoods[i] = Math.max(MathUtils.log10SumLog10(log10SumBuffer, 0, oldGenotypesSize) - normalizer, zeroLikelihood);
             }
         }
-        return normalizeLikelihoods(result, true);
+        return normalizeLikelihoods(resultLikelihoods, true);
     }
 
     private double[] normalizeLikelihoods(final double[] likelihoods, final boolean canUseInput) {
@@ -378,7 +432,7 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         }
     }
 
-    private <A extends Allele> List<List<GenotypeMatch>> calculateIndexesOfGenotypes(final AlleleList<A> original, final int ploidy) {
+    private <A extends Allele> List<List<GenotypeMatch>> calculateGenotypeMap(final AlleleList<A> original, final int ploidy) {
         final IntList indexOfOriginalAlleles = calculateIndexesOfAlleles(original);
 
         final GenotypeLikelihoodCalculator resultCalculator = GT_LK_CALCULATORS.getInstance(ploidy, result.numberOfAlleles());
@@ -388,7 +442,6 @@ public class MergedAlleleList<A extends Allele> implements AlleleList<A> {
         } else {
             final List<List<GenotypeMatch>> result = new ArrayList<>(resultLength);
             final int[] alleleIndexBuffer = new int[ploidy];
-            int[] alleleCountsByIndexBuffer = null;
             final GenotypeLikelihoodCalculator originalCalculator = GT_LK_CALCULATORS.getInstance(ploidy, original.numberOfAlleles());
             for (int i = 0; i < resultLength; i++) {
                 final GenotypeAlleleCounts resultAlleleCounts = resultCalculator.genotypeAlleleCountsAt(i);

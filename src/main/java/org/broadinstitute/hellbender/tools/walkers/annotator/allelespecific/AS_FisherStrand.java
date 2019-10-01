@@ -81,9 +81,4 @@ public class AS_FisherStrand extends AS_StrandBiasTest implements AS_StandardAnn
         }
         return annotationMap;
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

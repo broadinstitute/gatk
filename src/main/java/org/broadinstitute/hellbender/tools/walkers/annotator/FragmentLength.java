@@ -45,9 +45,4 @@ public class FragmentLength extends PerAlleleAnnotation implements StandardMutec
         //abs because fragment lengths are negative if mate comes first
         return OptionalInt.of(Math.abs(read.getFragmentLength()));
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

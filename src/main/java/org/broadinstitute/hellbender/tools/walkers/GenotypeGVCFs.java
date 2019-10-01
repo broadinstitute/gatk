@@ -345,7 +345,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     private VariantContext applyPopulationAnnotation(final VariantContext cohort, final VariantContext pop) {
         final VariantContextBuilder builder = new VariantContextBuilder(pop);
-        final MergedAlleleList<Allele> newAlleleList = MergedAlleleList.merge(new IndexedAlleleList<Allele>(pop.getAlleles()),
+        final MergedAlleleList<Allele> newAlleleList = MergedAlleleList.merge(new IndexedAlleleList<>(pop.getAlleles()),
                    new IndexedAlleleList<>(cohort.getAlleles()));
         builder.alleles(newAlleleList.asListOfAlleles());
         final GenotypesContext cohortGenotypes = cohort.getGenotypes();
@@ -353,7 +353,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final LinkedHashSet<String> annotationKeys = new LinkedHashSet<>(pop.getAttributes().keySet());
         annotationKeys.addAll(cohort.getAttributes().keySet());
         for (final String annotationKey : annotationKeys) {
-
+            for
         }
         return null;
     }

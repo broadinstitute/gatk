@@ -141,11 +141,6 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
         return attributeMap;
     }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
     private static boolean contextHasTrioLikelihoods(final VariantContext vc, final Trio trio) {
         final String mom = trio.getMaternalID();
         final String dad = trio.getPaternalID();

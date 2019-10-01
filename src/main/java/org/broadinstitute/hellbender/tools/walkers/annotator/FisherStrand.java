@@ -129,8 +129,4 @@ public final class FisherStrand extends StrandBiasTest implements StandardAnnota
         return res;
     }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

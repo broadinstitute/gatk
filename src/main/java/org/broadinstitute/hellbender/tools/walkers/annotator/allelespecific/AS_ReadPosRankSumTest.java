@@ -64,9 +64,4 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
         Utils.nonNull(read);
         return super.isUsableRead(read, refLoc) && read.getSoftEnd() >= refLoc;
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

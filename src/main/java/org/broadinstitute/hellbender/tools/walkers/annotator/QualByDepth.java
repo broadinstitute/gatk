@@ -81,18 +81,25 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
         return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", QD));
     }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population,
+    /**
+     * A more sofisticated merge operation, reanme to default the copy-over one.
+     * @param cohort
+     * @param population
+     * @param mergedAlleleList
+     * @param <A>
+     * @return
+     */
+    public <A extends Allele> Map<String, Object> complexMerge(final VariantContext cohort, final VariantContext population,
                                                         final MergedAlleleList<A> mergedAlleleList) {
         final int cohortDepth = GATKVariantContextUtils.calculateDepth(cohort, -1);
         final int populationDepth = GATKVariantContextUtils.calculateDepth(population, -1);
         if (cohortDepth == -1 || populationDepth == -1) {
-            return Collections.emptyMap();
+            return super.merge(cohort, population, mergedAlleleList);
         }
         final double cohortQual = GATKVariantContextUtils.calculateQual(cohort, -1);
         final double populationQual = GATKVariantContextUtils.calculateQual(population, -1);
         if (cohortQual == -1 || populationQual == -1) {
-            return Collections.emptyMap();
+            return super.merge(cohort, population, mergedAlleleList);
         }
         final double qd = (cohortQual + populationQual) / (double) (cohortDepth + populationDepth);
         return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", qd));

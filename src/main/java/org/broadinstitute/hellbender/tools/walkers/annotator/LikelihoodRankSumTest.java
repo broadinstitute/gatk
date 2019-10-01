@@ -57,9 +57,4 @@ public final class LikelihoodRankSumTest extends RankSumTest {
         // todo its possible this should throw, as This method should never have been called as getElementForRead(read,refloc,mostLikelyAllele) was overriden
         return OptionalDouble.empty();
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

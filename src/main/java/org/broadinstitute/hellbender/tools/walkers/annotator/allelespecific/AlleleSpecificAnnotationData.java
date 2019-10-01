@@ -11,17 +11,29 @@ import java.util.Map;
  * A class to encapsulate the raw data for allele-specific classes compatible with the ReducibleAnnotation interface
  * @param <T> the type of raw data to be stored for later annotation calculation
  */
-public final class AlleleSpecificAnnotationData<T> extends ReducibleAnnotationData<T>{
-    private final List<Allele> alleleList;
+public final class AlleleSpecificAnnotationData<T> extends ReducibleAnnotationData<T> {
+    private final List<? extends Allele> alleleList;
     private final Allele refAllele;
 
-    public AlleleSpecificAnnotationData(final List<Allele> inputAlleles, final String inputData) {
+    public AlleleSpecificAnnotationData(final List<? extends Allele> inputAlleles, final String inputData) {
         super(inputData);
         this.attributeMap = new HashMap<>();
         inputAlleles.forEach(a -> {attributeMap.put(a, null);});
         alleleList = inputAlleles;
         refAllele = alleleList.stream().filter(Allele::isReference).findAny().orElse(null);
         checkRefAlleles();
+    }
+
+    public AlleleSpecificAnnotationData(final List<? extends Allele> inputAlleles, final List<T> values, final String raw) {
+        this(inputAlleles, raw);
+        if (values != null) {
+            if (inputAlleles.size() != values.size()) {
+                throw new IllegalArgumentException("the input value list must have the same size as the input allele list.")
+            }
+            for (int i = 0; i < inputAlleles.size(); i++) {
+                putAttribute(inputAlleles.get(i), values.get(i));
+            }
+        }
     }
 
     @Override

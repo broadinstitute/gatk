@@ -55,10 +55,5 @@ public final class SampleList extends InfoFieldAnnotation {
     }
 
     @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
-    @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.SAMPLE_LIST_KEY); }
 }

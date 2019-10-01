@@ -53,9 +53,4 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
         final OptionalDouble result = BaseQualityRankSumTest.getReadBaseQuality(read, vc.getStart());
         return result.isPresent() ? OptionalInt.of((int) FastMath.round(result.getAsDouble())) : OptionalInt.empty();
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

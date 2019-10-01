@@ -60,9 +60,4 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         return BaseQualityRankSumTest.getReadBaseQuality(read, refLoc);
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

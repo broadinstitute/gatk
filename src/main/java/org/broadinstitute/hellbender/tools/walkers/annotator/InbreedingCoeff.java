@@ -87,11 +87,6 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements Standar
         return Collections.singletonMap(getKeyNames().get(0), String.format("%.4f", F));
     }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
     @VisibleForTesting
     static Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
         final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc.getNAlleles(), genotypes, ROUND_GENOTYPE_COUNTS);

@@ -59,9 +59,4 @@ public class ReadPosition extends PerAlleleAnnotation implements StandardMutectA
         final OptionalDouble valueAsDouble = ReadPosRankSumTest.getReadPosition(read, vc.getStart());
         return valueAsDouble.isPresent() ? OptionalInt.of((int) valueAsDouble.getAsDouble()) : OptionalInt.empty();
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

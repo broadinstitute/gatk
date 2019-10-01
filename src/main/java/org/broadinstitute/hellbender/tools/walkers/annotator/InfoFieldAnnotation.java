@@ -9,14 +9,12 @@ import org.broadinstitute.hellbender.utils.genotyper.MergedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Annotations relevant to the INFO field of the variant file (ie annotations for sites).
  */
-public abstract class InfoFieldAnnotation extends VariantAnnotation{
+public abstract class InfoFieldAnnotation extends VariantAnnotation {
 
     /**
      * Computes the annotation for the given variant and the likelihoods per read.
@@ -42,5 +40,26 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
         return lines;
     }
 
-    public abstract <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList);
+    /**
+     * By default simply copies the value in the input cohort variant-context.
+     * @param cohort the input cohort context
+     * @param population the corresponding population cohort context.
+     * @param mergedAlleleList the merged output allele list.
+     * @param <A> the allele type parameter.
+     * @return never {@code null}.
+     */
+    public <A extends Allele> Map<String, Object> merge(final VariantContext cohort, final VariantContext population, final MergedAlleleList<A> mergedAlleleList) {
+        final Map<String, Object> result;
+        final List<String> keys = getKeyNames();
+        if (keys.size() == 1) {
+            final String key = keys.get(0);
+            result = Collections.singletonMap(key, cohort.getAttribute(key));
+        } else {
+            result = new HashMap<>(keys.size());
+            for (final String key : keys) {
+                result.put(key, cohort.getAttribute(key));
+            }
+        }
+        return result;
+    }
 }

@@ -52,9 +52,4 @@ public final class MappingQualityRankSumTest extends RankSumTest implements Stan
         // default to returning the same value
         return OptionalDouble.of(p.getMappingQual());
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

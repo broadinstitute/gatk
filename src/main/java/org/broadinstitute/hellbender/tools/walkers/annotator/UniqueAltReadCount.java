@@ -53,11 +53,6 @@ public class UniqueAltReadCount extends InfoFieldAnnotation {
     }
 
     @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
-    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                          final VariantContext vc,
                          final ReadLikelihoods<Allele> likelihoods) {

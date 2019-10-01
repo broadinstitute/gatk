@@ -101,7 +101,7 @@ public interface AlleleList<A extends Allele> {
      * @param originalList where the returned indexes point to.
      * @return never {@code null}, a list with exactly one position per allele in this list.
      */
-    default IntList alleleIndexMap(final AlleleList<A> originalList, final boolean matchReferences,
+    default IntList alleleIndexMap(final AlleleList<?> originalList, final boolean matchReferences,
                                    final boolean useNonRefFailOver) {
         Utils.nonNull(originalList);
         final int basesLengthDifference;

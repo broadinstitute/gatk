@@ -76,11 +76,6 @@ public final class AS_InbreedingCoeff extends InfoFieldAnnotation implements AS_
         return Collections.singletonMap(getKeyNames().get(0),  AnnotationUtils.encodeValueList(ICvalues, "%.4f"));
     }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
     @VisibleForTesting
     public double calculateIC(final VariantContext vc, final Allele altAllele) {
         //make a new HeterozygosityUtils for each call to reset it

@@ -55,11 +55,6 @@ public final class TandemRepeat extends InfoFieldAnnotation implements StandardM
     }
 
     @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
-
-    @Override
     public List<String> getKeyNames() {
         return Arrays.asList(
                 GATKVCFConstants.STR_PRESENT_KEY,

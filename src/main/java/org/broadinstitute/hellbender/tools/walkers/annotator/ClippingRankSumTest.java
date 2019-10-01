@@ -51,9 +51,4 @@ public final class ClippingRankSumTest extends RankSumTest {
         // default to returning the same value
         return getElementForRead(p.getRead(),refLoc);
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

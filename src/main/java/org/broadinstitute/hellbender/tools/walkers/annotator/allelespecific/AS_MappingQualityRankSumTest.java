@@ -51,9 +51,4 @@ public class AS_MappingQualityRankSumTest extends AS_RankSumTest implements AS_S
         Utils.nonNull(read);
         return OptionalDouble.of(read.getMappingQuality());
     }
-
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }

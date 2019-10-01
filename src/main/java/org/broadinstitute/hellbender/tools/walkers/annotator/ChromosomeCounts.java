@@ -66,8 +66,4 @@ public final class ChromosomeCounts extends InfoFieldAnnotation implements Stand
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() { return Arrays.asList(descriptions); }
 
-    @Override
-    public <A extends Allele> Map<String, Object> merge(VariantContext cohort, VariantContext population, MergedAlleleList<A> mergedAlleleList) {
-        return null;
-    }
 }
