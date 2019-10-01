@@ -182,13 +182,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
-        if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllSites()
+        if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllActiveSites()
                 && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && givenAlleles.isEmpty()) {
             return null;
         }
 
         // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
-        if (! emitAllSites() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
+        if (! emitAllActiveSites() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
             return null;
         }
 
@@ -375,7 +375,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return true;
     }
 
-    protected boolean emitAllSites() {
+    /**
+     * Whether or not all calls at any region over the activity threshold should be emitted regardless of confidence.
+     * This does not necessarily emit calls for all sites in a region (see {@link OutputMode}).
+     */
+    protected boolean emitAllActiveSites() {
         return configuration.outputMode == OutputMode.EMIT_ALL_ACTIVE_SITES;
     }
 
