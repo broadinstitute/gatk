@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import it.unimi.dsi.fastutil.ints.IntList;
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -25,7 +24,133 @@ public interface AlleleList<A extends Allele> {
      * Returns a negative number if the given allele is not present in this AlleleList.
      * @throws IllegalArgumentException if allele is null.
      */
-    int indexOfAllele(final A allele);
+    int indexOfAllele(final Allele allele);
+
+
+    /**
+     * Returns the index of the given Allele in the AlleleList ignoring its reference status or returned
+     * the index of NON-REF when it applies.
+     *
+     * <p>
+     *     When {@code failOverToNonRef} is {@code true}, this method will conside to return its index iff
+     *     the input allele is not a reference allele or {@code ignoreRefStatus} is {@code true}. So just to make
+     *     this clear, if {@code ignoreRefStatus} is {@code false} this method won't ever fail over to NON-REF
+     *     with reference input alleles.
+     * </p>
+     *
+     * @param allele
+     * @param ignoreRefStatus
+     * @param failOverToNonRef
+     * @return
+     */
+    default int indexOfAllele(final Allele allele, final boolean ignoreRefStatus, final boolean failOverToNonRef) {
+        int result = indexOfAllele(allele);
+        if (result == -1 && ignoreRefStatus && !allele.isSymbolic() && !allele.isNoCall()) {
+            final Allele secondAttemptAllele = Allele.create(allele.getBases(), !allele.isReference());
+            result = indexOfAllele(secondAttemptAllele);
+        }
+        if (result == -1 && failOverToNonRef && (ignoreRefStatus || !allele.isReference())) {
+            result = nonRefAlleleIndex();
+        }
+        return result;
+    }
+
+    default int indexOfAllele(final Allele allele, final Allele ref, final boolean ignoreRefStatus, final boolean failOverToNonRef) {
+        if (ref == null || allele.isSymbolic() || allele.isNoCall()) {
+            return indexOfAllele(allele, ignoreRefStatus, failOverToNonRef);
+        } else {
+            int thisRefAlleleIndex = indexOfUniqueReference();
+            final Allele searchAllele;
+            if (thisRefAlleleIndex == -1) {
+                searchAllele = allele;
+            } else {
+                final Allele thisRefAllele = getAllele(thisRefAlleleIndex);
+                final byte[] thisRefBases = thisRefAllele.getBases();
+                final byte[] thatRefBases = ref.getBases();
+                if (Nucleotide.same(thisRefBases, thatRefBases)) {
+                    searchAllele = allele;
+                } else if (Nucleotide.startsWith(thisRefBases, thatRefBases)) {
+                    final byte[] extensionBases = Arrays.copyOfRange(thisRefBases, thatRefBases.length, thisRefBases.length);
+                    searchAllele = Allele.extend(allele, extensionBases);
+                } else if (Nucleotide.startsWith(thatRefBases, thisRefBases)) {
+                    final int extensionSize = thisRefBases.length - thatRefBases.length;
+                    final int to = allele.getBases().length + extensionSize;
+                    searchAllele = to > 0 ? Allele.create(Arrays.copyOfRange(allele.getBases(), 0, to), allele.isReference()) : null;
+                } else {
+                    throw new IllegalArgumentException("cannot match reference");
+                }
+            }
+            return searchAllele == null ? -1 : indexOfAllele(searchAllele, ignoreRefStatus, failOverToNonRef);
+        }
+    }
+    /**
+     * Returns an list of ints indicate the location of an allele in the ith position of this list in
+     * the input allele list. It will contain -1, in case such allele is missing.
+     * <p>
+     *     If {@code matchReference} is set to true, it try to match reference allele in this and the input list
+     *     and apply allele base extension or contraction before matching alleles.
+     * </p>
+     * <p>
+     *     If {@code useNonRefFailOver} when an allele in this list cannot be matched with an allele in the input list
+     *     the NON_REF allele (if present) will be used instead.
+     * </p>
+     * @param originalList where the returned indexes point to.
+     * @return never {@code null}, a list with exactly one position per allele in this list.
+     */
+    default IntList alleleIndexMap(final AlleleList<?> originalList, final boolean matchReferences,
+                                   final boolean useNonRefFailOver) {
+        Utils.nonNull(originalList);
+        final int basesLengthDifference;
+        final byte[] extensionBases;
+        if (matchReferences) {
+            final int thisRefIdx = indexOfUniqueReference();
+            final int thatRefIdx = originalList.indexOfUniqueReference();
+            if (thisRefIdx == -1 || thatRefIdx == -1) {
+                basesLengthDifference = 0;
+                extensionBases = null;
+            } else {
+                final Allele thisRefAllele = getAllele(thisRefIdx);
+                final Allele thatRefAllele = originalList.getAllele(thatRefIdx);
+                final byte[] thisRefBases = thisRefAllele.getBases();
+                final byte[] thatRefBases = thatRefAllele.getBases();
+                if (Nucleotide.same(thisRefBases, thatRefBases)) {
+                    basesLengthDifference = 0;
+                    extensionBases = null;
+                } else if (Nucleotide.startsWith(thatRefBases, thisRefBases)) {
+                    basesLengthDifference = thatRefBases.length - thisRefBases.length;
+                    extensionBases = Arrays.copyOfRange(thatRefBases, thisRefBases.length, thatRefBases.length);
+                } else if (Nucleotide.startsWith(thisRefBases, thatRefBases)) {
+                    basesLengthDifference = thatRefBases.length - thatRefBases.length;
+                    extensionBases = null;
+                } else {
+                    throw new IllegalArgumentException("unmatchable reference alleles: " + thisRefAllele + " vs " + thatRefAllele);
+                }
+            }
+        } else {
+            basesLengthDifference = 0;
+            extensionBases = null;
+        }
+        final int numberOfAlleles = numberOfAlleles();
+        final int[] result = new int[numberOfAlleles];
+        if (basesLengthDifference == 0) {
+            for (int i = 0; i < numberOfAlleles; i++) {
+                result[i] = originalList.indexOfAllele(getAllele(i), true, true);
+            }
+        } else if (basesLengthDifference > 0) {
+            for (int i = 0; i < numberOfAlleles; i++) {
+                result[i] = originalList.indexOfAllele(Allele.extend(getAllele(i), extensionBases), true, true);
+            }
+        } else {
+            for (int i = 0; i < numberOfAlleles; i++) {
+                final Allele thisAllele = getAllele(i);
+                final byte[] thisBases = thisAllele.getBases();
+                final Allele searchAllele = thisAllele.isSymbolic() || thisAllele.isNoCall() ? thisAllele :
+                        Allele.create(Arrays.copyOfRange(thisBases, 0, thisBases.length + basesLengthDifference));
+                result[i] = originalList.indexOfAllele(Allele.create(searchAllele, thisAllele.isReference()), true, true);
+            }
+        }
+        return new IntArrayList(result);
+    }
 
     /**
      * Returns the allele at the given index in this AlleleList.

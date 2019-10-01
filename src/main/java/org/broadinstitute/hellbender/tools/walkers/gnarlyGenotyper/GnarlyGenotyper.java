@@ -257,7 +257,8 @@ public final class GnarlyGenotyper extends VariantWalker {
                 || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0
                 || (onlyOutputCallsStartingInIntervals && !intervals.stream().anyMatch(interval -> interval.contains(variantStart)))) {
             if (keepAllSites) {
-                VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));  //don't fill in QUAL here because there's no alt data
+                final VariantContextBuilder builder = new VariantContextBuilder(variant);  //don't fill in QUAL here because there's no alt data
+                mqCalculator.finalizeAnnotation(builder, variant);
                 builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
                 builder.attribute(GATKVCFConstants.AC_ADJUSTED_KEY, 0);
                 vcfWriter.add(builder.make());
