@@ -44,6 +44,10 @@ workflow Evoquer {
 
     String disable_gnarly_genotyper
 
+    Boolean use_optimized_query
+
+    Boolean use_spdel_optimized_query
+
     File? gatk4_jar_override
     Int?  mem_gb
     Int?  preemptible_attempts
@@ -66,6 +70,8 @@ workflow Evoquer {
                 dataset_map           = dataset_map,
                 batch_mode            = batch_mode,
                 disable_gnarly_genotyper = disable_gnarly_genotyper,
+                use_optimized_query   = use_optimized_query,
+                use_spdel_optimized_query = use_spdel_optimized_query,
                 gatk_docker           = gatk_docker,
                 gatk_override         = gatk4_jar_override,
                 mem                   = mem_gb,
@@ -103,6 +109,10 @@ task EvoquerTask {
     String batch_mode
 
     String disable_gnarly_genotyper
+
+    Boolean use_optimized_query
+
+    Boolean use_spdel_optimized_query
 
     # Runtime Options:
     String gatk_docker
@@ -156,7 +166,9 @@ task EvoquerTask {
                 --dataset-map "${dataset_map}" \
                 -L "${interval}" \
                 --run-query-in-batch-mode "${batch_mode}" \
-                --disable-gnarly-genotyper "${disable_gnarly_genotyper}"
+                --disable-gnarly-genotyper "${disable_gnarly_genotyper}" \
+                --use-optimized-query "${use_optimized_query}" \
+                --use-spdel-optimized-query "${use_spdel_optimized_query}"
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> ${timing_output_file}
