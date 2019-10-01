@@ -30,20 +30,22 @@ import java.util.Map;
  */
 public class GenomicsDBUtils {
 
+    private static final String SUM = "sum";
     private static final String ELEMENT_WISE_SUM = "element_wise_sum";
     private static final String ELEMENT_WISE_FLOAT_SUM = "element_wise_float_sum";
-    private static final String SUM = "sum";
+    private static final String ELEMENT_WISE_INT_SUM = "element_wise_int_sum";
     private static final String HISTOGRAM_SUM = "histogram_sum";
-    private static final String STRAND_BIAS_TABLE_COMBINE = "strand_bias_table";
+    private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
+
     private static final String GDB_TYPE_FLOAT = "float";
     private static final String GDB_TYPE_INT = "int";
-    // private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
+
 
     /**
      * Info and Allele-specific fields that need to be treated differently
      * will have to be explicitly overridden in this method during import.
      * Note that the recommendation is to perform this operation during the import phase
-     * as only a very limited set of mappings can be changed during export.
+     * as only a limited set of mappings can be changed during export.
      *
      * @param importer
      */
@@ -77,7 +79,7 @@ public class GenomicsDBUtils {
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, STRAND_BIAS_TABLE_COMBINE);
+                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_INT_SUM);
 
         importer.updateProtobufVidMapping(vidMapPB);
     }
@@ -131,6 +133,8 @@ public class GenomicsDBUtils {
         } else {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
+
+
 
         return exportConfigurationBuilder.build();
     }
@@ -230,9 +234,11 @@ public class GenomicsDBUtils {
 
             GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
                     GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
+
             infoBuilder.clearLength();
             infoBuilder.clearVcfDelimiter();
             infoBuilder.clearType();
+
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
