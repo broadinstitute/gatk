@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
  * by calling the non-arg constructor (loading will fail if there is no no-arg constructor).
  */
 public final class VariantAnnotatorEngine {
+    private final Map<String, InfoFieldAnnotation> infoAnnotationsByKey;
     private final List<InfoFieldAnnotation> infoAnnotations;
     private final List<GenotypeAnnotation> genotypeAnnotations;
     private Set<String> reducibleKeys;
@@ -37,6 +38,7 @@ public final class VariantAnnotatorEngine {
     private boolean expressionAlleleConcordance;
     private final boolean useRawAnnotations;
     private final boolean keepRawCombinedAnnotations;
+
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
 
@@ -78,6 +80,20 @@ public final class VariantAnnotatorEngine {
                 reducibleKeys.add(((ReducibleAnnotation) annot).getRawKeyName());
             }
         }
+        infoAnnotationsByKey = composeInfoAnnotationsKeyMap(infoAnnotations);
+    }
+
+    private static Map<String, InfoFieldAnnotation> composeInfoAnnotationsKeyMap(final List<InfoFieldAnnotation> infoAnnotations) {
+        final Map<String, InfoFieldAnnotation> result = new HashMap<>(infoAnnotations.size() << 1);
+        for (final InfoFieldAnnotation annotation : infoAnnotations) {
+            for (final String keyName : annotation.getKeyNames()) {
+                result.put(keyName, annotation);
+            }
+            if (annotation instanceof ReducibleAnnotation) {
+                result.put(((ReducibleAnnotation)annotation).getRawKeyName(), annotation);
+            }
+        }
+        return result;
     }
 
     private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
@@ -109,6 +125,10 @@ public final class VariantAnnotatorEngine {
      */
     public List<InfoFieldAnnotation> getInfoAnnotations() {
         return Collections.unmodifiableList(infoAnnotations);
+    }
+
+    public InfoFieldAnnotation getInfoAnnotationByKey(final String key) {
+        return infoAnnotationsByKey.get(key);
     }
 
     /**

@@ -6,11 +6,18 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.avro.generic.GenericData;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.VariantLocusWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,6 +28,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -107,14 +115,15 @@ public class GenotypeGVCFsEngine
         }
     }
 
-    public VariantContext callRegion(Locatable loc, List<VariantContext> variants, ReferenceContext ref, FeatureContext features, ReferenceConfidenceVariantContextMerger merger, boolean somaticInput, double tlodThreshold, double afTolerance) //do work for apply
+    public VariantContext callRegion(Locatable loc, List<VariantContext> variants, ReferenceContext ref, FeatureContext features, ReferenceConfidenceVariantContextMerger merger, final FeatureInput<VariantContext> populationAnnotations, boolean somaticInput, double tlodThreshold, double afTolerance) //do work for apply
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
+
 
         ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants, tlodThreshold, afTolerance) :
-                regenotypeVC(mergedVC, ref, features, includeNonVariants);
+                regenotypeVC(mergedVC, ref, features, populationAnnotations, includeNonVariants);
 
         return regenotypedVC;
     }
@@ -124,7 +133,7 @@ public class GenotypeGVCFsEngine
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
+    private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, final FeatureInput<VariantContext> populationAnnotations, boolean includeNonVariants) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;
@@ -139,8 +148,11 @@ public class GenotypeGVCFsEngine
                 // Note that reversetrimAlleles must be performed after the annotations are finalized because the reducible annotation data maps
                 // were generated and keyed on the un reverseTrimmed alleles from the starting VariantContexts. Thus reversing the order will make
                 // it difficult to recover the data mapping due to the keyed alleles no longer being present in the variant context.
+
                 final VariantContext withGenotypingAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), regenotypedVC);
-                final VariantContext withAnnotations = annotationEngine.finalizeAnnotations(withGenotypingAnnotations, originalVC);
+                final VariantContext withPopulationAnnotations = combineInPopulationAnnotations(withGenotypingAnnotations, features, populationAnnotations);
+                final VariantContext withFinalizedAnnotations =  annotationEngine.finalizeAnnotations(withPopulationAnnotations, originalVC);
+                final VariantContext withAnnotations = populationAnnotations == null ? withFinalizedAnnotations : removeNonReducibleAnnotations(withFinalizedAnnotations);
                 final int[] relevantIndices = regenotypedVC.getAlleles().stream().mapToInt(a -> originalVC.getAlleles().indexOf(a)).toArray();
                 final VariantContext trimmed = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
                 final GenotypesContext updatedGTs = subsetAlleleSpecificFormatFields(outputHeader, trimmed.getGenotypes(), relevantIndices);
@@ -172,6 +184,112 @@ public class GenotypeGVCFsEngine
         } else {
             return null;
         }
+    }
+
+    private VariantContext removeNonReducibleAnnotations(final VariantContext input) {
+        final VariantContextBuilder builder = new VariantContextBuilder(input);
+        final Set<String> annoKeys = new HashSet<>(builder.getAttributes().keySet());
+        boolean someRemoved = false;
+        for (String key : annoKeys) {
+            final InfoFieldAnnotation anno = annotationEngine.getInfoAnnotationByKey(key);
+            if (!(anno instanceof ReducibleAnnotation)) {
+                builder.rmAttribute(key);
+                someRemoved |= true;
+            }
+        }
+        return someRemoved ? builder.make() : input;
+    }
+
+    private VariantContext combineInPopulationAnnotations(final VariantContext cohort, final FeatureContext featureContext, final FeatureInput<VariantContext> populationAnnotations) {
+        if (populationAnnotations == null) {
+            return cohort;
+        } else {
+            final List<VariantContext> populationContexts = featureContext.getValues(populationAnnotations);
+            if (populationContexts.isEmpty()) {
+                return cohort;
+            } else {
+                return combineInPopulationAnnotations(cohort, populationContexts);
+            }
+        }
+    }
+
+
+    private VariantContext combineInPopulationAnnotations(final @Nonnull VariantContext cohort, final @Nonnull List<VariantContext> populationContexts) {
+        final List<VariantContext> atLocus = new ArrayList<>(populationContexts.size());
+        final List<VariantContext> overlapping = new ArrayList<>(populationContexts.size());
+        for (final VariantContext populationContext : populationContexts) {
+            if (populationContext.getStart() == cohort.getStart()) {
+                atLocus.add(populationContext);
+            } else if (populationContext.isIndel() && populationContext.getStart() <= cohort.getStart() && populationContext.getEnd() > cohort.getStart()) {
+                overlapping.add(populationContext);
+            }
+        }
+        if (atLocus.isEmpty() && overlapping.isEmpty()) {
+            return cohort;
+        } else {
+            return combineInPopulationAnnotations(cohort, atLocus, overlapping);
+        }
+    }
+
+    private VariantContext combineInPopulationAnnotations(final VariantContext cohort, final List<VariantContext> popAtLocus, final List<VariantContext> popOverlapping) {
+        final List<Allele> outputAlleles = cohort.getAlleles();
+        final Allele outputRefAllele = outputAlleles.stream().filter(Allele::isReference).findFirst().orElseThrow(() -> new GATKException("missing reference allele"));
+        final int numberOfContexts = 1 + popAtLocus.size() + popOverlapping.size();
+        final List<List<Allele>> mappedAlleleLists = new ArrayList<>(numberOfContexts);
+        final List<VariantContext> variantContexts = new ArrayList<>(numberOfContexts);
+        mappedAlleleLists.add(outputAlleles);
+        for (final VariantContext ctx : popAtLocus) {
+            mappedAlleleLists.add(ReferenceConfidenceVariantContextMerger.remapAlleles(ctx, outputRefAllele));
+            variantContexts.add(ctx);
+        }
+        for (final VariantContext ctx : popOverlapping) {
+            final List<Allele> remappedAlleles = remapOverlappingContextAlleles(ctx, cohort.getStart());
+            mappedAlleleLists.add(remappedAlleles);
+            variantContexts.add(ctx);
+        }
+        final VariantContextBuilder builder = new VariantContextBuilder(cohort);
+        boolean changed = false;
+        for (final String outputAnnotationKey : cohort.getAttributes().keySet()) {
+            if (annotationEngine.isRequestedReducibleRawKey(outputAnnotationKey)) {
+               final ReducibleAnnotation annotation = (ReducibleAnnotation) annotationEngine.getInfoAnnotationByKey(outputAnnotationKey);
+               final List<ReducibleAnnotationData<?>> rawData = new ArrayList<>(numberOfContexts);
+               for (int i = 0; i < numberOfContexts; i++) {
+                   final ReducibleAnnotationData<?> reducible = annotation.getReducibleAnnotationData(variantContexts.get(i), mappedAlleleLists.get(i));
+                   if (reducible != null) {
+                       rawData.add(reducible);
+                   }
+               }
+               if (!rawData.isEmpty()) {
+                   final Map<String, Object> combined = annotation.combineRawData(outputAlleles, rawData);
+                   for (final Map.Entry<String, Object> entry : combined.entrySet()) {
+                       builder.attribute(entry.getKey(), entry.getValue());
+                       changed = true;
+                   }
+               }
+            }
+        }
+        return changed ? builder.make() : cohort;
+    }
+
+    private List<Allele> remapOverlappingContextAlleles(final VariantContext ctx, final int targetContextStart) {
+        final List<Allele> alleles = ctx.getAlleles();
+        final List<Allele> remapped = new ArrayList<>(alleles.size());
+        final Allele refAllele = alleles.stream().filter(Allele::isReference).findFirst().orElse(null);
+        for (int i = 0; i < alleles.size(); i++) {
+            final Allele in = alleles.get(i);
+            if (in == Allele.SPAN_DEL) {
+                remapped.add(Allele.SPAN_DEL);
+            } else if (in.isSymbolic()) {
+                final String str = in.getDisplayString();
+                remapped.add((str.equals("<DEL>") || str.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED))
+                        ? Allele.SPAN_DEL : Allele.NO_CALL);
+            } else if (in.isCalled() && refAllele != null && in.length() < refAllele.length()) {
+                remapped.add(targetContextStart < ctx.getStart() + (refAllele.length() - in.length()) ? Allele.SPAN_DEL : Allele.NO_CALL);
+            } else {
+                remapped.add(Allele.NO_CALL);
+            }
+        }
+        return remapped;
     }
 
     /**

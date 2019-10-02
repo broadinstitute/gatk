@@ -57,4 +57,6 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
         return BaseQualityRankSumTest.getReadBaseQuality(read, refLoc);
     }
 
+
+
 }

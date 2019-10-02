@@ -293,4 +293,18 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     public static String rawValueAsString(int[][] table) {
         return table[0][0]+","+table[0][1]+ PRINT_DELIM +table[1][0]+","+table[1][1];
     }
+
+    public ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc, final List<Allele> alleles) {
+        final Object obj = vc.getAttribute(getRawKeyName());
+        if (obj instanceof ReducibleAnnotationData) {
+            final ReducibleAnnotationData<?> casted = (ReducibleAnnotationData<?>) obj;
+            return casted;
+        } else if (obj instanceof String) {
+            AlleleSpecificAnnotationData<List<Integer>> result = new AlleleSpecificAnnotationData<>(alleles, (String) obj);
+            parseRawDataString(result);
+            return result;
+        } else {
+            throw new IllegalArgumentException("cannot handle value type class " + obj.getClass());
+        }
+    }
 }

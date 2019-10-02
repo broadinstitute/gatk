@@ -11,10 +11,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantLocusWalker;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
@@ -97,6 +94,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String ALL_SITES_SHORT_NAME = "all-sites";
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
+    public static final String POPULATION_ANNOTATION_DB_FILE_LONG_NAME = "annotation-database";
+    public static final String POPULATION_ANNOTATION_DB_FIEL_SHORT_NAME = "anno-db";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -104,6 +103,10 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
     private boolean includeNonVariants = false;
+
+    @Argument(fullName=POPULATION_ANNOTATION_DB_FILE_LONG_NAME, shortName = POPULATION_ANNOTATION_DB_FIEL_SHORT_NAME,
+              doc="File with additional annotations from the population to be added to the output", optional = true)
+    private FeatureInput<VariantContext> populationAnnotationDatabase;
 
     /**
      * Import all data between specified intervals.   Improves performance using large lists of intervals, as in exome
@@ -224,7 +227,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
-        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
+        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), populationAnnotationDatabase != null, keepCombined);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput);
 
@@ -243,7 +246,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Override
     public void apply(final Locatable loc, List<VariantContext> variants, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
 
-        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance);
+        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, populationAnnotationDatabase, somaticInput, tlodThreshold, afTolerance);
 
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());

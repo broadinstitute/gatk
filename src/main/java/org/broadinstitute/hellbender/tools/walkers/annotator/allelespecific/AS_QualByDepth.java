@@ -227,4 +227,10 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
         }
         return alleleQualList;
     }
+
+    // special case for a reducible that does not generate or combine RADs.
+    @Override
+    public ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc, final List<Allele> alleles) {
+        return null;
+    }
 }

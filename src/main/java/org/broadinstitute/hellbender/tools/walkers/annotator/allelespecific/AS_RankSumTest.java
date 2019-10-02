@@ -355,4 +355,18 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     protected final OptionalDouble getElementForPileupElement(PileupElement p, int refLoc) {
         return null;
     }
+
+    public ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc, final List<Allele> alleles) {
+        final Object obj = vc.getAttribute(getRawKeyName());
+        if (obj instanceof ReducibleAnnotationData) {
+            final ReducibleAnnotationData<?> casted = (ReducibleAnnotationData<?>) obj;
+            return casted;
+        } else if (obj instanceof String) {
+            AlleleSpecificAnnotationData<Histogram> result = new AlleleSpecificAnnotationData<>(alleles, (String) obj);
+            parseRawDataString(result);
+            return result;
+        } else {
+            throw new IllegalArgumentException("cannot handle value type class " + obj.getClass());
+        }
+    }
 }

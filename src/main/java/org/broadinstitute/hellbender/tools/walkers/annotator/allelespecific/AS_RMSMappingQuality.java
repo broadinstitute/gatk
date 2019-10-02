@@ -166,7 +166,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
 
         final Map<String,Object> annotations = new HashMap<>();
-        final ReducibleAnnotationData myData = new AlleleSpecificAnnotationData<Double>(originalVC.getAlleles(), rawMQdata);
+        final ReducibleAnnotationData<Double> myData = new AlleleSpecificAnnotationData<Double>(originalVC.getAlleles(), rawMQdata);
         parseRawDataString(myData);
 
         final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
@@ -244,5 +244,19 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
             }
         }
         return variantADs;
+    }
+
+    @Override
+    public ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc, final List<Allele> alleles) {
+        final Object obj = vc.getAttribute(getRawKeyName());
+        if (obj instanceof ReducibleAnnotationData<?>) {
+            return (ReducibleAnnotationData<?>) obj;
+        } else if (obj instanceof String) {
+            AlleleSpecificAnnotationData<Double> result = new AlleleSpecificAnnotationData<>(alleles, (String) obj);
+            parseRawDataString(result);
+            return result;
+        } else {
+            throw new IllegalArgumentException("cannot handle value type class " + obj.getClass());
+        }
     }
 }

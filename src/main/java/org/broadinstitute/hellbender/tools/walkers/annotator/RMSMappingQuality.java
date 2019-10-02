@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -102,9 +103,9 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> combineRawData(final List<Allele> vcAlleles, final List<ReducibleAnnotationData<?>>  annotationList) {
         //VC already contains merged alleles from ReferenceConfidenceVariantContextMerger
-        ReducibleAnnotationData combinedData = new ReducibleAnnotationData(null);
+        ReducibleAnnotationData<List<Long>> combinedData = new ReducibleAnnotationData<>(null);
 
-        for (final ReducibleAnnotationData currentValue : annotationList) {
+        for (final ReducibleAnnotationData<List<Long>> currentValue : ( List<ReducibleAnnotationData<List<Long>>>) (List) annotationList) {
             parseRawDataString(currentValue);
             combineAttributeMap(currentValue, combinedData);
         }
@@ -416,5 +417,56 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
     public static RMSMappingQuality getInstance() {
         return instance;
+    }
+
+    @Override
+    public ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc, final List<Allele> alleles) {
+        if (alleles.size() != vc.getNAlleles()) {
+            throw new IllegalArgumentException();
+        }
+        if (vc.hasAttribute(getRawKeyName())) {
+            final Object rawMQdata = vc.getAttribute(getRawKeyName());
+            if (rawMQdata instanceof ReducibleAnnotationData<?>) {
+                return (ReducibleAnnotationData<?>) rawMQdata;
+            } else if (rawMQdata instanceof String) {
+                final ReducibleAnnotationData<List<Long>> myData = new ReducibleAnnotationData<>((String)rawMQdata);
+                parseRawDataString(myData);
+                return myData;
+            }
+        }
+        else if (vc.hasAttribute(getDeprecatedRawKeyName())) {
+            if (!allowOlderRawKeyValues) {
+                throw new UserException.BadInput("Presence of '-"+getDeprecatedRawKeyName()+"' annotation is detected. This GATK version expects key "
+                        + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + "genotypes as the value. This could indicate that the provided input was produced with an older version of GATK. " +
+                        "Use the argument '--"+RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT+"' to override and attempt the deprecated MQ calculation. There " +
+                        "may be differences in how newer GATK versions calculate DP and MQ that may result in worse MQ results. Use at your own risk.");
+            }
+
+            String rawMQdata = vc.getAttributeAsString(getDeprecatedRawKeyName(), null);
+            //the original version of ReblockGVCF produces a different MQ format -- try to handle that gracefully here just in case those files go through GenotypeGVCFs
+            if (vc.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
+                logger.warn("Presence of " + GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED + " key indicates that this tool may be running on an older output of ReblockGVCF " +
+                        "that may not have compatible annotations with this GATK version. Attempting to reformat MQ data.");
+                final String rawMQdepth = vc.getAttributeAsString(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED,null);
+                if (rawMQdepth == null) {
+                    throw new UserException.BadInput("MQ annotation data is not properly formatted. This version expects a " +
+                            "long tuple of sum of squared MQ values and total reads over variant genotypes.");
+                }
+                rawMQdata = Math.round(Double.parseDouble(rawMQdata)) + "," + rawMQdepth;  //deprecated format was double so it needs to be converted to long
+            }
+            else {
+                logger.warn("MQ annotation data is not properly formatted. This GATK version expects key "
+                        + getRawKeyName() + " with a tuple of sum of squared MQ values and total reads over variant "
+                        + "genotypes as the value. Attempting to use deprecated MQ calculation.");
+                final long numOfReads = getNumOfReads(vc, null);
+                rawMQdata = Math.round(Double.parseDouble(rawMQdata)) + "," + numOfReads;   //deprecated format was double so it needs to be converted to long
+                final ReducibleAnnotationData<List<Long>> myData = new ReducibleAnnotationData<>(rawMQdata);
+                parseRawDataString(myData);
+                return myData;
+            }
+
+        }
+        return null;
     }
 }

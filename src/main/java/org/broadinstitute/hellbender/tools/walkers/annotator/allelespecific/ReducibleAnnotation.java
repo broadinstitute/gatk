@@ -49,6 +49,12 @@ public interface ReducibleAnnotation extends Annotation {
     public abstract Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC);
 
 
+    ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc, final List<Allele> alleles);
+
+    default ReducibleAnnotationData<?> getReducibleAnnotationData(final VariantContext vc) {
+        return getReducibleAnnotationData(vc, vc.getAlleles());
+    }
+
     /**
      * Returns the descriptions used for the VCF INFO meta field corresponding to the annotations raw key.
      * @return A list of VCFInfoHeaderLines corresponding to the raw keys added by this annotaiton
