@@ -25,11 +25,12 @@ import java.util.*;
 public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private static final Logger logger = LogManager.getLogger(AS_RankSumTest.class);
     public static final String RAW_DELIM = ",";
-    private static final int PRIMARY_RAW_KEY_INDEX = 0;
 
     @Override
-    public int getPrimaryRawKeyIndex() {
-        return PRIMARY_RAW_KEY_INDEX;
+    public List<String> getRawKeyNames() {
+        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
+        allRawKeys.addAll(getSecondaryRawKeys());
+        return allRawKeys;
     }
 
     @Override
@@ -98,7 +99,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         if (annotationString == null){
             return Collections.emptyMap();
         }
-        return Collections.singletonMap(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
+        return Collections.singletonMap(getPrimaryRawKey(), annotationString);
     }
 
     /**
@@ -184,10 +185,10 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @return
      */
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyNames().get(getPrimaryRawKeyIndex()))) {
+        if (!vc.hasAttribute(getPrimaryRawKey())) {
             return new HashMap<>();
         }
-        final String rawRankSumData = vc.getAttributeAsString(getRawKeyNames().get(getPrimaryRawKeyIndex()),null);
+        final String rawRankSumData = vc.getAttributeAsString(getPrimaryRawKey(),null);
         if (rawRankSumData == null) {
             return new HashMap<>();
         }
@@ -236,7 +237,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
         }
         final String annotationString = makeCombinedAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        return Collections.singletonMap(getRawKeyNames().get(getPrimaryRawKeyIndex()), annotationString);
+        return Collections.singletonMap(getPrimaryRawKey(), annotationString);
     }
 
     // Parses the raw data string into a Histogram and sets the inputs attribute map accordingly

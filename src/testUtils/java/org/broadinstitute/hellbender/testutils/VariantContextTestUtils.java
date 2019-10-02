@@ -523,8 +523,8 @@ public final class VariantContextTestUtils {
      *   a complete header, consider {GATKVCFHeaderLine.getCompleteHeader()}
      * @param actual                Variant context to test for equality
      * @param expected              Expected result
-     * @param attributesToIgnore    Attributes we want to exclude from numerical comparision, but ensure they exist
-     * @param attributesWithJitter
+     * @param attributesToIgnore    Attributes we want to exclude from comparison altogether
+     * @param attributesWithJitter  Attributes we want to exclude from numerical comparision, but ensure they exist
      * @param header                Header used to map behavior of annotations
      */
     public static void assertVariantContextsAreEqualAlleleOrderIndependent(final VariantContext actual,

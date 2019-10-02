@@ -44,8 +44,31 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY); }
 
+    /**
+     * Get the string that's used to combine data for this annotation
+     *
+     * @return never null
+     */
     @Override
-    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY);}
+    public String getPrimaryRawKey() { return GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY; }
+
+    /**
+     * @return true if annotation has secondary raw keys
+     */
+    @Override
+    public boolean hasSecondaryRawKeys() {
+        return false;
+    }
+
+    /**
+     * Get additional raw key strings that are not the primary key
+     *
+     * @return may be null
+     */
+    @Override
+    public List<String> getSecondaryRawKeys() {
+        return null;
+    }
 
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {

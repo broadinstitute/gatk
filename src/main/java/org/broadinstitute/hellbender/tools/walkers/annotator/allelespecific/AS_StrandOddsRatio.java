@@ -104,5 +104,4 @@ public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_St
         }
         return annotationMap;
     }
-
 }

@@ -200,8 +200,8 @@ public final class VariantAnnotatorEngine {
             if (annotationType instanceof ReducibleAnnotation) {
                 ReducibleAnnotation currentASannotation = (ReducibleAnnotation) annotationType;
                 for (final String rawKey : currentASannotation.getRawKeyNames()) {
-                    //here we're assuming that each annotation combines data corresponding to its primary raw key
-                    //AS_QD relies on two keys but doesn't have a combine operation because either GenomicsDB combines the keys
+                    //here we're assuming that each annotation combines data corresponding to its primary raw key, which is index zero
+                    //AS_QD only needs to be combined it it's relying on its primary raw key
                     if (annotationMap.containsKey(rawKey)) {
                         final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>)
                                 annotationMap.get(rawKey);

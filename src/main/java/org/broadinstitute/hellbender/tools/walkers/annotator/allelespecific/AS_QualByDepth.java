@@ -49,16 +49,29 @@ import java.util.stream.Collectors;
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific call confidence normalized by depth of sample reads supporting the allele (AS_QD)")
 public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnnotation, AS_StandardAnnotation, AlleleSpecificAnnotation {
 
-    private static final int PRIMARY_RAW_KEY_INDEX = 0;
-
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY); }
 
     @Override
-    public List<String> getRawKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, GATKVCFConstants.AS_QUAL_KEY);}
+    public List<String> getRawKeyNames() {
+        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
+        allRawKeys.addAll(getSecondaryRawKeys());
+        return allRawKeys;
+    }
 
     @Override
-    public int getPrimaryRawKeyIndex() { return PRIMARY_RAW_KEY_INDEX; }
+    public String getPrimaryRawKey() { return GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY; }
+
+    /**
+     * @return true if annotation has secondary raw keys
+     */
+    @Override
+    public boolean hasSecondaryRawKeys() {
+        return true;
+    }
+
+    @Override
+    public List<String> getSecondaryRawKeys() { return Arrays.asList(GATKVCFConstants.AS_QUAL_KEY);}
 
     @Override
     public List<VCFInfoHeaderLine> getRawDescriptions() {

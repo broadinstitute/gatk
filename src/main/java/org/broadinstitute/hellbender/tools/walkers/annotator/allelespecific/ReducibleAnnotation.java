@@ -18,8 +18,29 @@ import java.util.Map;
  *
  */
 public interface ReducibleAnnotation extends Annotation {
+    /**
+     * Get all the raw key names for this annotation
+     * @return a non-empty list
+     */
     public abstract List<String> getRawKeyNames();
-    public abstract int getPrimaryRawKeyIndex();
+
+    /**
+     * Get the string that's used to combine data for this annotation
+     * @return never null
+     */
+    public abstract String getPrimaryRawKey();
+
+    /**
+     *
+     * @return true if annotation has secondary raw keys
+     */
+    public abstract boolean hasSecondaryRawKeys();
+
+    /**
+     * Get additional raw key strings that are not the primary key
+     * @return  may be null
+     */
+    public abstract List<String> getSecondaryRawKeys();
 
     /**
      * Generate the raw data necessary to calculate the annotation. Raw data is the final endpoint for gVCFs.
