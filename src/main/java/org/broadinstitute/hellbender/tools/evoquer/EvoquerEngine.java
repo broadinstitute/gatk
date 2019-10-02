@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -383,8 +384,6 @@ class EvoquerEngine {
         schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
         validateSchema(columnNames);
 
-        final Map<Allele, List<Integer>> alleleSpecificQuals = new HashMap<>();
-
         for ( final GenericRecord row : avroReader ) {
             if ( runQueryOnly ) {
                 continue;
@@ -397,6 +396,9 @@ class EvoquerEngine {
             final Set<String> currentPositionSamplesSeen = new HashSet<>();
             boolean currentPositionHasVariant = false;
             final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
+            Map<Allele, Integer> alleleSpecificQuals = new HashMap<>();
+            Allele longestRefAllele = refAllele;
+
 
             if ( printDebugInformation ) {
                 logger.info(contig + ":" + currentPosition + ": found record: " + row);
@@ -417,6 +419,10 @@ class EvoquerEngine {
                     case "v":   // Variant
                         ++totalNumberOfVariants;
                         VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName);
+                        // see if the reference is longer than the current longest ref
+                        if (vc.getReference().length() > longestRefAllele.length()) {
+                            longestRefAllele = vc.getReference();
+                        }
                         updateAlleleSpecificQuals(vc, alleleSpecificQuals);
                         unmergedCalls.add(vc);
                         currentPositionHasVariant = true;
@@ -452,22 +458,43 @@ class EvoquerEngine {
                 }
             }
 
+            // at the end, if the longestRefAllele no longer equals the refAllele, we need to remap all alternate alleles
+            if (longestRefAllele != refAllele) {
+                remapAndUpdateAlleles(longestRefAllele, alleleSpecificQuals);
+            }
             List<Allele> targetAlleles = determineTargetAlleles(alleleSpecificQuals, 6);
             finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
         }
     }
 
-    private List<Allele> determineTargetAlleles(Map<Allele, List<Integer>> alleleSpecificQuals, int maxAlleles) {
+    private void remapAndUpdateAlleles(Allele longestRefAllele, Map<Allele, Integer> alleleSpecificQuals) {
+        VariantContext tempVC = new VariantContextBuilder().alleles(alleleSpecificQuals.keySet()).make();
+        Map<Allele, Allele> newAlleles = GATKVariantContextUtils.createAlleleMapping(longestRefAllele, tempVC, Collections.emptySet());
+        newAlleles.entrySet().stream().forEach(entry -> {
+            if (!entry.getKey().equals(entry.getValue())) {
+                // get the qual for the current allele while removing it from the map
+                Integer qual = alleleSpecificQuals.remove(entry.getKey());
+
+                // current allele has been remapped to an allele already in the map
+                if (alleleSpecificQuals.containsKey(entry.getValue())) {
+                    // add the qual value of the existing remapped allele
+                    qual += alleleSpecificQuals.get(entry.getValue());
+                }
+
+                alleleSpecificQuals.put(entry.getValue(), qual);
+            }
+        });
+    }
+
+    private List<Allele> determineTargetAlleles(Map<Allele, Integer> alleleSpecificQuals, int maxAlleles) {
         return alleleSpecificQuals.entrySet().stream()
-                .map(entry -> new AbstractMap.SimpleImmutableEntry<Allele, Integer>(
-                        entry.getKey(),
-                        entry.getValue().stream().mapToInt(Integer::intValue).sum()))
                 .peek(System.out::println)
-                .sorted(Map.Entry.<Allele, Integer>comparingByValue()).limit(maxAlleles)
+                // get the highest values
+                .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed()).limit(maxAlleles)
                 .map(entry -> entry.getKey()).collect(Collectors.toList());
     }
 
-    private void updateAlleleSpecificQuals(final VariantContext vc, Map<Allele, List<Integer>> alleleSpecificQuals) {
+    private void updateAlleleSpecificQuals(final VariantContext vc, Map<Allele, Integer> alleleSpecificQuals) {
         List<Allele> alleles = vc.getAlleles();
         String rawDataString = vc.getAttributeAsString("AS_QUALapprox", null);
         if (rawDataString != null && !rawDataString.isEmpty()) {
@@ -476,10 +503,12 @@ class EvoquerEngine {
                 final String alleleQual = rawDataPerAllele[i];
                 final Allele allele = alleles.get(i);
                 if (!alleleQual.isEmpty() && !alleleQual.equals(AnnotationUtils.MISSING_VALUE)) {
-                    if (!alleleSpecificQuals.containsKey(allele)) {
-                        alleleSpecificQuals.put(allele, new ArrayList<>());
+                    int newSum = 0;
+                    if (alleleSpecificQuals.containsKey(allele)) {
+                        newSum = alleleSpecificQuals.get(allele);
                     }
-                    alleleSpecificQuals.get(allele).add(Integer.parseInt(alleleQual));
+                    newSum += Integer.parseInt(alleleQual);
+                    alleleSpecificQuals.put(allele, newSum);
                 }
             }
         }
