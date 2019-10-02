@@ -79,7 +79,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @return a non-null set
      */
     public final Set<V> getSources() {
-        return vertexSet().stream().filter(v -> isSource(v)).collect(Collectors.toSet());
+        return vertexSet().stream().filter(v -> isSource(v)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -87,7 +87,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @return a non-null set
      */
     public final Set<V> getSinks() {
-        return vertexSet().stream().filter(v -> isSink(v)).collect(Collectors.toSet());
+        return vertexSet().stream().filter(v -> isSink(v)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -331,7 +331,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      */
     public final Set<V> outgoingVerticesOf(final V v) {
         Utils.nonNull(v);
-        return outgoingEdgesOf(v).stream().map(e -> getEdgeTarget(e)).collect(Collectors.toSet());
+        return outgoingEdgesOf(v).stream().map(e -> getEdgeTarget(e)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -341,7 +341,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      */
     public final Set<V> incomingVerticesOf(final V v) {
         Utils.nonNull(v);
-        return incomingEdgesOf(v).stream().map(e -> getEdgeSource(e)).collect(Collectors.toSet());
+        return incomingEdgesOf(v).stream().map(e -> getEdgeSource(e)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
