@@ -5,7 +5,10 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -21,6 +24,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
@@ -379,6 +383,8 @@ class EvoquerEngine {
         schema.getField(VALUES_ARRAY_FIELD_NAME).schema().getElementType().getFields().forEach(field -> columnNames.add(field.name()));
         validateSchema(columnNames);
 
+        final Map<Allele, List<Integer>> alleleSpecificQuals = new HashMap<>();
+
         for ( final GenericRecord row : avroReader ) {
             if ( runQueryOnly ) {
                 continue;
@@ -410,7 +416,9 @@ class EvoquerEngine {
                 switch (sampleRecord.get(STATE_FIELD_NAME).toString()) {
                     case "v":   // Variant
                         ++totalNumberOfVariants;
-                        unmergedCalls.add(createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName));
+                        VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, columnNames, contig, currentPosition, sampleName);
+                        updateAlleleSpecificQuals(vc, alleleSpecificQuals);
+                        unmergedCalls.add(vc);
                         currentPositionHasVariant = true;
                         break;
                     case "0":   // Non Variant Block with GQ < 10
@@ -444,7 +452,36 @@ class EvoquerEngine {
                 }
             }
 
+            List<Allele> targetAlleles = determineTargetAlleles(alleleSpecificQuals, 6);
             finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
+        }
+    }
+
+    private List<Allele> determineTargetAlleles(Map<Allele, List<Integer>> alleleSpecificQuals, int maxAlleles) {
+        return alleleSpecificQuals.entrySet().stream()
+                .map(entry -> new AbstractMap.SimpleImmutableEntry<Allele, Integer>(
+                        entry.getKey(),
+                        entry.getValue().stream().mapToInt(Integer::intValue).sum()))
+                .peek(System.out::println)
+                .sorted(Map.Entry.<Allele, Integer>comparingByValue()).limit(maxAlleles)
+                .map(entry -> entry.getKey()).collect(Collectors.toList());
+    }
+
+    private void updateAlleleSpecificQuals(final VariantContext vc, Map<Allele, List<Integer>> alleleSpecificQuals) {
+        List<Allele> alleles = vc.getAlleles();
+        String rawDataString = vc.getAttributeAsString("AS_QUALapprox", null);
+        if (rawDataString != null && !rawDataString.isEmpty()) {
+            final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
+            for (int i = 0; i < rawDataPerAllele.length; i++) {
+                final String alleleQual = rawDataPerAllele[i];
+                final Allele allele = alleles.get(i);
+                if (!alleleQual.isEmpty() && !alleleQual.equals(AnnotationUtils.MISSING_VALUE)) {
+                    if (!alleleSpecificQuals.containsKey(allele)) {
+                        alleleSpecificQuals.put(allele, new ArrayList<>());
+                    }
+                    alleleSpecificQuals.get(allele).add(Integer.parseInt(alleleQual));
+                }
+            }
         }
     }
 
