@@ -59,7 +59,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
     private static final String FILTER_TEST_VCF               = toolsTestDir + "funcotator" + File.separator + "FILTER_test.vcf";
-    private static final String VCF_FIELD_ORDER_SWAP_TEST_VCF     =toolsTestDir + "funcotator" + File.separator + "vcfBugRepro.vcf";
+    private static final String VCF_FIELD_ORDER_SWAP_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "vcfBugRepro.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
     private static final String DS_FILTER_PARSE_TESTS         = largeFileTestDir + "funcotator" + File.separator + "small_ds_FILTER_test" + File.separator;
     public static final String VCF_FIELD_ORDER_TEST_DATA_SOURCES = largeFileTestDir + "funcotator" + File.separator + "vcfFuncotationOrderingBugRepro" + File.separator;
