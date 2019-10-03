@@ -29,7 +29,9 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     @Override
     public List<String> getRawKeyNames() {
         final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
-        allRawKeys.addAll(getSecondaryRawKeys());
+        if (hasSecondaryRawKeys()) {
+            allRawKeys.addAll(getSecondaryRawKeys());
+        }
         return allRawKeys;
     }
 

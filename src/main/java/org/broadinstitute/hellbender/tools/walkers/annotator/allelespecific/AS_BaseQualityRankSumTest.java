@@ -42,12 +42,6 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
         return Arrays.asList(GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY);
     }
 
-    @Override
-    public List<String> getRawKeyNames() {
-        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
-        allRawKeys.addAll(getSecondaryRawKeys());
-        return allRawKeys;
-    }
 
     /**
      * Get the string that's used to combine data for this annotation
