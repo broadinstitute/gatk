@@ -258,29 +258,35 @@ public final class ReadThreadingAssembler {
      */
     private void printDebugGraphTransform(final BaseGraph<?,?> graph, final String fileName) {
         File outputFile = new File(debugGraphOutputPath, fileName);
-        if ( debugGraphTransformations ) {
-            if ( PRINT_FULL_GRAPH_FOR_DEBUGGING ) {
-                graph.printGraph(outputFile, pruneFactor);
-            } else {
-                graph.subsetToRefSource(10).printGraph(outputFile, pruneFactor);
-            }
+        if ( PRINT_FULL_GRAPH_FOR_DEBUGGING ) {
+            graph.printGraph(outputFile, pruneFactor);
+        } else {
+            graph.subsetToRefSource(10).printGraph(outputFile, pruneFactor);
         }
     }
 
     private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype) {
-        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.0.non_ref_removed.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.0.non_ref_removed.dot");
+        }
 
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
         seqGraph.zipLinearChains();
-        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.1.zipped.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.1.zipped.dot");
+        }
 
         // now go through and prune the graph, removing vertices no longer connected to the reference chain
         seqGraph.removeSingletonOrphanVertices();
         seqGraph.removeVerticesNotConnectedToRefRegardlessOfEdgeDirection();
 
-        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.2.pruned.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.2.pruned.dot");
+        }
         seqGraph.simplifyGraph();
-        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.3.merged.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.3.merged.dot");
+        }
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -300,7 +306,9 @@ public final class ReadThreadingAssembler {
             seqGraph.addVertex(dummy);
             seqGraph.addEdge(complete, dummy, new BaseEdge(true, 0));
         }
-        printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.4.final.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.4.final.dot");
+        }
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
     }
 
@@ -453,7 +461,9 @@ public final class ReadThreadingAssembler {
     }
 
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
-        printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
+        }
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
@@ -467,7 +477,9 @@ public final class ReadThreadingAssembler {
             rtgraph.removePathsNotConnectedToRef();
         }
 
-        printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
+        }
 
         final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
         if (debugGraphTransformations) {
@@ -482,7 +494,9 @@ public final class ReadThreadingAssembler {
         if ( debug ) {
             logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
         }
-        printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+        }
         initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
         final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype);

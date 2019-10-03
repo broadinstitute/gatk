@@ -170,7 +170,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
     }
-    
+
     /**
      * Common method to use in order to remove unwanted annotations from the list returned by the plugin specifically
      * for reference confidence mode. Will also ensure StrandBiasBySample is present regardless of user requests.
