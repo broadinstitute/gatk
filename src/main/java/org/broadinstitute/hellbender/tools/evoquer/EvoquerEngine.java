@@ -5,10 +5,7 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -16,6 +13,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -558,51 +556,121 @@ class EvoquerEngine {
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
     }
 
-    private void remapAndUpdateAlleles(Allele longestRefAllele, Map<Allele, Integer> alleleSpecificQuals) {
-        VariantContext tempVC = new VariantContextBuilder().alleles(alleleSpecificQuals.keySet()).make();
-        Map<Allele, Allele> newAlleles = GATKVariantContextUtils.createAlleleMapping(longestRefAllele, tempVC, Collections.emptySet());
-        newAlleles.entrySet().stream().forEach(entry -> {
-            if (!entry.getKey().equals(entry.getValue())) {
-                // get the qual for the current allele while removing it from the map
-                Integer qual = alleleSpecificQuals.remove(entry.getKey());
+    private List<VariantContext> subsetAlleles(List<VariantContext> unmergedCalls, int maxAlleles) {
+        Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
 
-                // current allele has been remapped to an allele already in the map
-                if (alleleSpecificQuals.containsKey(entry.getValue())) {
-                    // add the qual value of the existing remapped allele
-                    qual += alleleSpecificQuals.get(entry.getValue());
-                }
+        List<VariantContext> callsWithExpandedAlleles = new ArrayList<>(unmergedCalls.size());
+        Map<Allele, Integer> alleleSpecificQuals = calculateAlleleSpecificQualsAndUpdateVCsWithMappedAlleles(unmergedCalls, callsWithExpandedAlleles, longestRefAllele);
+        logger.info("unique alleles: " + alleleSpecificQuals.size());
 
-                alleleSpecificQuals.put(entry.getValue(), qual);
+        List<Allele> targetAlleles = determineTargetAlleles(alleleSpecificQuals, maxAlleles);
+        logger.info(targetAlleles);
+
+        if (!targetAlleles.contains(longestRefAllele)) {
+            // pick new longest ref allele, diff the length and then trim any targets that are longer than that
+            //TODO
+        }
+
+        Set<Allele> allelesToDrop = new HashSet<>(alleleSpecificQuals.keySet());
+        allelesToDrop.removeAll(targetAlleles);
+
+        return callsWithExpandedAlleles.stream().map(vc -> {
+            Set<Allele> allelesToSubset = SetUtils.intersection(new HashSet<>(vc.getAlleles()), allelesToDrop);
+            if (allelesToSubset.isEmpty()) {
+                return vc;
+            } else {
+                Map<Allele, Allele> originalToSubsettedAlleleMap = new LinkedHashMap<>();
+                vc.getGenotype(0).getAlleles().stream().forEach(gallele -> {
+                    if (allelesToSubset.contains(gallele)) {
+                        originalToSubsettedAlleleMap.put(gallele, Allele.create(VCFConstants.EMPTY_ALLELE));
+                    }
+                });
+                final GATKVariantContextUtils.AlleleMapper alleleMapper = new GATKVariantContextUtils.AlleleMapper(originalToSubsettedAlleleMap);
+                final GenotypesContext genotypes = GATKVariantContextUtils.updateGenotypesWithMappedAlleles(vc.getGenotypes(), alleleMapper);
+                return new VariantContextBuilder(vc).genotypes(genotypes).make();
             }
-        });
+        }).collect(Collectors.toList());
+    }
+
+    private Map<Allele, Integer> calculateAlleleSpecificQualsAndUpdateVCsWithMappedAlleles(List<VariantContext> variantContexts, List<VariantContext> callsWithExpandedAlleles, Allele longestRefAllele) {
+        Map<Allele, Integer> alleleSpecificQuals = new HashMap<>();
+        callsWithExpandedAlleles.addAll(variantContexts.stream().map(vc -> {
+            if (vc.isVariant()) {
+                return updateAllelesAndGetQuals(
+                        vc,
+                        longestRefAllele,
+                        alleleSpecificQuals);
+            } else {
+                return vc;
+            }
+        }).collect(Collectors.toList()));
+        return alleleSpecificQuals;
     }
 
     private List<Allele> determineTargetAlleles(Map<Allele, Integer> alleleSpecificQuals, int maxAlleles) {
         return alleleSpecificQuals.entrySet().stream()
-                .peek(System.out::println)
                 // get the highest values
                 .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed()).limit(maxAlleles)
                 .map(entry -> entry.getKey()).collect(Collectors.toList());
     }
 
-    private void updateAlleleSpecificQuals(final VariantContext vc, Map<Allele, Integer> alleleSpecificQuals) {
+    private VariantContext updateAllelesAndGetQuals(final VariantContext vc, Allele longestRefAllele, Map<Allele, Integer> alleleSpecificQuals) {
+        Map<Allele, Allele> alleleMappings = new HashMap<>();
+        // if you try to create mappings with the same length an exception is thrown
+        if (vc.getReference().length() < longestRefAllele.length()) {
+            // this is where the magic happens!
+            alleleMappings = GATKVariantContextUtils.createAlleleMapping(longestRefAllele, vc, alleleSpecificQuals.keySet());
+        }
+
         List<Allele> alleles = vc.getAlleles();
+        VariantContextBuilder vcb = null;
+        List<Allele> updatedGenotypeAlleles = new ArrayList<>(vc.getGenotype(0).getAlleles());
+        VariantContext result = vc;     // default the result
+
         String rawDataString = vc.getAttributeAsString("AS_QUALapprox", null);
         if (rawDataString != null && !rawDataString.isEmpty()) {
             final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
             for (int i = 0; i < rawDataPerAllele.length; i++) {
-                final String alleleQual = rawDataPerAllele[i];
+                final String alleleQual = rawDataPerAllele[i];  // should i check that this is actually an int?
                 final Allele allele = alleles.get(i);
-                if (!alleleQual.isEmpty() && !alleleQual.equals(AnnotationUtils.MISSING_VALUE)) {
-                    int newSum = 0;
-                    if (alleleSpecificQuals.containsKey(allele)) {
-                        newSum = alleleSpecificQuals.get(allele);
+                if (!allele.isNonRefAllele() && !alleleQual.isEmpty() && !alleleQual.equals(AnnotationUtils.MISSING_VALUE)) {
+                    updateASQuals(alleleSpecificQuals, alleleMappings.getOrDefault(allele, allele), Integer.parseInt(alleleQual));
+                }
+                // now update genotype and allele
+                if (alleleMappings.containsKey(allele)) {
+                    if (vcb == null) {
+                        vcb = new VariantContextBuilder(vc);
                     }
-                    newSum += Integer.parseInt(alleleQual);
-                    alleleSpecificQuals.put(allele, newSum);
+                    Allele mappedAllele = alleleMappings.get(allele);
+
+                    // replace allele in new vc
+                    List<Allele> modifyableAlleles = vcb.getAlleles();
+                    modifyableAlleles.set(i, mappedAllele);
+                    vcb.alleles(modifyableAlleles);
+
+                    // replace every instance of allele in the genotype alleles
+                    if (updatedGenotypeAlleles.contains(allele)) {
+                        Collections.replaceAll(updatedGenotypeAlleles, allele, mappedAllele);
+                    }
                 }
             }
+            if (vcb != null) {  // checking vcb to see if we did update alleles
+                GenotypeBuilder genotypeBuilder = new GenotypeBuilder(vc.getGenotype(0));
+                genotypeBuilder.alleles(updatedGenotypeAlleles);
+                vcb.genotypes(Collections.singletonList(genotypeBuilder.make()));
+                result = vcb.make();
+            }
         }
+        return result;
+    }
+
+    private void updateASQuals(Map<Allele, Integer> alleleSpecificQuals, Allele mappedAllele, int alleleQual) {
+        int currentQual = 0;
+        // refactor to use map update or replace or something
+        if (alleleSpecificQuals.containsKey(mappedAllele)) {
+            currentQual = alleleSpecificQuals.get(mappedAllele);
+        }
+        alleleSpecificQuals.put(mappedAllele, currentQual + alleleQual);
     }
 
     private void validateSchema(final Set<String> columnNames) {
