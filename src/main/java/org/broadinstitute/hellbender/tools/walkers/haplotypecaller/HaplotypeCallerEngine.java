@@ -166,7 +166,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             try {
                 assemblyDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created");
             }
         }
     }

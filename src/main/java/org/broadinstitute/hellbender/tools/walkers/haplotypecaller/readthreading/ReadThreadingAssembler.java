@@ -252,7 +252,8 @@ public final class ReadThreadingAssembler {
     }
 
     /**
-     * Print graph to file if debugGraphTransformations is enabled
+     * Print graph to file NOTE this requires that debugGraphTransformations be enabled.
+     *
      * @param graph the graph to print
      * @param fileName the name to give the graph file
      */
