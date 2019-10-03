@@ -706,10 +706,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "Oreganno_Build:BUILDED_GOOD_REAL_BIG");
 
         // Run the beast:
-        final File tmp = new File(System.getProperty("java.io.tmpdir"));
-        if (!tmp.exists() || !tmp.isDirectory() || !tmp.canRead() || !tmp.canWrite()){
-            Assert.fail("@PFTcreateDB - Issue with java.io.tmpdir");
-        }
         runCommandLine(arguments);
 
         // Only test for content-correctness if the output file was specified:
