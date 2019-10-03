@@ -182,7 +182,7 @@ public final class VariantAnnotatorEngine {
     }
 
     /**
-     * Combine (raw) data for reducible annotations (those that use raw data in gVCFs)
+     * Combine (raw) data for reducible annotations (those that use raw data in gVCFs) according to their primary raw key
      * Mutates annotationMap by removing the annotations that were combined
      *
      * Additionally, will combine other annotations by parsing them as numbers and reducing them
