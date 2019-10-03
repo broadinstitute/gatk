@@ -59,9 +59,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
     private static final String FILTER_TEST_VCF               = toolsTestDir + "funcotator" + File.separator + "FILTER_test.vcf";
+    private static final String VCF_FIELD_ORDER_SWAP_TEST_VCF     =toolsTestDir + "funcotator" + File.separator + "vcfBugRepro.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
     private static final String DS_FILTER_PARSE_TESTS         = largeFileTestDir + "funcotator" + File.separator + "small_ds_FILTER_test" + File.separator;
-
+    public static final String VCF_FIELD_ORDER_TEST_DATA_SOURCES = largeFileTestDir + "funcotator" + File.separator + "vcfFuncotationOrderingBugRepro" + File.separator;
+    
     private static final String NOT_M2_TEST_HG19 = toolsTestDir + "funcotator/NotM2_test_custom_maf_fields.vcf";
     private static final String M2_TEST_HG19 = toolsTestDir + "funcotator/M2_test_custom_maf_fields.vcf";
     private static final String NOT_M2_TEST_HG19_TUMOR_ONLY = toolsTestDir + "funcotator/NotM2_test_custom_maf_fields_tumor_only.vcf";
@@ -301,6 +303,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT
                 },
                 {
+                    //This tests https://github.com/broadinstitute/gatk/issues/6173
                         FuncotatorTestConstants.SINGLE_LINE,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
@@ -931,6 +934,46 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 .filter(vc -> StringUtils.contains(vc.getAttributeAsString("FUNCOTATION", ""), "MedGen"))
                 .count(), NUM_CLINVAR_HITS);
     }
+
+    //Test for https://github.com/broadinstitute/gatk/issues/6173
+    @Test
+    public void testVCFColumnsArentShuffled() {
+        final File outputFile = createTempFile("tmpTestFilterParsing", "vcf");
+
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                VCF_FIELD_ORDER_SWAP_TEST_VCF,
+                outputFile,
+                b37Reference,
+                VCF_FIELD_ORDER_TEST_DATA_SOURCES,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                FuncotatorArgumentDefinitions.OutputFormatType.VCF,
+                false);
+
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+
+        runCommandLine(arguments);
+
+        final Pair<VCFHeader, List<VariantContext>> tempVcf =  VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        Assert.assertEquals( tempVcf.getRight().size(), 1 );
+
+        final String[] funcotatorKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(tempVcf.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME).getDescription());
+
+        final VariantContext variantContext = tempVcf.getRight().get(0);
+        final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                funcotatorKeys, variantContext, "Gencode_19_annotationTranscript", "FAKE_SOURCE");
+
+        Allele allele = variantContext.getAlternateAllele(0);
+        final String txId = funcs.get(allele).getTranscriptList().get(0);
+        Assert.assertEquals( funcs.get(allele).get(txId).size(), 1 );
+
+        final Funcotation funcotation = funcs.get(allele).get(txId).get(0);
+
+        //Assert that the value of the field F# is F#|F# encoded in Funcotator's percent encoding scheme
+        for(int i = 1; i <= 9; i++){
+            Assert.assertEquals(funcotation.getField("dbSnp_F"+i), "F"+i+"_%7C_"+"F"+i);
+        }
+    }
+
 
     @Test
     public void testFilterParsing() {
