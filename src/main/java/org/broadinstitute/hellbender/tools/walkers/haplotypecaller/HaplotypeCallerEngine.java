@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.RuntimeIOException;
@@ -37,7 +36,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.HeaderlessSAMRecordCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -46,12 +44,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -77,6 +72,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private ReferenceConfidenceModel referenceConfidenceModel = null;
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
+
+    private PrintStream assemblyDebugOutStream;
 
     // the genotyping engine for the isActive() determination
     private MinimalGenotypingEngine activeRegionEvaluationGenotyperEngine = null;
@@ -127,9 +124,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     private static final int MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY = 2;
 
-    private PrintStream outputStream;
-
-
     /**
      * Reads with length lower than this number, after clipping off overhands outside the active region,
      * won't be considered for genotyping.
@@ -170,14 +164,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         initialize(createBamOutIndex, createBamOutMD5);
         if (hcArgs.assemblyStateOutput != null) {
             try {
-                outputStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
+                assemblyDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
-
-
+    
     /**
      * Common method to use in order to remove unwanted annotations from the list returned by the plugin specifically
      * for reference confidence mode. Will also ensure StrandBiasBySample is present regardless of user requests.
@@ -541,20 +534,20 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, true, VCpriors);
         }
 
-        if (outputStream != null) {
-            outputStream.println("\n\n\n\n"+region.getSpan()+"\nNumber of reads in region: " + region.getReads().size() + "     they are:");
+        if (assemblyDebugOutStream != null) {
+            assemblyDebugOutStream.println("\n\n\n\n"+region.getSpan()+"\nNumber of reads in region: " + region.getReads().size() + "     they are:");
             for (GATKRead read : region.getReads()) {
-                outputStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
+                assemblyDebugOutStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
             }
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
-        if (outputStream != null) {
-            outputStream.println("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
+        if (assemblyDebugOutStream != null) {
+            assemblyDebugOutStream.println("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
             for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
-                outputStream.println(haplotype);
+                assemblyDebugOutStream.println(haplotype);
             }
         }
 
@@ -728,8 +721,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        if (outputStream != null) {
-            outputStream.close();
+        if (assemblyDebugOutStream != null) {
+            assemblyDebugOutStream.close();
         }
         // Write assembly region debug output if present
         assemblyEngine.printDebugHistograms();
