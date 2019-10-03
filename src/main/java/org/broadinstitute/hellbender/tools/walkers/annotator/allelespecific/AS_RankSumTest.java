@@ -27,6 +27,15 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public static final String RAW_DELIM = ",";
 
     @Override
+    public List<String> getRawKeyNames() {
+        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
+        if (hasSecondaryRawKeys()) {
+            allRawKeys.addAll(getSecondaryRawKeys());
+        }
+        return allRawKeys;
+    }
+
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
@@ -92,7 +101,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         if (annotationString == null){
             return Collections.emptyMap();
         }
-        return Collections.singletonMap(getRawKeyName(), annotationString);
+        return Collections.singletonMap(getPrimaryRawKey(), annotationString);
     }
 
     /**
@@ -178,10 +187,10 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      * @return
      */
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyName())) {
+        if (!vc.hasAttribute(getPrimaryRawKey())) {
             return new HashMap<>();
         }
-        final String rawRankSumData = vc.getAttributeAsString(getRawKeyName(),null);
+        final String rawRankSumData = vc.getAttributeAsString(getPrimaryRawKey(),null);
         if (rawRankSumData == null) {
             return new HashMap<>();
         }
@@ -230,7 +239,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
         }
         final String annotationString = makeCombinedAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        return Collections.singletonMap(getRawKeyName(), annotationString);
+        return Collections.singletonMap(getPrimaryRawKey(), annotationString);
     }
 
     // Parses the raw data string into a Histogram and sets the inputs attribute map accordingly

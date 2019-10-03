@@ -82,7 +82,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
              final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
             GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                                      (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
-                                                                                                     Collections.emptyList()));
+                                                                                                     Collections.emptyList(), Collections.emptyList()));
         }
     }
 

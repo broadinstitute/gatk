@@ -279,7 +279,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
             double actualScore = actualVc.getAttributeAsDouble(infoKey, EPSILON+1.0);
             double diff = Math.abs(expectedScore-actualScore);
             Assert.assertTrue(diff < EPSILON);
-            VariantContextTestUtils.assertVariantContextsAreEqual(actualVc, expectedVc, Collections.singletonList(infoKey));
+            VariantContextTestUtils.assertVariantContextsAreEqual(actualVc, expectedVc, Collections.singletonList(infoKey), Collections.emptyList());
         }
         Assert.assertTrue(!expectedVi.hasNext() && !actualVi.hasNext());
     }

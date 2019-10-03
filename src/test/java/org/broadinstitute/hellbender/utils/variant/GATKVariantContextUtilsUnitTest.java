@@ -2310,7 +2310,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> outVcs = GATKVariantContextUtils.splitVariantContextToBiallelics(vcToSplit, true, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts);
         Assert.assertEquals(outVcs.size(), expectedVcs.size());
         for (int i = 0; i < outVcs.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(outVcs.get(i), expectedVcs.get(i), new ArrayList<String>());
+            VariantContextTestUtils.assertVariantContextsAreEqual(outVcs.get(i), expectedVcs.get(i), new ArrayList<String>(), Collections.emptyList());
         }
     }
 
@@ -2321,7 +2321,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         for (int i = 0; i < biallelics.size(); i++) {
             final VariantContext actual = biallelics.get(i);
             final VariantContext expected = expectedBiallelics.get(i);
-            VariantContextTestUtils.assertVariantContextsAreEqual(actual, expected, new ArrayList<String>());
+            VariantContextTestUtils.assertVariantContextsAreEqual(actual, expected, new ArrayList<String>(), Collections.emptyList());
         }
     }
 

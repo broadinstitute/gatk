@@ -294,6 +294,6 @@ public class CpxVariantInterpreterUnitTest extends GATKBaseTest {
         baseVariantContextBuilder.attribute(GATKSVVCFConstants.MAX_ALIGN_LENGTH, "54");
 
         final VariantContext variantContext = CpxVariantInterpreter.turnIntoVariantContext(tuple2, b38_reference_chr20_chr21);
-        VariantContextTestUtils.assertVariantContextsAreEqual(variantContext, baseVariantContextBuilder.make(), Collections.emptyList());
+        VariantContextTestUtils.assertVariantContextsAreEqual(variantContext, baseVariantContextBuilder.make(), Collections.emptyList(), Collections.emptyList());
     }
 }

@@ -359,7 +359,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerUtils.getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
         for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>());
+            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
             Assert.assertEquals(vcsAtThisPosition.get(i).getSource(), expectedVcsAtThisLocation.get(i).getSource());
         }
     }
@@ -521,7 +521,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
         for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>());
+            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
             Assert.assertEquals(vcsAtThisPosition.get(i).getSource(), expectedVcsAtThisLocation.get(i).getSource());
         }
     }

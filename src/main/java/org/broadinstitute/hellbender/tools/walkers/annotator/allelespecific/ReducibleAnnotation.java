@@ -18,7 +18,29 @@ import java.util.Map;
  *
  */
 public interface ReducibleAnnotation extends Annotation {
-    public abstract String getRawKeyName();
+    /**
+     * Get all the raw key names for this annotation
+     * @return a non-empty list
+     */
+    public abstract List<String> getRawKeyNames();
+
+    /**
+     * Get the string that's used to combine data for this annotation
+     * @return never null
+     */
+    public abstract String getPrimaryRawKey();
+
+    /**
+     *
+     * @return true if annotation has secondary raw keys
+     */
+    public abstract boolean hasSecondaryRawKeys();
+
+    /**
+     * Get additional raw key strings that are not the primary key
+     * @return  may be null
+     */
+    public abstract List<String> getSecondaryRawKeys();
 
     /**
      * Generate the raw data necessary to calculate the annotation. Raw data is the final endpoint for gVCFs.
@@ -55,7 +77,9 @@ public interface ReducibleAnnotation extends Annotation {
      */
     public default List<VCFInfoHeaderLine> getRawDescriptions() {
         final List<VCFInfoHeaderLine> lines = new ArrayList<>(1);
-        lines.add(GATKVCFHeaderLines.getInfoLine(getRawKeyName()));
+        for (final String rawKey : getRawKeyNames()) {
+            lines.add(GATKVCFHeaderLines.getInfoLine(rawKey));
+        }
         return lines;
     }
 }

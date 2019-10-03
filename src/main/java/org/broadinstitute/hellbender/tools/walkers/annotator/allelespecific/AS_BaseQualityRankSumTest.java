@@ -4,9 +4,9 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTest;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalDouble;
@@ -42,8 +42,34 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
         return Arrays.asList(GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY);
     }
 
+
+    /**
+     * Get the string that's used to combine data for this annotation
+     *
+     * @return never null
+     */
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_RAW_BASE_QUAL_RANK_SUM_KEY;}
+    public String getPrimaryRawKey() {
+        return GATKVCFConstants.AS_RAW_BASE_QUAL_RANK_SUM_KEY;
+    }
+
+    /**
+     * @return true if annotation has secondary raw keys
+     */
+    @Override
+    public boolean hasSecondaryRawKeys() {
+        return false;
+    }
+
+    /**
+     * Get additional raw key strings that are not the primary key
+     *
+     * @return may be null
+     */
+    @Override
+    public List<String> getSecondaryRawKeys() {
+        return null;
+    }
 
     /**
      * Get the element for the given read at the given reference position

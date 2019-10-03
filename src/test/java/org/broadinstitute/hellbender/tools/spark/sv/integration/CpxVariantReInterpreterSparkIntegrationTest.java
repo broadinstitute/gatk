@@ -140,6 +140,6 @@ public class CpxVariantReInterpreterSparkIntegrationTest extends CommandLineProg
                 .extractActualVCs(generatedVCFPath, onHDFS);
 
         GATKBaseTest.assertCondition(actualVcs, expectedVcs,
-                (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
+                (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore, Collections.emptyList()));
     }
 }

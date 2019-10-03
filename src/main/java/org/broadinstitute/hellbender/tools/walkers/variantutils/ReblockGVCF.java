@@ -377,12 +377,13 @@ public final class ReblockGVCF extends VariantWalker {
                 }
             }
             if (annotation instanceof ReducibleAnnotation) {
-                final String key = ((ReducibleAnnotation)annotation).getRawKeyName();
-                if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
-                    continue;
-                }
-                if (origMap.containsKey(key)) {
-                    attrMap.put(key, origMap.get(key));
+                for (final String rawKey : ((ReducibleAnnotation)annotation).getRawKeyNames()) {
+                    if (infoFieldAnnotationKeyNamesToRemove.contains(rawKey)) {
+                        continue;
+                    }
+                    if (origMap.containsKey(rawKey)) {
+                        attrMap.put(rawKey, origMap.get(rawKey));
+                    }
                 }
             }
         }
@@ -494,19 +495,19 @@ public final class ReblockGVCF extends VariantWalker {
                 }
             }
             if (annotation instanceof ReducibleAnnotation) {
-                final String key = ((ReducibleAnnotation)annotation).getRawKeyName();
-                if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
-                    continue;
-                }
-                if (origMap.containsKey(key)) {
-                    if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation)) {
-                        List<String> alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(originalVC.getAttributeAsString(key, null));
-                        final List<?> subsetList = alleleSpecificValues.size() > 0 ? ReferenceConfidenceVariantContextMerger.remapRLengthList(alleleSpecificValues, relevantIndices)
-                                : Collections.nCopies(relevantIndices.length, "");
-                        attrMap.put(key, AnnotationUtils.encodeAnyASList(subsetList));
+                for (final String rawKey : ((ReducibleAnnotation)annotation).getRawKeyNames()) {
+                    if (infoFieldAnnotationKeyNamesToRemove.contains(rawKey)) {
+                        continue;
                     }
-                    else {
-                        attrMap.put(key, origMap.get(key));
+                    if (origMap.containsKey(rawKey)) {
+                        if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation)) {
+                            List<String> alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(originalVC.getAttributeAsString(rawKey, null));
+                            final List<?> subsetList = alleleSpecificValues.size() > 0 ? ReferenceConfidenceVariantContextMerger.remapRLengthList(alleleSpecificValues, relevantIndices)
+                                    : Collections.nCopies(relevantIndices.length, "");
+                            attrMap.put(rawKey, AnnotationUtils.encodeAnyASList(subsetList));
+                        } else {
+                            attrMap.put(rawKey, origMap.get(rawKey));
+                        }
                     }
                 }
             }

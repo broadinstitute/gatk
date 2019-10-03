@@ -95,7 +95,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
         VariantContextTestUtils.assertVariantContextsAreEqual(
                 cpxVariantCanonicalRepresentation.toVariantContext(dummyRefSequence).make(),
                 manuallyCalculatedVariantContext,
-                Collections.emptyList());
+                Collections.emptyList(), Collections.emptyList());
     }
 
     @DataProvider(name = "forGeneralCtor")
@@ -228,6 +228,6 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
                                      final VariantContext expectedResult) {
         VariantContextTestUtils.assertVariantContextsAreEqual(tobetested.toVariantContext(refBases).make(),
                                                               expectedResult,
-                                                              Collections.emptyList());
+                                                              Collections.emptyList(), Collections.emptyList());
     }
 }

@@ -542,7 +542,7 @@ public class SegmentedCpxVariantSimpleVariantExtractorUnitTest extends GATKBaseT
     @Test(groups = "sv", dataProvider = "forPostProcessConvertShortDupToIns")
     public void testPostProcessConvertShortDupToIns(final VariantContext simpleVariant,
                                                     final VariantContext expected) {
-        VariantContextTestUtils.assertVariantContextsAreEqual(postProcessConvertShortDupToIns(simpleVariant), expected, Collections.emptyList());
+        VariantContextTestUtils.assertVariantContextsAreEqual(postProcessConvertShortDupToIns(simpleVariant), expected, Collections.emptyList(), Collections.emptyList());
     }
 
     @DataProvider(name = "forPostProcessConvertReplacementToFatInsOrInsAndDel")
@@ -698,7 +698,7 @@ public class SegmentedCpxVariantSimpleVariantExtractorUnitTest extends GATKBaseT
                                      final VariantContext expected) {
         if (expected != null) {
             VariantContextTestUtils.assertVariantContextsAreEqual(getInsFromOneEnd(fromFront, idxFirstMatch, insertionStartAndStop, anchorBaseRefAllele, refSegmentLengths, altArrangement, shouldIncreaseInsLenByOne).make(),
-                                                                    expected, Collections.emptyList());
+                                                                    expected, Collections.emptyList(), Collections.emptyList());
         } else {
             Assert.assertNull(getInsFromOneEnd(fromFront, idxFirstMatch, insertionStartAndStop, anchorBaseRefAllele, refSegmentLengths, altArrangement, shouldIncreaseInsLenByOne));
         }
@@ -808,7 +808,7 @@ public class SegmentedCpxVariantSimpleVariantExtractorUnitTest extends GATKBaseT
             throw new AssertionError("Two sources of variants are not of the same size. expected size: " + expectedList.size() + "actual size: " + actualList.size());
         }
         for (int i = 0; i < actualList.size(); ++i) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(actualList.get(i), expectedList.get(i), attributesToIgnore);
+            VariantContextTestUtils.assertVariantContextsAreEqual(actualList.get(i), expectedList.get(i), attributesToIgnore, Collections.emptyList());
         }
     }
 

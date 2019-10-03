@@ -35,7 +35,34 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     @Override
-    public String getRawKeyName() { return GATKVCFConstants.AS_SB_TABLE_KEY; }
+    public List<String> getRawKeyNames() {
+        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
+        if (hasSecondaryRawKeys()) {
+            allRawKeys.addAll(getSecondaryRawKeys());
+        }
+        return allRawKeys;
+    }
+
+    @Override
+    public String getPrimaryRawKey() { return GATKVCFConstants.AS_SB_TABLE_KEY; }
+
+    /**
+     * @return true if annotation has secondary raw keys
+     */
+    @Override
+    public boolean hasSecondaryRawKeys() {
+        return false;
+    }
+
+    /**
+     * Get additional raw key strings that are not the primary key
+     *
+     * @return may be null
+     */
+    @Override
+    public List<String> getSecondaryRawKeys() {
+        return null;
+    }
 
     /**
      * Method which determines how the Strand Bias read direction allele data must be combined into a final annotation
@@ -72,7 +99,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
         final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), perAlleleValues);
-        annotations.put(getRawKeyName(), annotationString);
+        annotations.put(getPrimaryRawKey(), annotationString);
         return annotations;
     }
 
@@ -125,7 +152,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
             combineAttributeMap(currentValue, combinedData);
         }
         final String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
-        return Collections.singletonMap(getRawKeyName(), annotationString);
+        return Collections.singletonMap(getPrimaryRawKey(), annotationString);
     }
 
     protected String encode(List<Integer> alleleValues) {
@@ -149,10 +176,10 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
      */
     @Override
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
-        if (!vc.hasAttribute(getRawKeyName())) {
+        if (!vc.hasAttribute(getPrimaryRawKey())) {
             return new HashMap<>();
         }
-        String rawContingencyTableData = vc.getAttributeAsString(getRawKeyName(),null);
+        String rawContingencyTableData = vc.getAttributeAsString(getPrimaryRawKey(),null);
         if (rawContingencyTableData == null) {
             return new HashMap<>();
         }

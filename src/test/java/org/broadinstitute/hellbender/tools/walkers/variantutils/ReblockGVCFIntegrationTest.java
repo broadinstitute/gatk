@@ -10,12 +10,10 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -65,7 +63,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
              final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
             GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                     (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
-                            Collections.emptyList()));
+                            Collections.emptyList(), Collections.emptyList()));
         }
     }
 

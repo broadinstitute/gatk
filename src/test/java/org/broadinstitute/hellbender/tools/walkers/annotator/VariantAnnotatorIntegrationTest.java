@@ -53,7 +53,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = getHeaderFromFile(expected);
 
         runVariantAnnotatorAndAssertSomething(input, expected, extraArgs, (a, e) -> {
-            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
+            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
         }, reference);
     }
 
@@ -151,7 +151,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (!e.getGenotypes().stream().anyMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
+                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
                     }
                 },
                 b37_reference_20_21);
@@ -165,7 +165,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
+                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
                     }
                 },
                 b37_reference_20_21);
@@ -179,7 +179,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
+                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
                     }
                 },
                 b37_reference_20_21);
@@ -193,7 +193,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
-                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
+                        VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, Collections.emptyList(), header);
                     }
                 },
                 b37_reference_20_21);
