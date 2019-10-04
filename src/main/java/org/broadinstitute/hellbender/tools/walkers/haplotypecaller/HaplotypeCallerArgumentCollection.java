@@ -133,7 +133,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
 
     @Hidden
     @Advanced
-    @Argument(fullName="debug-assembly-region-state", doc="Write output files for assembled regions with read summaries and called haplotypes", optional = true)
+    @Argument(fullName="debug-assembly-region-state", doc="Write output files for assembled regions with read summaries and called haplotypes to the specified path", optional = true)
     public String assemblyStateOutput = null;
 
     /**

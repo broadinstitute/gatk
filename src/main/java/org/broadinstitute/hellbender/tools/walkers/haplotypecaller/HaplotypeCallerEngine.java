@@ -73,7 +73,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
-    private PrintStream assemblyDebugOutStream;
+    private final PrintStream assemblyDebugOutStream;
 
     // the genotyping engine for the isActive() determination
     private MinimalGenotypingEngine activeRegionEvaluationGenotyperEngine = null;
@@ -168,6 +168,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             } catch (IOException e) {
                 throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created");
             }
+        } else {
+            assemblyDebugOutStream = null;
         }
     }
 
