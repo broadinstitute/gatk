@@ -29,6 +29,7 @@ import org.objenesis.instantiator.ObjectInstantiator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 /**
  * GATKRegistrator registers Serializers for our project. We need a JsonSerializer for the Google Genomics classes
@@ -52,7 +53,7 @@ public class GATKRegistrator implements KryoRegistrator {
         Registration registration = kryo.register(TableFuncotation.class);
         registration.setInstantiator(new ObjectInstantiator<TableFuncotation>() {
             public TableFuncotation newInstance() {
-                return TableFuncotation.create(new HashMap<>(), Allele.UNSPECIFIED_ALTERNATE_ALLELE, "TEMP", null);
+                return TableFuncotation.create(new LinkedHashMap<>(), Allele.UNSPECIFIED_ALTERNATE_ALLELE, "TEMP", null);
             }
         });
         registration = kryo.register(VcfFuncotationMetadata.class);
