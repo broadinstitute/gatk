@@ -216,6 +216,7 @@ public final class IOUtils {
      * @param resource Embedded resource.
      * @param file File path to write.
      */
+    @SuppressWarnings("deprecation")
     public static void writeResource(Resource resource, File file) {
         String path = resource.getPath();
         InputStream inputStream = resource.getResourceContentsAsStream();

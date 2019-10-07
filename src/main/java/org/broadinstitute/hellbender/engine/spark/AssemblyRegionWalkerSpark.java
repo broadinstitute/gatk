@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -90,7 +91,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     }
 
     private static Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcastFunction(final JavaSparkContext ctx, final AssemblyRegionEvaluator assemblyRegionEvaluator) {
-        Supplier<AssemblyRegionEvaluator> supplier = () -> assemblyRegionEvaluator;
+        Supplier<AssemblyRegionEvaluator> supplier = (Supplier<AssemblyRegionEvaluator> & Serializable) (() -> assemblyRegionEvaluator);
         return ctx.broadcast(supplier);
     }
 

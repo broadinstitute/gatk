@@ -349,6 +349,7 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
      * NOTE: capture threads may block on read.
      */
     @Override
+    @SuppressWarnings("deprecation")
     protected void tryCleanShutdown() {
         if (stdErrFuture != null && !stdErrFuture.isDone()) {
             boolean isCancelled = stdErrFuture.cancel(true);

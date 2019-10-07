@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -1100,6 +1101,18 @@ public final class Utils {
 
     public static <T> Stream<T> stream(final Iterator<T> iterator) {
         return stream(() -> iterator);
+    }
+
+    /**
+     * Returns a function that always returns its input argument. Unlike {@link Function#identity()} the returned
+     * function is also serializable.
+     *
+     * @param <T> the type of the input and output objects to the function
+     * @return a function that always returns its input argument
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Function<T, T> identityFunction() {
+        return (Function & Serializable) t -> t;
     }
 
     /**

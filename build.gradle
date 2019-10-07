@@ -57,11 +57,11 @@ repositories {
     mavenLocal()
 }
 
-final requiredJavaVersion = "8"
 final htsjdkVersion = System.getProperty('htsjdk.version','2.20.3')
 final picardVersion = System.getProperty('picard.version','2.20.7')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.4.3')
+final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
 final disqVersion = System.getProperty('disq.version','0.3.3')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.1.2')
@@ -131,14 +131,22 @@ def looksLikeWereInAGitRepository(){
     file(".git").isDirectory() || (file(".git").exists() && file(".git").text.startsWith("gitdir"))
 }
 
-// Ensure that we have the right JDK version, a clone of the git repository, and resolve any required git-lfs
+// Ensure that we have a clone of the git repository, and resolve any required git-lfs
 // resource files that are needed to run the build but are still lfs stub files.
-def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequisitesMessage) {
-    // Make sure we can get a ToolProvider class loader. If not we may have just a JRE, or a JDK from the future.
-    if (ToolProvider.getSystemToolClassLoader() == null) {
+def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage) {
+    if (!JavaVersion.current().isJava8Compatible()) {
+        throw new GradleException(
+                "Java 8 or later is required to build GATK, but ${JavaVersion.current()} was found. "
+                        + "$buildPrerequisitesMessage")
+    }
+    // Make sure we can get a ToolProvider class loader (for Java 8). If not we may have just a JRE.
+    if (JavaVersion.current().isJava8() && ToolProvider.getSystemToolClassLoader() == null) {
         throw new GradleException(
                 "The ClassLoader obtained from the Java ToolProvider is null. "
                 + "A Java $requiredJavaVersion JDK must be installed. $buildPrerequisitesMessage")
+    }
+    if (!JavaVersion.current().isJava8() && !JavaVersion.current().isJava11()) {
+        println("Warning: using Java ${JavaVersion.current()} but only Java 8 and Java 11 have been tested.")
     }
     if (!looksLikeWereInAGitRepository()) {
         throw new GradleException("This doesn't appear to be a git folder. " +
@@ -150,7 +158,7 @@ def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPre
     resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessage)
 }
 
-ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequisitesMessage)
+ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage)
 
 configurations.all {
     resolutionStrategy {
@@ -221,7 +229,7 @@ configurations {
 // Get the jdk files we need to run javaDoc. We need to use these during compile, testCompile,
 // test execution, and gatkDoc generation, but we don't want them as part of the runtime
 // classpath and we don't want to redistribute them in the uber jar.
-final javadocJDKFiles = files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
+final javadocJDKFiles = ToolProvider.getSystemToolClassLoader() == null ? files([]) : files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
 
 dependencies {
     // javadoc utilities; compile/test only to prevent redistribution of sdk jars
@@ -280,15 +288,16 @@ dependencies {
     compile ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
         exclude group: 'org.apache.commons'
     }
-    compile ('org.apache.spark:spark-mllib_2.11:' + sparkVersion) {
+    compile ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
     }
+    compile 'com.thoughtworks.paranamer:paranamer:2.8'
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    compile('org.bdgenomics.adam:adam-core-spark2_2.11:0.20.0') {
+    compile('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -349,7 +358,7 @@ dependencies {
 
     testCompile sourceSets.testUtils.output
 
-    testCompile "org.mockito:mockito-core:2.10.0"
+    testCompile "org.mockito:mockito-core:2.28.2"
     testCompile "com.google.jimfs:jimfs:1.1"
 }
 
