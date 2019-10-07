@@ -1213,7 +1213,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final JunctionTreeKBestHaplotypeFinder bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
+        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
 
         LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
         Iterator edgesInOrder = pivotalEdges.iterator();
@@ -1252,7 +1252,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final JunctionTreeKBestHaplotypeFinder bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
+        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
 
         LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
         Iterator edgesInOrder = pivotalEdges.iterator();
