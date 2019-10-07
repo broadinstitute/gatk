@@ -45,6 +45,8 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -70,6 +72,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private ReferenceConfidenceModel referenceConfidenceModel = null;
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
+
+    private final PrintStream assemblyDebugOutStream;
 
     // the genotyping engine for the isActive() determination
     private MinimalGenotypingEngine activeRegionEvaluationGenotyperEngine = null;
@@ -120,7 +124,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     private static final int MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY = 2;
 
-
     /**
      * Reads with length lower than this number, after clipping off overhands outside the active region,
      * won't be considered for genotyping.
@@ -159,6 +162,15 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
         forceCallingAllelesPresent = hcArgs.alleles != null;
         initialize(createBamOutIndex, createBamOutMD5);
+        if (hcArgs.assemblyStateOutput != null) {
+            try {
+                assemblyDebugOutStream = new PrintStream(Files.newOutputStream(IOUtils.getPath(hcArgs.assemblyStateOutput)));
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile(hcArgs.assemblyStateOutput, "Provided argument for assembly debug graph location could not be created");
+            }
+        } else {
+            assemblyDebugOutStream = null;
+        }
     }
 
     /**
@@ -524,9 +536,23 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, true, VCpriors);
         }
 
+        if (assemblyDebugOutStream != null) {
+            assemblyDebugOutStream.println("\n\n\n\n"+region.getSpan()+"\nNumber of reads in region: " + region.getReads().size() + "     they are:");
+            for (GATKRead read : region.getReads()) {
+                assemblyDebugOutStream.println(read.getName() + "   " + read.convertToSAMRecord(region.getHeader()).getFlags());
+            }
+        }
+
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
-        
+
+        if (assemblyDebugOutStream != null) {
+            assemblyDebugOutStream.println("\nThere were " + untrimmedAssemblyResult.getHaplotypeList().size() + " haplotypes found. Here they are:");
+            for (String haplotype : untrimmedAssemblyResult.getHaplotypeList().stream().map(haplotype -> haplotype.toString()).sorted().collect(Collectors.toList())) {
+                assemblyDebugOutStream.println(haplotype);
+            }
+        }
+
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents);
@@ -697,6 +723,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
+        if (assemblyDebugOutStream != null) {
+            assemblyDebugOutStream.close();
+        }
         // Write assembly region debug output if present
         assemblyEngine.printDebugHistograms();
 

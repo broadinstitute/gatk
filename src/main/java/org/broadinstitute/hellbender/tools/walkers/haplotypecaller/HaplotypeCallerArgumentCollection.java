@@ -130,6 +130,12 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = "just-determine-active-regions", doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
     public boolean justDetermineActiveRegions = false;
 
+
+    @Hidden
+    @Advanced
+    @Argument(fullName="debug-assembly-region-state", doc="Write output files for assembled regions with read summaries and called haplotypes to the specified path", optional = true)
+    public String assemblyStateOutput = null;
+
     /**
      * This argument is intended for benchmarking and scalability testing.
      */

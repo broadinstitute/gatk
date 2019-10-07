@@ -76,18 +76,22 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
 
     /**
      * Get the set of source vertices of this graph
+     * NOTE: We return a LinkedHashSet here in order to preserve the determinism in the output order of VertexSet(),
+     *       which is deterministic in output due to the underlying sets all being LinkedHashSets.
      * @return a non-null set
      */
-    public final Set<V> getSources() {
-        return vertexSet().stream().filter(v -> isSource(v)).collect(Collectors.toSet());
+    public final LinkedHashSet<V> getSources() {
+        return vertexSet().stream().filter(v -> isSource(v)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
      * Get the set of sink vertices of this graph
+     * NOTE: We return a LinkedHashSet here in order to preserve the determinism in the output order of VertexSet(),
+     *       which is deterministic in output due to the underlying sets all being LinkedHashSets.
      * @return a non-null set
      */
-    public final Set<V> getSinks() {
-        return vertexSet().stream().filter(v -> isSink(v)).collect(Collectors.toSet());
+    public final LinkedHashSet<V> getSinks() {
+        return vertexSet().stream().filter(v -> isSink(v)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -326,22 +330,26 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
 
     /**
      * Get the set of vertices connected by outgoing edges of V
+     * NOTE: We return a LinkedHashSet here in order to preserve the determinism in the output order of VertexSet(),
+     *       which is deterministic in output due to the underlying sets all being LinkedHashSets.
      * @param v a non-null vertex
      * @return a set of vertices connected by outgoing edges from v
      */
     public final Set<V> outgoingVerticesOf(final V v) {
         Utils.nonNull(v);
-        return outgoingEdgesOf(v).stream().map(e -> getEdgeTarget(e)).collect(Collectors.toSet());
+        return outgoingEdgesOf(v).stream().map(e -> getEdgeTarget(e)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
      * Get the set of vertices connected to v by incoming edges
+     * NOTE: We return a LinkedHashSet here in order to preserve the determinism in the output order of VertexSet(),
+     *       which is deterministic in output due to the underlying sets all being LinkedHashSets.
      * @param v a non-null vertex
      * @return a set of vertices {X} connected X -> v
      */
     public final Set<V> incomingVerticesOf(final V v) {
         Utils.nonNull(v);
-        return incomingEdgesOf(v).stream().map(e -> getEdgeSource(e)).collect(Collectors.toSet());
+        return incomingEdgesOf(v).stream().map(e -> getEdgeSource(e)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
