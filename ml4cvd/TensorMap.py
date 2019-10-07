@@ -1,31 +1,26 @@
 import logging
 import datetime
-import numpy as np
 from typing import Any
-from scipy.ndimage import zoom
 from dateutil import relativedelta
 
+import numpy as np
+from scipy.ndimage import zoom
 from keras.utils import to_categorical
 
-from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.defines import CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
-from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
-from ml4cvd.defines import DataSetType
+from ml4cvd.metrics import sentinel_logcosh_loss, per_class_precision
+from ml4cvd.metrics import per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
+from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.defines import DataSetType, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
+from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'charge', 'AF_PRS_LDscore', 'lv_mass', 'lv_mass_sentinel_prediction',
-                         'LA_2Ch_vol_max', 'LA_2Ch_vol_min LA_4Ch_vol_max', 'LA_4Ch_vol_min', 'LA_Biplan_vol_max', 'LA_Biplan_vol_min',
-                         'corrected_extracted_lvesv', 'corrected_extracted_lvef', 'corrected_extracted_lvedv',
-                         'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
-                         'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
-                         'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0', '22402_Liver-fat-percentage_2_0',
-                         'liver_fat_sentinel_prediction', 'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
-                         '25006_Volume-of-grey-matter', '25021_Volume-of-amygdala-left', '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image',
-                         '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image',
-                         '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image'
+CONTINUOUS_NEVER_ZERO = ['bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
+                         '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
+                         '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
+                         '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
+                         '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image_2',
                          ]
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
@@ -112,7 +107,8 @@ class TensorMap(object):
                  annotation_units=32,
                  imputation=None,
                  tensor_from_file=None,
-                 dtype=None):
+                 dtype=None,
+                 validator=None):
         """TensorMap constructor
 
 
@@ -154,8 +150,8 @@ class TensorMap(object):
         self.annotation_units = annotation_units
         self.imputation = imputation
         self.tensor_from_file = tensor_from_file
-        self.initialization = None  # Not yet implemented
         self.dtype = dtype
+        self.validator = validator
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
@@ -197,6 +193,12 @@ class TensorMap(object):
 
         if self.tensor_from_file is None:
             self.tensor_from_file = _default_tensor_from_file
+
+        if self.validator is None:
+            self.validator = lambda tm, x: x
+
+        if self.normalization is None and not self.is_categorical_any():
+            self.normalization = {'zero_mean_std1': 1.0}
 
     def __hash__(self):
         return hash((self.name, self.shape, self.group))
@@ -296,10 +298,12 @@ class TensorMap(object):
         np_tensor = np.nan_to_num(np_tensor)
         return np_tensor
 
-    def normalize(self, np_tensor):
+    def normalize_and_validate(self, np_tensor):
+        self.validator(self, np_tensor)
         if self.normalization is None:
             return np_tensor
-
+        if 'zero_mean_std1' in self.normalization:
+            return self.zero_mean_std1(np_tensor)
         if 'mean' in self.normalization and 'std' in self.normalization:
             not_missing_in_channel_map = False
             if self.channel_map is not None:
@@ -389,7 +393,7 @@ class TensorMap(object):
                     if value > 0:
                         data[self.channel_map['mother_age']] = value
                         data[self.channel_map[NOT_MISSING]] = 1
-            return self.normalize(data)
+            return self.normalize_and_validate(data)
         elif self.name == 'fathers_age_0':
             data = np.zeros(self.shape, dtype=np.float32)
             if 'Father-still-alive_Yes_0_0' in hd5['categorical']:
@@ -408,8 +412,20 @@ class TensorMap(object):
                     if value > 0:
                         data[self.channel_map['father_age']] = value
                         data[self.channel_map[NOT_MISSING]] = 1
-            return self.normalize(data)
+            return self.normalize_and_validate(data)
         raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
+
+
+def make_range_validator(minimum: float, maximum: float):
+    def _range_validator(tm: TensorMap, tensor: np.ndarray):
+        if not ((tensor > minimum).all() and (tensor < maximum).all()):
+            raise ValueError(f'TensorMap {tm.name} failed range check.')
+    return _range_validator
+
+
+def no_nans(tm: TensorMap, tensor: np.ndarray):
+    if np.isnan(tensor).any():
+        raise ValueError(f'Skipping TensorMap {tm.name} with NaNs.')
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):
@@ -530,14 +546,14 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             tensor[:, :, i, 0] = np.array(hd5[tm.name].get(cur_slice), dtype=np.float32)
             label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
             dependents[tm.dependent_map][:, :, i, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name == 'aligned_distance':
         return np.zeros((1,), dtype=np.float32)
     elif tm.name == 'lms_ideal_optimised_low_flip_6dyn_4slice':
         whole_liver = np.array(hd5['lms_ideal_optimised_low_flip_6dyn'])
         cur_index = np.random.randint(whole_liver.shape[2] - tm.shape[2])
         tensor = whole_liver[:, :, cur_index:cur_index + 4]
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name == 'mri_slice':
         cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -545,7 +561,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         tensor[:, :, 0] = np.array(hd5[MRI_TO_SEGMENT].get(cur_slice), dtype=np.float32)
         label_tensor = np.array(hd5[MRI_SEGMENTED].get(cur_slice), dtype=np.float32)
         dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name == 'sax_inlinevf_zoom_blackout':
         mask_group = MRI_ZOOM_MASK
         slice_idx = np.random.choice(list(hd5[MRI_ZOOM_INPUT].keys()))
@@ -558,7 +574,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
             dependents[tm.dependent_map][:, :, i, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
             tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name == 'cine_segmented_sax_inlinevf_blackout':
         mask_group = MRI_SEGMENTED
         slice_idx = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
@@ -571,7 +587,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
             dependents[tm.dependent_map][:, :, i, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
             tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name == 'mri_systole_diastole':
         if tm.hd5_override is not None:
             b_number = 'b' + str(np.random.choice(tm.hd5_override))
@@ -588,7 +604,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         dependents[tm.dependent_map][:, :, 0, :] = to_categorical(np.array(hd5['diastole_mask_' + b_number]), tm.dependent_map.shape[-1])
         tensor[:, :, 1, 0] = np.array(hd5['systole_frame_' + b_number], dtype=np.float32)
         dependents[tm.dependent_map][:, :, 1, :] = to_categorical(np.array(hd5['systole_mask_' + b_number]), tm.dependent_map.shape[-1])
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name == 'mri_systole_diastole_8':
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
@@ -608,27 +624,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         dependents[tm.dependent_map][:, :, 6, :] = to_categorical(np.array(hd5['diastole_mask_b8']), tm.dependent_map.shape[-1])
         tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
         dependents[tm.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), tm.dependent_map.shape[-1])
-        return tm.zero_mean_std1(tensor)
-    elif tm.name in {'t1_brain_208z', 't1_brain_208z_half', 't1_brain_208z_quarter', 't1_brain_208z_3d', 't1_brain_208z_half_3d', 't1_brain_208z_quarter_3d'}:
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        full = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[..., :208]
-        ratios = [new_len / orig_len for new_len, orig_len in zip(tm.shape, full.shape)]
-        if '3d' in tm.name:
-            tensor[:] = zoom(full, ratios, order=1)[..., np.newaxis]
-        else:
-            tensor[:] = zoom(full, ratios, order=1)
-        return tm.zero_mean_std1(tensor)
-
-    elif tm.name in {'t1_brain_208z_3d', 't1_brain_208z_half_3d', 't1_brain_208z_quarter_3d'}:
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        full = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[..., :208]
-        ratios = [new_len / orig_len for new_len, orig_len in zip(tm.shape, full.shape)]
-        tensor[:] = zoom(full, ratios, order=1)[..., np.newaxis]
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.is_root_array():
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[:] = np.array(hd5[tm.name], dtype=np.float32)
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.name in MRI_ANNOTATION_GOOD_NEEDED:
         continuous_data = np.zeros(tm.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
         if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != MRI_ANNOTATION_CHANNEL_MAP['good']:
@@ -639,9 +639,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if continuous_data[0] == 0 and tm.sentinel is not None:
             continuous_data[:] = tm.sentinel
             return continuous_data
-        if continuous_data[0] > 280:
-            raise ValueError('Volume crazy value.')  # TODO: tensorize with MRI critic annotations
-        return tm.normalize(continuous_data)
+        return tm.normalize_and_validate(continuous_data)
     elif tm.name == 'ecg_coarse':
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if 'poor_data_quality' in hd5['categorical']:
@@ -736,7 +734,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             continuous_data[tm.channel_map[NOT_MISSING]] = 1
         if continuous_data[0] == 0 and (tm.sentinel == None and tm.name in CONTINUOUS_NEVER_ZERO):
             raise ValueError(tm.name + ' is a continuous value that cannot be set to 0, but no value was found.')
-        return tm.normalize(continuous_data)
+        return tm.normalize_and_validate(continuous_data)
     elif tm.is_multi_field_continuous():
         if tm.is_multi_field_continuous_with_missing_channel():
             multiplier = 2
@@ -767,37 +765,14 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             return tm.normalize_multi_field_continuous(continuous_data)
         else:
             return tm.normalize_multi_field_continuous_no_missing_channels(continuous_data, missing_array)
-    elif tm.is_ecg_rest():
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.dependent_map is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            key_choices = [k for k in hd5[tm.group] if tm.name in k]
-            lead_idx = np.random.choice(key_choices)
-            tensor = np.reshape(hd5[tm.group][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.group][lead_idx.replace(tm.name, tm.dependent_map.name)])
-            dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
-        else:
-            for k in hd5[tm.group]:
-                if k in tm.channel_map:
-                    if len(tensor.shape) == 3:  # Grab the stacked tensor maps
-                        window_size = tensor.shape[0]
-                        channels = tensor.shape[2]
-                        new_shape = (window_size, channels)
-                        new_total = window_size * channels
-                        tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.group][k][:new_total], new_shape, order='F')
-                    elif tm.name == 'ecg_rest_fft':
-                        tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.group][k])) + EPS)
-                    else:
-                        tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
-        return tm.zero_mean_std1(tensor)
     elif tm.is_ecg_bike():
         tensor = np.array(hd5[tm.group][tm.name], dtype=np.float32)
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.is_ecg_bike_recovery():
         tensor = np.zeros(tm.shape)
         for channel, idx in tm.channel_map.items():
             tensor[:, idx] = hd5[tm.group][channel]
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.is_ecg_text():
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
@@ -816,8 +791,8 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tensor
     elif tm.is_hidden_layer():
         input_dict = {}
-        for tm in tm.required_inputs:
-            input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
+        for input_tm in tm.required_inputs:
+            input_dict[input_tm.input_name()] = np.expand_dims(input_tm.tensor_from_file(input_tm, hd5), axis=0)
         return tm.model.predict(input_dict)
     elif tm.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals
         dataset_key = np.random.choice(list(tm.dependent_map.channel_map.keys()))
@@ -825,6 +800,6 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         one_hot[tm.dependent_map.channel_map[dataset_key]] = 1.0
         dependents[tm.dependent_map] = one_hot
         tensor = np.array(hd5.get(dataset_key), dtype=np.float32)
-        return tm.zero_mean_std1(tensor)
+        return tm.normalize_and_validate(tensor)
     elif tm.channel_map is None and tm.dependent_map is None:
         return np.array(hd5.get(tm.name), dtype=np.float32)

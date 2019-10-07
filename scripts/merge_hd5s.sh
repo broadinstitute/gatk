@@ -41,7 +41,7 @@ usage()
 
         -p      <str>       Inplace mode (inplace or nothing)
 
-        -s      <id>        Smallest sample ID to start with. Default: 1000000.
+        -b      <id>        Smallest sample ID to start with. Default: 1000000.
 
         -e      <id>        Largest sample ID to end with. Default: 6030000.
 

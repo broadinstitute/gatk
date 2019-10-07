@@ -48,8 +48,10 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
                 with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
                     try:
                         _copy_hd5_datasets(source_hd5, destination_hd5, stats=stats)
+                    except OSError:
+                        logging.warning(f"OSError at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
                     except KeyError:
-                        logging.warning(f"Key error at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
+                        logging.warning(f"KeyError at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
                     except RuntimeError:
                         logging.warning(f"RuntimeError error at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
         logging.info(f"Done copying source folder {source_folder}")

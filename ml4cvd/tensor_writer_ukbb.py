@@ -50,10 +50,10 @@ MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
-MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
+MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
-                       'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
-                       'cine_segmented_sax_inlinevf', 't1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
+                       'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf']
+MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
@@ -78,8 +78,6 @@ def write_tensors(a_id: str,
                   output_folder: str,
                   tensors: str,
                   mri_unzip: str,
-                  volume_csv: str,
-                  lv_mass_csv: str,
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
                   x: int,
@@ -104,8 +102,6 @@ def write_tensors(a_id: str,
     :param output_folder: Folder to write outputs to (mostly for debugging)
     :param tensors: Folder to populate with HD5 tensors
     :param mri_unzip: Folder where zipped DICOM will be decompressed
-    :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
-    :param lv_mass_csv: CSV containing LV mass and other data from a subset of samples with MRI
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
     :param x: Maximum x dimension of MRIs
@@ -125,7 +121,7 @@ def write_tensors(a_id: str,
     """
     stats = Counter()
     continuous_stats = defaultdict(list)
-    nested_dictionary, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
+    sample_ids = range(min_sample_id, max_sample_id)
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
@@ -140,7 +136,6 @@ def write_tensors(a_id: str,
                 _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
-                _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
             logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
@@ -152,6 +147,10 @@ def write_tensors(a_id: str,
             os.remove(tensor_path)
         except RuntimeError:
             logging.exception('Encountered RuntimeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
+            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
+            os.remove(tensor_path)
+        except IndexError:
+            logging.exception('Encountered IndexError trying to write a UKBB tensor at path:{}'.format(tensor_path))
             logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
             os.remove(tensor_path)
         except OSError:
@@ -200,8 +199,8 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
                 # Zero-based column #13 is the LV mass
                 nested_dictionary[sample_id]['lv_mass'] = float(row[13])
 
-    sample_ids = range(min_sample_id, max_sample_id)
-    return nested_dictionary, sample_ids
+
+    return nested_dictionary
 
 
 def _sample_has_dicom_mris(zip_folder, sample_id) -> bool:
@@ -516,7 +515,7 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
         if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
             views[series + '_12bit'].append(d)
             stats[series + '_12bit'] += 1
-        elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
+        elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
             views[series].append(d)
             stats[series] += 1
         if series in MRI_LIVER_IDEAL_PROTOCOL:
@@ -525,13 +524,15 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         stats[v + ' mri shape:' + str(mri_shape)] += 1
-        if v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+        if v in MRI_BRAIN_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             x = views[v][0].Rows
             y = views[v][0].Columns
             z = len(views[v])
 
         if v == MRI_TO_SEGMENT:
             _tensorize_short_axis_segmented_cardiac_mri(views[v], v, x, y, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, stats)
+        elif v in MRI_BRAIN_SERIES:
+            _tensorize_brain_t2(views[v], v, x, y, hd5)
         else:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
             for slicer in views[v]:
@@ -621,10 +622,28 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
 
+def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: int, hd5: h5py.File) -> None:
+    mri_data1 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
+    mri_data2 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
+    for slicer in slices:
+        sx = min(slicer.Rows, x)
+        sy = min(slicer.Columns, y)
+        _save_pixel_dimensions_if_missing(slicer, series, hd5)
+        slice_index = slicer.InstanceNumber - 1
+        if slicer.SeriesNumber in [5, 11]:
+            mri_data1[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+        elif slicer.SeriesNumber in [6, 12]:
+            mri_data2[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+    tensor_path_1 = tensor_path('ukb_brain_mri', DataSetType.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_1')
+    tensor_path_2 = tensor_path('ukb_brain_mri', DataSetType.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_2')
+    hd5.create_dataset(tensor_path_1, data=mri_data1, compression='gzip')
+    hd5.create_dataset(tensor_path_2, data=mri_data2, compression='gzip')
+
+
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
-    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_SERIES_TO_WRITE + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
-    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_SERIES_TO_WRITE + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
 
@@ -1027,18 +1046,18 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
     return disease2tsv
 
 
-def append_float_csv(tensors, csv_file, group, delimiter):
+def append_fields_from_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
-        logging.info(f"CSV of floats header:{fields}")
+        logging.info(f"CSV has {len(fields)} fields:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
 
-    logging.info(f"Data maps:{len(data_maps)}")
+    logging.info(f"Data maps:{len(data_maps)} for group:{group}")
     for tp in os.listdir(tensors):
         if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
             continue
@@ -1047,8 +1066,8 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-                        value = _to_float_or_false(data_maps[sample_id][field])
-                        if value:
+                        try:
+                            value = float(data_maps[sample_id][field])
                             hd5_key = group + HD5_GROUP_CHAR + field
                             if field in hd5[group]:
                                 data = hd5[hd5_key]
@@ -1057,16 +1076,16 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                             else:
                                 hd5.create_dataset(hd5_key, data=[value])
                                 stats['created'] += 1
-                        else:
+                        except ValueError:
                             stats[f'could not cast field {field} to float'] += 1
                 else:
                     stats['sample id missing']
         except:
-            print('couldnt open', tp, traceback.format_exc())
+            print('could not open', tp, traceback.format_exc())
             stats['failed'] += 1
 
     for k in stats:
-        logging.info("{}: {}".format(k, stats[k]))
+        logging.info(f'{k} has: {stats[k]}')
 
 
 def append_gene_csv(tensors, csv_file, delimiter):
@@ -1075,7 +1094,7 @@ def append_gene_csv(tensors, csv_file, delimiter):
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
-        logging.info(f"CSV of genes header:{fields}")
+        logging.info(f"CSV of flag data header:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
@@ -1250,7 +1269,7 @@ def _plot_mi_hospital_only(db, run_id, output_folder) -> None:
 
 
 def _str2date(d) -> datetime.date:
-    parts = d.split('-')
+    parts = d.split(CONCAT_CHAR)
     if len(parts) < 2:
         return datetime.datetime.now().date()
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
@@ -1258,6 +1277,10 @@ def _str2date(d) -> datetime.date:
 
 def _date_from_dicom(d) -> str:
     return d.AcquisitionDate[0:4] + CONCAT_CHAR + d.AcquisitionDate[4:6] + CONCAT_CHAR + d.AcquisitionDate[6:]
+
+
+def _datetime_from_dicom(d) -> datetime.date:
+    return _str2date(_date_from_dicom(d))
 
 
 def _log_extreme_n(stats, n) -> None:
