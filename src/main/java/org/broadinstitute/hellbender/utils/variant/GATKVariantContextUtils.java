@@ -1032,7 +1032,7 @@ public final class GATKVariantContextUtils {
         return builder.make();
     }
 
-    public static GenotypesContext updateGenotypesWithMappedAlleles(final GenotypesContext originalGenotypes, final AlleleMapper alleleMapper) {
+    protected static GenotypesContext updateGenotypesWithMappedAlleles(final GenotypesContext originalGenotypes, final AlleleMapper alleleMapper) {
         final GenotypesContext updatedGenotypes = GenotypesContext.create(originalGenotypes.size());
 
         for ( final Genotype genotype : originalGenotypes ) {
@@ -1126,7 +1126,7 @@ public final class GATKVariantContextUtils {
         return indexOflastSharedBase;
     }
 
-    public static class AlleleMapper {
+    protected static class AlleleMapper {
         private VariantContext vc = null;
         private Map<Allele, Allele> map = null;
         public AlleleMapper(VariantContext vc)          { this.vc = vc; }

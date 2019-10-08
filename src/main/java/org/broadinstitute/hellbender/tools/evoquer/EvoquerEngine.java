@@ -105,7 +105,7 @@ class EvoquerEngine {
      * Map between contig name and the BigQuery table containing the list of samples
      */
     private final Map<String, String> contigToSampleTableMap;
-    
+
     private final int queryRecordLimit;
 
     private final boolean runQueryOnly;
@@ -214,7 +214,7 @@ class EvoquerEngine {
 
         if ( contigToPositionTableMap.containsKey(interval.getContig()) ) {
             // Get the query string:
-            final String variantQueryString = getVariantQueryString(interval);
+            final String variantQueryString = getQueryForAlleleSubsetting();
 
             // Execute the query:
             final BigQueryUtils.StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(variantQueryString, runQueryInBatchMode);
@@ -291,7 +291,7 @@ class EvoquerEngine {
 
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
-        
+
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
 
@@ -323,7 +323,7 @@ class EvoquerEngine {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
-        
+
         return headerLines;
     }
 
@@ -478,15 +478,20 @@ class EvoquerEngine {
             if (allelesToSubset.isEmpty()) {
                 return vc;
             } else {
-                Map<Allele, Allele> originalToSubsettedAlleleMap = new LinkedHashMap<>();
-                vc.getGenotype(0).getAlleles().stream().forEach(gallele -> {
+                List<Allele> galleles = vc.getGenotype(0).getAlleles();
+                List<Allele> updatedGAlleles = new ArrayList<>();
+//                List<Integer> updatedPLs = new ArrayList<>();
+                for (int i = 0; i < galleles.size(); i++) {
+                    Allele gallele = galleles.get(i);
                     if (allelesToSubset.contains(gallele)) {
-                        originalToSubsettedAlleleMap.put(gallele, Allele.create(VCFConstants.EMPTY_ALLELE));
+                        updatedGAlleles.add(Allele.create(VCFConstants.EMPTY_ALLELE));
+                        // TODO remove PL
+                        // Look at other allele subsetting code
+                    } else {
+                        updatedGAlleles.add(gallele);
                     }
-                });
-                final GATKVariantContextUtils.AlleleMapper alleleMapper = new GATKVariantContextUtils.AlleleMapper(originalToSubsettedAlleleMap);
-                final GenotypesContext genotypes = GATKVariantContextUtils.updateGenotypesWithMappedAlleles(vc.getGenotypes(), alleleMapper);
-                return new VariantContextBuilder(vc).genotypes(genotypes).make();
+                }
+                return new VariantContextBuilder(vc).genotypes(new GenotypeBuilder(vc.getGenotype(0)).alleles(updatedGAlleles).make()).make();
             }
         }).collect(Collectors.toList());
     }
@@ -666,7 +671,7 @@ class EvoquerEngine {
         genotypeBuilder.GQ(gq);
 
         builder.genotypes(genotypeBuilder.make());
-        
+
         return builder.make();
     }
 
@@ -729,7 +734,7 @@ class EvoquerEngine {
 
         // Get the query string:
         final String sampleListQueryString = getSampleListQueryString(sampleTableName);
-        
+
         // Execute the query:
         final TableResult result = BigQueryUtils.executeQuery(sampleListQueryString);
 
@@ -751,7 +756,7 @@ class EvoquerEngine {
         if ( queryRecordLimit > 0 ) {
             limitString = "LIMIT " + queryRecordLimit;
         }
-        
+
         return String.format(
                 "SELECT position, ARRAY_AGG(STRUCT( sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
                 "FROM `%s` AS pet\n" +
@@ -789,5 +794,13 @@ class EvoquerEngine {
 
     private String getSampleListQueryString(final String sampleTableName) {
         return "SELECT sample FROM `" + getFQTableName(sampleTableName)+ "`";
+    }
+
+    private String getQueryForAlleleSubsetting() {
+        return "SELECT position, ARRAY_AGG(STRUCT(sample, 'v' as state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
+                "\n" +
+                "FROM `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam`\n" +
+                "WHERE position = 62065822\n" +
+                "GROUP BY position\n";
     }
 }
