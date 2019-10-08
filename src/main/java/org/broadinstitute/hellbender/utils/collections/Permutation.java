@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.collections;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Represent a permutation of an ordered set or list of elements.

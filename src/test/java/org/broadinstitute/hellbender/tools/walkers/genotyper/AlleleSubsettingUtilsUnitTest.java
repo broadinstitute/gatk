@@ -395,7 +395,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final Genotype g6 = new GenotypeBuilder("sample1", Arrays.asList(C, C, C)).PL(new double[] {0.0, 0.0, 0.0, 3.5}).make();
 
         final VariantContext vc3 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
-                .genotypes(Arrays.asList(g6)).make();
+                .genotypes(Collections.singletonList(g6)).make();
 
         Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3, false)[1], 3.5, 1.0e-8);
     }

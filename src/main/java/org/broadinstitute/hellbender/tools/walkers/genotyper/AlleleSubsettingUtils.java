@@ -78,11 +78,11 @@ public final class AlleleSubsettingUtils {
         for (final Genotype g : originalGs) {
             final int ploidy = g.getPloidy() > 0 ? g.getPloidy() : defaultPloidy;
             if (!subsettedLikelihoodIndicesByPloidy.containsKey(ploidy)) {
-                subsettedLikelihoodIndicesByPloidy.put(ploidy, subsettedPLIndices(ploidy, originalAlleles, allelesToKeep));
+                subsettedLikelihoodIndicesByPloidy.put(ploidy, subsettedPLIndices(ploidy, allelePermutation));
             }
             final int[] subsettedLikelihoodIndices = subsettedLikelihoodIndicesByPloidy.get(ploidy);
 
-            final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
+            final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(allelePermutation.fromSize(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
             double newLog10GQ = Double.NEGATIVE_INFINITY;
@@ -130,11 +130,11 @@ public final class AlleleSubsettingUtils {
             }
             gb.PL(newLikelihoods);
 
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g, gpc);
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelePermutation.toList(), g.getAlleles());
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {
-                final int[] newSACs = subsetSACAlleles(g,  originalAlleles, allelesToKeep);
+                final int[] newSACs = subsetSACAlleles(g, allelePermutation);
                 gb.attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, newSACs);
             }
 
@@ -251,17 +251,15 @@ public final class AlleleSubsettingUtils {
      * From a given genotype, extract a given subset of alleles and return the new SACs
      *
      * @param g                             genotype to subset
-     * @param originalAlleles               the original alleles before subsetting
-     * @param allelesToUse                  alleles to use in subset
+     * @param permutation
      * @return                              the subsetted SACs
      */
-    private static int[] subsetSACAlleles(final Genotype g, final List<Allele> originalAlleles, final List<Allele> allelesToUse) {
-
+    private static int[] subsetSACAlleles(final Genotype g, final Permutation<Allele> permutation) {
         // Keep original SACs if using all of the alleles
-        if ( originalAlleles.size() == allelesToUse.size() ) {
+        if ( permutation.isNonPermuted() ) {
             return getSACs(g);
         } else {
-            return makeNewSACs(g, originalAlleles, allelesToUse);
+            return makeNewSACs(g, permutation);
         }
     }
 
@@ -269,18 +267,17 @@ public final class AlleleSubsettingUtils {
      * Make a new SAC array from the a subset of the genotype's original SAC
      *
      * @param g               the genotype
-     * @param originalAlleles the original alleles before subsetting
-     * @param allelesToUse    alleles to use in subset
+     * @param allelePermutation
      * @return subset of SACs from the original genotype, the original SACs if sacIndicesToUse is null
      */
-    private static int[] makeNewSACs(final Genotype g, final List<Allele> originalAlleles, final List<Allele> allelesToUse) {
+    private static int[] makeNewSACs(final Genotype g, final Permutation<Allele> allelePermutation) {
 
         final int[] oldSACs = getSACs(g);
-        final int[] newSACs = new int[NUM_OF_STRANDS * allelesToUse.size()];
+        final int[] newSACs = new int[NUM_OF_STRANDS * allelePermutation.toSize()];
 
         int newIndex = 0;
-        for (int alleleIndex = 0; alleleIndex < originalAlleles.size(); alleleIndex++) {
-            if (allelesToUse.contains(originalAlleles.get(alleleIndex))) {
+        for (int alleleIndex = 0; alleleIndex < allelePermutation.fromSize(); alleleIndex++) {
+            if (allelePermutation.isKept(alleleIndex)) {
                 newSACs[NUM_OF_STRANDS * newIndex] = oldSACs[NUM_OF_STRANDS * alleleIndex];
                 newSACs[NUM_OF_STRANDS * newIndex + 1] = oldSACs[NUM_OF_STRANDS * alleleIndex + 1];
                 newIndex++;
@@ -419,22 +416,20 @@ public final class AlleleSubsettingUtils {
      * recycled from sample to sample, provided that the ploidy is the same.
      *
      * @param ploidy                Ploidy (number of chromosomes describing PL's)
-     * @param originalAlleles       List of original alleles
-     * @param newAlleles            New alleles -- must be a subset of {@code originalAlleles}
+     * @param allelePermutation
      * @return                      old PL indices of new genotypes
      */
-    public static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
-        final int[] result = new int[GenotypeLikelihoods.numLikelihoods(newAlleles.size(), ploidy)];
-        final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(newAlleles));
+    public static int[] subsettedPLIndices(final int ploidy, final Permutation<Allele> allelePermutation) {
+        final int[] result = new int[GenotypeLikelihoods.numLikelihoods(allelePermutation.toSize(), ploidy)];
 
-        for (final GenotypeAlleleCounts oldAlleleCounts : GenotypeAlleleCounts.iterable(ploidy, originalAlleles.size())) {
+        for (final GenotypeAlleleCounts oldAlleleCounts : GenotypeAlleleCounts.iterable(ploidy, allelePermutation.fromSize())) {
             final boolean containsOnlyNewAlleles = IntStream.range(0, oldAlleleCounts.distinctAlleleCount())
                     .map(oldAlleleCounts::alleleIndexAt).allMatch(allelePermutation::isKept);
 
             if (containsOnlyNewAlleles) {
                 // make an array in the format described in {@link GenotypeAlleleCounts}:
                 // [(new) index of first allele, count of first allele, (new) index of second allele, count of second allele. . .]
-                final int[] newAlleleCounts = IntStream.range(0, newAlleles.size()).flatMap(newAlleleIndex ->
+                final int[] newAlleleCounts = IntStream.range(0, allelePermutation.toSize()).flatMap(newAlleleIndex ->
                         IntStream.of(newAlleleIndex, oldAlleleCounts.alleleCountFor(allelePermutation.fromIndex(newAlleleIndex)))).toArray();
 
                 final int newPLIndex = GenotypeIndexCalculator.alleleCountsToIndex(newAlleleCounts);
