@@ -4,6 +4,7 @@ import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,15 +26,6 @@ import java.util.*;
 public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation, AlleleSpecificAnnotation {
     private static final Logger logger = LogManager.getLogger(AS_RankSumTest.class);
     public static final String RAW_DELIM = ",";
-
-    @Override
-    public List<String> getRawKeyNames() {
-        final List<String> allRawKeys = new ArrayList<>(Arrays.asList(getPrimaryRawKey()));
-        if (hasSecondaryRawKeys()) {
-            allRawKeys.addAll(getSecondaryRawKeys());
-        }
-        return allRawKeys;
-    }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -184,7 +176,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
      *
      * @param vc -- contains the final set of alleles, possibly subset by GenotypeGVCFs
      * @param originalVC -- used to get all the alleles for all gVCFs
-     * @return
+     * @return the finalized key and value as well as the raw key and value
      */
     public  Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
         if (!vc.hasAttribute(getPrimaryRawKey())) {
@@ -205,6 +197,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         }
         final String annotationString = makeReducedAnnotationString(vc, perAltRankSumResults);
         annotations.put(getKeyNames().get(0), annotationString);
+        annotations.put(getPrimaryRawKey(), makeCombinedAnnotationString(vc.getAlleles(), myData.getAttributeMap()));
         return annotations;
     }
 
@@ -293,18 +286,21 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     }
 
     private String makeReducedAnnotationString(final VariantContext vc, final Map<Allele,Double> perAltRankSumResults) {
-        String annotationString = "";
+        final StringBuilder annotationString = new StringBuilder();
         for (final Allele a : vc.getAlternateAlleles()) {
-            if (!annotationString.isEmpty()) {
-                annotationString += AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
+            if (annotationString.length() != 0) {
+                annotationString.append(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
             }
             if (!perAltRankSumResults.containsKey(a)) {
-                logger.warn("ERROR: VC allele not found in annotation alleles -- maybe there was trimming?");
+                logger.warn("VC allele not found in annotation alleles -- maybe there was trimming?  Allele " + a.getDisplayString() + " will be marked as missing.");
+                annotationString.append(VCFConstants.MISSING_VALUE_v4); //add the missing value or the array size and indexes won't check out
             } else {
-                annotationString += String.format("%.3f", perAltRankSumResults.get(a));
+                final Double numericAlleleValue = perAltRankSumResults.get(a);
+                final String perAlleleValue = numericAlleleValue != null ? String.format("%.3f", numericAlleleValue) : VCFConstants.MISSING_VALUE_v4;
+                annotationString.append(perAlleleValue);
             }
         }
-        return annotationString;
+        return annotationString.toString();
     }
 
     protected String makeCombinedAnnotationString(final List<Allele> vcAlleles, final Map<Allele, Histogram> perAlleleValues) {

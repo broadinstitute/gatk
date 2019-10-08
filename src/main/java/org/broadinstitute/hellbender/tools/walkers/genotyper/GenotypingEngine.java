@@ -409,15 +409,17 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             if (AFresult.getAllelesUsedInGenotyping().size() > 2) {
                 for (final Allele a : allAllelesToUse) {
                     if (a.isNonReference()) {
+                        //*-10 to convert from log10-scale to Phred-scale, as QUALs are typically represented
                         perAlleleQuals.add((int)Math.round(AFresult.getLog10PosteriorOfAlleleAbsent(a)*-10));
                     }
                 }
             }
             else {
+                //*-10 to convert from log10-scale to Phred-scale, as QUALs are typically represented
                 perAlleleQuals.add((int)Math.round(AFresult.log10ProbOnlyRefAlleleExists()*-10));
             }
 
-            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals);
+            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals.stream().mapToInt(q -> Math.round(q)).boxed().collect(Collectors.toList()));
         }
 
         if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {

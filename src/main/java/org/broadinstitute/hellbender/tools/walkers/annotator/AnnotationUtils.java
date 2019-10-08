@@ -36,12 +36,21 @@ public final class AnnotationUtils {
     }
 
     /**
-     * Helper function to convert a List of Strings to a comma-separated String
+     * Helper function to convert a List of Strings to a pipe-separated String, as for raw annotations
      * @param somethingList the ArrayList with String data
-     * @return a comma-separated String
+     * @return a pipe-separated String
      */
     public static String encodeAnyASList( final List<?> somethingList) {
         return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
+    }
+
+    /**
+     * Helper function to convert a comma-separated String (such as a vc.getAttrbute().toString() output) to a List of Strings
+     * @param somethingList the allele-specific annotations string; may have brackets
+     * @return a list of allele-specific annotation entries
+     */
+    public static List<String> decodeAnyASList( final String somethingList) {
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_REDUCED_DELIM));
     }
 
     /**

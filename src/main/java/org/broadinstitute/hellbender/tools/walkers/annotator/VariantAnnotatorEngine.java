@@ -76,7 +76,9 @@ public final class VariantAnnotatorEngine {
         keepRawCombinedAnnotations = keepCombined;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
-                reducibleKeys.addAll(((ReducibleAnnotation) annot).getRawKeyNames());
+                for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames()) {
+                    reducibleKeys.add(rawKey);
+                }
             }
         }
     }
@@ -236,12 +238,17 @@ public final class VariantAnnotatorEngine {
                     variantAnnotations.putAll(annotationsFromCurrentType);
                 }
                 //clean up raw annotation data after annotations are finalized
-                if (!keepRawCombinedAnnotations) {
-                    variantAnnotations.keySet().removeAll(currentASannotation.getRawKeyNames());
+                for (final String rawKey: currentASannotation.getRawKeyNames()) {
+                    if (!keepRawCombinedAnnotations) {
+                        variantAnnotations.remove(rawKey);
+                    }
                 }
             }
         }
-        variantAnnotations.remove(GATKVCFConstants.AS_QUAL_KEY); //this is manual because the "rawKeys" get added by genotyping
+        //this is manual because the AS_QUAL "rawKey" get added by genotyping
+        if (!keepRawCombinedAnnotations) {
+            variantAnnotations.remove(GATKVCFConstants.AS_QUAL_KEY);
+        }
 
         // generate a new annotated VC
         final VariantContextBuilder builder = new VariantContextBuilder(vc).attributes(variantAnnotations);

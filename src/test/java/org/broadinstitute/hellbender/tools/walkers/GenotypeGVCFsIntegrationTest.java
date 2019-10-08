@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -472,5 +473,44 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         for (final VariantContext vc : results) {
             Assert.assertTrue(vc.getNAlleles() <= 3);  //NAlleles includes ref
         }
+    }
+
+    @Test
+    public void testRawAndFinalizedAlleleSpecificAnnotationsThoroughly() {
+        final File output = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args =   new ArgumentsBuilder()
+                .addVCF(new File(ALLELE_SPECIFIC_DIRECTORY, "NA12878.AS.chr20snippet.g.vcf"))
+                .addReference(new File(b37Reference))
+                .addOutput(output)
+                .addBooleanArgument("keep-combined", true)
+                .addArgument("A", "ClippingRankSumTest")
+                .addArgument("G", "AS_StandardAnnotation")
+                .addArgument("G", "StandardAnnotation")
+                .addBooleanArgument("allow-old-rms-mapping-quality-annotation-data", true);
+        runCommandLine(args);
+
+        List<VariantContext> results = VariantContextTestUtils.getVariantContexts(output);
+        //there are only about 25 VCs here so we can read them all into memory
+        for (final VariantContext vc : results) {
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,
+                    VCFHeaderLineCount.A, false);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.A, false);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.A, false);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_SB_TABLE_KEY,
+                    VCFHeaderLineCount.R);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_FISHER_STRAND_KEY,
+                    VCFHeaderLineCount.A, false);
+            VariantContextTestUtils.assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,
+                    VCFHeaderLineCount.A, false);
+        }
+
     }
 }
