@@ -58,7 +58,7 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.20.3')
-final picardVersion = System.getProperty('picard.version','2.20.7')
+final picardVersion = System.getProperty('picard.version','2.21.1')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.4.3')
 final scalaVersion = System.getProperty('scala.version', '2.11')
