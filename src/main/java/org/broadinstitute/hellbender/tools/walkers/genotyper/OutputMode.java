@@ -10,7 +10,9 @@ public enum OutputMode {
     /** produces calls at variant sites and confident reference sites */
     EMIT_ALL_CONFIDENT_SITES,
 
-    /** produces calls at any callable site regardless of confidence; this argument is intended only for point
-     * mutations (SNPs); it will not produce a comprehensive set of indels. */
-    EMIT_ALL_SITES
+    /** Produces calls at any region over the activity threshold regardless of confidence. On occasion, this will output
+     * HOM_REF records where no call could be confidently made. This does not necessarily output calls for all sites in
+     * a region. This argument is intended only for point mutations (SNPs); it will not produce a comprehensive set of
+     * indels. */
+    EMIT_ALL_ACTIVE_SITES
 }

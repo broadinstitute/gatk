@@ -138,12 +138,12 @@ public class StandardCallerArgumentCollection implements Serializable {
     public OutputMode outputMode = OutputMode.EMIT_VARIANTS_ONLY;
 
     /**
-     * Advanced, experimental argument: if SNP likelihood model is specified, and if EMIT_ALL_SITES output mode is set, when we set this argument then we will also emit PLs at all sites.
+     * Advanced, experimental argument: if SNP likelihood model is specified, and if EMIT_ALL_ACTIVE_SITES output mode is set, when we set this argument then we will also emit PLs at all sites.
      * This will give a measure of reference confidence and a measure of which alt alleles are more plausible (if any).
      * WARNINGS:
      * - This feature will inflate VCF file size considerably.
      * - All SNP ALT alleles will be emitted with corresponding 10 PL values.
-     * - An error will be emitted if EMIT_ALL_SITES is not set, or if anything other than diploid SNP model is used
+     * - An error will be emitted if EMIT_ALL_ACTIVE_SITES is not set, or if anything other than diploid SNP model is used
      */
     @Advanced
     @Argument(fullName = "all-site-pls", doc = "Annotate all sites with PLs", optional = true)

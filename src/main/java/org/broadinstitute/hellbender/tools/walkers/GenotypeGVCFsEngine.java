@@ -392,8 +392,8 @@ public class GenotypeGVCFsEngine
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to uac separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
-        //GATK4 uses EMIT_ALL_SITES to ensure LowQual sites are emitted.
-        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_SITES : OutputMode.EMIT_VARIANTS_ONLY;
+        //GATK4 uses EMIT_ALL_ACTIVE_SITES to ensure LowQual sites are emitted.
+        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
         return uac;
     }
 
