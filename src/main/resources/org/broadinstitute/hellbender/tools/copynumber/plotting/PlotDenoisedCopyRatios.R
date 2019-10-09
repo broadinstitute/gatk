@@ -5,13 +5,13 @@ library(optparse)
 library(data.table)
 
 option_list = list(
-    make_option(c("--sample_name", "-sample_name"), dest="sample_name", action="store"),
-    make_option(c("--standardized_copy_ratios_file", "-standardized_copy_ratios_file"), dest="standardized_copy_ratios_file", action="store"),
-    make_option(c("--denoised_copy_ratios_file", "-denoised_copy_ratios_file"), dest="denoised_copy_ratios_file", action="store"),
-    make_option(c("--contig_names", "-contig_names"), dest="contig_names", action="store"),         #string with elements separated by "CONTIG_DELIMITER"
-    make_option(c("--contig_lengths", "-contig_lengths"), dest="contig_lengths", action="store"),   #string with elements separated by "CONTIG_DELIMITER"
-    make_option(c("--output_dir", "-output_dir"), dest="output_dir", action="store"),
-    make_option(c("--output_prefix", "-output_prefix"), dest="output_prefix", action="store"))
+    make_option(c("--sample_name"), dest="sample_name", action="store"),
+    make_option(c("--standardized_copy_ratios_file"), dest="standardized_copy_ratios_file", action="store"),
+    make_option(c("--denoised_copy_ratios_file"), dest="denoised_copy_ratios_file", action="store"),
+    make_option(c("--contig_names"), dest="contig_names", action="store"),      #string with elements separated by "CONTIG_DELIMITER"
+    make_option(c("--contig_lengths"), dest="contig_lengths", action="store"),  #string with elements separated by "CONTIG_DELIMITER"
+    make_option(c("--output_dir"), dest="output_dir", action="store"),
+    make_option(c("--output_prefix"), dest="output_prefix", action="store"))
 
 opt = parse_args(OptionParser(option_list=option_list))
 

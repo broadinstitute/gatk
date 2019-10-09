@@ -5,13 +5,14 @@ library(optparse)
 library(data.table)
 
 option_list = list(
-make_option(c("--sample_name", "-sample_name"), dest="sample_name", action="store"),
-make_option(c("--denoised_copy_ratios_file", "-denoised_copy_ratios_file"), dest="denoised_copy_ratios_file", action="store"),
-make_option(c("--allelic_counts_file", "-allelic_counts_file"), dest="allelic_counts_file", action="store"),
-make_option(c("--modeled_segments_file", "-modeled_segments_file"), dest="modeled_segments_file", action="store"),
-make_option(c("--contig_names", "-contig_names"), dest="contig_names", action="store"),         #string with elements separated by "CONTIG_DELIMITER"
-make_option(c("--contig_lengths", "-contig_lengths"), dest="contig_lengths", action="store"),   #string with elements separated by "CONTIG_DELIMITER"
-make_option(c("--output_file", "-output_file"), dest="output_file", action="store"))
+    make_option(c("--sample_name"), dest="sample_name", action="store"),
+    make_option(c("--denoised_copy_ratios_file"), dest="denoised_copy_ratios_file", action="store"),
+    make_option(c("--allelic_counts_file"), dest="allelic_counts_file", action="store"),
+    make_option(c("--modeled_segments_file"), dest="modeled_segments_file", action="store"),
+    make_option(c("--contig_names"), dest="contig_names", action="store"),      #string with elements separated by "CONTIG_DELIMITER"
+    make_option(c("--contig_lengths"), dest="contig_lengths", action="store"),  #string with elements separated by "CONTIG_DELIMITER"
+    make_option(c("--output_file"), dest="output_file", action="store"))
+
 opt = parse_args(OptionParser(option_list=option_list))
 
 sample_name = opt[["sample_name"]]
