@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -18,13 +19,14 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
     @Test
     public void test() {
         final File output = createTempFile("output", ".table");
-        final String[] args = {
-                "-I", NA12878.getAbsolutePath(),
-                "-V", thousandGenomes,
-                "-L", thousandGenomes,
-                "-O", output.getAbsolutePath(),
-                "-" + GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, "0.9"
-        };
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(NA12878)
+                .addVCF(new File(thousandGenomes))
+                .addIntervalFile(new File(thousandGenomes))
+                .addOutput(output)
+                .addNumericArgument(GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, 0.9);
+
         runCommandLine(args);
 
         final ImmutablePair<String, List<PileupSummary>> sampleAndResult = PileupSummary.readFromFile(output);
@@ -67,12 +69,13 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
     public void testNoAFFieldInHeader() {
         final File vcfWithoutAF = new File(publicTestDir, "empty.vcf");
         final File output = createTempFile("output", ".table");
-        final String[] args = {
-                "-I", NA12878.getAbsolutePath(),
-                "-V", vcfWithoutAF.getAbsolutePath(),
-                "-L", vcfWithoutAF.getAbsolutePath(),
-                "-O", output.getAbsolutePath(),
-        };
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(NA12878)
+                .addVCF(vcfWithoutAF)
+                .addIntervalFile(vcfWithoutAF)
+                .addOutput(output);
+
         runCommandLine(args);
     }
 
