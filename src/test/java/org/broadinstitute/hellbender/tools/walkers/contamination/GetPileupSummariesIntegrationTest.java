@@ -76,4 +76,26 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    // This tool is often run as part of a scattered Mutect2 workflow.  It is possible that a scattered job may be over some interval,
+    // the mitochondria or Y chromosome, for example, that does not overlap any variant in the -V input.  Therefore, we test that the
+    // --allow-empty-intervals argument prevents errors in such a scatter and returns an empty table
+    @Test
+    public void testEmptyScatter() {
+        final File output = createTempFile("output", ".table");
+        final String[] args = {
+                "-I", NA12878.getAbsolutePath(),
+                "-V", thousandGenomes,
+                "-L", thousandGenomes,
+                "-L", "21",
+                "--interval-set-rule", "INTERSECTION",
+                "-allow-empty-intervals",
+                "-O", output.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        final ImmutablePair<String, List<PileupSummary>> sampleAndResult = PileupSummary.readFromFile(output);
+
+        final List<PileupSummary> result = sampleAndResult.getRight();
+        Assert.assertTrue(result.isEmpty());
+    }
 }

@@ -603,11 +603,11 @@ task M2 {
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
+                --allow-empty-intervals -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
 
             if [[ ! -z "~{normal_bam}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
+                    --allow-empty-intervals -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
             fi
         fi
     >>>

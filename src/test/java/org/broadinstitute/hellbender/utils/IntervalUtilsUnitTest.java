@@ -387,11 +387,11 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         }
 
         List<GenomeLoc> ret;
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, listEveryTwoFromOne, IntervalSetRule.UNION);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, listEveryTwoFromOne, IntervalSetRule.UNION, false);
         Assert.assertEquals(ret.size(), 100);
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, listEveryTwoFromOne, null);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, listEveryTwoFromOne, null, false);
         Assert.assertEquals(ret.size(), 100);
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, listEveryTwoFromOne, IntervalSetRule.INTERSECTION);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, listEveryTwoFromOne, IntervalSetRule.INTERSECTION, false);
         Assert.assertEquals(ret.size(), 0);
     }
 
@@ -409,11 +409,11 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         }
 
         List<GenomeLoc> ret;
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.UNION);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.UNION, false);
         Assert.assertEquals(ret.size(), 150);
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, null);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, null, false);
         Assert.assertEquals(ret.size(), 150);
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.INTERSECTION);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.INTERSECTION, false);
         Assert.assertEquals(ret.size(), 50);
     }
 
@@ -432,11 +432,11 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         }
 
         List<GenomeLoc> ret;
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.UNION);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.UNION, false);
         Assert.assertEquals(ret.size(), 40);
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, null);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, null, false);
         Assert.assertEquals(ret.size(), 40);
-        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.INTERSECTION);
+        ret = IntervalUtils.mergeListsBySetOperator(listEveryTwoFromTwo, allSites, IntervalSetRule.INTERSECTION, false);
         Assert.assertEquals(ret.size(), 20);
     }
 
@@ -452,7 +452,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         source2.add(hg19GenomeLocParser.createGenomeLoc("1", 16, 18));
         source2.add(hg19GenomeLocParser.createGenomeLoc("1", 22, 24));
 
-        List<GenomeLoc> ret = IntervalUtils.mergeListsBySetOperator(source1, source2, IntervalSetRule.INTERSECTION);
+        List<GenomeLoc> ret = IntervalUtils.mergeListsBySetOperator(source1, source2, IntervalSetRule.INTERSECTION, false);
         Assert.assertEquals(ret.size(), 2);
     }
 
@@ -1130,7 +1130,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         List<String> intervalArgs = new ArrayList<>(1);
         intervalArgs.add(gatkIntervalFile.getAbsolutePath());
 
-        IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+        IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser, false);
     }
 
     @Test(expectedExceptions={UserException.MalformedFile.class, UserException.MalformedGenomeLoc.class}, dataProvider="invalidIntervalTestData")
@@ -1154,7 +1154,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
         // loadIntervals() will validate all intervals against the sequence dictionary in our genomeLocParser,
         // and should throw for all intervals in our invalidIntervalTestData set
-        IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+        IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser, false);
     }
 
     // TODO - remove once a corrected version of the exome interval list is released.
@@ -1260,7 +1260,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test( dataProvider = "loadintervals")
     public void loadIntervalsTest(List<String> intervals, IntervalSetRule setRule, int padding, List<GenomeLoc> results){
-        GenomeLocSortedSet loadedIntervals = IntervalUtils.loadIntervals(intervals, setRule, IntervalMergingRule.ALL, padding, hg19GenomeLocParser);
+        GenomeLocSortedSet loadedIntervals = IntervalUtils.loadIntervals(intervals, setRule, IntervalMergingRule.ALL, padding, hg19GenomeLocParser, false);
         Assert.assertEquals(loadedIntervals, results);
     }
 
@@ -1276,7 +1276,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "loadIntervalsFromFeatureFileData")
     public void testLoadIntervalsFromFeatureFile( final File featureFile, final List<GenomeLoc> expectedIntervals ) {
-        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser, false);
         Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + featureFile.getAbsolutePath());
     }
 
@@ -1286,7 +1286,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
             final Path jimfsRootPath = fs.getRootDirectories().iterator().next();
             final Path jimfsCopy = Files.copy(featureFile.toPath(), jimfsRootPath.resolve(featureFile.getName()));
             final String jimfsPathString = jimfsCopy.toAbsolutePath().toUri().toString();
-            final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(jimfsPathString), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+            final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(jimfsPathString), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser, false);
             Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + jimfsPathString);
         }
     }
@@ -1296,17 +1296,17 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     // So we'll blow up with MalformedGenomeLoc and not anything related to files
     @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testLoadIntervalsFromNonExistentFile() {
-        IntervalUtils.loadIntervals(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        IntervalUtils.loadIntervals(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser, false);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testLoadIntervalsFromUnrecognizedFormatFile() {
-        IntervalUtils.loadIntervals(Arrays.asList(INTERVAL_TEST_DATA + "unrecognized_format_file.xyz"), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        IntervalUtils.loadIntervals(Arrays.asList(INTERVAL_TEST_DATA + "unrecognized_format_file.xyz"), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser, false);
     }
 
     @Test(expectedExceptions = UserException.MalformedFile.class)
     public void loadIntervalsEmptyFile(){
-        IntervalUtils.loadIntervals(Arrays.asList(emptyIntervals), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        IntervalUtils.loadIntervals(Arrays.asList(emptyIntervals), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser, false);
     }
 
     @Test(dataProvider = "genomeLocsFromLocatablesData",expectedExceptions = IllegalArgumentException.class)

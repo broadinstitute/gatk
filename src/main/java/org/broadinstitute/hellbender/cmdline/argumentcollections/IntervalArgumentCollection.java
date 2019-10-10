@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -29,6 +30,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
     public static final String INTERVAL_PADDING_LONG_NAME = "interval-padding";
     public static final String INTERVAL_EXCLUSION_PADDING_LONG_NAME = "interval-exclusion-padding";
     public static final String INTERVAL_MERGING_RULE_LONG_NAME = "interval-merging-rule";
+    public static final String ALLOW_EMPTY_INTERVALS_LONG_NAME = "allow-empty-intervals";
 
     /**
      * Subclasses must provide a -L argument and override this to return the results of that argument.
@@ -95,6 +97,13 @@ public abstract class IntervalArgumentCollection implements Serializable {
      */
     @Argument(fullName = INTERVAL_MERGING_RULE_LONG_NAME, shortName = "imr", doc = "Interval merging rule for abutting intervals", optional = true)
     protected IntervalMergingRule intervalMergingRule = IntervalMergingRule.ALL;
+
+    /**
+     * By default, the program fails if no intervals remain after intersection and exclusion.  This argument overrides that behavior.
+     */
+    @Hidden
+    @Argument(fullName = ALLOW_EMPTY_INTERVALS_LONG_NAME, doc = "Allow empty intervals resulting from intersection and exclusion", optional = true)
+    protected boolean allowEmptyIntervals = false;
 
     /**
      * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records
@@ -171,13 +180,13 @@ public abstract class IntervalArgumentCollection implements Serializable {
             includeSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(genomeLocParser.getSequenceDictionary());
         } else {
             try {
-                includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMergingRule, intervalPadding, genomeLocParser);
+                includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMergingRule, intervalPadding, genomeLocParser, allowEmptyIntervals);
             } catch( UserException.EmptyIntersection e) {
-                throw new CommandLineException.BadArgumentValue("-L, --" + IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, getIntervalStrings()+","+intervalSetRule, "The specified intervals had an empty intersection");
+                throw new CommandLineException.BadArgumentValue("-L, --" + IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, getIntervalStrings() + "," + intervalSetRule, "The specified intervals had an empty intersection");
             }
         }
 
-        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMergingRule, intervalExclusionPadding, genomeLocParser);
+        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMergingRule, intervalExclusionPadding, genomeLocParser, allowEmptyIntervals);
         if ( excludeSortedSet.contains(GenomeLoc.UNMAPPED) ) {
             throw new UserException("-XL unmapped is not currently supported");
         }
@@ -190,7 +199,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
         else {
             intervals = includeSortedSet.subtractRegions(excludeSortedSet);
 
-            if( intervals.isEmpty()){
+            if( !allowEmptyIntervals && intervals.isEmpty()){
                 throw new CommandLineException.BadArgumentValue("-L,-XL",getIntervalStrings().toString() + ", "+excludeIntervalStrings.toString(),"The intervals specified for exclusion with -XL removed all territory specified by -L.");
             }
             // logging messages only printed when exclude (-XL) arguments are given

@@ -218,7 +218,8 @@ public final class IntervalUtils {
             final IntervalSetRule intervalSetRule,
             final IntervalMergingRule intervalMergingRule,
             final int padding,
-            final GenomeLocParser genomeLocParser) {
+            final GenomeLocParser genomeLocParser,
+            final boolean allowEmptyResult) {
         Utils.nonNull(intervalStrings);
         List<GenomeLoc> allIntervals = new ArrayList<>();
         for ( final String intervalString : intervalStrings) {
@@ -229,7 +230,7 @@ public final class IntervalUtils {
                 intervals = getIntervalsWithFlanks(genomeLocParser, intervals, padding);
             }
 
-            allIntervals = mergeListsBySetOperator(intervals, allIntervals, intervalSetRule);
+            allIntervals = mergeListsBySetOperator(intervals, allIntervals, intervalSetRule, allowEmptyResult);
         }
 
         return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
@@ -391,9 +392,10 @@ public final class IntervalUtils {
      * @param setOne a list of genomeLocs, in order (cannot be NULL)
      * @param setTwo a list of genomeLocs, also in order (cannot be NULL)
      * @param rule the rule to use for merging, i.e. union, intersection, etc
+     * @param allowEmptyResult
      * @return a list, correctly merged using the specified rule
      */
-    public static List<GenomeLoc> mergeListsBySetOperator(final List<GenomeLoc> setOne, final List<GenomeLoc> setTwo, final IntervalSetRule rule) {
+    public static List<GenomeLoc> mergeListsBySetOperator(final List<GenomeLoc> setOne, final List<GenomeLoc> setTwo, final IntervalSetRule rule, boolean allowEmptyResult) {
         // shortcut, if either set is zero, return the other set
         if (setOne == null || setOne.isEmpty() || setTwo == null || setTwo.isEmpty()) {
             return Collections.unmodifiableList((setOne == null || setOne.isEmpty()) ? setTwo : setOne);
@@ -434,7 +436,7 @@ public final class IntervalUtils {
         }
 
         //if we have an empty list, throw an exception.  If they specified intersection and there are no items, this is bad.
-        if (retList.isEmpty()) {
+        if (!allowEmptyResult && retList.isEmpty()) {
             throw new UserException.EmptyIntersection("There was an empty intersection");
         }
 

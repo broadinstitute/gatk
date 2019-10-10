@@ -43,13 +43,14 @@ public class IntervalOverlappingIterator<T extends Locatable> implements Iterato
     public IntervalOverlappingIterator(Iterator<T> iterator, List<SimpleInterval> intervals,
         SAMSequenceDictionary dictionary) {
         Utils.nonNull(iterator);
-        Utils.nonEmpty(intervals);
         Utils.nonNull(dictionary);
         this.iterator = iterator;
         this.intervals = intervals.iterator();
         this.dictionary = dictionary;
-        currentInterval = this.intervals.next();
-        advance();
+        if (!intervals.isEmpty()) { // if intervals are empty, next remains null and we have a trivial, empty iterator
+            currentInterval = this.intervals.next();
+            advance();
+        }
     }
 
     @Override

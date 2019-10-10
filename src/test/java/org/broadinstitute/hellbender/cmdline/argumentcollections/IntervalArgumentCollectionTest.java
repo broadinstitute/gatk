@@ -124,6 +124,22 @@ public final class IntervalArgumentCollectionTest extends GATKBaseTest {
         iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
     }
 
+    /**
+     * Asserts that the interval set rule is applied first, then the interval ordering rule. This would give an error because the overlap is empty
+     * if not for the allowEmptyIntervals argument.
+     * @param iac
+     */
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalSetAndMergingOverlapWithEmptyIntervalsAllowed(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:101-200");
+        iac.addToIntervalStrings("1:90-110");
+        iac.allowEmptyIntervals = true;
+        iac.intervalSetRule = IntervalSetRule.INTERSECTION;
+        iac.intervalMergingRule = IntervalMergingRule.ALL;
+        iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
+    }
+
     @Test(dataProvider = "optionalOrNot")
     public void testIntervalSetRuleIntersection(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:1-100");
@@ -148,10 +164,27 @@ public final class IntervalArgumentCollectionTest extends GATKBaseTest {
         iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
     }
 
+    @Test(dataProvider = "optionalOrNot")
+    public void testAllExcludedWithEmptyIntervalsAllowed(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:10-20");
+        iac.excludeIntervalStrings.add("1:1-200");
+        iac.allowEmptyIntervals = true;
+        iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
+    }
+
     @Test(dataProvider = "optionalOrNot", expectedExceptions= CommandLineException.BadArgumentValue.class)
     public void testNoIntersection(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:10-20");
         iac.addToIntervalStrings("1:50-200");
+        iac.intervalSetRule = IntervalSetRule.INTERSECTION;
+        iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testNoIntersectionWithEmptyIntervalsAllowed(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:10-20");
+        iac.addToIntervalStrings("1:50-200");
+        iac.allowEmptyIntervals = true;
         iac.intervalSetRule = IntervalSetRule.INTERSECTION;
         iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
     }

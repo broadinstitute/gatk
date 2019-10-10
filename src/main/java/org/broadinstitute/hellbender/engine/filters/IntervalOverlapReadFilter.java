@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
@@ -14,7 +13,6 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.lang.annotation.Documented;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,7 +66,7 @@ public final class IntervalOverlapReadFilter extends ReadFilter {
             warning.warn("You are using the IntervalOverlapReadFilter to subset your input, this is a very slow operation and it will usually be preferable to use the '-L' command or provide an interval list file for a sorted and indexed input file");
             // first load the intervals
             final GenomeLocParser genomeLocParser = new GenomeLocParser(this.samHeader.getSequenceDictionary());
-            final GenomeLocSortedSet intervals = IntervalUtils.loadIntervals(intervalStrings, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+            final GenomeLocSortedSet intervals = IntervalUtils.loadIntervals(intervalStrings, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser, false);
             // then initializes the overlap detector with the loaded intervals
             this.detector = OverlapDetector.create(intervals.toList());
         }
