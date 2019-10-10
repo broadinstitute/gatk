@@ -53,7 +53,7 @@ matrix:
      - jdk: openjdk11
        env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_VERBOSITY=minimal
      - jdk: openjdk11
-       env: SCALA_VERSION=2.12 TEST_TYPE=cloud TEST_REQUIRE_GCLOUD=ttrue TEST_VERBOSITY=minimal
+       env: SCALA_VERSION=2.12 TEST_TYPE=cloud TEST_REQUIRE_GCLOUD=true TEST_VERBOSITY=minimal
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
