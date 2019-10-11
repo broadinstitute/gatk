@@ -37,7 +37,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     Set<String> observedDiscordantNames = new HashSet<>();
     int currentDiscordantPosition = -1;
-    int prevSplitPos = -1;
+    int prevClippedReadEndPos = -1;
     String currentChrom = null;
     private OutputStreamWriter peWriter;
     private OutputStreamWriter srWriter;
@@ -269,18 +269,21 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             return;
         }
         final int dist;
-        if (prevSplitPos == -1) {
+        if (prevClippedReadEndPos == -1) {
             dist = 0;
         } else {
-            dist = Math.abs(splitPosition.pos - prevSplitPos);
+            dist = Math.abs(splitPosition.pos - prevClippedReadEndPos);
         }
-        prevSplitPos = splitPosition.pos;
+        prevClippedReadEndPos = read.getEnd();
         if (currentChrom == null) {
             currentChrom = read.getContig();
         }
-        if (dist > maxSplitDist || currentChrom != read.getContig()) {
+        if (dist > maxSplitDist || !currentChrom.equals(read.getContig())) {
             flushSplitCounts();
-            currentChrom = read.getContig();
+            if (!currentChrom.equals(read.getContig())) {
+                currentChrom = read.getContig();
+                prevClippedReadEndPos = -1;
+            }
         }
 
         if (! splitCounts.containsKey(splitPosition)) {
@@ -293,7 +296,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private void flushSplitCounts() {
         final Comparator<SplitPos> comparator = (o1, o2) -> {
             if (o1.pos != o2.pos) {
-                return new Integer(o1.pos).compareTo(o2.pos);
+                return Integer.compare(o1.pos, o2.pos);
             } else {
                 return o1.direction.compareTo(o2.direction);
             }
@@ -313,7 +316,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     private SplitPos getSplitPosition(GATKRead read) {
         if (read.getCigar().getFirstCigarElement().getOperator() == CigarOperator.M) {
-            final int matchLength = read.getCigar().getCigarElements().stream().filter(e -> e.getOperator() == CigarOperator.M).mapToInt(CigarElement::getLength).sum();
+            final int matchLength = read.getCigar().getCigarElements().stream().filter(e -> e.getOperator().consumesReferenceBases()).mapToInt(CigarElement::getLength).sum();
             return new SplitPos(read.getStart() + matchLength, POSITION.RIGHT);
         } else if (read.getCigar().getLastCigarElement().getOperator() == CigarOperator.M) {
             return new SplitPos(read.getStart(), POSITION.LEFT);
