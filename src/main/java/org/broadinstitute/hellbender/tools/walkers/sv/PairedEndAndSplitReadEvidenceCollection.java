@@ -68,13 +68,13 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     static class DiscordantRead {
-        boolean readReverseStrand;
-        boolean mateReverseStrand;
-        String contig;
-        int start;
-        String mateContig;
-        int mateStart;
-        String name;
+        private boolean readReverseStrand;
+        private boolean mateReverseStrand;
+        private String contig;
+        private int start;
+        private String mateContig;
+        private int mateStart;
+        private String name;
 
         public DiscordantRead(final GATKRead read) {
             this.readReverseStrand = read.isReverseStrand();
@@ -172,8 +172,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     static class SplitPos {
-        POSITION direction;
-        int pos;
+        private POSITION direction;
+        private int pos;
 
         public SplitPos(final int start, final POSITION direction) {
             this.pos = start;
