@@ -1,7 +1,25 @@
-## Running the Spark WDL
+# Running the Spark WDL
 
-This directory contains WDL for running GATK Spark tools on a
-Dataproc cluster.
+This directory contains WDL for running GATK Spark tools on a single
+multicore machine, or on a Dataproc cluster.
+
+## Multicore
+
+The file _ReadsPipelineSparkMulticore.wdl_ can be used to run on a
+single multicore machine. This is typically done using a hosted
+Cromwell backend, such as [Terra](https://app.terra.bio/), so a
+dedicated cloud machine with a large number of cores (e.g. 96 for an
+exome) can be started by Cromwell.
+
+See *ReadsPipelineSparkMulticore_terra* for sample data tables for
+Terra.
+
+## Dataproc cluster
+
+To run on a Dataproc cluster it is straightforward to run workflows
+locally (the computation takes place on the cluster, of course),
+or using a hosted Cromwell backend. The instructions here focus
+on running locally.
 
 ### Pre-requisites
 
@@ -51,10 +69,6 @@ the GATK Spark JAR so it doesn't need to be uploaded for every job
 (equivalent to the `GATK_GCS_STAGING` environment variable in GATK).
 
 ### Running workflows
-
-Workflows can be run locally, or using a hosted Cromwell backend,
-such as [Terra](https://app.terra.bio/). The instructions here focus
-on running locally.
 
 In the _spark_wdl_ directory, run the workflow for the small dataset
 with the following command:

@@ -1,0 +1,2 @@
+workspace:gatk	gatk_docker
+/gatk/gatk	broadinstitute/gatk:4.1.4.0
