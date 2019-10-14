@@ -63,7 +63,7 @@ repositories {
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.21.2')
 final picardVersion = System.getProperty('picard.version','2.21.9')
-final barclayVersion = System.getProperty('barclay.version','2.1.0')
+final barclayVersion = System.getProperty('barclay.version','2.1.0-10-ge039960-SNAPSHOT')
 final sparkVersion = System.getProperty('spark.version', '2.4.3')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
@@ -742,7 +742,72 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
 }
 
+// Generate GATK Tool WDL
+task gatkWDLGen(type: Javadoc, dependsOn: classes) {
+    final File gatkWDLDir = new File("$docBuildDir/wdlGen")
+    outputs.dir(gatkWDLDir)
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!gatkWDLDir.exists() && !gatkWDLDir.mkdirs()) {
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK DL output in task (%s)",
+                    gatkWDLDir.getAbsolutePath(),
+                    it.name));
+        }
+        copy {
+            from('src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates/common.html')
+            into gatkWDLDir
+        }
+    }
+    // NOTE: For now we don't generate WDL for Picard tools since they're not annotated, so we don't include
+    // the Picard source jar for this task.
+    source = sourceSets.main.allJava
+    include '**/*.java'
 
+    // The gatkWDLGen process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
+    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
+
+    outputs.dir(gatkWDLDir)
+    options.destinationDirectory(gatkWDLDir)
+
+    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates");
+    options.addStringOption("output-file-extension", "wdl")
+    options.addStringOption("index-file-extension", "html")
+
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
+}
+
+task gatkWDLGenValidation(dependsOn: gatkWDLGen) {
+    def execWOMToolValidation = { validateWDL ->
+        println "Executing: $validateWDL"
+        try {
+            def retCode = validateWDL.execute().waitFor()
+            if (retCode.intValue() != 0) {
+                throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
+            }
+            return retCode
+        } catch (IOException e) {
+            throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+        }
+    }
+
+    doLast {
+        final wdlGenFolder = "build/docs/wdlgen"
+        def wdlFiles = fileTree(dir: wdlGenFolder)
+        wdlFiles = wdlFiles.filter { f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")}
+        return wdlFiles.any() { wdlFile ->
+            //TODO: fix this before submitting
+            // final womtoolLocation = System.env.HOME/womtool.jar
+            final womtoolLocation = "/Users/cnorman/projects/cromwell/womtool/target/scala-2.12/womtool-47-1ce5bbf-SNAP.jar"
+            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+            execWOMToolValidation(validateWDLCommand)
+        }
+    }
+
+}
 
 /**
  *This specifies what artifacts will be built and uploaded when performing a maven upload.
