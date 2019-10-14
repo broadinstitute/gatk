@@ -186,7 +186,7 @@ public class VariantEval extends MultiVariantWalker {
      * List of feature tracks to be used for specifying "known" variants other than dbSNP.
      */
     @Argument(shortName="known-name", doc="Name of feature bindings containing variant sites that should be treated as known when splitting eval features into known and novel subsets", optional=true)
-    protected HashSet<String> KNOWN_NAMES = new HashSet<String>();
+    protected Set<String> KNOWN_NAMES = new HashSet<String>();
     List<FeatureInput<VariantContext>> knowns = new ArrayList<>();
 
     // Stratification arguments
