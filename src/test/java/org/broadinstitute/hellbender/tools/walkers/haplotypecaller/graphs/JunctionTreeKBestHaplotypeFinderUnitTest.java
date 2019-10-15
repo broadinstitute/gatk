@@ -1216,7 +1216,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
 
         LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
-        Iterator edgesInOrder = pivotalEdges.iterator();
+        Iterator<MultiSampleEdge> edgesInOrder = pivotalEdges.iterator();
         ListIterator<String> expectedEdgeKmerTargetsFOrPivotalEdges = Arrays.asList(new String[]{"AACAAGT","GGTTCGG","GGGTTCA","CGAAGTC","TAATATG"}).listIterator();
 
         // Asserting that the order of edges is as expected
@@ -1255,7 +1255,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
 
         LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
-        Iterator edgesInOrder = pivotalEdges.iterator();
+        Iterator<MultiSampleEdge> edgesInOrder = pivotalEdges.iterator();
         ListIterator<String> expectedEdgeKmerTargetsFOrPivotalEdges = Arrays.asList(new String[]{"AACAAGT","GGTTCGG", // edges corresoinding to the start of alt1 path
                 "CGGTCTG", // Edge corresponding to the G insertion (This would be dropped if we didn't include reference edges with no support in this calculation)
                 "CGAAGTC",
