@@ -10,6 +10,5 @@ public class PairedEndAndSplitReadEvidenceCollectionIntegrationTest extends GATK
     IntegrationTestSpec spec = new IntegrationTestSpec(
             " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s --process-secondary-alignments",
             Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.bam"));
-        spec.executeTest("test splits with overhangs", this);
 
 }
