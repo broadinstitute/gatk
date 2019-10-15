@@ -1222,7 +1222,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         // Asserting that the order of edges is as expected
         Assert.assertEquals(pivotalEdges.size(), 5);
         while (edgesInOrder.hasNext()) {
-            MultiSampleEdge nextEdge = (MultiSampleEdge)edgesInOrder.next();
+            MultiSampleEdge nextEdge = edgesInOrder.next();
             String expectedKmerEdge = expectedEdgeKmerTargetsFOrPivotalEdges.next();
             String nextTarget = assembler.getEdgeTarget(nextEdge).getSequenceString();
             Assert.assertEquals(nextTarget, expectedKmerEdge);
@@ -1265,7 +1265,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         // Asserting that the order of edges is as expected
         Assert.assertEquals(pivotalEdges.size(), 6);
         while (edgesInOrder.hasNext()) {
-            MultiSampleEdge nextEdge = (MultiSampleEdge)edgesInOrder.next();
+            MultiSampleEdge nextEdge = edgesInOrder.next();
             String expectedKmerEdge = expectedEdgeKmerTargetsFOrPivotalEdges.next();
             String nextTarget = assembler.getEdgeTarget(nextEdge).getSequenceString();
             Assert.assertEquals(nextTarget, expectedKmerEdge);
