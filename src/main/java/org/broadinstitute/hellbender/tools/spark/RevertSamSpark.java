@@ -444,7 +444,7 @@ public class RevertSamSpark extends GATKSparkTool {
      * Method which takes an RDD of reads that is guaranteed to have every readname group placed together on the same
      * partition and maps those so a JavaPairRDD with the readname as the key.
      */
-    private static JavaPairRDD<String, Iterable<GATKRead>> spanReadsByKey(final JavaRDD<GATKRead> reads) {
+    static JavaPairRDD<String, Iterable<GATKRead>> spanReadsByKey(final JavaRDD<GATKRead> reads) {
         JavaPairRDD<String, GATKRead> nameReadPairs = reads.mapToPair(read -> new Tuple2<>(read.getName(), read));
         return SparkUtils.spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
             // for each name, separate reads by key (group name)

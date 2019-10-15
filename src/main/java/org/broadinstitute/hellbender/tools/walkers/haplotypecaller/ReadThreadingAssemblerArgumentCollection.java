@@ -167,6 +167,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */
+
     @Hidden
     @Argument(fullName="haplotype-debug-histogram-output", doc="Write debug assembly graph information to this file", optional = true)
     public String haplotypeHistogramOutput = null;
