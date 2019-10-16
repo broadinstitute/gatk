@@ -36,7 +36,6 @@ import java.util.List;
         oneLineSummary = "Collect F1R2 read counts for the Mutect2 orientation bias mixture model filter",
         programGroup = CoverageAnalysisProgramGroup.class
 )
-
 public class CollectF1R2Counts extends LocusWalker {
     @ArgumentCollection
     protected CollectF1R2CountsArgumentCollection CF1R2Args = new CollectF1R2CountsArgumentCollection();

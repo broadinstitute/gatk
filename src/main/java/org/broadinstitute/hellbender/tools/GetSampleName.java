@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
  *     -O sample_name.txt
  * </pre>
  */
-@BetaFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Emit a single sample name from the bam header into an output file. " +
