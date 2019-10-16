@@ -275,8 +275,6 @@ workflow Mutect2 {
 
     Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
     Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
-    Int merged_tumor_pileups_size = ceil(size(M2.tumor_pileups, "GB"))
-    Int merged_normal_pileups_size = ceil(size(M2.tumor_pileups, "GB"))
 
     if (run_ob_filter) {
         call LearnReadOrientationModel {
@@ -314,7 +312,7 @@ workflow Mutect2 {
     if (defined(variants_for_contamination)) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
-                input_tables = M2.tumor_pileups,
+                input_tables = flatten(M2.tumor_pileups),
                 output_name = output_basename,
                 ref_dict = ref_dict,
                 runtime_params = standard_runtime
@@ -323,7 +321,7 @@ workflow Mutect2 {
         if (defined(normal_bam)){
             call MergePileupSummaries as MergeNormalPileups {
                 input:
-                    input_tables = M2.normal_pileups,
+                    input_tables = flatten(M2.normal_pileups),
                     output_name = output_basename,
                     ref_dict = ref_dict,
                     runtime_params = standard_runtime
@@ -596,10 +594,15 @@ task M2 {
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
             ~{m2_extra_args}
 
+        m2_exit_code=$?
+
         ### GetPileupSummaries
-        # These must be created, even if they remain empty, as cromwell doesn't support optional output
-        touch tumor-pileups.table
-        touch normal-pileups.table
+
+        # If the variants for contamination and the intervals for this scatter don't intersect, GetPileupSummaries
+        # throws an error.  However, there is nothing wrong with an empty intersection for our purposes; it simply doesn't
+        # contribute to the merged pileup summaries that we create downstream.  We implement this by with array outputs.
+        # If the tool errors, no table is created and the glob yields an empty array.
+        set +e
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
@@ -610,6 +613,9 @@ task M2 {
                     -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
             fi
         fi
+
+        # the script only fails if Mutect2 itself fails
+        exit $m2_exit_code
     >>>
 
     runtime {
@@ -630,8 +636,8 @@ task M2 {
         String normal_sample = read_string("normal_name.txt")
         File stats = "~{output_stats}"
         File f1r2_counts = "f1r2.tar.gz"
-        File tumor_pileups = "tumor-pileups.table"
-        File normal_pileups = "normal-pileups.table"
+        Array[File] tumor_pileups = glob("*tumor-pileups.table")
+        Array[File] normal_pileups = glob("*normal-pileups.table")
     }
 }
 
