@@ -1228,6 +1228,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * @throws IllegalArgumentException if {@code maximumErrorPerBase} is negative.
      */
+    @VisibleForTesting
     public void filterPoorlyModeledEvidence(final ToDoubleFunction<EVIDENCE> log10MinTrueLikelihood) {
         Utils.validateArg(alleles.numberOfAlleles() > 0, "unsupported for read-likelihood collections with no alleles");
 

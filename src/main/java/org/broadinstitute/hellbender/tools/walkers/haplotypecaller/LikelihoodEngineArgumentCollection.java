@@ -71,6 +71,20 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
+    /**
+     * TODO
+     */
+    @Argument(fullName="enable-dynamic-read-disqualification-for-genotyping", doc="Will enable less strict read disqualification low base quality reads")
+    public boolean enableDynamicReadDisqualification = true;
+
+    /**
+     * TODO
+     */
+    @Advanced
+    @Hidden
+    @Argument(fullName="dynamicReadDisqualificationThreshold", doc="Constant used to scale the dynamic read disqualificaiton")
+    public double readDisqualificationThresholdConstant = PairHMMLikelihoodCalculationEngine.DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR;
+
     @ArgumentCollection
     public PairHMMNativeArgumentCollection pairHMMNativeArgs = new PairHMMNativeArgumentCollection();
 
