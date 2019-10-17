@@ -6,10 +6,12 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class LocalAlleler {
 
     public static final String LAA = "LAA";
+    public static final String LGT = "LGT";
 
     public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc){
         // new LAA
@@ -19,16 +21,23 @@ public class LocalAlleler {
 
         final Map<String, Object> localAttributes = new LinkedHashMap<>();
 
+        //construct LAA
         final LinkedHashSet<Allele> localAlleles = getLocalAlleles(originalGenotype, vc);
         final List<Integer> localAlleleIndexes = vc.getAlleleIndices(localAlleles);
+        //todo this is stupidly inefficient probably
+        localAlleleIndexes.remove(0);
         localAttributes.put(LAA, localAlleleIndexes);
 
         List<Integer> localGenotypes = new ArrayList<>(localAlleles.size());
+        List<Allele> localAlleleList = new ArrayList<>(localAlleles);
         for(final Allele allele: originalGenotype.getAlleles()){
-            List<Allele> localAlleleList = new ArrayList<>(localAlleles);
             localGenotypes.add(localAlleleList.indexOf(allele));
         }
-        localAttributes.put("LGT", localGenotypes);
+
+        String delimiter = originalGenotype.isPhased() ? Genotype.PHASED_ALLELE_SEPARATOR : Genotype.UNPHASED_ALLELE_SEPARATOR;
+        String localGenotypesString = localGenotypes.stream().map(String::valueOf).collect(Collectors.joining(delimiter));
+        localAttributes.put(LGT, localGenotypesString);
+
         GenotypeBuilder genotypeBuilder = new GenotypeBuilder(originalGenotype);
         localAttributes.forEach(genotypeBuilder::attribute);
         return genotypeBuilder.make();
@@ -45,7 +54,6 @@ public class LocalAlleler {
         if(lastAllele.isNonRefAllele()){
             localAlleles.add(Allele.NON_REF_ALLELE);
         }
-
         return localAlleles;
     }
 
