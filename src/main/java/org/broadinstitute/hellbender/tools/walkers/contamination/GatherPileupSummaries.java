@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
         oneLineSummary = "Combine output files from GetPileupSummary in the order defined by a sequence dictionary",
         programGroup = DiagnosticsAndQCProgramGroup.class
 )
-
 public class GatherPileupSummaries extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, doc = "sequence dictionary file")
     final File sequenceDictionaryFile = null;

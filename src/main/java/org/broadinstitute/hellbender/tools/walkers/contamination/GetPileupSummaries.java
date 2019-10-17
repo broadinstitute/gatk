@@ -105,7 +105,6 @@ import java.util.List;
         summary = "Tabulates pileup metrics for inferring contamination",
         oneLineSummary = "Tabulates pileup metrics for inferring contamination",
         programGroup = CoverageAnalysisProgramGroup.class)
-@BetaFeature
 @DocumentedFeature
 public class GetPileupSummaries extends LocusWalker {
 
