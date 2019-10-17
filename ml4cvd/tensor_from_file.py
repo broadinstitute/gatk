@@ -104,17 +104,15 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
 def _first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     original = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
-    flat = original.mean(axis=1)  # all leads are basically the same
-    recovery = flat[-tm.shape[0]:]
-    return tm.zero_mean_std1(recovery).reshape(tm.shape)
+    recovery = original[-tm.shape[0]:]
+    return tm.normalize_and_validate(recovery).reshape(tm.shape)
 
 
 def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'pretest')
     original = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
-    flat = original.mean(axis=1)  # all leads are basically the same
-    recovery = flat[:tm.shape[0]]
-    return tm.normalize_and_validate(recovery).reshape(tm.shape)
+    pretest = original[:tm.shape[0]]
+    return tm.normalize_and_validate(pretest).reshape(tm.shape)
 
 
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -156,39 +154,66 @@ def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize_and_validate(np.median(tensor[times <= 15]))
 
 
-TMAPS: Dict[str, TensorMap] = {}
+def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _check_phase_full_len(hd5, 'rest')
+    hrs = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')
+    phases = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_phasename')
+    min_hr = hrs[phases == 2].min()
+    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
+    max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
+    hrr = max_hr - min_hr
+    if max_hr / max_pred > 150:
+        raise ValueError('Max hr / max pred hr too high.')
+    if hrr > 80:
+        raise ValueError('HRR too high.')
+    return tm.normalize_and_validate(hrr)
 
 
-TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _check_phase_full_len(hd5, 'rest')
+    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
+    max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
+    return tm.normalize_and_validate(max_hr / max_pred)
+
+
+TMAPS: Dict[str, TensorMap] = dict()
+
+
+TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
                                   tensor_from_file=_first_date_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss='logcosh', metrics=['mape'],
+TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss='logcosh', metrics=['mae'],
                                              normalization={'mean': 113.7, 'std': 13.3}, shape=(1,),
                                              tensor_from_file=_healthy_bike, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 30.47, 'std': 11.76},
                                           tensor_from_file=_healthy_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                               normalization={'mean': 70.0, 'std': 11.62},
                                               tensor_from_file=_healthy_bike, dtype=DataSetType.CONTINUOUS)
-
-TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                              normalization={'mean': 70., 'std': 11.},
                                              tensor_from_file=_median_pretest, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                 normalization={'mean': .03, 'std': .03},
                                                 tensor_from_file=_median_pretest, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                  normalization={'mean': .032, 'std': .46},
                                                  tensor_from_file=_median_pretest, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                   normalization={'mean': .03, 'std': .03},
                                                   tensor_from_file=_median_pretest, dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike', validator=no_nans,
                                        tensor_from_file=_first_date_bike_recovery, dtype=DataSetType.FLOAT_ARRAY)
-TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bike', validator=no_nans,
-                                      normalization={'mean': 8.3, 'std': 33.},
+TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), group='ecg_bike', validator=no_nans,
+                                      normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
                                       tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                      normalization={'mean': 31, 'std': 12},
+                                      tensor_from_file=_new_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                          normalization={'mean': .68, 'std': .1},
+                                          tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
 
 
 def _make_ecg_rest(population_normalize: float = None):

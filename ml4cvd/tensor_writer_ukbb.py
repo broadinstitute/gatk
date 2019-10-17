@@ -69,6 +69,7 @@ ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration'
                      'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
                      'QOffset', 'TOffset']
 ECG_BIKE_SAMPLE_RATE = 500
+ECG_BIKE_NUM_LEADS = 3
 SECONDS_PER_MINUTE = 60
 
 
@@ -867,23 +868,22 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         else:
             stats['missing strip bike ECG'] += 1
 
-        counter = 0
-        full_ekgs = defaultdict(list)
-        for lead_order in root.findall("./FullDisclosure/LeadOrder"):
-            full_leads = {i: lead for i, lead in enumerate(lead_order.text.split(','))}
+        full_ekgs = [[] for _ in range(ECG_BIKE_NUM_LEADS)]
+        count = 0
         for full_d in root.findall("./FullDisclosure/FullDisclosureData"):
             for full_line in re.split('\n|\t', full_d.text):
                 for sample in re.split(',', full_line):
                     if sample == '':
                         continue
-                    full_ekgs[full_leads[counter % 3]].append(float(sample))
-                    counter += 1
+                    lead = (count % (ECG_BIKE_NUM_LEADS * ECG_BIKE_SAMPLE_RATE)) // ECG_BIKE_SAMPLE_RATE
+                    full_ekgs[lead].append(float(sample))
+                    count += 1
 
-        if len(full_ekgs) != 0:
+        if all(full_ekgs):  # Does each lead have data?
             full_np = np.zeros(ECG_BIKE_FULL_SIZE)
-            for lead in full_ekgs:
-                full_idx = min(ECG_BIKE_FULL_SIZE[0], len(full_ekgs[lead]))
-                full_np[:full_idx, ECG_BIKE_LEADS[lead]] = full_ekgs[lead][:full_idx]
+            for i, lead in enumerate(full_ekgs):
+                full_idx = min(ECG_BIKE_FULL_SIZE[0], len(lead))
+                full_np[:full_idx, i] = lead[:full_idx]
             write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='full', value=full_np)
         else:
             stats['missing full disclosure bike ECG'] += 1
