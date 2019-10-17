@@ -23,25 +23,26 @@ public class AlleleSubsettingUtilsForJointCalling {
      * @return
      */
     public static List<VariantContext> subsetAlleles(List<VariantContext> unmergedCalls, int maxAlleles) {
+        // get the longest allele
+        // TODO won't work if there are multiple different alleles with the longest length
         Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
+        logger.info("chosen reference: " + longestRefAllele);
 
-        List<VariantContext> callsWithExpandedAlleles = new ArrayList<>(unmergedCalls.size());
-        Map<Allele, Integer> alleleSpecificQuals = calculateAlleleSpecificQualsAndUpdateVCsWithMappedAlleles(unmergedCalls, callsWithExpandedAlleles, longestRefAllele);
-        logger.info("unique alleles: " + alleleSpecificQuals.size());
+        Map<Allele, Integer> alleleSpecificQuals = new HashMap<>();
+        List<VariantContext> callsWithExpandedAlleles = sumAllQualsAndExpandAlleles(unmergedCalls, alleleSpecificQuals, longestRefAllele);
+        logger.info("unique alleles: " + alleleSpecificQuals.size() + alleleSpecificQuals.keySet());
 
-        List<Allele> targetAlleles = determineTargetAlleles(alleleSpecificQuals, maxAlleles);
+        // choose the target alleles
+        List<Allele> targetAlleles = alleleSpecificQuals.entrySet().stream()
+                // get the highest values
+                .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed()).limit(maxAlleles)
+                .map(entry -> entry.getKey()).collect(Collectors.toList());
         logger.info(targetAlleles);
-
-        // targetAlleles won't contain the longestRefAllele because the targets are alts
-        // what do i really need to check for? if the ref allele was one of the alts that was dropped? does that even make sense?
-//        if (!targetAlleles.contains(longestRefAllele)) {
-//            // pick new longest ref allele, diff the length and then trim any targets that are longer than that
-//            //TODO
-//            logger.warn("You haven't implemented this yet andrea!!! DO IT!");
-//        }
 
         Set<Allele> allelesToDrop = new HashSet<>(alleleSpecificQuals.keySet());
         allelesToDrop.removeAll(targetAlleles);
+
+        // how do i do this without hardcoding?
         int[] relevantAlleleIndexes = new int[] {0,2};
 
         return callsWithExpandedAlleles.stream().map(vc -> {
@@ -49,11 +50,11 @@ public class AlleleSubsettingUtilsForJointCalling {
             if (allelesToSubset.isEmpty()) {
                 return vc;
             } else {
+                logger.info("subsetting alleles for sample: " + vc.getSampleNames());
                 Genotype g =  vc.getGenotype(0);
                 GenotypeBuilder gb = new GenotypeBuilder(g);
 
                 List<Allele> galleles = g.getAlleles();
-//                EnumMap<GenotypeType, Double> gasmap = gll.getAsMap(true);
                 List<Allele> updatedGAlleles = new ArrayList<>();
                 if (!g.isHomVar()) {
                     if (allelesToSubset.contains(galleles.get(0))) {
@@ -105,40 +106,32 @@ public class AlleleSubsettingUtilsForJointCalling {
     /**
      *
      * @param variantContexts
-     * @param callsWithExpandedAlleles output parameter that contains new vcs for alleles that need to be expanded
+     * @param alleleSpecificQuals
      * @param longestRefAllele
      * @return
      */
-    private static Map<Allele, Integer> calculateAlleleSpecificQualsAndUpdateVCsWithMappedAlleles(List<VariantContext> variantContexts, List<VariantContext> callsWithExpandedAlleles, Allele longestRefAllele) {
-        Map<Allele, Integer> alleleSpecificQuals = new HashMap<>();
-        callsWithExpandedAlleles.addAll(variantContexts.stream().map(vc -> {
+    private static List<VariantContext> sumAllQualsAndExpandAlleles(List<VariantContext> variantContexts, Map<Allele, Integer> alleleSpecificQuals, Allele longestRefAllele) {
+        return variantContexts.stream().map(vc -> {
             if (vc.isVariant()) {
-                return sumQualsAndExpandedAlleles(
+                return sumQualsAndExpandedAllelesForVC(
                         vc,
                         longestRefAllele,
                         alleleSpecificQuals);
             } else {
                 return vc;
             }
-        }).collect(Collectors.toList()));
-        return alleleSpecificQuals;
-    }
-
-    private static List<Allele> determineTargetAlleles(Map<Allele, Integer> alleleSpecificQuals, int maxAlleles) {
-        return alleleSpecificQuals.entrySet().stream()
-                // get the highest values
-                .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed()).limit(maxAlleles)
-                .map(entry -> entry.getKey()).collect(Collectors.toList());
+        }).collect(Collectors.toList());
     }
 
     /**
-
+     * We return a variant context that contains expanded alleles if applicable and add the
+     * quals for each allele to the allele quals map
      * @param vc
      * @param longestRefAllele
      * @param alleleSpecificQuals in/out param that contains the summed quals for each allele seen
      * @return
      */
-    private static VariantContext sumQualsAndExpandedAlleles(final VariantContext vc, Allele longestRefAllele, Map<Allele, Integer> alleleSpecificQuals) {
+    private static VariantContext sumQualsAndExpandedAllelesForVC(final VariantContext vc, Allele longestRefAllele, Map<Allele, Integer> alleleSpecificQuals) {
         Map<Allele, Allele> alleleMappings = new HashMap<>();
         // if you try to create mappings with the same length an exception is thrown
         if (vc.getReference().length() < longestRefAllele.length()) {
