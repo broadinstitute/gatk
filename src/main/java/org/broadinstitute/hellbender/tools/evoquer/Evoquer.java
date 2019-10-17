@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_M
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -48,8 +49,8 @@ import java.util.*;
  * Created by jonn on 4/16/19.
  */
 @CommandLineProgramProperties(
-        summary = "(\"Evoker\") - Extract Variants Out of big QUERy.  Tool to extract VCF information from a BigQuery table containing genomic variant data (joing genotyping / GVCF-equivalent data).",
-        oneLineSummary = "Tool to extract VCF information from a BigQuery table containing genomic variant data (joing genotyping / GVCF-equivalent data).",
+        summary = "(\"Evoquer\") - Extract Variants Out of big QUERy. Tool to run joint calling on variant data from BigQuery",
+        oneLineSummary = "Tool to run joint calling on variant data from BigQuery",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
@@ -157,6 +158,9 @@ public class Evoquer extends GATKTool {
     public boolean requiresIntervals() {
         return true;
     }
+
+    @Override
+    public IntervalMergingRule getDefaultIntervalMergingRule() { return IntervalMergingRule.OVERLAPPING_ONLY; }
 
     /**
      * {@inheritDoc}

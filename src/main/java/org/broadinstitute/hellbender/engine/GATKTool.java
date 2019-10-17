@@ -31,10 +31,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -52,7 +49,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection
-    protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
+    protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection(getDefaultIntervalMergingRule()) : new OptionalIntervalArgumentCollection(getDefaultIntervalMergingRule());
 
     @ArgumentCollection
     protected final ReadInputArgumentCollection readArguments = requiresReads() ? new RequiredReadInputArgumentCollection() : new OptionalReadInputArgumentCollection();
@@ -586,6 +583,9 @@ public abstract class GATKTool extends CommandLineProgram {
         return false;
     }
 
+    public IntervalMergingRule getDefaultIntervalMergingRule() {
+        return IntervalMergingRule.ALL;
+    }
 
     /**
      * Get the {@link SequenceDictionaryValidationArgumentCollection} for the tool.
