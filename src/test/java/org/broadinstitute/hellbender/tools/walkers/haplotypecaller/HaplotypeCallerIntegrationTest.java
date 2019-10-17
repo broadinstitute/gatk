@@ -1228,18 +1228,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final File outputContaminatedHomVarDeletions = createTempFile("testContaminatedHomVarDeletions", ".vcf");
 
-        // Run both with and without --max-alternate-alleles over our interval, so that we can
-        // prove that the argument is working as intended.
-        final String[] argsNoMaxAlternateAlleles = {
-                "-I", bam,
-                "-R", hg38Reference,
-                "-L", intervals,
-                "-O", outputContaminatedHomVarDeletions.getAbsolutePath(),
-                "--interval-padding", "50"
-        };
-        runCommandLine(argsNoMaxAlternateAlleles);
+        final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(bam))
+                .addReference(hg38Reference)
+                .addInterval(new SimpleInterval(intervals))
+                .addOutput(outputContaminatedHomVarDeletions)
+                .addNumericArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, 50);
+        runCommandLine(args);
 
-        List<VariantContext> vcs = VariantContextTestUtils.readEntireVCFIntoMemory(outputContaminatedHomVarDeletions.getAbsolutePath()).getRight();
+        List<VariantContext> vcs = VariantContextTestUtils.getVariantContexts(outputContaminatedHomVarDeletions);
 
         //check known homozygous deletion for correct genotype
         for (final VariantContext vc : vcs) {
