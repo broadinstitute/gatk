@@ -26,7 +26,7 @@ from ml4cvd.TensorMap import TensorMap
 np.set_printoptions(threshold=np.inf)
 
 
-class TensorGenerator(object):
+class TensorGenerator:
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
     def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
         self.lock = threading.Lock()
@@ -75,6 +75,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
 
     while True:
+        simple_stats = Counter()
         for tp in train_paths:
             try:
                 with h5py.File(tp, 'r') as hd5:
@@ -103,22 +104,29 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                         stats['batch_index'] = 0
                         paths_in_batch = []
 
-            except IndexError:
+            except IndexError as e:
                 stats[f"IndexError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except KeyError:
+                simple_stats[str(e)] += 1
+            except KeyError as e:
                 stats[f"KeyError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except ValueError:
+            except ValueError as e:
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except OSError:
+                simple_stats[str(e)] += 1
+            except OSError as e:
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except RuntimeError:
+                simple_stats[str(e)] += 1
+            except RuntimeError as e:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+                simple_stats[str(e)] += 1
             _log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
         for k in stats:
-            logging.info("{}: {}".format(k, stats[k]))
+            logging.debug(f"{k}: {stats[k]}")
+        error_info = '\n    '.join([f'[{error}] - {count}'
+            for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
+        logging.info(f"In epoch {stats['epochs']} the following errors occurred:\n    {error_info}")
         logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
         logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
         if stats['Tensors presented'] == 0:
@@ -343,8 +351,8 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
     return train_paths, valid_paths, test_paths
 
 
-def test_train_valid_tensor_generators(maps_in: List[TensorMap],
-                                       maps_out: List[TensorMap],
+def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
+                                       tensor_maps_out: List[TensorMap],
                                        tensors: str,
                                        batch_size: int,
                                        valid_ratio: float,
@@ -353,7 +361,8 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        balance_csvs: List[str],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
-                                       mixup_alpha: float = -1.0) -> Tuple[
+                                       mixup_alpha: float = -1.0,
+                                       **kwargs) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
@@ -374,14 +383,14 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     if len(balance_csvs) > 0:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
-        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
-        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test)
     return generate_train, generate_valid, generate_test
 
 
@@ -389,8 +398,8 @@ def _log_first_error(stats: Counter, tensor_path: str):
     for k in stats:
         if 'Error' in k and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
-            logging.info(f"At tensor path: {tensor_path}")
-            logging.info(f"Got first error: {k}")
+            logging.debug(f"At tensor path: {tensor_path}")
+            logging.debug(f"Got first error: {k}")
 
 
 def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray], alpha: float = 1.0, permute_first: bool = False):
