@@ -5,6 +5,7 @@ import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -87,11 +88,11 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         final File contaminationTable = createTempFile("contamination", ".table");
         final File segmentationsTable = createTempFile("segments", ".table");
 
-        final String[] args = {
-                "-I", psTable.getAbsolutePath(),
-                "-O", contaminationTable.getAbsolutePath(),
-                "-" + CalculateContamination.TUMOR_SEGMENTATION_SHORT_NAME, segmentationsTable.getAbsolutePath()
-        };
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(psTable)
+                .addOutput(contaminationTable)
+                .addFileArgument(CalculateContamination.TUMOR_SEGMENTATION_SHORT_NAME, segmentationsTable);
+
         runCommandLine(args);
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
@@ -111,10 +112,10 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         final File contaminationTable = createTempFile("contamination", ".table");
         final double contamination = spikeIn + baselineContamination;
 
-        final String[] args = {
-                "-I", pileupSummary.getAbsolutePath(),
-                "-O", contaminationTable.getAbsolutePath(),
-        };
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(pileupSummary)
+                .addOutput(contaminationTable);
+
         runCommandLine(args);
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
@@ -141,12 +142,11 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         final double contamination = 0.08 + baselineContamination;
         final File contaminationTable = createTempFile("contamination", ".table");
 
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(contaminated)
+                .addFileArgument(CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal)
+                .addOutput(contaminationTable);
 
-        final String[] args = {
-                "-I", contaminated.getAbsolutePath(),
-                "-" + CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal.getAbsolutePath(),
-                "-O", contaminationTable.getAbsolutePath(),
-        };
         runCommandLine(args);
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
@@ -158,10 +158,10 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         final File inputPileups = new File(CONTAMINATION_TEST_DATA_DIRECTORY, "small_gene_panel.pileups");
         final File contaminationTable = createTempFile("contamination", ".table");
 
-        final String[] args = {
-                "-I", inputPileups.getAbsolutePath(),
-                "-O", contaminationTable.getAbsolutePath(),
-        };
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(inputPileups)
+                .addOutput(contaminationTable);
+
         runCommandLine(args);
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -24,9 +25,11 @@ public class MergeMutectStatsIntegrationTest extends CommandLineProgramTest {
         MutectStats.writeToFile(stats1, statsFile1);
         MutectStats.writeToFile(stats2, statsFile2);
 
-        final List<String> args = Arrays.asList("--" + Mutect2.MUTECT_STATS_SHORT_NAME, statsFile1.getAbsolutePath(),
-                "--" + Mutect2.MUTECT_STATS_SHORT_NAME, statsFile2.getAbsolutePath(),
-                "-O", merged.getAbsolutePath());
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addFileArgument(Mutect2.MUTECT_STATS_SHORT_NAME, statsFile1)
+                .addFileArgument(Mutect2.MUTECT_STATS_SHORT_NAME, statsFile2)
+                .addOutput(merged);
+
         runCommandLine(args);
 
         final List<MutectStats> mergedStats = MutectStats.readFromFile(merged);

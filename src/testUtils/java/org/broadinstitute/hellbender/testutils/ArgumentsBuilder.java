@@ -162,6 +162,10 @@ public final class ArgumentsBuilder {
         return this;
     }
 
+    public ArgumentsBuilder addIntervalFile(final File interval){
+        return addFileArgument("L", interval);
+    }
+
     public ArgumentsBuilder addMask(final File mask){
         return addFileArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, mask);
     }
