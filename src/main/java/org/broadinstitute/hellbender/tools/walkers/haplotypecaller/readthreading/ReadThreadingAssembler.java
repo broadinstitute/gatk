@@ -79,7 +79,7 @@ public final class ReadThreadingAssembler {
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
-        this.generateSeqGraph = generateSeqGraph;
+        this.generateSeqGraph = !generateSeqGraph;
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
