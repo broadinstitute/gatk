@@ -756,6 +756,36 @@ public final class MathUtils {
         return array[maxElementIndex(array)];
     }
 
+    /**
+     * Returns the maximum value within and int array interval.
+     * <p>
+     *     A default value must be provided in case the requested interval is empty.
+     * </p>
+     *
+     * @param array the source array.
+     * @param from first position to be considered.
+     * @param to position after the last to be considered (i.e. exclusive).
+     * @param defaultValue the default value to return in case that the interval provided is empty.
+     * @throws IndexOutOfBoundsException if the from-to interval indexes point to a invalid index range.
+     * @return any integer value is a valid return for this method.
+     */
+    public static int arrayMax(final int[] array, final int from, final int to, final int defaultValue) {
+        if (to > from) {
+            int value = array[from];
+            for (int i = from + 1; i < to; i++) {
+                final int candidate = array[i];
+                if (candidate > value) {
+                    value = candidate;
+                }
+            }
+            return value;
+        } else if (from >= 0) {
+            return defaultValue;
+        } else {
+            throw new ArrayIndexOutOfBoundsException(from);
+        }
+    }
+
     public static double arrayMax(final double[] array) {
         Utils.nonNull(array);
         return array[maxElementIndex(array)];
