@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.AbstractReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.Utils;
  */
 public final class AssemblyResult {
     private final Status status;
-    private final ReadThreadingGraph threadingGraph;
+    private final AbstractReadThreadingGraph threadingGraph;
     private final SeqGraph graph;
 
     /**
@@ -17,16 +17,16 @@ public final class AssemblyResult {
      * @param status the status, cannot be null
      * @param graph the resulting graph of the assembly, can only be null if result is failed
      */
-    public AssemblyResult(final Status status, final SeqGraph graph, final ReadThreadingGraph threadingGraph) {
+    public AssemblyResult(final Status status, final SeqGraph graph, final AbstractReadThreadingGraph threadingGraph) {
         Utils.nonNull(status, "status cannot be null");
-        Utils.validateArg( status == Status.FAILED || graph != null, "graph is null but status is " + status);
+        Utils.validateArg( status == Status.FAILED || (graph != null || threadingGraph != null) , "graph is null but status is " + status);
 
         this.status = status;
         this.graph = graph;
         this.threadingGraph = threadingGraph;
     }
 
-    public ReadThreadingGraph getThreadingGraph() {
+    public AbstractReadThreadingGraph getThreadingGraph() {
         return threadingGraph;
     }
 
@@ -34,12 +34,12 @@ public final class AssemblyResult {
         return status;
     }
 
-    public SeqGraph getGraph() {
+    public SeqGraph getSeqGraph() {
         return graph;
     }
 
     public int getKmerSize() {
-        return graph.getKmerSize();
+        return graph == null? threadingGraph.getKmerSize() : graph.getKmerSize();
     }
 
     /**

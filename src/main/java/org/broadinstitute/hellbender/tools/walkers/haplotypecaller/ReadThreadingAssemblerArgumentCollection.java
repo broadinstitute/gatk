@@ -150,6 +150,17 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="max-unpruned-variants", doc = "Maximum number of variants in graph the adaptive pruner will allow", optional = true)
     public int maxUnprunedVariants = 100;
 
+    /**
+     * Disables graph simplification into a seq graph, opts to construct a proper De Brujin graph with potential loops
+     *
+     * NOTE: --linked-de-bruijn-graph is currently an experimental feature that does not directly match with
+     *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
+     *        sites. Use this mode at your own risk.
+     */
+    @Hidden
+    @Argument(fullName="linked-de-bruijn-graph", doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
+    public boolean useLinkedDeBrujinGraph = false;
+
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
     public boolean debugAssembly;

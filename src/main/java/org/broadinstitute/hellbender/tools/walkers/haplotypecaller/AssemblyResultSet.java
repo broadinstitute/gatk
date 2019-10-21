@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.AbstractReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -204,7 +204,7 @@ public final class AssemblyResultSet {
 
         for (final Map.Entry<Haplotype,AssemblyResult> e : assemblyResultByHaplotype.entrySet()) {
             final AssemblyResult as = e.getValue();
-            final int kmerSize = as.getGraph().getKmerSize();
+            final int kmerSize = as.getKmerSize();
             if (kmerSizeToCount.containsKey(kmerSize)) {
                 kmerSizeToCount.put(kmerSize,kmerSizeToCount.get(kmerSize) + 1);
             } else {
@@ -433,7 +433,7 @@ public final class AssemblyResultSet {
      *
      * @return {@code null} if there is no read-threading-graph amongst assembly results with that kmerSize.
      */
-    public ReadThreadingGraph getUniqueReadThreadingGraph(final int kmerSize) {
+    public AbstractReadThreadingGraph getUniqueReadThreadingGraph(final int kmerSize) {
         final AssemblyResult assemblyResult = assemblyResultByKmerSize.get(kmerSize);
         if (assemblyResult == null) {
             return null;

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.testng.Assert;
@@ -182,7 +181,7 @@ public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
                 graph.addEdge(vi, bot, new BaseEdge(vi == first, edgeWeight++));
         }
 
-        final List<KBestHaplotype> originalPaths = new KBestHaplotypeFinder(graph.clone()).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> originalPaths = new GraphBasedKBestHaplotypeFinder<>(graph.clone()).findBestHaplotypes();
         final Set<Haplotype> haplotypes = originalPaths.stream()
                 .map(KBestHaplotype::haplotype).collect(Collectors.toSet());
 
@@ -193,7 +192,7 @@ public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
         splitter.updateGraph(top, bot);
         if ( PRINT_GRAPHS ) graph.printGraph(new File(Utils.join("_", strings) + "_" + hasTop + "_" + hasBot + ".updated.dot"), 0);
 
-        final List<KBestHaplotype> splitPaths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> splitPaths = new GraphBasedKBestHaplotypeFinder<>(graph).findBestHaplotypes();
         splitPaths.forEach(p -> Assert.assertTrue(haplotypes.contains(p.haplotype())));
 
         final List<String> sortedOriginalPaths = originalPaths.stream().map(p -> p.haplotype().getBaseString()).distinct().sorted().collect(Collectors.toList());
@@ -216,10 +215,10 @@ public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
      *
      * @return never {@code null}, perhaps an empty list.
      */
-    private static List<KBestHaplotype> unique(final List<KBestHaplotype> haplotpyes) {
+    private static List<KBestHaplotype<SeqVertex, BaseEdge>> unique(final List<KBestHaplotype<SeqVertex, BaseEdge>> haplotpyes) {
         final Set<String> haplotypes = new HashSet<>();
-        final List<KBestHaplotype> result = new ArrayList<>();
-        for (final KBestHaplotype kbh : haplotpyes) {
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> result = new ArrayList<>();
+        for (final KBestHaplotype<SeqVertex, BaseEdge> kbh : haplotpyes) {
             if (haplotypes.add(new String(kbh.getBases()))) {
                 result.add(kbh);
             }

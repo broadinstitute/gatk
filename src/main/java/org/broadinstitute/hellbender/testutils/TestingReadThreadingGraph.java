@@ -1,11 +1,12 @@
-package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
+package org.broadinstitute.hellbender.testutils;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,7 +68,7 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
         final Matcher pathMatcher = PATH_PATTERN.matcher(pathString);
 
         boolean referenceFound = false;
-        final Map<String,MultiDeBruijnVertex> vertexById = new HashMap<>();
+        final Map<String, MultiDeBruijnVertex> vertexById = new HashMap<>();
 
         // Loop between path strings and add them one by one.
         while (pathMatcher.find()) {
@@ -136,6 +137,31 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
                 }
                 lastVertex = nextVertex;
             }
+        }
+    }
+
+    /**
+     * Return the collection of outgoing vertices that expand this vertex with a particular base.
+     *
+     * @param v original vertex.
+     * @param b expanding base.
+     * @return never null, but perhaps an empty set. You cannot assume that you can modify the result.
+     */
+    @VisibleForTesting
+    Set<MultiDeBruijnVertex> getNextVertices(final MultiDeBruijnVertex v, final byte b) {
+        Utils.nonNull(v, "the input vertex cannot be null");
+        Utils.validateArg(vertexSet().contains(v), "the vertex must be present in the graph");
+        final List<MultiDeBruijnVertex> result = new LinkedList<>();
+        for (final MultiDeBruijnVertex w : outgoingVerticesOf(v)) {
+            if (w.getSuffix() == b) {
+                result.add(w);
+            }
+        }
+        switch (result.size()) {
+            case 0: return Collections.emptySet();
+            case 1: return Collections.singleton(result.get(0));
+            default:
+                return new HashSet<>(result);
         }
     }
 

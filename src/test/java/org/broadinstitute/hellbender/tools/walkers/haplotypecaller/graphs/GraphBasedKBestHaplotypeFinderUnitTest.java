@@ -6,6 +6,8 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -17,7 +19,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 import java.util.stream.IntStream;
 
-public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
+public final class GraphBasedKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
     @Test
     public void testScore(){
@@ -36,11 +38,11 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         g.addEdge(v2, v3);
         g.addEdge(v2, v4);
         g.addEdge(v2, v5);
-        final KBestHaplotypeFinder finder = new KBestHaplotypeFinder(g);
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge> finder = new GraphBasedKBestHaplotypeFinder<>(g);
         Assert.assertEquals(finder.sources.size(), 1);
         Assert.assertEquals(finder.sinks.size(), 3);
-        final List<KBestHaplotype> haplotypes = finder.findBestHaplotypes();
-        final KBestHaplotype ACG = haplotypes.stream().filter(h -> h.haplotype().basesMatch("ACG".getBytes())).findFirst().get();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> haplotypes = finder.findBestHaplotypes();
+        final KBestHaplotype<SeqVertex, BaseEdge> ACG = haplotypes.stream().filter(h -> h.haplotype().basesMatch("ACG".getBytes())).findFirst().get();
         Assert.assertEquals(ACG.score(), -0.47712125471966244);
     }
 
@@ -59,7 +61,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         g.addEdge(v2, v3);
         g.addEdge(v3, v2); //cycle
         g.addEdge(v3, v4);
-        final KBestHaplotypeFinder finder = new KBestHaplotypeFinder(g);
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge> finder = new GraphBasedKBestHaplotypeFinder<>(g);
         Assert.assertEquals(finder.sources.size(), 1);
         Assert.assertEquals(finder.sinks.size(), 1);
     }
@@ -72,15 +74,15 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         g.addVertex(v1);   //source
         g.addVertex(v2);
         g.addEdge(v1, v2);
-        final KBestHaplotypeFinder finder = new KBestHaplotypeFinder(g);
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge> finder = new GraphBasedKBestHaplotypeFinder<>(g);
         Assert.assertEquals(finder.sources.size(), 1);
         Assert.assertEquals(finder.sinks.size(), 1);
 
-        final KBestHaplotypeFinder finder2 = new KBestHaplotypeFinder(g, Collections.emptySet(), Collections.singleton(v2));
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge> finder2 = new GraphBasedKBestHaplotypeFinder<>(g, Collections.emptySet(), Collections.singleton(v2));
         Assert.assertEquals(finder2.sources.size(), 0);
         Assert.assertEquals(finder2.sinks.size(), 1);
 
-        final KBestHaplotypeFinder finder3 = new KBestHaplotypeFinder(g, Collections.singleton(v1), Collections.emptySet());
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge>finder3 = new GraphBasedKBestHaplotypeFinder<>(g, Collections.singleton(v1), Collections.emptySet());
         Assert.assertEquals(finder3.sources.size(), 1);
         Assert.assertEquals(finder3.sinks.size(), 0);
         Assert.assertTrue(finder3.findBestHaplotypes().isEmpty());
@@ -104,11 +106,11 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         g.addEdge(v3, v2);//cycle
         g.addEdge(v2, v5);
         g.addEdge(v1, v4);
-        final KBestHaplotypeFinder finder1 = new KBestHaplotypeFinder(g);
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge> finder1 = new GraphBasedKBestHaplotypeFinder<>(g);
         Assert.assertEquals(finder1.sources.size(), 1);
         Assert.assertEquals(finder1.sinks.size(), 2);
 
-        final KBestHaplotypeFinder finder2 = new KBestHaplotypeFinder(g, v1, v4); //v5 is a dead node (can't reach the sink v4)
+        final KBestHaplotypeFinder<SeqVertex, BaseEdge> finder2 = new GraphBasedKBestHaplotypeFinder<>(g, v1, v4); //v5 is a dead node (can't reach the sink v4)
         Assert.assertEquals(finder2.sources.size(), 1);
         Assert.assertEquals(finder2.sinks.size(), 1);
     }
@@ -153,7 +155,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final Set<SeqVertex> ends = createVertices(graph, nEndNodes, middleBottom, null);
 
         final int expectedNumOfPaths = nStartNodes * nBranchesPerBubble * nEndNodes;
-        final List<KBestHaplotype> haplotypes = new KBestHaplotypeFinder(graph, starts, ends).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> haplotypes = new GraphBasedKBestHaplotypeFinder<>(graph, starts, ends).findBestHaplotypes();
         Assert.assertEquals(haplotypes.size(), expectedNumOfPaths);
         IntStream.range(1, haplotypes.size()).forEach(n -> Assert.assertTrue(haplotypes.get(n-1).score() >= haplotypes.get(n).score()));
     }
@@ -243,7 +245,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
 
         // enumerate all possible paths
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 1);
         Assert.assertEquals(new String(paths.get(0).getBases()), Utils.join("", frags), "Path doesn't have the expected sequence");
     }
@@ -383,7 +385,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addEdges(() -> new BaseEdge(false, 1), top, alt, bot);
 
         @SuppressWarnings("all")
-        final List<KBestHaplotype> bestPaths = new KBestHaplotypeFinder(graph,top,bot).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> bestPaths = new GraphBasedKBestHaplotypeFinder<>(graph,top,bot).findBestHaplotypes();
         Assert.assertEquals(bestPaths.size(), 2);
         final Path<SeqVertex,BaseEdge> refPath = bestPaths.get(0);
         final Path<SeqVertex,BaseEdge> altPath = bestPaths.get(1);
@@ -443,7 +445,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addEdges(() -> new BaseEdge(true, 65), midAndTopExt, refEnd);
 
         @SuppressWarnings("all")
-        final List<KBestHaplotype> bestPaths = new KBestHaplotypeFinder(graph,refStart,refEnd).findBestHaplotypes(2);
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> bestPaths = new GraphBasedKBestHaplotypeFinder<>(graph,refStart,refEnd).findBestHaplotypes(2);
         Assert.assertEquals(bestPaths.size(), 2);
         final Path<SeqVertex,BaseEdge> refPath = bestPaths.get(0);
         final Path<SeqVertex,BaseEdge> altPath = bestPaths.get(1);
@@ -466,7 +468,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addEdges(() -> new BaseEdge(false, 1), top, alt, bot);
 
         @SuppressWarnings("all")
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph, top, bot).findBestHaplotypes();
+        final List<KBestHaplotype<SeqVertex, BaseEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph, top, bot).findBestHaplotypes();
 
         Assert.assertEquals(paths.size(), 2);
 
@@ -482,6 +484,73 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(refPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "51M");
         Assert.assertEquals(altPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "3M6I48M");
+    }
+
+    @Test
+    public void testKmerGraphSimpleReferenceRecovery() {
+        // Construct the assembly graph
+        final ReadThreadingGraph graph = new ReadThreadingGraph(5);
+        final MultiDeBruijnVertex refSource = new MultiDeBruijnVertex( "AAATT".getBytes() );
+        final MultiDeBruijnVertex k1 = new MultiDeBruijnVertex( "AATTT".getBytes() );
+        final MultiDeBruijnVertex k2 = new MultiDeBruijnVertex( "ATTTG".getBytes() );
+        final MultiDeBruijnVertex k3 = new MultiDeBruijnVertex( "TTTGG".getBytes() );
+        final MultiDeBruijnVertex k4 = new MultiDeBruijnVertex( "TTGGG".getBytes() );
+        final MultiDeBruijnVertex k5 = new MultiDeBruijnVertex( "TGGGC".getBytes() );
+        final MultiDeBruijnVertex k6 = new MultiDeBruijnVertex( "GGGCC".getBytes() );
+        final MultiDeBruijnVertex k7 = new MultiDeBruijnVertex( "GGCCC".getBytes() );
+        final MultiDeBruijnVertex k8 = new MultiDeBruijnVertex( "GCCCT".getBytes() );
+        final MultiDeBruijnVertex refEnd = new MultiDeBruijnVertex( "CCCTT".getBytes() );
+        graph.addVertices(refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd);
+        graph.addEdges(() -> new MultiSampleEdge(true, 1, 1), refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd);
+
+        @SuppressWarnings("all")
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph, refSource, refEnd).findBestHaplotypes();
+
+        Assert.assertEquals(paths.size(), 1);
+
+        final Path<MultiDeBruijnVertex, MultiSampleEdge> refPath = paths.get(0);
+
+        final String refString = "AAATTTGGGCCCTT";
+
+        Assert.assertEquals(refPath.getBases(), refString.getBytes());
+    }
+
+    @Test
+    public void testKmerGraphSimpleReferenceRecoveryWithSNP() {
+        // Construct the assembly graph
+        final ReadThreadingGraph graph = new ReadThreadingGraph(5);
+        final MultiDeBruijnVertex refSource = new MultiDeBruijnVertex( "AAATT".getBytes() );
+        final MultiDeBruijnVertex k1 = new MultiDeBruijnVertex( "AATTT".getBytes() );
+        final MultiDeBruijnVertex k2 = new MultiDeBruijnVertex( "ATTTG".getBytes() );
+        final MultiDeBruijnVertex k3 = new MultiDeBruijnVertex( "TTTGG".getBytes() );
+        final MultiDeBruijnVertex k4 = new MultiDeBruijnVertex( "TTGGG".getBytes() );
+        final MultiDeBruijnVertex k5 = new MultiDeBruijnVertex( "TGGGC".getBytes() );
+        final MultiDeBruijnVertex k6 = new MultiDeBruijnVertex( "GGGCC".getBytes() );
+        final MultiDeBruijnVertex k7 = new MultiDeBruijnVertex( "GGCCC".getBytes() );
+        final MultiDeBruijnVertex k8 = new MultiDeBruijnVertex( "GCCCT".getBytes() );
+        final MultiDeBruijnVertex refEnd = new MultiDeBruijnVertex( "CCCTT".getBytes() );
+        final MultiDeBruijnVertex v3 = new MultiDeBruijnVertex( "TTTGC".getBytes() );
+        final MultiDeBruijnVertex v4 = new MultiDeBruijnVertex( "TTGCG".getBytes() );
+        final MultiDeBruijnVertex v5 = new MultiDeBruijnVertex( "TGCGC".getBytes() );
+        final MultiDeBruijnVertex v6 = new MultiDeBruijnVertex( "GCGCC".getBytes() );
+        final MultiDeBruijnVertex v7 = new MultiDeBruijnVertex( "CGCCC".getBytes() );
+        graph.addVertices(refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd, v3, v4, v5, v6, v7);
+        graph.addEdges(() -> new MultiSampleEdge(true, 1, 4), refSource, k1, k2, k3, k4, k5, k6, k7, k8, refEnd);
+        graph.addEdges(() -> new MultiSampleEdge(false, 1, 3), k2, v3, v4, v5, v6, v7, k8);
+
+        @SuppressWarnings("all")
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = new GraphBasedKBestHaplotypeFinder<>(graph, refSource, refEnd).findBestHaplotypes();
+
+        Assert.assertEquals(paths.size(), 2);
+
+        final Path<MultiDeBruijnVertex, MultiSampleEdge> refPath = paths.get(0);
+        final Path<MultiDeBruijnVertex, MultiSampleEdge> altPath = paths.get(1);
+
+        final String refString = "AAATTTGGGCCCTT";
+        final String altString = "AAATTTGCGCCCTT";
+
+        Assert.assertEquals(refPath.getBases(), refString.getBytes());
+        Assert.assertEquals(altPath.getBases(), altString.getBytes());
     }
 
     // -----------------------------------------------------------------

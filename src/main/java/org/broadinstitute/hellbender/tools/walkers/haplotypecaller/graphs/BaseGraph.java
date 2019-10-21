@@ -135,6 +135,17 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
+     * Pull out the additional sequence implied by traversing this node in the graph
+     * @param v the vertex from which to pull out the additional base sequence
+     * @param isSource if true, treat v as a source vertex regardless of in-degree
+     * @return  non-null byte array
+     */
+    public static final byte[] getAdditionalSequence( final BaseVertex v, final boolean isSource) {
+        Utils.nonNull(v, "Attempting to pull sequence from a null vertex.");
+        return v.getAdditionalSequence(isSource);
+    }
+
+    /**
      * @param v the vertex to test
      * @return  true if this vertex is a reference source
      */
@@ -179,14 +190,14 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     /**
      * @return the reference source vertex pulled from the graph, can be null if it doesn't exist in the graph
      */
-    public final V getReferenceSourceVertex( ) {
+    public V getReferenceSourceVertex( ) {
         return vertexSet().stream().filter(v -> isRefSource(v)).findFirst().orElse(null);
     }
 
     /**
      * @return the reference sink vertex pulled from the graph, can be null if it doesn't exist in the graph
      */
-    public final V getReferenceSinkVertex( ) {
+    public V getReferenceSinkVertex( ) {
         return vertexSet().stream().filter(v -> isRefSink(v)).findFirst().orElse(null);
     }
 
@@ -251,7 +262,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @param includeStop   should the ending vertex be included in the path
      * @return              byte[] array holding the reference bases, this can be null if there are no nodes between the starting and ending vertex (insertions for example)
      */
-    public final byte[] getReferenceBytes( final V fromVertex, final V toVertex, final boolean includeStart, final boolean includeStop ) {
+    public byte[] getReferenceBytes( final V fromVertex, final V toVertex, final boolean includeStart, final boolean includeStop ) {
         Utils.nonNull(fromVertex, "Starting vertex in requested path cannot be null.");
         Utils.nonNull(toVertex, "From vertex in requested path cannot be null.");
 
@@ -398,9 +409,16 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
             graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", v.toString(), new String(getAdditionalSequence(v)) + v.getAdditionalInfo()));
         }
 
+        getExtraGraphFileLines().forEach(graphWriter::println);
+
         if ( writeHeader ) {
             graphWriter.println("}");
         }
+    }
+
+    // Extendable method intended to allow for adding extra material to the graph
+    public List<String> getExtraGraphFileLines() {
+        return Collections.emptyList();
     }
 
     /**
