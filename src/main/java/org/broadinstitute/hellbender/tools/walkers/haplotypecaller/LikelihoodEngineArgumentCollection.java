@@ -28,6 +28,10 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public byte BASE_QUALITY_SCORE_THRESHOLD = PairHMM.BASE_QUALITY_SCORE_THRESHOLD;
 
     @Advanced
+    @Argument(fullName="dragstr-params-path", doc="location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
+    public String dragstrParams = null;
+
+    @Advanced
     @Argument(fullName="pair-hmm-gap-continuation-penalty", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
     public int gcpHMM = 10;
 

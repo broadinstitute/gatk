@@ -12,7 +12,7 @@ public class DragstrUtils {
     //> end_of_read_GCP = 10;  %value assigned to GCP of last base in read; should be moot, as GCP of last base shouldn't influence the final sum
     public static final int END_OF_READ_GCP = 10;
 
-    public static STRSequenceAnalyzer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
+    public static STRSequenceAnalyzer /**/repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
         return new STRSequenceAnalyzer(maxSequenceLength, maxPeriod);
     }
 

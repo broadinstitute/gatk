@@ -6,6 +6,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputation;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
@@ -205,12 +207,10 @@ public abstract class PairHMM implements Closeable{
      * @param processedReads reads to analyze instead of the ones present in the destination read-likelihoods.
      * @param logLikelihoods where to store the log likelihoods where position [a][r] is reserved for the log likelihood of {@code reads[r]}
      *             conditional to {@code alleles[a]}.
-     * @param gcp penalty for gap continuations base array map for processed reads.
-     *
      */
     public void computeLog10Likelihoods(final LikelihoodMatrix<GATKRead, Haplotype> logLikelihoods,
-                                      final List<GATKRead> processedReads,
-                                      final Map<GATKRead, byte[]> gcp) {
+                                        final List<GATKRead> processedReads,
+                                        final PairHMMInputScoreImputator inputScoreImputator) {
         if (processedReads.isEmpty()) {
             return;
         }
@@ -231,11 +231,12 @@ public abstract class PairHMM implements Closeable{
         int idx = 0;
         int readIndex = 0;
         for(final GATKRead read : processedReads){
+            final PairHMMInputScoreImputation inputScoreImputation = inputScoreImputator.impute(read);
             final byte[] readBases = read.getBases();
             final byte[] readQuals = read.getBaseQualities();
-            final byte[] readInsQuals = ReadUtils.getBaseInsertionQualities(read);
-            final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(read);
-            final byte[] overallGCP = gcp.get(read);
+            final byte[] readInsQuals = inputScoreImputation.insOpenPenalties();
+            final byte[] readDelQuals = inputScoreImputation.delOpenPenalties();
+            final byte[] overallGCP = inputScoreImputation.gapContinuationPenalties();
 
             // peek at the next haplotype in the list (necessary to get nextHaplotypeBases, which is required for caching in the array implementation)
             final boolean isFirstHaplotype = true;

@@ -116,7 +116,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTe
     @Test(dataProvider = "PcrErrorModelTestProvider", enabled = true)
     public void createPcrErrorModelTest(final String repeat, final int repeatLength) {
 
-        final PairHMMLikelihoodCalculationEngine engine = new PairHMMLikelihoodCalculationEngine((byte)0, new PairHMMNativeArguments(),
+        final PairHMMLikelihoodCalculationEngine engine = new PairHMMLikelihoodCalculationEngine((byte)0, null, new PairHMMNativeArguments(),
                 PairHMM.Implementation.ORIGINAL, 0.0,
                 PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE);
 
@@ -164,7 +164,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTe
 
             PairHMMLikelihoodCalculationEngine.writeLikelihoodsToFile = true;
 
-            final ReadLikelihoodCalculationEngine lce = new PairHMMLikelihoodCalculationEngine((byte) SAMUtils.MAX_PHRED_SCORE, new PairHMMNativeArguments(),
+            final ReadLikelihoodCalculationEngine lce = new PairHMMLikelihoodCalculationEngine((byte) SAMUtils.MAX_PHRED_SCORE, null, new PairHMMNativeArguments(),
                     PairHMM.Implementation.LOGLESS_CACHING, MathUtils.logToLog10(QualityUtils.qualToErrorProbLog10(LEAC.phredScaledGlobalReadMismappingRate)),
                     PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE);
 

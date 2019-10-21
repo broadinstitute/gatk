@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -38,6 +39,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     @VisibleForTesting
     static final double INITIAL_QSCORE = 40.0;
 
+
     private final byte constantGCP;
 
     private final double log10globalReadMismappingRate;
@@ -49,6 +51,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     public static final String LIKELIHOODS_FILENAME = "likelihoods.txt";
     private final PrintStream likelihoodsStream;
+    private final DragstrParams dragstrParams;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -72,7 +75,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
     private final PCRErrorModel pcrErrorModel;
     
-    private final byte baseQualityScoreThreshold;
+    private final byte  baseQualityScoreThreshold;
 
     /**
      * The expected rate of random sequencing errors for a read originating from its true haplotype.
@@ -97,11 +100,12 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      * @param pcrErrorModel model to correct for PCR indel artifacts
      */
     public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
+                                              final String dragstrParamsPath,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
+        this( constantGCP, dragstrParamsPath, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
     }
 
     /**
@@ -122,6 +126,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      *                                  quality.
      */
     public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
+                                              final String dragstrParamsPath,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
@@ -135,9 +140,10 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         if (log10globalReadMismappingRate > 0){
             throw new IllegalArgumentException("log10globalReadMismappingRate must be negative");
         }
+        this.dragstrParams = dragstrParamsPath == null || dragstrParamsPath.isEmpty() ? null : DragstrParams.load(dragstrParamsPath);
         this.constantGCP = constantGCP;
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
-        this.pcrErrorModel = pcrErrorModel;
+        this.pcrErrorModel = this.dragstrParams == null ? pcrErrorModel : PCRErrorModel.NONE;
         this.pairHMM = hmmType.makeNewHMM(arguments);
 
         initializePCRErrorModel();
@@ -244,7 +250,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      * @param perSampleReadList a mapping from sample -> reads
      */
     private void initializePairHMM(final List<Haplotype> haplotypes, final Map<String, List<GATKRead>> perSampleReadList) {
-        final int readMaxLength = perSampleReadList.entrySet().stream().flatMap(e -> e.getValue().stream()).mapToInt(read -> read.getLength()).max().orElse(0);
+        final int readMaxLength = perSampleReadList.entrySet().stream().flatMap(e -> e.getValue().stream()).mapToInt(GATKRead::getLength).max().orElse(0);
         final int haplotypeMaxLength = haplotypes.stream().mapToInt(h -> h.getBases().length).max().orElse(0);
 
         // initialize arrays to hold the probabilities of being in the match, insertion and deletion cases
@@ -255,10 +261,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         // Modify the read qualities by applying the PCR error model and capping the minimum base,insertion,deletion qualities
         final List<GATKRead> processedReads = modifyReadQualities(likelihoods.evidence());
 
-        final Map<GATKRead, byte[]> gapContinuationPenalties = buildGapContinuationPenalties(processedReads, constantGCP);
-
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
-        pairHMM.computeLog10Likelihoods(likelihoods, processedReads, gapContinuationPenalties);
+        pairHMM.computeLog10Likelihoods(likelihoods, processedReads, inputScoreImputator);
 
         writeDebugLikelihoods(likelihoods);
     }
@@ -345,11 +349,17 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     -------------------------------------------------------------------------------- */
 
     private byte[] pcrIndelErrorModelCache;
+    private PairHMMInputScoreImputator inputScoreImputator;
+
 
     private void initializePCRErrorModel() {
         if ( !pcrErrorModel.hasRateFactor() ) {
             return;
         }
+
+        inputScoreImputator = dragstrParams == null
+                ? StandardPairHMMInputScoreImputator.newInstance(ReadUtils.DEFAULT_INSERTION_DELETION_QUAL, constantGCP)
+                : DragstrPairHMMInputScoreImputator.newInstance(dragstrParams) ;
 
         pcrIndelErrorModelCache = new byte[MAX_REPEAT_LENGTH + 1];
 
