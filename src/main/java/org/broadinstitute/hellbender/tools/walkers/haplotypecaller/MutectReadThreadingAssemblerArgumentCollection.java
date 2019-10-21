@@ -22,7 +22,7 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
     public ReadThreadingAssembler makeReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, kmerSizes,
                 dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, disableAdaptivePruning ? minPruneFactor : 0,
-                !disableAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants, !useLinkedDeBrujinGraph);
+                !disableAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants, useLinkedDeBrujinGraph);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
         assemblyEngine.setRecoverDanglingBranches(true);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);

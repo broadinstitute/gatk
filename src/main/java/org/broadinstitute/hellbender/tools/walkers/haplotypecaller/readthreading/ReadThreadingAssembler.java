@@ -72,14 +72,14 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final int maxUnprunedVariants, final boolean generateSeqGraph) {
+                                  final int maxUnprunedVariants, final boolean useLinkedDebrujinGraphs) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes;
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
-        this.generateSeqGraph = !generateSeqGraph;
+        this.generateSeqGraph = !useLinkedDebrujinGraphs;
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
@@ -87,7 +87,7 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, true);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, false);
     }
 
     @VisibleForTesting
