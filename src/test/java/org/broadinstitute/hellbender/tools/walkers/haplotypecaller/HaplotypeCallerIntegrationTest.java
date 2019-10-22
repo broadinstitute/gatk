@@ -182,7 +182,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
         };
 
         runCommandLine(args);

@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
+import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -304,7 +305,6 @@ public final class ReadThreadingAssembler {
         if (debugGraphTransformations) {
             printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.0.non_ref_removed.dot");
         }
-
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
         seqGraph.zipLinearChains();
         if (debugGraphTransformations) {
