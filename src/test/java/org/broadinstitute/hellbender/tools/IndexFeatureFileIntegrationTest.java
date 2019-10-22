@@ -9,7 +9,9 @@ import htsjdk.tribble.index.tabix.TabixIndex;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -381,5 +383,30 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
 
         Assert.assertTrue(output.exists());
         Assert.assertTrue(output.length() > 0);
+    }
+
+    // Make sure we can index a locatable XSV file
+    @Test
+    public void testLocatableXsvWithConfig(){
+        final File emptyVCF = getTestFile("locatableXsv.config");
+        final File output = createTempFile("locatableXsv.tsv", ".idx");
+
+        final File expectedOutput = getTestFile("locatableXsv.tsv.expected.idx");
+
+        final String[] args = {
+                "--feature-file", emptyVCF.getAbsolutePath(),
+                "-O", output.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        Assert.assertTrue(output.exists());
+        Assert.assertTrue(output.length() > 0);
+
+        try {
+            IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
+        }
+        catch ( final IOException ex ) {
+            throw new GATKException("Problem reading test files", ex);
+        }
     }
 }
