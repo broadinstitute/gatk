@@ -8,11 +8,11 @@ import logging
 import operator
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable, Callable, Any
+from typing import Dict, List, Tuple, Iterable, Callable, Union
 
 # Keras imports
-from keras import layers
 import keras.backend as K
+from keras.callbacks import History
 from keras.optimizers import Adam
 from keras.models import Model, load_model
 from keras.utils.vis_utils import model_to_dot
@@ -440,7 +440,9 @@ def train_model_from_generators(model: Model,
                                 output_folder: str,
                                 run_id: str,
                                 inspect_model: bool,
-                                inspect_show_labels: bool) -> Model:
+                                inspect_show_labels: bool,
+                                return_history: bool = False,
+                                plot: bool = True) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
 	Training data lives on disk, it will be loaded by generator functions.
@@ -459,8 +461,9 @@ def train_model_from_generators(model: Model,
     :param run_id: User-chosen string identifying this run
     :param inspect_model: If True, measure training and inference runtime of the model and generate architecture plot.
     :param inspect_show_labels: If True, show labels on the architecture plot.
+    :param return_history: If true return history from training and don't plot the training history
     :return: The optimized model.
-	"""
+    """
     model_file = os.path.join(output_folder, run_id, run_id + TENSOR_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
@@ -473,9 +476,11 @@ def train_model_from_generators(model: Model,
                                   validation_steps=validation_steps, validation_data=generate_valid,
                                   callbacks=_get_callbacks(patience, model_file))
 
-    plot_metric_history(history, run_id, os.path.dirname(model_file))
     logging.info('Model weights saved at: %s' % model_file)
-
+    if plot:
+        plot_metric_history(history, run_id, os.path.dirname(model_file))
+    if return_history:
+        return model, history
     return model
 
 
