@@ -650,7 +650,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         }
 
         // Returns a unique name based on the memory id that conforms to the restrictions placed on .dot file nodes
-        String getDotName() {
+        public String getDotName() {
             return "TreadingNode_" + Integer.toHexString(hashCode());
         }
 
