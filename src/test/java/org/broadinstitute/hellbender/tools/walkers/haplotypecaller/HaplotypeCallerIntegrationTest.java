@@ -99,6 +99,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testThisSiteThatEludesMe() {
+        String[] args = "-I /Users/emeryj/hellbender/AssemblyEngineEvaluationWork/results/reads.overlapping.discordance.bam -O output.for.debugging.vcf -R /Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta -ip 1000 -L chr1:10742920".split(" ");
+        runCommandLine(args);
+    }
+
     @Test(dataProvider="HaplotypeCallerTestInputs", enabled = false)
     public void testVCFModeWithExperimentalAssemblyEngineCode(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
