@@ -36,7 +36,6 @@ public class BamCustomIndexerPrototype extends ReadWalker {
             doc="Write output index to this file")
     public String outputIndexFile;
 
-    public static final String JONN_TEST_BAM = "src/test/resources/chrM_and_chr20_subset.corrected.bam";
 
     private SAMFileGATKReadWriter outputWriter;
 
