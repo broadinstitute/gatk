@@ -51,8 +51,7 @@ def parse_args():
     parser.add_argument('--phenos_folder', default='/mnt/disks/data/raw/phenotypes/', help='Path to folder of phenotype defining CSVs.')
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
-    parser.add_argument('--icd_csv', default='/mnt/ml4cvd/projects/jamesp/data/modified.zmerge.prs.full.csv.20190222',
-                        help='Path to CSV with ICD status for UKBB Sample IDs')
+    parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
     parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/cMRI_20190618_manual_qc.all.tsv',
                         help='Path to left ventricle volumes')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')

@@ -263,7 +263,7 @@ class TensorMap(object):
         return self.group == 'diagnosis_time'
 
     def is_continuous_any(self):
-        return self.is_continuous or self.is_diagnosis_time()
+        return self.is_continuous() or self.is_diagnosis_time()
 
     def is_ecg_rest(self):
         return self.group == 'ecg_rest'
@@ -366,10 +366,13 @@ class TensorMap(object):
     def rescale(self, np_tensor):
         if self.normalization is None:
             return np_tensor
-
-        if 'mean' in self.normalization and 'std' in self.normalization:
+        elif 'mean' in self.normalization and 'std' in self.normalization:
             np_tensor = np.array(np_tensor) * self.normalization['std']
             np_tensor = np.array(np_tensor) + self.normalization['mean']
+            return np_tensor
+        elif 'zero_mean_std1' in self.normalization:
+            return self.zero_mean_std1(np_tensor)
+        else:
             return np_tensor
 
     # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
@@ -732,7 +735,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 continuous_data[tm.channel_map[k]] = value
         if NOT_MISSING in tm.channel_map and not missing:
             continuous_data[tm.channel_map[NOT_MISSING]] = 1
-        if continuous_data[0] == 0 and (tm.sentinel == None and tm.name in CONTINUOUS_NEVER_ZERO):
+        if continuous_data[0] == 0 and (tm.sentinel is None and tm.name in CONTINUOUS_NEVER_ZERO):
             raise ValueError(tm.name + ' is a continuous value that cannot be set to 0, but no value was found.')
         return tm.normalize_and_validate(continuous_data)
     elif tm.is_multi_field_continuous():

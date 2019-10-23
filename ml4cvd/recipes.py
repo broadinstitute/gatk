@@ -73,6 +73,10 @@ def run(args):
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'categorical', ',')
+        elif 'append_continuous_tsv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'continuous', '\t')
+        elif 'append_categorical_tsv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
         else:

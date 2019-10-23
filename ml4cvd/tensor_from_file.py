@@ -33,10 +33,22 @@ def random_slice_tensor(tensor_key, dependent_key=None):
         tensor[..., 0] = big_tensor[..., cur_slice]
         if dependent_key is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            label_tensor = np.array(hd5[dependent_key][cur_slice], dtype=np.float32)
+            label_tensor = np.array(hd5[dependent_key][..., cur_slice], dtype=np.float32)
             dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
         return tm.normalize_and_validate(tensor)
     return _random_slice_tensor_from_file
+
+
+def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None):
+    def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+        tensor = big_tensor[..., np.arange(start, stop, step)]
+        if dependent_key is not None:
+            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+            label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
+            dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
+        return tm.normalize_and_validate(tensor)
+    return _slice_subset_tensor_from_file
 
 
 def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
@@ -316,6 +328,24 @@ TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_br
                                 tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
 TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'))
+TMAPS['t1_20_slices_1'] = TensorMap('t1_20_slices_1', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
+                                    tensor_from_file=slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 94, 114))
+TMAPS['t1_20_slices_2'] = TensorMap('t1_20_slices_2', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
+                                    tensor_from_file=slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_2', 94, 114))
+TMAPS['t2_20_slices_1'] = TensorMap('t2_20_slices_1', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
+                                    tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 86, 106))
+TMAPS['t2_20_slices_2'] = TensorMap('t2_20_slices_2', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
+                                    tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', 86, 106))
+TMAPS['t1_40_slices_1'] = TensorMap('t1_40_slices_1', shape=(256, 256, 40), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
+                                    tensor_from_file=slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 64, 144, 2))
+TMAPS['t2_40_slices_1'] = TensorMap('t2_40_slices_1', shape=(256, 256, 40), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
+                                    tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2))
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
@@ -342,7 +372,7 @@ def make_index_tensor_from_file(index_map_name):
             else:
                 return tensor
         index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor) / index
+        return tm.normalize_and_validate(tensor / index)
     return indexed_lvmass_tensor_from_file
 
 
@@ -366,6 +396,18 @@ TMAPS['lv_mass_mosteller_indexp'] = TensorMap('lv_mass_mosteller_index', group='
                                               parents=['output_mri_systole_diastole_8_segmented_categorical'],
                                               tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
                                               channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_dubois_index'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
+                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
+                                             channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_dubois_index_sentinel'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
+                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
+                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
+                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
+                                             channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 
 def mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):

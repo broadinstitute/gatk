@@ -1049,6 +1049,7 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 def append_fields_from_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
+    categorical_channel_maps = {MRI_ANNOTATION_NAME: MRI_ANNOTATION_CHANNEL_MAP}  # str: dict
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
@@ -1066,18 +1067,46 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-                        try:
-                            value = float(data_maps[sample_id][field])
-                            hd5_key = group + HD5_GROUP_CHAR + field
-                            if field in hd5[group]:
-                                data = hd5[hd5_key]
-                                data[0] = value
-                                stats['updated'] += 1
+                        value = data_maps[sample_id][field]
+                        if group == 'continuous':
+                            try:
+                                value = float(value.strip())
+                            except ValueError:
+                                stats[f'could not cast field: {field} with value: {value} to float'] += 1
+                                continue
+                        elif group == 'categorical':
+                            is_channel_mapped = False
+                            for cm_name in categorical_channel_maps:
+                                if value in categorical_channel_maps[cm_name]:
+                                    hd5_key = group + HD5_GROUP_CHAR + cm_name
+                                    if cm_name in hd5[group]:
+                                        data = hd5[hd5_key]
+                                        data[0] = categorical_channel_maps[cm_name][value]
+                                        stats['updated'] += 1
+                                    else:
+                                        hd5.create_dataset(hd5_key, data=[categorical_channel_maps[cm_name][value]])
+                                        stats['created'] += 1
+                                    is_channel_mapped = True
+                            if is_channel_mapped:
+                                continue
+
+                            if value.lower() in ['false', 'f', '0']:
+                                value = 0
+                            elif value.lower() in ['true', 't', '1']:
+                                value = 1
                             else:
-                                hd5.create_dataset(hd5_key, data=[value])
-                                stats['created'] += 1
-                        except ValueError:
-                            stats[f'could not cast field {field} to float'] += 1
+                                stats[f'Could not parse categorical field: {field} with value: {value}'] += 1
+                                continue
+
+                        hd5_key = group + HD5_GROUP_CHAR + field
+                        if field in hd5[group]:
+                            data = hd5[hd5_key]
+                            data[0] = value
+                            stats['updated'] += 1
+                        else:
+                            hd5.create_dataset(hd5_key, data=[value])
+                            stats['created'] += 1
+
                 else:
                     stats['sample id missing']
         except:
