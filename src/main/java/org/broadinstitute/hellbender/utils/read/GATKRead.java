@@ -791,5 +791,6 @@ public interface GATKRead extends Locatable {
             return String.format("%s %s:%d-%d", getName(), getContig(), getStart(), getEnd());
         }
     }
+
 }
 

@@ -25,4 +25,6 @@ public final class SAMFileGATKReadWriter implements GATKReadWriter {
     public void close() {
         samWriter.close();
     }
+
+
 }
