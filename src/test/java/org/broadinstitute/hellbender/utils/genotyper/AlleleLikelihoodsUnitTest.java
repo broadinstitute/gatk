@@ -282,19 +282,18 @@ public final class AlleleLikelihoodsUnitTest {
             for (int a = 0; a < numberOfAlleles; a++)
                 newLikelihoods[s][a] = new double[sampleReadCount];
             for (int r = 0; r < sampleReadCount; r++) {
-                double bestAltLk = Double.NEGATIVE_INFINITY;
+                double bestAlleleLk = Double.NEGATIVE_INFINITY;
+                //best likelihood can be alt OR reference
                 for (int a = 0; a < numberOfAlleles; a++) {
-                    if (alleles[a].isReference())
-                        continue;
-                    bestAltLk = Math.max(bestAltLk, originalLikelihoods[s][a][r]);
+                    bestAlleleLk = Math.max(bestAlleleLk, originalLikelihoods[s][a][r]);
                 }
-                if (bestAltLk == Double.NEGATIVE_INFINITY)
+                if (bestAlleleLk == Double.NEGATIVE_INFINITY)
                     for (int a = 0; a < numberOfAlleles; a++) {
                         newLikelihoods[s][a][r] = originalLikelihoods[s][a][r];
                     }
                 else
                     for (int a = 0; a < numberOfAlleles; a++) {
-                        newLikelihoods[s][a][r] = Math.max(originalLikelihoods[s][a][r], bestAltLk - 0.001);
+                        newLikelihoods[s][a][r] = Math.max(originalLikelihoods[s][a][r], bestAlleleLk - 0.001);
                     }
             }
         }

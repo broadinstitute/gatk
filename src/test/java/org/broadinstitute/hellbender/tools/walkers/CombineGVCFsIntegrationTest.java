@@ -33,6 +33,12 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
+    // If true, update the expected outputs in tests that assert an exact match vs. prior output,
+    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
+    // to update all of the exact-match tests at once. After you do this, you should look at the
+    // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
             "RAW_MQ", //MQ data format and key have changed since GATK3
@@ -47,6 +53,14 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
             assertion.accept(actual.get(i), expected.get(i));
         }
+    }
+
+    /*
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
     }
 
     @DataProvider
@@ -134,8 +148,8 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "gvcfsToCombine")
-    public void compareToGATK3ExpectedResults(File[] inputs, File outputFile, List<String> extraArgs, String reference) throws IOException, NoSuchAlgorithmException {
-        assertVariantContextsMatch(Arrays.asList(inputs), outputFile, extraArgs, reference, ATTRIBUTES_TO_IGNORE);
+    public void compareToExpectedResults(File[] inputs, File expected, List<String> extraArgs, String reference) throws IOException, NoSuchAlgorithmException {
+        assertVariantContextsMatch(Arrays.asList(inputs), expected, extraArgs, reference, ATTRIBUTES_TO_IGNORE);
     }
 
     public static void runProcess(ProcessController processController, String[] command) {
@@ -161,7 +175,7 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
-                .addOutput(output);
+                .addOutput(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected : output);
         for (File input: inputs) {
             args.addArgument("V", input.getAbsolutePath());
         }
@@ -173,9 +187,11 @@ public class    CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        final List<VariantContext> expectedVC = getVariantContexts(expected);
-        final List<VariantContext> actualVC = getVariantContexts(output);
-        assertForEachElementInLists(actualVC, expectedVC, assertion);
+        if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
+            final List<VariantContext> expectedVC = getVariantContexts(expected);
+            final List<VariantContext> actualVC = getVariantContexts(output);
+            assertForEachElementInLists(actualVC, expectedVC, assertion);
+        }
     }
 
     /**

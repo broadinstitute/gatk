@@ -352,9 +352,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     private void normalizeLikelihoodsPerEvidence(final double maximumBestAltLikelihoodDifference,
                                                  final double[][] sampleValues, final int sampleIndex, final int evidenceIndex) {
 
-        final BestAllele bestAlternativeAllele = searchBestAllele(sampleIndex,evidenceIndex,false);
+        //allow the best allele to be the reference because asymmetry leads to strange artifacts like het calls with >90% alt reads
+        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,true);
 
-        final double worstLikelihoodCap = bestAlternativeAllele.likelihood + maximumBestAltLikelihoodDifference;
+        final double worstLikelihoodCap = bestAllele.likelihood + maximumBestAltLikelihoodDifference;
 
         final int alleleCount = alleles.numberOfAlleles();
 

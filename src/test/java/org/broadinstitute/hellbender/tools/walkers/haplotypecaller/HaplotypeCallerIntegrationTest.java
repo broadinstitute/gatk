@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -1215,6 +1216,35 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                                             " but not in the VariantContext itself");
                         }
                     }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testContaminatedHomVarDeletions() {
+        final String bam = toolsTestDir + "haplotypecaller/deletion_sample.snippet.bam";
+        final String intervals = "chr3:46373452";
+
+        final File outputContaminatedHomVarDeletions = createTempFile("testContaminatedHomVarDeletions", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder().addInput(new File(bam))
+                .addReference(hg38Reference)
+                .addInterval(new SimpleInterval(intervals))
+                .addOutput(outputContaminatedHomVarDeletions)
+                .addNumericArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, 50);
+        runCommandLine(args);
+
+        List<VariantContext> vcs = VariantContextTestUtils.getVariantContexts(outputContaminatedHomVarDeletions);
+
+        //check known homozygous deletion for correct genotype
+        for (final VariantContext vc : vcs) {
+            final Genotype gt = vc.getGenotype(0);
+            if (gt.hasAD()) {
+                final int[] ads = gt.getAD();
+                final double alleleBalance = ads[1] / (ads[0] + ads[1]);
+                if (alleleBalance > 0.9) {
+                    Assert.assertTrue(vc.getGenotype(0).isHomVar());
                 }
             }
         }
