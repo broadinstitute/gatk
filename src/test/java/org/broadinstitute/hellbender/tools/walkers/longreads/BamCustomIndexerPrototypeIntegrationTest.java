@@ -1,10 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.longreads;
 
+import htsjdk.samtools.*;
+import htsjdk.samtools.util.CloseableIterator;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.text.XReadLines;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BamCustomIndexerPrototypeIntegrationTest extends CommandLineProgramTest {
 
@@ -13,6 +22,8 @@ public class BamCustomIndexerPrototypeIntegrationTest extends CommandLineProgram
 
     @Test
     public void testSmallBam() {
+        Assert.assertFalse(Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS);
+
         final File outputBam = createTempFile("BamCustomIndexerPrototypeIntegrationTest_testSmallBam", ".bam");
         final File outputIndex = createTempFile("BamCustomIndexerPrototypeIntegrationTest_testSmallBam", ".index");
 
@@ -22,7 +33,40 @@ public class BamCustomIndexerPrototypeIntegrationTest extends CommandLineProgram
         args.addOutput(outputBam);
         args.addArgument("output-index", outputIndex.getAbsolutePath());
 
-        
         runCommandLine(args);
+
+        try ( final XReadLines indexReader = new XReadLines(outputIndex) ) {
+            final List<String> indexContents = indexReader.readLines();
+            Assert.assertEquals(indexContents.size(), 195);
+
+            for ( final String indexLine : indexContents ) {
+                final String[] tokens = indexLine.split("\\t", -1);
+                Assert.assertEquals(tokens.length, 3);
+
+                final String readName = tokens[0];
+                final long chunkStart = Long.parseLong(tokens[1]);
+                final long chunkEnd = Long.parseLong(tokens[2]);
+
+                final Chunk chunk = new Chunk(chunkStart, chunkEnd);
+                final BAMFileSpan span = new BAMFileSpan(chunk);
+
+                final SamReader.PrimitiveSamReaderToSamReaderAdapter bamReader = (SamReader.PrimitiveSamReaderToSamReaderAdapter)SamReaderFactory.makeDefault().open(outputBam);
+                final CloseableIterator<SAMRecord> iterator = bamReader.iterator(span);
+
+                final List<SAMRecord> queryResults = new ArrayList<>();
+                while ( iterator.hasNext() ) {
+                    queryResults.add(iterator.next());
+                }
+
+                Assert.assertEquals(queryResults.size(), 1);
+                Assert.assertEquals(queryResults.get(0).getReadName(), readName);
+    
+                iterator.close();
+                bamReader.close();
+            }
+
+        } catch ( IOException e ) {
+            throw new UserException("oops", e);
+        }
     }
 }

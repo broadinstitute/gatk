@@ -36,7 +36,7 @@ tasks.withType(Test) {
     }
 
     systemProperty "samjdk.use_async_io_read_samtools", "false"
-    systemProperty "samjdk.use_async_io_write_samtools", "true"
+    systemProperty "samjdk.use_async_io_write_samtools", "false"
     systemProperty "samjdk.use_async_io_write_tribble", "false"
     systemProperty "samjdk.compression_level", "2"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
