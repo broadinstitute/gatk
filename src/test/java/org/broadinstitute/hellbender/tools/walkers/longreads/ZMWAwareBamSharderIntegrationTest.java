@@ -17,7 +17,7 @@ import java.util.List;
 
 public class ZMWAwareBamSharderIntegrationTest extends CommandLineProgramTest {
 
-    public static final String SMALL_TEST_BAM = "src/test/resources/chrM_and_chr20_subset.remaining.bam";
+    public static final String SMALL_TEST_BAM = "src/test/resources/chrM_and_chr20_subset.remaining_sorted.bam";
     public static final String CUSTOM_GATK_CONFIG = "GATKConfig_bamindexer.properties";
 
     @Test

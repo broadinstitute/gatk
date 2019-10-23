@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -37,7 +38,7 @@ public class ZMWAwareBamSharder extends ReadWalker {
               doc = "each shard should have approximately this many reads")
     public int targetShardSize;
 
-    private SAMFileGATKReadWriter outputWriter;
+    private CustomBAMFileWriter outputWriter;
 
     private PrintWriter indexWriter;
 
@@ -47,7 +48,7 @@ public class ZMWAwareBamSharder extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(outputBAM), true);
+        outputWriter = new CustomBAMFileWriter(new File(outputBAM));
         try {
             indexWriter = new PrintWriter(outputIndexFile);
         } catch ( IOException e ) {
@@ -59,7 +60,7 @@ public class ZMWAwareBamSharder extends ReadWalker {
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         previousZMW = currentZMW;
         currentZMW = getZMWForRead(read.getName());
-        outputWriter.addRead(read);
+        outputWriter.writeAlignment(read.convertToSAMRecord(getHeaderForReads()));
         ++numReadsInCurrentShard;
 
         if ( previousZMW == null || ( ! currentZMW.equals(previousZMW) && numReadsInCurrentShard >= targetShardSize) ) {
