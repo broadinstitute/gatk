@@ -9,7 +9,7 @@ import java.io.File;
 public class BamCustomIndexerPrototypeIntegrationTest extends CommandLineProgramTest {
 
     public static final String SMALL_TEST_BAM = "src/test/resources/chrM_and_chr20_subset.corrected.bam";
-
+    public static final String CUSTOM_GATK_CONFIG = "GATKConfig_bamindexer.properties";
 
     @Test
     public void testSmallBam() {
@@ -17,10 +17,12 @@ public class BamCustomIndexerPrototypeIntegrationTest extends CommandLineProgram
         final File outputIndex = createTempFile("BamCustomIndexerPrototypeIntegrationTest_testSmallBam", ".index");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("gatk-config-file", CUSTOM_GATK_CONFIG);
         args.addInput(new File(SMALL_TEST_BAM));
         args.addOutput(outputBam);
         args.addArgument("output-index", outputIndex.getAbsolutePath());
 
+        
         runCommandLine(args);
     }
 }

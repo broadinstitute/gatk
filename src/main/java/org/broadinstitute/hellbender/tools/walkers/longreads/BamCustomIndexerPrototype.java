@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.longreads;
 
-import htsjdk.samtools.BAMFileSpan;
-import htsjdk.samtools.Chunk;
-import htsjdk.samtools.SAMFileSource;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;

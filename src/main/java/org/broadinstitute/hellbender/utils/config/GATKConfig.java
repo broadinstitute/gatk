@@ -83,7 +83,7 @@ public interface GATKConfig extends Mutable, Accessible {
 
     @SystemProperty
     @Key("samjdk.use_async_io_write_samtools")
-    @DefaultValue("true")
+    @DefaultValue("false")
     boolean samjdk_use_async_io_write_samtools();
 
     @SystemProperty

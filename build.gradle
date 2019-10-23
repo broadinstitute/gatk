@@ -30,7 +30,7 @@ import java.time.ZonedDateTime
 mainClassName = "org.broadinstitute.hellbender.Main"
 
 //Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
-applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamjdk.use_async_io_write_samtools=true", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=2"]
+applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamjdk.use_async_io_write_samtools=false", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=2"]
 
 //Delete the windows script - we never test on Windows so let's not pretend it works
 startScripts {
