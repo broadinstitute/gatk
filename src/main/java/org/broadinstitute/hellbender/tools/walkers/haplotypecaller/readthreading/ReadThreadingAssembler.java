@@ -151,7 +151,8 @@ public final class ReadThreadingAssembler {
         final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
-        for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
+        List<AssemblyResult> assembledGraphs = assemble(correctedReads, refHaplotype, header, aligner);
+        for ( final AssemblyResult result : assembledGraphs) {
             if ( result.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION ) {
                 // do some QC on the graph
                 if (generateSeqGraph) {
@@ -170,6 +171,11 @@ public final class ReadThreadingAssembler {
                 if (graphHaplotypeHistogramPath != null) {
                     kmersUsedHistogram.add((double)result.getKmerSize());
                 }
+
+
+
+
+                addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
             }
         }
 
