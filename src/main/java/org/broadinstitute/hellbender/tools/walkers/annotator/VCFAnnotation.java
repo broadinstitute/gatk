@@ -3,6 +3,10 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+
+import java.util.function.Function;
 
 public interface VCFAnnotation<T> {
 
@@ -29,5 +33,6 @@ public interface VCFAnnotation<T> {
     default T valueOf(final Object obj) {
         throw new UnsupportedOperationException("direct conversion without context is not supported");
     }
+
 
 }
