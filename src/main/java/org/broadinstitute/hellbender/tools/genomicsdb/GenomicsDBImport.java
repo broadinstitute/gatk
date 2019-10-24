@@ -729,6 +729,8 @@ public final class GenomicsDBImport extends GATKTool {
         GenomicsDBImporter importer;
         try {
             importer = new GenomicsDBImporter(importConfig);
+            // Modify importer directly from updateImportProtobufVidMapping.
+            org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.updateImportProtobufVidMapping(importer);
             importer.executeImport(maxNumIntervalsToImportInParallel);
         } catch (final IOException e) {
             throw new UserException("Error initializing GenomicsDBImporter", e);

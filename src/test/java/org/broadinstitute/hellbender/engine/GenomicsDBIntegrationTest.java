@@ -34,6 +34,15 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testGenomicsDBJarForNativeLibraries() {
+        final String GENOMICSDB_LIBRARY_NAME = "/libtiledbgenomicsdb";
+        final String LINUX_DL_SUFFIX = ".so";
+        final String MACOSX_DL_SUFFIX = ".dylib";
+        Assert.assertNotNull(GenomicsDBLibLoader.class.getResource(GENOMICSDB_LIBRARY_NAME+LINUX_DL_SUFFIX), "Shared Library for Linux not found");
+        Assert.assertNotNull(GenomicsDBLibLoader.class.getResource(GENOMICSDB_LIBRARY_NAME+MACOSX_DL_SUFFIX), "Shared Library for Mac OSX not found");
+    }
+
+    @Test
     public void testAsDrivingVariants() throws IOException {
         final File workspace = GenomicsDBTestUtils.createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
