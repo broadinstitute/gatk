@@ -19,7 +19,7 @@ import java.io.PrintWriter;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
-public class PrintBAMHeader extends GATKTool {
+public class PrintReadsHeader extends GATKTool {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "file to write the bam header to", optional = false)
     private String outputFile;
@@ -37,9 +37,9 @@ public class PrintBAMHeader extends GATKTool {
             final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
             codec.encode(outputWriter, bamHeader);
         } catch (FileNotFoundException e ) {
-            throw new UserException.CouldNotCreateOutputFile("Error writing bam header to " + outputFile, e);
+            throw new UserException.CouldNotCreateOutputFile("Error writing reads header to " + outputFile, e);
         }
 
-        logger.info("Successfully wrote BAM header to destination " + outputFile);
+        logger.info("Successfully wrote reads header to destination: " + outputFile);
     }
 }
