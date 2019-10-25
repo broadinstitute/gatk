@@ -357,7 +357,7 @@ dependencies {
 
     // natural sort
     compile('net.grey-panther:natural-comparator:1.1')
-    compile('com.fasterxml.jackson.module:jackson-module-scala_2.11:2.9.8')
+    compile('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
 
     testUtilsCompile sourceSets.main.output
     testUtilsCompile 'org.testng:testng:' + testNGVersion
