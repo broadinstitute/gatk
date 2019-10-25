@@ -465,6 +465,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         return order;
     }
 
+    /**
+     * @return true if this {@code ReadsDataSource} supports serial iteration (has only non-SAM inputs). If any
+     * input has type==SAM_TYPE (is backed by a SamFileReader) this will return false, since SamFileReader
+     * doesn't support serial iterators, and can't be serially re-traversed without re-initialization of the
+     * underlying reader (and {@code ReadsDataSource}.
+     */
+    public boolean supportsSerialIteration() {
+        return !hasSAMInputs();
+    }
 
     /**
      * Shut down this data source permanently, closing all iterations and readers.
@@ -494,6 +503,13 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                 readerEntry.setValue(null);
             }
         }
+    }
+
+    // Return true if any input is has type==SAM_TYPE (is backed by a SamFileReader) since SamFileReader
+    // doesn't support serial iterators and can't be serially re-traversed without re-initialization of the
+    // reader
+    private boolean hasSAMInputs() {
+        return readers.keySet().stream().anyMatch(r -> r.type().equals(SamReader.Type.SAM_TYPE));
     }
 
     /**

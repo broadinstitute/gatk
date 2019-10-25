@@ -128,6 +128,17 @@ public abstract class ReadWalker extends WalkerBase {
     }
 
     /**
+     * Reset the reads data source so the caller can iterate through the reads again.
+     */
+    public void resetReadsDataSource() {
+        if (!reads.supportsSerialIteration()) {
+            // Reinitialize the reads data source to prepare for another iteration.
+            reads.close();
+            initializeReads();
+        }
+    }
+
+    /**
      * Process an individual read (with optional contextual information). Must be implemented by tool authors.
      * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
      * as possible.

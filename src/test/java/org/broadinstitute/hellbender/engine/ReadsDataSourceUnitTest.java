@@ -87,6 +87,24 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
         }
     }
 
+    @DataProvider(name = "SupportsSerialIteration")
+    public Object[][] getSupportsSerialIteration() {
+        // Files, expected to support serial iteration (false if any input is a .sam)
+        return new Object[][] {
+                { Arrays.asList(FIRST_TEST_BAM), true },
+                { Arrays.asList(FIRST_TEST_BAM, SECOND_TEST_BAM), true },
+                { Arrays.asList(FIRST_TEST_SAM), false },
+                { Arrays.asList(FIRST_TEST_BAM, FIRST_TEST_SAM), false }
+        };
+    }
+
+    @Test(dataProvider = "SupportsSerialIteration")
+    public void testSupportsSerialIteration(final List<Path> inputs, final boolean expectedSupportsSerialIteration) {
+        try (ReadsDataSource readsSource = new ReadsDataSource(inputs)) {
+            Assert.assertEquals(readsSource.supportsSerialIteration(), expectedSupportsSerialIteration);
+        }
+    }
+
     @DataProvider(name = "SingleFileCompleteTraversalData")
     public Object[][] getSingleFileCompleteTraversalData() {
         // Files, with expected read names in the expected order
@@ -100,18 +118,33 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
     @Test(dataProvider = "SingleFileCompleteTraversalData")
     public void testSingleFileCompleteTraversal( final Path samFile, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
-            List<GATKRead> reads = new ArrayList<>();
-            for ( GATKRead read : readsSource ) {
-                reads.add(read);
-            }
-    
-            // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.toAbsolutePath());
-    
-            // Make sure we got the reads we expected in the right order
-            for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.toAbsolutePath() + " not equal to expected read");
-            }
+            traverseOnce(readsSource, samFile, expectedReadNames);
+        }
+    }
+
+    @Test(dataProvider = "SingleFileCompleteTraversalData")
+    public void testSingleFileSerialTraversal( final Path samFile, final List<String> expectedReadNames ) {
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            Assert.assertTrue(readsSource.supportsSerialIteration());
+
+            traverseOnce(readsSource, samFile, expectedReadNames);
+            traverseOnce(readsSource, samFile, expectedReadNames);
+            traverseOnce(readsSource, samFile, expectedReadNames);
+        }
+    }
+
+    private void traverseOnce(final ReadsDataSource readsSource, final Path samFile, final List<String> expectedReadNames) {
+        List<GATKRead> reads = new ArrayList<>();
+        for ( GATKRead read : readsSource ) {
+            reads.add(read);
+        }
+
+        // Make sure we got the right number of reads
+        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.toAbsolutePath());
+
+        // Make sure we got the reads we expected in the right order
+        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
+            Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.toAbsolutePath() + " not equal to expected read");
         }
     }
 
@@ -203,20 +236,35 @@ public final class ReadsDataSourceUnitTest extends GATKBaseTest {
     public void testSingleFileQueryByInterval( final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
+            traverseOnceByInterval(readsSource, samFile, interval, expectedReadNames);
+        }
+    }
 
-            List<GATKRead> reads = new ArrayList<>();
-            Iterator<GATKRead> queryIterator = readsSource.query(interval);
-            while (queryIterator.hasNext()) {
-                reads.add(queryIterator.next());
-            }
+    @Test(dataProvider = "SingleFileQueryByIntervalData")
+    public void testSingleFileQueryByIntervalSerialIteration( final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
+            Assert.assertTrue(readsSource.supportsSerialIteration());
 
-            // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.toAbsolutePath());
+            traverseOnceByInterval(readsSource, samFile, interval, expectedReadNames);
+            traverseOnceByInterval(readsSource, samFile, interval, expectedReadNames);
+            traverseOnceByInterval(readsSource, samFile, interval, expectedReadNames);
+        }
+    }
 
-            // Make sure we got the reads we expected in the right order
-            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.toAbsolutePath() + " not equal to expected read");
-            }
+    private void traverseOnceByInterval( final ReadsDataSource readsSource, final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames) {
+        List<GATKRead> reads = new ArrayList<>();
+        Iterator<GATKRead> queryIterator = readsSource.query(interval);
+        while (queryIterator.hasNext()) {
+            reads.add(queryIterator.next());
+        }
+
+        // Make sure we got the right number of reads
+        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.toAbsolutePath());
+
+        // Make sure we got the reads we expected in the right order
+        for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+            Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.toAbsolutePath() + " not equal to expected read");
         }
     }
 
