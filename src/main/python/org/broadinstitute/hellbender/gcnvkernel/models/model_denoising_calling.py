@@ -914,14 +914,14 @@ class HHMMClassAndCopyNumberBasicCaller:
     """This class updates copy number and interval class posteriors according to the following hierarchical
     hidden Markov model:
 
-        class_prior_k --► (tau_1) --► (tau_2) --► (tau_3) --► ...
+        class_prior_k --> (tau_1) --> (tau_2) --> (tau_3) --> ...
                              |           |           |
                              |           |           |
-                             ▼           ▼           ▼
-                           (c_s1) --►  (c_s2) --►  (c_s3) --► ...
+                             v           v           v
+                           (c_s1) -->  (c_s2) -->  (c_s3) --> ...
                              |           |           |
                              |           |           |
-                             ▼           ▼           ▼
+                             v           v           v
                             n_s1        n_s2        n_s3
 
         The posterior probability of `tau` and `c_s`, q(tau) and q(c_s) respectively, are obtained via
