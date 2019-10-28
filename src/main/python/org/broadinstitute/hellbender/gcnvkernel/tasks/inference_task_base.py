@@ -392,6 +392,7 @@ class HybridInferenceTask(InferenceTask):
             try:
                 for _ in progress_bar:
                     loss = self.continuous_model_step_func() / self.elbo_normalization_factor
+                    assert not np.isnan(loss), "The optimization step for ELBO update returned a NaN"
                     self.i_advi += 1
 
                     try:
