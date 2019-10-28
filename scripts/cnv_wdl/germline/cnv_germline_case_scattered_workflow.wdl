@@ -236,7 +236,7 @@ task SplitInputArray {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
+        docker: gatk_docker
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
