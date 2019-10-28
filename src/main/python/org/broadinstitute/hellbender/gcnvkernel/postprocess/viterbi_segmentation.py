@@ -134,7 +134,9 @@ class ViterbiSegmentationEngine:
             pi_jkc = HHMMClassAndCopyNumberBasicCaller.get_copy_number_prior_for_sample_jkc(
                 self.calling_config.num_copy_number_states,
                 self.calling_config.p_alt,
-                np.asarray([contig_baseline_copy_number], dtype=types.med_uint))
+                np.asarray([contig_baseline_copy_number], dtype=types.med_uint),
+                self.calling_config.impose_uniform_prior_in_active_regions,
+                self.calling_config.active_region_baseline_prior)
 
             # contig interval list and indices
             contig_interval_list = self.contig_interval_lists[contig]

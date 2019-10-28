@@ -195,6 +195,8 @@ class CopyNumberCallingConfig:
                  p_alt: float = 1e-6,
                  p_active: float = 1e-3,
                  active_region_prior_error: float = 1e-2,
+                 impose_uniform_prior_in_active_regions: bool = True,
+                 active_region_baseline_prior: float = 5e-1,
                  cnv_coherence_length: float = 10000.0,
                  class_coherence_length: float = 10000.0,
                  max_copy_number: int = 5,
@@ -203,6 +205,7 @@ class CopyNumberCallingConfig:
         assert 0.0 <= p_alt <= 1.0
         assert 0.0 <= p_active <= 1.0
         assert 0.0 <= active_region_prior_error <= 1.0
+        assert 0.0 <= active_region_baseline_prior <= 1.0
         assert cnv_coherence_length > 0.0
         assert class_coherence_length > 0.0
         assert max_copy_number > 0
@@ -212,6 +215,8 @@ class CopyNumberCallingConfig:
         self.p_alt = p_alt
         self.p_active = p_active
         self.active_region_prior_error = active_region_prior_error
+        self.impose_uniform_prior_in_active_regions = impose_uniform_prior_in_active_regions
+        self.active_region_baseline_prior = active_region_baseline_prior
         self.cnv_coherence_length = cnv_coherence_length
         self.class_coherence_length = class_coherence_length
         self.max_copy_number = max_copy_number
@@ -269,6 +274,16 @@ class CopyNumberCallingConfig:
         process_and_maybe_add("active_region_prior_error",
                               type=float,
                               help="Uncertainty to impose on the common region prior binary values")
+
+        process_and_maybe_add("impose_uniform_prior_in_active_regions",
+                              type=bool,
+                              help="Impose a uniform copy number prior in active regions. If false the "
+                                   "prior will be centered on baseline copy number")
+
+        process_and_maybe_add("active_region_baseline_prior",
+                              type=float,
+                              help="The probability of baseline copy number in active regions if non-uniform prior"
+                                   "is imposed")
 
         process_and_maybe_add("cnv_coherence_length",
                               type=float,
@@ -344,7 +359,9 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
             sample_pi_jkc = HHMMClassAndCopyNumberBasicCaller.get_copy_number_prior_for_sample_jkc(
                 calling_config.num_copy_number_states,
                 calling_config.p_alt,
-                sample_baseline_copy_number_j)
+                sample_baseline_copy_number_j,
+                calling_config.impose_uniform_prior_in_active_regions,
+                calling_config.active_region_baseline_prior)
             if shared_workspace.impose_uniform_priors:
                 sample_log_pi_jc = np.log(np.sum(sample_pi_jkc * shared_workspace.class_prior_probs_k.get_value()[np.newaxis, :, np.newaxis], axis=1))
             for ti in range(shared_workspace.num_intervals):
@@ -1015,7 +1032,9 @@ class HHMMClassAndCopyNumberBasicCaller:
             pi_sjkc[si, :, :, :] = self.get_copy_number_prior_for_sample_jkc(
                 calling_config.num_copy_number_states,
                 calling_config.p_alt,
-                shared_workspace.baseline_copy_number_sj[si, :])[:, :, :]
+                shared_workspace.baseline_copy_number_sj[si, :],
+                calling_config.impose_uniform_prior_in_active_regions,
+                calling_config.active_region_baseline_prior)[:, :, :]
         self.pi_sjkc: types.TensorSharedVariable = th.shared(pi_sjkc, name='pi_sjkc', borrow=config.borrow_numpy)
 
         # compiled function for forward-backward updates of copy number posterior
@@ -1052,13 +1071,18 @@ class HHMMClassAndCopyNumberBasicCaller:
     @staticmethod
     def get_copy_number_prior_for_sample_jkc(num_copy_number_states: int,
                                              p_alt: float,
-                                             baseline_copy_number_j: np.ndarray) -> np.ndarray:
+                                             baseline_copy_number_j: np.ndarray,
+                                             impose_uniform_prior_in_active_regions: bool,
+                                             active_region_baseline_prior: float) -> np.ndarray:
         """Returns copy-number prior probabilities for each contig (j) and class (k) as a 3d ndarray.
 
         Args:
             num_copy_number_states: total number of copy-number states
             p_alt: total probability of alt copy-number states
             baseline_copy_number_j: baseline copy-number state for each contig
+            impose_uniform_prior_in_active_regions: impose uniform copy number prior over active regions
+            active_region_baseline_prior: probability of baseline state in active regions if
+                `impose_uniform_prior_in_active_regions` is false
 
         Returns:
             a 3d ndarray
@@ -1070,7 +1094,12 @@ class HHMMClassAndCopyNumberBasicCaller:
             pi_jkc[j, 0, :] = p_alt
             pi_jkc[j, 0, baseline_state] = p_baseline
             # the active class
-            pi_jkc[j, 1, :] = 1.0 / num_copy_number_states
+            if impose_uniform_prior_on_active:
+                pi_jkc[j, 1, :] = 1.0 / num_copy_number_states
+            else:
+                active_region_alt_prior = (1.0 - active_region_baseline_prior) / (num_copy_number_states - 1)
+                pi_jkc[j, 0, :] = active_region_alt_prior
+                pi_jkc[j, 0, baseline_state] = active_region_baseline_prior
 
         return pi_jkc
 
