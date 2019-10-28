@@ -61,7 +61,7 @@ final htsjdkVersion = System.getProperty('htsjdk.version','2.20.3')
 final picardVersion = System.getProperty('picard.version','2.21.1')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.4.3')
-final scalaVersion = System.getProperty('scala.version', '2.11')
+final scalaVersion = System.getProperty('scala.version', JavaVersion.current().isJava8() ? '2.11' : '2.12')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
 final disqVersion = System.getProperty('disq.version','0.3.3')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.1.2.2')
@@ -171,7 +171,7 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
-        force 'com.twitter:chill_2.11:0.8.1'
+        force 'com.twitter:chill_' + scalaVersion + ':0.9.3'
 
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
@@ -214,13 +214,13 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.11'
+        exclude module: 'spark-core_' + scalaVersion
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.11'
+        exclude module: 'spark-mllib_' + scalaVersion
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
@@ -244,8 +244,8 @@ dependencies {
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
     compile ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j'
-        exclude module: 'spark-core_2.11'
-        exclude module: 'spark-sql_2.11'
+        exclude module: 'spark-core_' + scalaVersion
+        exclude module: 'spark-sql_' + scalaVersion
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
