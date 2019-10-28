@@ -335,6 +335,7 @@ workflow CNVGermlineCohortWorkflow {
                 genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
                 entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
+                gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -342,6 +343,7 @@ workflow CNVGermlineCohortWorkflow {
     call CNVTasks.CollectModelQualityMetrics {
         input:
             gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
+            gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -359,6 +361,7 @@ workflow CNVGermlineCohortWorkflow {
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
         Array[File] sample_qc_status_files = CollectSampleQualityMetrics.qc_status_file
+        Array[String] sample_qc_status_strings = CollectSampleQualityMetrics.qc_status_string
         File model_qc_status_file = CollectModelQualityMetrics.qc_status_file
         String model_qc_string = CollectModelQualityMetrics.qc_status_string
         Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
@@ -419,7 +422,7 @@ task DetermineGermlineContigPloidyCohortMode {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
+        docker: gatk_docker
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
@@ -575,7 +578,7 @@ task GermlineCNVCallerCohortMode {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
+        docker: gatk_docker
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])

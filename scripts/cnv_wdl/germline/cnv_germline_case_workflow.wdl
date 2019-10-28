@@ -242,6 +242,7 @@ workflow CNVGermlineCaseWorkflow {
                 genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
                 entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
+                gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -311,7 +312,7 @@ task DetermineGermlineContigPloidyCaseMode {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
+        docker: gatk_docker
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
@@ -447,7 +448,7 @@ task GermlineCNVCallerCaseMode {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
+        docker: gatk_docker
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
