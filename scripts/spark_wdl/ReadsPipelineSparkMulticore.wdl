@@ -12,6 +12,9 @@ workflow ReadsPipelineSparkWorkflow {
   String gatk
   Int? num_cpu_override
   Int num_cpu = select_first([num_cpu_override, 16])
+  # max 3000GB for local SSDs, see https://cloud.google.com/compute/docs/disks/#localssds
+  Int? disk_size_override
+  Int disk_size = select_first([disk_size_override, 3000])
 
   call ReadsPipelineSpark {
     input:
@@ -25,7 +28,8 @@ workflow ReadsPipelineSparkWorkflow {
       known_sites_index = known_sites_index,
       gatk_docker = gatk_docker,
       gatk = gatk,
-      num_cpu = num_cpu
+      num_cpu = num_cpu,
+      disk_size = disk_size
   }
 
   output {
@@ -46,6 +50,7 @@ task ReadsPipelineSpark {
   String gatk_docker
   String gatk
   Int num_cpu
+  Int disk_size
 
   command {
     ${gatk} \
@@ -55,13 +60,13 @@ task ReadsPipelineSpark {
       -O ${output_vcf_basename}.vcf \
       --known-sites ${known_sites} \
       -pairHMM AVX_LOGLESS_CACHING \
-      --max-reads-per-alignment-start 10
+      --conf 'spark.local.dir=./tmp'
   }
 
   runtime {
     docker: gatk_docker
     cpu: num_cpu
-    disks: "local-disk 4000 SSD"
+    disks: "local-disk " + disk_size + " LOCAL"
   }
 
   output {
