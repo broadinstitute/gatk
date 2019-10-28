@@ -25,6 +25,8 @@ from ..tasks.inference_task_base import HybridInferenceParameters
 
 _logger = logging.getLogger(__name__)
 
+_eps = 1E-10
+
 
 class DenoisingModelConfig:
     """Configuration for the coverage denoising model, including hyper-parameters, model feature selection,
@@ -701,7 +703,7 @@ class DenoisingModel(GeneralizedContinuousModel):
         register_as_global = self.register_as_global
         register_as_sample_specific = self.register_as_sample_specific
 
-        eps = denoising_model_config.mapping_error_rate
+        eps_mapping = denoising_model_config.mapping_error_rate
 
         # interval-specific unexplained variance
         psi_t = Exponential(name='psi_t', lam=1.0 / denoising_model_config.psi_t_scale,
@@ -716,7 +718,8 @@ class DenoisingModel(GeneralizedContinuousModel):
         register_as_sample_specific(psi_s, sample_axis=0)
 
         # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_st = tt.inv((tt.exp(psi_t.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0))
+        alpha_st = tt.maximum(tt.inv(tt.exp(psi_t.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0),
+                              _eps)
 
         # interval-specific mean log bias
         log_mean_bias_t = Normal(name='log_mean_bias_t', mu=0.0, sd=denoising_model_config.log_mean_bias_std,
@@ -781,14 +784,14 @@ class DenoisingModel(GeneralizedContinuousModel):
         bias_st = tt.exp(log_bias_st)
 
         # the expected number of erroneously mapped reads
-        mean_mapping_error_correction_s = eps * read_depth_s * shared_workspace.average_ploidy_s
+        mean_mapping_error_correction_s = eps_mapping * read_depth_s * shared_workspace.average_ploidy_s
 
         denoised_copy_ratio_st = ((shared_workspace.n_st - mean_mapping_error_correction_s.dimshuffle(0, 'x'))
-                                  / ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x') * bias_st))
+                                  / ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x') * bias_st))
 
         Deterministic(name='denoised_copy_ratio_st', var=denoised_copy_ratio_st)
 
-        mu_stc = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x', 'x')
+        mu_stc = ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x', 'x')
                   * bias_st.dimshuffle(0, 1, 'x')
                   * shared_workspace.copy_number_values_c.dimshuffle('x', 'x', 0)
                   + mean_mapping_error_correction_s.dimshuffle(0, 'x', 'x'))
@@ -800,7 +803,7 @@ class DenoisingModel(GeneralizedContinuousModel):
         # n_st (observed)
         if denoising_model_config.q_c_expectation_mode == 'map':
             def _copy_number_emission_logp(_n_st):
-                mu_st = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x') * bias_st
+                mu_st = ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x') * bias_st
                          * shared_workspace.c_map_st + mean_mapping_error_correction_s.dimshuffle(0, 'x'))
                 log_copy_number_emission_st = commons.negative_binomial_logp(
                     mu_st, alpha_st, _n_st)
@@ -823,12 +826,13 @@ class DenoisingModel(GeneralizedContinuousModel):
                 silent_class_indices = (1 - active_class_bitmask_t).nonzero()[0]
 
                 # for CNV-active classes, calculate exact posterior expectation
-                mu_active_stc = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x', 'x')
+                mu_active_stc = ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x', 'x')
                                  * bias_st.dimshuffle(0, 1, 'x')[:, active_class_indices, :]
                                  * shared_workspace.copy_number_values_c.dimshuffle('x', 'x', 0)
                                  + mean_mapping_error_correction_s.dimshuffle(0, 'x', 'x'))
-                alpha_active_stc = tt.inv((tt.exp(psi_t.dimshuffle('x', 0)[:, active_class_indices]
-                                                  + psi_s.dimshuffle(0, 'x')) - 1.0)).dimshuffle(0, 1, 'x')
+                alpha_active_stc = tt.maximum(tt.inv((tt.exp(psi_t.dimshuffle('x', 0)[:, active_class_indices]
+                                                             + psi_s.dimshuffle(0, 'x')) - 1.0)).dimshuffle(0, 1, 'x'),
+                                              _eps)
                 n_active_stc = _n_st.dimshuffle(0, 1, 'x')[:, active_class_indices, :]
                 active_class_logp_stc = commons.negative_binomial_logp(mu_active_stc, alpha_active_stc, n_active_stc)
                 log_q_c_active_stc = shared_workspace.log_q_c_stc[:, active_class_indices, :]
@@ -836,7 +840,7 @@ class DenoisingModel(GeneralizedContinuousModel):
                 active_class_logp = tt.sum(q_c_active_stc * (active_class_logp_stc - log_q_c_active_stc))
 
                 # for CNV-silent classes, use MAP copy number state
-                mu_silent_st = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x') * bias_st[:, silent_class_indices]
+                mu_silent_st = ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x') * bias_st[:, silent_class_indices]
                                 * shared_workspace.c_map_st[:, silent_class_indices]
                                 + mean_mapping_error_correction_s.dimshuffle(0, 'x'))
                 alpha_silent_st = alpha_st[:, silent_class_indices]
