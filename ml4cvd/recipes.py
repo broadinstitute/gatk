@@ -13,13 +13,14 @@ from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
-from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_multimodal_multitask_model
-from ml4cvd.models import make_character_model_plus, embed_model_predict, make_hidden_layer_model, make_shallow_model
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
+from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files
-from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files, plot_while_learning
+from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
 
 
 def run(args):
@@ -63,6 +64,8 @@ def run(args):
             train_shallow_model(args)
         elif 'train_char' == args.mode:
             train_char_model(args)
+        elif 'train_siamese' == args.mode:
+            train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'find_tensors' == args.mode:
@@ -245,6 +248,19 @@ def train_char_model(args):
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
+
+
+def train_siamese_model(args):
+    base_model = make_multimodal_multitask_model(**args.__dict__)
+    siamese_model = make_siamese_model(base_model, **args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(siamese=True, **args.__dict__)
+
+    siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+
+    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
+    prediction = siamese_model.predict(data)
+    return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
 
 
 def plot_predictions(args):

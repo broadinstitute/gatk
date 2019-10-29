@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 
 from skimage.filters import threshold_otsu
 
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args

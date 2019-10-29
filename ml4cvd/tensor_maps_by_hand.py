@@ -505,26 +505,26 @@ TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='con
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
 
 TMAPS['systolic_blood_pressure_0'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_0_0', group='continuous', loss='logcosh',
-                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0},
+                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0}, validator=make_range_validator(40, 400),
                                                normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
-
 TMAPS['diastolic_blood_pressure_0'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_0_0', group='continuous', loss='logcosh',
-                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading_0_0': 0},
+                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading_0_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
+
 TMAPS['systolic_blood_pressure_1'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_1_0', group='continuous', loss='logcosh',
-                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_1_0': 0},
+                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_1_0': 0}, validator=make_range_validator(40, 400),
                                                normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
-
 TMAPS['diastolic_blood_pressure_1'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_1_0', group='continuous', loss='logcosh',
-                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading_1_0': 0},
+                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading_1_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
-TMAPS['systolic_blood_pressure_2'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_2_0', group='continuous', loss='logcosh',
-                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_2_0': 0},
-                                               normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
 
+TMAPS['systolic_blood_pressure_2'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_2_0', group='continuous', loss='logcosh',
+                                               channel_map={'4080_Systolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(40, 400),
+                                               normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
 TMAPS['diastolic_blood_pressure_2'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_2_0', group='continuous', loss='logcosh',
-                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading_2_0': 0},
+                                                channel_map={'4079_Diastolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
+
 # example of multi-field-continuous tensor map (note shape will be 1x8 to accommodate a not-missing channel for each value
 # normalization must be dictionary of [mean, stdev] for each value. Requries an imputation method.
 TMAPS['blood-pressure'] = TensorMap('blood-pressure', group='multi_field_continuous',

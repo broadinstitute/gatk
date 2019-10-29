@@ -1,6 +1,6 @@
 h5py==2.9.0
 pydot==1.2.4
-keras==2.2.4
+keras==2.2.5
 keras-rectified-adam==0.10.0
 nibabel==2.5.0
 pydicom==1.2.2

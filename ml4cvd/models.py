@@ -16,13 +16,13 @@ from keras.callbacks import History
 from keras.optimizers import Adam
 from keras.models import Model, load_model
 from keras.utils.vis_utils import model_to_dot
-from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU
+from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers.convolutional import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
-from keras.layers.convolutional import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from keras.layers.convolutional import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
+from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict
@@ -234,12 +234,42 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[TensorMap], output_layer_name: str, tensor_maps_out: List[TensorMap]):
+def make_siamese_model(base_model: Model,
+                       tensor_maps_in: List[TensorMap],
+                       hidden_layer: str,
+                       learning_rate: float = None,
+                       optimizer: str = 'adam',
+                       **kwargs) -> Model:
+    in_left = [Input(shape=tm.shape, name=tm.input_name()+'_left') for tm in tensor_maps_in]
+    in_right = [Input(shape=tm.shape, name=tm.input_name()+'_right') for tm in tensor_maps_in]
+    encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
+    h_left = encode_model(in_left)
+    h_right = encode_model(in_right)
+
+    # Compute the L1 distance
+    l1_layer = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))
+    l1_distance = l1_layer([h_left, h_right])
+
+    # Add a dense layer with a sigmoid unit to generate the similarity score
+    prediction = Dense(1, activation='sigmoid', name='output_siamese')(l1_distance)
+
+    m = Model(inputs=in_left+in_right, outputs=prediction)
+    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    m.compile(optimizer=opt, loss='binary_crossentropy')
+
+    if kwargs['model_layers'] is not None:
+        m.load_weights(kwargs['model_layers'], by_name=True)
+        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
+
+    return m
+
+
+def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[TensorMap], output_layer_name: str, tensor_maps_out: List[TensorMap]) -> Model:
     parent_model = load_model(parent_file, custom_objects=get_metric_dict(tensor_maps_out))
     return make_hidden_layer_model(parent_model, tensor_maps_in, output_layer_name)
 
 
-def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str):
+def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str) -> Model:
     parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
     dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=parent_model.get_layer(output_layer_name).output)
@@ -472,7 +502,7 @@ def train_model_from_generators(model: Model,
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
+    history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1, workers=4, use_multiprocessing=True,
                                   validation_steps=validation_steps, validation_data=generate_valid,
                                   callbacks=_get_callbacks(patience, model_file))
 
@@ -720,11 +750,11 @@ def _inspect_model(model: Model,
 		The slightly optimized keras model
 	"""
     if image_path:
-        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels), image_path, inspect_show_labels)
+        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
 
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1,
-                            validation_data=generate_valid)
+    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, workers=8, use_multiprocessing=True,
+                            validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     train_speed = (t1 - t0) / (batch_size * training_steps)
     logging.info('Spent:{} seconds training, batch_size:{} steps:{} Per example training speed:{}'.format(
@@ -856,3 +886,5 @@ def get_model_inputs_outputs(model_files: List[str],
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
+
+
