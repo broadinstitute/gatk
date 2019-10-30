@@ -331,7 +331,7 @@ public final class VariantContextTestUtils {
                     // both values are lists, compare element b element
                     List<Object> expectedList = (List<Object>) expectedValue;
                     List<Object> actualList = (List<Object>) actualValue;
-                    Assert.assertEquals(actualList.size(), expectedList.size());
+                    Assert.assertEquals(actualList.size(), expectedList.size(), "Lists were different lengths.\nActual:   " + actualList + "\nExpected:" + expectedList +"\n");
                     for (int i = 0; i < expectedList.size(); i++) {
                         assertAttributeEquals(key, actualList.get(i), expectedList.get(i));
                     }

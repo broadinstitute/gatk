@@ -13,6 +13,7 @@ public class LocalAlleler {
 
     public static final String LAA = "LAA";
     public static final String LGT = "LGT";
+    public static final String LAD = "LAD";
 
     public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc){
         // new LAA
@@ -37,10 +38,13 @@ public class LocalAlleler {
             ArrayList<Integer> localAlleleDepth = new ArrayList<>(localAlleleIndexes.size());
             // all alleles A*, C,T, AAT, NON_REF  local A*,T,NON_REF  AD 10,11,12,13,14  LAD 10,12,14
             int[] originalAlleleDepth = originalGenotype.getAD();
+
+            //be sure to add the ref AD
+            localAlleleDepth.add(originalAlleleDepth[0]);
             for( int index : localAlleleIndexes){
                 localAlleleDepth.add(originalAlleleDepth[index]);
             }
-            localAttributes.put("LAD", localAlleleDepth);
+            localAttributes.put(LAD, localAlleleDepth);
         }
 
         GenotypeBuilder genotypeBuilder = new GenotypeBuilder(originalGenotype);
