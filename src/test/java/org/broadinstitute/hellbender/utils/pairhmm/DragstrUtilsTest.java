@@ -43,7 +43,10 @@ public class DragstrUtilsTest {
         final Random rdn = new Random(sequenceStr.hashCode() * 31 + maxPeriod);
 
         testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, sequenceStr.length(), rdn);
-        for (int i = 0; i < 100; i++) {
+        testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, 0, rdn);
+        // random start and ends:
+        final int randomTries =  Math.min(sequenceStr.length() * sequenceStr.length() * 4, 100);
+        for (int i = 0; i < randomTries; i++) {
             final int start = rdn.nextInt(sequenceStr.length());
             final int end = rdn.nextInt(sequenceStr.length() - start) + start;
             testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, start, end, rdn);
@@ -102,6 +105,9 @@ public class DragstrUtilsTest {
 
 
     public static int calculate(final byte[] sequence, final int position, final int period) {
+        if (period > sequence.length) {
+            return 0;
+        }
         final int start = Math.max(0, position - period + 1);
         final int windows = position - period + 1 >= 0 ? period : position + 1;
         int max = 0;
@@ -139,6 +145,8 @@ public class DragstrUtilsTest {
                 "AGTATACTGAT",
                 "GTCTATATATATTTTAATTAATTAATTAATTAAATATATTTTCTGCTGCCTTTTGGAT",
                 "AAAAA",
+                "A",
+                "",
                 "ACGTAGATCTGTAGCACTATCGAGC"};
         final Random rdn = new Random(131);
         final RandomDNA rdnDNA = new RandomDNA(rdn);

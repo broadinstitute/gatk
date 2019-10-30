@@ -70,9 +70,11 @@ public class DragstrUtils {
             }
 
             this.start = start;
-            this.end = end; 
+            this.end = end;
             // periodIndex == periodLength - 1 since in Java indexes start with 0.
-            for (int periodIndex = 0; periodIndex < maxPeriod; periodIndex++) {
+
+            loadPeriodOne(sequence, start, end); // simpler and faster code for period-length == 0.
+            for (int periodIndex = 1; periodIndex < maxPeriod; periodIndex++) {
                 final int periodLength = periodIndex + 1;
                 final int[] runLength = repeatsByPeriodAndPosition[periodIndex];
                 if (sequence.length < periodLength) {
@@ -94,12 +96,6 @@ public class DragstrUtils {
                 } else {
                     rightMargin = sequence.length;
                 }
-                // now the leftMargin:
-                //for (leftMargin = start, position = start - periodLength; position > 0; position++) {
-                //    if (sequence[leftMargin] != sequence[position]) {
-                //        break;
-                //    }
-               // }
 
                 // Calculate backward the repeat run lengths from a position forward.
                 // so that runLength[i] would contain the number of repetitions of seq[i .. i + period) in seq[i .. end_of_seq]
@@ -208,6 +204,35 @@ public class DragstrUtils {
                         periodWithMostRepeats[position] = periodLength;
                     }
                 }
+            }
+        }
+
+        private void loadPeriodOne(final byte[] sequence, final int start, final int end) {
+            final int[] runLengths = repeatsByPeriodAndPosition[0];
+            byte last = sequence[end - 1];
+
+            // backward phase:
+            int rightMargin, position;
+            for (rightMargin = end; rightMargin < sequence.length && sequence[rightMargin] == last; rightMargin++);
+            int carryBack = rightMargin - end;
+            for (position = end - 1; position >= start; position--) {
+                final byte next = sequence[position];
+                runLengths[position] = next == last ? ++carryBack : (carryBack = 1);
+                last = next;
+            }
+            // forward phase:
+            int leftMargin;
+            last = sequence[start];
+            for (leftMargin = start - 1; leftMargin >= 0 && sequence[leftMargin] == last; leftMargin--);
+            int carryForward = start - leftMargin - 1;
+            for (position = start; position < end; position++) {
+                final byte next = sequence[position];
+                if (next == last) {
+                    runLengths[position] += carryForward++;
+                } else {
+                    carryForward = 1;
+                }
+                last = next;
             }
         }
     }
