@@ -40,22 +40,38 @@ public class DragstrUtilsTest {
 
     @Test(dataProvider = "testSequenceAndMaxPeriodData")
     public void testRepeatBestPeriodAndCount(final String sequenceStr, final int maxPeriod) {
-        final byte[] sequence = sequenceStr.getBytes();
+        final Random rdn = new Random(sequenceStr.hashCode() * 31 + maxPeriod);
+
+        testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, 0, sequenceStr.length(), rdn);
+        for (int i = 0; i < 100; i++) {
+            final int start = rdn.nextInt(sequenceStr.length());
+            final int end = rdn.nextInt(sequenceStr.length() - start) + start;
+            testRepeatBestPeriodAndCount(sequenceStr.getBytes(), maxPeriod, start, end, rdn);
+        }
+    }
+
+    private void testRepeatBestPeriodAndCount(final byte[] sequence, final int maxPeriod, final int start, final int end, final Random rdn) {
         final DragstrUtils.STRSequenceAnalyzer rpc = DragstrUtils.repeatPeriodAndCounts(sequence.length, maxPeriod);
-        rpc.load(sequence);
-        final Random rdn = new Random(Arrays.hashCode(sequence) * 31 + maxPeriod);
-        final int[] positions = new int[sequence.length];
+        if (start == 0 && end == sequence.length && rdn.nextDouble() <= 0.5) { // sometimes use the margin free method when applies to test it.
+            rpc.load(sequence);
+        } else {
+            rpc.load(sequence, start, end);
+        }
+        final int[] positions = new int[end - start];
         for (int i = 0; i < positions.length; i++) {
-            positions[i] = i;
+            positions[i] = i + start;
         }
         ArrayUtils.shuffle(positions, rdn);
         for (int position : positions) {
-            final int[] periods = IntStream.range(1, maxPeriod + 1).toArray();
-            ArrayUtils.shuffle(periods, rdn);
                 final int[] expected = calculateBestPeriodAndRepeat(sequence, position, maxPeriod);
                 final int bestPeriod = rpc.mostRepeatedPeriod(position);
                 final int bestRepeat = rpc.numberOfMostRepeats(position);
-                Assert.assertEquals(bestPeriod, expected[0], new String(sequence) + " " + position);
+                try {
+                    Assert.assertEquals(bestPeriod, expected[0], new String(sequence) + " " + position + " " + start + " " + end);
+                } catch (final AssertionError err) {
+                    rpc.load(sequence, start, end);
+                    throw err;
+                }
                 Assert.assertEquals(bestRepeat, expected[1], new String(sequence) + " " + position);
         }
     }

@@ -353,13 +353,14 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
 
     private void initializePCRErrorModel() {
-        if ( !pcrErrorModel.hasRateFactor() ) {
-            return;
-        }
 
         inputScoreImputator = dragstrParams == null
                 ? StandardPairHMMInputScoreImputator.newInstance(ReadUtils.DEFAULT_INSERTION_DELETION_QUAL, constantGCP)
                 : DragstrPairHMMInputScoreImputator.newInstance(dragstrParams) ;
+
+        if ( !pcrErrorModel.hasRateFactor() ) {
+            return;
+        }
 
         pcrIndelErrorModelCache = new byte[MAX_REPEAT_LENGTH + 1];
 
