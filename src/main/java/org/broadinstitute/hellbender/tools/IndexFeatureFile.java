@@ -32,7 +32,7 @@ import java.nio.file.Path;
  * <h3>Usage example</h3>
  * <pre>
  * gatk IndexFeatureFile \
- *     -F cohort.vcf.gz
+ *     -I cohort.vcf.gz
  * </pre>
  * This produces the corresponding index, cohort.vcf.gz.tbi.
  */
@@ -46,8 +46,8 @@ import java.nio.file.Path;
 public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
-    @Argument(shortName = "F",
-              fullName = "feature-file",
+    @Argument(shortName =StandardArgumentDefinitions.INPUT_SHORT_NAME,
+              fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
               doc = "Feature file (eg., VCF or BED file) to index. Must be in a tribble-supported format")
     public GATKPathSpecifier featurePath;
 
