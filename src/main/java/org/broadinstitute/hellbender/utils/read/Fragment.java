@@ -3,12 +3,15 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * All available evidence coming from a single biological fragment.  Either one read or a read pair.
@@ -18,6 +21,9 @@ public class Fragment implements Locatable {
     private final SimpleInterval interval;
 
     private final List<GATKRead> reads;
+
+    private static final Logger logger = LogManager.getLogger(Fragment.class);
+
 
 
     public Fragment(final GATKRead read) {
@@ -36,6 +42,21 @@ public class Fragment implements Locatable {
         Utils.validateArg(reads.size() <= 2, "Cannot construct fragment from more than two reads");
         Utils.validateArg(!reads.isEmpty(), "Need one or two reads to construct a fragment");
         return reads.size() == 1 ? new Fragment(reads.get(0)) : new Fragment(ImmutablePair.of(reads.get(0), reads.get(1)));
+    }
+
+    public static Fragment createAndAvoidFailure(final List<GATKRead> reads) {
+        if (reads.size() <= 2) {
+            return create(reads);
+        } else {
+            final List<GATKRead> nonSupplementaryReads = reads.stream()
+                    .filter(read -> !(read.isDuplicate() || read.isSecondaryAlignment() || read.isSupplementaryAlignment()))
+                    .collect(Collectors.toList());
+            if (nonSupplementaryReads.size() > 2) {
+                logger.warn("More than two reads with the same name found.  Using two reads randomly to combine as a fragment.");
+                return create(nonSupplementaryReads.subList(0,2));
+            }
+            return create(nonSupplementaryReads);
+        }
     }
 
     public List<GATKRead> getReads() {
