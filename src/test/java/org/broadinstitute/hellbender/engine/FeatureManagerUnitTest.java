@@ -44,13 +44,13 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "DetectCorrectFileFormatTestData")
     public void testDetectCorrectFileFormat( final File file, final Class<? extends FeatureCodec<? extends Feature, ?>> expectedCodecClass ) throws Exception {
-        Assert.assertEquals(FeatureManager.getCodecForFile(file).getClass(), expectedCodecClass,
+        Assert.assertEquals(FeatureManager.getCodecForFile(file.toPath()).getClass(), expectedCodecClass,
                             "Wrong codec selected for file " + file.getAbsolutePath());
 
         // We should also get the correct codec if we pass in the explicit expected Feature type to getCodecForFile()
         @SuppressWarnings("unchecked")
         final Class<? extends Feature> expectedCodecFeatureType = expectedCodecClass.getDeclaredConstructor().newInstance().getFeatureType();
-        Assert.assertEquals(FeatureManager.getCodecForFile(file, expectedCodecFeatureType).getClass(), expectedCodecClass,
+        Assert.assertEquals(FeatureManager.getCodecForFile(file.toPath(), expectedCodecFeatureType).getClass(), expectedCodecClass,
                 "Wrong codec selected for file " + file.getAbsolutePath() + " after subsetting to the expected Feature type");
     }
 
@@ -62,7 +62,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
         Assert.assertTrue(unsupportedFile.canRead(), "Cannot test detection of unsupported file formats on an unreadable file");
 
         // Should throw, since the file exists and is readable, but is in an unsupported format
-        FeatureManager.getCodecForFile(unsupportedFile);
+        FeatureManager.getCodecForFile(unsupportedFile.toPath());
     }
 
     @Test(expectedExceptions = UserException.WrongFeatureType.class)
@@ -70,7 +70,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
         final File vcf = new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_vcf4_file.vcf");
 
         // If we require BED Features from this vcf file, we should get a type mismatch exception
-        FeatureManager.getCodecForFile(vcf, BEDFeature.class);
+        FeatureManager.getCodecForFile(vcf.toPath(), BEDFeature.class);
     }
 
     @DataProvider(name = "IsFeatureFileTestData")

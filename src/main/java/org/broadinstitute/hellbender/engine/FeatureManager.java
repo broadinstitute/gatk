@@ -421,32 +421,11 @@ public final class FeatureManager implements AutoCloseable {
      * an unsupported format), or if more than one codec claims to be able to decode the file (this is
      * a configuration error on the codec authors' part).
      *
-     * @param featureFile file for which to find the right codec
+     * @param featurePath path for which to find the right codec
      * @return the codec suitable for decoding the provided file
      */
-    public static FeatureCodec<? extends Feature, ?> getCodecForFile( final File featureFile ) {
-        return getCodecForFile(featureFile.toPath(), null);
-    }
-
-    /**
-     * Utility method that determines the correct codec to use to read Features from the provided file,
-     * optionally considering only codecs that produce a particular type of Feature.
-     *
-     * Codecs MUST correctly implement the {@link FeatureCodec#canDecode(String)} method
-     * in order to be considered as candidates for decoding the file, and must produce
-     * Features of the specified type if featureType is non-null.
-     *
-     * Throws an exception if no suitable codecs are found (this is a user error, since the file is of
-     * an unsupported format), or if more than one codec claims to be able to decode the file (this is
-     * a configuration error on the codec authors' part).
-     *
-     * @param featureFile file for which to find the right codec
-     * @param featureType If specified, consider only codecs that produce Features of this type. May be null,
-     *                    in which case all codecs are considered.
-     * @return the codec suitable for decoding the provided file
-     */
-    public static FeatureCodec<? extends Feature, ?> getCodecForFile( final File featureFile, final Class<? extends Feature> featureType ) {
-        return getCodecForFile(featureFile.toPath(), featureType);
+    public static FeatureCodec<? extends Feature, ?> getCodecForFile( final Path featurePath ) {
+        return getCodecForFile(featurePath, null);
     }
 
     /**

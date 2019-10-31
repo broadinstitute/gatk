@@ -8,15 +8,18 @@ import htsjdk.tribble.index.linear.LinearIndex;
 import htsjdk.tribble.index.tabix.TabixIndex;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -32,12 +35,34 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
                 "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
+
         final Object res = this.runCommandLine(args);
         Assert.assertEquals(res, outName.getAbsolutePath());
 
         final Index index = IndexFactory.loadIndex(res.toString());
         Assert.assertTrue(index instanceof LinearIndex);
 
+        Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
+        checkIndex(index, Arrays.asList("1", "2", "3", "4"));
+    }
+
+    @Test(groups={"bucket"})
+    public void testVCFIndexOnCloud() throws IOException {
+        final File testFile = getTestFile("test_variants_for_index.vcf");
+        final String vcfOnGCS = BucketUtils.getTempFilePath(
+                getGCPTestStaging() +"testIndexOnCloud", ".vcf");
+        BucketUtils.copyFile(testFile.getAbsolutePath(), vcfOnGCS);
+
+        final String[] args = new String[] {
+                "IndexFeatureFile", "--feature-file", vcfOnGCS
+        };
+
+        new Main().instanceMain(args);
+
+        Assert.assertTrue(BucketUtils.fileExists(vcfOnGCS + ".idx"));
+
+        final Index index = IndexFactory.loadIndex(vcfOnGCS + ".idx");
+        Assert.assertTrue(index instanceof LinearIndex);
         Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
@@ -50,9 +75,9 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
                 "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
-        final File tribbleIndex = Tribble.indexFile(ORIG_FILE);
-        Assert.assertEquals(res, tribbleIndex.getAbsolutePath());
-        tribbleIndex.deleteOnExit();
+        final Path tribbleIndex = Tribble.indexPath(ORIG_FILE.toPath());
+        Assert.assertEquals(res, tribbleIndex.toAbsolutePath().toString());
+        tribbleIndex.toFile().deleteOnExit();
 
         final Index index = IndexFactory.loadIndex(res.toString());
         Assert.assertTrue(index instanceof LinearIndex);
@@ -382,4 +407,5 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(output.exists());
         Assert.assertTrue(output.length() > 0);
     }
+
 }

@@ -1660,7 +1660,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     private void verifyFileType(
             final File resultVCFFile,
             final String outputExtension) {
-        final FeatureCodec<? extends Feature, ?> featureCodec = FeatureManager.getCodecForFile(resultVCFFile);
+        final FeatureCodec<? extends Feature, ?> featureCodec = FeatureManager.getCodecForFile(resultVCFFile.toPath());
 
         if (outputExtension.equals(".vcf") ||
             outputExtension.equals(".vcf.bgz") ||
