@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.util.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -14,7 +13,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
-import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -157,84 +155,61 @@ public final class ReadThreadingAssembler {
         final List<AssemblyResult> results = new LinkedList<>();
         final Map<BaseGraph<?>, List<Haplotype>> haplotypesByGraph;
 
+        boolean hasAdequatelyAssembledGraph = false;
         // first, try using the requested kmer sizes
         for ( final int kmerSize : kmerSizes ) {
-            AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner)
+            if (!hasAdequatelyAssembledGraph) {
+                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner);
+                if (assembledResult != null) {
 
-            if (assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
-                // do some QC on the graph
-                if (generateSeqGraph) {
-                    sanityCheckGraph(result.getSeqGraph(), refHaplotype);
-                    // add it to graphs with meaningful non-reference features
-                    assemblyResultBySeqGraph.put(result.getSeqGraph(), result);
-                    nonRefSeqGraphs.add(result.getSeqGraph());
-                } else {
-                    sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
-                    result.getThreadingGraph().postProcessForHaplotypeFinding(debugGraphOutputPath, refHaplotype.getLocation());
-                    // add it to graphs with meaningful non-reference features
-                    assemblyResultByRTGraph.put(result.getThreadingGraph(), result);
-                    nonRefRTGraphs.add(result.getThreadingGraph());
+                    if (assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
+                        // do some QC on the graph
+                        if (generateSeqGraph) {
+                            sanityCheckGraph(assembledResult.getSeqGraph(), refHaplotype);
+                            // add it to graphs with meaningful non-reference features
+                            assemblyResultBySeqGraph.put(assembledResult.getSeqGraph(), assembledResult);
+                            nonRefSeqGraphs.add(assembledResult.getSeqGraph());
+                        } else {
+                            sanityCheckGraph(assembledResult.getThreadingGraph(), refHaplotype);
+                            assembledResult.getThreadingGraph().postProcessForHaplotypeFinding(debugGraphOutputPath, refHaplotype.getLocation());
+                            // add it to graphs with meaningful non-reference features
+                            assemblyResultByRTGraph.put(assembledResult.getThreadingGraph(), assembledResult);
+                            nonRefRTGraphs.add(assembledResult.getThreadingGraph());
+                        }
+
+                        if (graphHaplotypeHistogramPath != null) {
+                            kmersUsedHistogram.add((double) assembledResult.getKmerSize());
+                        }
+
+                        if (generateSeqGraph) {
+                            findBestPathForSingleGraph(assembledResult, refHaplotype, refLoc, activeRegionExtendedLocation, aligner);
+                        } else {
+                            findBestPathForSingleGraph(assembledResult, refHaplotype, refLoc, activeRegionExtendedLocation, aligner);
+                        }
+
+                        // if the found haplotypes look "good" according to our parameters take the results
+                        if (evaluateFoundHaplotypes(assembledResult.getHaplotypeList(), refHaplotype)) {
+                            hasAdequatelyAssembledGraph = true;
+                            for (Haplotype h : assembledResult.getHaplotypeList()) {
+                                resultSet.add(h, assembledResult);
+                            }
+                        }
+                    }
                 }
-
-                if (graphHaplotypeHistogramPath != null) {
-                    kmersUsedHistogram.add((double) result.getKmerSize());
-                }
-
-
-                List<Haplotype> Haplotypes = findBestPaths(nonRefSeqGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultBySeqGraph, aligner);
-
-                addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
-            }
-
-        }
-
-        // if none of those worked, iterate over larger sizes if allowed to do so
-        if ( results.isEmpty() && !dontIncreaseKmerSizesForCycles ) {
-            int kmerSize = arrayMaxInt(kmerSizes) + KMER_SIZE_ITERATION_INCREASE;
-            int numIterations = 1;
-            while ( results.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
-                // on the last attempt we will allow low complexity graphs
-                final boolean lastAttempt = numIterations == MAX_KMER_ITERATIONS_TO_ATTEMPT;
-                addResult(results, createGraph(reads, refHaplotype, kmerSize, lastAttempt, lastAttempt, header, aligner));
-                kmerSize += KMER_SIZE_ITERATION_INCREASE;
-                numIterations++;
             }
         }
-
 //
-//
-//        for ( final AssemblyResult result : assembledGraphs) {
-//            if ( result.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION ) {
-//                // do some QC on the graph
-//                if (generateSeqGraph) {
-//                    sanityCheckGraph(result.getSeqGraph(), refHaplotype);
-//                    // add it to graphs with meaningful non-reference features
-//                    assemblyResultBySeqGraph.put(result.getSeqGraph(),result);
-//                    nonRefSeqGraphs.add(result.getSeqGraph());
-//                } else {
-//                    sanityCheckGraph(result.getThreadingGraph(), refHaplotype);
-//                    result.getThreadingGraph().postProcessForHaplotypeFinding(debugGraphOutputPath, refHaplotype.getLocation());
-//                    // add it to graphs with meaningful non-reference features
-//                    assemblyResultByRTGraph.put(result.getThreadingGraph(),result);
-//                    nonRefRTGraphs.add(result.getThreadingGraph());
-//                }
-//
-//                if (graphHaplotypeHistogramPath != null) {
-//                    kmersUsedHistogram.add((double)result.getKmerSize());
-//                }
-//
-//
-//
-//
-//                addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
+//        // if none of those worked, iterate over larger sizes if allowed to do so
+//        if ( results.isEmpty() && !dontIncreaseKmerSizesForCycles ) {
+//            int kmerSize = arrayMaxInt(kmerSizes) + KMER_SIZE_ITERATION_INCREASE;
+//            int numIterations = 1;
+//            while ( results.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
+//                // on the last attempt we will allow low complexity graphs
+//                final boolean lastAttempt = numIterations == MAX_KMER_ITERATIONS_TO_ATTEMPT;
+//                addResult(results, createGraph(reads, refHaplotype, kmerSize, lastAttempt, lastAttempt, header, aligner));
+//                kmerSize += KMER_SIZE_ITERATION_INCREASE;
+//                numIterations++;
 //            }
-////        }
-//
-//        // add assembled alt haplotypes to the {@code resultSet}
-//        if (generateSeqGraph) {
-//            findBestPaths(nonRefSeqGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultBySeqGraph, resultSet, aligner);
-//        } else {
-//            findBestPaths(nonRefRTGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByRTGraph, resultSet, aligner);
 //        }
 
         //TODO this is where the decision is made about which graphs we keep are made..
@@ -265,8 +240,94 @@ public final class ReadThreadingAssembler {
         if ( graphOutputPath != null ) { printGraphs(nonRefSeqGraphs); }
         if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
 
+
+        for (graphHaplotypeHistogramPath)
+        resultSet.add()
+
+
         return resultSet;
     }
+
+    //TODO this is going to need tobe well explained as this is a significant difference in appraoch
+    private boolean evaluateFoundHaplotypes(final List<Haplotype> haplotypes, final Haplotype refHap) {
+        // limit graphs that failed due to some error in haplotype recovery
+        if (haplotypes.isEmpty()) {
+            //TODO but what
+            return false;
+        }
+
+        // limit graphs with excessive number of haplotyes found
+        if (haplotypes.size() > 15) {
+            return false;
+        }
+
+        // filtering out graphs that result in very long haplotypes (as these are likely unresolved loops that didn't get captured by other loop code)
+        for (Haplotype h : haplotypes) {
+            if (h.length() > refHap.length() + 50) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
+    List<Haplotype> findBestPathForSingleGraph(final AssemblyResult graph, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow, final SmithWatermanAligner aligner) {
+        // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
+        final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
+
+        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
+        int failedCigars = 0;
+        final V source = graph.getReferenceSourceVertex();
+        final V sink = graph.getReferenceSinkVertex();
+        Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
+
+        for (final KBestHaplotype<V, E> kBestHaplotype :
+                (generateSeqGraph ?
+                        new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
+                        new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
+                        .findBestHaplotypes(numBestHaplotypesPerGraph)) {
+            final Haplotype h = kBestHaplotype.haplotype();
+            if( !returnHaplotypes.contains(h) ) {
+                // TODO this score seems to be irrelevant at this point...
+                if (kBestHaplotype.isReference()) {
+                    refHaplotype.setScore(kBestHaplotype.score());
+                }
+                final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
+
+                if ( cigar == null ) {
+                    failedCigars++; // couldn't produce a meaningful alignment of haplotype to reference, fail quietly
+                    continue;
+                } else if( cigar.isEmpty() ) {
+                    throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length " + cigar.getReferenceLength() +
+                            " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength());
+                } else if ( pathIsTooDivergentFromReference(cigar) || cigar.getReferenceLength() < MIN_HAPLOTYPE_REFERENCE_LENGTH ) {
+                    // N cigar elements means that a bubble was too divergent from the reference so skip over this path
+                    continue;
+                } else if( cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength() ) { // SW failure
+                    throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
+                            + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
+                            + " ref = " + refHaplotype + " path " + new String(h.getBases()));
+                }
+
+                h.setCigar(cigar);
+                h.setAlignmentStartHapwrtRef(activeRegionStart);
+                h.setGenomeLocation(activeRegionWindow);
+                returnHaplotypes.add(h);
+
+                if ( debug ) {
+                    logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + graph.getKmerSize());
+                }
+            }
+        }
+
+        if (failedCigars != 0) {
+            logger.debug(String.format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
+        }
+
+        return new ArrayList<>(returnHaplotypes);
+    }
+
+
 
     private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
     List<Haplotype> findBestPaths(final Collection<T> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
