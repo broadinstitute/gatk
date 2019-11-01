@@ -691,18 +691,25 @@ class EvoquerEngine {
         }
 
         return String.format(
-                "WITH new_pet AS (SELECT * FROM `%s` WHERE position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d))\n" +
+                "WITH new_pet AS (SELECT * FROM `%s` WHERE (position >= %d AND position <= %d) AND position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d))\n" +
                         "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
                         "FROM new_pet\n" +
-                        "LEFT OUTER JOIN `%s` AS vet\n" +
-                        "USING (position, sample)\n" +
+                        "LEFT OUTER JOIN (select * from `%s` AS vet_inner WHERE\n" +
+                        "      vet_inner.position >= %d\n" +
+                        "      AND vet_inner.position <= %d) as vet \n" +
+                        "ON (new_pet.position = vet.position\n" +
+                        "    AND new_pet.sample = vet.sample)" +
                         "GROUP BY position\n" +
                         limitString,
                 getFQPositionTable(interval),
+                interval.getStart(),
+                interval.getEnd(),
                 getFQVariantTable(interval),
                 interval.getStart(),
                 interval.getEnd(),
-                getFQVariantTable(interval));
+                getFQVariantTable(interval),
+                interval.getStart(),
+                interval.getEnd());
     }
 
     private String getOptimizedNoDupSpanningDelsVariantQueryString(final SimpleInterval interval) {
@@ -712,17 +719,22 @@ class EvoquerEngine {
         }
 
         return String.format(
-                "WITH new_pet AS (SELECT * FROM `%s` WHERE position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d)\n" +
+                "WITH new_pet AS (SELECT * FROM `%s` WHERE (position >= %d AND position <= %d) AND position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d)\n" +
                         "EXCEPT DISTINCT\n" +
                         "(SELECT p1.* FROM `%s` as p1 LEFT OUTER JOIN `%s` AS p2\n" +
                         "USING (position, sample) WHERE p1.state = '*' AND p2.state = 'v'))\n" +
                         "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
                         "FROM new_pet\n" +
-                        "LEFT OUTER JOIN `%s` AS vet\n" +
-                        "USING (position, sample)\n" +
+                        "LEFT OUTER JOIN (select * from `%s` AS vet_inner WHERE\n" +
+                        "      vet_inner.position >= 87564\n" +
+                        "      AND vet_inner.position <= 199999) as vet \n" +
+                        "ON (new_pet.position = vet.position\n" +
+                        "    AND new_pet.sample = vet.sample)\n" +
                         "GROUP BY position\n" +
                         limitString,
                 getFQPositionTable(interval),
+                interval.getStart(),
+                interval.getEnd(),
                 getFQVariantTable(interval),
                 interval.getStart(),
                 interval.getEnd(),
