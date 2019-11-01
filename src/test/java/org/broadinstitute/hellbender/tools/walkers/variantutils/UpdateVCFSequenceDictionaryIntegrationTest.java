@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 
 import org.testng.Assert;
@@ -45,7 +46,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
     }
 
     @Test(dataProvider="UpdateGoodSequenceDictionaryData")
-    private void testGoodUpdateSequenceDictionary(
+    public void testGoodUpdateSequenceDictionary(
             final File inputVariantsFile,
             final File inputSourceFile,
             final File inputReferenceFile,
@@ -88,7 +89,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
     }
 
     @Test(dataProvider="UpdateBadSequenceDictionaryData", expectedExceptions= CommandLineException.BadArgumentValue.class)
-    private void testBadUpdateSequenceDictionary(
+    public void testBadUpdateSequenceDictionary(
             final File inputVariantsFile,
             final File inputSourceFile,
             final File inputReferenceFile,
@@ -118,15 +119,15 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
     }
 
 
-    @Test(expectedExceptions= TribbleException.class)
+    @Test(expectedExceptions = UserException.SequenceDictionaryIsMissingContigLengths.class)
     public void testBadContigLengthWithValidation() {
         // throw an error if trying to force a replace with an invalid sequence dictionary without disabling sequence validation
         updateSequenceDictionary(
+                new File(testDir, "variantsWithDict.vcf"),
                 new File(testDir, "variantsWithDictBadContigLength.vcf"),
-                new File(testDir, "exampleFASTA.dict"),
                 null,
                 null,
-                false,
+                true,
                 false);
     }
 

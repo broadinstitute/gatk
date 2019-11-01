@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * <p/>
@@ -339,12 +341,6 @@ public class UserException extends RuntimeException {
         }
     }
 
-    /**
-     * <p/>
-     * Class UserException.MalformedFile
-     * <p/>
-     * For errors parsing files
-     */
     public static class IncompatibleSequenceDictionaries extends UserException {
         private static final long serialVersionUID = 0L;
 
@@ -370,6 +366,20 @@ public class UserException extends RuntimeException {
                             + "\nYou can use the ReorderSam utility to fix this problem: " + HelpConstants.forumPost("discussion/58/companion-utilities-reordersam")
                             + "\n  %s contigs = %s",
                     name, name, ReadUtils.prettyPrintSequenceRecords(dict)));
+        }
+    }
+
+    public static class SequenceDictionaryIsMissingContigLengths extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public SequenceDictionaryIsMissingContigLengths(String source, SAMSequenceDictionary dict){
+            super("GATK SequenceDictionaryValidation requires all contigs in the dictionary to have lengths associated with them.  " +
+                    "\nOne or more contigs in the dictionary from " + source + " are missing contig lengths." +
+                    "\nThe following contigs are missing lengths: " +
+                    dict.getSequences().stream()
+                            .filter( s -> s.getSequenceLength() == SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH)
+                            .map(SAMSequenceRecord::getSequenceName)
+                            .collect(Collectors.joining(",")));
         }
     }
 

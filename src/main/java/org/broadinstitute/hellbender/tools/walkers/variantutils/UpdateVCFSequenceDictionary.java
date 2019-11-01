@@ -13,6 +13,8 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -79,7 +81,7 @@ import java.io.File;
 )
 @DocumentedFeature
 public final class UpdateVCFSequenceDictionary extends VariantWalker {
-    static final Logger logger = LogManager.getLogger(UpdateVCFSequenceDictionary.class);
+    private static final Logger logger = LogManager.getLogger(UpdateVCFSequenceDictionary.class);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -183,14 +185,14 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
     @Override
     public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
 
-        SAMSequenceDictionary resultDictionary;
+        final SAMSequenceDictionary resultDictionary;
 
         final SAMSequenceDictionary masterDictionary = getMasterSequenceDictionary();
         if (dictionarySource == null) {
             if (masterDictionary != null) {
                 // We'll accept the master dictionary if one was specified. Using the master dictionary
                 // arg will result in sequence dictionary validation.
-                logger.warn("Using the dictionary supplied via the \"%s\" argument", StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME);
+                logger.warn("Using the dictionary supplied via the {} argument", StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME);
                 resultDictionary = masterDictionary;
             }
             else if (hasReference()) {
@@ -209,11 +211,22 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
             if (resultDictionary == null || resultDictionary.getSequences().isEmpty()) {
                 throw new CommandLineException.BadArgumentValue(
                     String.format(
-                        "The specified dictionary source has an empty or invalid sequence dictionary",
+                        "The specified dictionary source has an empty or invalid sequence dictionary: %S",
                         dictionarySource)
                 );
             }
         }
+
+        if( seqValidationArguments.performSequenceDictionaryValidation()
+                && resultDictionary != null
+                && dictionaryHasMissingLengths(resultDictionary)) {
+            throw new UserException.SequenceDictionaryIsMissingContigLengths(dictionarySource, resultDictionary);
+        }
+
         return resultDictionary;
+    }
+
+    private boolean dictionaryHasMissingLengths(final SAMSequenceDictionary resultDictionary) {
+        return resultDictionary.getSequences().stream().anyMatch(s -> s.getSequenceLength() == SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH);
     }
 }
