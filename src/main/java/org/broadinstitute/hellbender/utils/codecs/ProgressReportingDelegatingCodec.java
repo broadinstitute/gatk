@@ -36,6 +36,11 @@ public final class ProgressReportingDelegatingCodec<A extends Feature, B> implem
     }
 
     @Override
+    public String getPathToDataFile(final String path){
+        return this.delegatee.getPathToDataFile(path);
+    }
+
+    @Override
     public Feature decodeLoc(final B b) throws IOException {
         if (delegatee == null) {
             throw new IllegalStateException("this codec cannot be used without a delegatee.");
