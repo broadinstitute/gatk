@@ -19,6 +19,7 @@ from .dists import HalfFlat
 from .fancy_model import GeneralizedContinuousModel
 from .theano_hmm import TheanoForwardBackward
 from .. import config, types
+from .. utils.cli_commons import str_to_bool
 from ..structs.interval import Interval, GCContentAnnotation
 from ..structs.metadata import SampleMetadataCollection
 from ..tasks.inference_task_base import HybridInferenceParameters
@@ -93,14 +94,6 @@ class DenoisingModelConfig:
                 return
             kwargs['default'] = initializer_params[arg].default
             group.add_argument(full_arg, **kwargs)
-
-        def str_to_bool(value: str):
-            if value.lower() in ('yes', 'true', 't', 'y', '1'):
-                return True
-            elif value.lower() in ('no', 'false', 'f', 'n', '0'):
-                return False
-            else:
-                raise argparse.ArgumentTypeError('Boolean value expected.')
 
         process_and_maybe_add("max_bias_factors",
                               type=int,
@@ -245,14 +238,6 @@ class CopyNumberCallingConfig:
                 return
             kwargs['default'] = initializer_params[arg].default
             group.add_argument(full_arg, **kwargs)
-
-        def str_to_bool(value: str):
-            if value.lower() in ('yes', 'true', 't', 'y', '1'):
-                return True
-            elif value.lower() in ('no', 'false', 'f', 'n', '0'):
-                return False
-            else:
-                raise argparse.ArgumentTypeError('Boolean value expected.')
 
         process_and_maybe_add("p_alt",
                               type=float,

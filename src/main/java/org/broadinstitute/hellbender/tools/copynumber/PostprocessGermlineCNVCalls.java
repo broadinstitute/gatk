@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
@@ -175,6 +176,17 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     )
     private File outputDenoisedCopyRatioFile;
 
+    @Argument(
+            doc = "Output directory for theano compilation files.  If not specified, " +
+                    "a temporary directory will be used.  Specifying this directory may allow previously compiled " +
+                    "models to be used in subsequent runs.  Compilation runtime is typically negligible compared " +
+                    "to that required for inference, but it can be useful to minimize it for development purposes.",
+            fullName = CopyNumberStandardArgument.COMPILATION_PATH_LONG_NAME,
+            shortName = CopyNumberStandardArgument.COMPILATION_PATH_LONG_NAME,
+            optional = true
+    )
+    private File compilationDir = null;
+
     /**
      * A list of {@link SimpleIntervalCollection} for each shard
      */
@@ -314,6 +326,11 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                 outputIntervalsVCFFile,
                 outputSegmentsVCFFile,
                 outputDenoisedCopyRatioFile);
+        if (compilationDir != null) {
+            CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(compilationDir);
+        } else {
+            compilationDir = IOUtils.createTempDir("theano-compilation");
+        }
     }
 
     @Override
@@ -353,7 +370,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final File pythonScriptOutputPath = IOUtils.createTempDir("gcnv-segmented-calls");
         final boolean pythonScriptSucceeded = executeSegmentGermlineCNVCallsPythonScript(
                 sampleIndex, inputContigPloidyCallsPath, sortedCallsShardPaths, sortedModelShardPaths,
-                pythonScriptOutputPath);
+                pythonScriptOutputPath, compilationDir);
         if (!pythonScriptSucceeded) {
             throw new UserException("Python return code was non-zero.");
         }
@@ -550,6 +567,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                                                                       final File contigPloidyCallsPath,
                                                                       final List<File> sortedCallDirectories,
                                                                       final List<File> sortedModelDirectories,
+                                                                      final File compilationPath,
                                                                       final File pythonScriptOutputPath) {
         /* the inputs to this method are expected to be previously validated */
         try {
@@ -557,6 +575,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             Utils.nonNull(sortedCallDirectories);
             Utils.nonNull(sortedModelDirectories);
             Utils.nonNull(pythonScriptOutputPath);
+            Utils.nonNull(compilationPath);
             sortedCallDirectories.forEach(Utils::nonNull);
             sortedModelDirectories.forEach(Utils::nonNull);
         } catch (final IllegalArgumentException ex) {
@@ -575,6 +594,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         arguments.add(CopyNumberArgumentValidationUtils.getCanonicalPath(pythonScriptOutputPath));
         arguments.add("--sample_index");
         arguments.add(String.valueOf(sampleIndex));
+        final String compilationPathArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(compilationPath.getAbsolutePath());
+        arguments.add("--base_compiledir=" + CopyNumberArgumentValidationUtils.getCanonicalPath(compilationPathArg));
 
         return executor.executeScript(
                 new Resource(SEGMENT_GERMLINE_CNV_CALLS_PYTHON_SCRIPT, PostprocessGermlineCNVCalls.class),

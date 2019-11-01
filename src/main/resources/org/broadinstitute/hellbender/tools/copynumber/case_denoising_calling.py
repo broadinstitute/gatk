@@ -1,9 +1,4 @@
 import os
-
-# set theano flags
-os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore," + \
-                             "openmp=true,blas.ldflags=-lmkl_rt,openmp_elemwise_minsize=10"
-
 import logging
 import argparse
 import gcnvkernel
@@ -12,12 +7,13 @@ import json
 from typing import Dict, Any
 
 logger = logging.getLogger("case_denoising_calling")
+gcnvkernel.cli_commons.set_logging_config()
 
 parser = argparse.ArgumentParser(description="gCNV case calling tool based on a previously trained model",
                                  formatter_class=gcnvkernel.cli_commons.GCNVHelpFormatter)
 
-# logging args
-gcnvkernel.cli_commons.add_logging_args_to_argparse(parser)
+# set theano flags and reload theano
+gcnvkernel.cli_commons.set_theano_flags(parser)
 
 # add tool-specific args
 group = parser.add_argument_group(title="Required arguments")
@@ -146,7 +142,6 @@ if __name__ == "__main__":
 
     # parse arguments
     args = parser.parse_args()
-    gcnvkernel.cli_commons.set_logging_config_from_args(args)
 
     # check gcnvkernel version in the input model path
     gcnvkernel.io_commons.check_gcnvkernel_version_from_path(args.input_model_path)

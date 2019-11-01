@@ -250,6 +250,17 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     )
     private File outputDir;
 
+    @Argument(
+            doc = "Output directory for theano compilation files.  If not specified, " +
+                    "a temporary directory will be used.  Specifying this directory may allow previously compiled " +
+                    "models to be used in subsequent runs.  Compilation runtime is typically negligible compared " +
+                    "to that required for inference, but it can be useful to minimize it for development purposes.",
+            fullName = CopyNumberStandardArgument.COMPILATION_PATH_LONG_NAME,
+            shortName = CopyNumberStandardArgument.COMPILATION_PATH_LONG_NAME,
+            optional = true
+    )
+    private File compilationDir = null;
+
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection
             = new OptionalIntervalArgumentCollection();
@@ -315,6 +326,11 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                 inputAnnotatedIntervalsFile);
         Utils.nonEmpty(outputPrefix);
         CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
+        if (compilationDir != null) {
+            CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(compilationDir);
+        } else {
+            compilationDir = IOUtils.createTempDir("theano-compilation");
+        }
     }
 
     private void resolveIntervals() {
@@ -403,6 +419,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     private boolean executeGermlineCNVCallerPythonScript(final List<File> intervalSubsetReadCountFiles) {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final String outputDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(outputDir.getAbsolutePath());
+        final String compilationDirArg = CopyNumberArgumentValidationUtils.addTrailingSlashIfNecessary(compilationDir.getAbsolutePath());
 
         //add required arguments
         final List<String> arguments = new ArrayList<>(Arrays.asList(
@@ -437,6 +454,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         arguments.addAll(germlineDenoisingModelArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineCallingArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineCNVHybridADVIArgumentCollection.generatePythonArguments());
+
+        arguments.add("--base_compiledir=" + CopyNumberArgumentValidationUtils.getCanonicalPath(compilationDirArg));
 
         return executor.executeScript(
                 new Resource(script, GermlineCNVCaller.class),

@@ -13,6 +13,7 @@ import theano.tensor as tt
 import tqdm
 
 from .. import types
+from .. utils.cli_commons import str_to_bool
 from ..inference import fancy_optimizers
 from ..inference.convergence_tracker import NoisyELBOConvergenceTracker
 from ..inference.deterministic_annealing import ADVIDeterministicAnnealing
@@ -684,14 +685,6 @@ class HybridInferenceParameters:
             else:
                 kwargs['default'] = initializer_params[arg].default
             group.add_argument(full_arg, **kwargs)
-
-        def str_to_bool(value: str):
-            if value.lower() in ('yes', 'true', 't', 'y', '1'):
-                return True
-            elif value.lower() in ('no', 'false', 'f', 'n', '0'):
-                return False
-            else:
-                raise argparse.ArgumentTypeError('Boolean value expected.')
 
         process_and_maybe_add("learning_rate",
                               type=float,

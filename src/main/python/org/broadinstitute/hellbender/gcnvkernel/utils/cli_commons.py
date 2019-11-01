@@ -1,13 +1,12 @@
+import os
 import argparse
 import logging
 import sys
+import importlib
 import datetime as dt
 
-log_level_map = {
-    "INFO": logging.INFO,
-    "WARNING": logging.WARNING,
-    "DEBUG": logging.DEBUG
-}
+logging_level = logging.DEBUG
+console_logging_level = logging.INFO
 
 
 class GCNVHelpFormatter(argparse.HelpFormatter):
@@ -29,27 +28,6 @@ class GCNVHelpFormatter(argparse.HelpFormatter):
         return action.type.__name__
 
 
-def add_logging_args_to_argparse(parser: argparse.ArgumentParser) -> None:
-    """Adds logging-related arguments to a given `ArgumentParser`."""
-    parser.add_argument("--console_log_level",
-                        type=str,
-                        choices=["INFO", "WARNING", "DEBUG"],
-                        default="INFO",
-                        help="Console logging verbosity level")
-
-    parser.add_argument("--logfile_log_level",
-                        type=str,
-                        choices=["INFO", "WARNING", "DEBUG"],
-                        default="DEBUG",
-                        help="Logfile logging verbosity level")
-
-    parser.add_argument("--logfile",
-                        type=str,
-                        required=False,
-                        default=argparse.SUPPRESS,
-                        help="If provided, the output log will be written to file as well")
-
-
 class GATKStyleLogFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         ct = dt.datetime.fromtimestamp(record.created)
@@ -58,14 +36,52 @@ class GATKStyleLogFormatter(logging.Formatter):
         return s
 
 
-def set_logging_config_from_args(parsed_args):
-    """Configures python logger according to parsed arguments."""
-    logging.basicConfig(level=log_level_map[parsed_args.logfile_log_level],
+def set_logging_config():
+    """Configures python logger."""
+    logging.basicConfig(level=logging_level,
                         format='%(asctime)s %(levelname)s %(name)s - %(message)s',
-                        filename=parsed_args.logfile if hasattr(parsed_args, 'logfile') else '/dev/null',
+                        filename='/dev/null',
                         filemode='w')
     console = logging.StreamHandler(stream=sys.stdout)
-    console.setLevel(log_level_map[parsed_args.console_log_level])
+    console.setLevel(console_logging_level)
     console.setFormatter(GATKStyleLogFormatter(
         '%(asctime)s %(levelname)s %(name)s - %(message)s', datefmt=None))
     logging.getLogger('').addHandler(console)
+
+
+def set_theano_flags(parser, logger):
+    """Set THEANO_FLAGS environment variable. Rightmost flags take precedence, so users can override
+    or specify additional flags by setting THEANO_FLAGS before running gCNV scripts.  The argument
+    basecompile_dir is added to the parser as a side effect.  For details, see documentation at
+    http://deeplearning.net/software/theano/library/config.html."""
+
+    parser.add_argument("--base_compiledir",
+                        type=str,
+                        required=False,
+                        default=None,
+                        help="Specifies the base directory in which theano compilation subdirectories will be placed.")
+
+    args, unknown_args = parser.parse_known_args()
+
+    # set flags
+    user_theano_flags = os.environ.get("THEANO_FLAGS")
+    default_theano_flags = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore," + \
+                           "openmp=true,blas.ldflags=-lmkl_rt,openmp_elemwise_minsize=10" + \
+                           ("" if args.base_compiledir is None  # will set base_compiledir = $HOME/.theano
+                            else ",base_compiledir={base_compiledir}".format(base_compiledir=args.base_compiledir))
+    theano_flags = default_theano_flags + \
+                   ("" if user_theano_flags is None else "," + user_theano_flags)
+    os.environ["THEANO_FLAGS"] = theano_flags
+    logger.info("THEANO_FLAGS environment variable has been set to: {theano_flags}".format(theano_flags=theano_flags))
+
+    # reload theano to reset config
+    importlib.import_module("theano")
+    logger.debug(theano.config)
+
+def str_to_bool(value: str):
+    if value.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif value.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')

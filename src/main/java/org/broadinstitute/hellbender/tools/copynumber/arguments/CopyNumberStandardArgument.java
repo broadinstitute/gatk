@@ -20,4 +20,6 @@ public final class CopyNumberStandardArgument {
     public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
 
     public static final String MODEL_LONG_NAME = "model";
+
+    public static final String COMPILATION_PATH_LONG_NAME = "compilation-path";
 }

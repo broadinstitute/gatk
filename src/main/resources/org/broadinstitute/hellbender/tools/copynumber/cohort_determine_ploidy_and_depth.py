@@ -1,18 +1,17 @@
 import os
-
-# set theano flags
-os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore," + \
-                             "openmp=true,blas.ldflags=-lmkl_rt,openmp_elemwise_minsize=10"
-
+import logging
 import argparse
 import gcnvkernel
 import shutil
 
+logger = logging.getLogger("cohort_determine_ploidy_and_depth")
+gcnvkernel.cli_commons.set_logging_config()
+
 parser = argparse.ArgumentParser(description="gCNV contig ploidy and read depth determination tool",
                                  formatter_class=gcnvkernel.cli_commons.GCNVHelpFormatter)
 
-# logging args
-gcnvkernel.cli_commons.add_logging_args_to_argparse(parser)
+# set theano flags and reload theano
+gcnvkernel.cli_commons.set_theano_flags(parser)
 
 # add tool-specific args
 group = parser.add_argument_group(title="Required arguments")
@@ -72,7 +71,6 @@ if __name__ == "__main__":
 
     # parse arguments
     args = parser.parse_args()
-    gcnvkernel.cli_commons.set_logging_config_from_args(args)
 
     # read contig ploidy prior map from file
     contig_ploidy_prior_map = gcnvkernel.io_ploidy.get_contig_ploidy_prior_map_from_tsv_file(
