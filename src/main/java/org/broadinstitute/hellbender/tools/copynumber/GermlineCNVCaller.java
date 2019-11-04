@@ -70,6 +70,14 @@ import java.util.stream.Collectors;
  * the python environment is already set up. Otherwise, the environment must be created and activated as described in the
  * main GATK README.md file.</p>
  *
+ * <p>Advanced users may wish to set the <code>THEANO_FLAGS</code> environment variable to override the GATK theano
+ * configuration. For example, by running
+ * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk GermlineCNVCaller ...</code>, users can specify
+ * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
+ * at <a href="http://deeplearning.net/software/theano/library/config.html">
+ *     http://deeplearning.net/software/theano/library/config.html</a>.
+ * </p>
+ *
  * <h3>Tool run modes</h3>
  * <dl>
  *     <dt>COHORT mode:</dt>
