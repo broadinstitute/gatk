@@ -29,7 +29,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * Note: not final but only intendent to be subclassed for testing.
+ * Note: not final but only intended to be subclassed for testing.
  */
 public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSampleEdge> implements KmerSearchableGraph<MultiDeBruijnVertex,MultiSampleEdge> {
 
@@ -222,7 +222,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param seqForKmers a non-null sequence
      */
     private void threadSequence(final SequenceForKmers seqForKmers) {
-        final int uniqueStartPos = findStart(seqForKmers);
+        final int uniqueStartPos = findStart(seqForKmers); // ts: was here
         if ( uniqueStartPos == -1 ) {
             return;
         }

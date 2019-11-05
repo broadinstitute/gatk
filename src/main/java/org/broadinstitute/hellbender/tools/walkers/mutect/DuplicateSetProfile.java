@@ -8,9 +8,13 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgr
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.UMIReadFilter;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Calculate and print to the standard output the overall number of reads in a SAM/BAM/CRAM file
@@ -34,10 +38,34 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
         programGroup = CoverageAnalysisProgramGroup.class
 )
 public final class DuplicateSetProfile extends ReadWalker {
+    private static final int INITIAL_LIST_SIZE = 30;
+    private final List<GATKRead> currentFamily = new ArrayList<>(INITIAL_LIST_SIZE);
+    private UMI currentUmi = null;
 
-    private long count = 0;
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+        if (currentUmi == null){
+            currentUmi = new UMI(read);
+        } else if (! currentUmi.equalsReadUMI(read)){
+            getFamilyMetrics();
+            currentFamily.clear();
+            currentUmi = new UMI(read);
+        } else if (currentUmi.equalsReadUMI(read)){
+            currentFamily.add(read);
+        }
+
+        // TODO: PROBLEM: different molecules can have the same UMI by the probability (1/4^3)^2
+        // that is, UMI collision is real, and could happen. Must address that.
+        // But for now --- why not just implement the realigning consensus caller?
+    }
+
+    private void getFamilyMetrics() {
+        for (GATKRead read : currentFamily){
+            int d = 3;
+        }
+    }
+
+    private void something(final GATKRead read, final ReferenceContext referenceContext){
         final byte[] readBases = read.getBases();
         final byte[] referenceBases = referenceContext.getBases();
         final boolean hasIndels = readBases.length != referenceBases.length;
@@ -73,6 +101,6 @@ public final class DuplicateSetProfile extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        return count;
+        return "SUCCESS";
     }
 }

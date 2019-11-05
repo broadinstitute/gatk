@@ -58,7 +58,7 @@ public class NaturalLogUtils {
      *
      * <p>
      * This trick consists of shifting all the log values by the maximum so that exponent values are
-     * much larger (close to 1) before they are summed. Then the result is shifted back down by
+     * much larger (close to 0) before they are summed. Then the result is shifted back down by
      * the same amount in order to obtain the correct value.
      * </p>
      * @return any double value.
