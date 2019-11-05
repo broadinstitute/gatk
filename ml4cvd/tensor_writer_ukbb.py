@@ -65,6 +65,7 @@ ECG_REST_FIELD = '20205'
 ECG_SINUS = ['Normal_sinus_rhythm', 'Sinus_bradycardia', 'Marked_sinus_bradycardia', 'Atrial_fibrillation']
 ECG_NORMALITY = ['Normal_ECG', 'Abnormal_ECG', 'Borderline_ECG', 'Otherwise_normal_ECG']
 ECG_BINARY_FLAGS = ['Poor data quality', 'infarct', 'block']
+ECG_TABLE_TAGS = ['RAmplitude', 'SAmplitude']
 ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration', 'QTInterval', 'QTCInterval', 'RRInterval', 'PPInterval',
                      'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
                      'QOffset', 'TOffset']
@@ -441,7 +442,14 @@ def _to_float_or_false(s):
     except ValueError:
         return False
 
+        
+def _to_float_or_nan(s):
+    try:
+        return float(s)
+    except ValueError:
+        return np.nan
 
+        
 def _write_tensors_from_zipped_dicoms(x: int,
                                       y: int,
                                       z: int,
@@ -803,6 +811,14 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                             median_wave = list(map(float, median_c.text.strip().split(',')))
                             dataset_name = 'median_' + str(median_c.attrib['lead'])
                             hd5.create_dataset(rest_group + dataset_name, data=median_wave, compression='gzip')
+
+        ecg_date = _str2date(_date_str_from_ecg(root))
+        for c in root.findall("./RestingECGMeasurements/MeasurementTable"):
+            for child in c:
+                if child.tag not in ECG_TABLE_TAGS:
+                    continue
+                vals = list(map(_to_float_or_nan, child.text.strip().split(',')))
+                create_tensor_in_hd5(hd5, 'ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, child.tag.lower(), vals, stats)
 
 
 def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: str) -> str:
