@@ -31,7 +31,8 @@ public final class MultiLevelCollectorTest {
         return out;
     }
 
-    class TestArg {
+    class
+    TestArg {
         public final SAMRecord samRecord;
         public final ReferenceSequence refSeq;
 
