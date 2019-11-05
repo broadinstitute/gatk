@@ -142,4 +142,9 @@ final class VariantRecalibratorArgumentCollection {
     @Argument(fullName="mq-jitter", doc="Amount of jitter (as a factor to a Normal(0,1) noise) to add to the MQ capped values", optional = true)
     public double MQ_JITTER = 0.05;
 
+    @Hidden
+    @Advanced
+    @Argument(fullName = "debug-stdev-thresholding", doc="Output variants that fail standard deviation thresholding to the log for debugging purposes.", optional = true)
+    public boolean debugStdevThresholding = false;
+
 }

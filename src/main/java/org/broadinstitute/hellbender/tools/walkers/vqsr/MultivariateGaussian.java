@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.apache.commons.math3.special.Gamma;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
@@ -89,8 +90,7 @@ class MultivariateGaussian {
     private void precomputeInverse() {
         try {
             cachedSigmaInverse = sigma.inverse();
-        } catch( Exception e ) {
-            //TODO: there must be something narrower than Exception to catch here
+        } catch( RuntimeException e ) {
             throw new UserException(
                     "Error during clustering. Most likely there are too few variants used during Gaussian mixture " +
                             "modeling. Please consider raising the number of variants used to train the negative "+
@@ -104,6 +104,9 @@ class MultivariateGaussian {
     public void precomputeDenominatorForEvaluation() {
         precomputeInverse();
         cachedDenomLog10 = Math.log10(Math.pow(2.0 * Math.PI, -1.0 * ((double) mu.length) / 2.0)) + Math.log10(Math.pow(sigma.det(), -0.5)) ;
+        if (Double.isNaN(cachedDenomLog10)) {
+            throw new GATKException("Denominator for gaussian evaluation cannot be computed. One or more annotations (usually MQ) may have insufficient variance.");
+        }
     }
 
     public void precomputeDenominatorForVariationalBayes( final double sumHyperParameterLambda ) {

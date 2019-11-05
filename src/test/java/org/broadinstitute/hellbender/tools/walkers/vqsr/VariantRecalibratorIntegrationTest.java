@@ -26,6 +26,38 @@ import java.util.stream.Stream;
  */
 public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
+    private final String[] VQSRParamsWithResources =
+        new String[] {
+            "--variant",
+            getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf",
+            "-L","20:1,000,000-10,000,000",
+            "--resource:known,known=true,prior=10.0",
+            getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf",
+            "--resource:truth_training1,truth=true,training=true,prior=15.0",
+            getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf",
+            "--resource:truth_training2,training=true,truth=true,prior=12.0",
+            getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
+            "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
+            "--trust-all-polymorphic", // for speed
+            "-mode", "SNP",
+            "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+    private final String[] alleleSpecificVQSRParams =
+        new String[] {
+            "--variant",
+            getLargeVQSRTestDataDir() + "chr1snippet.doctoredMQ.sites_only.vcf.gz",
+            "-L","chr1:1-10,000,000",
+            "-resource:same,known=false,training=true,truth=true,prior=15",
+            getLargeVQSRTestDataDir() + "chr1snippet.doctoredMQ.sites_only.vcf.gz",
+            "-an", "AS_QD", "-an", "AS_ReadPosRankSum", "-an", "AS_MQ", "-an", "AS_SOR", //AS_MQRankSum has zero variance and AS_FS is nearly constant; also different annotation orders may not converge
+            "--trust-all-polymorphic", // for speed
+            "--use-allele-specific-annotations",
+            "-mode", "SNP",
+            "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+            "--max-gaussians", "6"
+        };
+
     @Override
     public String getToolTestDataDir(){
         return toolsTestDir + "walkers/VQSR/";
@@ -49,26 +81,46 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     public Object[][] getVarRecalSNPData() {
         return new Object[][] {
             {
-                new String[] {
-                    "--variant",
-                    getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf",
-                    "-L","20:1,000,000-10,000,000",
-                    "--resource:known,known=true,prior=10.0",
-                        getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf",
-                    "--resource:truth_training1,truth=true,training=true,prior=15.0",
-                        getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf",
-                    "--resource:truth_training2,training=true,truth=true,prior=12.0",
-                        getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
-                    "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
-                    "--trust-all-polymorphic", // for speed
-                    "-mode", "SNP",
-                    "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
-                }
+                VQSRParamsWithResources,
+                getLargeVQSRTestDataDir() + "expected/SNPDefaultTranches.txt",
+                getLargeVQSRTestDataDir() + "snpRecal.vcf"
             },
+            {
+                alleleSpecificVQSRParams,
+                getToolTestDataDir() + "expected.AS.tranches",
+                getLargeVQSRTestDataDir() + "expected/expected.AS.recal.vcf"
+            }
+
         };
     }
 
-    private void doSNPTest(final String[] params, final String expectedTranchesFile) throws IOException {
+    @DataProvider(name="VarRecalSNPAlternateTranches")
+    public Object[][] getVarRecalSNPAlternateTranchesData() {
+        return new Object[][] {
+                {
+                    VQSRParamsWithResources,
+                    getLargeVQSRTestDataDir() + "expected/SNPAlternateTranches.txt",
+                    getLargeVQSRTestDataDir() + "snpRecal.vcf"
+                },
+                {
+                    alleleSpecificVQSRParams,
+                    getToolTestDataDir() + "expected.AS.alternate.tranches",
+                    getLargeVQSRTestDataDir() + "expected/expected.AS.recal.vcf"
+                }
+
+        };
+    }
+
+    @DataProvider(name="SNPRecalCommand")
+    public Object[][] getSNPRecalCommand() {
+        return new Object[][] {
+                {
+                    VQSRParamsWithResources
+                }
+        };
+    }
+
+    private void doSNPTest(final String[] params, final String expectedTranchesFile, final String expectedRecalFile) throws IOException {
         //NOTE: The number of iterations required to ensure we have enough negative training data to proceed,
         //as well as the test results themselves, are both very sensitive to the state of the random number
         //generator at the time the tool starts to execute. Sampling a single integer from the RNG at the
@@ -98,17 +150,17 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
         // the expected vcf is not in the expected dir because its used
         // as input for the ApplyVQSR test
-        IntegrationTestSpec.assertEqualTextFiles(recalOut, new File(getLargeVQSRTestDataDir() + "snpRecal.vcf"));
+        IntegrationTestSpec.assertEqualTextFiles(recalOut, new File(expectedRecalFile));
         IntegrationTestSpec.assertEqualTextFiles(tranchesOut, new File(expectedTranchesFile));
     }
 
     @Test(dataProvider = "VarRecalSNP")
-    public void testVariantRecalibratorSNP(final String[] params) throws IOException {
-        doSNPTest(params, getLargeVQSRTestDataDir() + "expected/SNPDefaultTranches.txt");
+    public void testVariantRecalibratorSNP(final String[] params, final String tranchesPath, final String recalPath) throws IOException {
+        doSNPTest(params, tranchesPath, recalPath);
     }
 
-    @Test(dataProvider = "VarRecalSNP")
-    public void testVariantRecalibratorSNPAlternateTranches(final String[] params) throws IOException {
+    @Test(dataProvider = "VarRecalSNPAlternateTranches")
+    public void testVariantRecalibratorSNPAlternateTranches(final String[] params, final String tranchesPath, final String recalPath) throws IOException {
         // same as testVariantRecalibratorSNP but with specific tranches
         List<String> args = new ArrayList<>(params.length);
         Stream.of(params).forEach(arg -> args.add(arg));
@@ -128,11 +180,11 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                         "-tranche", "90.0"
                 )
         );
-        doSNPTest(args.toArray(new String[args.size()]), getLargeVQSRTestDataDir() + "expected/SNPAlternateTranches.txt");
+        doSNPTest(args.toArray(new String[args.size()]), tranchesPath, recalPath);
     }
 
     @Test(dataProvider = "VarRecalSNP")
-    public void testVariantRecalibratorSNPMaxAttempts(final String[] params) throws IOException {
+    public void testVariantRecalibratorSNPMaxAttempts(final String[] params, final String a, final String b) throws IOException {
         // For this test, we deliberately *DON'T* sample a single random int as above; this causes
         // the tool to require 4 attempts to acquire enough negative training data to succeed
 
@@ -323,7 +375,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "VarRecalSNPScattered")
     //the only way the recal file will match here is if we use the doSNPTest infrastructure -- as an IntegrationTestSpec it doesn't match for some reason
     public void testVariantRecalibratorSNPscattered(final String[] params) throws IOException {
-        doSNPTest(params, getLargeVQSRTestDataDir() + "/snpTranches.scattered.txt"); //this isn't in the expected/ directory because it's input to GatherTranchesIntegrationTest
+        doSNPTest(params, getLargeVQSRTestDataDir() + "/snpTranches.scattered.txt", getLargeVQSRTestDataDir() + "snpRecal.vcf"); //tranches file isn't in the expected/ directory because it's input to GatherTranchesIntegrationTest
     }
 
 

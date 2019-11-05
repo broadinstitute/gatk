@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.AnnotationUtils;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -26,6 +27,7 @@ public class VariantDataManager {
     private double[] varianceVector; // this is really the standard deviation
     public List<String> annotationKeys;
     private final VariantRecalibratorArgumentCollection VRAC;
+    private final boolean debugStdevThresholding;
     protected final static Logger logger = LogManager.getLogger(VariantDataManager.class);
     protected final List<TrainingSet> trainingSets;
     private static final double SAFETY_OFFSET = 0.01;     //To use for example as 1/(X + SAFETY_OFFSET) to protect against dividing or taking log of X=0.
@@ -38,6 +40,7 @@ public class VariantDataManager {
         meanVector = new double[this.annotationKeys.size()];
         varianceVector = new double[this.annotationKeys.size()];
         trainingSets = new ArrayList<>();
+        debugStdevThresholding = VRAC.debugStdevThresholding;
     }
 
     public void setData( final List<VariantDatum> data ) {
@@ -224,6 +227,8 @@ public class VariantDataManager {
         for( final VariantDatum datum : data ) {
             if( datum.atTrainingSite && !datum.failingSTDThreshold ) {
                 trainingData.add( datum );
+            } else if (datum.failingSTDThreshold && debugStdevThresholding) {
+                logger.warn("Datum at " + datum.loc + " with ref " + datum.referenceAllele + " and alt " + datum.alternateAllele + " failing std thresholding: " + Arrays.toString(datum.annotations));
             }
         }
         logger.info( "Training with " + trainingData.size() + " variants after standard deviation thresholding." );
@@ -352,7 +357,7 @@ public class VariantDataManager {
             if( jitter && (annotationKey.equalsIgnoreCase(GATKVCFConstants.FISHER_STRAND_KEY) || annotationKey.equalsIgnoreCase(GATKVCFConstants.AS_FILTER_STATUS_KEY)) && MathUtils.compareDoubles(value, 0.0, PRECISION) == 0 ) { value += 0.01 * Utils.getRandomGenerator().nextGaussian(); }
             if( jitter && annotationKey.equalsIgnoreCase(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY) && MathUtils.compareDoubles(value, 0.0, PRECISION) == 0 ) { value += 0.01 * Utils.getRandomGenerator().nextGaussian(); }
             if( jitter && (annotationKey.equalsIgnoreCase(GATKVCFConstants.STRAND_ODDS_RATIO_KEY) || annotationKey.equalsIgnoreCase(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY)) && MathUtils.compareDoubles(value, LOG_OF_TWO, PRECISION) == 0 ) { value += 0.01 * Utils.getRandomGenerator().nextGaussian(); }   //min SOR is 2.0, then we take ln
-            if( jitter && (annotationKey.equalsIgnoreCase(VCFConstants.RMS_MAPPING_QUALITY_KEY) || annotationKey.equalsIgnoreCase(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY))) {
+            if( jitter && (annotationKey.equalsIgnoreCase(VCFConstants.RMS_MAPPING_QUALITY_KEY))) {
                 if( vrac.MQ_CAP > 0) {
                     value = logitTransform(value, -SAFETY_OFFSET, vrac.MQ_CAP + SAFETY_OFFSET);
                     if (MathUtils.compareDoubles(value, logitTransform(vrac.MQ_CAP, -SAFETY_OFFSET, vrac.MQ_CAP + SAFETY_OFFSET), PRECISION) == 0 ) {
@@ -362,9 +367,11 @@ public class VariantDataManager {
                     value += vrac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
                 }
             }
-        } catch( Exception e ) {
-            //TODO: what exception is this handling ? it seems overly broad
-            value = Double.NaN; // The VQSR works with missing data by marginalizing over the missing dimension when evaluating the Gaussian mixture model
+            if( jitter && (annotationKey.equalsIgnoreCase(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY))){
+                value += vrac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
+            }
+        } catch( NumberFormatException e ) {
+            value = Double.NaN; // VQSR works with missing data by marginalizing over the missing dimension when evaluating the Gaussian mixture model
         }
 
         return value;

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
@@ -52,7 +53,7 @@ public class VariantRecalibratorEngine {
         if( !model.isModelReadyForEvaluation ) {
             try {
                 model.precomputeDenominatorForEvaluation();
-            } catch( Exception e ) {
+            } catch( GATKException e ) {
                 logger.warn("Model could not pre-compute denominators.");  //this happened when we were reading in VQSR models that didn't have enough precision
                 model.failedToConverge = true;
                 return;
@@ -63,7 +64,6 @@ public class VariantRecalibratorEngine {
         for( final VariantDatum datum : data ) {
             final double thisLod = evaluateDatum( datum, model );
             if( Double.isNaN(thisLod) ) {
-                logger.warn("Evaluate datum returned a NaN.");
                 model.failedToConverge = true;
                 return;
             }
