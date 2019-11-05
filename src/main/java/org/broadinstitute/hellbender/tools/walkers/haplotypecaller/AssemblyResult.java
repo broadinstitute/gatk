@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Result of assembling, with the resulting graph and status
@@ -14,7 +15,7 @@ public final class AssemblyResult {
     private final Status status;
     private final AbstractReadThreadingGraph threadingGraph;
     private final SeqGraph graph;
-    private List<Haplotype> haplotypeList;
+    private Set<Haplotype> haplotypeList;
 
     /**
      * Create a new assembly result
@@ -46,11 +47,11 @@ public final class AssemblyResult {
         return graph == null? threadingGraph.getKmerSize() : graph.getKmerSize();
     }
 
-    public List<Haplotype> getHaplotypeList() {
+    public Set<Haplotype> getHaplotypeList() {
         return haplotypeList;
     }
 
-    public void setHaplotypeList(List<Haplotype> haplotypeList) {
+    public void setHaplotypeList(Set<Haplotype> haplotypeList) {
         this.haplotypeList = haplotypeList;
     }
 
