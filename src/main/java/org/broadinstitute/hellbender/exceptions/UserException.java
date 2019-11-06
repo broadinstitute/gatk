@@ -379,6 +379,7 @@ public class UserException extends RuntimeException {
                     dict.getSequences().stream()
                             .filter( s -> s.getSequenceLength() == SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH)
                             .map(SAMSequenceRecord::getSequenceName)
+                            .limit(20)
                             .collect(Collectors.joining(",")));
         }
     }

@@ -211,7 +211,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
             if (resultDictionary == null || resultDictionary.getSequences().isEmpty()) {
                 throw new CommandLineException.BadArgumentValue(
                     String.format(
-                        "The specified dictionary source has an empty or invalid sequence dictionary: %S",
+                        "The specified dictionary source has an empty or invalid sequence dictionary: %s",
                         dictionarySource)
                 );
             }
