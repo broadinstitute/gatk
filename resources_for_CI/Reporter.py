@@ -3,7 +3,7 @@ import sys
 
 from github import Github
 
-key = os.environ["GITHUB_TOKEN"]
+key = os.environ["GITHUB_API_TOKEN"]
 g = Github(key)
 
 ME = g.get_user().login
