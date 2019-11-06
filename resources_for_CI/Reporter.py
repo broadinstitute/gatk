@@ -1,12 +1,25 @@
+# Usage: python Reporter.py <log url>
+#
+# This script creates a comment on github using the API token provided through GITHUB_API_TOKEN
+# It first checks if a comment already exists which was made with the given identity
+# and which mentions the same travis build ID as the current running one in the first line of the comment.
+# If no comment is found it creates a new one with a header and the log url.
+# If a matching comment is found this appends it's log information to the existing comment.
+#
+# There exist race conditions when running this in parallel which can result in shards being missed if this is called
+# multiple times simultaneously.
+
 import os
 import sys
 
 from github import Github
 
 key = os.environ["GITHUB_API_TOKEN"]
+test_type = os.getenv("TEST_TYPE", "")
+
 g = Github(key)
 
-ME = g.get_user().login
+github_login = g.get_user().login
 
 pull_number = os.environ["TRAVIS_PULL_REQUEST"]
 repo_name = os.environ["TRAVIS_REPO_SLUG"]
@@ -15,11 +28,15 @@ job_id = os.environ["TRAVIS_JOB_ID"]
 build_number = os.environ["TRAVIS_BUILD_NUMBER"]
 build_id = os.environ["TRAVIS_BUILD_ID"]
 jdk_version = os.getenv("TRAVIS_JDK_VERSION","")
-test_type = os.getenv("TEST_TYPE", "")
+travis_page_url = os.getenv("TRAVIS_BUILD_WEB_URL")
+job_page_url = os.getenv("TRAVIS_JOB_WEB_URL")
 
 repo = g.get_repo(repo_name)
 pull = repo.get_pull(int(pull_number))
 comments = pull.get_issue_comments()
+
+log_url = sys.argv[1]
+message = "| %s | %s | [%s](%s) | [logs](%s) |" % (test_type, jdk_version, job_number, job_page_url, log_url)
 
 
 def matches_build_id(comment, build_id):
@@ -29,14 +46,7 @@ def matches_build_id(comment, build_id):
 
 
 def is_my_comment(comment):
-    return comment.user.login == ME
-
-
-travis_page_url = "https://travis-ci.com/" + repo_name + "/builds/" + build_id
-job_page_url = "https://travis-ci.com/" + repo_name + "/jobs/" + job_id
-
-log_url = sys.argv[1]
-message = "| %s | %s | [%s](%s) | [logs](%s) |" % (test_type, jdk_version, job_number, job_page_url, log_url)
+    return comment.user.login == github_login
 
 
 def update(comment):
