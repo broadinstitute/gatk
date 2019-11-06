@@ -96,8 +96,8 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 public final class CollectFragmentCounts extends ReadWalker {
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 10;
-    //private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 0;
+    //private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 10;
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 0;
 
 
     @Argument(
@@ -203,12 +203,8 @@ public final class CollectFragmentCounts extends ReadWalker {
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
 
         if ((!read.isReverseStrand() || !inGoodPair(read))) {
-/*            if (read.getName().equals("A00442:HGYW5DMXX190103:HGYW5DMXX:1:1210:12436:26130")) {
-                System.out.println("hi");
-            }*/
             final SimpleInterval fragment_interval = getReadInterval(read);
 
-            SimpleInterval testInterval = new SimpleInterval("NC_000913.3", 461915, 463786);
             List<GtfFeature> features = featureContext.getValues(gffFile);
             //final Strand readStrand = read.isFirstOfPair() ? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) : (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
             Strand readStrand = read.isFirstOfPair() ? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) : (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
@@ -276,9 +272,6 @@ public final class CollectFragmentCounts extends ReadWalker {
                     //currentCount.left = currentCount.left + (float) intersection.getLengthOnReference() / (float) fragment_interval.getLengthOnReference();
                     currentCount.left += (float) intersection.getLengthOnReference() / (float) overlappingBases;
                 } else {
-                    if (feature.getStart()==2924156) {
-                        System.out.println("test");
-                    }
                     //currentCount.right = currentCount.right + (float) intersection.getLengthOnReference() / (float) fragment_interval.getLengthOnReference();
                     currentCount.right += (float) intersection.getLengthOnReference() / (float) overlappingBases;
                 }
