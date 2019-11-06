@@ -22,10 +22,10 @@ pull = repo.get_pull(int(pull_number))
 comments = pull.get_issue_comments()
 
 
-def matches_build_number(comment, build_number):
+def matches_build_id(comment, build_id):
     body = comment.body
     lines = body.splitlines()
-    return build_number in lines[0]
+    return build_id in lines[0]
 
 
 def is_my_comment(comment):
@@ -54,7 +54,7 @@ def new_comment(pull):
 
 # Update the comment or create a new one
 for comment in comments:
-    if is_my_comment(comment) and matches_build_number(comment, build_number):
+    if is_my_comment(comment) and matches_build_id(comment, build_id):
         print("found matching comment")
         update(comment)
         break
