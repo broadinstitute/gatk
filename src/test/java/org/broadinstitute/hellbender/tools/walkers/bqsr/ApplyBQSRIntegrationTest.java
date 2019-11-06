@@ -151,8 +151,6 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "ApplyBQSRTest", groups={"bucket"})
     public void testApplyBQSRCloud(ABQSRTest params) throws IOException {
-
-        Assert.fail();
         // getTempFilePath also deletes the file on exit.
         final String outString = BucketUtils.getTempFilePath(getGCPTestStaging() + "tmp/testApplyBQSRCloud",  params.outputExtension);
         final Path outPath = BucketUtils.getPathOnGcs(outString);
