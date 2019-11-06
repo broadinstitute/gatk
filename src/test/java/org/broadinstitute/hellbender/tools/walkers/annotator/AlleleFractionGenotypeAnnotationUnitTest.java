@@ -7,10 +7,10 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -88,11 +88,11 @@ public class AlleleFractionGenotypeAnnotationUnitTest extends GATKBaseTest {
 
         final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of("1", sample1Reads, "2", sample2Reads);
         final IndexedSampleList sampleList = new IndexedSampleList(Arrays.asList("1", "2"));
-        final ReadLikelihoods<Allele> readLikelihoods = new ReadLikelihoods<Allele>(sampleList, new IndexedAlleleList<>(AC), readsBySample);
+        final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods = new AlleleLikelihoods<GATKRead, Allele>(sampleList, new IndexedAlleleList<>(AC), readsBySample);
 
         //setup likelihood matrix
-        final LikelihoodMatrix<Allele> matrix1 = readLikelihoods.sampleMatrix(0);
-        final LikelihoodMatrix<Allele> matrix2 = readLikelihoods.sampleMatrix(1);
+        final LikelihoodMatrix<GATKRead, Allele> matrix1 = alleleLikelihoods.sampleMatrix(0);
+        final LikelihoodMatrix<GATKRead, Allele> matrix2 = alleleLikelihoods.sampleMatrix(1);
         final double MATCH_LIKELIHOOD = -1.0;
         final double MISMATCH_LIKELIHOOD = -100.0;
         for (int i=0; i<nRef+nAlt; i++) {
@@ -104,16 +104,16 @@ public class AlleleFractionGenotypeAnnotationUnitTest extends GATKBaseTest {
         }
 
         return new Object[][] {
-                {vc, gAC, readLikelihoods, new double[]{(double)nAlt/(double)(nAlt + nRef)}},
-                {vc, gAA, readLikelihoods, new double[]{0.0}},
+                {vc, gAC, alleleLikelihoods, new double[]{(double)nAlt/(double)(nAlt + nRef)}},
+                {vc, gAA, alleleLikelihoods, new double[]{0.0}},
         };
     }
 
     @Test(dataProvider = "testUsingReadsDataProvider")
-    public void testUsingRead(final VariantContext vc, final Genotype g, final ReadLikelihoods<Allele> readLikelihoods, final double[] expectedAF) {
+    public void testUsingRead(final VariantContext vc, final Genotype g, final AlleleLikelihoods<GATKRead, Allele> alleleLikelihoods, final double[] expectedAF) {
         final GenotypeBuilder gb = new GenotypeBuilder();
 
-        new AlleleFraction().annotate(null, vc, g, gb, readLikelihoods);
+        new AlleleFraction().annotate(null, vc, g, gb, alleleLikelihoods);
 
 
         double[] af = (double[])gb.make().getAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY);
