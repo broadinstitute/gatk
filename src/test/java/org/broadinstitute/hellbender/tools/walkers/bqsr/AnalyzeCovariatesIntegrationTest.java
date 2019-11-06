@@ -5,7 +5,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -58,7 +57,6 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
     public void testCsvGeneration()
             throws IOException {
 
-        Assert.fail();
        final IntegrationTestSpec spec = new IntegrationTestSpec(
                buildCommandLine("%s",null,true,true,true),
                Collections.singletonList(new File(getTestDataDir(), "expected.AnalyzeCovariatesIntegrationTest.csv.gz").getAbsolutePath()));
