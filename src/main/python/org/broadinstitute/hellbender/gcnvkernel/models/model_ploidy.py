@@ -12,11 +12,12 @@ from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential
 from . import commons
 from .fancy_model import GeneralizedContinuousModel
 from .. import config, types
-from ..structs.interval import Interval
 from ..structs.metadata import IntervalListMetadata, SampleMetadataCollection
 from ..tasks.inference_task_base import HybridInferenceParameters
 
 _logger = logging.getLogger(__name__)
+
+_eps = commons.eps
 
 
 class PloidyModelConfig:
@@ -208,7 +209,7 @@ class PloidyModel(GeneralizedContinuousModel):
         n_sj = ploidy_workspace.n_sj
         ploidy_k = ploidy_workspace.int_ploidy_values_k
         q_ploidy_sjk = tt.exp(ploidy_workspace.log_q_ploidy_sjk)
-        eps = ploidy_config.mapping_error_rate
+        eps_mapping = ploidy_config.mapping_error_rate
 
         register_as_global = self.register_as_global
         register_as_sample_specific = self.register_as_sample_specific
@@ -233,7 +234,8 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_sample_specific(psi_s, sample_axis=0)
 
         # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_sj = tt.inv((tt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0))
+        alpha_sj = tt.maximum(tt.inv((tt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0)),
+                              _eps)
 
         # mean ploidy per contig per sample
         mean_ploidy_sj = tt.sum(tt.exp(ploidy_workspace.log_q_ploidy_sjk)
@@ -249,9 +251,9 @@ class PloidyModel(GeneralizedContinuousModel):
         mu_num_sjk = (t_j.dimshuffle('x', 0, 'x') * mean_bias_j.dimshuffle('x', 0, 'x')
                       * ploidy_k.dimshuffle('x', 'x', 0))
         mu_den_sjk = gamma_rest_sj.dimshuffle(0, 1, 'x') + mu_num_sjk
-        eps_j = eps * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
-        mu_sjk = ((1.0 - eps) * (mu_num_sjk / mu_den_sjk)
-                  + eps_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
+        eps_mapping_j = eps_mapping * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
+        mu_sjk = ((1.0 - eps_mapping) * (mu_num_sjk / mu_den_sjk)
+                  + eps_mapping_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
 
         def _get_logp_sjk(_n_sj):
             _logp_sjk = commons.negative_binomial_logp(

@@ -362,7 +362,7 @@ def _get_std_tsv_filename(path: str, var_name: str):
 def _get_singleton_slice_along_axis(array: np.ndarray, axis: int, index: int):
     slc = [slice(None)] * array.ndim
     slc[axis] = index
-    return slc
+    return tuple(slc)
 
 
 def write_mean_field_sample_specific_params(sample_index: int,
@@ -391,8 +391,8 @@ def write_mean_field_sample_specific_params(sample_index: int,
                                                 "variables to disk".format(var_name)
         mu_all = approx_mu_map[var_name]
         std_all = approx_std_map[var_name]
-        mu_slice = mu_all[_get_singleton_slice_along_axis(mu_all, var_sample_axis, sample_index)]
-        std_slice = std_all[_get_singleton_slice_along_axis(mu_all, var_sample_axis, sample_index)]
+        mu_slice = np.atleast_1d(mu_all[_get_singleton_slice_along_axis(mu_all, var_sample_axis, sample_index)])
+        std_slice = np.atleast_1d(std_all[_get_singleton_slice_along_axis(mu_all, var_sample_axis, sample_index)])
 
         mu_out_file_name = _get_mu_tsv_filename(sample_posterior_path, var_name)
         write_ndarray_to_tsv(mu_out_file_name, mu_slice, extra_comment_lines=extra_comment_lines)

@@ -139,7 +139,7 @@ class HybridInferenceTask(InferenceTask):
     """The hybrid inference framework is applicable to PGMs with the following general structure:
 
         +--------------+           +----------------+
-        | discrete RVs + --------► + continuous RVs |
+        | discrete RVs + --------> + continuous RVs |
         +--------------+           +----------------+
 
     Note that discrete RVs do not have any continuous parents. The inference is approximately
