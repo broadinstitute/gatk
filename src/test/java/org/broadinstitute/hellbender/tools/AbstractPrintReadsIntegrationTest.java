@@ -74,6 +74,7 @@ public abstract class AbstractPrintReadsIntegrationTest extends CommandLineProgr
 
     @Test(dataProvider="testingData")
     public void testFileToFile(String fileIn, String extOut, String reference) throws Exception {
+        Assert.fail();
         doFileToFile(fileIn, extOut, reference, false);
     }
 
