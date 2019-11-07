@@ -25,7 +25,7 @@ from ..tasks.inference_task_base import HybridInferenceParameters
 
 _logger = logging.getLogger(__name__)
 
-_eps = 1E-10
+_eps = commons.eps
 
 
 class DenoisingModelConfig:

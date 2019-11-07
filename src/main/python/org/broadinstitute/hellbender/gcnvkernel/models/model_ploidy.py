@@ -12,13 +12,12 @@ from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential
 from . import commons
 from .fancy_model import GeneralizedContinuousModel
 from .. import config, types
-from ..structs.interval import Interval
 from ..structs.metadata import IntervalListMetadata, SampleMetadataCollection
 from ..tasks.inference_task_base import HybridInferenceParameters
 
 _logger = logging.getLogger(__name__)
 
-_eps = 1E-10
+_eps = commons.eps
 
 
 class PloidyModelConfig:

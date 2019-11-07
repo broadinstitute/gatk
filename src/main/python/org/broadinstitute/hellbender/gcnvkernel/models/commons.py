@@ -12,6 +12,9 @@ _log_2_pi = 1.837877066409345  # np.log(2 * np.pi)
 _10_inv_log_10 = 4.342944819032518  # 10 / np.log(10)
 
 
+eps = 1E-10
+
+
 def get_normalized_prob_vector(prob_vector: np.ndarray, prob_sum_tol: float) -> np.ndarray:
     """Normalizes the probability vector of a categorical RV to unity.
 
