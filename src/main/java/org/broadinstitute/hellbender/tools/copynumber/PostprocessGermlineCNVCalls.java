@@ -61,7 +61,24 @@ import java.util.stream.IntStream;
  * calls of {@link DetermineGermlineContigPloidy}.</p>
  *
  * <p>Finally, the tool concatenates posterior means for denoised copy ratios from all the call shards produced by
- * the {@link GermlineCNVCaller} into a single file. </p>
+ * the {@link GermlineCNVCaller} into a single file.</p>
+ *
+ * <h3>Python environment setup</h3>
+ *
+ * <p>The computation done by this tool, aside from input data parsing and validation, is performed outside of the Java
+ * Virtual Machine and using the <em>gCNV computational python module</em>, namely {@code gcnvkernel}. It is crucial that
+ * the user has properly set up a python conda environment with {@code gcnvkernel} and its dependencies
+ * installed. If the user intends to run {@link PostprocessGermlineCNVCalls} using one of the official GATK Docker images,
+ * the python environment is already set up. Otherwise, the environment must be created and activated as described in the
+ * main GATK README.md file.</p>
+ *
+ * <p>Advanced users may wish to set the <code>THEANO_FLAGS</code> environment variable to override the GATK theano
+ * configuration. For example, by running
+ * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk PostprocessGermlineCNVCalls ...</code>, users can specify
+ * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
+ * at <a href="http://deeplearning.net/software/theano/library/config.html">
+ *     http://deeplearning.net/software/theano/library/config.html</a>.
+ * </p>
  *
  * <h3>Required inputs:</h3>
  * <ul>
