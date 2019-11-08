@@ -17,6 +17,7 @@ import argparse
 import operator
 import datetime
 import numpy as np
+import multiprocessing
 
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
@@ -157,6 +158,10 @@ def parse_args():
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
     parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
+
+    # Training optimization options
+    parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
+    parser.add_argument('--cache_size', default=4e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
     args = parser.parse_args()
     _process_args(args)

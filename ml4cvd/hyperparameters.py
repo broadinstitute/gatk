@@ -1,6 +1,7 @@
 # hyperparameters.py
 
 # Imports
+import gc
 import os
 import logging
 import numpy as np
@@ -16,7 +17,6 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 
 from skimage.filters import threshold_otsu
 
-import tensorflow.keras.backend as K
 
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args
@@ -59,51 +59,50 @@ def hyperparam_optimizer(args, space, param_lists={}):
     stats = Counter()
     args.keep_paths = False
     args.keep_paths_test = False
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
+    with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, generate_valid, generate_test):
+        test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
+        histories = []
+        fig_path = os.path.join(args.output_folder, args.id, 'plots')
+        i = 0
 
-    histories = []
+        def loss_from_multimodal_multitask(x):
+            model = None
+            history = None
+            nonlocal i
+            i += 1
+            try:
+                set_args_from_x(args, x)
+                model = make_multimodal_multitask_model(**args.__dict__)
 
-    fig_path = os.path.join(args.output_folder, args.id, 'plots')
-    i = 0
+                if model.count_params() > args.max_parameters:
+                    logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
+                    return MAX_LOSS
 
-    def loss_from_multimodal_multitask(x):
-        nonlocal i
-        i += 1
-        try:
-            set_args_from_x(args, x)
-            model = make_multimodal_multitask_model(**args.__dict__)
-
-            if model.count_params() > args.max_parameters:
-                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
-                del model
-                histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
+                model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
+                                                             args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
+                                                             args.inspect_model, args.inspect_show_labels, True, False)
+                histories.append(history.history)
+                title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
+                plot_metric_history(history, title, fig_path)
+                loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
+                stats['count'] += 1
+                logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
+                logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
+                return loss_and_metrics[0]
+            except ValueError:
+                logging.exception('ValueError trying to make a model for hyperparameter optimization. Returning max loss.')
                 return MAX_LOSS
+            except:
+                logging.exception('Error trying hyperparameter optimization. Returning max loss.')
+                return MAX_LOSS
+            finally:
+                del model
+                gc.collect()
+                if history is None:
+                    histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
 
-            model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
-                                                         args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
-                                                         args.inspect_model, args.inspect_show_labels, True, False)
-            histories.append(history.history)
-            title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
-            plot_metric_history(history, title, fig_path)
-            loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
-            stats['count'] += 1
-            logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
-            logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
-            del model
-            return loss_and_metrics[0]
-
-        except ValueError as e:
-            histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
-            logging.exception('ValueError trying to make a model for hyperparameter optimization. Returning max loss.')
-            return MAX_LOSS
-        except:
-            logging.exception('Error trying hyperparameter optimization. Returning max loss.')
-            histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
-            return MAX_LOSS
-
-    trials = hyperopt.Trials()
-    fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
+        trials = hyperopt.Trials()
+        fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
     plot_trials(trials, histories, fig_path, param_lists)
     logging.info('Saved learning plot to:{}'.format(fig_path))
 
@@ -228,7 +227,11 @@ def string_from_trials(trials, index, param_lists={}):
 def plot_trials(trials, histories, figure_path, param_lists={}):
     all_losses = np.array(trials.losses())  # the losses we will put in the text
     real_losses = all_losses[all_losses != MAX_LOSS]
-    cutoff = threshold_otsu(real_losses)
+    cutoff = MAX_LOSS
+    try:
+        cutoff = threshold_otsu(real_losses)
+    except ValueError:
+        logging.info('Otsu thresholding failed. Using MAX_LOSS for threshold.')
     lplot = np.clip(all_losses, a_min=-np.inf, a_max=cutoff)  # the losses we will plot
     plt.figure(figsize=(64, 64))
     matplotlib.rcParams.update({'font.size': 9})
@@ -279,16 +282,6 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
     plt.tight_layout()
     plt.savefig(learning_path)
     logging.info('Saved learning curve plot to: {}'.format(learning_path))
-
-
-def limit_mem():
-    try:
-        K.clear_session()
-        cfg = K.tf.ConfigProto()
-        cfg.gpu_options.allow_growth = True
-        K.set_session(K.tf.Session(config=cfg))
-    except AttributeError as e:
-        logging.exception('Could not clear session. Maybe you are using Theano backend?')
 
 
 if __name__ == '__main__':

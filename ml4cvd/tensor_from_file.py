@@ -87,7 +87,7 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
     # TODO: weird to convert date from string to datetime, because it just gets converted back.
     first_date = path_date_to_datetime(min(dates))  # Date format is sortable. 
     first_date_path = tensor_path(source=source, dtype=dtype, name=name, date=first_date)
-    tensor = np.array(hd5[first_date_path])
+    tensor = np.array(hd5[first_date_path], dtype=np.float32)
     tensor = handle_nan(tensor)
     return tensor
 
