@@ -8,15 +8,20 @@ import htsjdk.tribble.index.linear.LinearIndex;
 import htsjdk.tribble.index.tabix.TabixIndex;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -29,9 +34,10 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.vcf", ".idx");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I", ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
+
         final Object res = this.runCommandLine(args);
         Assert.assertEquals(res, outName.getAbsolutePath());
 
@@ -42,17 +48,38 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
+    @Test(groups={"bucket"})
+    public void testVCFIndexOnCloud() throws IOException {
+        final File testFile = getTestFile("test_variants_for_index.vcf");
+        final String vcfOnGCS = BucketUtils.getTempFilePath(
+                getGCPTestStaging() +"testIndexOnCloud", ".vcf");
+        BucketUtils.copyFile(testFile.getAbsolutePath(), vcfOnGCS);
+
+        final String[] args = new String[] {
+                "IndexFeatureFile", "-I", vcfOnGCS
+        };
+
+        new Main().instanceMain(args);
+
+        Assert.assertTrue(BucketUtils.fileExists(vcfOnGCS + ".idx"));
+
+        final Index index = IndexFactory.loadIndex(vcfOnGCS + ".idx");
+        Assert.assertTrue(index instanceof LinearIndex);
+        Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
+        checkIndex(index, Arrays.asList("1", "2", "3", "4"));
+    }
+
     @Test
     public void testVCFIndex_inferredName() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
-        final File tribbleIndex = Tribble.indexFile(ORIG_FILE);
-        Assert.assertEquals(res, tribbleIndex.getAbsolutePath());
-        tribbleIndex.deleteOnExit();
+        final Path tribbleIndex = Tribble.indexPath(ORIG_FILE.toPath());
+        Assert.assertEquals(res, tribbleIndex.toAbsolutePath().toString());
+        tribbleIndex.toFile().deleteOnExit();
 
         final Index index = IndexFactory.loadIndex(res.toString());
         Assert.assertTrue(index instanceof LinearIndex);
@@ -66,7 +93,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".tbi");
 
         final String[] args = {
-                "--feature-file", ORIG_FILE.getAbsolutePath(),
+                "-I", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -78,7 +105,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".tbi");
 
         final String[] args = {
-                "--feature-file", ORIG_FILE.getAbsolutePath(),
+                "-I", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -90,7 +117,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.blockgz.gz.", ".idx");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         this.runCommandLine(args);
@@ -103,7 +130,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
             FileExtensions.TABIX_INDEX);
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -126,7 +153,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outIndexFile = new File(tempDir, inputCopy.getName() + FileExtensions.TABIX_INDEX);
 
         final String[] args = {
-                "--feature-file" ,  inputCopy.getAbsolutePath(),
+                "-I" ,  inputCopy.getAbsolutePath(),
                 "-O" ,  outIndexFile.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -153,7 +180,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     public void testVCFGZIndex_inferredName(){
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
         final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + FileExtensions.TABIX_INDEX);
@@ -174,7 +201,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
         final File outName = createTempFile("test_variants_for_index.gzip.gz.", ".tbi");
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -185,7 +212,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
     }
@@ -196,7 +223,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.bcf.", ".idx");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -215,7 +242,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");
 
         final String[] args = {
-                "--feature-file", ORIG_FILE.getAbsolutePath(),
+                "-I", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -227,7 +254,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz", ".idx");
 
         final String[] args = {
-                "--feature-file", ORIG_FILE.getAbsolutePath(),
+                "-I", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -241,7 +268,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.gvcf_treated_as_vcf.vcf.", ".idx");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -259,7 +286,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.g.vcf.", ".idx");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -281,7 +308,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile(ORIG_FILE.getName(), (indexClass == TabixIndex.class) ?
             FileExtensions.TABIX_INDEX : ".idx");
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -319,7 +346,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile(ORIG_FILE.getName(), FileExtensions.TABIX_INDEX);
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -346,7 +373,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.vcf.", ".idx");
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -361,7 +388,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = new File(doesNotExist, "joe.txt");  //we can't write to this because parent does not exist
 
         final String[] args = {
-                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
+                "-I" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -374,7 +401,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File output = createTempFile("header_only.vcf", ".idx");
 
         final String[] args = {
-                "--feature-file", emptyVCF.getAbsolutePath(),
+                "-I", emptyVCF.getAbsolutePath(),
                 "-O", output.getAbsolutePath()
         };
         runCommandLine(args);
@@ -382,4 +409,5 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(output.exists());
         Assert.assertTrue(output.length() > 0);
     }
+
 }

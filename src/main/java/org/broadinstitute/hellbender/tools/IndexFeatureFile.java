@@ -14,14 +14,16 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * This tool creates an index file for the various kinds of feature-containing files supported by GATK (such as VCF
@@ -30,7 +32,7 @@ import java.io.IOException;
  * <h3>Usage example</h3>
  * <pre>
  * gatk IndexFeatureFile \
- *     -F cohort.vcf.gz
+ *     -I cohort.vcf.gz
  * </pre>
  * This produces the corresponding index, cohort.vcf.gz.tbi.
  */
@@ -44,81 +46,81 @@ import java.io.IOException;
 public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
-    @Argument(shortName = "F",
-              fullName = "feature-file",
+    @Argument(shortName =StandardArgumentDefinitions.INPUT_SHORT_NAME,
+              fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
               doc = "Feature file (eg., VCF or BED file) to index. Must be in a tribble-supported format")
-    public File featureFile;
+    public GATKPathSpecifier featurePath;
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
               fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
               doc = "The output index file. If missing, the tool will create an index file in the same directory " +
                      "as the input file.",
               optional = true)
-    public File outputFile;
+    public GATKPathSpecifier outputPath;
 
     public static final int OPTIMAL_GVCF_INDEX_BIN_SIZE = 128000;
     public static final String GVCF_FILE_EXTENSION = ".g.vcf";
 
     @Override
     protected Object doWork() {
-        if (!featureFile.canRead()) {
-            throw new UserException.CouldNotReadInputFile(featureFile);
+        if (!Files.isReadable(featurePath.toPath()) ) {
+            throw new UserException.CouldNotReadInputFile(featurePath.toPath());
         }
 
         // Get the right codec for the file to be indexed. This call will throw an appropriate exception
         // if featureFile is not in a supported format or is unreadable.
-        final FeatureCodec<? extends Feature, ?> codec = new ProgressReportingDelegatingCodec<>(FeatureManager.getCodecForFile(featureFile), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
+        final FeatureCodec<? extends Feature, ?> codec = new ProgressReportingDelegatingCodec<>(
+                FeatureManager.getCodecForFile(featurePath.toPath()), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
 
         final Index index = createAppropriateIndexInMemory(codec);
-        final File indexFile = determineFileName(index);
+        final Path indexPath = determineFileName(index);
 
         try {
-            index.write(indexFile);
+            index.write(indexPath);
         } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexFile.getAbsolutePath(), e);
+            throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath.toAbsolutePath(), e);
         }
 
-        logger.info("Successfully wrote index to " + indexFile.getAbsolutePath());
-        return indexFile.getAbsolutePath();
+        logger.info("Successfully wrote index to " + indexPath.toAbsolutePath());
+        return indexPath.toAbsolutePath().toString();
     }
 
-    private File determineFileName(final Index index) {
-        if (outputFile != null) {
-            return outputFile;
+    private Path determineFileName(final Index index) {
+        if (outputPath != null) {
+            return outputPath.toPath();
         } else if (index instanceof TabixIndex) {
-            return Tribble.tabixIndexFile(featureFile);
+            return Tribble.tabixIndexPath(featurePath.toPath());
         } else {
-            return Tribble.indexFile(featureFile);
+            return Tribble.indexPath(featurePath.toPath());
         }
     }
 
     private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
         try {
             // For block-compression files, write a Tabix index
-            if (IOUtil.hasBlockCompressedExtension(featureFile)) {
+            if (IOUtil.hasBlockCompressedExtension(featurePath.toPath())) {
                 // Creating tabix indices with a non standard extensions can cause problems so we disable it
-                if (outputFile != null && !outputFile.getAbsolutePath().endsWith(FileExtensions.TABIX_INDEX)) {
-                    throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + FileExtensions.TABIX_INDEX + "\" extension");
+                if (outputPath != null && !outputPath.getURIString().endsWith(FileExtensions.TABIX_INDEX)) {
+                    throw new UserException("The index for " + featurePath + " must be written to a file with a \"" + FileExtensions.TABIX_INDEX + "\" extension");
                 }
 
                 // TODO: this could benefit from provided sequence dictionary from reference
                 // TODO: this can be an optional parameter for the tool
-                return IndexFactory.createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
-
+                return IndexFactory.createIndex(featurePath.toPath(), codec, IndexFactory.IndexType.TABIX, null);
             }
             // TODO: detection of GVCF files should not be file-extension-based. Need to come up with canonical
             // TODO: way of detecting GVCFs based on the contents (may require changes to the spec!)
-            else if (featureFile.getName().endsWith(GVCF_FILE_EXTENSION)) {
+            else if (featurePath.getURIString().endsWith(GVCF_FILE_EXTENSION)) {
                 // Optimize GVCF indices for the use case of having a large number of GVCFs open simultaneously
-                return IndexFactory.createLinearIndex(featureFile, codec, OPTIMAL_GVCF_INDEX_BIN_SIZE);
+                return IndexFactory.createLinearIndex(featurePath.toPath(), codec, OPTIMAL_GVCF_INDEX_BIN_SIZE);
             } else {
                 // Optimize indices for other kinds of files for seek time / querying
-                return IndexFactory.createDynamicIndex(featureFile, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
+                return IndexFactory.createDynamicIndex(featurePath.toPath(), codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
             }
         } catch (TribbleException e) {
             // Underlying cause here is usually a malformed file, but can also be things like
             // "codec does not support tabix"
-            throw new UserException.CouldNotIndexFile(featureFile, e);
+            throw new UserException.CouldNotIndexFile(featurePath.toPath(), e);
         }
     }
 }

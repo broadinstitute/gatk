@@ -150,7 +150,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
             public String getTestedToolName(){
                 return IndexFeatureFile.class.getSimpleName();
             }
-        }.runCommandLine(new String[]{"-F", output.getAbsolutePath()});
+        }.runCommandLine(new String[]{"-I", output.getAbsolutePath()});
 
         final List<VariantContext> writtenVcs = readVariants(output.toString());
         //if we are actually writing a gvcf, all the variant blocks will be merged into a single homref block with

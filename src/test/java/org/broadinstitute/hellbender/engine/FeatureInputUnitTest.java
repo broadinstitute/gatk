@@ -255,7 +255,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> featureInput = new FeatureInput<>(inputVCFFile.getAbsolutePath());
         Assert.assertNull(featureInput.getFeatureCodecClass());
 
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(featureInput.getFeaturePath()));
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(featureInput.toPath());
         featureInput.setFeatureCodecClass((Class<FeatureCodec<VariantContext, ?>>)codec.getClass());
 
         return featureInput;
