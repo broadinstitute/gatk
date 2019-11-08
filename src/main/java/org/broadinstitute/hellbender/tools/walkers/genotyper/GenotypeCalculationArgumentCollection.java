@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -21,6 +22,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
 
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
+
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
@@ -47,6 +49,10 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.numRefIfMissing = other.numRefIfMissing;
     }
 
+
+
+    @Argument(fullName = "dont-use-dragstr-priors", optional = true)
+    public boolean dontUseDragstrPriors = false;
 
     /**
      * As of version 4.1.0.0, this argument is no longer needed because the new qual score is now on by default. See GATK 3.3 release notes for more details.

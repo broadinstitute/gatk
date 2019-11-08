@@ -15,7 +15,7 @@ public class DragstrParamsUnitTest extends BaseTest {
     @Test
     public void testLoad() {
         final String filePath = ("src/test/resources/" +  TEST_PARAMS_FILE);
-        final DragstrParams params = DragstrParams.load(filePath);
+        final DragstrParams params = new DragstrParams(filePath);
         Assert.assertNotNull(params);
         Assert.assertEquals(params.maximumPeriod(), 8);
         Assert.assertEquals(params.maximumRepeats(), 20);
@@ -24,7 +24,7 @@ public class DragstrParamsUnitTest extends BaseTest {
     @Test
     public void testQueries() {
         final String filePath = ("src/test/resources/" +  TEST_PARAMS_FILE);
-        final DragstrParams params = DragstrParams.load(filePath);
+        final DragstrParams params = new DragstrParams(filePath);
         for (int i = 1; i <= params.maximumPeriod(); i++) {
             for (int j = 1; j <= params.maximumRepeats(); i++) {
                 final double gop = params.gop(i, j);

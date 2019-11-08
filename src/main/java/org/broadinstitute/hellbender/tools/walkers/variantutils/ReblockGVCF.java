@@ -238,10 +238,7 @@ public final class ReblockGVCF extends VariantWalker {
         // but if STAND_CALL_CONF > 0 we need to drop low quality alleles and regenotype
          //Note that spanning deletion star alleles will be considered low quality
         if (result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 && !isHomRefCall(result) && dropLowQuals) {
-            final GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
-                    ? GenotypeLikelihoodsCalculationModel.INDEL
-                    : GenotypeLikelihoodsCalculationModel.SNP;
-            result = genotypingEngine.calculateGenotypes(originalVC, model);
+            result = genotypingEngine.calculateGenotypes(originalVC);
         }
 
         if (result == null) {

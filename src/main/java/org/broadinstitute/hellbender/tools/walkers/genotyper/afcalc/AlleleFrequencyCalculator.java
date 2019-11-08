@@ -6,14 +6,18 @@ import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Dirichlet;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,6 +39,10 @@ public final class AlleleFrequencyCalculator {
     private final int defaultPloidy;
 
 
+    public int getPloidy() {
+        return defaultPloidy;
+    }
+
     public AlleleFrequencyCalculator(final double refPseudocount, final double snpPseudocount, final double indelPseudocount, final int defaultPloidy) {
         this.refPseudocount = refPseudocount;
         this.snpPseudocount = snpPseudocount;
@@ -48,6 +56,20 @@ public final class AlleleFrequencyCalculator {
         final double indelPseudocount = genotypeArgs.indelHeterozygosity * refPseudocount;
         return new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, genotypeArgs.samplePloidy);
     }
+
+
+    public static AlleleFrequencyCalculator makeCalculator(final DragstrParams dragstrParms, final int period, final int repeats, final int ploidy, final double snpHeterozygosity) {
+        final double log10ScaleUp = 3; // 1^3 ... must be a big number to revert from a diritchler to a fix single point estimate for the expectations.
+        final double api = dragstrParms.api(period, repeats);
+        final double log10IndelFreq = api * -.1;
+        final double log10RefFreq = MathUtils.log10OneMinusPow10(log10IndelFreq);
+        final double log10SnpFreq = log10IndelFreq + Math.log10(snpHeterozygosity);
+        final double refPseudoCount = Math.pow(log10ScaleUp + log10RefFreq, 10);
+        final double indelPseudoCount = Math.pow(log10ScaleUp + log10IndelFreq, 10);
+        final double snpPseudoCount = Math.pow(log10ScaleUp + log10SnpFreq, 10);
+        return  new AlleleFrequencyCalculator(refPseudoCount, snpPseudoCount, indelPseudoCount, ploidy);
+    }
+
 
     public AFCalculationResult calculate(final VariantContext vc) {
         // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0

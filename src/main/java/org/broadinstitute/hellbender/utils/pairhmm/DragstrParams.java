@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.cloud.storage.Acl;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.BufferedReader;
@@ -17,61 +19,76 @@ public class DragstrParams {
     private final double[][] gop;
     private final double[][] gcp;
     private final double[][] api;
+    private final Map<Object, AlleleFrequencyCalculator> afcs;
 
-    public static DragstrParams load(final String path) {
+
+    public DragstrParams(final String path) {
+        this(openBufferedReader(path), path);
+    }
+
+    private static BufferedReader openBufferedReader(String path) {
         try {
-            return load(Files.newBufferedReader(Paths.get(path)));
+            return Files.newBufferedReader(Paths.get(path));
         } catch (final IOException ex) {
-            throw new UserException.BadInput.CouldNotReadInputFile("cannot read DRAGstr model file: " + path,  ex);
+            throw new UserException.CouldNotReadInputFile(path, ex);
         }
     }
 
-    public static DragstrParams load(final BufferedReader reader) throws IOException {
-        final String header = reader.readLine();
-        final String[] headerParts = header.split("\\s+");
-        final int[] repeats = Arrays.stream(headerParts)
-                .filter(str -> !str.isEmpty())
-                .mapToInt(str -> {
-                    try {
-                        return Integer.parseInt(str);
-                    } catch (final NumberFormatException ex) {
-                        throw new UserException.BadInput("bad format for an integer", ex);
-                    }
-                })
-                .toArray();
-        final int maxRepeats = repeats.length;
-        for (int i = 0; i < repeats.length; i++) {
-            if (repeats[i] != i + 1) {
-                throw new UserException.BadInput("the DRAGstr parameter file header line must contain integers starting at 1 " + Arrays.toString(repeats));
+    private DragstrParams(final BufferedReader reader, final String path) {
+        try {
+            final String header = reader.readLine();
+            final String[] headerParts = header.split("\\s+");
+            final int[] repeats = Arrays.stream(headerParts)
+                    .filter(str -> !str.isEmpty())
+                    .mapToInt(str -> {
+                        try {
+                            return Integer.parseInt(str);
+                        } catch (final NumberFormatException ex) {
+                            throw new UserException.BadInput("bad format for an integer", ex);
+                        }
+                    })
+                    .toArray();
+            final int maxRepeats = repeats.length;
+            for (int i = 0; i < repeats.length; i++) {
+                if (repeats[i] != i + 1) {
+                    throw new UserException.BadInput("the DRAGstr parameter file header line must contain integers starting at 1 " + Arrays.toString(repeats));
+                }
             }
-        }
-        final Map<String, double[][]> tables = new HashMap<>();
-        String line = reader.readLine();
-        if (line == null) {
-            throw new UserException.BadInput("end of table list before expected");
-        }
-        String tableName = line.replaceAll(":$", "");
-        List<String> tableLines = new ArrayList<>();
-        while ((line = reader.readLine()) != null) {
-            if (line.charAt(line.length() - 1) == ':') {
-                tables.put(tableName, linesToMatrix(tableLines, repeats.length));
-                tableName = line.replaceAll(":$","");
-                tableLines.clear();
-            } else {
-                tableLines.add(line);
+            final Map<String, double[][]> tables = new HashMap<>();
+            String line = reader.readLine();
+            if (line == null) {
+                throw new UserException.BadInput("end of table list before expected");
             }
-        }
-        if (tableName == null) {
-            throw new UserException.BadInput("table with no name");
-        }
-        tables.put(tableName, linesToMatrix(tableLines, repeats.length));
-        final double[][] gopMatrix = mandatoryMatrix( tables,"GOP");
-        final double[][] gcpMatrix = mandatoryMatrix( tables,"GCP");
-        final double[][] apiMatrix = mandatoryMatrix( tables,"API");
-        final int maxPeriod = gopMatrix.length;
-        checkMatricesAreValid(maxPeriod, maxRepeats, gopMatrix, gcpMatrix, apiMatrix);
+            String tableName = line.replaceAll(":$", "");
+            List<String> tableLines = new ArrayList<>();
+            while ((line = reader.readLine()) != null) {
+                if (line.charAt(line.length() - 1) == ':') {
+                    tables.put(tableName, linesToMatrix(tableLines, repeats.length));
+                    tableName = line.replaceAll(":$", "");
+                    tableLines.clear();
+                } else {
+                    tableLines.add(line);
+                }
+            }
+            if (tableName == null) {
+                throw new UserException.BadInput("table with no name");
+            }
+            tables.put(tableName, linesToMatrix(tableLines, repeats.length));
+            final double[][] gopMatrix = mandatoryMatrix(tables, "GOP");
+            final double[][] gcpMatrix = mandatoryMatrix(tables, "GCP");
+            final double[][] apiMatrix = mandatoryMatrix(tables, "API");
+            final int maxPeriod = gopMatrix.length;
+            checkMatricesAreValid(maxPeriod, maxRepeats, gopMatrix, gcpMatrix, apiMatrix);
 
-        return new DragstrParams(maxPeriod, maxRepeats, gopMatrix, gcpMatrix, apiMatrix);
+            this.maxPeriod = maxPeriod;
+            this.maxRepeats = maxRepeats;
+            this.gop = gopMatrix;
+            this.gcp = gcpMatrix;
+            this.api = apiMatrix;
+            this.afcs = new HashMap<>(maxPeriod * maxRepeats);
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotReadInputFile(path, ex);
+        }
     }
 
     private DragstrParams(final int maxPeriod, final int maxRepeats, final double[][] gop, final double[][] gcp, final double[][] api) {
@@ -80,6 +97,7 @@ public class DragstrParams {
         this.gop = gop;
         this.gcp = gcp;
         this.api = api;
+        this.afcs = new HashMap<>(maxPeriod * maxRepeats);
     }
 
     private static void checkMatricesAreValid(final int maxPeriod, final int maxRepeats, final double[][] gopMatrix,
@@ -160,5 +178,10 @@ public class DragstrParams {
 
     public int maximumRepeats() {
         return maxRepeats;
+    }
+
+    public AlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet) {
+        final String keyString = "" + period + '/' + repeat + '/' + ploidy + '/' + snpHet;
+        return afcs.computeIfAbsent(keyString, k -> AlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet));
     }
 }

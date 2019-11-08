@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
 import java.io.Serializable;
@@ -29,7 +30,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
 
     @Advanced
     @Argument(fullName="dragstr-params-path", doc="location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
-    public String dragstrParams = null;
+    public DragstrParams dragstrParams = null;
 
     @Advanced
     @Argument(fullName="pair-hmm-gap-continuation-penalty", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
@@ -54,7 +55,6 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Advanced
     @Argument(fullName = "pcr-indel-model", doc = "The PCR indel model to use", optional = true)
     public PairHMMLikelihoodCalculationEngine.PCRErrorModel pcrErrorModel = PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE;
-
 
     /**
      * The phredScaledGlobalReadMismappingRate reflects the average global mismapping rate of all reads, regardless of their

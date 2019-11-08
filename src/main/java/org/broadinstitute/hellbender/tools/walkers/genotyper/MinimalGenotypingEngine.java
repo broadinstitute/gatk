@@ -25,7 +25,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
     /**
      * Creates a new unified genotyping given the UG configuration parameters and the targeted set of samples
      *
-     * @param configuration the UG configuration.
+     * @param configuration the UG configurat
      * @param samples list of samples
      * @param doAlleleSpecificCalcs Whether to calculate genotyping annotations needed for allele specific annotations
      */

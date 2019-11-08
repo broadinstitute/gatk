@@ -252,14 +252,7 @@ public class GenotypeGVCFsEngine
     }
 
     private VariantContext calculateGenotypes(VariantContext vc){
-        /*
-         * Query the VariantContext for the appropriate model.  If type == MIXED, one would want to use model = BOTH.
-         * However GenotypingEngine.getAlleleFrequencyPriors throws an exception if you give it anything but a SNP or INDEL model.
-         */
-        final GenotypeLikelihoodsCalculationModel model = vc.getType() == VariantContext.Type.INDEL
-                ? GenotypeLikelihoodsCalculationModel.INDEL
-                : GenotypeLikelihoodsCalculationModel.SNP;
-        return genotypingEngine.calculateGenotypes(vc, model);
+        return genotypingEngine.calculateGenotypes(vc);
     }
 
     /**

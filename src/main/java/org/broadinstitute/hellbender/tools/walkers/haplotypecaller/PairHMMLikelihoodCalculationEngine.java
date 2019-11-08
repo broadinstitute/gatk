@@ -100,12 +100,12 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      * @param pcrErrorModel model to correct for PCR indel artifacts
      */
     public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
-                                              final String dragstrParamsPath,
+                                              final DragstrParams dragstrParams,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParamsPath, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
+        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
     }
 
     /**
@@ -126,7 +126,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      *                                  quality.
      */
     public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
-                                              final String dragstrParamsPath,
+                                              final DragstrParams dragstrParams,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
@@ -140,7 +140,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         if (log10globalReadMismappingRate > 0){
             throw new IllegalArgumentException("log10globalReadMismappingRate must be negative");
         }
-        this.dragstrParams = dragstrParamsPath == null || dragstrParamsPath.isEmpty() ? null : DragstrParams.load(dragstrParamsPath);
+        this.dragstrParams = dragstrParams;
         this.constantGCP = constantGCP;
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.pcrErrorModel = this.dragstrParams == null ? pcrErrorModel : PCRErrorModel.NONE;

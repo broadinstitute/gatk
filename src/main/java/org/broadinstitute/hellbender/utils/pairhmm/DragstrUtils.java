@@ -6,14 +6,20 @@ import java.util.Arrays;
 
 public class DragstrUtils {
 
-    //> end_of_read_GOP = 45;  %value assigned to GOP of last base in read
-    public static final int END_OF_READ_GOP = 45;
-
-    //> end_of_read_GCP = 10;  %value assigned to GCP of last base in read; should be moot, as GCP of last base shouldn't influence the final sum
-    public static final int END_OF_READ_GCP = 10;
-
-    public static STRSequenceAnalyzer /**/repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
+    public static STRSequenceAnalyzer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
         return new STRSequenceAnalyzer(maxSequenceLength, maxPeriod);
+    }
+
+    public static STRSequenceAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int maxPeriod) {
+        final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod);
+        result.load(sequence);
+        return result;
+    }
+
+    public static STRSequenceAnalyzer repeatPeriodAndCounts(final byte[] sequence, final int start, final int stop, final int maxPeriod) {
+        final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod);
+        result.load(sequence, start, stop);
+        return result;
     }
 
     public static class STRSequenceAnalyzer {
@@ -63,7 +69,7 @@ public class DragstrUtils {
             if (sequence.length > repeatsByPeriodAndPosition[0].length) {
                 throw new IllegalArgumentException("input sequence is too long");
             } else if (end < start || start < 0 || end > sequence.length) {
-                throw new IndexOutOfBoundsException("bad indexes");
+                throw new IndexOutOfBoundsException("bad indexes " + start  + " " + end + " " + sequence.length);
             } else if (start >= end) {
                 this.start = start; this.end = end;
                 return;

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -11,11 +12,13 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -139,6 +142,10 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
+        final DragstrUtils.STRSequenceAnalyzer dragstrs = hcArgs.likelihoodArgs.dragstrParams != null && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors
+                ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(), startPosKeySet.last() + 1 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
+                : null;
+
         for( final int loc : startPosKeySet ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
@@ -177,7 +184,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), givenAlleles);
+            final AlleleFrequencyCalculator customAFC = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart(), ploidy, snpHeterozygosity);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), customAFC, givenAlleles);
             if( call != null ) {
 
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -197,6 +205,34 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? AssemblyBasedCallerUtils.phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    private AlleleFrequencyCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrUtils.STRSequenceAnalyzer strs, final int pos, final int ploidy, final double snpHeterozygosity) {
+        final List<Allele> alleles = vc.getAlleles();
+        if (alleles.size() < 2) {
+            return null;
+        } else { // is there an indel at all.
+            final int refLength = alleles.get(0).length();
+            boolean foundShortIndelAllele = false;
+            for (int i = 1; i < alleles.size(); i++) {
+                final Allele alt = alleles.get(i);
+                if (!alt.isSymbolic() && alt != Allele.SPAN_DEL && alt.length() != refLength) {
+                    foundShortIndelAllele = true;
+                    break;
+                }
+            }
+            if (!foundShortIndelAllele) {
+                return null;
+            }
+        }
+
+        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
+            return null; // the default standard AFC will be used.
+        } else {
+            final int period = strs.mostRepeatedPeriod(pos);
+            final int repeats = strs.numberOfMostRepeats(pos);
+            return hcArgs.likelihoodArgs.dragstrParams.getAFCalculator(period, repeats, ploidy, snpHeterozygosity);
+        }
     }
 
     @VisibleForTesting
@@ -393,12 +429,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      */
     public PloidyModel getPloidyModel() {
         return ploidyModel;
-    }
-
-    // check whether all alleles of a vc, including the ref but excluding the NON_REF allele, are one base in length
-    protected static GenotypeLikelihoodsCalculationModel getGLModel(final VariantContext vc) {
-        final boolean isSNP = vc.getAlleles().stream().filter(a -> !a.isSymbolic()).allMatch(a -> a.length() == 1);
-        return isSNP ? GenotypeLikelihoodsCalculationModel.SNP : GenotypeLikelihoodsCalculationModel.INDEL;
     }
 
     // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection

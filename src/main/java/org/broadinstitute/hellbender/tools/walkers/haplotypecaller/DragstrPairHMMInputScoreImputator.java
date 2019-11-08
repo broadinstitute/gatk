@@ -9,7 +9,7 @@ public class DragstrPairHMMInputScoreImputator implements PairHMMInputScoreImput
     private final DragstrParams params;
 
     public static DragstrPairHMMInputScoreImputator newInstance(final String path) {
-        return new DragstrPairHMMInputScoreImputator(DragstrParams.load(path));
+        return new DragstrPairHMMInputScoreImputator(new DragstrParams(path));
     }
 
     public static DragstrPairHMMInputScoreImputator newInstance(final DragstrParams params) {

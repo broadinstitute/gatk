@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -143,10 +144,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * the model that need to be applied.
      *
      * @param vc                                 Input variant context to complete.
-     * @param model                              GL calculation model
      * @return                                   VC with assigned genotypes
      */
-    public VariantContext calculateGenotypes(final VariantContext vc, final GenotypeLikelihoodsCalculationModel model, final List<VariantContext> givenAlleles) {
+    public VariantContext calculateGenotypes(final VariantContext vc, final AlleleFrequencyCalculator customAFC, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return null;
@@ -165,7 +165,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
 
-        final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
+        final AlleleFrequencyCalculator afc = customAFC == null ? alleleFrequencyCalculator : customAFC;
+        final AFCalculationResult AFresult = afc.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
 
         // posterior probability that at least one alt allele exists in the samples
@@ -213,8 +214,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
-    public VariantContext calculateGenotypes(final VariantContext vc, final GenotypeLikelihoodsCalculationModel model) {
-        return calculateGenotypes(vc, model, Collections.emptyList());
+    public VariantContext calculateGenotypes(final VariantContext vc) {
+        return calculateGenotypes(vc, null, Collections.emptyList());
     }
 
     @VisibleForTesting
