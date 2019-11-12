@@ -149,11 +149,17 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             if (pathToExtend.getDecisionEdgesTakenSinceLastJunctionTreeEvidence() > DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE) {
                 continue;
             }
+
             ////////////////////////////////////////////////////////////
             // code to discover where the next interesting node is
             ////////////////////////////////////////////////////////////
             V vertexToExtend = pathToExtend.getLastVertex();
             Set<E> outgoingEdges = graph.outgoingEdgesOf(vertexToExtend);
+
+            // Check that we are not visiting an edge an excessive number of times (can/should be optimized)
+            if (pathToExtend.getVertexCount(vertexToExtend) > junctionTreeLinkedDeBruinGraph.maxWitnessedEvidenceForVertex((MultiDeBruijnVertex) vertexToExtend)) {
+                continue;
+            }
 
             // Check if we have cached the current vertex in a contiguous sequence
             final List<E> chain = graphKmerChainCache.computeIfAbsent(vertexToExtend, k -> new ArrayList<>());

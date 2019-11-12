@@ -40,6 +40,8 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
 
+    private Map<Kmer, Integer> kmerRepeatCount = new HashMap<>();
+
     // TODO should this be constructed here or elsewhere
     private Set<Kmer> kmers = new HashSet<>();
 
@@ -76,7 +78,67 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
     @Override
     // We don't need to track non-uniques here so this is a no-op
     protected void preprocessReads() {
+        kmerRepeatCount = determineNonUniques(kmerSize, pending.values().stream().flatMap(oneSampleWorth -> oneSampleWorth.stream()).collect(Collectors.toList()));
         return;
+    }
+
+    /**
+     * Compute the smallest kmer size >= minKmerSize and <= maxKmerSize that has no non-unique kmers
+     * among all sequences added to the current graph.  Will always return a result for maxKmerSize if
+     * all smaller kmers had non-unique kmers.
+     *
+     * @param kmerSize the kmer size to check for non-unique kmers of
+     * @return a non-null NonUniqueResult
+     */
+    private static Map<Kmer, Integer> determineNonUniques(final int kmerSize, Collection<SequenceForKmers> withNonUniques) {
+        final Map<Kmer, Integer> nonUniqueKmers = new HashMap<>();
+
+        // loop over all sequences that have non-unique kmers in them from the previous iterator
+        final Iterator<SequenceForKmers> it = withNonUniques.iterator();
+        while ( it.hasNext() ) {
+            final SequenceForKmers sequenceForKmers = it.next();
+
+            // determine the non-unique kmers for this sequence
+            final Map<Kmer, Integer> nonUniquesFromSeq = determineNonUniqueKmers(sequenceForKmers, kmerSize);
+            // merge the non-unique kmers from this list
+            nonUniquesFromSeq.forEach((key, value) -> nonUniqueKmers.put(key, Math.max(value, nonUniqueKmers.getOrDefault(key, 0))));
+        }
+
+        return nonUniqueKmers;
+    }
+
+    /**
+     * Get the collection of non-unique kmers from sequence for kmer size kmerSize
+     * @param seqForKmers a sequence to get kmers from
+     * @param kmerSize the size of the kmers
+     * @return a non-null collection of non-unique kmers in sequence
+     */
+    static Map<Kmer, Integer> determineNonUniqueKmers(final SequenceForKmers seqForKmers, final int kmerSize) {
+        // count up occurrences of kmers within each read
+        final Set<Kmer> allKmers = new LinkedHashSet<>();
+        final Map<Kmer, Integer> nonUniqueKmers = new HashMap<>();
+        final int stopPosition = seqForKmers.stop - kmerSize;
+        for (int i = 0; i <= stopPosition; i++) {
+            final Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
+            if (!allKmers.add(kmer)) {
+                if (nonUniqueKmers.containsKey(kmer)) {
+                    nonUniqueKmers.put(kmer, nonUniqueKmers.get(kmer) + 1);
+                } else {
+                    nonUniqueKmers.put(kmer, 2);
+                }
+            }
+        }
+        return nonUniqueKmers;
+    }
+
+    // Return a count of the number of times a kmer has been repeated in witnessed reads. This is intended to be used as a heuristic
+    // for stopping spurious loops in the haplotype recovery stage.
+    public int maxWitnessedEvidenceForVertex(final MultiDeBruijnVertex vertex) {
+        Kmer key = new Kmer(vertex.getSequence());
+        if (kmerRepeatCount.containsKey(key)) {
+            return kmerRepeatCount.get(key);
+        }
+        return 1;
     }
 
     @Override
