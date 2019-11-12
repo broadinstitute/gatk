@@ -28,7 +28,6 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName = "base-quality-score-threshold", doc = "Base qualities below this threshold will be reduced to the minimum (" + QualityUtils.MIN_USABLE_Q_SCORE + ")", optional = true)
     public byte BASE_QUALITY_SCORE_THRESHOLD = PairHMM.BASE_QUALITY_SCORE_THRESHOLD;
 
-    @Advanced
     @Argument(fullName="dragstr-params-path", doc="location of the DRAGstr model parameters for STR error correction used in the Pair HMM. When provided, it overrides other PCR error correcting mechanisms", optional = true)
     public DragstrParams dragstrParams = null;
 

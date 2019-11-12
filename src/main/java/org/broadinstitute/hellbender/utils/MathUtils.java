@@ -32,6 +32,7 @@ public final class MathUtils {
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
     private static final double LOG_10 = Math.log(10);
+    private static final double INV_LOG_10 = 1.0 / LOG_10;
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
@@ -247,7 +248,7 @@ public final class MathUtils {
         if (a > 0) return Double.NaN;
         if (a == 0) return Double.NEGATIVE_INFINITY;
         final double b = a * LOG_10;
-        return NaturalLogUtils.log1mexp(b) / LOG_10;
+        return NaturalLogUtils.log1mexp(b) * INV_LOG_10;
     }
 
     /**
@@ -613,6 +614,23 @@ public final class MathUtils {
 
     public static double log10SumLog10(final double a, final double b) {
         return a > b ? a + Math.log10(1 + Math.pow(10.0, b - a)) : b + Math.log10(1 + Math.pow(10.0, a - b));
+    }
+
+    /**
+     * Do the log-sum trick for three double values.
+     * @param a
+     * @param b
+     * @param c
+     * @return the sum... perhaps NaN or infinity if it applies.
+     */
+    public static double log10SumLog10(final double a, final double b, final double c) {
+        if (a >= b && a >= c)  {
+            return a + MathUtils.log10OneMinusPow10(b - a) + MathUtils.log10OneMinusPow10(c - a);
+        } else if (b >= c) {
+            return b + MathUtils.log10OneMinusPow10(a - b) + MathUtils.log10OneMinusPow10(c - b);
+        } else {
+            return c + MathUtils.log10OneMinusPow10(a - c) + MathUtils.log10OneMinusPow10(b - c);
+        }
     }
 
     /**

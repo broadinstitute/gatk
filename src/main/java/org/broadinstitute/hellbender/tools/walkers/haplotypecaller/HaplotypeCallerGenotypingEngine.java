@@ -231,7 +231,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         } else {
             final int period = strs.mostRepeatedPeriod(pos);
             final int repeats = strs.numberOfMostRepeats(pos);
-            return hcArgs.likelihoodArgs.dragstrParams.getAFCalculator(period, repeats, ploidy, snpHeterozygosity);
+            return hcArgs.likelihoodArgs.dragstrParams.getAFCalculator(period, repeats, ploidy, snpHeterozygosity, hcArgs.standardArgs.genotypeArgs.dragstrPriorScale);
         }
     }
 

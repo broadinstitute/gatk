@@ -23,6 +23,9 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
 
+    @Argument(fullName="dragstr-prior-scale")
+    public double dragstrPriorScale = 10; // similar to the default scale for HC without dragstr.
+
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.

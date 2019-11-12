@@ -180,8 +180,8 @@ public class DragstrParams {
         return maxRepeats;
     }
 
-    public AlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet) {
+    public AlleleFrequencyCalculator getAFCalculator(final int period, final int repeat, final int ploidy, final double snpHet, final double scale) {
         final String keyString = "" + period + '/' + repeat + '/' + ploidy + '/' + snpHet;
-        return afcs.computeIfAbsent(keyString, k -> AlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet));
+        return afcs.computeIfAbsent(keyString, k -> AlleleFrequencyCalculator.makeCalculator(this, period, repeat, ploidy, snpHet, scale));
     }
 }
