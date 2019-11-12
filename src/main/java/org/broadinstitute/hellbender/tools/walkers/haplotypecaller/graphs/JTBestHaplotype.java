@@ -172,6 +172,15 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     }
 
     /**
+     * Returns a naieve count of how many times the given vertex has appeared in the path.
+     * @param vertexToCount
+     * @return
+     */
+    public long getVertexCount(final V vertexToCount) {
+        return getVertices().stream().filter(v -> v.equals(vertexToCount)).count();
+    }
+
+    /**
      * A helper class for managing the various junction tree operations that need to be done by JTBestHaplotypeFinder
      *
      * This class tracks traversing all active trees simultaneously so the right corresponding nodes are accounted for in every case.
