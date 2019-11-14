@@ -161,7 +161,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(MAP_QUAL_RANK_SUM_KEY, 1, VCFHeaderLineType.Float, "Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities"));
         addInfoLine(new VCFInfoHeaderLine(AS_MAP_QUAL_RANK_SUM_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "allele specific Z-score From Wilcoxon rank sum test of each Alt vs. Ref read mapping qualities"));
         addInfoLine(new VCFInfoHeaderLine(MAPPING_QUALITY_DEPTH_DEPRECATED, 1, VCFHeaderLineType.Integer, "Depth over variant samples for better MQ calculation (deprecated -- use " + RAW_MAPPING_QUALITY_WITH_DEPTH_KEY + " instead."));
-        addInfoLine(new VCFInfoHeaderLine(RAW_RMS_MAPPING_QUALITY_KEY, 1, VCFHeaderLineType.Integer, "Raw data for RMS Mapping Quality (deprecated -- use " + RAW_MAPPING_QUALITY_WITH_DEPTH_KEY + " instead."));
+        addInfoLine(new VCFInfoHeaderLine(RAW_RMS_MAPPING_QUALITY_KEY, 1, VCFHeaderLineType.Float, "Raw data for RMS Mapping Quality (deprecated -- use " + RAW_MAPPING_QUALITY_WITH_DEPTH_KEY + " instead."));
         addInfoLine(new VCFInfoHeaderLine(RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, 2, VCFHeaderLineType.Integer, "Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated " + RMSMappingQuality.getDeprecatedRawKeyName() + " formulation."));
         addInfoLine(new VCFInfoHeaderLine(AS_RAW_RMS_MAPPING_QUALITY_KEY, 1, VCFHeaderLineType.String, "Allele-specfic raw data for RMS Mapping Quality"));
         addInfoLine(new VCFInfoHeaderLine(AS_RMS_MAPPING_QUALITY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele-specific RMS Mapping Quality"));
