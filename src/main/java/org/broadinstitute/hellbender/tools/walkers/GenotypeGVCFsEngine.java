@@ -42,6 +42,7 @@ public class GenotypeGVCFsEngine
 
     //the genotyping engine
     private GenotypingEngine<?> genotypingEngine = null;
+    private GenotypingEngine<?> forceOutputGenotypingEngine = null;
 
     // the INFO field annotation key names to remove
     private final List<String> infoFieldAnnotationKeyNamesToRemove = new ArrayList<>();
@@ -67,7 +68,8 @@ public class GenotypeGVCFsEngine
      * @param includeNonVariants true to save INFO header names that require alt alleles
      * @param inputVCFHeader header for the VCF
      */
-    public GenotypeGVCFsEngine(VariantAnnotatorEngine annotationEngine, GenotypeCalculationArgumentCollection genotypeArgs, boolean includeNonVariants, VCFHeader inputVCFHeader)
+    public GenotypeGVCFsEngine(final VariantAnnotatorEngine annotationEngine, final GenotypeCalculationArgumentCollection genotypeArgs,
+                               final boolean includeNonVariants, final VCFHeader inputVCFHeader)
     {
         this.annotationEngine = annotationEngine;
         this.genotypeArgs = genotypeArgs;
@@ -93,7 +95,9 @@ public class GenotypeGVCFsEngine
         }
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
-        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples,
+        genotypingEngine = new MinimalGenotypingEngine(createUAC(false), samples,
+                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
+        forceOutputGenotypingEngine = new MinimalGenotypingEngine(createUAC(true), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
 
         if ( includeNonVariants ) {
@@ -108,14 +112,16 @@ public class GenotypeGVCFsEngine
         }
     }
 
-    public VariantContext callRegion(Locatable loc, List<VariantContext> variants, ReferenceContext ref, FeatureContext features, ReferenceConfidenceVariantContextMerger merger, boolean somaticInput, double tlodThreshold, double afTolerance) //do work for apply
+    public VariantContext callRegion(Locatable loc, List<VariantContext> variants, ReferenceContext ref, FeatureContext features,
+                                     ReferenceConfidenceVariantContextMerger merger, boolean somaticInput, double tlodThreshold,
+                                     double afTolerance, final boolean outputNonVariants) //do work for apply
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
         ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
-        final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
-        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants, tlodThreshold, afTolerance) :
-                regenotypeVC(mergedVC, ref, features, includeNonVariants);
+        final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), !outputNonVariants, false);
+        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, afTolerance) :
+                regenotypeVC(mergedVC, ref, features, outputNonVariants);
 
         return regenotypedVC;
     }
@@ -132,8 +138,8 @@ public class GenotypeGVCFsEngine
 
         if ( originalVC.isVariant()  && originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 ) {
             // only re-genotype polymorphic sites
-            final VariantContext regenotypedVC = calculateGenotypes(originalVC);
-            if (regenotypedVC == null || (!GATKVariantContextUtils.isProperlyPolymorphic(regenotypedVC) && !includeNonVariants)) {
+            final VariantContext regenotypedVC = calculateGenotypes(originalVC, includeNonVariants);
+            if (regenotypedVC == null) {
                 return null;
             }
             if (GATKVariantContextUtils.isProperlyPolymorphic(regenotypedVC) || includeNonVariants) {
@@ -146,8 +152,6 @@ public class GenotypeGVCFsEngine
                 final VariantContext trimmed = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
                 final GenotypesContext updatedGTs = subsetAlleleSpecificFormatFields(outputHeader, trimmed.getGenotypes(), relevantIndices);
                 result = new VariantContextBuilder(trimmed).genotypes(updatedGTs).make();
-            } else if (includeNonVariants) {
-                result = originalVC;
             } else {
                 return null;
             }
@@ -251,7 +255,7 @@ public class GenotypeGVCFsEngine
         return new VariantContextBuilder(newVC).attributes(attrs).make();
     }
 
-    private VariantContext calculateGenotypes(VariantContext vc){
+    private VariantContext calculateGenotypes(VariantContext vc, final boolean forceOutput){
         /*
          * Query the VariantContext for the appropriate model.  If type == MIXED, one would want to use model = BOTH.
          * However GenotypingEngine.getAlleleFrequencyPriors throws an exception if you give it anything but a SNP or INDEL model.
@@ -259,7 +263,7 @@ public class GenotypeGVCFsEngine
         final GenotypeLikelihoodsCalculationModel model = vc.getType() == VariantContext.Type.INDEL
                 ? GenotypeLikelihoodsCalculationModel.INDEL
                 : GenotypeLikelihoodsCalculationModel.SNP;
-        return genotypingEngine.calculateGenotypes(vc, model);
+        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc, model);
     }
 
     /**
@@ -385,14 +389,14 @@ public class GenotypeGVCFsEngine
      * Creates a UnifiedArgumentCollection with appropriate values filled in from the arguments in this walker
      * @return a complete UnifiedArgumentCollection
      */
-    private UnifiedArgumentCollection createUAC() {
+    private UnifiedArgumentCollection createUAC(final boolean forceOutput) {
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to uac separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
         //GATK4 uses EMIT_ALL_ACTIVE_SITES to ensure LowQual sites are emitted.
-        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
+        uac.outputMode = forceOutput ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
         return uac;
     }
 

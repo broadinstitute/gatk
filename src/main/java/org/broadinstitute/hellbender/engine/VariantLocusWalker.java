@@ -8,7 +8,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
-import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -19,7 +18,6 @@ import org.broadinstitute.hellbender.utils.iterators.ShardedIntervalIterator;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * VariantLocusWalker processes variants from a single source, grouped by locus overlap, or optionally one
@@ -132,6 +130,7 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
             // Process each variant in the input stream, one at a time.
             getTransformedVariantStream( getSpliteratorForDrivingVariants(), preTransformer, variantFilter, postTransformer )
                     .forEachOrdered(variant -> {
+
                         final SimpleInterval variantInterval = new SimpleInterval(variant);
                         apply(variant,
                                 Collections.singletonList(variant),
@@ -148,7 +147,7 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
             Utils.stream(new ShardedIntervalIterator(getTraversalIntervals().iterator(), getDrivingVariantCacheLookAheadBases()))
                     .forEachOrdered (shard -> {
                         if (drivingVariants.query(shard).hasNext()) {
-                            getLocusStream(Collections.singletonList(new SimpleInterval(shard.getContig(), shard.getStart(), shard.getEnd())))
+                            getLocusStream(new SimpleInterval(shard))
                                     .forEachOrdered(locus -> {
                                         final Iterator<VariantContext> overlappingVariants = drivingVariants.query(locus);
                                         if (overlappingVariants.hasNext()) {
@@ -174,10 +173,9 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
         }
     }
 
-    // Return a Stream of SimpleInterval covering the entire territory sketched out by requestedIntervals
-    private Stream<SimpleInterval> getLocusStream(final List<SimpleInterval> requestedIntervals) {
-        final Iterable<SimpleInterval> iterable = () -> new IntervalLocusIterator(requestedIntervals.iterator());
-        return StreamSupport.stream(iterable.spliterator(), false);
+    // Return a Stream of SimpleInterval covering the entire territory sketched out by requestedInterval
+    private Stream<SimpleInterval> getLocusStream(final SimpleInterval requestedInterval) {
+        return Utils.stream(new IntervalLocusIterator(Collections.singletonList(requestedInterval).iterator()));
     }
 
     /**
