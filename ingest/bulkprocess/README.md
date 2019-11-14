@@ -1,9 +1,14 @@
 # Downloading UKBB bulk data (cardiac MRI)
-In brief, see [this instruction page](http://biobank.ndph.ox.ac.uk/showcase/instruct/bulk.html). However, these instructions are out of date (give the wrong argument order, etc). See updated instructions below.
 
 Prepare permissions
 1. Make sure that you have created a `.ukbkey` file containing the application ID on line 1 and the private key on line 2 (directly downloadable as an attachment from the email that you received from the UKBB). This file should not be readable by anyone without proper UKBB permissions, so consider setting this to be user-readable only.
 
+```bash
+./ukbunpack 6764.enc .ukbkey
+./ukbconv 6764.enc_ukb bulk -s20216
+mv ~/ml/ingest/cmd/downloader/main.go .
+go run main.go
+```
 Download data
 1. Download the encrypted file (`ukb21481.enc`) and decrypt it to the encoded file (`ukb21481.enc_ukb`)
 1. Extract the list of all samples with the field of interest. 20208 is Heart MRI Long Axis `ukbconv ukb21481.enc_ukb bulk -s20208`

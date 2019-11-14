@@ -1,17 +1,92 @@
-# Downloading phenotype data from UK Biobank
+# Overview
+Because of how the UK Biobank is set up, injesting data into BigQuery requires a few manual steps:
+1.  [Setup](#Setup-instructions)
+2.  [Downloading phenotype data](#Downloading-phenotype-data-from-UK-Biobank)
+3.  [Decrypting downloaded files](#Decrypting-the-downloaded-files)
+4.  [Downloading hesin files](#Downloading-hesin-files)
+5.  [Uploading to big query](#BigQuery-ingestion)
 
-When a tranche of data is ready, the UK Biobank sends an email to collaborators that contains an "md5 hash" and a keyfile. There is one key/hash pair per tranche of data, and most applications have many tranches. Talk to jamesp for details specific to the kathiresan tranche, and pbatra for the Lubitz/Ellinor. Tranches could be refreshes or batches of fields. 
 
-The user then proceeds to the UK Biobank website, logs in, clicks on their project, clicks on "data", clicks on the showcase button at the bottom of the page, and then goes to the data downloads tab. There, they click on the basket with their data. On the following page, there is a form where they insert the "md5 hash" from the email. If that is entered correctly, they are taken to a page with a "Fetch" button on it. If the "Fetch" button is clicked, the file will download to the user's computer. However, if the form is inspected, then all of the parameters can be seen. This will permit the user to assemble a `curl` command on a server of their choice, rather than downloading the data to their own computer. E.g., 
-```sh
-curl -d "id=XXX&s=XXX&t=XXX&i=XXX&v=XXX&submit=Fetch" \
-  -X POST https://biota.osc.ox.ac.uk//dataset.cfgi \
-  -o 9221.enc
+# Setup instructions
+## Local setup
+Install go and related go packages:
+```bash
+conda install go
+conda install pigz
+go get cloud.google.com/go/bigquery
+go get  github.com/carbocation/genomisc
+go get  gopkg.in/guregu/null.v3
+```
+running a go file and piping output to a compressed file is `go run *.go -flag | pigz > blah.tsv.gz`
+Compiling a go file for a different os: `GOOS=linux go build -o filename.linux *.go`
+
+
+To set credentials for bigquery:
+`gcloud auth application-default login`
+
+To setup a new toplevel dataset in bigquery:
+`bq mk --dataset broad-ml4cvd:pb_test`
+
+## GCS setup
+Follow the instructions in [the main README](../../README.md) to set up your instance.
+Then set up go:
+```bash
+sudo apt install golang-go
+```
+If that doesn't work, you can try installing from source at https://golang.org/doc/install.
+Finally, add this to your `.bashrc`:
+```bash
+export PATH=$PATH:/usr/local/go/bin
+export GOPATH=/usr/local/go/bin
+export GOROOT=/usr/local/go
 ```
 
-The following steps require the `ukbunpack` and `ukbconv` utilities [from the UK Biobank website](https://biobank.ctsu.ox.ac.uk/crystal/download.cgi). The file `decrypt_all.sh` will run through the following steps on one of the on-prem servers.
+#Downloading phenotype data from UK Biobank
 
-Once the data is downloaded, it needs to be "`ukbunpack`ed" which decrypts it, and then converts it to a file format of choice. Both `ukbunpack` and `ukbconv` are available from the UK Biobank's website. The decryption has to happen on a linux system if you download the linux tools, e.g. the Broad's on-prem servers. Note that you need plenty of space to decrypt/unpack, and the programs may fail silently if disk space runs out during the middle.
+When a tranche of data is ready, the UK Biobank sends an email to collaborators that contains an "md5 hash" and a keyfile. 
+There is one key/hash pair per tranche of data, and most applications have many tranches. 
+Talk to jamesp for details specific to the kathiresan tranche, and pbatra for the Lubitz/Ellinor. 
+Tranches could be refreshes or batches of fields. 
+
+The user then proceeds to the UK Biobank website, logs in, clicks on their project, clicks on "data", clicks on the showcase button at the bottom of the page, and then goes to the data downloads tab.
+There, they click on the basket with their data. On the following page, there is a form where they insert the "md5 hash" from the email. 
+If that is entered correctly, they are taken to a page with a "Fetch" button on it. If the "Fetch" button is clicked, the file will download to the user's computer. 
+However, if the form is inspected, then all of the parameters can be seen. 
+Look for
+```html
+<form name="fetch" action="XXX" method="post">
+<input type="hidden" name="id" value="AAA">
+<input type="hidden" name="s" value="BBB">
+<input type="hidden" name="t" value="CCC">
+<input type="hidden" name="i" value="DDD">
+<input type="hidden" name="v" value="EEE">
+<input class="sub_go" type="submit" value="Fetch">
+</form>
+```
+In chrome, it looks like:
+
+![form_screenshot](./inspect_screenshot.png)
+
+You can copy paste the form into [build_curl_command](../cmd/build_curl_command.py) to get a `curl` command to download the file to the server of your choice.
+The curl command looks like the following where you choose NAME:
+```sh
+curl -d "id=AAA&s=BBB&t=CCC&i=DDD&v=EEE&submit=Fetch" \
+  -X POST XXX \
+  -o NAME 
+```
+
+Using curl isn't necessary, but is much faster if you want to put the files on a server.
+For example, downloading a 3 GB file onto my local machine took ~3 hours and then more to move to my server of choice.
+Using curl took ~90 minutes total for a GCS cpu instance.
+
+#Decrypting the downloaded files
+
+The following steps require the `ukbunpack` and `ukbconv` utilities [from the UK Biobank website](https://biobank.ctsu.ox.ac.uk/crystal/download.cgi). 
+The file `decrypt_all.sh` will run through the following steps on one of the on-prem servers.
+
+Once the data is downloaded, it needs to be "`ukbunpack`ed" which decrypts it, and then converts it to a file format of choice. 
+Both `ukbunpack` and `ukbconv` are available from the UK Biobank's website. 
+The decryption has to happen on a linux system if you download the linux tools, e.g. the Broad's on-prem servers. Note that you need plenty of space to decrypt/unpack, and the programs may fail silently if disk space runs out during the middle.
 
 To decrypt, assuming you copied the keyfile from the email to the same directory as `.ukbkey`:  
 ```sh
@@ -30,22 +105,11 @@ This will emit `9221.csv`, a comma-delimited file. This text file will become th
 
 ***Note***: The UK Biobank emits invalid tab-delimited files (the number of tabs is not the same on every line), so `csv` rather than `txt` should always be used as the output format.
 
-# Friendly setup instructions
-Install go and related go packages:
-* `conda install go`
-* `conda install pigz`
-* `go get cloud.google.com/go/bigquery`
-* `go get  github.com/carbocation/genomisc`
-* `go get  gopkg.in/guregu/null.v3`
-running a go file and piping output to a compressed file is `go run *.go -flag | pigz > blah.tsv.gz`
-Compiling a go file for a different os: `GOOS=linux go build -o filename.linux *.go`
+#Downloading hesin files
 
-
-To set credentials for bigquery:
-`gcloud auth application-default login`
-
-To setup a new toplevel dataset in bigquery:
-`bq mk --dataset broad-ml4cvd:pb_test`
+The hesin tables are a set of hospital episode tables (Details on how to access this data are on page 13 of [this document](http://biobank.ctsu.ox.ac.uk/crystal/docs/UsingUKBData.pdf) made available by the UK biobank, but only through the data portal (loginto project, showcase, click on data, click on data portal. 
+You may have to request access to get this. 
+Then, in the portal, run `select * from <>` and click download, for each of the five tables (`hesin, hesin_oper, hesin_diag9, hesin_diag10`). `hesin_birth` is generally not available. Depending on the project, you may have to alter the json describing the schema of data expected.  
 
 # BigQuery ingestion
 The `do_all.sh` script automates the below, but requires that the phenotype files and hesin files are already in local directories.
@@ -74,8 +138,7 @@ This data is ingested with minimal transformation, aside from converting the phe
     * To make sure you have the latest data, *load the most recent basket first*.
     * The tool accepts many pheno.csv files at once, and will remove redundant fiels from the set of csvs that you give it.
 1. `convertsample, importsample`: genetic data
-1. `importhesin` (no convert): the hesin tables are a set of hospital episode tables (Details on how to access this data
-are on page 13 of [this document](http://biobank.ctsu.ox.ac.uk/crystal/docs/UsingUKBData.pdf) made available by the UK biobank, but only through the data portal (loginto project, showcase, click on data, click on data portal. You may have to request access to get this. Then, in the portal, run `select * from <>` and click download, for each of the five tables (`hesin, hesin_oper, hesin_diag9, hesin_diag10`). `hesin_birth` is generally not available. Depending on the project, you may have to alter the json describing the schema of data expected.  
+1. `importhesin`: hesin data
 
 ## Derived data
 The `censor` data help to clarify when an event occurred and, if no event occurred yet, when our knowledge of events actually ends. This is useful for downstream steps of calculating prevalent vs incident disease. To create the censor table, 
