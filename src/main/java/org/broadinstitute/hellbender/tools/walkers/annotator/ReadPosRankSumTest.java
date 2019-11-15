@@ -53,7 +53,11 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
 
     public static OptionalDouble getReadPosition(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
+        int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
+        //check for edge case of leading insertion for read aligned to base after refLoc
+        if (read.getSoftStart() - 1 == refLoc && ReadUtils.readStartsWithInsertion(read.getCigar()) != null) {
+            offset = 0;
+        }
         if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
             return OptionalDouble.empty();
         }

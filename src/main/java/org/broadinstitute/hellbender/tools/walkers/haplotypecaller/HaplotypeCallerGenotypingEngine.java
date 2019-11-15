@@ -412,7 +412,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             final VariantContext call) {
 
         final AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoodsForAnnotations;
-        final SimpleInterval loc = new SimpleInterval(call);
+        final SimpleInterval loc = call.isSimpleInsertion()? new SimpleInterval(call.getContig(), call.getStart(), call.getEnd() + 1) : new SimpleInterval(call);
 
         // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
         // or the user want to use the contamination filtered set for annotations.
