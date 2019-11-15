@@ -310,6 +310,18 @@ public final class GATKVariantContextUtils {
         }
     }
 
+    public static boolean containsInlineIndel(final VariantContext vc) {
+        final List<Allele> alleles = vc.getAlleles();
+        final int refLength = alleles.get(0).length();
+        for (int i = 1; i < alleles.size(); i++) {
+            final Allele alt = alleles.get(i);
+            if (!alt.isSymbolic() && alt != Allele.SPAN_DEL && alt.length() != refLength) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public enum GenotypeMergeType {
         /**
          * Make all sample genotypes unique by file. Each sample shared across RODs gets named sample.ROD.

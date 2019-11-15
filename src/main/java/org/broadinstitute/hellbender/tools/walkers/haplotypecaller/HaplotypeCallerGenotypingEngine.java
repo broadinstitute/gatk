@@ -142,7 +142,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
-        final DragstrUtils.STRSequenceAnalyzer dragstrs = hcArgs.likelihoodArgs.dragstrParams != null && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors
+        final DragstrUtils.STRSequenceAnalyzer dragstrs = !startPosKeySet.isEmpty() && hcArgs.likelihoodArgs.dragstrParams != null && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors
                 ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(), startPosKeySet.last() + 1 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
                 : null;
 
@@ -208,25 +208,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     private AlleleFrequencyCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrUtils.STRSequenceAnalyzer strs, final int pos, final int ploidy, final double snpHeterozygosity) {
-        final List<Allele> alleles = vc.getAlleles();
-        if (alleles.size() < 2) {
-            return null;
-        } else { // is there an indel at all.
-            final int refLength = alleles.get(0).length();
-            boolean foundShortIndelAllele = false;
-            for (int i = 1; i < alleles.size(); i++) {
-                final Allele alt = alleles.get(i);
-                if (!alt.isSymbolic() && alt != Allele.SPAN_DEL && alt.length() != refLength) {
-                    foundShortIndelAllele = true;
-                    break;
-                }
-            }
-            if (!foundShortIndelAllele) {
-                return null;
-            }
-        }
-
-        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
+       if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc)) {
             return null; // the default standard AFC will be used.
         } else {
             final int period = strs.mostRepeatedPeriod(pos);

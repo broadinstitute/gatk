@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.pairhmm.DragstrParams;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -41,7 +42,7 @@ public class GenotypeGVCFsEngine
     private VariantAnnotatorEngine annotationEngine = null;
 
     //the genotyping engine
-    private GenotypingEngine<?> genotypingEngine = null;
+    private MinimalGenotypingEngine genotypingEngine = null;
 
     // the INFO field annotation key names to remove
     private final List<String> infoFieldAnnotationKeyNamesToRemove = new ArrayList<>();
@@ -56,6 +57,8 @@ public class GenotypeGVCFsEngine
     private VCFHeader outputHeader;
 
     private SampleList samples;
+
+    private DragstrParams dragStrParams;
 
     final VCFHeader inputVCFHeader;
 
@@ -94,7 +97,9 @@ public class GenotypeGVCFsEngine
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
         genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples,
-                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
+                annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific), this.dragStrParams);
+
+
 
         if ( includeNonVariants ) {
             // Save INFO header names that require alt alleles
@@ -112,7 +117,12 @@ public class GenotypeGVCFsEngine
     {
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
-        ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        if (dragStrParams == null || !genotypeArgs.dontUseDragstrPriors) {
+            ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        } else {
+            ref.setWindow(dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats(), dragStrParams.maximumPeriod() * dragStrParams.maximumRepeats());
+        }
+        genotypingEngine.setReferenceContext(ref);
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants, tlodThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, includeNonVariants);
@@ -311,7 +321,7 @@ public class GenotypeGVCFsEngine
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final VariantContext regenotypedVC = builder.genotypes(newGenotypes).make();
 
-        final int maxAltAlleles = ((UnifiedArgumentCollection)genotypingEngine.getConfiguration()).genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.MAX_ALTERNATE_ALLELES;
         List<Allele> allelesToKeep;
 
         //we need to make sure all alleles pass the tlodThreshold
