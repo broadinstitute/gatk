@@ -202,8 +202,7 @@ public final class ReadThreadingAssembler {
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
             for (final KBestHaplotype<V, E> kBestHaplotype :
-                    (generateSeqGraph ?
-                            new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
+                    (generateSeqGraph ? new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
                             new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
                             .findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
