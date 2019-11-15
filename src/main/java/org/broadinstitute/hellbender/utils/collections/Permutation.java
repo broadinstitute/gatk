@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.collections;
 import java.util.List;
 
 /**
- * Represent a permutation of a ordered set or list of elements.
+ * Represent a permutation of an ordered set or list of elements.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */

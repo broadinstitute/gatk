@@ -12,7 +12,7 @@ import java.util.List;
  */
 //Note: Names in this interface are unusual because of name clash in a subclass.
 // For example the name of AlleleList.alleleCount() cannot be simply size(), as would be usual,
-// because {@link ReadLikelohoods} implements AlleleList and SampleList and then size() would be ambiguous.
+// because {@link ReadLikelihoods} implements AlleleList and SampleList and then size() would be ambiguous.
 public interface AlleleList<A extends Allele>{
 
     /**

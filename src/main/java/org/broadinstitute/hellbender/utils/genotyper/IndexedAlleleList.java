@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.collections.IndexedSet;
 import java.util.Collection;
 
 /**
- * Allele list implementation using and indexed-set.
+ * Allele list implementation using an indexed-set.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */

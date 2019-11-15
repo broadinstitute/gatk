@@ -243,7 +243,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      *
      * @throws IllegalArgumentException if {@code other} is {@code null}.
      *
-     * @return {@code true} iff {@other} is not {@code null}, and contains exactly the same elements
+     * @return {@code true} iff {@code other} is not {@code null}, and contains exactly the same elements
      * (as compared using {@link Object#equals} a this set with matching indices.
      */
     public boolean equals(final IndexedSet<?> other) {
@@ -296,7 +296,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      */
     public int indexOf(final Object o) {
         Utils.nonNull(o, "the query object cannot be null");
-        return indexByElement.containsKey(o) ? indexByElement.get(o) : -1;
+        return indexByElement.getOrDefault(o, -1);
     }
 
 }
