@@ -78,6 +78,12 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
                 .mapToInt(JunctionTreeLinkedDeBruinGraph.ThreadingNode::getEvidenceCount).sum();
     }
 
+    // Helper method for marking trees as visited
+    public void markTreesAsVisited(final List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> trees) {
+        junctionTreeManager.visitedTrees.addAll(trees);
+    }
+
+
     /**
      * This method is the primary logic of deciding how to traverse junction paths and with what score.
      *

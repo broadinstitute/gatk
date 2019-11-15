@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotypeFinder<V, E> {
     public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
@@ -130,7 +131,14 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                     edgesBeforeSplit.add(firstEdge);
 
                     // create a new path with the beginging of the best edge stapled to the front
-                    queue.add(new JTBestHaplotype<>(new JTBestHaplotype<>(bestMatchingHaplotype.get().getFirstVertex(), graph), edgesBeforeSplit, bestMatchingHaplotype.get().score()));
+                    JTBestHaplotype<V, E> pathToAdd = new JTBestHaplotype<>(new JTBestHaplotype<>(bestMatchingHaplotype.get().getFirstVertex(), graph), edgesBeforeSplit, bestMatchingHaplotype.get().score());
+                    List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> treesPassed = pathToAdd.getVertices().stream()
+                            .map(v -> junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) v))
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toList());
+                    pathToAdd.markTreesAsVisited(treesPassed);
+                    queue.add(pathToAdd);
                 }
                 continue;
             }
