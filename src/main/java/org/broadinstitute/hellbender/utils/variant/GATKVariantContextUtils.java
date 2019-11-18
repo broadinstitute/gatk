@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFreque
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -293,7 +294,7 @@ public final class GATKVariantContextUtils {
                         bestLikelihood = genotypeLikelihoods[i];
                         bestLikelihoodIndex = i;
                     }
-                }
+                }   
                 gb.alleles(glCalc.genotypeAlleleCountsAt(bestGenotypeIndex).asAlleleList(allelesToUse));
                 if ( allelesToUse.size() > 0 ) { // we still use Lks for GQ.
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(bestLikelihoodIndex, genotypeLikelihoods));

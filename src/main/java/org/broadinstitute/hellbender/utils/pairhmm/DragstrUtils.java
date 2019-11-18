@@ -1,10 +1,20 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.aeonbits.owner.util.Collections;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Arrays;
+import java.util.Collection;
 
 public class DragstrUtils {
+
+    private static final String DRAGSTRINFO_KEY = "DRAGstrInfo";
+    private static final String DRAGSTRPARAMS_KEY = "DRAGstrParams";
 
     public static STRSequenceAnalyzer repeatPeriodAndCounts(final int maxSequenceLength, final int maxPeriod) {
         return new STRSequenceAnalyzer(maxSequenceLength, maxPeriod);
@@ -20,6 +30,24 @@ public class DragstrUtils {
         final STRSequenceAnalyzer result = new STRSequenceAnalyzer(sequence.length, maxPeriod);
         result.load(sequence, start, stop);
         return result;
+    }
+
+    public static Collection<? extends VCFHeaderLine> vcfHeaderLines() {
+        return Collections.list(new VCFInfoHeaderLine(DRAGSTRINFO_KEY, 2, VCFHeaderLineType.Integer, "Indicates the period and repeat count"),
+                                new VCFInfoHeaderLine(DRAGSTRPARAMS_KEY, 3, VCFHeaderLineType.Float, "Parameeters used (GOP, GCP, API)"));
+
+    }
+
+    public static VariantContext annotate(VariantContext annotatedCall, final DragstrParams dragstrParams, STRSequenceAnalyzer dragstrs, int offset, int ploidy, double snpHeterozygosity) {
+        final VariantContextBuilder builder = new VariantContextBuilder(annotatedCall);
+        final int period = dragstrs.mostRepeatedPeriod(offset);
+        final int repeats = dragstrs.numberOfMostRepeats(offset);
+        final double gop = dragstrParams.gop(period, repeats);
+        final double gcp = dragstrParams.gcp(period, repeats);
+        final double api = dragstrParams.api(period, repeats);
+        builder.attribute(DragstrUtils.DRAGSTRINFO_KEY, new int[] {period, repeats});
+        builder.attribute(DragstrUtils.DRAGSTRPARAMS_KEY, new String[] {String.format("%.1f", gop),String.format("%.1f", gcp), String.format("%.1f", api)});
+        return builder.make();
     }
 
     public static class STRSequenceAnalyzer {
