@@ -273,32 +273,34 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             return pathToReconcile;
         }
 
-        V pivotalVerex = pathToReconcile.getFirstVertex();
-        //TODO this can be MUCH faster than a simple contains search here
-        List<JTBestHaplotype<V, E>> candidatePaths = validReturnPaths.stream().filter(path -> path.containsVertex(pivotalVerex)).collect(Collectors.toList());
-
-        // todo, perhaps something more drastic can be done here, this arises from either uncovered reference path or from branches that lead to loops that are unresolvable... perhaps try to capture the first one
-        if (candidatePaths.isEmpty()) {
-            // this is a failure state for now
-            return null;
-        }
-
-        //TODO this is totally simple for right now, will choose a better approach soon.
-        JTBestHaplotype<V, E> bestMatchingHaplotype = candidatePaths.stream().max(Comparator.comparingDouble(JTBestHaplotype::score)).get();
-
-        // Now we try to construct a reference covering haplotype from the one we just discovered
-        List<E> bestMatchingHaplotypeEdges = bestMatchingHaplotype.getEdges();
-        List<E> edgesIncomingToSplitPoint = bestMatchingHaplotypeEdges.stream().filter(edge -> graph.getEdgeTarget(edge).equals(pivotalVerex)).collect(Collectors.toList());
-        //todo it is either an error state to find nothing or could mean we accidentally did the search over the source vertex, either way shoudl be a bug
-        if (edgesIncomingToSplitPoint.isEmpty()) {
-            return null;
-        }
-
-        // TODO maybe this will matter some day, simply select the last edge
-        List<E> outputEdges = new ArrayList<>(bestMatchingHaplotypeEdges.subList(0, bestMatchingHaplotypeEdges.lastIndexOf(edgesIncomingToSplitPoint.get(edgesIncomingToSplitPoint.size() - 1)) + 1));
-        outputEdges.addAll(pathToReconcile.getEdges());
-
-        return new JTBestHaplotype<V,E>(new JTBestHaplotype<V,E>(bestMatchingHaplotype.getFirstVertex(), graph), outputEdges, bestMatchingHaplotype.score() + pathToReconcile.score());
+        throw new RuntimeException("e");
+//
+//        V pivotalVerex = pathToReconcile.getFirstVertex();
+//        //TODO this can be MUCH faster than a simple contains search here
+//        List<JTBestHaplotype<V, E>> candidatePaths = validReturnPaths.stream().filter(path -> path.containsVertex(pivotalVerex)).collect(Collectors.toList());
+//
+//        // todo, perhaps something more drastic can be done here, this arises from either uncovered reference path or from branches that lead to loops that are unresolvable... perhaps try to capture the first one
+//        if (candidatePaths.isEmpty()) {
+//            // this is a failure state for now
+//            return null;
+//        }
+//
+//        //TODO this is totally simple for right now, will choose a better approach soon.
+//        JTBestHaplotype<V, E> bestMatchingHaplotype = candidatePaths.stream().max(Comparator.comparingDouble(JTBestHaplotype::score)).get();
+//
+//        // Now we try to construct a reference covering haplotype from the one we just discovered
+//        List<E> bestMatchingHaplotypeEdges = bestMatchingHaplotype.getEdges();
+//        List<E> edgesIncomingToSplitPoint = bestMatchingHaplotypeEdges.stream().filter(edge -> graph.getEdgeTarget(edge).equals(pivotalVerex)).collect(Collectors.toList());
+//        //todo it is either an error state to find nothing or could mean we accidentally did the search over the source vertex, either way shoudl be a bug
+//        if (edgesIncomingToSplitPoint.isEmpty()) {
+//            return null;
+//        }
+//
+//        // TODO maybe this will matter some day, simply select the last edge
+//        List<E> outputEdges = new ArrayList<>(bestMatchingHaplotypeEdges.subList(0, bestMatchingHaplotypeEdges.lastIndexOf(edgesIncomingToSplitPoint.get(edgesIncomingToSplitPoint.size() - 1)) + 1));
+//        outputEdges.addAll(pathToReconcile.getEdges());
+//
+//        return new JTBestHaplotype<V,E>(new JTBestHaplotype<V,E>(bestMatchingHaplotype.getFirstVertex(), graph), outputEdges, bestMatchingHaplotype.score() + pathToReconcile.score());
     }
 
 
