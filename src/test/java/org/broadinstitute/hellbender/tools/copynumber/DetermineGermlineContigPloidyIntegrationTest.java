@@ -46,7 +46,7 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
         runCommandLine(argsBuilder);
     }
 
-    @Test(groups = {"python"}, expectedExceptions = UserException.BadInput.class)
+    @Test(groups = {"python"}, expectedExceptions = IllegalArgumentException.class)
     public void testCohortWithSingleSample() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addInput(TEST_COUNT_FILES[0]);
