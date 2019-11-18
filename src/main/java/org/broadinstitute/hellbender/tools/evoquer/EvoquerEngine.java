@@ -45,7 +45,8 @@ class EvoquerEngine {
     private static final Logger logger = LogManager.getLogger(EvoquerEngine.class);
 
 
-    public static final String SAMPLE_TABLE_NAME = "sample_list";
+//    public static final String SAMPLE_TABLE_NAME = "sample_list";
+    public static final String SAMPLE_TABLE_NAME = "samples_AS_ah";
 
     public static final String POSITION_FIELD_NAME = "position";
     public static final String VALUES_ARRAY_FIELD_NAME = "values";
@@ -554,14 +555,14 @@ class EvoquerEngine {
         Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
         logger.info("chosen reference: " + longestRefAllele);
 
-        if (longestRefAllele.length() > 1) {
-            logger.info("subsetting alleles");
-            List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, 6, longestRefAllele);
-            unmergedCalls = unmergedSubsettedCalls;
-            refAllele = longestRefAllele;
+//            if (longestRefAllele.length() > 1) {
+//                logger.info("subsetting alleles");
+//                List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, 4, longestRefAllele);
+//                unmergedCalls = unmergedSubsettedCalls;
+//                refAllele = longestRefAllele;
+//            }
+            finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
         }
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
-
     }
 
 
@@ -910,7 +911,17 @@ class EvoquerEngine {
                 "  FROM\n" +
                 "    `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.pet_without_gq60_ir_c_sam_st`\n" +
                 "  WHERE\n" +
-                "    (position = 62065822\n" +
+                "    (position >= 62050001\n" +
+                "      AND position <= 62090000\n" +
+                "      AND sample IN (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`) )\n" +
+                "    AND position IN (\n" +
+                "    SELECT\n" +
+                "      DISTINCT position\n" +
+                "    FROM\n" +
+                "      `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam`\n" +
+                "    WHERE\n" +
+                "      position >= 62050001\n" +
+                "      AND position <= 62090000\n" +
                 "      AND sample IN (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`) ) )\n" +
                 "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
                 "FROM\n" +
@@ -918,7 +929,8 @@ class EvoquerEngine {
                 "LEFT OUTER JOIN\n" +
                 "(select * from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam` AS vet_inner\n" +
                 "  WHERE\n" +
-                "      vet_inner.position = 62065822) as vet\n" +
+                "      vet_inner.position >= 62050001\n" +
+                "      AND vet_inner.position <= 62090000) as vet\n" +
                 "ON\n" +
                 "  (new_pet.position = vet.position\n" +
                 "    AND new_pet.sample = vet.sample)\n" +

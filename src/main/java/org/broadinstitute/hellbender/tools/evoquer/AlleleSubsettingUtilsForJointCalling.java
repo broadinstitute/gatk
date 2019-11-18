@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
@@ -50,24 +51,17 @@ public class AlleleSubsettingUtilsForJointCalling {
                 GenotypeBuilder gb = new GenotypeBuilder(g);
 
                 List<Allele> galleles = g.getAlleles();
-                List<Allele> updatedGAlleles = new ArrayList<>();
-                if (!g.isHomVar()) {
-                    if (allelesToSubset.contains(galleles.get(0))) {
-                        updatedGAlleles.add(Allele.NON_REF_ALLELE);
-                        updatedGAlleles.add(galleles.get(1));
+                List<Allele> updatedGAlleles = galleles.stream().map(gallele -> {
+                    if (allelesToSubset.contains(gallele)) {
+                        return Allele.NO_CALL;
                     } else {
-                        updatedGAlleles.add(longestRefAllele);
-                        updatedGAlleles.add(Allele.NON_REF_ALLELE);
-                    }
-                } else {
-                    updatedGAlleles.add(Allele.NON_REF_ALLELE);
-                    updatedGAlleles.add(Allele.NON_REF_ALLELE);
-                }
+                        return gallele;
+                    }}).collect(Collectors.toList());
                 gb.alleles(updatedGAlleles);
                 // TODO use methods to return index mapping?
                 GenotypeLikelihoods gll = GenotypeLikelihoods.fromPLs(g.getPL());
-                double[] probs = GeneralUtils.normalizeFromLog10(gll.getAsVector());
-                double [] modifiedProbs = new double[]{probs[0], probs[1] + probs[3], probs[2] + probs[4] + probs[5]};
+                double[] probs = gll.getAsVector();
+                double [] modifiedProbs = new double[]{probs[0], MathUtils.log10SumLog10(probs[1], probs[3]), MathUtils.log10SumLog10(new double[]{probs[2], probs[4], probs[5]})};
                 gb.PL(modifiedProbs);
 
                 int[] ad = g.getAD();
