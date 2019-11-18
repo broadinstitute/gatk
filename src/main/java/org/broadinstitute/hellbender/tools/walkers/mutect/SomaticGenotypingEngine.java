@@ -90,7 +90,7 @@ public class SomaticGenotypingEngine {
         if (MTAC.likelihoodArgs.phredScaledGlobalReadMismappingRate > 0) {
             logReadLikelihoods.normalizeLikelihoods(NaturalLogUtils.qualToLogErrorProb(MTAC.likelihoodArgs.phredScaledGlobalReadMismappingRate));
         }
-        final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::create);
+        final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::createAndAvoidFailure);
 
         for( final int loc : startPosKeySet ) {
             final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);

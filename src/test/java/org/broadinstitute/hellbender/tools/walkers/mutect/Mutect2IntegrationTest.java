@@ -464,8 +464,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File bam = new File(toolsTestDir + "mutect/repeated_reads.bam");
         final File outputVcf = createTempFile("output", ".vcf");
 
-        runMutect2(bam, outputVcf, "20:10018000-10020000", b37Reference, Optional.empty(),
-                args -> args.addBooleanArgument(M2ArgumentCollection.INDEPENDENT_MATES_LONG_NAME, true));
+        runMutect2(bam, outputVcf, "20:10018000-10020000", b37Reference, Optional.empty());
     }
 
     // basic test on a small chunk of NA12878 mitochondria.  This is not a validation, but rather a sanity check
