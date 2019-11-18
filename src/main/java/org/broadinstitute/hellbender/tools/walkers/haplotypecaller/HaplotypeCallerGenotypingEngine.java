@@ -184,8 +184,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final AlleleFrequencyCalculator customAFC = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart(), ploidy, snpHeterozygosity);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), customAFC, givenAlleles);
+            final AlleleFrequencyCalculator afc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart(), ploidy, snpHeterozygosity);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), afc, givenAlleles);
             if( call != null ) {
 
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -209,7 +209,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
     private AlleleFrequencyCalculator resolveCustomAlleleFrequencyCalculator(final VariantContext vc, final DragstrUtils.STRSequenceAnalyzer strs, final int pos, final int ploidy, final double snpHeterozygosity) {
        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors || !GATKVariantContextUtils.containsInlineIndel(vc)) {
-            return null; // the default standard AFC will be used.
+            return alleleFrequencyCalculator;
         } else {
             final int period = strs.mostRepeatedPeriod(pos);
             final int repeats = strs.numberOfMostRepeats(pos);

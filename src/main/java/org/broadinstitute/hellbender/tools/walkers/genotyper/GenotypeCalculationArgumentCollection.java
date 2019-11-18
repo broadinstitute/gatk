@@ -205,4 +205,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Argument(fullName= NUM_REF_SAMPLES_LONG_NAME,doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
     public int numRefIfMissing = 0;
+
+    @Argument(fullName= "genotype-assignment-method", shortName = "gam", doc = "How we assign genotypes", optional = true)
+    public GenotypeAssignmentMethod genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN;
 }

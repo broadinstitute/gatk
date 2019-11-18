@@ -17,10 +17,13 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
@@ -232,7 +235,8 @@ public final class GATKVariantContextUtils {
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
-                                        final List<Allele> originalGT) {
+                                        final List<Allele> originalGT,
+                                        final AlleleFrequencyCalculator afc) {
         if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
             throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         }
@@ -261,6 +265,41 @@ public final class GATKVariantContextUtils {
                 best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
             }
             gb.alleles(best);
+        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
+            if (afc == null) {
+                throw new GATKException("cannot uses posteriors with a allele frequency calculator present");
+            } else {
+                final double[] relativeFreqs = afc.getPriorFrequencies(AlleleList.newList(allelesToUse));
+                for (int i = 0; i < relativeFreqs.length; i++) {
+                    relativeFreqs[i] = Math.log10(relativeFreqs[i]);
+                }
+                double bestPosterior = Double.NEGATIVE_INFINITY;
+                double bestLikelihood = Double.NEGATIVE_INFINITY;
+                int bestGenotypeIndex = 0;
+                int bestLikelihoodIndex = 0;
+                final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
+                for (int i = 0; i < genotypeLikelihoods.length; i++) {
+                    final GenotypeAlleleCounts gac = glCalc.genotypeAlleleCountsAt(i);
+                    double log10Prior = 0;
+                    for (int j = 0; j < gac.distinctAlleleCount(); j++) {
+                        log10Prior += relativeFreqs[gac.alleleIndexAt(j)] * gac.alleleCountAt(j);
+                    }
+                    final double log10Posterior = log10Prior + genotypeLikelihoods[i] + gac.log10CombinationCount();
+                    if (log10Posterior > bestPosterior) {
+                        bestGenotypeIndex = i;
+                        bestPosterior = log10Posterior;
+                    }
+                    if (bestLikelihood < genotypeLikelihoods[i]) {
+                        bestLikelihood = genotypeLikelihoods[i];
+                        bestLikelihoodIndex = i;
+                    }
+                }
+                gb.alleles(glCalc.genotypeAlleleCountsAt(bestGenotypeIndex).asAlleleList(allelesToUse));
+                if ( allelesToUse.size() > 0 ) { // we still use Lks for GQ.
+                    gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(bestLikelihoodIndex, genotypeLikelihoods));
+                }
+
+            }
         }
     }
 
@@ -268,8 +307,9 @@ public final class GATKVariantContextUtils {
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
-                                        final List<Allele> allelesToUse){
-        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null);
+                                        final List<Allele> allelesToUse,
+                                        final AlleleFrequencyCalculator afc){
+        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null, afc);
     }
 
     /**
@@ -1248,7 +1288,7 @@ public final class GATKVariantContextUtils {
                         genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
                     AlleleSubsettingUtils.addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
 
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, null, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
                 final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
                 biallelics.add(trimmed);
             }
