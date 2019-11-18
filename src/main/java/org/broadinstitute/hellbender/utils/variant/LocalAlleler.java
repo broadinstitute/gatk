@@ -4,7 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import shaded.cloud_nio.com.google.errorprone.annotations.Var;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,8 +25,8 @@ public class LocalAlleler {
         final Map<String, Object> localAttributes = new LinkedHashMap<>();
 
         //construct LAA
-        final LinkedHashSet<Allele> localAllelesIncludingRef = getLocalAlleles(originalGenotype, vc);
-        final List<Integer> localAlleleIndexes = convertToVCFRepresentationOfLocalAlleles(vc, localAllelesIncludingRef);
+        final AlleleListPermutation<Allele> localAllelesIncludingRef = getLocalAlleles(originalGenotype, vc);
+        final List<Integer> localAlleleIndexes = convertToVCFRepresentationOfLocalAlleles(localAllelesIncludingRef);
         localAttributes.put(LAA, localAlleleIndexes);
 
         //construct LGT
@@ -35,14 +36,11 @@ public class LocalAlleler {
 
         //construct LAD
         if( originalGenotype.hasAD()){
-            ArrayList<Integer> localAlleleDepth = new ArrayList<>(localAlleleIndexes.size());
-            // all alleles A*, C,T, AAT, NON_REF  local A*,T,NON_REF  AD 10,11,12,13,14  LAD 10,12,14
-            int[] originalAlleleDepth = originalGenotype.getAD();
+            final ArrayList<Integer> localAlleleDepth = new ArrayList<>(localAllelesIncludingRef.numberOfAlleles());
+            final int[] originalAlleleDepth = originalGenotype.getAD();
 
-            //be sure to add the ref AD
-            localAlleleDepth.add(originalAlleleDepth[0]);
-            for( int index : localAlleleIndexes){
-                localAlleleDepth.add(originalAlleleDepth[index]);
+            for( int i = 0; i < localAllelesIncludingRef.numberOfAlleles(); i++) {
+                localAlleleDepth.add(originalAlleleDepth[localAllelesIncludingRef.fromIndex(i)]);
             }
             localAttributes.put(LAD, localAlleleDepth);
         }
@@ -53,18 +51,18 @@ public class LocalAlleler {
         return genotypeBuilder.make();
     }
 
-    private static List<Integer> convertToVCFRepresentationOfLocalAlleles(VariantContext vc, LinkedHashSet<Allele> localAllelesIncludingRef) {
-        final List<Integer> localAlleleIndexes = vc.getAlleleIndices(localAllelesIncludingRef);
-        //todo this is stupidly inefficient probably
-        localAlleleIndexes.remove(0);
+    private static List<Integer> convertToVCFRepresentationOfLocalAlleles(AlleleListPermutation<Allele> localAllelesIncludingRef) {
+        final List<Integer> localAlleleIndexes = new ArrayList<>(localAllelesIncludingRef.numberOfAlleles());
+        for( int i = 1; i < localAllelesIncludingRef.numberOfAlleles(); i++){
+            localAlleleIndexes.add(localAllelesIncludingRef.fromIndex(i));
+        }
         return localAlleleIndexes;
     }
 
-    private static List<Integer> getLocalGenotypeList(Genotype originalGenotype, LinkedHashSet<Allele> localAlleles) {
-        List<Integer> localGenotypes = new ArrayList<>(localAlleles.size());
-        List<Allele> localAlleleList = new ArrayList<>(localAlleles);
+    private static List<Integer> getLocalGenotypeList(Genotype originalGenotype, AlleleListPermutation<Allele> localAlleles) {
+        List<Integer> localGenotypes = new ArrayList<>(localAlleles.numberOfAlleles());
         for(final Allele allele: originalGenotype.getAlleles()){
-            localGenotypes.add(localAlleleList.indexOf(allele));
+            localGenotypes.add(localAlleles.indexOfAllele(allele));
         }
         return localGenotypes;
     }
@@ -74,25 +72,27 @@ public class LocalAlleler {
         return localGenotypes.stream().map(String::valueOf).collect(Collectors.joining(delimiter));
     }
 
-    private static LinkedHashSet<Allele> getLocalAlleles(Genotype originalGenotype, VariantContext vc) {
+    private static AlleleListPermutation<Allele> getLocalAlleles(Genotype originalGenotype, VariantContext vc) {
         final LinkedHashSet<Allele> localAlleles = new LinkedHashSet<>();
         //add the reference as the 0th allele always
         localAlleles.add(vc.getReference());
         localAlleles.addAll(originalGenotype.getAlleles());
 
         // if there is a NON_REF allele, add it
-        Allele lastAllele = vc.getAlleles().get(vc.getNAlleles() - 1);
-        if(lastAllele.isNonRefAllele()){
+        if (vc.getAlleles().stream().anyMatch(Allele::isNonRefAllele)){
             localAlleles.add(Allele.NON_REF_ALLELE);
         }
-        return localAlleles;
+        final IndexedAlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(vc.getAlleles());//.permutation(new IndexedAlleleList<>(allelesToKeep);
+        final AlleleListPermutation<Allele> localAllelesMapping = originalAlleleList.permutation(new IndexedAlleleList<>(localAlleles));
+
+        return localAllelesMapping;
     }
 
-    private static class LocalAlleleMapper {
-        public LocalAlleleMapper(Genotype originalGenotype, VariantContext variantContext){
-            LinkedHashSet<Allele> localAlleles = getLocalAlleles(originalGenotype, variantContext);
-
-        }
-    }
+//    private static class LocalAlleleMapper {
+//        public LocalAlleleMapper(Genotype originalGenotype, VariantContext variantContext){
+//            LinkedHashSet<Allele> localAlleles = getLocalAlleles(originalGenotype, variantContext);
+//
+//        }
+//    }
 
 }

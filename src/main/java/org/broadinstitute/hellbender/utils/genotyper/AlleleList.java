@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.AbstractList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Minimal interface for random access to a collection of Alleles.
@@ -330,6 +331,25 @@ public interface AlleleList<A extends Allele>{
         @Override
         public A getAllele(final int index) {
             return to.getAllele(index);
+        }
+    }
+
+    /**
+     *
+     * @param consumer
+     */
+    default void forEach(Consumer<A> consumer){
+        for(int i = 0; i < numberOfAlleles(); i++){
+            consumer.accept(getAllele(i));
+        }
+    }
+
+    default void forEachAlternateAllele(Consumer<A> consumer){
+        for(int i = 0; i < numberOfAlleles(); i++){
+            A allele = getAllele(i);
+            if(allele.isNonReference()){
+                consumer.accept(allele);
+            }
         }
     }
 }
