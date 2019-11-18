@@ -80,8 +80,8 @@ public final class LegacySegmentCollection extends AbstractSampleLocatableCollec
     @Override
     public void write(final File outputFile) {
         Utils.nonNull(outputFile);
-        try (final RecordWriter recordWriter = new RecordWriter(new FileWriter(outputFile))) {
-            recordWriter.writeAllRecords(getRecords());
+        try (final RecordCollectionWriter writer = new RecordCollectionWriter(new FileWriter(outputFile))) {
+            writer.writeAllRecords(getRecords());
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
