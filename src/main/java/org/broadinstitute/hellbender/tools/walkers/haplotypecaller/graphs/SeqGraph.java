@@ -4,10 +4,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Bytes;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.EdgeFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.*;
 
 /**
@@ -156,7 +159,7 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
 
         // At this point, zipStarts contains all of the vertices in this graph that might start some linear
         // chain of vertices.  We walk through each start, building up the linear chain of vertices and then
-        // zipping them up with mergeLinearChain, if possible
+        //        // zipping them up with mergeLinearChain, if possible
         boolean mergedOne = false;
         for ( final SeqVertex zipStart : zipStarts ) {
             final LinkedList<SeqVertex> linearChain = traceLinearChain(zipStart);
@@ -246,7 +249,8 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
     }
     @VisibleForTesting
     protected SeqVertex mergeLinearChainVertex(final LinkedList<SeqVertex> linearChain) {
-        Utils.validateArg(!linearChain.isEmpty(), () -> "BUG: cannot have linear chain with 0 elements but got " + linearChain);
+        Utils.validateArg(
+                !linearChain.isEmpty(), () -> "BUG: cannot have linear chain with 0 elements but got " + linearChain);
 
         final SeqVertex first = linearChain.getFirst();
         final SeqVertex last = linearChain.getLast();
@@ -269,12 +273,140 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
         return addedVertex;
     }
 
-    private static SeqVertex mergeLinearChainVertices(final Iterable<SeqVertex> vertices) {
+    /**
+     * Merges the given {@code vertices} into a single vertex.
+     * @param vertices {@link Iterable<SeqVertex>} of vertices to be merged together into a single vertex containing a linear sequence.
+     * @return A {@link SeqVertex} representing the data from all given {@code vertices} merged together.
+     */
+    protected SeqVertex mergeLinearChainVertices(final Iterable<SeqVertex> vertices) {
         final List<byte[]> seqs = new LinkedList<>();
         for ( final SeqVertex v : vertices ) {
             seqs.add(v.getSequence());
         }
         final byte[] seqsCat = Bytes.concat(seqs.toArray(new byte[][]{}));
         return new SeqVertex( seqsCat );
+    }
+
+    /**
+     * Dumps this {@link SeqGraph} to disk as a GFA 1.0 file.
+     *
+     * GFA 1 spec is located here: http://gfa-spec.github.io/GFA-spec/GFA1.html
+     *
+     * @param baseName The base name of the output file.
+     */
+    public void serializeToGfa1Files(final String baseName) {
+        helpSerializeToGfaFile(baseName, false);
+    }
+
+    /**
+     * Dumps this {@link SeqGraph} to disk as a GFA 2.0 file.
+     *
+     * GFA 2 spec is located here: https://github.com/GFA-spec/GFA-spec/blob/master/GFA2.md
+     *
+     * @param baseName The base name of the output file.
+     */
+    public void serializeToGfa2Files(final String baseName) {
+        logger.warn("GFA2 Serialization is untested and may be incorrect.  USE AT YOUR OWN PERIL.");
+        helpSerializeToGfaFile(baseName, true);
+    }
+
+    private void helpSerializeToGfaFile(final String baseName, final boolean isGfa2) {
+
+        final String extension;
+        if ( isGfa2 ) {
+            extension = ".gfa2";
+        }
+        else {
+            extension = ".gfa";
+        }
+
+        try ( final PrintWriter writer = new PrintWriter(baseName + extension) ) {
+
+            // Write a header - we write in GFA2 because we're SO-phistocated:
+            if ( isGfa2 ) {
+                writer.println(getGfa2Header());
+            }
+            else {
+                writer.println(getGfa1Header());
+            }
+
+            // Create output for each contiguous segment:
+            int unitigCounter = 1;
+            final Map< SeqVertex, String > nodeUnitigNameMap = new HashMap<>();
+
+            // Write out all nodes first:
+            for ( final SeqVertex v : vertexSet() ) {
+                final String unitigName = String.format("utg%06dl", unitigCounter);
+
+                if ( isGfa2 ) {
+                    writer.println(serialzeNodeToGfa2(v, unitigName));
+                }
+                else {
+                    writer.println(serialzeNodeToGfa1(v, unitigName));
+                }
+                ++unitigCounter;
+
+                // Track our name so we can name our links correctly later:
+                nodeUnitigNameMap.put( v, unitigName );
+            }
+
+            // Now write out our links:
+            int edgeCounter = 1;
+            for ( final BaseEdge e : edgeSet() ) {
+                // For this naive implementation, we start by assuming there are no overlaps
+                // (even when two nodes do, in fact, overlap as in the case of a variant / bubble).
+                if ( isGfa2 ) {
+                    writer.println(serializeEdgeToGfa2(e, edgeCounter, nodeUnitigNameMap));
+                }
+                else {
+                    writer.println(serializeEdgeToGfa1(e, nodeUnitigNameMap));
+                }
+                ++edgeCounter;
+            }
+        }
+        catch ( final FileNotFoundException ex ) {
+            throw new GATKException("FILE NOT FOUND", ex);
+        }
+    }
+
+    private String getGfa1Header() {
+        return "H\tVN:Z:1.0";
+    }
+
+    private String serialzeNodeToGfa1(final SeqVertex vertex, final String unitigName) {
+        return String.format("S\t%s\t%s", unitigName, vertex.getSequenceString());
+    }
+
+    private String serializeEdgeToGfa1(final BaseEdge e, final Map<SeqVertex, String> nodeUnitigNameMap ) {
+        final SeqVertex source = getEdgeSource(e);
+        final SeqVertex target = getEdgeTarget(e);
+
+        final String sourceName = nodeUnitigNameMap.get(source);
+        final String targetName = nodeUnitigNameMap.get(target);
+
+        return String.format("L\t%s\t+\t%s\t+\t0M", sourceName, targetName);
+    }
+
+    private String getGfa2Header() {
+        return "H\tVN:Z:2.0";
+    }
+
+    private String serialzeNodeToGfa2(final SeqVertex vertex, final String unitigName) {
+        // <segment>  <- S <sid:id> <slen:int> <sequence> <tag>*
+        return String.format("S\t%s\t%d\t%s", unitigName, vertex.getSequence().length, vertex.getSequenceString());
+    }
+
+    private String serializeEdgeToGfa2( final BaseEdge e, final int edgeNum, final Map<SeqVertex, String> nodeUnitigNameMap ) {
+        final SeqVertex source = getEdgeSource(e);
+        final SeqVertex target = getEdgeTarget(e);
+
+        final String sourceName = nodeUnitigNameMap.get(source);
+        final String targetName = nodeUnitigNameMap.get(target);
+
+        // <edge>     <- E <eid:opt_id> <sid1:ref> <sid2:ref> <beg1:pos> <end1:pos> <beg2:pos> <end2:pos> <alignment> <tag>*
+        return String.format("E\tedge%06d\t%s\t%s\t%d$\t%d$\t%d\t%d\t%s",
+                edgeNum, sourceName, targetName,
+                source.getSequence().length, source.getSequence().length,
+                0, 0, "0M");
     }
 }

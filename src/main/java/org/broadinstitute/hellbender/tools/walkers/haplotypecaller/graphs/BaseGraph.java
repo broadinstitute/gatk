@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +23,8 @@ import java.util.stream.Collectors;
 public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extends DefaultDirectedGraph<V, E> {
     private static final long serialVersionUID = 1l;
     protected final int kmerSize;
+
+    private static final Pattern DOT_NUMERIC_NAME_PATTERN = Pattern.compile("[-]?(.[0-9]+|[0-9]+(.[0-9]*)?)");
 
     /**
      * Construct a TestGraph with kmerSize
@@ -391,12 +394,13 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         for( final E edge : edgeSet() ) {
-            final String edgeString =  String.format("\t%s -> %s ", getEdgeSource(edge).toString(), getEdgeTarget(edge).toString());
+
+            final String edgeString =  String.format("\t%s -> %s ", sanitizeStringForDotFormat(getEdgeSource(edge).toString()), sanitizeStringForDotFormat(getEdgeTarget(edge).toString()));
             final String edgeLabelString;
             if (edge.getMultiplicity() > 0 && edge.getMultiplicity() < pruneFactor){
-                edgeLabelString = String.format("[style=dotted,color=grey,label=\"%s\"];", edge.getDotLabel());
+                edgeLabelString = String.format("[style=dotted,color=grey,label=\"%s\"];", sanitizeStringForDotFormat(edge.getDotLabel()));
             } else {
-                edgeLabelString = String.format("[label=\"%s\"];", edge.getDotLabel());
+                edgeLabelString = String.format("[label=\"%s\"];", sanitizeStringForDotFormat(edge.getDotLabel()));
             }
             graphWriter.print(edgeString);
             graphWriter.print(edgeLabelString);
@@ -406,7 +410,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         for( final V v : vertexSet() ) {
-            graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", v.toString(), new String(getAdditionalSequence(v)) + v.getAdditionalInfo()));
+            graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", sanitizeStringForDotFormat(v.toString()), sanitizeStringForDotFormat(new String(getAdditionalSequence(v)) + v.getAdditionalInfo())));
         }
 
         getExtraGraphFileLines().forEach(graphWriter::println);
@@ -414,6 +418,36 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         if ( writeHeader ) {
             graphWriter.println("}");
         }
+    }
+
+    /**
+     * Sanitizes a given string to be correct for the DOT format.
+     * This is done by changing all unwanted characters to underscores.
+     *
+     * Per DOT An ID is one of the following:
+     *
+     * Any string of alphabetic ([a-zA-Z\200-\377]) characters, underscores ('_') or digits ([0-9]), not beginning with a digit;
+     * a numeral [-]?(.[0-9]+ | [0-9]+(.[0-9]*)? );
+     * any double-quoted string ("...") possibly containing escaped quotes (\")1;
+     * an HTML string (<...>).
+     *
+     * @param s {@link String} to be sanitizes.
+     * @return {@link String} that contains a valid ID.
+     */
+    private String sanitizeStringForDotFormat(final String s) {
+
+        // Check if string is double-quoted, a numeral, or HTML:
+        if ( (s.startsWith("\"") && s.endsWith("\"")) ||
+             (s.startsWith("<\">") && s.endsWith(">")) ||
+             (DOT_NUMERIC_NAME_PATTERN.matcher(s).matches()) ) {
+            return s;
+        }
+
+        // OK, freeform text.
+        // Time to replace our bad characters with those of upstanding moral citizenship.
+
+        // We have to double escape some chars to be recognized properly:
+        return s.replaceAll("[\\.!@#$%^&*\\(\\)=+\\|'\"/\\?\\]\\[\\}\\{`~\t]", "_");
     }
 
     // Extendable method intended to allow for adding extra material to the graph

@@ -20,7 +20,7 @@ import java.util.Arrays;
  * but are distinct elements of the graph.
  *
  */
-public final class SeqVertex extends BaseVertex {
+public class SeqVertex extends BaseVertex {
     /**
      * Create a new SeqVertex with sequence and the next available id
      * @param sequence our base sequence
