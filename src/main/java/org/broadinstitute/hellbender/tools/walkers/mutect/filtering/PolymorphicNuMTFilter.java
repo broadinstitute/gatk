@@ -16,9 +16,9 @@ public class PolymorphicNuMTFilter extends HardFilter {
 //    private static final double MULTIPLE_COPIES_MULTIPLIER = 2.0;
     private final int maxAltDepthCutoff;
 
-    public PolymorphicNuMTFilter(final double maxNuMTCopies){
+    public PolymorphicNuMTFilter(final double medianAutosomalCoverage, final double maxNuMTCopies){
         if (maxNuMTCopies != 0) {
-            final PoissonDistribution autosomalCoverage = new PoissonDistribution(maxNuMTCopies);
+            final PoissonDistribution autosomalCoverage = new PoissonDistribution(medianAutosomalCoverage * maxNuMTCopies / 2.0);
             maxAltDepthCutoff = autosomalCoverage.inverseCumulativeProbability(1 - LOWER_BOUND_PROB);
         } else {
             maxAltDepthCutoff = 0;

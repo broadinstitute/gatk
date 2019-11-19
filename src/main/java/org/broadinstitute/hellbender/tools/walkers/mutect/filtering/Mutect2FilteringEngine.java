@@ -230,7 +230,7 @@ public class Mutect2FilteringEngine {
 
         if (MTFAC.mitochondria) {
             filters.add(new ChimericOriginalAlignmentFilter(MTFAC.maxNuMTFraction));
-            filters.add(new PolymorphicNuMTFilter(MTFAC.maxNuMTAutosomalCopies));
+            filters.add(new PolymorphicNuMTFilter(MTFAC.medianAutosomalCoverage, MTFAC.maxNuMTAutosomalCopies));
         } else {
             filters.add(new ClusteredEventsFilter(MTFAC.maxEventsInRegion));
             filters.add(new MultiallelicFilter(MTFAC.numAltAllelesThreshold));
