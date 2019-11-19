@@ -171,7 +171,6 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
-        force 'com.twitter:chill_2.11:0.8.1'
 
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
@@ -215,12 +214,14 @@ configurations {
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
         exclude module: 'spark-core_2.11'
+        exclude module: 'spark-core_2.12'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
         exclude module: 'spark-mllib_2.11'
+        exclude module: 'spark-mllib_2.12'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
