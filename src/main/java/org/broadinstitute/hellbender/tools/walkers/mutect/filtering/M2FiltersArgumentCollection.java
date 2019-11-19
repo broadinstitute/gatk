@@ -37,7 +37,7 @@ public class M2FiltersArgumentCollection {
     public double initialPosteriorThreshold = DEFAULT_INITIAL_POSTERIOR_THRESHOLD;
 
     /**
-     * Mitochondria mode includes the filter{@link ChimericOriginalAlignmentFilter} and {@link PolymorphicNuMTFilter},
+     * Mitochondria mode includes the filter{@link ChimericOriginalAlignmentFilter} and {@link NuMTFilter},
      * and excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter}, {@link PolymeraseSlippageFilter},
      * {@link FilteredHaplotypeFilter}, {@link FragmentLengthFilter}, and {@link GermlineFilter}
      */
@@ -103,10 +103,10 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = MIN_READS_ON_EACH_STRAND_LONG_NAME, optional = true, doc = "Minimum alt reads required on both forward and reverse strands")
     public int minReadsOnEachStrand = DEFAULT_MIN_READS_ON_EACH_STRAND;
 
-    @Argument(fullName = MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, optional = true, doc = "Median autosomal coverage for filtering potential polymporphic NuMTs when calling on mitochondria.")
+    @Argument(fullName = MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, optional = true, doc = "Median autosomal coverage for filtering potential NuMTs when calling on mitochondria.")
     public double medianAutosomalCoverage = DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE;
 
-    @Argument(fullName = MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, optional = true, doc = "Max expected NUMT copies in autosome used for filtering potential polymporphic NuMTs when calling on mitochondria.")
+    @Argument(fullName = MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, optional = true, doc = "Max expected NUMT copies in autosome used for filtering potential NuMTs when calling on mitochondria.")
     public double maxNuMTAutosomalCopies = DEFAULT_MAX_NUMT_AUTOSOMAL_COPIES;
 
     @Argument(fullName = MAX_NUMT_FRACTION_LONG_NAME, doc="Maximum fraction of alt reads that originally aligned outside the mitochondria.  These are due to NuMTs.", optional = true)

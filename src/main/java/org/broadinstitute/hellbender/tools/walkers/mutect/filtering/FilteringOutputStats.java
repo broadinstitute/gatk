@@ -50,6 +50,8 @@ public class FilteringOutputStats {
                 filterFPs.get(entry.getKey()).add(filterArtifactProbability);
             }
         }
+
+        //TODO add analysis for errorProbabilities.getProbabilitiesByFilterAndAllele();
     }
 
     public void writeFilteringStats(final Path filteringStats, final double threshold, List<Pair<String, String>> clusteringMetadata) {

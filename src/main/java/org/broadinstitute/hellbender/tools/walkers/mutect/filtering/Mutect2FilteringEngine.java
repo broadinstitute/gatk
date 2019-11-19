@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -7,9 +8,11 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import java.nio.file.Path;
+
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.MutectStats;
@@ -29,6 +32,7 @@ public class Mutect2FilteringEngine {
     public static final double MIN_REPORTABLE_ERROR_PROBABILITY = 0.1;
 
     private final List<Mutect2VariantFilter> filters = new ArrayList<>();
+    private final List<Mutect2AlleleFilter<?>> alleleFilters = new ArrayList<>();
     private final Set<String> normalSamples;
 
     public static final List<String> STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING = Arrays.asList(
@@ -141,8 +145,9 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
+        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, alleleFilters, vc, this, referenceContext);
         filters.forEach(f -> f.accumulateDataForLearning(vc, errorProbabilities, this));
+        alleleFilters.forEach(f -> f.accumulateDataForLearning(vc, errorProbabilities, this));
         final int[] tumorADs = sumADsOverSamples(vc, true, false);
         final double[] tumorLogOdds = Mutect2FilteringEngine.getTumorLogOdds(vc);
 
@@ -173,7 +178,7 @@ public class Mutect2FilteringEngine {
     public VariantContext applyFiltersAndAccumulateOutputStats(final VariantContext vc, final ReferenceContext referenceContext) {
         final VariantContextBuilder vcb = new VariantContextBuilder(vc).filters(new HashSet<>());
 
-        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
+        final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, alleleFilters, vc, this, referenceContext);
         filteringOutputStats.recordCall(errorProbabilities, getThreshold() - EPSILON);
 
         final boolean variantFailsFilters = errorProbabilities.getErrorProbability() > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold()));
@@ -195,7 +200,54 @@ public class Mutect2FilteringEngine {
             }
         }
 
+        // apply allele specific filters
+        List<String> siteFilters = new ArrayList<>();
+        List<Map<Allele, String>> ASFilters =
+                errorProbabilities.getProbabilitiesByFilterAndAllele().entrySet().stream().map(
+                entry -> addFilterStrings(entry.getValue(), siteFilters, entry.getKey().filterName())).collect(Collectors.toList());
+
+        siteFilters.forEach(vcb::filter);
+        List<String> orderedASFilterStrings = vc.getAlleles().stream().map(allele -> getMergedFilterStringForAllele(allele, ASFilters)).collect(Collectors.toList());
+        String finalAttrString = AnnotationUtils.encodeAnyASList(orderedASFilterStrings);
+
+        vcb.putAttributes(Collections.singletonMap(GATKVCFConstants.AS_FILTER_STATUS_KEY, finalAttrString));
         return vcb.make();
+    }
+
+    /**
+     * Creates a comma separated string of all the filters that apply to the allele. This is basically
+     * a pivot of the data. we have filterlist -> allele -> filterName. and we want allele -> list of filterName
+     * @param allele the allele to collect filters for
+     * @param alleleSpecificFilters all of the allele specific filters with the allele filter info
+     * @return encoded (comma separated) list of filters that apply to the allele
+     */
+    private String getMergedFilterStringForAllele(Allele allele, List<Map<Allele, String>> alleleSpecificFilters) {
+        // loop through each filter and pull out the filters the specified allele
+        List<String> results = alleleSpecificFilters.stream().map(m -> m.get(allele)).distinct().collect(Collectors.toList());
+        if (results.size() > 1 && results.contains(VCFConstants.PASSES_FILTERS_v4)) {
+            results.remove(VCFConstants.PASSES_FILTERS_v4);
+        } else if (results.isEmpty()) {
+            results.add(VCFConstants.PASSES_FILTERS_v4);
+        }
+        return AnnotationUtils.encodeStringList(results);
+    }
+
+    /**
+     * For each allele, determine whether the filter should be applied. also determine if the filter should apply to the site
+     * @param probabilities the probability computed by the filter for the allele
+     * @param siteFilters output value - filter name is added if it should apply to the site
+     * @param filterName the name of the filter used in the vcf
+     * @return map of alleles to the appropriate filter string
+     */
+    private Map<Allele,String> addFilterStrings(Map<Allele, Double> probabilities, List<String> siteFilters, String filterName) {
+        Map<Allele,String> results = probabilities.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                entry -> entry.getValue().isNaN() ? VCFConstants.EMPTY_INFO_FIELD : entry.getValue() > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold())) ?
+                        filterName : VCFConstants.PASSES_FILTERS_v4));
+        List<String> realFilters = results.values().stream().filter(x -> !x.equals(VCFConstants.EMPTY_INFO_FIELD)).collect(Collectors.toList());
+        if (!realFilters.isEmpty() && realFilters.stream().allMatch(x -> x.equals(filterName))) {
+            siteFilters.add(filterName);
+        }
+        return results;
     }
 
     public static double roundFinitePrecisionErrors(final double probability) {
@@ -236,7 +288,7 @@ public class Mutect2FilteringEngine {
 
         if (MTFAC.mitochondria) {
             filters.add(new ChimericOriginalAlignmentFilter(MTFAC.maxNuMTFraction));
-            filters.add(new PolymorphicNuMTFilter(MTFAC.maxNuMTAutosomalCopies));
+            alleleFilters.add(new NuMTFilter(MTFAC.medianAutosomalCoverage, MTFAC.maxNuMTAutosomalCopies));
         } else {
             filters.add(new ClusteredEventsFilter(MTFAC.maxEventsInRegion));
             filters.add(new MultiallelicFilter(MTFAC.numAltAllelesThreshold));

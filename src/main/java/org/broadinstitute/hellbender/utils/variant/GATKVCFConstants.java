@@ -163,7 +163,7 @@ public final class GATKVCFConstants {
     public final static String N_RATIO_FILTER_NAME =                           "n_ratio";
     public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =       "numt_chimera"; //mitochondria
     public final static String ALLELE_FRACTION_FILTER_NAME =                   "low_allele_frac";
-    public static final String POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME =        "possible_numt";
+    public static final String POSSIBLE_NUMT_FILTER_NAME =                     "possible_numt";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
@@ -172,7 +172,9 @@ public final class GATKVCFConstants {
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
             READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
             READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME, CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME,
-            STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME, ALLELE_FRACTION_FILTER_NAME, POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME);
+            STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME, ALLELE_FRACTION_FILTER_NAME, POSSIBLE_NUMT_FILTER_NAME);
+
+    public static final List<String> MUTECT_AS_FILTER_NAMES = Arrays.asList(AS_FILTER_STATUS_KEY);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
