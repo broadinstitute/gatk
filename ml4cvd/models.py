@@ -828,8 +828,8 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
 def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
     embed_model = make_hidden_layer_model(base_model, tensor_maps_in, 'embed')
     tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', required_inputs=tensor_maps_in.copy(), model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=1.0)
-    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
+    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=1.0, cacheable=False)
+    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
     return [tm_embed, tm_burn_in], [tm_char]
 
 
