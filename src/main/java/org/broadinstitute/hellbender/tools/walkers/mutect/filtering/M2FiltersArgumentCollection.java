@@ -59,6 +59,7 @@ public class M2FiltersArgumentCollection {
     public static final String MIN_READS_ON_EACH_STRAND_LONG_NAME = "min-reads-per-strand";
     public static final String MAX_NUMT_FRACTION_LONG_NAME = "max-numt-fraction";
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "autosomal-coverage";
+    public static final String MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME = "max-numt-autosomal-copies";
     public static final String MIN_AF_LONG_NAME = "min-allele-fraction";
 
     private static final int DEFAULT_MAX_EVENTS_IN_REGION = 2;
@@ -72,6 +73,7 @@ public class M2FiltersArgumentCollection {
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
     private static final double DEFAULT_MAX_NUMT_FRACTION = 0.85;
     private static final double DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE = 0;
+    private static final double DEFAULT_MAX_NUMT_AUTOSOMAL_COPIES = 4;
     private static final double DEFAULT_MIN_AF = 0;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Maximum events in a single assembly region.  Filter all variants if exceeded.")
@@ -103,6 +105,9 @@ public class M2FiltersArgumentCollection {
 
     @Argument(fullName = MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, optional = true, doc = "Median autosomal coverage for filtering potential polymporphic NuMTs when calling on mitochondria.")
     public double medianAutosomalCoverage = DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE;
+
+    @Argument(fullName = MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, optional = true, doc = "Max expected NUMT copies in autosome used for filtering potential polymporphic NuMTs when calling on mitochondria.")
+    public double maxNuMTAutosomalCopies = DEFAULT_MAX_NUMT_AUTOSOMAL_COPIES;
 
     @Argument(fullName = MAX_NUMT_FRACTION_LONG_NAME, doc="Maximum fraction of alt reads that originally aligned outside the mitochondria.  These are due to NuMTs.", optional = true)
     public double maxNuMTFraction = DEFAULT_MAX_NUMT_FRACTION;
