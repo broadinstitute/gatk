@@ -294,7 +294,7 @@ public final class GATKVariantContextUtils {
                         bestLikelihood = genotypeLikelihoods[i];
                         bestLikelihoodIndex = i;
                     }
-                }   
+                }
                 gb.alleles(glCalc.genotypeAlleleCountsAt(bestGenotypeIndex).asAlleleList(allelesToUse));
                 if ( allelesToUse.size() > 0 ) { // we still use Lks for GQ.
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(bestLikelihoodIndex, genotypeLikelihoods));

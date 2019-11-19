@@ -143,7 +143,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         }
 
         final DragstrUtils.STRSequenceAnalyzer dragstrs = !startPosKeySet.isEmpty() && hcArgs.likelihoodArgs.dragstrParams != null && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors
-                ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(), startPosKeySet.last() + 1 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
+                ? DragstrUtils.repeatPeriodAndCounts(ref, startPosKeySet.first() - refLoc.getStart(), startPosKeySet.last() + 2 - refLoc.getStart(), hcArgs.likelihoodArgs.dragstrParams.maximumPeriod())
                 : null;
 
         for( final int loc : startPosKeySet ) {
@@ -184,7 +184,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final AlleleFrequencyCalculator afc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart(), ploidy, snpHeterozygosity);
+            final AlleleFrequencyCalculator afc = resolveCustomAlleleFrequencyCalculator(mergedVC, dragstrs, loc - refLoc.getStart() + 1    , ploidy, snpHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), afc, givenAlleles);
             if( call != null ) {
 
@@ -193,7 +193,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
                 if (hcArgs.likelihoodArgs.dragstrParams != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
-                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs, loc - refLoc.getStart(), ploidy, snpHeterozygosity);
+                    annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity);
                 }
 
                 returnCalls.add( annotatedCall );
