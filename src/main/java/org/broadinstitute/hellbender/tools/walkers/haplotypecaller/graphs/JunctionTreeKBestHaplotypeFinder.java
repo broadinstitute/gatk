@@ -123,7 +123,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                     List<E> edgesIncomingToSplitPoint = bestMatchingHaplotypeEdges.stream().filter(edge -> graph.getEdgeTarget(edge).equals(pivotalVerex)).collect(Collectors.toList());
                     //todo it is either an error state to find nothing or could mean we accidentally did the search over the source vertex, either way shoudl be a bug
                     if (edgesIncomingToSplitPoint.isEmpty()) {
-                        return null;
+                        continue;
                     }
 
                     // TODO maybe this will matter some day, simply select the last edge
