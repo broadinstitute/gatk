@@ -192,7 +192,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call);
 
                 VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
-                if (hcArgs.likelihoodArgs.dragstrParams != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
+                if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
                     annotatedCall = DragstrUtils.annotate(annotatedCall, hcArgs.likelihoodArgs.dragstrParams, dragstrs, loc - refLoc.getStart() + 1, ploidy, snpHeterozygosity);
                 }
 
