@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
@@ -12,7 +13,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
@@ -33,7 +33,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -498,24 +497,26 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME),
                         ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
-                                GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME,
+                                GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
                                 GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME),
                         Collections.emptySet(),
                         Collections.emptySet(),
-                        Collections.emptySet())},
+                        Collections.emptySet()),
+                        Arrays.asList(".|PASS", ".|PASS", ".|possible_numt", ".|PASS|possible_numt|possible_numt", ".|PASS", ".|PASS")},
                 {NA12878_MITO_GVCF, .0009, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
-                        ImmutableSet.of(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME,
-                                GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_FILTER_NAME,
-                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME))}
+                                GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
+                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME)),
+                        Arrays.asList(".|.", ".|PASS|.", ".|possible_numt|.", ".|PASS|PASS|.", ".|possible_numt|.")}
         };
     }
 
     @Test(dataProvider = "vcfsForFiltering")
-    public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final double autosomalCoverage, final List<String> intervals, List<Set<String>> expectedFilters)  {
+    public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final double autosomalCoverage, final List<String> intervals, List<Set<String>> expectedFilters, List<String> expectedASFilters)  {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         // vcf sequence dicts don't match ref
@@ -524,6 +525,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
                 args -> args.addNumericArgument(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
                 args -> args.addNumericArgument(M2FiltersArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, autosomalCoverage),
+                args -> args.addNumericArgument(M2FiltersArgumentCollection.MAX_NUMT_COPIES_IN_AUTOSOME_LONG_NAME, 4.0),
                 args -> {
                     intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
                     return args;
@@ -532,10 +534,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
                 .map(VariantContext::getFilters).collect(Collectors.toList());
 
+        final List<String> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(vc -> vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, "")).collect(Collectors.toList());
+        Assert.assertEquals(expectedASFilters, actualASFilters);
+
         Assert.assertEquals(expectedFilters.size(), actualFilters.size());
         for (int n = 0; n < actualFilters.size(); n++) {
-            Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)));
-            Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)));
+            Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)), "Actual filters missing some expected filters: " + SetUtils.difference(expectedFilters.get(n), actualFilters.get(n)));
+            Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)), "Expected filters missing some actual filters: " + SetUtils.difference(actualFilters.get(n), expectedFilters.get(n)));
         }
 
         Assert.assertEquals(expectedFilters, actualFilters);
