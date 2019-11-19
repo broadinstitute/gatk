@@ -13,12 +13,12 @@ import java.util.stream.IntStream;
 
 public class PolymorphicNuMTFilter extends HardFilter {
     private static final double LOWER_BOUND_PROB = .01;
-    private static final double MULTIPLE_COPIES_MULTIPLIER = 1.5;
+//    private static final double MULTIPLE_COPIES_MULTIPLIER = 2.0;
     private final int maxAltDepthCutoff;
 
-    public PolymorphicNuMTFilter(final double medianAutosomalCoverage){
-        if (medianAutosomalCoverage != 0) {
-            final PoissonDistribution autosomalCoverage = new PoissonDistribution(medianAutosomalCoverage * MULTIPLE_COPIES_MULTIPLIER);
+    public PolymorphicNuMTFilter(final double maxNuMTCopies){
+        if (maxNuMTCopies != 0) {
+            final PoissonDistribution autosomalCoverage = new PoissonDistribution(maxNuMTCopies);
             maxAltDepthCutoff = autosomalCoverage.inverseCumulativeProbability(1 - LOWER_BOUND_PROB);
         } else {
             maxAltDepthCutoff = 0;
