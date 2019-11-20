@@ -141,7 +141,6 @@ public final class AlleleSubsettingUtils {
             Set<String> keys = g.getExtendedAttributes().keySet();
             for (final String key : keys) {
                 final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
-                final int nonRefIndex = allelesToKeep.contains(Allele.NON_REF_ALLELE) ? allelesToKeep.indexOf(Allele.NON_REF_ALLELE) : -1;
                 gb.attribute(key, ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
                             GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices));
             }
@@ -155,7 +154,7 @@ public final class AlleleSubsettingUtils {
      *
      * @param vc                    original variant context
      * @param builder               variant context builder with subset of original variant context's alleles
-     * @param keepOriginalChrCounts keep the orignal chromosome counts before subsetting
+     * @param keepOriginalChrCounts keep the original chromosome counts before subsetting
      * @return variant context builder with updated INFO field attribute values
      */
     public static void addInfoFieldAnnotations(final VariantContext vc, final VariantContextBuilder builder,
@@ -171,14 +170,14 @@ public final class AlleleSubsettingUtils {
         // don't have to subset, the original vc has the same number and hence, the same alleles
         boolean keepOriginal = (vc.getAlleles().size() == alleles.size());
 
-        List<Integer> alleleIndecies = builder.getAlleles().stream().map(a -> vc.getAlleleIndex(a)).collect(Collectors.toList());
+        List<Integer> alleleIndices = builder.getAlleles().stream().map(vc::getAlleleIndex).collect(Collectors.toList());
         if (keepOriginalChrCounts) {
             if (vc.hasAttribute(VCFConstants.ALLELE_COUNT_KEY))
                 builder.attribute(GATKVCFConstants.ORIGINAL_AC_KEY, keepOriginal ?
-                        vc.getAttribute(VCFConstants.ALLELE_COUNT_KEY) : alleleIndecies.stream().filter(i -> i > 0).map(j -> vc.getAttributeAsList(VCFConstants.ALLELE_COUNT_KEY).get(j - 1)).collect(Collectors.toList()).get(0));
+                        vc.getAttribute(VCFConstants.ALLELE_COUNT_KEY) : alleleIndices.stream().filter(i -> i > 0).map(j -> vc.getAttributeAsList(VCFConstants.ALLELE_COUNT_KEY).get(j - 1)).collect(Collectors.toList()).get(0));
             if (vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY))
                 builder.attribute(GATKVCFConstants.ORIGINAL_AF_KEY, keepOriginal ?
-                        vc.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY) : alleleIndecies.stream().filter(i -> i > 0).map(j -> vc.getAttributeAsList(VCFConstants.ALLELE_FREQUENCY_KEY).get(j - 1)).collect(Collectors.toList()).get(0));
+                        vc.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY) : alleleIndices.stream().filter(i -> i > 0).map(j -> vc.getAttributeAsList(VCFConstants.ALLELE_FREQUENCY_KEY).get(j - 1)).collect(Collectors.toList()).get(0));
             if (vc.hasAttribute(VCFConstants.ALLELE_NUMBER_KEY)) {
                 builder.attribute(GATKVCFConstants.ORIGINAL_AN_KEY, vc.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
             }
