@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUti
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -273,7 +274,7 @@ public final class VariantContextTestUtils {
         }
 
         List<Object> newValues = new ArrayList<>(oldValue.size());
-        int[] subsettedGenotypes = AlleleSubsettingUtils.subsettedPLIndices(ploidy, originalAlleles, remappedAlleles);
+        int[] subsettedGenotypes = AlleleSubsettingUtils.subsettedPLIndices(ploidy, new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(remappedAlleles)));
         List<?> finalOldValue = oldValue;
         newValues.addAll(Arrays.stream(subsettedGenotypes).mapToObj(idx -> finalOldValue.get(idx)).collect(Collectors.toList()));
 
