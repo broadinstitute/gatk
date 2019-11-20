@@ -66,7 +66,7 @@ public final class AlleleSubsettingUtils {
             }
             final int[] subsettedLikelihoodIndices = subsettedLikelihoodIndicesByPloidy.get(ploidy);
 
-            final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
+            final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(allelePermutation.fromSize(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
             double newLog10GQ = -1;
@@ -93,7 +93,7 @@ public final class AlleleSubsettingUtils {
             else {
                 gb.noPL().noGQ();
             }
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles());
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelePermutation.toList(), g.getAlleles());
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {
@@ -104,7 +104,7 @@ public final class AlleleSubsettingUtils {
             // restrict AD to the new allele subset
             if(g.hasAD()) {
                 final int[] oldAD = g.getAD();
-                final int[] newAD = IntStream.range(0, allelesToKeep.size()).map(n -> oldAD[allelePermutation.fromIndex(n)]).toArray();
+                final int[] newAD = IntStream.range(0, allelePermutation.toSize()).map(n -> oldAD[allelePermutation.fromIndex(n)]).toArray();
                 gb.AD(newAD);
             }
             newGTs.add(gb.make());
