@@ -13,6 +13,8 @@
 
   "Evoquer.batch_mode": "true",
   "Evoquer.disable_gnarly_genotyper": "false",
+  "Evoquer.max_alt_alleles": "6",
+ 
 
   "Evoquer.mem_gb": "4",
   "Evoquer.disk_space_gb": "100",

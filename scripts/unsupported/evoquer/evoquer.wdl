@@ -55,6 +55,7 @@ workflow Evoquer {
     Int?  disk_space_gb
     Int?  cpu
     Int?  boot_disk_size_gb
+    Int?  max_alt_alleles
 
     Array[String] intervals = read_lines(interval_file)
 
@@ -72,6 +73,7 @@ workflow Evoquer {
                 local_sort_max_records_in_ram = local_sort_max_records_in_ram,
                 batch_mode            = batch_mode,
                 use_optimized_query   = use_optimized_query,
+                max_alt_alleles   = max_alt_alleles,
                 disable_gnarly_genotyper = disable_gnarly_genotyper,
                 gatk_docker           = gatk_docker,
                 gatk_override         = gatk4_jar_override,
@@ -124,6 +126,7 @@ task EvoquerTask {
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
+    Int?  max_alt_alleles
 
     # ------------------------------------------------
     # Misc settings:
@@ -172,6 +175,7 @@ task EvoquerTask {
                 --local-sort-max-records-in-ram "${local_sort_max_records_in_ram}" \
                 --run-query-in-batch-mode "${batch_mode}" \
                 --use-optimized-query "${use_optimized_query}" \
+                --subset-alleles "${max_alt_alleles}" \
                 --disable-gnarly-genotyper "${disable_gnarly_genotyper}"
 
         endTime=`date +%s.%N`

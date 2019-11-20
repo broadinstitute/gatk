@@ -121,6 +121,8 @@ class EvoquerEngine {
 
     private final boolean printDebugInformation;
 
+    private int maxAltAlleles = 0;
+
     private final ProgressMeter progressMeter;
 
     private int totalNumberOfVariants = 0;
@@ -141,6 +143,7 @@ class EvoquerEngine {
                    final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean runQueryInBatchMode,
                    final boolean printDebugInformation,
+                   final int maxAltAlleles,
                    final ProgressMeter progressMeter ) {
 
         // We were given a dataset map, so we're going to do live queries against BigQuery
@@ -158,6 +161,7 @@ class EvoquerEngine {
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
         this.runQueryInBatchMode = runQueryInBatchMode;
         this.printDebugInformation = printDebugInformation;
+        this.maxAltAlleles = maxAltAlleles;
         this.progressMeter = progressMeter;
 
         final Map<String, String> tmpContigToPositionTableMap = new HashMap<>();
@@ -188,6 +192,7 @@ class EvoquerEngine {
                    final boolean disableGnarlyGenotyper,
                    final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean printDebugInformation,
+                   final int maxAltAlleles,
                    final ProgressMeter progressMeter ) {
 
         // We weren't given a dataset map, so we're not going to do any live queries against BigQuery,
@@ -202,6 +207,7 @@ class EvoquerEngine {
         this.refSource = refSource;
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
         this.printDebugInformation = printDebugInformation;
+        this.maxAltAlleles = maxAltAlleles;
         this.progressMeter = progressMeter;
 
         this.projectID = null;
@@ -552,15 +558,18 @@ class EvoquerEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
-        logger.info("chosen reference: " + longestRefAllele);
+        if (maxAltAlleles > 0) {
+            Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
+            logger.info("chosen reference: " + longestRefAllele);
 
-//            if (longestRefAllele.length() > 1) {
-//                logger.info("subsetting alleles");
-//                List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, 4, longestRefAllele);
-//                unmergedCalls = unmergedSubsettedCalls;
-//                refAllele = longestRefAllele;
-//            }
+            if (longestRefAllele.length() > 1) {
+                logger.info("subsetting alleles");
+                List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, maxAltAlleles, longestRefAllele);
+                unmergedCalls = unmergedSubsettedCalls;
+                refAllele = longestRefAllele;
+            }
+        }
+
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
     }
 

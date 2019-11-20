@@ -156,8 +156,10 @@ public class Evoquer extends GATKTool {
     @Argument(fullName = "gnarly-genotyper-keep-all-sites", doc="Retain low quality and non-variant sites in the GnarlyGenotyper, applying appropriate filters", optional=true)
     private boolean keepAllSitesInGnarlyGenotyper = false;
 
-    @Argument(fullName = "gnarly-genotyper-keep-all-sites", doc="Retain low quality and non-variant sites in the GnarlyGenotyper, applying appropriate filters", optional=true)
-    private boolean keepAllSitesInGnarlyGenotyper = false;
+    @Argument(fullName = "subset-alleles",
+            doc = "The maximum number of alternate alleles at each position. Set to 0 for no limit.",
+            optional=true)
+    private int maxAltAlleles = 0;
 
     @Argument(
             fullName = "print-debug-information",
@@ -243,6 +245,7 @@ public class Evoquer extends GATKTool {
                     keepAllSitesInGnarlyGenotyper,
                     runQueryInBatchMode,
                     printDebugInformation,
+                    maxAltAlleles,
                     progressMeter);
         } else if ( precomputedQueryResultsFile != null && sampleListFile != null ) {
             precomputedResultsMode = true;
@@ -260,6 +263,7 @@ public class Evoquer extends GATKTool {
                     disableGnarlyGenotyper,
                     keepAllSitesInGnarlyGenotyper,
                     printDebugInformation,
+                    maxAltAlleles,
                     progressMeter);
         } else {
             throw new UserException("You must either specify both --project-id and --dataset-map, " +
