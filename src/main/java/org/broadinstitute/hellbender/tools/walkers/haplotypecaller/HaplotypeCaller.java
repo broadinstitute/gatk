@@ -176,9 +176,6 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     protected int defaultMaxProbPropagationDistance() { return DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
 
     @Override
-    protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
-
-    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return HaplotypeCallerEngine.makeStandardHCReadFilters();
     }

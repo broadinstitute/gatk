@@ -445,7 +445,7 @@ public final class AssemblyBasedCallerUtils {
         reads.sort(new ReadCoordinateComparator(readsHeader));  //because we updated the reads based on the local realignments we have to re-sort or the pileups will be... unpredictable
 
         final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
-                false, samples.asSetOfSamples(), readsHeader, true);
+                false, samples.asSetOfSamples(), readsHeader);
 
         final int startPos = activeRegionSpan.getStart();
         final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);

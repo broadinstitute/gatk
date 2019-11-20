@@ -72,7 +72,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             final CountingReadFilter combinedReadFilter = CountingReadFilter.fromList(readFilters, readsSource.getHeader());
             readShard.setReadFilter(combinedReadFilter);
 
-            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, minRegionSize, maxRegionSize, assemblyRegionPadding, 0.002, 50, true);
+            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, minRegionSize, maxRegionSize, assemblyRegionPadding, 0.002, 50);
 
             AssemblyRegion previousRegion = null;
             while ( iter.hasNext() ) {
@@ -128,74 +128,5 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
         }
     }
 
-    /**
-     * An artificial AssemblyRegionEvaluator used to assert that reads with deletions are or are not present in a pileup
-     */
-    private static class FakeAssertingAssemblyRegionEvaluator implements AssemblyRegionEvaluator {
 
-        private final SimpleInterval locusWithDeletions;
-        private final int expectedNumDeletionsAtLocus;
-
-        public FakeAssertingAssemblyRegionEvaluator(final SimpleInterval locusWithDeletions, final int expectedNumDeletionsAtLocus) {
-            this.locusWithDeletions = locusWithDeletions;
-            this.expectedNumDeletionsAtLocus = expectedNumDeletionsAtLocus;
-        }
-
-        @Override
-        public ActivityProfileState isActive(AlignmentContext locusPileup, ReferenceContext referenceContext, FeatureContext featureContext) {
-            if ( locusPileup.getLocation().equals(locusWithDeletions) ) {
-                int deletionCount = 0;
-                for ( final PileupElement pileupElement : locusPileup.getBasePileup() ) {
-                    if ( pileupElement.isDeletion() ) {
-                        ++deletionCount;
-                    }
-                }
-
-                Assert.assertEquals(deletionCount, expectedNumDeletionsAtLocus, "Wrong number of deletions in pileup at " + locusPileup.getLocation());
-            }
-
-            return new ActivityProfileState(new SimpleInterval(locusPileup), 0.0);
-        }
-    }
-
-    @DataProvider
-    public Object[][] testIncludeReadsWithDeletionsInIsActivePileupsData() {
-        return new Object[][] {
-                { NA12878_20_21_WGS_bam, b37_reference_20_21, new SimpleInterval("20", 10004770, 10004770), true, 29 },
-                { NA12878_20_21_WGS_bam, b37_reference_20_21, new SimpleInterval("20", 10004770, 10004770), false, 0 }
-        };
-    }
-
-    /*
-     * A test to prove that the includeReadsWithDeletionsInIsActivePileups argument to the AssemblyRegionIterator constructor
-     * actually causes reads with deletions at a locus to be included (or excluded) from the pileup for that locus sent to
-     * the isActive() method of the AssemblyRegionEvaluator. Uses a fake AssemblyRegionEvaluator to check this.
-     */
-    @Test(dataProvider = "testIncludeReadsWithDeletionsInIsActivePileupsData")
-    public void testIncludeReadsWithDeletionsInIsActivePileups(final String reads, final String reference, final SimpleInterval deletionInterval, final boolean includeReadsWithDeletionsInIsActivePileups, final int expectedNumDeletions) {
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(reads));
-              final ReferenceDataSource refSource = ReferenceDataSource.of(IOUtils.getPath(reference)) ) {
-            final SAMSequenceDictionary readsDictionary = readsSource.getSequenceDictionary();
-            final SimpleInterval shardInterval = deletionInterval.expandWithinContig(50, readsDictionary);
-            final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(Arrays.asList(shardInterval), 50, readsSource);
-
-            // Set up our fake AssemblyRegionEvaluator to check that the deletionInterval locus contains
-            // expectedNumDeletions reads with deletions in its pileup during the call to isActive()
-            final AssemblyRegionEvaluator evaluator = new FakeAssertingAssemblyRegionEvaluator(deletionInterval, expectedNumDeletions);
-
-            final List<ReadFilter> readFilters = new ArrayList<>(2);
-            readFilters.add(new WellformedReadFilter());
-            readFilters.add(new ReadFilterLibrary.MappedReadFilter());
-            final CountingReadFilter combinedReadFilter = CountingReadFilter.fromList(readFilters, readsSource.getHeader());
-            readShard.setReadFilter(combinedReadFilter);
-
-            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, 50, 300, 50, 0.002, 50, includeReadsWithDeletionsInIsActivePileups);
-
-            // Pull from the AssemblyRegionIterator to trigger the call into the FakeAssertingAssemblyRegionEvaluator,
-            // which does the actual assert on the pileups passed to isActive()
-            while ( iter.hasNext() ) {
-                final AssemblyRegion region = iter.next();
-            }
-        }
-    }
 }

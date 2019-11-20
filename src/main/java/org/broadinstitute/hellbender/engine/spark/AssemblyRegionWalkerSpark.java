@@ -1,12 +1,8 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.common.collect.Iterators;
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -14,18 +10,11 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.tools.DownsampleableSparkReadShard;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
-import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -47,11 +36,6 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      * @return a subclass of {@link AssemblyRegionArgumentCollection} with the default values filled in.
      */
     protected abstract AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection();
-
-    /**
-     * subclasses can override this to control if reads with deletions should be included in isActive pileups
-     */
-    protected abstract boolean includeReadsWithDeletionsInIsActivePileups();
 
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
@@ -124,11 +108,11 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         if (strict) {
             return FindAssemblyRegionsSpark.getAssemblyRegionsStrict(ctx, getReads(), getHeaderForReads(), sequenceDictionary, referenceFileName, features,
                     intervalShards, assemblyRegionEvaluatorSupplierBroadcast(ctx), shardingArgs, assemblyRegionArgs,
-                    includeReadsWithDeletionsInIsActivePileups(), shuffle);
+                    shuffle);
         } else {
             return FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, getReads(), getHeaderForReads(), sequenceDictionary, referenceFileName, features,
                     intervalShards, assemblyRegionEvaluatorSupplierBroadcast(ctx), shardingArgs, assemblyRegionArgs,
-                    includeReadsWithDeletionsInIsActivePileups(), shuffle);
+                    shuffle);
         }
     }
 

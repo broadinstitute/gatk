@@ -112,11 +112,6 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
     public HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
     @Override
-    protected boolean includeReadsWithDeletionsInIsActivePileups() {
-        return true;
-    }
-
-    @Override
     public boolean useVariantAnnotations() { return true;}
 
     @Override
@@ -291,7 +286,6 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final HaplotypeCallerArgumentCollection hcArgs,
             final AssemblyRegionReadShardArgumentCollection shardingArgs,
             final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups,
             final String output,
             final Collection<Annotation> annotations,
             final Logger logger,
@@ -302,8 +296,8 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
         final String referenceFileName = referencePath.getFileName().toString();
         Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast = assemblyRegionEvaluatorSupplierBroadcast(ctx, hcArgs, header, reference, annotations);
         JavaRDD<AssemblyRegionWalkerContext> assemblyRegions = strict ?
-                FindAssemblyRegionsSpark.getAssemblyRegionsStrict(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false) :
-                FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false);
+                FindAssemblyRegionsSpark.getAssemblyRegionsStrict(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, false) :
+                FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, false);
         processAssemblyRegions(assemblyRegions, ctx, header, reference, hcArgs, output, annotations, logger, createOutputVariantIndex);
     }
 }

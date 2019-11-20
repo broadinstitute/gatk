@@ -55,9 +55,6 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     protected int defaultMaxProbPropagationDistance() { return 50; }
 
     @Override
-    protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
-
-    @Override
     public AssemblyRegionEvaluator assemblyRegionEvaluator() {
         // This example AssemblyRegionEvaluator considers all loci to be active
         // (ie., it assigns an isActive probability of 1.0 to all loci):

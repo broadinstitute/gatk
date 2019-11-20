@@ -127,11 +127,6 @@ public final class Pileup extends LocusWalker {
     private PrintStream out;
 
     @Override
-    public boolean includeDeletions() {
-        return false;
-    }
-
-    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> defaultFilters = super.getDefaultReadFilters();
         defaultFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
@@ -152,7 +147,7 @@ public final class Pileup extends LocusWalker {
     @Override
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final String features = getFeaturesString(featureContext);
-        final ReadPileup basePileup = alignmentContext.getBasePileup();
+        final ReadPileup basePileup = alignmentContext.getBasePileup().makeFilteredPileup(pe -> !pe.isDeletion());
         final StringBuilder s = new StringBuilder();
         s.append(String.format("%s %s",
                 basePileup.getPileupString((hasReference()) ? (char) referenceContext.getBase() : 'N'),

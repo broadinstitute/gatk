@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
@@ -120,11 +119,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line
      */
     protected abstract int defaultMaxProbPropagationDistance();
-
-    /**
-     * @return If true, include reads with deletions at the current locus in the pileups passed to the AssemblyRegionEvaluator.
-     */
-    protected abstract boolean includeReadsWithDeletionsInIsActivePileups();
 
     @Override
     public final boolean requiresReads() { return true; }
@@ -267,7 +261,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param features FeatureManager
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups());
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance);
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
