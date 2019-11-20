@@ -110,11 +110,4 @@ public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBa
 
     // NOTE: You cannot overwrite the hash code function!
     //       It breaks the graph code.
-//    @Override
-//    public int hashCode() {
-//        int result = super.hashCode();
-//        result = 31 * result + (readName != null ? readName.hashCode() : 0);
-//        result = 31 * result + (pos != null ? pos.hashCode() : 0);
-//        return result;
-//    }
 }

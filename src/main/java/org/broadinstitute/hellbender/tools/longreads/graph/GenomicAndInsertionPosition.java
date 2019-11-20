@@ -50,6 +50,16 @@ public class GenomicAndInsertionPosition implements Comparable<GenomicAndInserti
     }
 
     @Override
+    public String toString() {
+        if ( insertionOffset != 0 ) {
+            return String.format("GenomicAndInsertionPosition(%s:%d+%d)", contig, start, insertionOffset);
+        }
+        else {
+            return String.format("GenomicAndInsertionPosition(%s:%d)", contig, start);
+        }
+    }
+
+    @Override
     public int compareTo(final GenomicAndInsertionPosition o) {
         int result = this.getContig().compareTo(o.getContig());
         if ( result == 0 ) {

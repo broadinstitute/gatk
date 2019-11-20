@@ -34,7 +34,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             fullName  = "output-file-base-name",
             optional = true,
             doc = "Base name for output files to be written.")
-    public String outputFileBaseName = "";
+    public String outputFileBaseName = "aligned_base_graph";
 
     @Argument(
             fullName  = "create-dot-files",

@@ -337,6 +337,7 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
             // Write out all nodes first:
             for ( final SeqVertex v : vertexSet() ) {
                 final String unitigName = String.format("utg%06dl", unitigCounter);
+//                final String unitigName = Integer.toString(v.getId());
 
                 if ( isGfa2 ) {
                     writer.println(serialzeNodeToGfa2(v, unitigName));

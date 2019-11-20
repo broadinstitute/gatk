@@ -18,6 +18,20 @@ public class AlignedReadsToGraphConverterIntegrationTest extends CommandLineProg
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addInput(new File(aligned_bam_file));
         arguments.addArgument("output-file-base-name", tmpDirName.getAbsolutePath());
+        arguments.addBooleanArgument("create-dot-files", true);
+
+        // Run the tool with our args:
+        runCommandLine(arguments);
+    }
+
+    @Test
+    public void testSerializeToGfaFile() {
+
+        final File tmpDirName = createTempDir("alignedReadsGraphTest");
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.addInput(new File(aligned_bam_file));
+        arguments.addArgument("output-file-base-name", tmpDirName.getAbsolutePath());
 
         // Run the tool with our args:
         runCommandLine(arguments);

@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.longreads.graph;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -10,6 +12,7 @@ import java.io.File;
 import java.util.*;
 
 public class AlignedBaseGraphCollection {
+    private static final Logger logger = LogManager.getLogger(AlignedBaseGraphCollection.class);
 
     //==================================================================================================================
     // Private Members:
@@ -43,8 +46,8 @@ public class AlignedBaseGraphCollection {
         for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
             // Print the graph to a file.  We don't want to prune anything, so give the pruner a VERY LARGE NUMBER.
             entry.getValue().printGraph(
-                    new File(baseName + "aligned_base_graph." + entry.getKey() + ".dot"),
-                    Integer.MAX_VALUE );
+                    new File(baseName + '.' + entry.getKey() + ".dot"),
+                    0 );
         }
     }
 
@@ -84,7 +87,7 @@ public class AlignedBaseGraphCollection {
             final String contig = entry.getKey();
             final AlignedBaseGraph graph = entry.getValue();
 
-            final String fileBaseName = baseName + "aligned_base_graph." + contig;
+            final String fileBaseName = baseName + '.' + contig;
 
             if ( isGfa2 ) {
                 graph.serializeToGfa2Files(fileBaseName);
@@ -102,7 +105,12 @@ public class AlignedBaseGraphCollection {
     public void collapseAdjacentNodes() {
 
         // Zip all linear chains:
-        for ( final AlignedBaseGraph graph : contigSubGraphMap.values() ) {
+        for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
+
+            final String contig = entry.getKey();
+            final AlignedBaseGraph graph = entry.getValue();
+
+            logger.info("Collapsing graph for contig: " + contig);
 
             // First zip chains to make the next step faster.
             graph.zipLinearChains();
@@ -172,7 +180,6 @@ public class AlignedBaseGraphCollection {
         }
     }
 
-
     /**
      * Add in the given aligned sequence information to this {@link AlignedBaseGraphCollection}.
      * @param read An aligned {@link GATKRead} object to add to this {@link AlignedBaseGraphCollection}.
@@ -238,7 +245,7 @@ public class AlignedBaseGraphCollection {
         contigPositionVertexMap.put(contig, nodePositionMap);
 
         AlignedBaseVertex lastVertex = null;
-        AlignedBaseVertex vertex = null;
+        AlignedBaseVertex vertex;
 
         while (nodes.peek() != null) {
 
@@ -266,11 +273,6 @@ public class AlignedBaseGraphCollection {
 
             // Store the last vertex:
             lastVertex = vertex;
-        }
-
-        // Add the last link:
-        if ( lastVertex != null ) {
-            graph.addEdge(lastVertex, vertex);
         }
 
         // Add the graph to our contig graph map:
@@ -317,6 +319,11 @@ public class AlignedBaseGraphCollection {
                         // If we added our last node, we need to make a link from the newly-added last node to
                         // the current graph node.
                         if ( lastNodeWasAddedToGraph ) {
+                            // This if statement can probably be removed:
+                            if (lastVertex.equals(vertex)) {
+                                logger.error("Equal Vertices detected: " + vertex.toString() + " @ " + vertex.getPos().toString());
+                                throw new GATKException("STILL BUSTED, BUSTER!");
+                            }
                             graph.addEdge(lastVertex, vertex);
                         }
                         lastNodeWasAddedToGraph = false;
@@ -342,7 +349,7 @@ public class AlignedBaseGraphCollection {
                 }
 
                 // Add an edge from the previous position if we must:
-                if ( lastVertex != null) {
+                if (lastVertex != null) {
                     graph.addEdge(lastVertex, vertex);
                 }
                 lastNodeWasAddedToGraph = true;
@@ -379,10 +386,7 @@ public class AlignedBaseGraphCollection {
             }
 
             // Set up insertion position if we need to track inserted bases:
-            if ( cigar.get(0).getOperator().equals(CigarOperator.INSERTION) ||
-                 cigar.get(0).getOperator().equals(CigarOperator.SOFT_CLIP)) {
-                insertionOffset = 1;
-            }
+            insertionOffset = updateInsertionOffset(insertionOffset, cigarOperator);
 
             for ( int i = 0; i < cigarElement.getLength(); ++i ) {
                 if ( cigarOperator.consumesReferenceBases() ) {
@@ -401,9 +405,7 @@ public class AlignedBaseGraphCollection {
 
                 if ( cigarOperator.consumesReadBases() ) {
                     ++readBasePos;
-                    if (cigarOperator.equals(CigarOperator.INSERTION)) {
-                        insertionOffset++;
-                    }
+                    insertionOffset = updateInsertionOffset(insertionOffset, cigarOperator);
                 }
             }
 
@@ -412,6 +414,24 @@ public class AlignedBaseGraphCollection {
         }
 
         return nodeQueue;
+    }
+
+    /**
+     * Updates the given insertion offset based on the cigar operator.
+     *
+     * {@link CigarOperator#INSERTION} and {@link CigarOperator#SOFT_CLIP} should result in the returned value being
+     * incremented by one.
+     *
+     * @param insertionOffset Initial insertion offset to update.
+     * @param cigarOperator {@link CigarOperator} to check for updating the insertion offset.
+     * @return An updated insertion offset based on the given {@link CigarOperator}.
+     */
+    private int updateInsertionOffset(final int insertionOffset, final CigarOperator cigarOperator) {
+        if ( cigarOperator.equals(CigarOperator.INSERTION) ||
+                cigarOperator.equals(CigarOperator.SOFT_CLIP) ) {
+            return insertionOffset + 1;
+        }
+        return insertionOffset;
     }
 
     /**

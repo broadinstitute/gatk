@@ -379,6 +379,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     /**
      * Print out the graph in the dot language for visualization
      * @param destination File to write to
+     * @param pruneFactor Edge multiplicity threshold below which to change the color of the edges to grey.  Set to zero to color all edges the same.
      */
     public final void printGraph(final File destination, final int pruneFactor) {
         try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
