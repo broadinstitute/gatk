@@ -17,6 +17,23 @@ import java.util.stream.Collectors;
 
 /**
  * Region of the genome that gets assembled by the local assembly engine.
+ * 
+ * As AssemblyRegion is defined by two intervals -- a primary interval containing a territory for variant calling and a second,
+ * extended, interval for assembly -- as well as the reads overlapping the extended interval.  Although we do not call variants in the extended interval,
+ * assembling over a larger territory improves calls in the primary territory.
+ *
+ * This concept is complicated somewhat by the fact that these intervals are mutable and the fact that the AssemblyRegion onject lives on after
+ * assembly during local realignment during PairHMM.  Here is an example of the life cycle of an AssemblyRegion:
+ *
+ * Suppose that the HaplotypeCaller engine finds an evidence for a het in a pileup at locus 400 -- that is, it produces
+ * an {@code ActivityProfileState} with non-zero probability at site 400 and passes it to its {@code ActivityProfile}.
+ * The {@code ActivityProfile} eventually produces an AssemblyRegion based on the {@code AssemblyRegionArgumentCollection} parameters.
+ * Let's suppose that this initial region has primary span 350-450 and extended span 100 - 700.
+ *
+ * Next, the assembly engine assembles all reads that overlap the extended interval to find variant haplotypes and the variants
+ * they contain.  The AssemblyRegion is then trimmed down to a new primary interval bound by all assembled variants within the original primary interval
+ * and a new extended interval.  The amount of padding of the new extended interval around the variants depends on the needs of local realignment
+ * and as such need not equal the original padding that was used for assembly.
  */
 public final class AssemblyRegion implements Locatable {
 
