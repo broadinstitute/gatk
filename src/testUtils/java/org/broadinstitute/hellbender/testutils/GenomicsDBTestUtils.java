@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -54,6 +56,7 @@ public final class GenomicsDBTestUtils {
         final String workspace = new File(workspaceDir, "workspace").getAbsolutePath();
         args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         args.addInterval(interval);
+        args.addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
         importer.runCommandLine(args);
         return new File(workspace);
     }
