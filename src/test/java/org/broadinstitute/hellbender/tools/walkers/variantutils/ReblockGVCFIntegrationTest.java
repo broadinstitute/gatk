@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -11,9 +15,11 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -156,5 +162,27 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                         " --floor-blocks -GQB 10 -GQB 20 -GQB 30 -GQB 40 -GQB 50 -GQB 60",
                 Arrays.asList(getToolTestDataDir() + "expected.NA12878.AS.chr20snippet.reblocked.hiRes.g.vcf"));
         spec.executeTest("testNewCompressionScheme", this);
+    }
+
+    @Test
+    public void testMQHeadersAreUpdated() throws Exception {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("V", getToolTestDataDir() + "justHeader.g.vcf")
+                .addOutput(output);
+        runCommandLine(args);
+
+        Pair<VCFHeader, List<VariantContext>> actual = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        VCFHeader header = actual.getLeft();
+        List<VCFInfoHeaderLine> infoLines = new ArrayList<>(header.getInfoHeaderLines());
+        //check all the headers in case there's one old and one updated
+        for (final VCFInfoHeaderLine line : infoLines) {
+            if (line.getID().equals(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {
+                Assert.assertTrue(line.getType().equals(VCFHeaderLineType.Float));
+                Assert.assertTrue(line.getDescription().contains("deprecated"));
+            } else if (line.getID().equals(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
+                Assert.assertTrue(line.getDescription().contains("deprecated"));
+            }
+        }
     }
 }
