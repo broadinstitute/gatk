@@ -28,6 +28,7 @@ public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
         args.add(recal1.getAbsolutePath());
         args.add("--input");
         args.add(recal2.getAbsolutePath());
+        args.addArgument("mode", "SNP");
 
         final File outFile = GATKBaseTest.createTempFile("gatheredTranches", ".txt");
         args.addOutput(outFile);
@@ -36,5 +37,24 @@ public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(outFile, recal_original);
     }
 
+    @Test
+    public void testCombine2IndelTranches() throws Exception {
+        final File tranches1 = new File(testDir + "indels.0.tranches");
+        final File tranches2 = new File(testDir + "indels.1.tranches");
 
+        final File recal_original = new File(testDir + "expected/indels.gathered.tranches");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--input");
+        args.add(tranches1.getAbsolutePath());
+        args.add("--input");
+        args.add(tranches2.getAbsolutePath());
+        args.addArgument("mode", "INDEL");
+
+        final File outFile = GATKBaseTest.createTempFile("gatheredTranches", ".txt");
+        args.addOutput(outFile);
+        final Object res = this.runCommandLine(args.getArgsArray());
+        Assert.assertEquals(res, 0);
+        IntegrationTestSpec.assertEqualTextFiles(outFile, recal_original);
+    }
 }

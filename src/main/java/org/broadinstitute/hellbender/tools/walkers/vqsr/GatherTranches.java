@@ -43,8 +43,8 @@ public class GatherTranches extends CommandLineProgram {
     /**
      * Use either SNP for recalibrating only SNPs (emitting indels untouched in the output VCF) or INDEL for indels (emitting SNPs untouched in the output VCF). There is also a BOTH option for recalibrating both SNPs and indels simultaneously, but this is meant for testing purposes only and should not be used in actual analyses.
      */
-    @Argument(fullName = "mode", shortName = "mode", doc = "Recalibration mode to employ", optional = false)
-    public VariantRecalibratorArgumentCollection.Mode MODE = VariantRecalibratorArgumentCollection.Mode.SNP;
+    @Argument(fullName = "mode", shortName = "mode", doc = "Recalibration mode to employ")
+    public VariantRecalibratorArgumentCollection.Mode MODE;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="File to output the gathered tranches file to")
