@@ -13,7 +13,6 @@ import java.util.stream.IntStream;
 
 public class PolymorphicNuMTFilter extends HardFilter {
     private static final double LOWER_BOUND_PROB = .01;
-//    private static final double MULTIPLE_COPIES_MULTIPLIER = 2.0;
     private final int maxAltDepthCutoff;
 
     public PolymorphicNuMTFilter(final double medianAutosomalCoverage, final double maxNuMTCopies){
