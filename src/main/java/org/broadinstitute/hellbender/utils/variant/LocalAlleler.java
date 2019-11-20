@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 
@@ -15,6 +16,7 @@ public class LocalAlleler {
     public static final String LAA = "LAA";
     public static final String LGT = "LGT";
     public static final String LAD = "LAD";
+    public static final String LPL = "LPL";
 
     public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc){
         // new LAA
@@ -43,6 +45,17 @@ public class LocalAlleler {
                 localAlleleDepth.add(originalAlleleDepth[localAllelesIncludingRef.fromIndex(i)]);
             }
             localAttributes.put(LAD, localAlleleDepth);
+        }
+
+        //construct LPL
+        if( originalGenotype.hasPL()) {
+            int[] originalPls = originalGenotype.getPL();
+            int[] plIndices = AlleleSubsettingUtils.subsettedPLIndices(originalGenotype.getPloidy(), localAllelesIncludingRef);
+            int[] newPls = new int[plIndices.length];
+            for (int i = 0; i < plIndices.length; i++) {
+                newPls[i] = originalPls[plIndices[i]];
+            }
+            localAttributes.put(LPL, newPls);
         }
 
         GenotypeBuilder genotypeBuilder = new GenotypeBuilder(originalGenotype);
