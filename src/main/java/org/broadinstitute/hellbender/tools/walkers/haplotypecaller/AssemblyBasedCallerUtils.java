@@ -40,7 +40,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by davidben on 9/8/16.
@@ -117,7 +116,7 @@ public final class AssemblyBasedCallerUtils {
             clippedRead = clippedRead.isUnmapped() ? clippedRead : ReadClipper.hardClipAdaptorSequence(clippedRead);
             if ( ! clippedRead.isEmpty() && clippedRead.getCigar().getReadLength() > 0 ) {
                 clippedRead = ReadClipper.hardClipToRegion( clippedRead, region.getExtendedSpan().getStart(), region.getExtendedSpan().getEnd() );
-                if ( region.readOverlapsRegion(clippedRead) && clippedRead.getLength() > 0 ) {
+                if ( clippedRead.getLength() > 0 && clippedRead.overlaps(region.getExtendedSpan())) {
                     readsToUse.add((clippedRead == myRead) ? clippedRead.copy() : clippedRead);
                 }
             }
@@ -227,7 +226,7 @@ public final class AssemblyBasedCallerUtils {
     public static AssemblyRegion assemblyRegionWithWellMappedReads(final AssemblyRegion originalAssemblyRegion,
                                                                    final int minMappingQuality,
                                                                    final SAMFileHeader readsHeader) {
-        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.getSupportingStates(), originalAssemblyRegion.isActive(), originalAssemblyRegion.getExtension(), readsHeader);
+        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.isActive(), originalAssemblyRegion.getExtension(), readsHeader);
         originalAssemblyRegion.getReads().stream()
                 .filter(rec -> rec.getMappingQuality() >= minMappingQuality)
                 .forEach(result::add);

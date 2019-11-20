@@ -75,7 +75,7 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
                 int start = regionStart.getStart() + startsAndStops[i];
                 int end = regionStart.getStart() + startsAndStops[i+1] - 1;
                 GenomeLoc activeLoc = genomeLocParser.createGenomeLoc(regionStart.getContig(), start, end);
-                AssemblyRegion r = new AssemblyRegion(new SimpleInterval(activeLoc), Collections.<ActivityProfileState>emptyList(), isActive, extension, header);
+                AssemblyRegion r = new AssemblyRegion(new SimpleInterval(activeLoc), isActive, extension, header);
                 l.add(r);
                 isActive = ! isActive;
             }

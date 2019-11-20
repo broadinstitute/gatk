@@ -171,7 +171,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         c.add(new CigarElement(refHaplotype.getBases().length, CigarOperator.M));
         refHaplotype.setCigar(c);
 
-        final AssemblyRegion activeRegion = new AssemblyRegion(loc, null, true, 0, header);
+        final AssemblyRegion activeRegion = new AssemblyRegion(loc, true, 0, header);
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
         final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, null, header,

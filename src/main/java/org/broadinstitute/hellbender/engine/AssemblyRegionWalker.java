@@ -48,7 +48,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
-    public static final String PROFILE_OUT_LONG_NAME = "activity-profile-out";
     public static final String ASSEMBLY_REGION_OUT_LONG_NAME = "assembly-region-out";
     public static final String FORCE_ACTIVE_REGIONS_LONG_NAME = "force-active";
 
@@ -78,19 +77,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     @Advanced
     @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
     protected boolean forceActive = false;
-
-    /**
-     * If provided, this walker will write out its activity profile (per bp probabilities of being active)
-     * to this file in the IGV formatted TAB deliminated output:
-     *
-     * http://www.broadinstitute.org/software/igv/IGV
-     *
-     * Intended to make debugging the activity profile calculations easier
-     */
-    @Argument(fullName = PROFILE_OUT_LONG_NAME, doc="Output the raw activity profile results in IGV format", optional = true)
-    protected String activityProfileOut = null;
-
-    private PrintStream activityProfileOutStream;
 
     /**
      * If provided, this walker will write out its assembly regions
@@ -204,18 +190,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     private void initializeAssemblyRegionOutputStreams() {
-        if ( activityProfileOut != null ) {
-            try {
-                activityProfileOutStream = new PrintStream(activityProfileOut);
-            }
-            catch ( IOException e ) {
-                throw new UserException.CouldNotCreateOutputFile(activityProfileOut, "Error writing activity profile to output file", e);
-            }
-
-            logger.info("Writing activity profile to " + activityProfileOut);
-            IGVUtils.printIGVFormatHeader(activityProfileOutStream, "line", "ActivityProfile");
-        }
-
         if ( assemblyRegionOut != null ) {
             try {
                 assemblyRegionOutStream = new PrintStream(assemblyRegionOut);
@@ -315,21 +289,11 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     private void writeAssemblyRegion(final AssemblyRegion region) {
-        writeActivityProfile(region.getSupportingStates());
-
         if ( assemblyRegionOutStream != null ) {
             IGVUtils.printIGVFormatRow(assemblyRegionOutStream, new SimpleInterval(region.getContig(), region.getStart(), region.getStart()),
                     "end-marker", 0.0);
             IGVUtils.printIGVFormatRow(assemblyRegionOutStream, region,
                     "size=" + new SimpleInterval(region).size(), region.isActive() ? 1.0 : -1.0);
-        }
-    }
-
-    private void writeActivityProfile(final List<ActivityProfileState> states) {
-        if ( activityProfileOutStream != null ) {
-            for ( final ActivityProfileState state : states ) {
-                IGVUtils.printIGVFormatRow(activityProfileOutStream, state.getLoc(), "state", Math.min(state.isActiveProb(), 1.0));
-            }
         }
     }
 
@@ -345,10 +309,6 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
 
         if ( assemblyRegionOutStream != null ) {
             assemblyRegionOutStream.close();
-        }
-
-        if ( activityProfileOutStream != null ) {
-            activityProfileOutStream.close();
         }
     }
 

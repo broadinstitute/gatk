@@ -337,7 +337,6 @@ public class ActivityProfile {
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
-        final List<ActivityProfileState> supportingStates = new ArrayList<>(sub);
         sub.clear();
 
         // update the start and stop locations as necessary
@@ -347,7 +346,7 @@ public class ActivityProfile {
             regionStartLoc = stateList.get(0).getLoc();
         }
         final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + offsetOfNextRegionEnd);
-        return new AssemblyRegion(regionLoc, supportingStates, isActiveRegion, assemblyRegionExtension, samHeader);
+        return new AssemblyRegion(regionLoc, isActiveRegion, assemblyRegionExtension, samHeader);
     }
 
     /**

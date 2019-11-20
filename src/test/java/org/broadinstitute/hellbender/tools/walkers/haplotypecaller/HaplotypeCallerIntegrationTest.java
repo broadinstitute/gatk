@@ -761,7 +761,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     public void testAssemblyRegionAndActivityProfileOutput() throws Exception {
         final File output = createTempFile("testAssemblyRegionAndActivityProfileOutput", ".vcf");
         final File assemblyRegionOut = createTempFile("testAssemblyRegionAndActivityProfileOutput_assemblyregions", ".igv");
-        final File activityProfileOut = createTempFile("testAssemblyRegionAndActivityProfileOutput_activityprofile", ".igv");
         final File expectedAssemblyRegionOut = new File(TEST_FILES_DIR, "expected.testAssemblyRegionAndActivityProfileOutput_assemblyregions.igv");
         final File expectedActivityProfileOut = new File(TEST_FILES_DIR, "expected.testAssemblyRegionAndActivityProfileOutput_activityprofile.igv");
 
@@ -771,14 +770,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10003000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + HaplotypeCaller.ASSEMBLY_REGION_OUT_LONG_NAME, assemblyRegionOut.getAbsolutePath(),
-                "--" + HaplotypeCaller.PROFILE_OUT_LONG_NAME, activityProfileOut.getAbsolutePath()
+                "--" + HaplotypeCaller.ASSEMBLY_REGION_OUT_LONG_NAME, assemblyRegionOut.getAbsolutePath()
         };
 
         runCommandLine(args);
 
         IntegrationTestSpec.assertEqualTextFiles(assemblyRegionOut, expectedAssemblyRegionOut);
-        IntegrationTestSpec.assertEqualTextFiles(activityProfileOut, expectedActivityProfileOut);
     }
 
     /*

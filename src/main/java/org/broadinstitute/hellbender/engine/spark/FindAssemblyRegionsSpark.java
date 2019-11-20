@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
@@ -237,7 +236,7 @@ public class FindAssemblyRegionsSpark {
         // TODO: interfaces could be improved to avoid casting
         ReadlessAssemblyRegion readlessAssemblyRegion = (ReadlessAssemblyRegion) ((ShardBoundaryShard<GATKRead>) shard).getShardBoundary();
         int extension = Math.max(shard.getInterval().getStart() - shard.getPaddedInterval().getStart(), shard.getPaddedInterval().getEnd() - shard.getInterval().getEnd());
-        AssemblyRegion assemblyRegion = new AssemblyRegion(shard.getInterval(), Collections.emptyList(), readlessAssemblyRegion.isActive(), extension, header);
+        AssemblyRegion assemblyRegion = new AssemblyRegion(shard.getInterval(), readlessAssemblyRegion.isActive(), extension, header);
         assemblyRegion.addAll(Lists.newArrayList(downsampledShardedRead));
         return assemblyRegion;
     }

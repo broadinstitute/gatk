@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -17,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * Region of the genome that gets assembled by the local assembly engine.
- * 
+ *
  * As AssemblyRegion is defined by two intervals -- a primary interval containing a territory for variant calling and a second,
  * extended, interval for assembly -- as well as the reads overlapping the extended interval.  Although we do not call variants in the extended interval,
  * assembling over a larger territory improves calls in the primary territory.
@@ -46,13 +44,6 @@ public final class AssemblyRegion implements Locatable {
     private final List<GATKRead> reads;
 
     /**
-     * An ordered list (by genomic coordinate) of the ActivityProfileStates that went
-     * into this assembly region.  May be empty, which says that no supporting states were
-     * provided when this region was created.
-     */
-    private final List<ActivityProfileState> supportingStates;
-
-    /**
      * The raw span of this assembly region, not including the region extension
      */
     private final SimpleInterval activeRegionLoc;
@@ -75,29 +66,17 @@ public final class AssemblyRegion implements Locatable {
     private boolean isActive;
 
     /**
-     * The span of this assembly region, including the bp covered by all reads in this
-     * region.  This union of extensionLoc and the loc of all reads in this region.
-     *
-     * Must be at least as large as extendedLoc, but may be larger when reads
-     * partially overlap this region.
-     */
-    private SimpleInterval spanIncludingReads;
-
-    /**
      * Indicates whether the region has been finalized
      */
     private boolean hasBeenFinalized;
 
     /**
      * Create a new AssemblyRegion containing no reads
-     *
-     * @param activeRegionLoc the span of this active region
-     * @param supportingStates the states that went into creating this region, or null / empty if none are available.
-     *                         If not empty, must have exactly one state for each bp in activeRegionLoc
+     *  @param activeRegionLoc the span of this active region
      * @param isActive indicates whether this is an active region, or an inactive one
      * @param extension the active region extension to use for this active region
      */
-    public AssemblyRegion( final SimpleInterval activeRegionLoc, final List<ActivityProfileState> supportingStates, final boolean isActive, final int extension , final SAMFileHeader header ) {
+    public AssemblyRegion(final SimpleInterval activeRegionLoc, final boolean isActive, final int extension, final SAMFileHeader header) {
         Utils.nonNull(activeRegionLoc, "activeRegionLoc cannot be null");
         Utils.nonNull(header, "header cannot be null");
         Utils.validateArg( activeRegionLoc.size() > 0, () -> "Active region cannot be of zero size, but got " + activeRegionLoc);
@@ -106,13 +85,9 @@ public final class AssemblyRegion implements Locatable {
         this.header = header;
         this.reads = new ArrayList<>();
         this.activeRegionLoc = activeRegionLoc;
-        this.supportingStates = supportingStates == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(supportingStates));
         this.isActive = isActive;
         this.extension = extension;
         this.extendedLoc = trimIntervalToContig(activeRegionLoc.getContig(), activeRegionLoc.getStart() - extension, activeRegionLoc.getEnd() + extension);
-        this.spanIncludingReads = extendedLoc;
-
-        checkStates(activeRegionLoc);
     }
 
     /**
@@ -132,27 +107,11 @@ public final class AssemblyRegion implements Locatable {
         return IntervalUtils.trimIntervalToContig(contig, start, stop, contigLength);
     }
 
-    private void checkStates(final SimpleInterval activeRegionLoc) {
-        if ( ! this.supportingStates.isEmpty() ) {
-            Utils.validateArg( this.supportingStates.size() == activeRegionLoc.size(), () ->
-                    "Supporting states wasn't empty but it doesn't have exactly one state per bp in the active region: states " + this.supportingStates.size() + " vs. bp in region = " + activeRegionLoc.size());
-            SimpleInterval lastStateLoc = null;
-            for ( final ActivityProfileState state : this.supportingStates ) {
-                if ( lastStateLoc != null ) {
-                    if ( state.getLoc().getStart() != lastStateLoc.getStart() + 1 || !state.getLoc().getContig().equals(lastStateLoc.getContig())) {
-                        throw new IllegalArgumentException("Supporting state has an invalid sequence: last state was " + lastStateLoc + " but next state was " + state);
-                    }
-                }
-                lastStateLoc = state.getLoc();
-            }
-        }
-    }
-
     /**
      * Simple interface to create an assembly region that isActive without any profile state
      */
     public AssemblyRegion(final SimpleInterval activeRegionLoc, final int extension, final SAMFileHeader header) {
-        this(activeRegionLoc, Collections.<ActivityProfileState>emptyList(), true, extension, header);
+        this(activeRegionLoc, true, extension, header);
     }
 
     @Override
@@ -259,14 +218,6 @@ public final class AssemblyRegion implements Locatable {
         final int extendStop = Math.min(span.getEnd() + extensionSize, maxStop);
         final SimpleInterval extendedSpan = new SimpleInterval(span.getContig(), extendStart, extendStop);
         return trim(span, extendedSpan);
-
-//TODO - Inconsistent support of substates trimming. Check lack of consistency!!!!
-//        final GenomeLoc subLoc = getLocation().intersect(span);
-//        final int subStart = subLoc.getStart() - getLocation().getStart();
-//        final int subEnd = subStart + subLoc.size();
-//        final List<ActivityProfileState> subStates = supportingStates.isEmpty() ? supportingStates : supportingStates.subList(subStart, subEnd);
-//        return new ActiveRegion( subLoc, subStates, isActive, genomeLocParser, extensionSize );
-
     }
 
     /**
@@ -308,39 +259,21 @@ public final class AssemblyRegion implements Locatable {
         final int requiredOnLeft = Math.max(subActive.getStart() - extendedSpan.getStart(), 0);
         final int requiredExtension = Math.min(Math.max(requiredOnLeft, requiredOnRight), getExtension());
 
-        final AssemblyRegion result = new AssemblyRegion( subActive, Collections.<ActivityProfileState>emptyList(), isActive, requiredExtension, header );
+        final AssemblyRegion result = new AssemblyRegion( subActive, isActive, requiredExtension, header );
 
-        final List<GATKRead> myReads = getReads();
         final SimpleInterval resultExtendedLoc = result.getExtendedSpan();
         final int resultExtendedLocStart = resultExtendedLoc.getStart();
         final int resultExtendedLocStop = resultExtendedLoc.getEnd();
 
-        final List<GATKRead> trimmedReads = new ArrayList<>(myReads.size());
-        for( final GATKRead read : myReads ) {
-            final GATKRead clippedRead = ReadClipper.hardClipToRegion(read, resultExtendedLocStart, resultExtendedLocStop);
-            if( result.readOverlapsRegion(clippedRead) && !clippedRead.isEmpty() ) {
-                trimmedReads.add(clippedRead);
-            }
-        }
-        result.clearReads();
+        final List<GATKRead> trimmedReads = reads.stream()
+                .map(read -> ReadClipper.hardClipToRegion(read, resultExtendedLocStart, resultExtendedLocStop))
+                .filter(read -> !read.isEmpty() && read.overlaps(result.extendedLoc))
+                .sorted(new ReadCoordinateComparator(header))
+                .collect(Collectors.toList());
 
-        trimmedReads.sort(new ReadCoordinateComparator(header));
+        result.clearReads();
         result.addAll(trimmedReads);
         return result;
-    }
-
-    /**
-     * Returns true if read would overlap the extended extent of this region
-     * @param read the read we want to test
-     * @return true if read can be added to this region, false otherwise
-     */
-    public boolean readOverlapsRegion(final GATKRead read) {
-        if ( read.isEmpty() || read.getStart() > read.getEnd() ) {
-            return false;
-        }
-
-        final SimpleInterval readLoc = new SimpleInterval( read );
-        return readLoc.overlaps(extendedLoc);
     }
 
     /**
@@ -355,10 +288,8 @@ public final class AssemblyRegion implements Locatable {
     public void add( final GATKRead read ) {
         Utils.nonNull(read, "Read cannot be null");
         final SimpleInterval readLoc = new SimpleInterval( read );
-        Utils.validateArg(readOverlapsRegion(read), () ->
+        Utils.validateArg(extendedLoc.overlaps(read), () ->
                 "Read location " + readLoc + " doesn't overlap with active region extended span " + extendedLoc);
-
-        spanIncludingReads = spanIncludingReads.mergeWithContiguous( readLoc );
 
         if ( ! reads.isEmpty() ) {
             final GATKRead lastRead = reads.get(size() - 1);
@@ -381,7 +312,6 @@ public final class AssemblyRegion implements Locatable {
      * Clear all of the reads currently in this region
      */
     public void clearReads() {
-        spanIncludingReads = extendedLoc;
         reads.clear();
     }
 
@@ -392,10 +322,6 @@ public final class AssemblyRegion implements Locatable {
     public void removeAll( final Collection<GATKRead> readsToRemove ) {
         Utils.nonNull(readsToRemove);
         reads.removeAll(readsToRemove);
-        spanIncludingReads = extendedLoc;
-        for (final GATKRead read : reads) {
-            spanIncludingReads = spanIncludingReads.mergeWithContiguous(read);
-        }
     }
 
     /**
@@ -414,41 +340,6 @@ public final class AssemblyRegion implements Locatable {
      * @return the size in bp of the region extension
      */
     public int getExtension() { return extension; }
-
-    /**
-     * The span of this assembly region, including the bp covered by all reads in this
-     * region.  This union of extensionLoc and the loc of all reads in this region.
-     *
-     * Must be at least as large as extendedLoc, but may be larger when reads
-     * partially overlap this region.
-     */
-    public SimpleInterval getReadSpanLoc() {
-        return spanIncludingReads;
-    }
-
-    /**
-     * An ordered list (by genomic coordinate) of the ActivityProfileStates that went
-     * into this active region.  May be empty, which says that no supporting states were
-     * provided when this region was created.
-     * The returned list is unmodifiable.
-     */
-    public List<ActivityProfileState> getSupportingStates() {
-        return supportingStates;
-    }
-
-    /**
-     * See #getActiveRegionReference but using the span including regions not the extended span
-     */
-    public byte[] getFullReference( final ReferenceSequenceFile referenceReader ) {
-        return getFullReference(referenceReader, 0);
-    }
-
-    /**
-     * See #getActiveRegionReference but using the span including regions not the extended span
-     */
-    public byte[] getFullReference( final ReferenceSequenceFile referenceReader, final int padding ) {
-        return getReference(referenceReader, padding, spanIncludingReads);
-    }
 
     /**
      * Get the reference bases from referenceReader spanned by the extended location of this region,
@@ -491,27 +382,6 @@ public final class AssemblyRegion implements Locatable {
      */
     public byte[] getAssemblyRegionReference(final ReferenceSequenceFile referenceReader, final int padding ) {
         return getReference(referenceReader, padding, extendedLoc);
-    }
-
-    /**
-     * Is this region equal to other, excluding any reads in either region in the comparison
-     * @param other the other active region we want to test
-     * @return true if this region is equal, excluding any reads and derived values, to other
-     */
-    public boolean equalsIgnoreReads(final AssemblyRegion other) {
-        if ( other == null ) {
-            return false;
-        }
-        if ( ! activeRegionLoc.equals(other.activeRegionLoc)) {
-            return false;
-        }
-        if ( isActive() != other.isActive()) {
-            return false;
-        }
-        if ( extension != other.extension ) {
-            return false;
-        }
-        return extendedLoc.equals(other.extendedLoc);
     }
 
     public void setFinalized(final boolean value) {
