@@ -26,27 +26,35 @@ public class AlleleSubsettingUtilsForJointCalling {
 
         Map<Allele, Integer> alleleSpecificQuals = new HashMap<>();
         List<VariantContext> callsWithExpandedAlleles = sumAllQualsAndExpandAlleles(unmergedCalls, alleleSpecificQuals, longestRefAllele);
-        logger.info("unique alleles: " + alleleSpecificQuals.size() + alleleSpecificQuals.keySet());
+        logger.debug("unique alleles: " + alleleSpecificQuals.size() + alleleSpecificQuals.keySet());
 
         // choose the target alleles
         List<Allele> targetAlleles = alleleSpecificQuals.entrySet().stream()
                 // get the highest values
                 .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed()).limit(maxAlleles)
                 .map(entry -> entry.getKey()).collect(Collectors.toList());
-        logger.info(targetAlleles);
+        logger.debug(targetAlleles);
 
         Set<Allele> allelesToDrop = new HashSet<>(alleleSpecificQuals.keySet());
         allelesToDrop.removeAll(targetAlleles);
 
+        if (allelesToDrop.isEmpty()) {
+            // there were not enough alleles for us to subset any
+            return callsWithExpandedAlleles;
+        }
+
         // how do i do this without hardcoding?
         int[] relevantAlleleIndexes = new int[] {0,2};
 
-        return callsWithExpandedAlleles.stream().map(vc -> {
-            Set<Allele> allelesToSubset = SetUtils.intersection(new HashSet<>(vc.getAlleles()), allelesToDrop);
+        List<VariantContext> results = new ArrayList<>(unmergedCalls.size());
+
+        callsWithExpandedAlleles.stream().forEach(vc -> {
+            Set<Allele> vcAltAllelesSet = new HashSet<>(vc.getAlternateAlleles());
+            Set<Allele> allelesToSubset = SetUtils.intersection(vcAltAllelesSet, allelesToDrop);
             if (allelesToSubset.isEmpty()) {
-                return vc;
-            } else {
-                logger.info("subsetting alleles for sample: " + vc.getSampleNames());
+                results.add(vc);
+            } else if (containsMeaningfulAllele(SetUtils.difference(vcAltAllelesSet, allelesToSubset))) {
+                logger.debug("subsetting alleles for sample: " + vc.getSampleNames());
                 Genotype g =  vc.getGenotype(0);
                 GenotypeBuilder gb = new GenotypeBuilder(g);
 
@@ -81,12 +89,21 @@ public class AlleleSubsettingUtilsForJointCalling {
                 newAlleles.remove(0);
                 newAlleles.add(0, longestRefAllele);
                 newAlleles = newAlleles.stream().filter(allele -> !allelesToDrop.contains(allele)).collect(Collectors.toList());
-                return new VariantContextBuilder(vc)
+                results.add(new VariantContextBuilder(vc)
                         .alleles(newAlleles)
                         .attributes(modifiedAttrs)
-                        .genotypes(GenotypesContext.create(newGlist)).make();
+                        .genotypes(GenotypesContext.create(newGlist)).make());
             }
-        }).collect(Collectors.toList());
+        });
+        return results;
+    }
+
+    private static boolean containsMeaningfulAllele(Set<Allele> alleleNotSubsetted) {
+        // make sure there is a valid allele left
+        Set<Allele> nonMeaningfulAlleles = new HashSet<>();
+        nonMeaningfulAlleles.add(Allele.SPAN_DEL);
+        nonMeaningfulAlleles.add(Allele.NON_REF_ALLELE);
+        return !(SetUtils.difference(alleleNotSubsetted, nonMeaningfulAlleles).isEmpty());
     }
 
     private static String remapAlleleAttributes(String values, int[] relevantAlleleIndexes) {
@@ -140,12 +157,11 @@ public class AlleleSubsettingUtilsForJointCalling {
             rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         }
 
-            // TODO separate this out - we still need to subset other alleles
         for (int i = 0; i < alleles.size(); i++) {
             final Allele allele = alleles.get(i);
             if (rawDataPerAllele != null) {
                 final String alleleQual = rawDataPerAllele[i];  // should i check that this is actually an int?
-                if (!allele.isNonRefAllele() && !alleleQual.isEmpty() && !alleleQual.equals(AnnotationUtils.MISSING_VALUE)) {
+                if (!allele.isNonRefAllele() && !allele.equals(Allele.SPAN_DEL) && !alleleQual.isEmpty() && !alleleQual.equals(AnnotationUtils.MISSING_VALUE)) {
                     sumQuals(alleleSpecificQuals, alleleMappings.getOrDefault(allele, allele), Integer.parseInt(alleleQual));
                 }
             }
@@ -168,8 +184,6 @@ public class AlleleSubsettingUtilsForJointCalling {
                 if (updatedGenotypeAlleles.contains(allele)) {
                     Collections.replaceAll(updatedGenotypeAlleles, allele, mappedAllele);
                 }
-            } else {
-                logger.warn("no mapping found for allele: " + allele);
             }
         }
         if (vcb != null) {  // this should never be null

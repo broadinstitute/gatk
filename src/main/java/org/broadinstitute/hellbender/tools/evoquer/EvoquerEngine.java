@@ -560,10 +560,9 @@ class EvoquerEngine {
 
         if (maxAltAlleles > 0) {
             Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
-            logger.info("chosen reference: " + longestRefAllele);
 
             if (longestRefAllele.length() > 1) {
-                logger.info("subsetting alleles");
+                logger.info("subsetting alleles; chosen reference: " + longestRefAllele);
                 List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, maxAltAlleles, longestRefAllele);
                 unmergedCalls = unmergedSubsettedCalls;
                 refAllele = longestRefAllele;
@@ -748,10 +747,6 @@ class EvoquerEngine {
         }
     }
 
-//    private String getSampleListQueryString(final String sampleTableName) {
-//        return "SELECT sample FROM `" + getFQTableName(sampleTableName)+ "`";
-//    }
-
     private String getGroupedVariantQueryString( final SimpleInterval interval ) {
         String limitString = "";
         if ( queryRecordLimit > 0 ) {
@@ -913,101 +908,5 @@ class EvoquerEngine {
     private String getSampleListQueryString(final String sampleTableName) {
         return "SELECT sample FROM `" + getFQTableName(sampleTableName)+ "`";
     }
-
-    private String getQueryForAlleleSubsetting() {
-        return "SELECT position, ARRAY_AGG(STRUCT(sample, 'v' as state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
-                "\n" +
-                "FROM `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam`\n" +
-                "WHERE position = 62065822\n" +
-                "GROUP BY position\n";
-    }
-
-    private String getOptimizedVariantQueryString(final SimpleInterval interval) {
-        String limitString = "";
-        if (queryRecordLimit > 0) {
-            limitString = "LIMIT " + queryRecordLimit;
-        }
-
-        return String.format(
-                "WITH new_pet AS (SELECT * FROM `%s` WHERE (position >= %d AND position <= %d) AND position in (SELECT DISTINCT position FROM `%s` WHERE position >= %d AND position <= %d))\n" +
-                        "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
-                        "FROM new_pet\n" +
-                        "LEFT OUTER JOIN (select * from `%s` AS vet_inner WHERE\n" +
-                        "      vet_inner.position >= %d\n" +
-                        "      AND vet_inner.position <= %d) as vet \n" +
-                        "ON (new_pet.position = vet.position\n" +
-                        "    AND new_pet.sample = vet.sample)" +
-                        "GROUP BY position\n" +
-                        limitString,
-                getFQPositionTable(interval),
-                interval.getStart(),
-                interval.getEnd(),
-                getFQVariantTable(interval),
-                interval.getStart(),
-                interval.getEnd(),
-                getFQVariantTable(interval),
-                interval.getStart(),
-                interval.getEnd());
-    }
-
-    private String getTheASTestQuery() {
-        return "WITH\n" +
-                "  samples AS (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`),\n" +
-                "  new_pet AS (\n" +
-                "  SELECT\n" +
-                "    *\n" +
-                "  FROM\n" +
-                "    `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.pet_without_gq60_ir_c_sam_st`\n" +
-                "  WHERE\n" +
-                "    (position = 62065822\n" +
-                "      AND sample IN (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`) ) )\n" +
-                "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
-                "FROM\n" +
-                "  new_pet\n" +
-                "LEFT OUTER JOIN\n" +
-                "(select * from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam` AS vet_inner\n" +
-                "  WHERE\n" +
-                "      vet_inner.position = 62065822) as vet\n" +
-                "ON\n" +
-                "  (new_pet.position = vet.position\n" +
-                "    AND new_pet.sample = vet.sample)\n" +
-                "GROUP BY position;";
-    }
-
-    private String getTheASTestQuery2() {
-        return "WITH\n" +
-                "  samples AS (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`),\n" +
-                "  new_pet AS (\n" +
-                "  SELECT\n" +
-                "    *\n" +
-                "  FROM\n" +
-                "    `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.pet_without_gq60_ir_c_sam_st`\n" +
-                "  WHERE\n" +
-                "    (position >= 62050001\n" +
-                "      AND position <= 62090000\n" +
-                "      AND sample IN (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`) )\n" +
-                "    AND position IN (\n" +
-                "    SELECT\n" +
-                "      DISTINCT position\n" +
-                "    FROM\n" +
-                "      `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam`\n" +
-                "    WHERE\n" +
-                "      position >= 62050001\n" +
-                "      AND position <= 62090000\n" +
-                "      AND sample IN (select sample from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.samples_AS_ah`) ) )\n" +
-                "SELECT new_pet.position, ARRAY_AGG(STRUCT( new_pet.sample, state, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_DP, call_GQ, call_PGT, call_PID, call_PL  )) AS values\n" +
-                "FROM\n" +
-                "  new_pet\n" +
-                "LEFT OUTER JOIN\n" +
-                "(select * from `broad-dsp-spec-ops.joint_genotyping_chr20_dalio_40000_july_updated.vet_ir_c_sam` AS vet_inner\n" +
-                "  WHERE\n" +
-                "      vet_inner.position >= 62050001\n" +
-                "      AND vet_inner.position <= 62090000) as vet\n" +
-                "ON\n" +
-                "  (new_pet.position = vet.position\n" +
-                "    AND new_pet.sample = vet.sample)\n" +
-                "GROUP BY position;";
-    }
-
 
 }
