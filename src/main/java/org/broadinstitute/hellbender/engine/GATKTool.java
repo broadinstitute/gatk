@@ -861,6 +861,20 @@ public abstract class GATKTool extends CommandLineProgram {
      * @returns VariantContextWriter must be closed by the caller
      */
     public VariantContextWriter createVCFWriter(final Path outPath) {
+        return createVCFWriter(outPath, outputSitesOnlyVCFs);
+    }
+
+    /**
+     * Creates a VariantContextWriter whose outputFile type is determined by
+     * vcfOutput's extension, using the best available sequence dictionary for
+     * this tool, and default index, leniency and md5 generation settings.  Can
+     * be set to sites-only output independent of engine arguments.
+     *
+     * @param outPath output Path for this writer. May not be null.
+     * @param suppressGenotypes output VCF as sites-only with no genotypes
+     * @returns VariantContextWriter must be closed by the caller
+     */
+    public VariantContextWriter createVCFWriter(final Path outPath, final boolean suppressGenotypes) {
         Utils.nonNull(outPath);
 
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -879,7 +893,7 @@ public abstract class GATKTool extends CommandLineProgram {
             }
         }
 
-        if (outputSitesOnlyVCFs) {
+        if (suppressGenotypes) {
             options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
 

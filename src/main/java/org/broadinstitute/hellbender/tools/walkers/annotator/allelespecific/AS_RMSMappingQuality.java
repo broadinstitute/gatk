@@ -216,7 +216,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         String annotationString = "";
         for (final Allele current : vcAlleles) {
             if (!annotationString.isEmpty()) {
-                annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
             }
             if(perAlleleValues.get(current) != null) {
                 annotationString += String.format(printFormat, perAlleleValues.get(current));
