@@ -193,17 +193,8 @@ public final class AssemblyRegion implements Locatable {
     public AssemblyRegion trim(final SimpleInterval span, final int padding) {
         Utils.nonNull(span, "Active region extent cannot be null");
         Utils.validateArg( padding >= 0, "the padding size must be 0 or greater");
-        final int paddedStart = Math.max(1,span.getStart() - padding);
-        final int maxStop = header.getSequence(span.getContig()).getSequenceLength();
-        final int paddedStop = Math.min(span.getEnd() + padding, maxStop);
-        return trim(span, new SimpleInterval(span.getContig(), paddedStart, paddedStop));
-    }
-
-    /**
-     * Equivalent to trim(span,span).
-     */
-    public AssemblyRegion trim(final SimpleInterval span) {
-        return trim(span, span);
+        final SimpleInterval paddedSpan = span.expandWithinContig(padding, header.getSequenceDictionary());
+        return trim(span, paddedSpan);
     }
 
     /**

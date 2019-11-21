@@ -96,7 +96,7 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
         final SimpleInterval newLocation = new SimpleInterval(originalLocation.getContig(),
                                                   originalLocation.getStart() + length / 2,
                                                   originalLocation.getEnd() - length / 2);
-        final AssemblyRegion newRegion = original.trim(newLocation);
+        final AssemblyRegion newRegion = original.trim(newLocation, newLocation);
 
         final Map<Haplotype,Haplotype> originalHaplotypesByTrimmed = new HashMap<>(haplotypesAndResultSets.size());
         for (final Haplotype h : haplotypesAndResultSets.keySet())

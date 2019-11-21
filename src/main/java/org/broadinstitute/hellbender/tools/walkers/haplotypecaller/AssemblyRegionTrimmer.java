@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Helper component to manage active region trimming
@@ -20,11 +21,6 @@ import java.util.*;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class AssemblyRegionTrimmer {
-
-    /**
-     * Holds the extension to be used
-     */
-    private int usableExtension;
 
     private ReadThreadingAssemblerArgumentCollection assemblyArgs;
 
@@ -51,7 +47,6 @@ public final class AssemblyRegionTrimmer {
         this.assemblyArgs = Utils.nonNull(assemblyArgs);;
         this.sequenceDictionary = sequenceDictionary;
         checkUserArguments();
-        usableExtension = this.assemblyArgs.extension;
     }
 
     /**
@@ -93,44 +88,26 @@ public final class AssemblyRegionTrimmer {
         protected final SimpleInterval paddedSpan;
 
         /**
-         * Holds the collection of callable events within the variant trimming region.
-         */
-        protected final List<VariantContext> variants;
-
-        /**
-         * Holds variant-containing callable region.
-         * <p/>
-         * This is lazy-initialized using {@link #variantSpan}.
-         */
-        protected AssemblyRegion variantRegion;
-
-
-        /**
          * Creates a trimming result given all its properties.
          * @param originalRegion the original active region.
-         * @param overlappingEvents contained callable variation events.
-         * @param paddedSpan final trimmed variant span including the extension.
          * @param variantSpan variant containing span without padding.
+         * @param paddedSpan final trimmed variant span including the extension.
          */
-        protected Result(final AssemblyRegion originalRegion,
-                         final List<VariantContext> overlappingEvents,
-                         final SimpleInterval paddedSpan,
-                         final SimpleInterval variantSpan) {
+        protected Result(final AssemblyRegion originalRegion, final SimpleInterval variantSpan, final SimpleInterval paddedSpan) {
             this.originalRegion = originalRegion;
-            variants = overlappingEvents;
             this.variantSpan = variantSpan;
             this.paddedSpan = paddedSpan;
 
-            Utils.validateArg(paddedSpan == null || variantSpan == null || paddedSpan.contains(variantSpan), "the extended callable span must include the callable span");
+            Utils.validateArg(paddedSpan == null || variantSpan == null || paddedSpan.contains(variantSpan), "the padded span must include the variant span");
         }
-        
+
         /**
          * Checks whether there is any variation present in the target region.
          *
          * @return {@code true} if there is any variant, {@code false} otherwise.
          */
         public boolean isVariationPresent() {
-            return ! variants.isEmpty();
+            return variantSpan != null;
         }
 
         /**
@@ -141,12 +118,8 @@ public final class AssemblyRegionTrimmer {
          * @return never {@code null}.
          */
         public AssemblyRegion getVariantRegion() {
-            if (variantRegion == null && paddedSpan != null) {
-                variantRegion = originalRegion.trim(variantSpan, paddedSpan);
-            } else if (paddedSpan == null) {
-                throw new IllegalStateException("there is no variation thus no variant region");
-            }
-            return variantRegion;
+            Utils.validate(isVariationPresent(), "There is no variation present.");
+            return originalRegion.trim(variantSpan, paddedSpan);
         }
 
         /**
@@ -183,7 +156,7 @@ public final class AssemblyRegionTrimmer {
          * Creates a result indicating that no variation was found.
          */
         protected static Result noVariation(final AssemblyRegion targetRegion) {
-            return new Result(targetRegion, Collections.emptyList(), null, null);
+            return new Result(targetRegion, null, null);
         }
     }
 
@@ -191,51 +164,34 @@ public final class AssemblyRegionTrimmer {
      * Returns a trimming result object from which the variant trimmed region and flanking non-variant sections
      * can be recovered latter.
      *
-     * @param originalRegion the genome location range to trim.
-     * @param allVariantsWithinExtendedRegion list of variants contained in the trimming location. Variants therein
-     *                                        not overlapping with {@code originalRegion} are simply ignored.
+     * @param region the genome location range to trim.
+     * @param variants list of variants contained in the trimming location. Variants therein
+     *                                        not overlapping with {@code region} are simply ignored.
      * @return never {@code null}.
      */
-    public Result trim(final AssemblyRegion originalRegion, final SortedSet<VariantContext> allVariantsWithinExtendedRegion) {
-        if ( allVariantsWithinExtendedRegion.isEmpty() ) // no variants,
-        {
-            return Result.noVariation(originalRegion);
+    public Result trim(final AssemblyRegion region, final SortedSet<VariantContext> variants) {
+        final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
+
+        if ( variantsInRegion.isEmpty() ) {
+            return Result.noVariation(region);
         }
 
-        final List<VariantContext> withinActiveRegion = new LinkedList<>();
-        final SimpleInterval originalRegionRange = originalRegion.getSpan();
-        boolean foundNonSnp = false;
-        SimpleInterval variantSpan = null;
-        for ( final VariantContext vc : allVariantsWithinExtendedRegion ) {
-            final SimpleInterval vcLoc = new SimpleInterval(vc);
-            if ( originalRegionRange.overlaps(vcLoc) ) {
-                foundNonSnp = foundNonSnp || ! vc.isSNP();
-                variantSpan = variantSpan == null ? vcLoc : variantSpan.spanWith(vcLoc);
-                withinActiveRegion.add(vc);
-            }
-        }
+        final int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
+        final int maxEnd = variantsInRegion.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+        final SimpleInterval variantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
+
+        final boolean foundNonSnp = variantsInRegion.stream().anyMatch(vc -> !vc.isSNP());
         final int padding = foundNonSnp ? assemblyArgs.indelPadding : assemblyArgs.snpPadding;
-
-        // we don't actually have anything in the region after skipping out variants that don't overlap
-        // the region's full location
-        if ( variantSpan == null ) {
-            return Result.noVariation(originalRegion);
-        }
-
-        final SimpleInterval finalSpan = originalRegionRange.expandWithinContig(usableExtension, sequenceDictionary).intersect(variantSpan.expandWithinContig(padding, sequenceDictionary)).mergeWithContiguous(variantSpan);
-
-        // Make double sure that, if we are emitting GVCF we won't call non-variable positions beyond the target active region span.
-        // In regular call we don't do so so we don't care and we want to maintain behavior, so the conditional.
-        final SimpleInterval callableSpan = variantSpan.intersect(originalRegionRange);
+        final SimpleInterval paddedVariantSpan = variantSpan.expandWithinContig(padding, sequenceDictionary);
 
         if ( assemblyArgs.debugAssembly ) {
-            logger.info("events       : " + withinActiveRegion);
-            logger.info("region       : " + originalRegion);
-            logger.info("variantSpan : " + callableSpan);
-            logger.info("finalSpan    : " + finalSpan);
+            logger.info("events       : " + variantsInRegion);
+            logger.info("region       : " + region);
+            logger.info("variantSpan  : " + variantSpan);
+            logger.info("paddedSpan   : " + paddedVariantSpan);
         }
 
-        return new Result(originalRegion, withinActiveRegion, finalSpan, variantSpan);
+        return new Result(region, variantSpan, paddedVariantSpan);
     }
 
 }

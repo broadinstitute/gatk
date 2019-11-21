@@ -268,7 +268,7 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
     @Test(dataProvider = "TrimAssemblyRegionData")
     public void testTrimAssemblyRegion(final SimpleInterval regionLoc, final int extension, final SimpleInterval desiredSpan, final SimpleInterval expectedAssemblyRegion, final int expectedExtension) {
         final AssemblyRegion region = new AssemblyRegion(regionLoc, true, extension, header);
-        final AssemblyRegion trimmed = region.trim(desiredSpan);
+        final AssemblyRegion trimmed = region.trim(desiredSpan, desiredSpan);
         Assert.assertEquals(trimmed.getSpan(), expectedAssemblyRegion, "Incorrect region");
         Assert.assertEquals(trimmed.getPadding(), expectedExtension, "Incorrect region");
     }
