@@ -35,12 +35,6 @@ public final class AssemblyRegionTrimmer {
      */
     private int usableExtension;
 
-    /**
-     * Records whether the trimming intervals are going to be used to emit reference confidence, {@code true},
-     * or regular HC output {@code false}.
-     */
-    private boolean emitReferenceConfidence;
-
     private ReadThreadingAssemblerArgumentCollection assemblyArgs;
 
     private SAMSequenceDictionary sequenceDictionary;
@@ -58,14 +52,11 @@ public final class AssemblyRegionTrimmer {
      *
      * @param assemblyArgs user arguments for the trimmer
      * @param sequenceDictionary dictionary to determine the bounds of contigs
-     * @param emitReferenceConfidence indicates whether we plan to use this trimmer to generate trimmed regions
-     *                                to be used for emitting reference confidence.
-     *
      * @throws IllegalStateException if this trim calculator has already been initialized.
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public void initialize(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary, final boolean emitReferenceConfidence) {
+    public void initialize(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary) {
         Utils.validate(this.assemblyArgs == null, () -> getClass().getSimpleName() + " instance initialized twice");
 
         this.assemblyArgs = Utils.nonNull(assemblyArgs);;
@@ -74,7 +65,6 @@ public final class AssemblyRegionTrimmer {
         checkUserArguments();
         this.debug = assemblyArgs.debugAssembly;
         usableExtension = this.assemblyArgs.extension;
-        this.emitReferenceConfidence = emitReferenceConfidence;
     }
 
     /**
@@ -233,15 +223,8 @@ public final class AssemblyRegionTrimmer {
         private AssemblyRegion rightFlankRegion;
 
         /**
-         * Whether the variant trimmed region is going to be used for emitting reference confidence records.
-         */
-        private final boolean emitReferenceConfidence;
-
-        /**
          * Creates a trimming result given all its properties.
-         *
-         * @param emitReferenceConfidence whether reference confidence output modes are on.
-         * @param needsTrimming whether there is any trimming needed at all.
+         *  @param needsTrimming whether there is any trimming needed at all.
          * @param originalRegion the original active region.
          * @param padding padding around contained callable variation events.
          * @param extension the extension applied to the trimmed variant span.
@@ -252,8 +235,7 @@ public final class AssemblyRegionTrimmer {
          * @param maximumSpan maximum possible trimmed span based on the input original active region extended span.
          * @param callableSpan variant containing span without padding.
          */
-        protected Result(final boolean emitReferenceConfidence,
-                         final boolean needsTrimming,
+        protected Result(final boolean needsTrimming,
                          final AssemblyRegion originalRegion,
                          final int padding,
                          final int extension,
@@ -263,7 +245,6 @@ public final class AssemblyRegionTrimmer {
                          final SimpleInterval idealSpan,
                          final SimpleInterval maximumSpan,
                          final SimpleInterval callableSpan) {
-            this.emitReferenceConfidence = emitReferenceConfidence;
             this.needsTrimming = needsTrimming;
             this.originalRegion = originalRegion;
             this.nonVariantFlanks = nonVariantFlanks;
@@ -304,10 +285,7 @@ public final class AssemblyRegionTrimmer {
          */
         public AssemblyRegion getCallableRegion() {
             if (callableRegion == null && extendedSpan != null) {
-                //TODO this conditional is a patch to retain the current standard HC run behaviour
-                //TODO we should simply remove this difference between trimming with or without GVCF
-                //TODO embracing slight changes in the standard HC output
-                callableRegion = emitReferenceConfidence ? originalRegion.trim(callableSpan, extendedSpan) : originalRegion.trim(extendedSpan);
+                callableRegion = originalRegion.trim(callableSpan, extendedSpan);
             } else if (extendedSpan == null) {
                 throw new IllegalStateException("there is no variation thus no variant region");
             }
@@ -361,11 +339,10 @@ public final class AssemblyRegionTrimmer {
         /**
          * Creates a result indicating that there was no trimming to be done.
          */
-        protected static Result noTrimming(final boolean emitReferenceConfidence,
-                                           final AssemblyRegion targetRegion, final int padding,
-                                           final int usableExtension,final List<VariantContext> events) {
+        protected static Result noTrimming(final AssemblyRegion targetRegion, final int padding,
+                                           final int usableExtension, final List<VariantContext> events) {
             final SimpleInterval targetRegionLoc = targetRegion.getSpan();
-            final Result result = new Result(emitReferenceConfidence,false,targetRegion,padding,usableExtension,events,Pair.of(null, null),
+            final Result result = new Result(false,targetRegion,padding,usableExtension,events,Pair.of(null, null),
                     targetRegionLoc,targetRegionLoc,targetRegionLoc,targetRegionLoc);
             result.callableRegion = targetRegion;
             return result;
@@ -374,9 +351,9 @@ public final class AssemblyRegionTrimmer {
         /**
          * Creates a result indicating that no variation was found.
          */
-        protected static Result noVariation(final boolean emitReferenceConfidence, final AssemblyRegion targetRegion,
+        protected static Result noVariation(final AssemblyRegion targetRegion,
                                             final int padding, final int usableExtension) {
-            final Result result = new Result(emitReferenceConfidence,false,targetRegion,padding,usableExtension,
+            final Result result = new Result(false,targetRegion,padding,usableExtension,
                     Collections.emptyList(), Pair.of(targetRegion.getSpan(), null),
                     null, null, null, null);
             result.leftFlankRegion = targetRegion;
@@ -399,7 +376,7 @@ public final class AssemblyRegionTrimmer {
 
         if ( allVariantsWithinExtendedRegion.isEmpty() ) // no variants,
         {
-            return Result.noVariation(emitReferenceConfidence, originalRegion, assemblyArgs.snpPadding, usableExtension);
+            return Result.noVariation(originalRegion, assemblyArgs.snpPadding, usableExtension);
         }
 
         final List<VariantContext> withinActiveRegion = new LinkedList<>();
@@ -419,11 +396,11 @@ public final class AssemblyRegionTrimmer {
         // we don't actually have anything in the region after skipping out variants that don't overlap
         // the region's full location
         if ( variantSpan == null ) {
-            return Result.noVariation(emitReferenceConfidence, originalRegion, padding, usableExtension);
+            return Result.noVariation(originalRegion, padding, usableExtension);
         }
 
         if ( assemblyArgs.dontTrimActiveRegions) {
-            return Result.noTrimming(emitReferenceConfidence, originalRegion, padding, usableExtension, withinActiveRegion);
+            return Result.noTrimming(originalRegion, padding, usableExtension, withinActiveRegion);
         }
 
         final SimpleInterval maximumSpan = originalRegionRange.expandWithinContig(usableExtension, sequenceDictionary);
@@ -432,7 +409,7 @@ public final class AssemblyRegionTrimmer {
 
         // Make double sure that, if we are emitting GVCF we won't call non-variable positions beyond the target active region span.
         // In regular call we don't do so so we don't care and we want to maintain behavior, so the conditional.
-        final SimpleInterval callableSpan = emitReferenceConfidence ? variantSpan.intersect(originalRegionRange) : variantSpan;
+        final SimpleInterval callableSpan = variantSpan.intersect(originalRegionRange);
 
         final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
 
@@ -446,7 +423,7 @@ public final class AssemblyRegionTrimmer {
             logger.info("finalSpan    : " + finalSpan);
         }
 
-        return new Result(emitReferenceConfidence,true,originalRegion,padding, usableExtension,withinActiveRegion,nonVariantRegions,finalSpan,idealSpan,maximumSpan,variantSpan);
+        return new Result(true,originalRegion,padding, usableExtension,withinActiveRegion,nonVariantRegions,finalSpan,idealSpan,maximumSpan,variantSpan);
     }
 
     /**
