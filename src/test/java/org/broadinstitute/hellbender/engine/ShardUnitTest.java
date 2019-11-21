@@ -150,7 +150,7 @@ public class ShardUnitTest extends GATKBaseTest {
         for ( int i = 0; i < shards.size(); ++i ) {
             final ShardBoundary shard = shards.get(i);
             Assert.assertEquals(shard.getInterval(), expectedShards.get(i).getInterval(), "Shard has wrong size");
-            Assert.assertEquals(shard.getPaddedInterval(), expectedShards.get(i).getPaddedInterval(), "Shard has wrong amount of padding");
+            Assert.assertEquals(shard.getPaddedSpan(), expectedShards.get(i).getPaddedSpan(), "Shard has wrong amount of padding");
         }
     }
 

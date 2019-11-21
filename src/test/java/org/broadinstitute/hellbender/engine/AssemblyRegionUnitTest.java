@@ -43,7 +43,7 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
     public void testConstructor(){
         final SimpleInterval loc = new SimpleInterval("1", 10, 20);
         final AssemblyRegion ar = new AssemblyRegion(loc, 2, header);
-        Assert.assertEquals(ar.getExtension(), 2);
+        Assert.assertEquals(ar.getPadding(), 2);
         Assert.assertEquals(ar.isActive(), true);
         Assert.assertEquals(ar.getSpan(), loc);
         Assert.assertEquals(ar.getHeader(), header);
@@ -71,17 +71,17 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         final AssemblyRegion region = new AssemblyRegion(loc, isActive, extension, header);
         Assert.assertFalse(region.isFinalized());
         Assert.assertEquals(region.getSpan(), loc);
-        Assert.assertEquals(region.getExtendedSpan().getStart(), Math.max(loc.getStart() - extension, 1));
-        Assert.assertEquals(region.getExtendedSpan().getEnd(), Math.min(loc.getEnd() + extension, contigLength));
+        Assert.assertEquals(region.getPaddedSpan().getStart(), Math.max(loc.getStart() - extension, 1));
+        Assert.assertEquals(region.getPaddedSpan().getEnd(), Math.min(loc.getEnd() + extension, contigLength));
         Assert.assertEquals(region.isActive(), isActive);
-        Assert.assertEquals(region.getExtension(), extension);
+        Assert.assertEquals(region.getPadding(), extension);
         Assert.assertEquals(region.getReads(), Collections.emptyList());
         Assert.assertEquals(region.size(), 0);
         Assert.assertNotNull(region.toString());
 
-        assertGoodReferenceGetter(region.getAssemblyRegionReference(seq), region.getExtendedSpan(), 0);
-        assertGoodReferenceGetter(region.getAssemblyRegionReference(seq, 0), region.getExtendedSpan(), 0);
-        assertGoodReferenceGetter(region.getAssemblyRegionReference(seq, 10), region.getExtendedSpan(), 10);
+        assertGoodReferenceGetter(region.getAssemblyRegionReference(seq), region.getPaddedSpan(), 0);
+        assertGoodReferenceGetter(region.getAssemblyRegionReference(seq, 0), region.getPaddedSpan(), 0);
+        assertGoodReferenceGetter(region.getAssemblyRegionReference(seq, 10), region.getPaddedSpan(), 10);
 
         region.setFinalized(false);
         Assert.assertFalse(region.isFinalized());
@@ -129,32 +129,32 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         final AssemblyRegion region = new AssemblyRegion(loc, true, 0, header);
         Assert.assertEquals(region.getReads(), Collections.emptyList());
         Assert.assertEquals(region.size(), 0);
-        Assert.assertEquals(region.getExtendedSpan(), loc);
+        Assert.assertEquals(region.getPaddedSpan(), loc);
 
         region.add(read);
         Assert.assertEquals(region.getReads(), Collections.singletonList(read));
         Assert.assertEquals(region.size(), 1);
-        Assert.assertEquals(region.getExtendedSpan(), loc);
+        Assert.assertEquals(region.getPaddedSpan(), loc);
 
         region.clearReads();
         Assert.assertEquals(region.getReads(), Collections.emptyList());
         Assert.assertEquals(region.size(), 0);
-        Assert.assertEquals(region.getExtendedSpan(), loc);
+        Assert.assertEquals(region.getPaddedSpan(), loc);
 
         region.addAll(Collections.singleton(read));
         Assert.assertEquals(region.getReads(), Collections.singletonList(read));
         Assert.assertEquals(region.size(), 1);
-        Assert.assertEquals(region.getExtendedSpan(), loc);
+        Assert.assertEquals(region.getPaddedSpan(), loc);
 
         region.removeAll(Collections.<GATKRead>emptySet());
         Assert.assertEquals(region.getReads(), Collections.singletonList(read));
         Assert.assertEquals(region.size(), 1);
-        Assert.assertEquals(region.getExtendedSpan(), loc);
+        Assert.assertEquals(region.getPaddedSpan(), loc);
 
         region.removeAll(Collections.singleton(read));
         Assert.assertEquals(region.getReads(), Collections.emptyList());
         Assert.assertEquals(region.size(), 0);
-        Assert.assertEquals(region.getExtendedSpan(), loc);
+        Assert.assertEquals(region.getPaddedSpan(), loc);
 
         final GATKRead read2 = read.copy();
         read2.setName(read.getName() + ".clone");
@@ -165,7 +165,7 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
             region.removeAll(Collections.singleton(readToDiscard));
             Assert.assertEquals(region.getReads(), Arrays.asList(readToKeep));
             Assert.assertEquals(region.size(), 1);
-            Assert.assertEquals(region.getExtendedSpan(), loc);
+            Assert.assertEquals(region.getPaddedSpan(), loc);
         }
     }
 
@@ -275,7 +275,7 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
             final AssemblyRegion actual = regions.get(i);
             Assert.assertEquals(actual.getSpan(), expected, "Bad region after split");
             Assert.assertEquals(actual.isActive(), region.isActive());
-            Assert.assertEquals(actual.getExtension(), region.getExtension());
+            Assert.assertEquals(actual.getPadding(), region.getPadding());
         }
     }
 
@@ -347,6 +347,6 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         final AssemblyRegion region = new AssemblyRegion(regionLoc, true, extension, header);
         final AssemblyRegion trimmed = region.trim(desiredSpan);
         Assert.assertEquals(trimmed.getSpan(), expectedAssemblyRegion, "Incorrect region");
-        Assert.assertEquals(trimmed.getExtension(), expectedExtension, "Incorrect region");
+        Assert.assertEquals(trimmed.getPadding(), expectedExtension, "Incorrect region");
     }
 }

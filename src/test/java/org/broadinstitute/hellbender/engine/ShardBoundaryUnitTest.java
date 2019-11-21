@@ -17,7 +17,7 @@ public class ShardBoundaryUnitTest extends GATKBaseTest {
         Assert.assertEquals(shardBoundary.getStart(), INNER.getStart());
         Assert.assertEquals(shardBoundary.getEnd(), INNER.getEnd());
         Assert.assertEquals(shardBoundary.getInterval(), INNER);
-        Assert.assertEquals(shardBoundary.getPaddedInterval(), OUTER);
+        Assert.assertEquals(shardBoundary.getPaddedSpan(), OUTER);
     }
 
     @DataProvider

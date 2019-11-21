@@ -13,10 +13,8 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCall
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.testng.Assert;
@@ -83,9 +81,9 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
                 final int regionContigLength = readsDictionary.getSequence(region.getSpan().getContig()).getSequenceLength();
                 final int expectedLeftRegionPadding = region.getSpan().getStart() - assemblyRegionPadding > 0 ? assemblyRegionPadding : region.getSpan().getStart() - 1;
                 final int expectedRightRegionPadding = region.getSpan().getEnd() + assemblyRegionPadding <= regionContigLength ? assemblyRegionPadding : regionContigLength - region.getSpan().getEnd();
-                Assert.assertEquals(region.getSpan().getStart() - region.getExtendedSpan().getStart(), expectedLeftRegionPadding, "Wrong amount of padding on the left side of the region");
-                Assert.assertEquals(region.getExtendedSpan().getEnd() - region.getSpan().getEnd(), expectedRightRegionPadding, "Wrong amount of padding on the right side of the region");
-                final SimpleInterval regionInterval = region.getExtendedSpan();
+                Assert.assertEquals(region.getSpan().getStart() - region.getPaddedSpan().getStart(), expectedLeftRegionPadding, "Wrong amount of padding on the left side of the region");
+                Assert.assertEquals(region.getPaddedSpan().getEnd() - region.getSpan().getEnd(), expectedRightRegionPadding, "Wrong amount of padding on the right side of the region");
+                final SimpleInterval regionInterval = region.getPaddedSpan();
                 final List<GATKRead> regionActualReads = region.getReads();
 
                 if ( previousRegion != null ) {

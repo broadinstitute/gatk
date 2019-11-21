@@ -5,7 +5,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
@@ -94,7 +93,7 @@ public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalker
 
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("%s assembly region at %s (%s with padding), containing %d reads.\n\n",
-                    region.isActive() ? "ACTIVE" : "INACTIVE", region.getSpan(), region.getExtendedSpan(), region.getReads().size()));
+                    region.isActive() ? "ACTIVE" : "INACTIVE", region.getSpan(), region.getPaddedSpan(), region.getReads().size()));
             sb.append(String.format("\tOverlapping reference bases: %s\n\n", new String(referenceContext.getBases())));
 
             if ( featureContext.hasBackingDataSource() ) {

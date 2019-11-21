@@ -158,7 +158,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
             // (this ensures that we've loaded all reads that belong in the new region)
-            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(pileup.getLocation(), pendingRegions.peek().getExtendedSpan(), readHeader.getSequenceDictionary()) ) {
+            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(pileup.getLocation(), pendingRegions.peek().getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
                 nextRegion = pendingRegions.poll();
             }
         }
@@ -198,7 +198,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         // First we need to check the previous region for reads that also belong in this region
         if ( previousRegionReads != null ) {
             for ( final GATKRead previousRegionRead : previousRegionReads ) {
-                if ( region.getExtendedSpan().overlaps(previousRegionRead) ) {
+                if ( region.getPaddedSpan().overlaps(previousRegionRead) ) {
                     region.add(previousRegionRead);
                 }
             }
@@ -214,7 +214,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             // Stop once we encounter a read that starts after the end of the last region's span
             // (and leave it in the readCache)
-            if ( IntervalUtils.isAfter(nextRead, region.getExtendedSpan(), readHeader.getSequenceDictionary()) ) {
+            if ( IntervalUtils.isAfter(nextRead, region.getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
                 break;
             }
 
@@ -223,7 +223,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
             // Add the read if it overlaps the region's extended span. If it doesn't, it must end before the
             // start of the region's extended span, so we discard it.
-            if ( region.getExtendedSpan().overlaps(nextRead) ) {
+            if ( region.getPaddedSpan().overlaps(nextRead) ) {
                 region.add(nextRead);
             }
         }

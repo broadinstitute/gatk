@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * Region of the genome that gets assembled by the local assembly engine.
  *
  * As AssemblyRegion is defined by two intervals -- a primary interval containing a territory for variant calling and a second,
- * extended, interval for assembly -- as well as the reads overlapping the extended interval.  Although we do not call variants in the extended interval,
+ * padded, interval for assembly -- as well as the reads overlapping the padded interval.  Although we do not call variants in the padded interval,
  * assembling over a larger territory improves calls in the primary territory.
  *
  * This concept is complicated somewhat by the fact that these intervals are mutable and the fact that the AssemblyRegion onject lives on after
@@ -26,11 +26,11 @@ import java.util.stream.Collectors;
  * Suppose that the HaplotypeCaller engine finds an evidence for a het in a pileup at locus 400 -- that is, it produces
  * an {@code ActivityProfileState} with non-zero probability at site 400 and passes it to its {@code ActivityProfile}.
  * The {@code ActivityProfile} eventually produces an AssemblyRegion based on the {@code AssemblyRegionArgumentCollection} parameters.
- * Let's suppose that this initial region has primary span 350-450 and extended span 100 - 700.
+ * Let's suppose that this initial region has primary span 350-450 and padded span 100 - 700.
  *
- * Next, the assembly engine assembles all reads that overlap the extended interval to find variant haplotypes and the variants
+ * Next, the assembly engine assembles all reads that overlap the padded interval to find variant haplotypes and the variants
  * they contain.  The AssemblyRegion is then trimmed down to a new primary interval bound by all assembled variants within the original primary interval
- * and a new extended interval.  The amount of padding of the new extended interval around the variants depends on the needs of local realignment
+ * and a new padded interval.  The amount of padding of the new padded interval around the variants depends on the needs of local realignment
  * and as such need not equal the original padding that was used for assembly.
  */
 public final class AssemblyRegion implements Locatable {
@@ -44,20 +44,20 @@ public final class AssemblyRegion implements Locatable {
     private final List<GATKRead> reads;
 
     /**
-     * The raw span of this assembly region, not including the region extension
+     * The active span in which this AssemblyRegion is responsible for calling variants
      */
-    private final SimpleInterval activeRegionLoc;
+    private final SimpleInterval activeSpan;
 
     /**
-     * The span of this assembly region on the genome, including the region extension
+     * The padded span in which we perform assembly etc in order to call variants within the active span
      */
-    private final SimpleInterval extendedLoc;
+    private final SimpleInterval paddedSpan;
 
     /**
-     * The extension, in bp, of this region. The extension is >= 0 bp in size, and indicates how much padding was
+     * The padding, in bp, of this region. The padding is >= 0 bp in size, and indicates how much padding was
      * requested for the region.
      */
-    private final int extension;
+    private final int padding;
 
     /**
      * Does this region represent an active region (all isActiveProbs above threshold) or
@@ -72,22 +72,22 @@ public final class AssemblyRegion implements Locatable {
 
     /**
      * Create a new AssemblyRegion containing no reads
-     *  @param activeRegionLoc the span of this active region
+     *  @param activeSpan the span of this active region
      * @param isActive indicates whether this is an active region, or an inactive one
-     * @param extension the active region extension to use for this active region
+     * @param padding the active region padding to use for this active region
      */
-    public AssemblyRegion(final SimpleInterval activeRegionLoc, final boolean isActive, final int extension, final SAMFileHeader header) {
-        Utils.nonNull(activeRegionLoc, "activeRegionLoc cannot be null");
+    public AssemblyRegion(final SimpleInterval activeSpan, final boolean isActive, final int padding, final SAMFileHeader header) {
+        Utils.nonNull(activeSpan, "activeSpan cannot be null");
         Utils.nonNull(header, "header cannot be null");
-        Utils.validateArg( activeRegionLoc.size() > 0, () -> "Active region cannot be of zero size, but got " + activeRegionLoc);
-        Utils.validateArg( extension >= 0, () -> "extension cannot be < 0 but got " + extension);
+        Utils.validateArg( activeSpan.size() > 0, () -> "Active region cannot be of zero size, but got " + activeSpan);
+        Utils.validateArg( padding >= 0, () -> "padding cannot be < 0 but got " + padding);
 
         this.header = header;
         this.reads = new ArrayList<>();
-        this.activeRegionLoc = activeRegionLoc;
+        this.activeSpan = activeSpan;
         this.isActive = isActive;
-        this.extension = extension;
-        this.extendedLoc = trimIntervalToContig(activeRegionLoc.getContig(), activeRegionLoc.getStart() - extension, activeRegionLoc.getEnd() + extension);
+        this.padding = padding;
+        this.paddedSpan = trimIntervalToContig(activeSpan.getContig(), activeSpan.getStart() - padding, activeSpan.getEnd() + padding);
     }
 
     /**
@@ -110,28 +110,28 @@ public final class AssemblyRegion implements Locatable {
     /**
      * Simple interface to create an assembly region that isActive without any profile state
      */
-    public AssemblyRegion(final SimpleInterval activeRegionLoc, final int extension, final SAMFileHeader header) {
-        this(activeRegionLoc, true, extension, header);
+    public AssemblyRegion(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
+        this(activeSpan, true, padding, header);
     }
 
     @Override
     public String getContig() {
-        return activeRegionLoc.getContig();
+        return activeSpan.getContig();
     }
 
     @Override
     public int getStart() {
-        return activeRegionLoc.getStart();
+        return activeSpan.getStart();
     }
 
     @Override
     public int getEnd() {
-        return activeRegionLoc.getEnd();
+        return activeSpan.getEnd();
     }
 
     @Override
     public String toString() {
-        return "AssemblyRegion "  + activeRegionLoc.toString() + " active?=" + isActive + " nReads=" + reads.size();
+        return "AssemblyRegion "  + activeSpan.toString() + " active?=" + isActive + " nReads=" + reads.size();
     }
 
     /**
@@ -155,16 +155,16 @@ public final class AssemblyRegion implements Locatable {
     }
 
     /**
-     * Get the span of this assembly region including the extension value
+     * Get the span of this assembly region including the padding value
      * @return a non-null SimpleInterval
      */
-    public SimpleInterval getExtendedSpan() { return extendedLoc; }
+    public SimpleInterval getPaddedSpan() { return paddedSpan; }
 
     /**
-     * Get the raw span of this assembly region (excluding the extension)
+     * Get the raw span of this assembly region (excluding the padding)
      * @return a non-null SimpleInterval
      */
-    public SimpleInterval getSpan() { return activeRegionLoc; }
+    public SimpleInterval getSpan() { return activeSpan; }
 
     /**
      * Get an unmodifiable copy of the list of reads currently in this assembly region.
@@ -198,8 +198,8 @@ public final class AssemblyRegion implements Locatable {
      */
     public List<AssemblyRegion> splitAndTrimToIntervals(final Set<SimpleInterval> intervals) {
         return intervals.stream()
-                .filter(loc -> loc.overlaps(activeRegionLoc))
-                .map(gl -> trim(gl, extension))
+                .filter(loc -> loc.overlaps(activeSpan))
+                .map(gl -> trim(gl, padding))
                 .collect(Collectors.toList());
     }
 
@@ -207,17 +207,16 @@ public final class AssemblyRegion implements Locatable {
      * Trim this region to just the span, producing a new assembly region without any reads that has only
      * the extent of newExtend intersected with the current extent
      * @param span the new extend of the active region we want
-     * @param extensionSize the extensionSize size we want for the newly trimmed active region
+     * @param padding the padding size we want for the newly trimmed active region
      * @return a non-null, empty assembly region
      */
-    public AssemblyRegion trim(final SimpleInterval span, final int extensionSize) {
+    public AssemblyRegion trim(final SimpleInterval span, final int padding) {
         Utils.nonNull(span, "Active region extent cannot be null");
-        Utils.validateArg( extensionSize >= 0, "the extensionSize size must be 0 or greater");
-        final int extendStart = Math.max(1,span.getStart() - extensionSize);
+        Utils.validateArg( padding >= 0, "the padding size must be 0 or greater");
+        final int paddedStart = Math.max(1,span.getStart() - padding);
         final int maxStop = header.getSequence(span.getContig()).getSequenceLength();
-        final int extendStop = Math.min(span.getEnd() + extensionSize, maxStop);
-        final SimpleInterval extendedSpan = new SimpleInterval(span.getContig(), extendStart, extendStop);
-        return trim(span, extendedSpan);
+        final int paddedStop = Math.min(span.getEnd() + padding, maxStop);
+        return trim(span, new SimpleInterval(span.getContig(), paddedStart, paddedStop));
     }
 
     /**
@@ -232,42 +231,42 @@ public final class AssemblyRegion implements Locatable {
      * attempts to provide the best possible representation of this region covering the span.
      *
      * The challenge here is that span may (1) be larger than can be represented by this assembly region
-     * + its original extension and (2) the extension must be symmetric on both sides.  This algorithm
+     * + its original padding and (2) the padding must be symmetric on both sides.  This algorithm
      * therefore determines how best to represent span as a subset of the span of this
      * region with a padding value that captures as much of the span as possible.
      *
      * For example, suppose this active region is
      *
-     * Active:    100-200 with extension of 50, so that the true span is 50-250
+     * Active:    100-200 with padding of 50, so that the true span is 50-250
      * NewExtent: 150-225 saying that we'd ideally like to just have bases 150-225
      *
      * Here we represent the assembly region as a region from 150-200 with 25 bp of padding.
      *
      * The overall constraint is that the region can never exceed the original region, and
-     * the extension is chosen to maximize overlap with the desired region
+     * the padding is chosen to maximize overlap with the desired region
      *
      * @param span the new extend of the active region we want
      * @return a non-null, empty active region
      */
-    public AssemblyRegion trim(final SimpleInterval span, final SimpleInterval extendedSpan) {
+    public AssemblyRegion trim(final SimpleInterval span, final SimpleInterval paddedSpan) {
         Utils.nonNull(span, "Active region extent cannot be null");
-        Utils.nonNull(extendedSpan, "Active region extended span cannot be null");
-        Utils.validateArg(extendedSpan.contains(span), "The requested extended span must fully contain the requested span");
+        Utils.nonNull(paddedSpan, "Active region padded span cannot be null");
+        Utils.validateArg(paddedSpan.contains(span), "The requested padded span must fully contain the requested span");
 
         final SimpleInterval subActive = getSpan().intersect(span);
-        final int requiredOnRight = Math.max(extendedSpan.getEnd() - subActive.getEnd(), 0);
-        final int requiredOnLeft = Math.max(subActive.getStart() - extendedSpan.getStart(), 0);
-        final int requiredExtension = Math.min(Math.max(requiredOnLeft, requiredOnRight), getExtension());
+        final int requiredOnRight = Math.max(paddedSpan.getEnd() - subActive.getEnd(), 0);
+        final int requiredOnLeft = Math.max(subActive.getStart() - paddedSpan.getStart(), 0);
+        final int requiredPadding = Math.min(Math.max(requiredOnLeft, requiredOnRight), getPadding());
 
-        final AssemblyRegion result = new AssemblyRegion( subActive, isActive, requiredExtension, header );
+        final AssemblyRegion result = new AssemblyRegion( subActive, isActive, requiredPadding, header );
 
-        final SimpleInterval resultExtendedLoc = result.getExtendedSpan();
-        final int resultExtendedLocStart = resultExtendedLoc.getStart();
-        final int resultExtendedLocStop = resultExtendedLoc.getEnd();
+        final SimpleInterval resultPaddedLoc = result.getPaddedSpan();
+        final int resultPaddedLocStart = resultPaddedLoc.getStart();
+        final int resultPaddedLocStop = resultPaddedLoc.getEnd();
 
         final List<GATKRead> trimmedReads = reads.stream()
-                .map(read -> ReadClipper.hardClipToRegion(read, resultExtendedLocStart, resultExtendedLocStop))
-                .filter(read -> !read.isEmpty() && read.overlaps(result.extendedLoc))
+                .map(read -> ReadClipper.hardClipToRegion(read, resultPaddedLocStart, resultPaddedLocStop))
+                .filter(read -> !read.isEmpty() && read.overlaps(result.paddedSpan))
                 .sorted(new ReadCoordinateComparator(header))
                 .collect(Collectors.toList());
 
@@ -281,15 +280,15 @@ public final class AssemblyRegion implements Locatable {
      *
      * Read must have alignment start >= than the last read currently in this active region.
      *
-     * @throws IllegalArgumentException if read doesn't overlap the extended region of this active region
+     * @throws IllegalArgumentException if read doesn't overlap the padded region of this active region
      *
      * @param read a non-null GATKRead
      */
     public void add( final GATKRead read ) {
         Utils.nonNull(read, "Read cannot be null");
         final SimpleInterval readLoc = new SimpleInterval( read );
-        Utils.validateArg(extendedLoc.overlaps(read), () ->
-                "Read location " + readLoc + " doesn't overlap with active region extended span " + extendedLoc);
+        Utils.validateArg(paddedSpan.overlaps(read), () ->
+                "Read location " + readLoc + " doesn't overlap with active region padded span " + paddedSpan);
 
         if ( ! reads.isEmpty() ) {
             final GATKRead lastRead = reads.get(size() - 1);
@@ -333,22 +332,22 @@ public final class AssemblyRegion implements Locatable {
     }
 
     /**
-     * Get the extension applied to this region
+     * Get the padding applied to this region
      *
-     * The extension is >= 0 bp in size, and indicates how much padding was requested for the region
+     * The padding is >= 0 bp in size, and indicates how much padding was requested for the region
      *
-     * @return the size in bp of the region extension
+     * @return the size in bp of the region padding
      */
-    public int getExtension() { return extension; }
+    public int getPadding() { return padding; }
 
     /**
-     * Get the reference bases from referenceReader spanned by the extended location of this region,
+     * Get the reference bases from referenceReader spanned by the padded span of this region,
      * including additional padding bp on either side.  If this expanded region would exceed the boundaries
      * of the active region's contig, the returned result will be truncated to only include on-genome reference
      * bases.
      *
      * @param referenceReader the source of the reference genome bases
-     * @param padding the padding, in BP, we want to add to either side of this active region extended region
+     * @param padding the padding, in BP, we want to add to either side of this active region padded span
      * @param genomeLoc a non-null genome loc indicating the base span of the bp we'd like to get the reference for
      * @return a non-null array of bytes holding the reference bases in referenceReader
      */
@@ -371,17 +370,17 @@ public final class AssemblyRegion implements Locatable {
     }
 
     /**
-     * Get the reference bases from referenceReader spanned by the extended location of this active region,
+     * Get the reference bases from referenceReader spanned by the padded span of this active region,
      * including additional padding bp on either side.  If this expanded region would exceed the boundaries
      * of the active region's contig, the returned result will be truncated to only include on-genome reference
      * bases
      *
      * @param referenceReader the source of the reference genome bases
-     * @param padding the padding, in BP, we want to add to either side of this active region extended region
+     * @param padding the padding, in BP, we want to add to either side of this active region padded region
      * @return a non-null array of bytes holding the reference bases in referenceReader
      */
     public byte[] getAssemblyRegionReference(final ReferenceSequenceFile referenceReader, final int padding ) {
-        return getReference(referenceReader, padding, extendedLoc);
+        return getReference(referenceReader, padding, paddedSpan);
     }
 
     public void setFinalized(final boolean value) {

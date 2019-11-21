@@ -614,7 +614,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
     private void checkReferenceModelResult(final RefConfData data, final List<VariantContext> contexts, final List<Integer> expectedDPs, final List<VariantContext> calls) {
         Assert.assertNotNull(contexts);
 
-        final SimpleInterval loc = data.getActiveRegion().getExtendedSpan();
+        final SimpleInterval loc = data.getActiveRegion().getPaddedSpan();
         final List<Boolean> seenBP = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), false));
 
         for ( int i = 0; i < loc.size(); i++ ) {

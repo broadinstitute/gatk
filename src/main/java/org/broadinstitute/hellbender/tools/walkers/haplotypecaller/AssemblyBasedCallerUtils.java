@@ -115,8 +115,8 @@ public final class AssemblyBasedCallerUtils {
 
             clippedRead = clippedRead.isUnmapped() ? clippedRead : ReadClipper.hardClipAdaptorSequence(clippedRead);
             if ( ! clippedRead.isEmpty() && clippedRead.getCigar().getReadLength() > 0 ) {
-                clippedRead = ReadClipper.hardClipToRegion( clippedRead, region.getExtendedSpan().getStart(), region.getExtendedSpan().getEnd() );
-                if ( clippedRead.getLength() > 0 && clippedRead.overlaps(region.getExtendedSpan())) {
+                clippedRead = ReadClipper.hardClipToRegion( clippedRead, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
+                if ( clippedRead.getLength() > 0 && clippedRead.overlaps(region.getPaddedSpan())) {
                     readsToUse.add((clippedRead == myRead) ? clippedRead.copy() : clippedRead);
                 }
             }
@@ -189,9 +189,9 @@ public final class AssemblyBasedCallerUtils {
     }
 
     public static SimpleInterval getPaddedReferenceLoc(final AssemblyRegion region, final int referencePadding, final ReferenceSequenceFile referenceReader) {
-        final int padLeft = Math.max(region.getExtendedSpan().getStart() - referencePadding, 1);
-        final int padRight = Math.min(region.getExtendedSpan().getEnd() + referencePadding, referenceReader.getSequenceDictionary().getSequence(region.getExtendedSpan().getContig()).getSequenceLength());
-        return new SimpleInterval(region.getExtendedSpan().getContig(), padLeft, padRight);
+        final int padLeft = Math.max(region.getPaddedSpan().getStart() - referencePadding, 1);
+        final int padRight = Math.min(region.getPaddedSpan().getEnd() + referencePadding, referenceReader.getSequenceDictionary().getSequence(region.getPaddedSpan().getContig()).getSequenceLength());
+        return new SimpleInterval(region.getPaddedSpan().getContig(), padLeft, padRight);
     }
 
     public static CachingIndexedFastaSequenceFile createReferenceReader(final String reference) {
@@ -226,7 +226,7 @@ public final class AssemblyBasedCallerUtils {
     public static AssemblyRegion assemblyRegionWithWellMappedReads(final AssemblyRegion originalAssemblyRegion,
                                                                    final int minMappingQuality,
                                                                    final SAMFileHeader readsHeader) {
-        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.isActive(), originalAssemblyRegion.getExtension(), readsHeader);
+        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.isActive(), originalAssemblyRegion.getPadding(), readsHeader);
         originalAssemblyRegion.getReads().stream()
                 .filter(rec -> rec.getMappingQuality() >= minMappingQuality)
                 .forEach(result::add);
@@ -263,7 +263,7 @@ public final class AssemblyBasedCallerUtils {
                                                   final boolean correctOverlappingBaseQualities){
         finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities);
         if( argumentCollection.assemblerArgs.debugAssembly) {
-            logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
+            logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getPaddedSpan() + ")");
         }
 
         final byte[] fullReferenceWithPadding = region.getAssemblyRegionReference(referenceReader, REFERENCE_PADDING_FOR_ASSEMBLY);
@@ -282,7 +282,7 @@ public final class AssemblyBasedCallerUtils {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner);
             if (!givenAlleles.isEmpty()) {
-                addGivenAlleles(region.getExtendedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+                addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
             }
 
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);

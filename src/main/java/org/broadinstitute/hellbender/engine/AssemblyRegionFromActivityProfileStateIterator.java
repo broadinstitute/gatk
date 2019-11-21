@@ -106,7 +106,7 @@ public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
             // (this ensures that we've loaded all reads that belong in the new region)
-            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(profile.getLoc(), pendingRegions.peek().getExtendedSpan(), readHeader.getSequenceDictionary()) ) {
+            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(profile.getLoc(), pendingRegions.peek().getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
                 nextRegion = pendingRegions.poll();
             }
         }

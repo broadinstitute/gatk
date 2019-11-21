@@ -556,7 +556,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final AssemblyResultSet assemblyResult =
-                trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getCallableRegion()) : untrimmedAssemblyResult;
+                trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion()) : untrimmedAssemblyResult;
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
@@ -688,7 +688,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
             filterNonPassingReads(region);
 
-            final SimpleInterval paddedLoc = region.getExtendedSpan();
+            final SimpleInterval paddedLoc = region.getPaddedSpan();
             final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,

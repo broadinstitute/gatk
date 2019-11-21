@@ -96,8 +96,8 @@ public class FindAssemblyRegionsSpark {
                                 assemblyRegionArgs.maxProbPropagationDistance);
                         return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                                 new AssemblyRegionWalkerContext(assemblyRegion,
-                                        new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                                        new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();
+                                        new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),
+                                        new FeatureContext(features, assemblyRegion.getPaddedSpan()))).iterator();
                     }).iterator();
             return Iterators.concat(iterators);
         };
@@ -244,8 +244,8 @@ public class FindAssemblyRegionsSpark {
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
-                            new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                            new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();
+                            new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),
+                            new FeatureContext(features, assemblyRegion.getPaddedSpan()))).iterator();
         };
     }
 }

@@ -98,12 +98,12 @@ public final class AssemblyRegionTrimmer {
          * Holds the smaller range that contain all relevant callable variants in the
          * input active region (not considering the extension).
          */
-        protected final SimpleInterval callableSpan;
+        protected final SimpleInterval variantSpan;
 
         /**
          * The trimmed variant region span including the extension.
          */
-        protected final SimpleInterval extendedSpan;
+        protected final SimpleInterval paddedSpan;
 
         /**
          * Holds the flanking spans that do not contain the callable variants.
@@ -116,14 +116,14 @@ public final class AssemblyRegionTrimmer {
         /**
          * Holds the collection of callable events within the variant trimming region.
          */
-        protected final List<VariantContext> callableEvents;
+        protected final List<VariantContext> variants;
 
         /**
          * Holds variant-containing callable region.
          * <p/>
-         * This is lazy-initialized using {@link #callableSpan}.
+         * This is lazy-initialized using {@link #variantSpan}.
          */
-        protected AssemblyRegion callableRegion;
+        protected AssemblyRegion variantRegion;
 
 
         /**
@@ -147,21 +147,21 @@ public final class AssemblyRegionTrimmer {
          * @param originalRegion the original active region.
          * @param overlappingEvents contained callable variation events.
          * @param nonVariantFlanks pair of non-variant flank spans around the variant containing span.
-         * @param extendedSpan final trimmed variant span including the extension.
-         * @param callableSpan variant containing span without padding.
+         * @param paddedSpan final trimmed variant span including the extension.
+         * @param variantSpan variant containing span without padding.
          */
         protected Result(final AssemblyRegion originalRegion,
                          final List<VariantContext> overlappingEvents,
                          final Pair<SimpleInterval, SimpleInterval> nonVariantFlanks,
-                         final SimpleInterval extendedSpan,
-                         final SimpleInterval callableSpan) {
+                         final SimpleInterval paddedSpan,
+                         final SimpleInterval variantSpan) {
             this.originalRegion = originalRegion;
             this.nonVariantFlanks = nonVariantFlanks;
-            callableEvents = overlappingEvents;
-            this.callableSpan = callableSpan;
-            this.extendedSpan = extendedSpan;
+            variants = overlappingEvents;
+            this.variantSpan = variantSpan;
+            this.paddedSpan = paddedSpan;
 
-            Utils.validateArg(extendedSpan == null || callableSpan == null || extendedSpan.contains(callableSpan), "the extended callable span must include the callable span");
+            Utils.validateArg(paddedSpan == null || variantSpan == null || paddedSpan.contains(variantSpan), "the extended callable span must include the callable span");
         }
 
 
@@ -171,7 +171,7 @@ public final class AssemblyRegionTrimmer {
          * @return {@code true} if there is any variant, {@code false} otherwise.
          */
         public boolean isVariationPresent() {
-            return ! callableEvents.isEmpty();
+            return ! variants.isEmpty();
         }
 
         /**
@@ -188,13 +188,13 @@ public final class AssemblyRegionTrimmer {
          *
          * @return never {@code null}.
          */
-        public AssemblyRegion getCallableRegion() {
-            if (callableRegion == null && extendedSpan != null) {
-                callableRegion = originalRegion.trim(callableSpan, extendedSpan);
-            } else if (extendedSpan == null) {
+        public AssemblyRegion getVariantRegion() {
+            if (variantRegion == null && paddedSpan != null) {
+                variantRegion = originalRegion.trim(variantSpan, paddedSpan);
+            } else if (paddedSpan == null) {
                 throw new IllegalStateException("there is no variation thus no variant region");
             }
-            return callableRegion;
+            return variantRegion;
         }
 
         /**
@@ -222,7 +222,7 @@ public final class AssemblyRegionTrimmer {
          */
         public AssemblyRegion nonVariantLeftFlankRegion() {
             if (leftFlankRegion == null && nonVariantFlanks.getLeft() != null) {
-                leftFlankRegion = originalRegion.trim(nonVariantFlanks.getLeft(), originalRegion.getExtension());
+                leftFlankRegion = originalRegion.trim(nonVariantFlanks.getLeft(), originalRegion.getPadding());
             } else if (nonVariantFlanks.getLeft() == null) {
                 throw new IllegalStateException("there is no left flank non-variant trimmed out region");
             }
@@ -234,7 +234,7 @@ public final class AssemblyRegionTrimmer {
          */
         public AssemblyRegion nonVariantRightFlankRegion() {
             if (rightFlankRegion == null && nonVariantFlanks.getRight() != null) {
-                rightFlankRegion = originalRegion.trim(nonVariantFlanks.getRight(), originalRegion.getExtension());
+                rightFlankRegion = originalRegion.trim(nonVariantFlanks.getRight(), originalRegion.getPadding());
             } else if (nonVariantFlanks.getRight() == null) {
                 throw new IllegalStateException("there is no right flank non-variant trimmed out region");
             }
@@ -249,7 +249,7 @@ public final class AssemblyRegionTrimmer {
             final SimpleInterval targetRegionLoc = targetRegion.getSpan();
             final Result result = new Result(targetRegion, events,Pair.of(null, null),
                     targetRegionLoc, targetRegionLoc);
-            result.callableRegion = targetRegion;
+            result.variantRegion = targetRegion;
             return result;
         }
 
@@ -317,7 +317,7 @@ public final class AssemblyRegionTrimmer {
         if ( debug ) {
             logger.info("events       : " + withinActiveRegion);
             logger.info("region       : " + originalRegion);
-            logger.info("callableSpan : " + callableSpan);
+            logger.info("variantSpan : " + callableSpan);
             logger.info("finalSpan    : " + finalSpan);
         }
 

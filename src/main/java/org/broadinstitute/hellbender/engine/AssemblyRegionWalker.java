@@ -274,8 +274,8 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
             writeAssemblyRegion(assemblyRegion);
 
             apply(assemblyRegion,
-                    new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                    new FeatureContext(features, assemblyRegion.getExtendedSpan()));
+                    new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),
+                    new FeatureContext(features, assemblyRegion.getPaddedSpan()));
 
             // For this traversal, the progress meter unit is the assembly region rather than the read shard
             progressMeter.update(assemblyRegion.getSpan());
@@ -320,8 +320,8 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * and it is up to the implementation how to handle/process active vs. inactive regions.
      *
      * @param region region to process (pre-marked as either active or inactive)
-     * @param referenceContext reference data overlapping the full extended span of the assembly region
-     * @param featureContext features overlapping the full extended span of the assembly region
+     * @param referenceContext reference data overlapping the padded span of the assembly region
+     * @param featureContext features overlapping the padded span of the assembly region
      */
     public abstract void apply( final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext );
 }

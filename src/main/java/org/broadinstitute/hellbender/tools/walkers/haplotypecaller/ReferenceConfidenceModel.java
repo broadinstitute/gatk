@@ -187,7 +187,7 @@ public class ReferenceConfidenceModel {
         Utils.nonNull(activeRegion, "activeRegion cannot be null");
         Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
         Utils.validateArg(readLikelihoods.numberOfSamples() == 1, () -> "readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
-        Utils.validateArg( refHaplotype.length() == activeRegion.getExtendedSpan().size(), () -> "refHaplotype " + refHaplotype.length() + " and activeRegion location size " + activeRegion.getSpan().size() + " are different");
+        Utils.validateArg( refHaplotype.length() == activeRegion.getPaddedSpan().size(), () -> "refHaplotype " + refHaplotype.length() + " and activeRegion location size " + activeRegion.getSpan().size() + " are different");
         Utils.nonNull(ploidyModel, "the ploidy model cannot be null");
         final int ploidy = ploidyModel.samplePloidy(0); // the first sample = the only sample in reference-confidence mode.
 
@@ -197,7 +197,7 @@ public class ReferenceConfidenceModel {
         final List<VariantContext> results = new ArrayList<>(refSpan.size());
         final String sampleName = readLikelihoods.getSample(0);
 
-        final int globalRefOffset = refSpan.getStart() - activeRegion.getExtendedSpan().getStart();
+        final int globalRefOffset = refSpan.getStart() - activeRegion.getPaddedSpan().getStart();
         // Note, we use an indexed for-loop here because this method has a large impact on the profile of HaplotypeCaller runtime in GVCF mode
         final int refPileupsSize = refPileups.size();
         for (int i = 0; i < refPileupsSize; i++) {
@@ -753,7 +753,7 @@ public class ReferenceConfidenceModel {
         Utils.nonNull(refBases, "null refBases");
         Utils.nonNull(paddedReferenceLoc, "null paddedReferenceLoc");
 
-        final int alignmentStart = activeRegion.getExtendedSpan().getStart() - paddedReferenceLoc.getStart();
+        final int alignmentStart = activeRegion.getPaddedSpan().getStart() - paddedReferenceLoc.getStart();
         if ( alignmentStart < 0 ) {
             throw new IllegalStateException("Bad alignment start in createReferenceHaplotype " + alignmentStart);
         }

@@ -134,7 +134,7 @@ public final class AssemblyResultSet {
         final Map<Haplotype,Haplotype> originalByTrimmedHaplotypes = new HashMap<>();
 
         for ( final Haplotype h : haplotypeList ) {
-            final Haplotype trimmed = h.trim(trimmedAssemblyRegion.getExtendedSpan());
+            final Haplotype trimmed = h.trim(trimmedAssemblyRegion.getPaddedSpan());
 
             if ( trimmed != null ) {
                 if (originalByTrimmedHaplotypes.containsKey(trimmed)) {
@@ -150,7 +150,7 @@ public final class AssemblyResultSet {
             } else if ( debug ) {
                 logger.info("Throwing out haplotype " + h + " with cigar " + h.getCigar() +
                         " because it starts with or ends with an insertion or deletion when trimmed to " +
-                        trimmedAssemblyRegion.getExtendedSpan());
+                        trimmedAssemblyRegion.getPaddedSpan());
             }
         }
         return originalByTrimmedHaplotypes;
@@ -197,7 +197,7 @@ public final class AssemblyResultSet {
             return;
         }
         pw.println("Active Region " + regionForGenotyping.getSpan());
-        pw.println("Extended Act Region " + getRegionForGenotyping().getExtendedSpan());
+        pw.println("Extended Act Region " + getRegionForGenotyping().getPaddedSpan());
         pw.println("Ref haplotype coords " + getHaplotypeList().get(0).getGenomeLocation());
         pw.println("Haplotype count " + haplotypes.size());
         final Map<Integer,Integer> kmerSizeToCount = new HashMap<>();
