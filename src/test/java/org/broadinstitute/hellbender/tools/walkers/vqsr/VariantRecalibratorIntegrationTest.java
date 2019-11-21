@@ -184,7 +184,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "SNPRecalCommand")
-    public void testVariantRecalibratorSNPMaxAttempts(final String[] params, final String a, final String b) throws IOException {
+    public void testVariantRecalibratorSNPMaxAttempts(final String[] params) throws IOException {
         // For this test, we deliberately *DON'T* sample a single random int as above; this causes
         // the tool to require 4 attempts to acquire enough negative training data to succeed
 
