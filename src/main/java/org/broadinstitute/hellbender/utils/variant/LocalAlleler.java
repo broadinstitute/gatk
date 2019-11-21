@@ -100,12 +100,4 @@ public class LocalAlleler {
 
         return localAllelesMapping;
     }
-
-//    private static class LocalAlleleMapper {
-//        public LocalAlleleMapper(Genotype originalGenotype, VariantContext variantContext){
-//            LinkedHashSet<Allele> localAlleles = getLocalAlleles(originalGenotype, variantContext);
-//
-//        }
-//    }
-
 }

@@ -60,16 +60,33 @@ public class LocalAllelerTest extends BaseTest {
     }
 
     private static Object[] makeGenotypes(VariantContextBuilder vcb, Genotype rootGenotype, List<Integer> LAA, String LGT){
-        return makeGenotypesWithAD(vcb, rootGenotype, LAA, LGT, Collections.emptyList(), Collections.emptyList());
+        return makeGenotypes(vcb, rootGenotype, LAA, LGT, Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     }
 
     private static Object[] makeGenotypesWithAD(VariantContextBuilder vcb, Genotype rootGenotype,
+                                                List<Integer> LAA, String LGT,
+                                                List<Integer> AD, List<Integer> LAD) {
+        return makeGenotypes(vcb, rootGenotype, LAA, LGT, AD, LAD, Collections.emptyList(), Collections.emptyList());
+    }
+
+    private static Object[] makeGenotypesWithPL(VariantContextBuilder vcb, Genotype rootGenotype,
+                                                List<Integer> LAA, String LGT,
+                                                List<Integer> PL, List<Integer> LPL) {
+        return makeGenotypes(vcb, rootGenotype, LAA, LGT, Collections.emptyList(), Collections.emptyList(), PL, LPL);
+    }
+
+
+    private static Object[] makeGenotypes(VariantContextBuilder vcb, Genotype rootGenotype,
                                                 List<Integer> LAA, String LGT,
                                                 List<Integer> AD, List<Integer> LAD,
                                                 List<Integer> PL, List<Integer> LPL) {
         GenotypeBuilder gb = new GenotypeBuilder(rootGenotype);
         if( ! AD.isEmpty()){
             gb.AD(Ints.toArray(AD));
+        }
+
+        if(!PL.isEmpty()){
+            gb.PL(Ints.toArray(PL));
         }
 
         Genotype newRoot = gb.make();
@@ -79,6 +96,12 @@ public class LocalAllelerTest extends BaseTest {
 
         if(!LAD.isEmpty()){
             gb.attribute(LocalAlleler.LAD, LAD);
+        }
+
+
+
+        if(!LPL.isEmpty()){
+            gb.attribute(LocalAlleler.LPL, Ints.toArray(LPL));
         }
 
         return new Object[]{vcb.genotypes(newRoot).make(), newRoot, gb.make()};
@@ -172,26 +195,26 @@ public class LocalAllelerTest extends BaseTest {
 
 
         return new Object[][]{
-                makeGenotypesWithAD(vcbNoNonRef, het0_2, Arrays.asList(2), "0/1", Arrays.asList(0,1,11,2,12,22,3,13,23,33), Arrays.asList(0,2,22)),
-                makeGenotypesWithAD(vcbNoNonRef, hom0_0, Arrays.asList(), "0/0", Arrays.asList(0,1,2,3), Arrays.asList(0)),
-                makeGenotypesWithAD(vcbNoNonRef, het1_2, Arrays.asList(1,2), "1/2", Arrays.asList(0,1,2,3), Arrays.asList(0,1,2)),
-                makeGenotypesWithAD(vcbNoNonRef, hom2_2, Arrays.asList(2), "1/1", Arrays.asList(0,1,2,3), Arrays.asList(0,2)),
-                makeGenotypesWithAD(vcbNoNonRef, het1_3, Arrays.asList(1,3), "1/2", Arrays.asList(0,1,2,3), Arrays.asList(0,1,3)),
-                makeGenotypesWithAD(vcbNoNonRef, hap_ref, Arrays.asList(), "0", Arrays.asList(0,1,2,3), Arrays.asList(0)),
-                makeGenotypesWithAD(vcbNoNonRef, hap_alt, Arrays.asList(3), "1", Arrays.asList(0,1,2,3), Arrays.asList(0,3)),
+                makeGenotypesWithPL(vcbNoNonRef, het0_2, Arrays.asList(2), "0/1", Arrays.asList(0,1,11,2,12,22,3,13,23,33), Arrays.asList(0,2,22)),
+                makeGenotypesWithPL(vcbNoNonRef, hom0_0, Arrays.asList(), "0/0", Arrays.asList(0,1,11,2,12,22,3,13,23,33), Arrays.asList(0)),
+                makeGenotypesWithPL(vcbNoNonRef, het1_2, Arrays.asList(1,2), "1/2", Arrays.asList(0,1,11,2,12,22,3,13,23,33), Arrays.asList(0,1,11,2,12,22)),
+                makeGenotypesWithPL(vcbNoNonRef, hom2_2, Arrays.asList(2), "1/1", Arrays.asList(0,1,11,2,12,22,3,13,23,33), Arrays.asList(0,2,22)),
+                makeGenotypesWithPL(vcbNoNonRef, het1_3, Arrays.asList(1,3), "1/2", Arrays.asList(0,1,11,2,12,22,3,13,23,33), Arrays.asList(0,1,11,3,13,33)),
+                makeGenotypesWithPL(vcbNoNonRef, hap_ref, Arrays.asList(), "0", Arrays.asList(0,1,2,3), Arrays.asList(0)),
+                makeGenotypesWithPL(vcbNoNonRef, hap_alt, Arrays.asList(3), "1", Arrays.asList(0,1,2,3), Arrays.asList(0,3)),
 
-                makeGenotypesWithAD(vcbWithNonRef, het0_2, Arrays.asList(2,4), "0/1", Arrays.asList(0,1,2,3,4), Arrays.asList(0,2,4)),
-                makeGenotypesWithAD(vcbWithNonRef, hom0_0, Arrays.asList(4), "0/0", Arrays.asList(0,1,2,3,4), Arrays.asList(0,4)),
-                makeGenotypesWithAD(vcbWithNonRef, het1_2, Arrays.asList(1,2,4), "1/2", Arrays.asList(0,1,2,3,4), Arrays.asList(0,1,2,4)),
-                makeGenotypesWithAD(vcbWithNonRef, hom2_2, Arrays.asList(2,4), "1/1", Arrays.asList(0,1,2,3,4), Arrays.asList(0,2,4)),
-                makeGenotypesWithAD(vcbWithNonRef, het1_3, Arrays.asList(1,3,4), "1/2", Arrays.asList(0,1,2,3,4), Arrays.asList(0,1,3,4)),
-                makeGenotypesWithAD(vcbWithNonRef, hap_ref, Arrays.asList(4), "0", Arrays.asList(0,1,2,3,4), Arrays.asList(0,4)),
-                makeGenotypesWithAD(vcbWithNonRef, hap_alt, Arrays.asList(3,4), "1", Arrays.asList(0,1,2,3,4), Arrays.asList(0,3,4)),
+                makeGenotypesWithPL(vcbWithNonRef, het0_2, Arrays.asList(2,4), "0/1", Arrays.asList(0,1,11,2,12,22,3,13,23,33,4,14,24,34,44), Arrays.asList(0,2,22,4,24,44)),
+                makeGenotypesWithPL(vcbWithNonRef, hom0_0, Arrays.asList(4), "0/0", Arrays.asList(0,1,11,2,12,22,3,13,23,33,4,14,24,34,44), Arrays.asList(0,4,44)),
+                makeGenotypesWithPL(vcbWithNonRef, het1_2, Arrays.asList(1,2,4), "1/2", Arrays.asList(0,1,11,2,12,22,3,13,23,33,4,14,24,34,44), Arrays.asList(0,1,11,2,12,22,4,14,24,44)),
+                makeGenotypesWithPL(vcbWithNonRef, hom2_2, Arrays.asList(2,4), "1/1", Arrays.asList(0,1,11,2,12,22,3,13,23,33,4,14,24,34,44), Arrays.asList(0,2,22,4,24,44)),
+                makeGenotypesWithPL(vcbWithNonRef, het1_3, Arrays.asList(1,3,4), "1/2", Arrays.asList(0,1,11,2,12,22,3,13,23,33,4,14,24,34,44), Arrays.asList(0,1,11,3,13,33,4,14,34,44)),
+                makeGenotypesWithPL(vcbWithNonRef, hap_ref, Arrays.asList(4), "0", Arrays.asList(0,1,2,3,4), Arrays.asList(0,4)),
+                makeGenotypesWithPL(vcbWithNonRef, hap_alt, Arrays.asList(3,4), "1", Arrays.asList(0,1,2,3,4), Arrays.asList(0,3,4)),
         };
     }
 
-    @Test(dataProvider = "getTestCasesLAAandLGTandLPL")
-    public void testADToLAD(VariantContext vc, Genotype original, Genotype expected){
+    @Test(dataProvider = "getTestCasesLAAandLGTandPL")
+    public void testPLToLPL(VariantContext vc, Genotype original, Genotype expected){
         Genotype actual = LocalAlleler.addLocalFields(original, vc);
         VariantContextTestUtils.assertGenotypesAreEqual(actual, expected);
     }
