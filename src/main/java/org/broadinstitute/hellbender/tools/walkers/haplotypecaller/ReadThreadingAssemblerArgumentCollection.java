@@ -30,9 +30,6 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     // Assembly Region Trimming Parameters
     //
     // ---------------------------------------------------------------------------------------------------------------
-    @Advanced
-    @Argument(fullName="dont-trim-active-regions", doc="If specified, we will not trim down the active region from the full region (active + extension) to just the active interval for genotyping", optional = true)
-    protected boolean dontTrimActiveRegions = false;
 
     /**
      * the maximum extent into the full active region extension that we're willing to go in genotyping our events

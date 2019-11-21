@@ -175,13 +175,6 @@ public final class AssemblyRegionTrimmer {
         }
 
         /**
-         * Checks whether the active region needs trimming.
-         */
-        public boolean needsTrimming() {
-            return hasLeftFlankingRegion() || hasRightFlankingRegion();
-        }
-
-        /**
          * Returns the trimmed variant containing region
          *
          * @throws IllegalStateException if there is no variation detected.
@@ -242,18 +235,6 @@ public final class AssemblyRegionTrimmer {
         }
 
         /**
-         * Creates a result indicating that there was no trimming to be done.
-         */
-        protected static Result noTrimming(final AssemblyRegion targetRegion,
-                                           final List<VariantContext> events) {
-            final SimpleInterval targetRegionLoc = targetRegion.getSpan();
-            final Result result = new Result(targetRegion, events,Pair.of(null, null),
-                    targetRegionLoc, targetRegionLoc);
-            result.variantRegion = targetRegion;
-            return result;
-        }
-
-        /**
          * Creates a result indicating that no variation was found.
          */
         protected static Result noVariation(final AssemblyRegion targetRegion) {
@@ -300,10 +281,6 @@ public final class AssemblyRegionTrimmer {
         // the region's full location
         if ( variantSpan == null ) {
             return Result.noVariation(originalRegion);
-        }
-
-        if ( assemblyArgs.dontTrimActiveRegions) {
-            return Result.noTrimming(originalRegion, withinActiveRegion);
         }
 
         final SimpleInterval finalSpan = originalRegionRange.expandWithinContig(usableExtension, sequenceDictionary).intersect(variantSpan.expandWithinContig(padding, sequenceDictionary)).mergeWithContiguous(variantSpan);
