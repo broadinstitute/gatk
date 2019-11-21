@@ -258,18 +258,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             }
             else {
                 final List<VariantContext> result = new LinkedList<>();
-                // output left-flanking non-variant section:
-                if (trimmingResult.hasLeftFlankingRegion()) {
-                    result.addAll(referenceModelForNoVariation(trimmingResult.nonVariantLeftFlankRegion()));
-                }
-                // output variant containing region.
+                // output left-flanking non-variant section, then variant-containing section, then right flank
+                trimmingResult.nonVariantLeftFlankRegion().ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank)));
+
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
                         readLikelihoods, new HomogeneousPloidyModel(samplesList, 2), calledHaplotypes.getCalls()));
-                // output right-flanking non-variant section:
-                if (trimmingResult.hasRightFlankingRegion()) {
-                    result.addAll(referenceModelForNoVariation(trimmingResult.nonVariantRightFlankRegion()));
-                }
+
+                trimmingResult.nonVariantRightFlankRegion().ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank)));
+
                 return result;
             }
         }
