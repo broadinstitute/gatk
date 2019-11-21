@@ -22,6 +22,8 @@ public class AlignedBaseGraphCollection {
 
     private boolean isGraphCollapsed = false;
 
+    private int numSequencesAdded = 0;
+
     //==================================================================================================================
     // Constructors:
 
@@ -104,13 +106,19 @@ public class AlignedBaseGraphCollection {
      */
     public void collapseAdjacentNodes() {
 
+        logger.info("Starting to collapse all graphs.  Total sequences added: " + numSequencesAdded);
+
         // Zip all linear chains:
         for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
 
             final String contig = entry.getKey();
             final AlignedBaseGraph graph = entry.getValue();
 
-            logger.info("Collapsing graph for contig: " + contig);
+            logger.info("  Collapsing graph (" + graph.vertexSet().size() + " nodes) for contig: " + contig);
+
+            // Before we get started, clear the existing position map to make some room in memory.
+            // When we finish, we'll rebuild it and there will be fewer nodes in there so it should take less space.
+            contigPositionVertexMap.get( contig ).clear();
 
             // First zip chains to make the next step faster.
             graph.zipLinearChains();
@@ -230,6 +238,8 @@ public class AlignedBaseGraphCollection {
             // Merge the given node queue into the existing graph:
             mergeNodesIntoGraph(contig, nodeQueue);
         }
+
+        ++numSequencesAdded;
     }
 
     /**
