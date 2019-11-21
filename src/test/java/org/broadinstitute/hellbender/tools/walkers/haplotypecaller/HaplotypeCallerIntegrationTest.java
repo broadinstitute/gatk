@@ -99,7 +99,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .addArgument("R", referenceFileName)
                 .addArgument("V", outputPath)
                 .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval(interval)))
-                .addArgument("optional-type", "VQSR");
+                .addArgument("optional-type", "VQSR_INPUT");
         runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
         // Test for an exact match against past results
@@ -270,7 +270,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .addArgument("V", outputPath)
                 .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval(interval)))
                 .add("-gvcf")
-                .addArgument("optional-type", "VQSR");
+                .addArgument("optional-type", "VQSR_INPUT");
         runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
         // Test for an exact match against past results
@@ -350,7 +350,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .addArgument("V", outputPath)
                 .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval(interval)))
                 .add("-gvcf")
-                .addArgument("optional-type", "VQSR")
+                .addArgument("optional-type", "VQSR_INPUT")
                 .addArgument("optional-type", "AS_ANNOTATIONS");
         runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
