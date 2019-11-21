@@ -26,11 +26,6 @@ import java.util.SortedSet;
 public final class AssemblyRegionTrimmer {
 
     /**
-     * Holds the debug flag. If {@code true} the trimmer will output debugging messages into the log.
-     */
-    private boolean debug;
-
-    /**
      * Holds the extension to be used
      */
     private int usableExtension;
@@ -56,14 +51,10 @@ public final class AssemblyRegionTrimmer {
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public void initialize(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary) {
-        Utils.validate(this.assemblyArgs == null, () -> getClass().getSimpleName() + " instance initialized twice");
-
+    public AssemblyRegionTrimmer(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary) {
         this.assemblyArgs = Utils.nonNull(assemblyArgs);;
         this.sequenceDictionary = sequenceDictionary;
-
         checkUserArguments();
-        this.debug = assemblyArgs.debugAssembly;
         usableExtension = this.assemblyArgs.extension;
     }
 
@@ -291,7 +282,7 @@ public final class AssemblyRegionTrimmer {
 
         final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
 
-        if ( debug ) {
+        if ( assemblyArgs.debugAssembly ) {
             logger.info("events       : " + withinActiveRegion);
             logger.info("region       : " + originalRegion);
             logger.info("variantSpan : " + callableSpan);

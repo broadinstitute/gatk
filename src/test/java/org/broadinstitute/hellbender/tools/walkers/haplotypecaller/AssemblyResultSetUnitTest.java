@@ -104,9 +104,6 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
 
         final AssemblyResultSet trimmed = subject.trimTo(newRegion);
 
-        Assert.assertFalse(subject.wasTrimmed());
-        Assert.assertTrue(trimmed.wasTrimmed());
-
         for (final Haplotype h : trimmed.getHaplotypeList()) {
             Assert.assertEquals(h.getGenomeLocation(), newLocation);
             Assert.assertEquals(h.getBases().length, newLocation.size());

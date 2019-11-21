@@ -71,7 +71,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private ReferenceConfidenceModel referenceConfidenceModel = null;
 
-    private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
+    private AssemblyRegionTrimmer trimmer;
 
     private final PrintStream assemblyDebugOutStream;
 
@@ -229,7 +229,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         assemblyEngine = hcArgs.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
 
-        trimmer.initialize(hcArgs.assemblerArgs, readsHeader.getSequenceDictionary());
+        trimmer = new AssemblyRegionTrimmer(hcArgs.assemblerArgs, readsHeader.getSequenceDictionary());
     }
 
     private boolean isVCFMode() {
