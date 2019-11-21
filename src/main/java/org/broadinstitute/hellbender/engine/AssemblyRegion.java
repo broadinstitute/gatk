@@ -184,26 +184,6 @@ public final class AssemblyRegion implements Locatable {
     }
 
     /**
-     * Intersect this assembly region with the allowed intervals, returning a list of active regions
-     * that only contain locations present in intervals
-     *
-     * Note: modifications to the returned list have no effect on this region object.
-     *
-     * Note that the returned list may be empty, if this active region doesn't overlap the set at all
-     *
-     * Note that the resulting regions are all empty, regardless of whether the current active region has reads
-     *
-     * @param intervals a non-null set of intervals that are allowed
-     * @return an ordered list of active region where each interval is contained within intervals
-     */
-    public List<AssemblyRegion> splitAndTrimToIntervals(final Set<SimpleInterval> intervals) {
-        return intervals.stream()
-                .filter(loc -> loc.overlaps(activeSpan))
-                .map(gl -> trim(gl, padding))
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Trim this region to just the span, producing a new assembly region without any reads that has only
      * the extent of newExtend intersected with the current extent
      * @param span the new extend of the active region we want

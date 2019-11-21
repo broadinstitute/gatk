@@ -64,7 +64,7 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
                 case Base: return new ActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, header);
                 case BandPass:
                     // zero size => equivalent to ActivityProfile
-                    return new BandPassActivityProfile(null, MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, 0, 0.01, false, header);
+                    return new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, 0, 0.01, false, header);
                 default: throw new IllegalStateException(type.toString());
             }
         }

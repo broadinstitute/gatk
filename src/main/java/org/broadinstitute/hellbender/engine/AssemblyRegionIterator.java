@@ -105,7 +105,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.pendingRegions = new ArrayDeque<>();
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
-        this.activityProfile = new BandPassActivityProfile(null, maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+        this.activityProfile = new BandPassActivityProfile(maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!

@@ -65,7 +65,7 @@ public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<
 
         this.readyRegion = null;
         this.pendingRegions = new ArrayDeque<>();
-        this.activityProfile = new BandPassActivityProfile(null, maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+        this.activityProfile = new BandPassActivityProfile(maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
 
         readyRegion = loadNextAssemblyRegion();
     }
