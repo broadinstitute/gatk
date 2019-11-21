@@ -11,6 +11,8 @@ import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotationMap;
@@ -28,7 +30,6 @@ import org.objenesis.instantiator.ObjectInstantiator;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 /**
@@ -36,9 +37,7 @@ import java.util.LinkedHashMap;
  * and UnmodifiableCollectionsSerializer from a bug in the version of Kryo we're on.
  */
 public class GATKRegistrator implements KryoRegistrator {
-
-    private final ADAMKryoRegistrator ADAMregistrator = new ADAMKryoRegistrator();
-
+    private static final Logger LOG = LogManager.getLogger(GATKRegistrator.class);
     public GATKRegistrator() {}
 
     /**
@@ -101,7 +100,11 @@ public class GATKRegistrator implements KryoRegistrator {
         //     IndelRealignmentTarget
         //     TargetSet
         //     ZippedTargetSet
-        ADAMregistrator.registerClasses(kryo);
+        try {
+            new ADAMKryoRegistrator().registerClasses(kryo);
+        } catch (Throwable e) {
+               LOG.error("Failed to register ADAM classes with spark", e);
+        }
 
         //do this before and after ADAM to try and force our registrations to win out
         registerGATKClasses(kryo);
