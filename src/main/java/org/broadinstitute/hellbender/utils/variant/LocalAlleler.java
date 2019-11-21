@@ -18,7 +18,11 @@ public class LocalAlleler {
     public static final String LAD = "LAD";
     public static final String LPL = "LPL";
 
-    public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc){
+    public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc) {
+        return addLocalFields(originalGenotype, vc, true);
+    }
+
+    public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc, final boolean removeNonLocalVersions){
         // new LAA
         // GT -> LGT
         // PL -> LPL
@@ -58,7 +62,14 @@ public class LocalAlleler {
             localAttributes.put(LPL, newPls);
         }
 
-        GenotypeBuilder genotypeBuilder = new GenotypeBuilder(originalGenotype);
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(originalGenotype);
+
+        if(removeNonLocalVersions){
+            genotypeBuilder.noAD()
+                    .noPL()
+                    .alleles(Collections.emptyList());
+        }
+
         //add the new attributes to the builder
         localAttributes.forEach(genotypeBuilder::attribute);
         return genotypeBuilder.make();
