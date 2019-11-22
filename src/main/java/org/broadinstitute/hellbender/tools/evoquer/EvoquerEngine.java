@@ -571,7 +571,6 @@ class EvoquerEngine {
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
     }
 
-
     private void validateSchema(final Set<String> columnNames) {
         for ( final String requiredField : REQUIRED_FIELDS ) {
             if ( ! columnNames.contains(requiredField) ) {
@@ -907,5 +906,4 @@ class EvoquerEngine {
     private String getSampleListQueryString(final String sampleTableName) {
         return "SELECT sample FROM `" + getFQTableName(sampleTableName)+ "`";
     }
-
 }
