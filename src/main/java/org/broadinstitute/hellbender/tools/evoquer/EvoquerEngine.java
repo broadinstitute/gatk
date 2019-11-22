@@ -45,8 +45,7 @@ class EvoquerEngine {
     private static final Logger logger = LogManager.getLogger(EvoquerEngine.class);
 
 
-//    public static final String SAMPLE_TABLE_NAME = "sample_list";
-    public static final String SAMPLE_TABLE_NAME = "samples_AS_ah";
+    public static final String SAMPLE_TABLE_NAME = "sample_list";
 
     public static final String POSITION_FIELD_NAME = "position";
     public static final String VALUES_ARRAY_FIELD_NAME = "values";

@@ -100,7 +100,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * treated as separate intervals instead.
      */
     @Argument(fullName = INTERVAL_MERGING_RULE_LONG_NAME, shortName = "imr", doc = "Interval merging rule for abutting intervals", optional = true)
-    protected IntervalMergingRule intervalMergingRule = IntervalMergingRule.OVERLAPPING_ONLY;
+    protected IntervalMergingRule intervalMergingRule = IntervalMergingRule.ALL;
 
     /**
      * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records

@@ -353,16 +353,7 @@ public final class GnarlyGenotyperEngine {
                     genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
                     //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
                     // then we need to actually find the GT from PLs
-                    List<Allele> targetAllelesWithNoCall = new ArrayList<>(targetAlleles);
-                    List<Allele> galleles = g.getAlleles();
-                    if (galleles.contains(Allele.NO_CALL)) {
-                        for (int i = 0; i<galleles.size(); i++) {
-                            if (galleles.get(i) == Allele.NO_CALL) {
-                                targetAllelesWithNoCall.set(i, Allele.NO_CALL);
-                            }
-                        }
-                    }
-                    makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAllelesWithNoCall);
+                    makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
                 }
             }
             final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());
@@ -427,7 +418,7 @@ public final class GnarlyGenotyperEngine {
                 final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
                 glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
             }
-
+            
             final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));
