@@ -539,7 +539,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         // this test to fail unless there is a likely problem with -bamout itself (eg., empty
         // or truncated bam).
         final String testInterval = "20:10000000-10010000";
-        final int gatk3BamoutNumReads = 5170;
+        final int gatk3BamoutNumReads = 5000;
 
         final File vcfOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".vcf");
 

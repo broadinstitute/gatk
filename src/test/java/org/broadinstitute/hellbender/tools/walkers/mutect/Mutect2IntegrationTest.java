@@ -395,11 +395,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final File filteredVcf = createTempFile("filtered-" + pct, ".vcf");
             final File contaminationTable = pct == 0 ? NO_CONTAMINATION_TABLE :
                     (pct == 5 ? FIVE_PCT_CONTAMINATION_TABLE : TEN_PCT_CONTAMINATION_TABLE);
-                    runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference,
-                            args -> args.addFileArgument(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contaminationTable));
+            runFilterMutectCalls(unfilteredVcf, filteredVcf, b37Reference,
+                    args -> args.addFileArgument(M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contaminationTable));
 
             return VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toSet());
-            }));
+        }));
 
 
         final int variantsFilteredAtZeroPercent = (int) filteredVariants.get(0).stream()
@@ -425,6 +425,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // If the filter is smart, it won't filter variants with allele fraction much higher than the contamination
         final List<VariantContext> highAlleleFractionFilteredVariantsAtFivePercent = variantsFilteredAtFivePercent.stream()
                 .filter(VariantContext::isBiallelic)
+                .filter(vc -> vc.getAttributeAsDouble(GATKVCFConstants.CONTAMINATION_QUAL_KEY, 100) < 30)
                 .filter(vc -> {
                     final int[] AD = vc.getGenotype(0).getAD();
                     return MathUtils.sum(AD) > 30 && AD[1] > AD[0];
@@ -497,7 +498,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1671);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1715);
     }
 
     @DataProvider(name = "vcfsForFiltering")

@@ -55,7 +55,7 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
             for ( final int size : Arrays.asList(1, 10, 100, 1000) ) {
                 for ( final int ext : Arrays.asList(0, 1, 10, 100) ) {
                     for ( final boolean isActive : Arrays.asList(true, false) ) {
-                        final SimpleInterval loc = new SimpleInterval(contig, start, start + size - 1);
+                        final SimpleInterval loc = IntervalUtils.trimIntervalToContig(contig, start, start + size - 1, contigLength);
                         tests.add(new Object[]{loc, isActive, ext});
                     }
                 }
