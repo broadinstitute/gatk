@@ -226,7 +226,7 @@ public final class AssemblyBasedCallerUtils {
     public static AssemblyRegion assemblyRegionWithWellMappedReads(final AssemblyRegion originalAssemblyRegion,
                                                                    final int minMappingQuality,
                                                                    final SAMFileHeader readsHeader) {
-        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.isActive(), originalAssemblyRegion.getPadding(), readsHeader);
+        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.getPaddedSpan(), originalAssemblyRegion.isActive(), readsHeader);
         originalAssemblyRegion.getReads().stream()
                 .filter(rec -> rec.getMappingQuality() >= minMappingQuality)
                 .forEach(result::add);

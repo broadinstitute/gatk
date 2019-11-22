@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
  */
 public final class AssemblyRegionTrimmer {
 
-    private ReadThreadingAssemblerArgumentCollection assemblyArgs;
+    private AssemblyRegionArgumentCollection assemblyRegionArgs;
 
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -37,39 +38,22 @@ public final class AssemblyRegionTrimmer {
      * <p/>
      * This method should be called once and only once before any trimming is performed.
      *
-     * @param assemblyArgs user arguments for the trimmer
+     * @param assemblyRegionArgs user arguments for the trimmer
      * @param sequenceDictionary dictionary to determine the bounds of contigs
      * @throws IllegalStateException if this trim calculator has already been initialized.
      * @throws IllegalArgumentException if the input location parser is {@code null}.
      * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
-    public AssemblyRegionTrimmer(final ReadThreadingAssemblerArgumentCollection assemblyArgs, final SAMSequenceDictionary sequenceDictionary) {
-        this.assemblyArgs = Utils.nonNull(assemblyArgs);;
+    public AssemblyRegionTrimmer(final AssemblyRegionArgumentCollection assemblyRegionArgs, final SAMSequenceDictionary sequenceDictionary) {
+        this.assemblyRegionArgs = Utils.nonNull(assemblyRegionArgs);;
         this.sequenceDictionary = sequenceDictionary;
-        checkUserArguments();
-    }
-
-    /**
-     * Checks user trimming argument values
-     *
-     * @throws CommandLineException.BadArgumentValue if there is some problem with any of the arguments values.
-     */
-    private void checkUserArguments() {
-        if ( assemblyArgs.snpPadding < 0 ) {
-            throw new CommandLineException.BadArgumentValue("paddingAroundSNPs", "" + assemblyArgs.snpPadding + "< 0");
-        }
-        if ( assemblyArgs.indelPadding < 0 ) {
-            throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + assemblyArgs.indelPadding + "< 0");
-        }
-        if ( assemblyArgs.extension < 0) {
-            throw new CommandLineException.BadArgumentValue("maxDiscARExtension", "" + assemblyArgs.extension + "< 0");
-        }
+        assemblyRegionArgs.validate();
     }
 
     /**
      * Holds the result of trimming.
      */
-    public static final class Result {
+    public final class Result {
 
         /**
          * Holds the input active region.
@@ -134,7 +118,7 @@ public final class AssemblyRegionTrimmer {
                 return Optional.of(originalRegion);
             } else if (originalRegion.getStart() < variantSpan.getStart()) {
                 final SimpleInterval leftFlank = new SimpleInterval(originalRegion.getContig(), originalRegion.getStart(), variantSpan.getStart() - 1);
-                return Optional.of(originalRegion.trim(leftFlank, originalRegion.getPadding()));
+                return Optional.of(originalRegion.trim(leftFlank, assemblyRegionArgs.assemblyRegionPadding));
             } else {
                 return Optional.empty();
             }
@@ -146,18 +130,18 @@ public final class AssemblyRegionTrimmer {
         public Optional<AssemblyRegion> nonVariantRightFlankRegion() {
             if (variantSpan.getEnd() < originalRegion.getEnd()) {
                 final SimpleInterval rightFlank = new SimpleInterval(originalRegion.getContig(), variantSpan.getEnd() + 1, originalRegion.getEnd());
-                return Optional.of(originalRegion.trim(rightFlank, originalRegion.getPadding()));
+                return Optional.of(originalRegion.trim(rightFlank, assemblyRegionArgs.assemblyRegionPadding));
             } else {
                 return Optional.empty();
             }
         }
+    }
 
-        /**
-         * Creates a result indicating that no variation was found.
-         */
-        protected static Result noVariation(final AssemblyRegion targetRegion) {
-            return new Result(targetRegion, null, null);
-        }
+    /**
+     * Creates a result indicating that no variation was found.
+     */
+    protected Result noVariation(final AssemblyRegion targetRegion) {
+        return new Result(targetRegion, null, null);
     }
 
     /**
@@ -173,7 +157,7 @@ public final class AssemblyRegionTrimmer {
         final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
 
         if ( variantsInRegion.isEmpty() ) {
-            return Result.noVariation(region);
+            return noVariation(region);
         }
 
         final int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
@@ -181,15 +165,8 @@ public final class AssemblyRegionTrimmer {
         final SimpleInterval variantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
 
         final boolean foundNonSnp = variantsInRegion.stream().anyMatch(vc -> !vc.isSNP());
-        final int padding = foundNonSnp ? assemblyArgs.indelPadding : assemblyArgs.snpPadding;
+        final int padding = foundNonSnp ? assemblyRegionArgs.indelPaddingForGenotyping : assemblyRegionArgs.snpPaddingForGenotyping;
         final SimpleInterval paddedVariantSpan = variantSpan.expandWithinContig(padding, sequenceDictionary);
-
-        if ( assemblyArgs.debugAssembly ) {
-            logger.info("events       : " + variantsInRegion);
-            logger.info("region       : " + region);
-            logger.info("variantSpan  : " + variantSpan);
-            logger.info("paddedSpan   : " + paddedVariantSpan);
-        }
 
         return new Result(region, variantSpan, paddedVariantSpan);
     }

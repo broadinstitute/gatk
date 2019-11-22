@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.Hidden;
 
 import java.io.Serializable;
 
@@ -24,18 +25,50 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final int DEFAULT_MAX_READS_PER_ALIGNMENT = 50;
     public static final double DEFAULT_ACTIVE_PROB_THRESHOLD = 0.002;
     public static final int DEFAULT_MAX_PROB_PROPAGATION_DISTANCE = 50;
+    public static final String INDEL_PADDING_LONG_NAME = "padding-around-indels";
+    public static final String SNP_PADDING_LONG_NAME = "padding-around-snps";
+
+    /**
+     * The following parameters can be confusing due to the overlap between active regions, assembly regions, and genotyping regions,
+     * all of which are implemented as the {@link org.broadinstitute.hellbender.engine.AssemblyRegion} class.
+     *
+     * An active region is a genomic interval in which we call variants.  In order to output phased calls we try to put nearby variants
+     * in the same active region.  The size of active regions are bounded by the {@code minAssemblyRegionSize} and {@code maxAssemblyRegionSize}
+     * parameters, and within those bounds are determined by the variants present and the {@code activeProbThreshold} and {@code maxProbPropagationDistance}.
+     * Importantly active regions are excusively a matter of delegating responsibility for calling and have nothing to do with the size
+     * of the span over which we perform local assembly and pair-HMM.
+     *
+     * An assembly region is the padded interval surrounding an active region over which we perform local assembly.  Padding is useful to phase with
+     * any variation that may be just outside the active region, to avoid dangling ends in the assembly region, and to resolve indels.  The
+     * {@code assemblyRegionPadding} parameter determines the number of extra bases as assembly region contains on either side of the active region
+     * it surrounds.
+     *
+     * A genotyping region is an interval surrounding an active region in which we perform pair-HMM and Smith-Waterman alignment.  Even though
+     * we ultimately only genotype and call variants within the active region, we call entire haplotypes as an intermediate step, hence the
+     * needed for an expanded genotyping region.  The parameters {@code snpPaddingForGenotyping} and {@code indelPaddingForGenotyping} determine
+     * the size of genotyping regions.
+     *
+     * The overall flow is as follows:
+     *
+     * 1) Active regions are found by triaging sites for activity and combining nearby potential variants into active regions.
+     * 2) Active regions are padded for assembly and overlapping reads are hard-clipped to this padded assembly region.
+     * 3) Reads are assembled into haplotypes.
+     * 4) The active region is re-set to the span of all variants found in assembly that overlap the original active region.
+     *    This shrinking does not lose variants but it does affect the size of the genotyping region.
+     * 5) The genotyping region is determined by padding the shrunk active region.
+     * 6) Assembled haplotypes are trimmed and reads are hard-clipped (again) to fit the padded genotyping region.
+     */
+
+
+    /**
+     * Parameters that control active regions
+     */
 
     @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
     public int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
 
     @Argument(fullName = MAX_ASSEMBLY_LONG_NAME, doc = "Maximum size of an assembly region", optional = true)
     public int maxAssemblyRegionSize = defaultMaxAssemblyRegionSize();
-
-    @Argument(fullName = ASSEMBLY_PADDING_LONG_NAME, doc = "Number of additional bases of context to include around each assembly region", optional = true)
-    public int assemblyRegionPadding = defaultAssemblyRegionPadding();
-
-    @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
-    public int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
 
     @Advanced
     @Argument(fullName = THRESHOLD_LONG_NAME, doc="Minimum probability for a locus to be considered active.", optional = true)
@@ -48,6 +81,33 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Advanced
     @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
     public boolean forceActive = false;
+
+    /**
+     * Parameters that control assembly regions
+     */
+
+    @Argument(fullName = ASSEMBLY_PADDING_LONG_NAME, doc = "Number of additional bases of context to include around each assembly region", optional = true)
+    public int assemblyRegionPadding = defaultAssemblyRegionPadding();
+
+    /**
+     * Parameters that control genotyping regions
+     */
+
+    @Hidden
+    @Argument(fullName= INDEL_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling indels", optional = true)
+    public int indelPaddingForGenotyping = 150;
+
+    @Hidden
+    @Argument(fullName= SNP_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling snps", optional = true)
+    public int snpPaddingForGenotyping = 20;
+
+
+    /**
+     * Other parameters
+     */
+
+    @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    public int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
 
     /**
      * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line
@@ -94,6 +154,14 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
         if ( maxReadsPerAlignmentStart < 0 ) {
             throw new CommandLineException.BadArgumentValue("maxReadsPerAlignmentStart must be >= 0");
+        }
+
+        if ( snpPaddingForGenotyping < 0 ) {
+            throw new CommandLineException.BadArgumentValue("paddingAroundSNPs", "" + snpPaddingForGenotyping + "< 0");
+        }
+
+        if ( indelPaddingForGenotyping < 0 ) {
+            throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + indelPaddingForGenotyping + "< 0");
         }
     }
 

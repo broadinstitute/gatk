@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
@@ -51,7 +52,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
               final ReferenceDataSource ref = new ReferenceFileSource(reference);
               final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference)) {
 
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, reads.getHeader(), referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, new AssemblyRegionArgumentCollection(), false, false, reads.getHeader(), referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
 
             List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));

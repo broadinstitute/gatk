@@ -61,8 +61,12 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             final SAMSequenceDictionary readsDictionary = readsSource.getSequenceDictionary();
             final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(shardIntervals, assemblyRegionPadding, readsSource);
             final HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
-            final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(hcArgs, false, false, readsSource.getHeader(),
-                                                                                referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
+            final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
+            assemblyRegionArgs.minAssemblyRegionSize = minRegionSize;
+            assemblyRegionArgs.maxAssemblyRegionSize = maxRegionSize;
+            assemblyRegionArgs.assemblyRegionPadding = assemblyRegionPadding;
+            final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(hcArgs, assemblyRegionArgs, false, false,
+                    readsSource.getHeader(), referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
             final ReadCoordinateComparator readComparator = new ReadCoordinateComparator(readsSource.getHeader());
 
             final List<ReadFilter> readFilters = new ArrayList<>(2);
@@ -71,7 +75,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             final CountingReadFilter combinedReadFilter = CountingReadFilter.fromList(readFilters, readsSource.getHeader());
             readShard.setReadFilter(combinedReadFilter);
 
-            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, new AssemblyRegionArgumentCollection());
+            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, assemblyRegionArgs);
 
             AssemblyRegion previousRegion = null;
             while ( iter.hasNext() ) {

@@ -54,12 +54,6 @@ public final class AssemblyRegion implements Locatable {
     private final SimpleInterval paddedSpan;
 
     /**
-     * The padding, in bp, of this region. The padding is >= 0 bp in size, and indicates how much padding was
-     * requested for the region.
-     */
-    private final int padding;
-
-    /**
      * Does this region represent an active region (all isActiveProbs above threshold) or
      * an inactive region (all isActiveProbs below threshold)?
      */
@@ -77,34 +71,30 @@ public final class AssemblyRegion implements Locatable {
      * @param padding the active region padding to use for this active region
      */
     public AssemblyRegion(final SimpleInterval activeSpan, final boolean isActive, final int padding, final SAMFileHeader header) {
-        Utils.nonNull(activeSpan, "activeSpan cannot be null");
-        Utils.nonNull(header, "header cannot be null");
-        Utils.validateArg( activeSpan.size() > 0, () -> "Active region cannot be of zero size, but got " + activeSpan);
-        Utils.validateArg( padding >= 0, () -> "padding cannot be < 0 but got " + padding);
+        this(activeSpan, makePaddedSpan(activeSpan, padding, header), isActive, header);
+    }
 
-        this.header = header;
-        this.reads = new ArrayList<>();
-        this.activeSpan = activeSpan;
-        this.isActive = isActive;
-        this.padding = padding;
-        this.paddedSpan = trimIntervalToContig(activeSpan.getContig(), activeSpan.getStart() - padding, activeSpan.getEnd() + padding);
+    private static SimpleInterval makePaddedSpan(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
+        final String contig = activeSpan.getContig();
+        return IntervalUtils.trimIntervalToContig(contig, activeSpan.getStart() - padding, activeSpan.getEnd() + padding, header.getSequence(contig).getSequenceLength());
     }
 
     /**
-     * Create a new SimpleInterval, bounding start and stop by the start and end of contig
-     *
-     * This function will return null if start and stop cannot be adjusted in any reasonable way
-     * to be on the contig.  For example, if start and stop are both past the end of the contig,
-     * there's no way to fix this, and null will be returned.
-     *
-     * @param contig our contig
-     * @param start our start as an arbitrary integer (may be negative, etc)
-     * @param stop our stop as an arbitrary integer (may be negative, etc)
-     * @return a valid genome loc over contig, or null if a meaningful genome loc cannot be created
+     * Create a new AssemblyRegion containing no reads
+     * @param activeSpan the span of this active region
+     * @param paddedSpan    the padded span of this active region
+     * @param isActive indicates whether this is an active region, or an inactive one
      */
-    private SimpleInterval trimIntervalToContig(final String contig, final int start, final int stop) {
-        final int contigLength = header.getSequence(contig).getSequenceLength();
-        return IntervalUtils.trimIntervalToContig(contig, start, stop, contigLength);
+    public AssemblyRegion(final SimpleInterval activeSpan, final SimpleInterval paddedSpan, final boolean isActive, final SAMFileHeader header) {
+        this.header = Utils.nonNull(header);
+        this.activeSpan = Utils.nonNull(activeSpan);
+        this.paddedSpan = Utils.nonNull(paddedSpan);
+
+        Utils.validateArg( activeSpan.size() > 0, () -> "Active region cannot be of zero size, but got " + activeSpan);
+        Utils.validate(paddedSpan.contains(activeSpan), "Padded span must contain active span.");
+
+        reads = new ArrayList<>();
+        this.isActive = isActive;
     }
 
     /**
@@ -224,19 +214,13 @@ public final class AssemblyRegion implements Locatable {
         Utils.nonNull(paddedSpan, "Active region padded span cannot be null");
         Utils.validateArg(paddedSpan.contains(span), "The requested padded span must fully contain the requested span");
 
-        final SimpleInterval subActive = getSpan().intersect(span);
-        final int requiredOnRight = Math.max(paddedSpan.getEnd() - subActive.getEnd(), 0);
-        final int requiredOnLeft = Math.max(subActive.getStart() - paddedSpan.getStart(), 0);
-        final int requiredPadding = Math.min(Math.max(requiredOnLeft, requiredOnRight), getPadding());
+        final SimpleInterval newActiveSpan = getSpan().intersect(span);
+        final SimpleInterval newPaddedSpan = getPaddedSpan().intersect(paddedSpan);
 
-        final AssemblyRegion result = new AssemblyRegion( subActive, isActive, requiredPadding, header );
-
-        final SimpleInterval resultPaddedLoc = result.getPaddedSpan();
-        final int resultPaddedLocStart = resultPaddedLoc.getStart();
-        final int resultPaddedLocStop = resultPaddedLoc.getEnd();
+        final AssemblyRegion result = new AssemblyRegion( newActiveSpan, newPaddedSpan, isActive, header );
 
         final List<GATKRead> trimmedReads = reads.stream()
-                .map(read -> ReadClipper.hardClipToRegion(read, resultPaddedLocStart, resultPaddedLocStop))
+                .map(read -> ReadClipper.hardClipToRegion(read, newPaddedSpan.getStart(), newPaddedSpan.getEnd()))
                 .filter(read -> !read.isEmpty() && read.overlaps(result.paddedSpan))
                 .sorted(new ReadCoordinateComparator(header))
                 .collect(Collectors.toList());
@@ -301,15 +285,6 @@ public final class AssemblyRegion implements Locatable {
     public void addAll(final Collection<GATKRead> readsToAdd){
         Utils.nonNull(readsToAdd).forEach(r -> add(r));
     }
-
-    /**
-     * Get the padding applied to this region
-     *
-     * The padding is >= 0 bp in size, and indicates how much padding was requested for the region
-     *
-     * @return the size in bp of the region padding
-     */
-    public int getPadding() { return padding; }
 
     /**
      * Get the reference bases from referenceReader spanned by the padded span of this region,
