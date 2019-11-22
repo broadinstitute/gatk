@@ -5,6 +5,8 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleListPermutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 
@@ -23,10 +25,13 @@ public class LocalAlleler {
     }
 
     public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc, final boolean removeNonLocalVersions){
+        Utils.nonNull(originalGenotype);
+        Utils.nonNull(vc);
         // new LAA
         // GT -> LGT
         // PL -> LPL
         // AD -> LAD
+
         //todo handle originalGenotype has no GT field
         final Map<String, Object> localAttributes = new LinkedHashMap<>();
 
@@ -97,6 +102,11 @@ public class LocalAlleler {
     }
 
     private static AlleleListPermutation<Allele> getLocalAlleles(Genotype originalGenotype, VariantContext vc) {
+        final IndexedAlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(vc.getAlleles());
+        //For a no call we have no information about which alleles might be relevant so we have to include them all.
+        if( originalGenotype.isNoCall()){
+            return originalAlleleList.permutation();
+        }
         final LinkedHashSet<Allele> localAlleles = new LinkedHashSet<>();
         //add the reference as the 0th allele always
         localAlleles.add(vc.getReference());
@@ -106,9 +116,14 @@ public class LocalAlleler {
         if (vc.getAlleles().stream().anyMatch(Allele::isNonRefAllele)){
             localAlleles.add(Allele.NON_REF_ALLELE);
         }
-        final IndexedAlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(vc.getAlleles());//.permutation(new IndexedAlleleList<>(allelesToKeep);
-        final AlleleListPermutation<Allele> localAllelesMapping = originalAlleleList.permutation(new IndexedAlleleList<>(localAlleles));
 
-        return localAllelesMapping;
+        try {
+            final AlleleListPermutation<Allele> localAllelesMapping = originalAlleleList.permutation(new IndexedAlleleList<>(localAlleles));
+            return localAllelesMapping;
+        } catch (Exception e){
+            throw new RuntimeException("Error at " + vc.getStart(), e);
+        }
+
+
     }
 }

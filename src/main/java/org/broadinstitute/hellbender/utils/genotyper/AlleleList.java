@@ -164,6 +164,14 @@ public interface AlleleList<A extends Allele>{
     }
 
     /**
+     * Returns the identity permutation.
+     * @return never {@code null}
+     */
+    default AlleleListPermutation<A> permutation(){
+        return new NonPermutation<>(this);
+    }
+
+    /**
      * This is the identity permutation.
      */
     final class NonPermutation<A extends Allele> implements AlleleListPermutation<A> {
@@ -263,7 +271,8 @@ public interface AlleleList<A extends Allele>{
             for (int i = 0; i < toSize; i++) {
                 final int originalIndex = original.indexOfAllele(target.getAllele(i));
                 if (originalIndex < 0) {
-                    throw new IllegalArgumentException("target allele list is not a permutation of the original allele list");
+                    throw new IllegalArgumentException("target allele list is not a permutation of the original allele list.\n" +
+                            original.asListOfAlleles() + "\n" + target.asListOfAlleles() );
                 }
                 keptFromIndices[originalIndex] = true;
                 fromIndex[i] = originalIndex;

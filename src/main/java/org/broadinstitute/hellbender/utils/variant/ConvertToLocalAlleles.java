@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -56,7 +57,7 @@ public class ConvertToLocalAlleles extends VariantWalker {
 
     private VCFHeader createHeader() {
         final VCFHeader inputHeader = getHeaderForVariants();
-        final Set<VCFHeaderLine> newMetaData = inputHeader.getMetaDataInInputOrder();
+        final Set<VCFHeaderLine> newMetaData = new LinkedHashSet<>(inputHeader.getMetaDataInInputOrder());
         if(inputHeader.getFormatHeaderLine(VCFConstants.GENOTYPE_KEY) != null) {
             newMetaData.add(LAA_HEADER_LINE);
             newMetaData.add(LGT_HEADER_LINE);
