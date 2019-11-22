@@ -90,10 +90,7 @@ public class FindAssemblyRegionsSpark {
                     .map(downsampledShardedRead -> {
                         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
                                 new ShardToMultiIntervalShardAdapter<>(downsampledShardedRead),
-                                header, reference, features, assemblyRegionEvaluator,
-                                assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize,
-                                assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.activeProbThreshold,
-                                assemblyRegionArgs.maxProbPropagationDistance);
+                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs);
                         return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                                 new AssemblyRegionWalkerContext(assemblyRegion,
                                         new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),

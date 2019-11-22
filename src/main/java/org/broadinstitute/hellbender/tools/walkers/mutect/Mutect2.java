@@ -230,24 +230,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private Mutect2Engine m2Engine;
 
     @Override
-    protected int defaultMinAssemblyRegionSize() { return 50; }
-
-    @Override
-    protected int defaultMaxAssemblyRegionSize() { return 300; }
-
-    @Override
-    protected int defaultAssemblyRegionPadding() { return 100; }
-
-    @Override
-    protected int defaultMaxReadsPerAlignmentStart() { return 50; }
-
-    @Override
-    protected double defaultActiveProbThreshold() { return 0.002; }
-
-    @Override
-    protected int defaultMaxProbPropagationDistance() { return 50; }
-
-    @Override
     public boolean useVariantAnnotations() { return true;}
 
     @Override
@@ -267,7 +249,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     protected ReadsDownsampler createDownsampler() {
-        return new MutectDownsampler(maxReadsPerAlignmentStart, MTAC.maxSuspiciousReadsPerAlignmentStart, MTAC.downsamplingStride);
+        return new MutectDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, MTAC.maxSuspiciousReadsPerAlignmentStart, MTAC.downsamplingStride);
     }
 
     @Override

@@ -81,33 +81,6 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Single file to which variants should be written")
     public String output;
 
-    public static class HaplotypeCallerAssemblyRegionArgumentCollection extends AssemblyRegionArgumentCollection {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        protected int defaultMinAssemblyRegionSize() { return HaplotypeCaller.DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
-
-        @Override
-        protected int defaultMaxAssemblyRegionSize() { return HaplotypeCaller.DEFAULT_MAX_ASSEMBLY_REGION_SIZE; }
-
-        @Override
-        protected int defaultAssemblyRegionPadding() { return HaplotypeCaller.DEFAULT_ASSEMBLY_REGION_PADDING; }
-
-        @Override
-        protected int defaultMaxReadsPerAlignmentStart() { return HaplotypeCaller.DEFAULT_MAX_READS_PER_ALIGNMENT; }
-
-        @Override
-        protected double defaultActiveProbThreshold() { return HaplotypeCaller.DEFAULT_ACTIVE_PROB_THRESHOLD; }
-
-        @Override
-        protected int defaultMaxProbPropagationDistance() { return HaplotypeCaller.DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
-    }
-
-    @Override
-    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
-        return new HaplotypeCallerAssemblyRegionArgumentCollection();
-    }
-
     @ArgumentCollection
     public HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 

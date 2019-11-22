@@ -30,12 +30,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     public final AssemblyRegionReadShardArgumentCollection shardingArgs = new AssemblyRegionReadShardArgumentCollection();
 
     @ArgumentCollection
-    public final AssemblyRegionArgumentCollection assemblyRegionArgs = getAssemblyRegionArgumentCollection();
-
-    /**
-     * @return a subclass of {@link AssemblyRegionArgumentCollection} with the default values filled in.
-     */
-    protected abstract AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection();
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
 
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;

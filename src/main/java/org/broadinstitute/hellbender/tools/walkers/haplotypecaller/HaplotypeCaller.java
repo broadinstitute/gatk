@@ -137,13 +137,6 @@ import java.util.List;
 @DocumentedFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    //NOTE: many of these settings are referenced by HaplotypeCallerSpark
-    public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
-    public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
-    public static final int DEFAULT_ASSEMBLY_REGION_PADDING = 100;
-    public static final int DEFAULT_MAX_READS_PER_ALIGNMENT = 50;
-    public static final double DEFAULT_ACTIVE_PROB_THRESHOLD = 0.002;
-    public static final int DEFAULT_MAX_PROB_PROPAGATION_DISTANCE = 50;
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
@@ -156,24 +149,6 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private HaplotypeCallerEngine hcEngine;
-
-    @Override
-    protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
-
-    @Override
-    protected int defaultMaxAssemblyRegionSize() { return DEFAULT_MAX_ASSEMBLY_REGION_SIZE; }
-
-    @Override
-    protected int defaultAssemblyRegionPadding() { return DEFAULT_ASSEMBLY_REGION_PADDING; }
-
-    @Override
-    protected int defaultMaxReadsPerAlignmentStart() { return DEFAULT_MAX_READS_PER_ALIGNMENT; }
-
-    @Override
-    protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
-
-    @Override
-    protected int defaultMaxProbPropagationDistance() { return DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {

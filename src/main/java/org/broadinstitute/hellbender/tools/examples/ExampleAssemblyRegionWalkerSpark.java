@@ -38,33 +38,6 @@ public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalker
     @Argument(fullName="knownVariants", shortName="knownVariants", doc="Known set of variants", optional=true)
     private FeatureInput<VariantContext> knownVariants;
 
-    public static class ExampleAssemblyRegionArgumentCollection extends AssemblyRegionArgumentCollection {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        protected int defaultMinAssemblyRegionSize() { return 50; }
-
-        @Override
-        protected int defaultMaxAssemblyRegionSize() { return 300; }
-
-        @Override
-        protected int defaultAssemblyRegionPadding() { return 100; }
-
-        @Override
-        protected int defaultMaxReadsPerAlignmentStart() { return 50; }
-
-        @Override
-        protected double defaultActiveProbThreshold() { return 0.002; }
-
-        @Override
-        protected int defaultMaxProbPropagationDistance() { return 50; }
-    }
-
-    @Override
-    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
-        return new ExampleAssemblyRegionArgumentCollection();
-    }
-
     @Override
     public AssemblyRegionEvaluator assemblyRegionEvaluator() {
         // This example AssemblyRegionEvaluator considers all loci to be active

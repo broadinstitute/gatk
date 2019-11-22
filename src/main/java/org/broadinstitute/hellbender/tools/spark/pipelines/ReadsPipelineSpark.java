@@ -127,7 +127,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     public final AssemblyRegionReadShardArgumentCollection shardingArgs = new AssemblyRegionReadShardArgumentCollection();
 
     @ArgumentCollection
-    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new HaplotypeCallerSpark.HaplotypeCallerAssemblyRegionArgumentCollection();
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
 
     /**
      * command-line arguments to fine tune the apply BQSR step.

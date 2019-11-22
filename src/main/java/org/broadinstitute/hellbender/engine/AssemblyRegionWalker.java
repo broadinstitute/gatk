@@ -2,11 +2,13 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -40,42 +42,8 @@ import java.util.List;
  */
 public abstract class AssemblyRegionWalker extends WalkerBase {
 
-    //NOTE: these argument names are referenced by HaplotypeCallerSpark
-    public static final String MIN_ASSEMBLY_LONG_NAME = "min-assembly-region-size";
-    public static final String MAX_ASSEMBLY_LONG_NAME = "max-assembly-region-size";
-    public static final String ASSEMBLY_PADDING_LONG_NAME = "assembly-region-padding";
-    public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
-    public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
-    public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
-    public static final String ASSEMBLY_REGION_OUT_LONG_NAME = "assembly-region-out";
-    public static final String FORCE_ACTIVE_REGIONS_LONG_NAME = "force-active";
-
-    @Advanced
-    @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
-    protected int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
-
-    @Advanced
-    @Argument(fullName = MAX_ASSEMBLY_LONG_NAME, doc = "Maximum size of an assembly region", optional = true)
-    protected int maxAssemblyRegionSize = defaultMaxAssemblyRegionSize();
-
-    @Advanced
-    @Argument(fullName = ASSEMBLY_PADDING_LONG_NAME, doc = "Number of additional bases of context to include around each assembly region", optional = true)
-    protected int assemblyRegionPadding = defaultAssemblyRegionPadding();
-
-    @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
-    protected int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
-
-    @Advanced
-    @Argument(fullName = THRESHOLD_LONG_NAME, doc="Minimum probability for a locus to be considered active.", optional = true)
-    protected double activeProbThreshold = defaultActiveProbThreshold();
-
-    @Advanced
-    @Argument(fullName = PROPAGATION_LONG_NAME, doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
-    protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
-
-    @Advanced
-    @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
-    protected boolean forceActive = false;
+    @ArgumentCollection
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
 
     /**
      * If provided, this walker will write out its assembly regions
@@ -85,40 +53,10 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      *
      * Intended to make debugging the active region calculations easier
      */
-    @Argument(fullName = ASSEMBLY_REGION_OUT_LONG_NAME, doc="Output the assembly region to this IGV formatted file", optional = true)
+    @Argument(fullName = AssemblyRegionArgumentCollection.ASSEMBLY_REGION_OUT_LONG_NAME, doc="Output the assembly region to this IGV formatted file", optional = true)
     protected String assemblyRegionOut = null;
 
     private PrintStream assemblyRegionOutStream;
-
-    /**
-     * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMinAssemblyRegionSize();
-
-    /**
-     * @return Default value for the {@link #maxAssemblyRegionSize} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMaxAssemblyRegionSize();
-
-    /**
-     * @return Default value for the {@link #assemblyRegionPadding} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultAssemblyRegionPadding();
-
-    /**
-     * @return Default value for the {@link #maxReadsPerAlignmentStart} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMaxReadsPerAlignmentStart();
-
-    /**
-     * @return Default value for the {@link #activeProbThreshold} parameter, if none is provided on the command line
-     */
-    protected abstract double defaultActiveProbThreshold();
-
-    /**
-     * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMaxProbPropagationDistance();
 
     @Override
     public final boolean requiresReads() { return true; }
@@ -140,21 +78,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     protected final void onStartup() {
         super.onStartup();
 
-        if ( minAssemblyRegionSize <= 0 || maxAssemblyRegionSize <= 0 ) {
-            throw new CommandLineException.BadArgumentValue("min/max assembly region size must be > 0");
-        }
-
-        if ( minAssemblyRegionSize > maxAssemblyRegionSize ) {
-            throw new CommandLineException.BadArgumentValue("minAssemblyRegionSize must be <= maxAssemblyRegionSize");
-        }
-
-        if ( assemblyRegionPadding < 0 ) {
-            throw new CommandLineException.BadArgumentValue("assemblyRegionPadding must be >= 0");
-        }
-
-        if ( maxReadsPerAlignmentStart < 0 ) {
-            throw new CommandLineException.BadArgumentValue("maxReadsPerAlignmentStart must be >= 0");
-        }
+        assemblyRegionArgs.validate();
 
         final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? userIntervals : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         readShards = makeReadShards(intervals);
@@ -177,7 +101,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
         final List<List<SimpleInterval>> intervalsGroupedByContig = IntervalUtils.groupIntervalsByContig(intervals);
 
         for ( final List<SimpleInterval> allIntervalsOnContig : intervalsGroupedByContig ) {
-            shards.add(new MultiIntervalLocalReadShard(allIntervalsOnContig, assemblyRegionPadding, reads));
+            shards.add(new MultiIntervalLocalReadShard(allIntervalsOnContig, assemblyRegionArgs.assemblyRegionPadding, reads));
         }
 
         return shards;
@@ -217,7 +141,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     protected ReadsDownsampler createDownsampler() {
-        return maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null;
+        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads()) : null;
     }
 
     /**
@@ -261,12 +185,12 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param features FeatureManager
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance);
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs);
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
             final AssemblyRegion assemblyRegion = assemblyRegionIter.next();
-            if ( forceActive ) {
+            if ( assemblyRegionArgs.forceActive ) {
                 assemblyRegion.setIsActive(true);
             }
 
