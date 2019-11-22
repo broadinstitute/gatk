@@ -36,8 +36,8 @@ public class LocalAlleler {
         localAttributes.put(LAA, localAlleleIndexes);
 
         //construct LGT
-        List<Integer> localGenotypes = getLocalGenotypeList(originalGenotype, localAllelesIncludingRef);
-        String localGenotypesString = createLocalGenotypeString(localGenotypes, originalGenotype.isPhased());
+        final List<Integer> localGenotypes = getLocalGenotypeList(originalGenotype, localAllelesIncludingRef);
+        final String localGenotypesString = createLocalGenotypeString(localGenotypes, originalGenotype.isPhased());
         localAttributes.put(LGT, localGenotypesString);
 
         //construct LAD
@@ -53,9 +53,9 @@ public class LocalAlleler {
 
         //construct LPL
         if( originalGenotype.hasPL()) {
-            int[] originalPls = originalGenotype.getPL();
-            int[] plIndices = AlleleSubsettingUtils.subsettedPLIndices(originalGenotype.getPloidy(), localAllelesIncludingRef);
-            int[] newPls = new int[plIndices.length];
+            final int[] originalPls = originalGenotype.getPL();
+            final int[] plIndices = AlleleSubsettingUtils.subsettedPLIndices(originalGenotype.getPloidy(), localAllelesIncludingRef);
+            final int[] newPls = new int[plIndices.length];
             for (int i = 0; i < plIndices.length; i++) {
                 newPls[i] = originalPls[plIndices[i]];
             }
@@ -84,7 +84,7 @@ public class LocalAlleler {
     }
 
     private static List<Integer> getLocalGenotypeList(Genotype originalGenotype, AlleleListPermutation<Allele> localAlleles) {
-        List<Integer> localGenotypes = new ArrayList<>(localAlleles.numberOfAlleles());
+        final List<Integer> localGenotypes = new ArrayList<>(localAlleles.numberOfAlleles());
         for(final Allele allele: originalGenotype.getAlleles()){
             localGenotypes.add(localAlleles.indexOfAllele(allele));
         }
@@ -92,7 +92,7 @@ public class LocalAlleler {
     }
 
     private static String createLocalGenotypeString(List<Integer> localGenotypes, boolean phased) {
-        String delimiter = phased ? Genotype.PHASED_ALLELE_SEPARATOR : Genotype.UNPHASED_ALLELE_SEPARATOR;
+        final String delimiter = phased ? Genotype.PHASED_ALLELE_SEPARATOR : Genotype.UNPHASED_ALLELE_SEPARATOR;
         return localGenotypes.stream().map(String::valueOf).collect(Collectors.joining(delimiter));
     }
 

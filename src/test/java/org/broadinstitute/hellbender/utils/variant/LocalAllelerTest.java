@@ -2,16 +2,20 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
+import net.sf.cglib.core.Local;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import shaded.cloud_nio.com.google.errorprone.annotations.Var;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class LocalAllelerTest extends BaseTest {
+
     private static final Allele ALT_AAT = Allele.create("AAT");
     private  static final VariantContextBuilder vcbNoNonRef = getVcBuilder().alleles(Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_T, ALT_AAT));
     private static final VariantContextBuilder vcbWithNonRef = getVcBuilder().alleles(Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_T, ALT_AAT, Allele.NON_REF_ALLELE));
@@ -171,6 +175,20 @@ public class LocalAllelerTest extends BaseTest {
 
     @Test
     public void testRemoveNonLocal(){
-        
+        Object[] values = makeGenotypes(vcbWithNonRef, het1_3, Arrays.asList(1, 3, 4), "1/2",
+                Arrays.asList(0, 1, 2, 3, 4), Arrays.asList(0, 1, 3, 4),
+                Arrays.asList(0, 1, 11, 2, 12, 22, 3, 13, 23, 33, 4, 14, 24, 34, 44), Arrays.asList(0, 1, 11, 3, 13, 33, 4, 14, 34, 44));
+        VariantContext vc = (VariantContext)values[0];
+        Genotype originalGenotype = (Genotype)values[1];
+        Genotype expectedGenotype = (Genotype)values[2];
+        Genotype localizedGenotype = LocalAlleler.addLocalFields(originalGenotype, vc, true);
+        Assert.assertTrue(localizedGenotype.getAlleles().isEmpty());
+        Assert.assertFalse(localizedGenotype.hasAD());
+        Assert.assertFalse(localizedGenotype.hasPL());
+
+        Assert.assertEquals(localizedGenotype.getExtendedAttribute(LocalAlleler.LGT), expectedGenotype.getExtendedAttribute(LocalAlleler.LGT));
+        Assert.assertEquals(localizedGenotype.getExtendedAttribute(LocalAlleler.LAA), expectedGenotype.getExtendedAttribute(LocalAlleler.LAA));
+        Assert.assertEquals(localizedGenotype.getExtendedAttribute(LocalAlleler.LAD), expectedGenotype.getExtendedAttribute(LocalAlleler.LAD));
+        Assert.assertEquals(localizedGenotype.getExtendedAttribute(LocalAlleler.LPL), expectedGenotype.getExtendedAttribute(LocalAlleler.LPL));
     }
 }
