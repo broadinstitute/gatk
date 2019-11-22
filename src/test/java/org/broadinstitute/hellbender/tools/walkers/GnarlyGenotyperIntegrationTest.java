@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -84,7 +85,8 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
         .addArgument("V", input)
-        .addArgument("output-db", outputDatabase.getAbsolutePath());
+        .addArgument("output-db", outputDatabase.getAbsolutePath())
+        .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
         args.addOutput(output);
         intervals.forEach(args::addInterval);
 
@@ -105,7 +107,8 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                 .addArgument("L", "chr20:10000000-10030000")
                 .addBooleanArgument("only-output-calls-starting-in-intervals", true)
                 .addBooleanArgument("keep-all-sites", true)
-                .addOutput(output);
+                .addOutput(output)
+                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
         runCommandLine(args);
 
         //should have same variants as input with low QUAL variants marked with a monomorphic filter

@@ -79,7 +79,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         return null;
     }
 
-    public static String getDeprecatedRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}   //old key that used the janky depth estimation method
+    public static String getDeprecatedRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED;}   //old key that used the janky depth estimation method
 
     @Override
     public List<String> getKeyNames() {

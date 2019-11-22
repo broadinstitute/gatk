@@ -158,6 +158,7 @@ public final class ReblockGVCF extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeaders);
         // Remove GCVFBlocks, legacy headers, and annotations that aren't informative for single samples
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCFWriter.GVCF_BLOCK) ||
+                (vcfHeaderLine.getKey().equals("INFO")) && ((VCFInfoHeaderLine)vcfHeaderLine).getID().equals(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED) ||  //remove old (maybe wrong type) and add new with deprecated note
                 (vcfHeaderLine.getKey().equals("INFO")) && infoFieldAnnotationKeyNamesToRemove.contains(((VCFInfoHeaderLine)vcfHeaderLine).getID()));
 
         headerLines.addAll(getDefaultToolVCFHeaderLines());
@@ -174,8 +175,8 @@ public final class ReblockGVCF extends VariantWalker {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
-        if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
-            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
+        if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED));
         }
 
         if ( dbsnp.dbsnp != null  ) {
@@ -447,18 +448,19 @@ public final class ReblockGVCF extends VariantWalker {
             genotypesArray.add(g);
         }
 
+        //all VCs should get new RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, but preserve deprecated keys if present
         if (!originalVC.hasAttribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
             //we're going to approximate depth for MQ calculation with the site-level DP (should be informative and uninformative reads), which is pretty safe because it will only differ if reads are missing MQ
-            final Integer rawMqValue = originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY) ?
-                    (int)Math.round(originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0.0)) :
+            final Integer rawMqValue = originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED) ?
+                    (int)Math.round(originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED, 0.0)) :
                     (int)Math.round(originalVC.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 60.0) *
                             originalVC.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 60.0) *
                             originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
             attrMap.put(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,
                     String.format("%d,%d", rawMqValue, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)));
-            attrMap.put(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
-            if (originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY)) {
-                attrMap.put(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
+            if (originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {
+                attrMap.put(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED, originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
+                attrMap.put(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
             }
         }
 

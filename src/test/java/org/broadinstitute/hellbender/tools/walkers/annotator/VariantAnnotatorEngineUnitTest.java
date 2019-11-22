@@ -181,7 +181,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.ALLELE_NUMBER_KEY), 2);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(GATKVCFConstants.FISHER_STRAND_KEY), FisherStrand.makeValueObjectForAnnotation(new int[][]{{ref,0},{alt,0}}));
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(GATKVCFConstants.NOCALL_CHROM_KEY), 0);
-        Assert.assertNull(resultVC.getCommonInfo().getAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
+        Assert.assertNull(resultVC.getCommonInfo().getAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED));
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY), RMSMappingQuality.formattedValue(0.0));
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.MAPPING_QUALITY_ZERO_KEY), MappingQualityZero.formattedValue(8));
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(GATKVCFConstants.SAMPLE_LIST_KEY), "sample1");
