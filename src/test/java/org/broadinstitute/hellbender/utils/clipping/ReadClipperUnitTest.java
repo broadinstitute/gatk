@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.clipping;
 
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -17,12 +19,14 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftEnd;
 import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftStart;
 
 public final class ReadClipperUnitTest extends GATKBaseTest {
-    List<Cigar> cigarList;
-    int maximumCigarElements = 9;                                                                                           // 6 is the minimum necessary number to try all combinations of cigar types with guarantee of clipping an element with length = 2
+    private List<Cigar> cigarList;
+    private final int maximumCigarElements = 9;                                                                                           // 6 is the minimum necessary number to try all combinations of cigar types with guarantee of clipping an element with length = 2
 
     @BeforeClass
     public void init() {
         cigarList = ReadClipperTestUtils.generateCigarList(maximumCigarElements);
+        Cigar additionalCigar = TextCigarCodec.decode("2M3I5M");
+        cigarList.add(additionalCigar);
     }
 
     @Test
@@ -45,15 +49,21 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
     public void testHardClipByReadCoordinates() {
         for (Cigar cigar : cigarList) {
             GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
+
             int readLength = read.getLength();
             for (int i = 0; i < readLength; i++) {
                 GATKRead clipLeft = ReadClipper.hardClipByReadCoordinates(read, 0, i);
                 Assert.assertTrue(clipLeft.getLength() <= readLength - i, String.format("Clipped read length is greater than original read length (minus %d): %s -> %s", i, read.getCigar().toString(), clipLeft.getCigar().toString()));
-                assertUnclippedLimits(read, clipLeft);
+                assertRefAlignmentConsistent(clipLeft);
+                assertReadLengthConsistent(clipLeft);
+                assertReadClippingConsistent(read, clipLeft, i + 1);
+
 
                 GATKRead clipRight = ReadClipper.hardClipByReadCoordinates(read, i, readLength - 1);
                 Assert.assertTrue(clipRight.getLength() <= i, String.format("Clipped read length is greater than original read length (minus %d): %s -> %s", i, read.getCigar().toString(), clipRight.getCigar().toString()));
-                assertUnclippedLimits(read, clipRight);
+                assertRefAlignmentConsistent(clipRight);
+                assertReadLengthConsistent(clipRight);
+                assertReadClippingConsistent(read, clipRight, readLength-1-i+1);
             }
         }
     }
@@ -87,19 +97,24 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
         for (Cigar cigar : cigarList) {
             GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
             int start = getSoftStart(read);
+            int aln_start = read.getStart();
+            int aln_end = read.getEnd();
+
             int stop = getSoftEnd(read);
 
             for (int i = start; i <= stop; i++) {
                 GATKRead clipLeft = (new ReadClipper(read)).hardClipByReferenceCoordinates(-1, i);
                 if (!clipLeft.isEmpty()) {
                     Assert.assertTrue(clipLeft.getStart() >= Math.min(read.getEnd(), i + 1), String.format("Clipped alignment start (%d) is less the expected (%d): %s -> %s", clipLeft.getStart(), i + 1, read.getCigar().toString(), clipLeft.getCigar().toString()));
-                    assertUnclippedLimits(read, clipLeft);
+                    assertRefAlignmentConsistent(clipLeft);
+                    assertReadLengthConsistent(clipLeft);
                 }
 
                 GATKRead clipRight = (new ReadClipper(read)).hardClipByReferenceCoordinates(i, -1);
                 if (!clipRight.isEmpty() && clipRight.getStart() <= clipRight.getEnd()) {             // alnStart > alnEnd if the entire read is a soft clip now. We can't test those.
                     Assert.assertTrue(clipRight.getEnd() <= Math.max(read.getStart(), i - 1), String.format("Clipped alignment end (%d) is greater than expected (%d): %s -> %s", clipRight.getEnd(), i - 1, read.getCigar().toString(), clipRight.getCigar().toString()));
-                    assertUnclippedLimits(read, clipRight);
+                    assertRefAlignmentConsistent(clipRight);
+                    assertReadLengthConsistent(clipRight);
                 }
             }
         }
@@ -117,7 +132,8 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
 
                     if (!clipLeft.isEmpty()) {
                         Assert.assertTrue(clipLeft.getStart() >= i + 1, String.format("Clipped alignment start (%d) is less the expected (%d): %s -> %s", clipLeft.getStart(), i + 1, read.getCigar().toString(), clipLeft.getCigar().toString()));
-                        assertUnclippedLimits(read, clipLeft);
+                        assertRefAlignmentConsistent(clipLeft);
+                        assertReadLengthConsistent(clipLeft);
                     }
                 }
             }
@@ -135,7 +151,8 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                     GATKRead clipRight = ReadClipper.hardClipByReferenceCoordinatesRightTail(read, i);
                     if (!clipRight.isEmpty() && clipRight.getStart() <= clipRight.getEnd()) {         // alnStart > alnEnd if the entire read is a soft clip now. We can't test those.
                         Assert.assertTrue(clipRight.getEnd() <= i - 1, String.format("Clipped alignment end (%d) is greater than expected (%d): %s -> %s", clipRight.getEnd(), i - 1, read.getCigar().toString(), clipRight.getCigar().toString()));
-                        assertUnclippedLimits(read, clipRight);
+                        assertRefAlignmentConsistent(clipRight);
+                        assertReadLengthConsistent(clipRight);
                     }
                 }
             }
@@ -147,7 +164,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
         final byte LOW_QUAL = 2;
         final byte HIGH_QUAL = 30;
 
-        /** create a read for every cigar permutation */
+        /* create a read for every cigar permutation */
         for (Cigar cigar : cigarList) {
             GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
             int readLength = read.getLength();
@@ -155,7 +172,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
 
             for (int nLowQualBases = 0; nLowQualBases < readLength; nLowQualBases++) {
 
-                /**  create a read with nLowQualBases in the left tail */
+                /*  create a read with nLowQualBases in the left tail */
                 Arrays.fill(quals, HIGH_QUAL);
                 for (int addLeft = 0; addLeft < nLowQualBases; addLeft++)
                     quals[addLeft] = LOW_QUAL;
@@ -163,7 +180,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                 GATKRead clipLeft = ReadClipper.hardClipLowQualEnds(read, LOW_QUAL);
                 checkClippedReadsForLowQualEnds(read, clipLeft, LOW_QUAL, nLowQualBases);
 
-                /** create a read with nLowQualBases in the right tail */
+                /* create a read with nLowQualBases in the right tail */
                 Arrays.fill(quals, HIGH_QUAL);
                 for (int addRight = 0; addRight < nLowQualBases; addRight++)
                     quals[readLength - addRight - 1] = LOW_QUAL;
@@ -171,7 +188,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                 GATKRead clipRight = ReadClipper.hardClipLowQualEnds(read, LOW_QUAL);
                 checkClippedReadsForLowQualEnds(read, clipRight, LOW_QUAL, nLowQualBases);
 
-                /** create a read with nLowQualBases on both tails */
+                /* create a read with nLowQualBases on both tails */
                 if (nLowQualBases <= readLength / 2) {
                     Arrays.fill(quals, HIGH_QUAL);
                     for (int addBoth = 0; addBoth < nLowQualBases; addBoth++) {
@@ -194,8 +211,8 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
             CigarCounter original = new CigarCounter(read);
             CigarCounter clipped = new CigarCounter(clippedRead);
 
-            assertUnclippedLimits(read, clippedRead);                                                                   // Make sure limits haven't changed
-            original.assertHardClippingSoftClips(clipped);                                                              // Make sure we have only clipped SOFT_CLIPS
+            assertUnclippedLimits(read, clippedRead);  // Make sure limits haven't changed
+            original.assertHardClippingSoftClips(clipped); // Make sure we have only clipped SOFT_CLIPS
         }
     }
 
@@ -216,7 +233,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                     Assert.assertEquals(expectedLength, clippedRead.getLength(), String.format("%s -> %s", read.getCigar().toString(), clippedRead.getCigar().toString()));  // check that everything else is still there
                     Assert.assertFalse(startsWithInsertion(clippedRead.getCigar()));                                                                                   // check that the insertions are gone
                 } else
-                    Assert.assertTrue(expectedLength == 0, String.format("expected length: %d", expectedLength));                                                      // check that the read was expected to be fully clipped
+                    Assert.assertEquals(expectedLength, 0, String.format("expected length: %d", expectedLength));                                                      // check that the read was expected to be fully clipped
             }
         }
     }
@@ -276,7 +293,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(enabled = true, dataProvider = "RevertSoftClipsBeforeContig")
+    @Test(dataProvider = "RevertSoftClipsBeforeContig")
     public void testRevertSoftClippedBasesBeforeStartOfContig(final int softStart, final int alignmentStart) {
         final int nMatches = 10;
         final int nSoft = -1 * (softStart - alignmentStart);
@@ -306,8 +323,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
     }
 
     private void checkClippedReadsForLowQualEnds(GATKRead read, GATKRead clippedRead, byte lowQual, int nLowQualBases) {
-        assertUnclippedLimits(read, clippedRead);                                                                       // Make sure limits haven't changed
-        assertNoLowQualBases(clippedRead, lowQual);                                                                     // Make sure the low qualities are gone
+        assertNoLowQualBases(clippedRead, lowQual);  // Make sure the low qualities are gone
     }
 
     /**
@@ -322,6 +338,76 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
             Assert.assertEquals(original.getUnclippedEnd(), clipped.getUnclippedEnd());
         }
     }
+
+    /**
+    * Asserts that the length of alignment on the reference is consistent with the CIGAR
+    * after clipping
+    *
+    * @param clippedRead input read
+    * */
+    private void assertRefAlignmentConsistent(final GATKRead clippedRead){
+        int cigarRefLength = clippedRead.getCigar().getReferenceLength();
+        int readRefLength = clippedRead.getLengthOnReference();
+        if (clippedRead.isUnmapped()) {
+            readRefLength = 0 ;
+        }
+        Assert.assertEquals(cigarRefLength, readRefLength);
+    }
+
+    /**
+     * Asserts that the length of the read is consistent with the CIGAR after clipping
+     *
+     * @param clippedRead input read
+     * */
+    private void assertReadLengthConsistent(final GATKRead clippedRead){
+        int cigarReadLength = clippedRead.getCigar().getReadLength();
+        int readReadLength = clippedRead.getLength();
+        Assert.assertEquals(cigarReadLength, readReadLength);
+    }
+
+    /**
+     * Asserts that number of clipped bases from the read is consistent with the requested clipping
+     *
+     * @param original original read
+     * @param clipped clipped read
+     * @param clipping number of clipped bases requested
+     * */
+    private void assertReadClippingConsistent(final GATKRead original,
+                                              final GATKRead clipped,
+                                              final int clipping) {
+        int clip_diff = original.getLength() - clipped.getLength();
+        Assert.assertEquals(clip_diff, clipping);
+    }
+
+    /**
+     * Asserts that reference clipping was as requested
+     *
+     * @param original Original read
+     * @param clipped clipped read
+     * @param clipped_left number of bases clipped from alignment to ref on the left
+     * @param clipped_right umber of bases clipped from alignment to ref on the right
+     * */
+    private void assertRefClippingConsistent(final GATKRead original,
+                                             final GATKRead clipped,
+                                             final int clipped_left,
+                                             final int clipped_right){
+
+        if (original.getLengthOnReference() - clipped_left - clipped_right <= 0 ){
+            if (clipped.getLengthOnReference() == 0 )
+                return;
+            Assert.assertTrue(clipped.isUnmapped());
+            return;
+        }
+        int delta_left = clipped.getStart() - original.getStart();
+        Assert.assertEquals(delta_left, clipped_left);
+        int original_end = original.getEnd() ;
+        int clipped_end = clipped.getEnd() ;
+        int delta_right = original_end - clipped_end;
+        Assert.assertEquals(delta_right, clipped_right);
+
+
+    }
+
 
     private boolean startsWithInsertion(Cigar cigar) {
         return leadingCigarElementLength(cigar, CigarOperator.INSERTION) > 0;
@@ -347,11 +433,11 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
     private class CigarCounter {
         private Map<CigarOperator, Integer> counter;
 
-        public Integer getCounterForOp(CigarOperator operator) {
+        Integer getCounterForOp(CigarOperator operator) {
             return counter.get(operator);
         }
 
-        public CigarCounter(GATKRead read) {
+        CigarCounter(GATKRead read) {
             CigarOperator[] operators = CigarOperator.values();
             counter = new LinkedHashMap<>(operators.length);
 
@@ -362,7 +448,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                 counter.put(cigarElement.getOperator(), counter.get(cigarElement.getOperator()) + cigarElement.getLength());
         }
 
-        public boolean assertHardClippingSoftClips(CigarCounter clipped) {
+        boolean assertHardClippingSoftClips(CigarCounter clipped) {
             for (CigarOperator op : counter.keySet()) {
                 if (op == CigarOperator.HARD_CLIP || op == CigarOperator.SOFT_CLIP) {
                     int counterTotal = counter.get(CigarOperator.HARD_CLIP) + counter.get(CigarOperator.SOFT_CLIP);
@@ -370,7 +456,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                     int clippedSoft = clipped.getCounterForOp(CigarOperator.SOFT_CLIP);
 
                     Assert.assertEquals(counterTotal, clippedHard);
-                    Assert.assertTrue(clippedSoft == 0);
+                    Assert.assertEquals(clippedSoft, 0);
                 } else
                     Assert.assertEquals(counter.get(op), clipped.getCounterForOp(op));
             }
@@ -479,4 +565,37 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
         Assert.assertTrue(clippedRead.isUnmapped());
     }
 
+    //test fix for https://github.com/broadinstitute/gatk/issues/6139
+    @DataProvider(name="test-hard-clip-clips-right-amount")
+    Object[][] cigarsToClipData(){
+        return new Object[][]{
+                new Object[]{"20M", 6},
+                new Object[]{"3M2I20M", 4},
+                new Object[]{"10I20M", 0},
+                new Object[]{"3M2D20M", 8},
+                new Object[]{"3M10N20M", 16},
+                new Object[]{"6M2D10M", 8},
+                new Object[]{"10M2D10M", 6},
+                new Object[]{"3S10M", 3},
+                new Object[]{"3H10M", 6}
+        };
+    }
+
+    //test fix for https://github.com/broadinstitute/gatk/issues/6139
+    @Test (dataProvider="test-hard-clip-clips-right-amount")
+    public void testHardClipSoftClippedBasesClipsTheCorrectAmount(final String cigarString, final int alignmentOffset) {
+        final int start = 100;
+        final GATKRead originalRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(cigarString));
+        BaseUtils.fillWithRandomBases(originalRead.getBasesNoCopy(),0,originalRead.getLength());
+        originalRead.setPosition(originalRead.getContig(), start);
+
+        final GATKRead clippedRead = ReadClipper.hardClipByReadCoordinates(originalRead, 0, 5);
+        Assert.assertEquals(
+                clippedRead.getCigar().getReadLength() + AlignmentUtils.getNumHardClippedBases(clippedRead),
+                originalRead.getCigar().getReadLength() + AlignmentUtils.getNumHardClippedBases((originalRead))
+                , " Clipped cigar: " + clippedRead.getCigar());
+        Assert.assertEquals(clippedRead.getStart(),start + alignmentOffset, " Clipped cigar: " + clippedRead.getCigar());
+        Assert.assertEquals(clippedRead.getBasesNoCopy(),Arrays.copyOfRange(originalRead.getBases(),6,originalRead.getBasesNoCopy().length));
+        Assert.assertEquals(clippedRead.getBaseQualitiesNoCopy(),Arrays.copyOfRange(originalRead.getBaseQualitiesNoCopy(),6,originalRead.getBaseQualitiesNoCopy().length));
+    }
 }
