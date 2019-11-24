@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.TestUtil;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -438,16 +440,16 @@ public final class ArtificialReadUtils {
     }
 
     public static SAMRecord createArtificialSAMRecord(final byte[] bases, final byte[] qual, final String cigar) {
-        SAMFileHeader header = createArtificialSamHeader();
+        final SAMFileHeader header = createArtificialSamHeader();
         return createArtificialSAMRecord(header, "default_read", 0, 10000, bases, qual, cigar);
     }
 
     public static SAMRecord createArtificialSAMRecord(final SAMFileHeader header, final Cigar cigar, final String name) {
-        int length = cigar.getReadLength();
-        byte base = 'A';
-        byte qual = 30;
-        byte [] bases = Utils.dupBytes(base, length);
-        byte [] quals = Utils.dupBytes(qual, length);
+        final int length = cigar.getReadLength();
+        final Random random = new Random(TestUtil.RANDOM_SEED);
+        final byte qual = 30;
+        final byte [] bases = SequenceUtil.getRandomBases(random, length);
+        final byte [] quals = Utils.dupBytes(qual, length);
         return createArtificialSAMRecord(header, name, 0, 10000, bases, quals, cigar.toString());
     }
 
