@@ -6,31 +6,32 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
-import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.codehaus.plexus.util.cli.Arg;
-import org.reflections.Reflections;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -96,7 +97,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final Set<VariantAnnotation> representativeInfoStringAnnotations = ImmutableSet.of(new ReferenceBases());
         final Set<VariantAnnotation> representativeInfoBooleanAnnotations = ImmutableSet.of(new TandemRepeat());
 
-        final Set<GenotypeAnnotation> representativeGenotypeAnnotations = ImmutableSet.of(new DepthPerAlleleBySample(), new DepthPerSampleHC(), new OrientationBiasReadCounts());
+        final Set<GenotypeAnnotation> representativeGenotypeAnnotations = ImmutableSet.of(new DepthPerAlleleBySample(), new DepthPerSampleHC(), new OrientationBiasReadCounts(), new AlleleFraction());
 
         // check the header
         final Set<String> infoHeaderKeys = getHeaderFromFile(reannotatedVcf).getInfoHeaderLines().stream().map(VCFInfoHeaderLine::getID).collect(Collectors.toSet());
@@ -155,6 +156,9 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                     });
         }
 
+        // VariantAnnotator can't hope to match M2 and HC perfectly since it doesn't go throught the whole process of assembly and realignment.
+        // The best we can expect is that annotations usually match.  Performance as of this writing (GATK 4.1.5.0) is that less than 1 in 40 INFO
+        // and less than 1 in 15 FORMAT annotations are off
         Assert.assertTrue(matchingInfoFieldValues.intValue() > 40 * nonMatchingInfoFieldValues.intValue());
         Assert.assertTrue(matchingFormatFieldValues.intValue() > 15 * nonMatchingFormatFieldValues.intValue());
     }
@@ -182,7 +186,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(outputVC.hasAttribute(FOO), unfilteredCompVariants.contains(keyForVariant(outputVC)));
         }
 
-        // add the input as a comp -- every site shold get this annotation
+        // add the input as a comp -- every site should get this annotation
         final ArgumentsBuilder argsForTwoComps = new ArgumentsBuilder(argsForOneComp.getArgsArray())
                 .addFileArgument(StandardArgumentDefinitions.COMPARISON_LONG_NAME + ":" + FOO2, inputVCF);
 
@@ -309,6 +313,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(inputVCF)
                 .addOutput(outputVCF)
+                .addBooleanArgument(StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, true)
                 .addInterval(new SimpleInterval("20", 1, 1));
 
         runCommandLine(args.getArgsList());

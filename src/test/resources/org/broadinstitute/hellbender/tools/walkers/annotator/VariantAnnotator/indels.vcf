@@ -1,8 +1,5 @@
 ##fileformat=VCFv4.1
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Alt allele counts">
-##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
 ##source=UnifiedGenotyper
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	
 20	10002458	.	G	GTT,GTTT	.	filter1	AC=2,4

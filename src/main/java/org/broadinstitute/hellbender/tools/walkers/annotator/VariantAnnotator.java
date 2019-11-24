@@ -89,8 +89,6 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <h3>Caveat</h3>
- * <p>This tool will not output every annotation as many cannot be made without computing the per-read AlleleLikelihoods,
- * which is generated in either the HaplotypeCaller or Mutect2. </p>
  * <p>This tool outputs no annotations by default, all annotations/groups must be specified explicitly. </p>
  *
  * <h3>Special note on RankSumTestAnnotations</h3>
@@ -167,7 +165,7 @@ public class VariantAnnotator extends VariantWalker {
     protected Boolean expressionAlleleConcordance = false;
 
     /**
-     * Bases with a quality below this threshold will not be used for calling.
+     * Bases with a quality below this threshold will not be used for annotation.
      */
     @Argument(fullName = AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME,  doc = "Minimum base quality required to confidently assign a read to an allele", optional = true)
     public byte minBaseQualityScore = 10;
@@ -235,9 +233,7 @@ public class VariantAnnotator extends VariantWalker {
     }
 
     private AlleleLikelihoods<GATKRead, Allele> makeLikelihoods(final VariantContext vc, final ReadsContext readsContext) {
-        //TODO remove this filter and update the tests, this implementation filters out reads that start in a spanning deleting according to variant context in order to match gatk3,
-        //TODO this will cause the reads to be assigned and annotated in a different manner than the haplotype caller.
-        final List<GATKRead> reads = Utils.stream(readsContext).filter(r -> r.getStart() <= vc.getStart()).collect(Collectors.toList());
+        final List<GATKRead> reads = Utils.stream(readsContext).collect(Collectors.toList());
         final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(variantSamples,
                 new IndexedAlleleList<>(vc.getAlleles()), AssemblyBasedCallerUtils.splitReadsBySample(variantSamples, getHeaderForReads(), reads));
 
@@ -248,7 +244,7 @@ public class VariantAnnotator extends VariantWalker {
         final List<Allele> altAlleles = vc.getAlternateAlleles();
         final int numAlleles = vc.getNAlleles();
 
-        // manually fill each sample's likelihoods one read at a time, assigning probability 1 to the matching allele, if present
+        // manually fill each sample's likelihoods one read at a time, assigning probability 1 (0 in log space) to the matching allele, if present
         for (final Map.Entry<String, ReadPileup> samplePileups : pileupsBySample.entrySet()) {
             final LikelihoodMatrix<GATKRead, Allele> sampleMatrix = result.sampleMatrix(result.indexOfSample(samplePileups.getKey()));
 
