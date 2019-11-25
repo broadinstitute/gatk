@@ -666,4 +666,16 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 new File(getToolTestDataDir() + "expected/" + "testPrintMissingComp" + ".expected.txt"));
     }
 
+    @Test
+    public void testCountWithNoReferenceOrIntervals() {
+        //Test for https://github.com/broadinstitute/gatk/issues/6212 just make sure we don't crash.
+        final String vcf = getTestFilePath("/CEU.trio.callsForVE.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+                args.addOutput( createTempFile("out",".stuff"))
+                        .addArgument("eval", vcf)
+                        .addArgument("EV", "CountVariants");
+
+        runCommandLine(args);
+    }
+
 }

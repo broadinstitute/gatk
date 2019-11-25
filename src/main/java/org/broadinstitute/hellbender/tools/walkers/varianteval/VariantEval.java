@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalU
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
@@ -235,7 +236,7 @@ public class VariantEval extends MultiVariantWalker {
     /**
      * File containing tribble-readable features for the IntervalStratificiation
      */
-    @Argument(fullName="strat-intervals", shortName="strat-intervals", doc="File containing tribble-readable features for the IntervalStratificiation", optional=true)
+    @Argument(fullName="strat-intervals", shortName="strat-intervals", doc="File containing tribble-readable features for the IntervalStratification", optional=true)
     public FeatureInput<Feature> intervalsFile = null;
 
     /**
@@ -303,6 +304,8 @@ public class VariantEval extends MultiVariantWalker {
 
     // maintain the mapping of FeatureInput to name used in output file
     Map<FeatureInput<VariantContext>, String> inputToNameMap = new HashMap<>();
+
+    private final OneShotLogger territoryUnknownWarningLogger = new OneShotLogger(logger);
 
     /**
      * Initialize the stratifications, evaluations, evaluation contexts, and reporting object
@@ -819,7 +822,13 @@ public class VariantEval extends MultiVariantWalker {
     }
 
     public long getnProcessedLoci() {
-        return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
+        if(getTraversalIntervals() == null) {
+            territoryUnknownWarningLogger.warn("No reference or intervals were provided so it is not clear how much genomic " +
+                    "territory the input covered. Values that rely on the size of the input territory will not be correct.");
+            return 0;
+        } else {
+            return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
+        }
     }
 
     public FeatureInput<Feature> getKnownCNVsFile() {
