@@ -318,7 +318,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
 
     :param model_file: HD5 model file to load and return.
     :param model_layers: HD5 model file whose weights will be loaded into this model when layer names match.
-    :param model_freeze: HD5 model file whose weights will be loaded and frozen into this model when layer names match.
+    :param freeze_model_layers: Whether to freeze layers from loaded from model_layers
     :param tensor_maps_in: List of input TensorMaps
     :param tensor_maps_out: List of output TensorMaps
     :param activation: Activation function as a string (e.g. 'relu', 'linear, or 'softmax)
@@ -437,20 +437,21 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
     m.summary()
 
-    if 'model_layers' in kwargs and kwargs['model_layers'] is not None:
-        m.load_weights(kwargs['model_layers'], by_name=True)
-        logging.info('Loaded model weights from:{}'.format(kwargs['model_layers']))
-
-    if 'model_freeze' in kwargs and kwargs['model_freeze'] is not None:
-        frozen = 0
-        m.load_weights(kwargs['model_freeze'], by_name=True)
-        m_freeze = load_model(kwargs['model_freeze'], custom_objects=custom_dict)
-        frozen_layers = [layer.name for layer in m_freeze.layers]
-        for l in m.layers:
-            if l.name in frozen_layers:
-                l.trainable = False
-                frozen += 1
-        logging.info('Loaded and froze:{} layers from:{}'.format(frozen, kwargs['model_freeze']))
+    model_layers = kwargs.get('model_layers', False)
+    if model_layers:
+        loaded = 0
+        freeze =  kwargs.get('freeze_model_layers', False)
+        m_other = load_model(model_layers, custom_objects=custom_dict)
+        for l in m_other.layers:
+            try:
+                target_layer = m.get_layer(l.name)
+                target_layer.set_weights(l.get_weights())
+                loaded += 1
+                if freeze:
+                    target_layer.trainable = False
+            except (ValueError, KeyError):
+                continue
+        logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
 
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
     return m

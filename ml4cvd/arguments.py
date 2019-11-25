@@ -62,7 +62,7 @@ def parse_args():
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
-    parser.add_argument('--model_freeze', help='Like the model_layers argument, except all loaded layers will also be frozen.')
+    parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
     parser.add_argument('--lv_mass_csv', default='/mnt/ml4cvd/projects/jamesp/data/returned_lv_mass.tsv',
                         help='Path to left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964')
 
