@@ -211,7 +211,7 @@ public class ContaminationModel {
         final DoubleUnaryOperator objective = c -> modelLogLikelihood(segments, c, errorRate, mafs);
 
         final List<UnivariatePointValuePair> optima = CONTAMINATION_INITIAL_GUESSES.stream()
-                .map(initial -> OptimizationUtils.max(objective, 0, 0.5, initial, 1.0e-4, 1.0e-4, 20))
+                .map(initial -> OptimizationUtils.max(objective, 0, 0.5, initial, 1.0e-4, 1.0e-4, 30))
                 .collect(Collectors.toList());
 
         return Collections.max(optima, Comparator.comparingDouble(UnivariatePointValuePair::getValue)).getPoint();
