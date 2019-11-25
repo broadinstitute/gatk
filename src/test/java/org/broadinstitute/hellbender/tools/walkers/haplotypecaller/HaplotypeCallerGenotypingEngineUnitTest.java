@@ -11,17 +11,21 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -67,10 +71,12 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         // Arguments to argumentitify later:
         String location1 = "1:102130523";
 
-
-
         try ( final ReadsDataSource dataSource = new ReadsDataSource(new File(DRAGEN_GATK_BQDFRD_TEST_BAM_SRA).toPath()) ) {
-            dataSource.query();
+            LocusIteratorByState locusIterator =
+                new LocusIteratorByState(dataSource.query(new SimpleInterval(location1)), DownsamplingMethod.NONE, false,
+                    ReadUtils.getSamplesFromHeader(dataSource.getHeader()), dataSource.getHeader(), true);
+            locusIterator.next().getBasePileup()
+            dataSource.query(new SimpleInterval(location1));
 
             for ( GATKRead read : outputReads ) {
                 ++totalReads;
