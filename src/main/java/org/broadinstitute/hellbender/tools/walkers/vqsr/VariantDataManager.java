@@ -27,7 +27,6 @@ public class VariantDataManager {
     private double[] varianceVector; // this is really the standard deviation
     public List<String> annotationKeys;
     private final VariantRecalibratorArgumentCollection VRAC;
-    private final boolean debugStdevThresholding;
     protected final static Logger logger = LogManager.getLogger(VariantDataManager.class);
     protected final List<TrainingSet> trainingSets;
     private static final double SAFETY_OFFSET = 0.01;     //To use for example as 1/(X + SAFETY_OFFSET) to protect against dividing or taking log of X=0.
@@ -40,7 +39,6 @@ public class VariantDataManager {
         meanVector = new double[this.annotationKeys.size()];
         varianceVector = new double[this.annotationKeys.size()];
         trainingSets = new ArrayList<>();
-        debugStdevThresholding = VRAC.debugStdevThresholding;
     }
 
     public void setData( final List<VariantDatum> data ) {
@@ -227,7 +225,7 @@ public class VariantDataManager {
         for( final VariantDatum datum : data ) {
             if( datum.atTrainingSite && !datum.failingSTDThreshold ) {
                 trainingData.add( datum );
-            } else if (datum.failingSTDThreshold && debugStdevThresholding) {
+            } else if (datum.failingSTDThreshold && VRAC.debugStdevThresholding) {
                 logger.warn("Datum at " + datum.loc + " with ref " + datum.referenceAllele + " and alt " + datum.alternateAllele + " failing std thresholding: " + Arrays.toString(datum.annotations));
             }
         }

@@ -53,8 +53,8 @@ public class VariantRecalibratorEngine {
         if( !model.isModelReadyForEvaluation ) {
             try {
                 model.precomputeDenominatorForEvaluation();
-            } catch( GATKException e ) {
-                logger.warn("Model could not pre-compute denominators.");  //this happened when we were reading in VQSR models that didn't have enough precision
+            } catch( Exception e ) {
+                logger.warn("Model could not pre-compute denominators. " + e.getMessage());  //this happened when we were reading in VQSR models that didn't have enough precision
                 model.failedToConverge = true;
                 return;
             }

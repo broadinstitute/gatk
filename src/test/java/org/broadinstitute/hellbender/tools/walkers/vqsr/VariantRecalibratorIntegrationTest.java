@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
@@ -54,9 +55,36 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
             "--trust-all-polymorphic", // for speed
             "--use-allele-specific-annotations",
             "-mode", "SNP",
-            "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-            "--max-gaussians", "6"
+            "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
+
+    private final String[] alleleSpecificVQSRParamsTooManyAnnotations =
+            new String[] {
+                    "--variant",
+                    getLargeVQSRTestDataDir() + "chr1snippet.doctoredMQ.sites_only.vcf.gz",
+                    "-L","chr1:1-10,000,000",
+                    "-resource:same,known=false,training=true,truth=true,prior=15",
+                    getLargeVQSRTestDataDir() + "chr1snippet.doctoredMQ.sites_only.vcf.gz",
+                    "-an", "AS_QD", "-an", "AS_ReadPosRankSum", "-an", "AS_MQ", "-an", "AS_SOR", "-an", "AS_FS", "-an", "AS_MQRankSum", //AS_MQRankSum has zero variance and AS_FS is nearly constant; also different annotation orders may not converge
+                    "--trust-all-polymorphic", // for speed
+                    "--use-allele-specific-annotations",
+                    "-mode", "SNP",
+                    "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+            };
+
+    private final String[] alleleSpecificVQSRParamsNoNegativeData =
+            new String[] {
+                    "--variant",
+                    getLargeVQSRTestDataDir() + "chr1snippet.doctoredMQ.sites_only.vcf.gz",
+                    "-L","chr1:1-10,000,000", "--bad-lod-score-cutoff", "-5.5",
+                    "-resource:same,known=false,training=true,truth=true,prior=15",
+                    getLargeVQSRTestDataDir() + "chr1snippet.doctoredMQ.sites_only.vcf.gz",
+                    "-an", "AS_QD", "-an", "AS_ReadPosRankSum", "-an", "AS_MQ", "-an", "AS_SOR", //AS_MQRankSum has zero variance and AS_FS is nearly constant; also different annotation orders may not converge
+                    "--trust-all-polymorphic", // for speed
+                    "--use-allele-specific-annotations",
+                    "-mode", "SNP",
+                    "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+            };
 
     @Override
     public String getToolTestDataDir(){
@@ -378,6 +406,32 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         doSNPTest(params, getLargeVQSRTestDataDir() + "/snpTranches.scattered.txt", getLargeVQSRTestDataDir() + "snpRecal.vcf"); //tranches file isn't in the expected/ directory because it's input to GatherTranchesIntegrationTest
     }
 
+    @Test(expectedExceptions={UserException.VQSRPositiveModelFailure.class})
+    public void testAnnotationsWithNoVarianceSpecified() throws IOException {
+        // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
+        List<String> args = new ArrayList<>(alleleSpecificVQSRParamsTooManyAnnotations.length);
+        Stream.of(alleleSpecificVQSRParamsTooManyAnnotations).forEach(arg -> args.add(arg));
 
+        File recalOut = createTempFile("testVarRecalSnp", ".vcf");
+        File tranchesOut = createTempFile("testVarRecalSnp", ".txt");
+        args.addAll(addTempFileArgs(recalOut, tranchesOut));
+
+        final VariantRecalibrator varRecalTool = new VariantRecalibrator();
+        Assert.assertEquals(varRecalTool.instanceMain(args.toArray(new String[args.size()])), true);
+    }
+
+    @Test(expectedExceptions={IllegalArgumentException.class})
+    public void testNoNegativeTrainingData() throws IOException {
+        // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
+        List<String> args = new ArrayList<>(alleleSpecificVQSRParamsNoNegativeData.length);
+        Stream.of(alleleSpecificVQSRParamsNoNegativeData).forEach(arg -> args.add(arg));
+
+        File recalOut = createTempFile("testVarRecalSnp", ".vcf");
+        File tranchesOut = createTempFile("testVarRecalSnp", ".txt");
+        args.addAll(addTempFileArgs(recalOut, tranchesOut));
+
+        final VariantRecalibrator varRecalTool = new VariantRecalibrator();
+        Assert.assertEquals(varRecalTool.instanceMain(args.toArray(new String[args.size()])), true);
+    }
 }
 
