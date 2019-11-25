@@ -170,6 +170,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }
 
+            //TODO this might need to be revisited given the extra genotyping code that will possibly exist in the future...
             mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
 
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper, new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));

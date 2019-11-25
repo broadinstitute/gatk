@@ -5,8 +5,10 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -28,12 +30,14 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.*;
 
 /**
  * Unit tests for {@link HaplotypeCallerGenotypingEngine}.
  */
 public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest {
+    static String DRAGEN_GATK_BQDFRD_TEST_BAM_SRA = "/Users/emeryj/hellbender/DRAGENMatlab/frdbqd/SRA056922_hs37d5_xmapq.bam";
 
     private class BasicGenotypingTestProvider extends TestDataProvider {
         byte[] ref;
@@ -56,6 +60,31 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         public String toString() {
             return "REF:" + new String(ref) + ",ALT:" + new String(hap);
         }
+    }
+
+    @Test
+    public void testDRAGENGATKBQDModelCode() {
+        // Arguments to argumentitify later:
+        String location1 = "1:102130523";
+
+
+
+        try ( final ReadsDataSource dataSource = new ReadsDataSource(new File(DRAGEN_GATK_BQDFRD_TEST_BAM_SRA).toPath()) ) {
+            dataSource.query();
+
+            for ( GATKRead read : outputReads ) {
+                ++totalReads;
+
+                if ( read.isDuplicate() ) {
+                    ++duplicateReads;
+                }
+            }
+        }
+
+        new AlignmentContext()
+        alignmentContext.getBasePileup()
+        final Locatable loc = new SimpleInterval("20",refOffset,refOffset);
+        final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read),readOffset);
     }
 
     @DataProvider(name = "BasicGenotypingTestProvider")
