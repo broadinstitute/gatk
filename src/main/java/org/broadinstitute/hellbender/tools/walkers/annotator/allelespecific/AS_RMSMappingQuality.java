@@ -94,7 +94,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
                                                final VariantContext vc,
                                                final AlleleLikelihoods<GATKRead, Allele> likelihoods ) {
         Utils.nonNull(vc);
-        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
+        if ( likelihoods == null) {
             return Collections.emptyMap();
         }
 

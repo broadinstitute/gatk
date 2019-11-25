@@ -5,7 +5,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -47,9 +46,4 @@ public final class LikelihoodRankSumTest extends RankSumTest {
         return OptionalDouble.empty();
     }
 
-    @Override
-    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
-        // todo its possible this should throw, as This method should never have been called as getElementForRead(read,refloc,mostLikelyAllele) was overriden
-        return OptionalDouble.empty();
-    }
 }

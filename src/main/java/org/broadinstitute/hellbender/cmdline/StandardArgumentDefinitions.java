@@ -5,6 +5,7 @@ package org.broadinstitute.hellbender.cmdline;
  * is the standard long Option name, and the value of the constant is the standard shortName.
  */
 public final class StandardArgumentDefinitions {
+
     private StandardArgumentDefinitions(){}
 
     public static final String INPUT_LONG_NAME = "input";
@@ -13,6 +14,8 @@ public final class StandardArgumentDefinitions {
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String INTERVALS_LONG_NAME = "intervals";
+    public static final String COMPARISON_LONG_NAME = "comparison";
+    public static final String RESOURCE_LONG_NAME = "resource";
     public static final String READ_INDEX_LONG_NAME = "read-index";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "use-original-qualities";
     public static final String LENIENT_LONG_NAME = "lenient";
@@ -49,6 +52,7 @@ public final class StandardArgumentDefinitions {
     public static final String VARIANT_SHORT_NAME = "V";
     public static final String FEATURE_SHORT_NAME = "F";
     public static final String INTERVALS_SHORT_NAME = "L";
+    public static final String COMPARISON_SHORT_NAME = "comp";
     public static final String READ_INDEX_SHORT_NAME = READ_INDEX_LONG_NAME;
     public static final String LENIENT_SHORT_NAME = "LE";
     public static final String READ_VALIDATION_STRINGENCY_SHORT_NAME = "VS";

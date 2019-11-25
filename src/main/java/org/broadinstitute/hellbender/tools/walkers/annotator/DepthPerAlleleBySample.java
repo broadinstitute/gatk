@@ -56,42 +56,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         // make sure that there's a meaningful relationship between the alleles in the likelihoods and our VariantContext
         Utils.validateArg(likelihoods.alleles().containsAll(alleles), () -> "VC alleles " + alleles + " not a  subset of AlleleLikelihoods alleles " + likelihoods.alleles());
 
-        int[] counts;
-        if (likelihoods.hasFilledLikelihoods()) {
-            // Compute based on the alignment map
-            counts = annotateWithLikelihoods(vc, g, alleles, likelihoods);
-        } else if (likelihoods.evidenceCount()==0) {
-            // No reads, thus cant compute the AD so do nothing
-            return;
-        } else if (vc.isSNP()) {
-            // Compute based on pileup bases at the snp site (won't match haplotype caller output)
-            counts = annotateWithPileup(vc, likelihoods.getStratifiedPileups(vc).get(g.getSampleName()));
-        } else {
-            // Otherwise return an empty AD field for an indel.
-            counts = new int[vc.getNAlleles()];
-        }
-
-        gb.AD(counts);
-    }
-
-    private int[] annotateWithPileup(final VariantContext vc, List<PileupElement> pileupElements) {
-
-        final HashMap<Byte, Integer> alleleCounts = new HashMap<>();
-        for ( final Allele allele : vc.getAlleles() ) {
-            alleleCounts.put(allele.getBases()[0], 0);
-        }
-        for ( final PileupElement p : pileupElements) {
-            // only count bases that support alleles in the variant context
-            alleleCounts.computeIfPresent(p.getBase(), (base, count) -> count+ 1);
-        }
-
-        // we need to add counts in the correct order
-        final int[] counts = new int[alleleCounts.size()];
-        counts[0] = alleleCounts.get(vc.getReference().getBases()[0]);
-        for (int i = 0; i < vc.getNAlleles() -1; i++) {
-            counts[i + 1] = alleleCounts.get(vc.getAlternateAllele(i).getBases()[0]);
-        }
-        return counts;
+        gb.AD(annotateWithLikelihoods(vc, g, alleles, likelihoods));
     }
 
     protected int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, final AlleleLikelihoods<GATKRead, Allele> likelihoods) {

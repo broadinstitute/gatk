@@ -88,13 +88,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     private final LikelihoodMatrix<EVIDENCE,A>[] sampleMatrices;
 
     /**
-     * Is this container expected to have the per-allele liklihoods calculations filled in.
-     */
-    public boolean hasFilledLikelihoods() {
-        return true;
-    }
-
-    /**
      * Constructs a new evidence-likelihood collection.
      *
      * <p>
@@ -1251,17 +1244,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         return evidenceIndexBySampleIndex.get(sampleIndex);
     }
 
-
-    /**
-     * Collect a map stratified per-sample of the base pileups at the provided Location
-     * NOTE: Since we shouldn't need to use the pileup if we have more reliable liklihoods, we want to discourage their use
-     *
-     * @param loc reference location to construct pileups for
-     * @return
-     */
-    public Map<String, List<PileupElement>> getStratifiedPileups(final Locatable loc) {
-        return null;
-    }
 
     /**
      * Implements a likelihood matrix per sample given its index.

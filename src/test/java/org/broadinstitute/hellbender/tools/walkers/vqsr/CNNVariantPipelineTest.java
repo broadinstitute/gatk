@@ -95,8 +95,8 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
         args.add("FilterVariantTranches")
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputVCF.getAbsolutePath())
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("snp-tranche", "99.9")
                 .addArgument("indel-tranche", "99.0")
                 .addArgument("info-key", "VQSLOD");

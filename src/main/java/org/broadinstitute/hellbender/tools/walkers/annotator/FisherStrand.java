@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.FisherExactTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -58,14 +57,6 @@ public final class FisherStrand extends StrandBiasTest implements StandardAnnota
     protected Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes){
         final int[][] tableFromPerSampleAnnotations = getTableFromSamples(genotypes, MIN_COUNT);
         return ( tableFromPerSampleAnnotations != null )? annotationForOneTable(pValueForContingencyTable(tableFromPerSampleAnnotations)) : null;
-    }
-
-    @Override
-    protected Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
-                                                                            final VariantContext vc){
-        final int[][] tableNoFiltering = getPileupContingencyTable(stratifiedContexts, vc.getReference(), vc.getAlternateAlleles(), -1, MIN_COUNT);
-        final int[][] tableFiltering = getPileupContingencyTable(stratifiedContexts, vc.getReference(), vc.getAlternateAlleles(), MIN_QUAL_FOR_FILTERED_TEST, MIN_COUNT);
-        return annotationForOneTable(Math.max(pValueForContingencyTable(tableFiltering), pValueForContingencyTable(tableNoFiltering)));
     }
 
     @Override

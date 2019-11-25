@@ -25,8 +25,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
@@ -44,8 +44,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("snp-tranche", "99.5")
                 .addArgument("indel-tranche", "99.0")
                 .addArgument("invalidate-previous-filters", "true")
@@ -66,8 +66,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("snp-tranche", "99.5")
                 .addArgument("indel-tranche", "99.0")
                 .addArgument("snp-tranche", "99.5")
@@ -90,8 +90,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("snp-tranche", "95.0")
                 .addArgument("snp-tranche", "99.0")
                 .addArgument("snp-tranche", "99.9")
@@ -115,8 +115,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("snp-tranche", "99.9")
                 .addArgument("snp-tranche", "95.0")
                 .addArgument("snp-tranche", "99.0")
@@ -141,8 +141,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, trancheVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                .addArgument("resource", snpTruthVCF)
-                .addArgument("resource", indelTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, snpTruthVCF)
+                .addArgument(StandardArgumentDefinitions.RESOURCE_LONG_NAME, indelTruthVCF)
                 .addArgument("snp-tranche", "99.0")
                 .addArgument("indel-tranche", "99.0")
                 .addArgument("info-key", "MIX_SMALL_2D_W_DROPOUT")

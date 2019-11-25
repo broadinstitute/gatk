@@ -6,7 +6,6 @@ import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -79,12 +78,6 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
             readPos = numOriginalBases - (readPos + 1);
         }
         return OptionalDouble.of(readPos);
-    }
-
-    @Override
-    protected OptionalDouble getElementForPileupElement(final PileupElement p, int refLoc) {
-        final int offset = AlignmentUtils.calcAlignmentByteArrayOffset(p.getRead().getCigar(), p, 0, 0);
-        return OptionalDouble.of(getFinalVariantReadPosition(p.getRead(), offset));
     }
 
     // Utility methods necessary for computing the rank sum using read pileups.

@@ -39,25 +39,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         final int refLoc = vc.getStart();
 
         if( likelihoods != null) {
-            if (likelihoods.hasFilledLikelihoods()) {
-                // Default to using the likelihoods to calculate the rank sum
-                fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
-
-            // Use the pileup to stratify otherwise
-            } else {
-                for (final PileupElement p : likelihoods.getStratifiedPileups(vc).values().stream().flatMap(Collection::stream).collect(Collectors.toList())) {
-                    if (PileupElement.isUsableBaseForAnnotation(p)) {
-                        final OptionalDouble value = getElementForPileupElement(p, refLoc);
-                        if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
-                            if (vc.getReference().equals(Allele.create(p.getBase(), true))) {
-                                refQuals.add(value.getAsDouble());
-                            } else if (vc.hasAllele(Allele.create(p.getBase()))) {
-                                altQuals.add(value.getAsDouble());
-                            }
-                        }
-                    }
-                }
-            }
+            fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
         }
 
 
@@ -128,15 +110,5 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         Utils.nonNull(read);
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
-
-    /**
-     * Get the element for the given read at the given reference position
-     *
-     * This can return an OptionalDouble.empty() if the annotation should not be computed based on the pileups.
-     *
-     * @param p        the pileup element
-     * @return a Double representing the element to be used in the rank sum test, or null if it should not be used
-     */
-    protected abstract OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc);
 
 }
