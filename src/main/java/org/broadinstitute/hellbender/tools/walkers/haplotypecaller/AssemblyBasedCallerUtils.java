@@ -89,7 +89,7 @@ public final class AssemblyBasedCallerUtils {
 
     public static void finalizeRegion(final AssemblyRegion region,
                                       final boolean errorCorrectReads,
-                                      final boolean dontUseSoftClippedBases,
+                                      final boolean skipSoftClips,
                                       final byte minTailQuality,
                                       final SAMFileHeader readsHeader,
                                       final SampleList samplesList,
@@ -98,33 +98,20 @@ public final class AssemblyBasedCallerUtils {
             return;
         }
 
-        // Loop through the reads hard clipping the adaptor and low quality tails
-        final List<GATKRead> readsToUse = new ArrayList<>(region.getReads().size());
-        for( final GATKRead myRead : region.getReads() ) {
-            final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
-            GATKRead clippedRead = ReadClipper.hardClipLowQualEnds(myRead, minTailQualityToUse);
-
-            // remove soft clips if we cannot reliably clip off adapter sequence or if the user doesn't want to use soft clips at all
-            // otherwie revert soft clips so that we see the alignment start and end assuming the soft clips are all matches
-            // TODO -- WARNING -- still possibility that unclipping the soft clips will introduce bases that aren't
-            // TODO -- truly in the extended region, as the unclipped bases might actually include a deletion
-            // TODO -- w.r.t. the reference.  What really needs to happen is that kmers that occur before the
-            // TODO -- reference haplotype start must be removed
-            clippedRead = dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(clippedRead) ?
-                    ReadClipper.hardClipSoftClippedBases(clippedRead) : ReadClipper.revertSoftClippedBases(clippedRead);
-
-            clippedRead = clippedRead.isUnmapped() ? clippedRead : ReadClipper.hardClipAdaptorSequence(clippedRead);
-            if ( ! clippedRead.isEmpty() && clippedRead.getCigar().getReadLength() > 0 ) {
-                clippedRead = ReadClipper.hardClipToRegion( clippedRead, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
-                if ( clippedRead.getLength() > 0 && clippedRead.overlaps(region.getPaddedSpan())) {
-                    readsToUse.add((clippedRead == myRead) ? clippedRead.copy() : clippedRead);
-                }
-            }
-        }
-
-        // TODO -- Performance optimization: we partition the reads by sample 4 times right now; let's unify that code.
-        // final List<GATKRead> downsampledReads = DownsamplingUtils.levelCoverageByPosition(ReadUtils.sortReadsByCoordinate(readsToUse), maxReadsInRegionPerSample, minReadsPerAlignmentStart);
-        Collections.sort(readsToUse, new ReadCoordinateComparator(readsHeader)); // TODO: sort may be unnecessary here
+        final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
+        final List<GATKRead> readsToUse = region.getReads().stream()
+                .map(read -> ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
+                .filter(read -> read.getStart() <= read.getEnd())
+                // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
+                // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
+                .map(read -> skipSoftClips || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
+                        ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
+                .map(read -> read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read))
+                .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
+                .map(read -> ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() ))
+                .filter(read -> read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan()))
+                .sorted(new ReadCoordinateComparator(readsHeader)) // TODO: sort may be unnecessary here
+                .collect(Collectors.toList());
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
