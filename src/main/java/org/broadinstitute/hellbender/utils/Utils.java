@@ -4,6 +4,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
@@ -14,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1383,5 +1385,25 @@ public final class Utils {
             patterns.add(Pattern.compile(filter));
         }
         return patterns;
+    }
+
+
+    /**
+     * Removes the last portion of a list so that it has a new size of at
+     * most a given number of elements.
+     * @param list the list to modify.
+     * @param maxLength the intended maximum length for the list.
+     */
+    public static void truncate(final List<?> list, final int maxLength) {
+        Utils.nonNull(list);
+        ParamUtils.isPositiveOrZero(maxLength, "new maximum length");
+        if (maxLength == 0) { // special quicker case when ml == 0.
+            list.clear();
+        } else {
+            final int length = list.size();
+            if (maxLength < length) {  // if not we are done.
+                list.subList(maxLength, length).clear();
+            }
+        }
     }
 }

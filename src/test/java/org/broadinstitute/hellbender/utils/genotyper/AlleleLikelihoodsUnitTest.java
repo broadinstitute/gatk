@@ -198,7 +198,7 @@ public final class AlleleLikelihoodsUnitTest {
         fillWithRandomLikelihoods(samples, alleles, original, result);
 
         final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
-        result.filterToOnlyOverlappingEvidence(evenReadOverlap);
+        result.retainEvidence(evenReadOverlap::overlaps);
         final double[][][] newLikelihoods = new double[samples.length][alleles.length][];
         for (int s = 0; s < samples.length ; s++)
             for (int a = 0; a < alleles.length; a++) {
@@ -217,7 +217,8 @@ public final class AlleleLikelihoodsUnitTest {
         final AlleleLikelihoods<GATKRead, Allele> original = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final GenomeLoc evenReadOverlap = locParser.createGenomeLoc(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(),EVEN_READ_START ,EVEN_READ_START );
         fillWithRandomLikelihoods(samples, alleles, original);
-        final AlleleLikelihoods<GATKRead, Allele> marginalized = original.marginalize(newToOldAlleleMapping,evenReadOverlap);
+        final AlleleLikelihoods<GATKRead, Allele> marginalized = original.marginalize(newToOldAlleleMapping);
+        marginalized.retainEvidence(evenReadOverlap::overlaps);
         Assert.assertNotNull(marginalized);
         Assert.assertEquals(newToOldAlleleMapping.size(), marginalized.numberOfAlleles());
         for (int a = 0; a < marginalized.numberOfAlleles(); a++) {
