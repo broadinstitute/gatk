@@ -1094,7 +1094,7 @@ class HHMMClassAndCopyNumberBasicCaller:
             pi_jkc[j, 0, :] = p_alt
             pi_jkc[j, 0, baseline_state] = p_baseline
             # the active class
-            if impose_uniform_prior_on_active:
+            if impose_uniform_prior_in_active_regions:
                 pi_jkc[j, 1, :] = 1.0 / num_copy_number_states
             else:
                 active_region_alt_prior = (1.0 - active_region_baseline_prior) / (num_copy_number_states - 1)

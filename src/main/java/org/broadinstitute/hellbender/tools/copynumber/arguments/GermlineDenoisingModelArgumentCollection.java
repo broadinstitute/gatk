@@ -26,6 +26,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     public static final String GC_CURVE_STANDARD_DEVIATION_LONG_NAME = "gc-curve-standard-deviation";
     public static final String COPY_NUMBER_POSTERIOR_EXPECTATION_MODE_LONG_NAME = "copy-number-posterior-expectation-mode";
     public static final String ENABLE_BIAS_FACTORS_LONG_NAME = "enable-bias-factors";
+    public static final String ENABLE_EXPLICIT_GC_BIAS_MODELING = "enable-explicit-gc-bias-modeling";
     public static final String ACTIVE_CLASS_PADDING_HYBRID_MODE_LONG_NAME = "active-class-padding-hybrid-mode";
 
     public enum CopyNumberPosteriorExpectationMode {
@@ -130,6 +131,13 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private boolean enableBiasFactors = true;
 
     @Argument(
+            doc = "Enable explicit modeling of GC bias.",
+            fullName = ENABLE_EXPLICIT_GC_BIAS_MODELING,
+            optional = true
+    )
+    private boolean enableExplicitGCBiasModeling = true;
+
+    @Argument(
             doc = "If copy-number-posterior-expectation-mode is set to HYBRID, CNV-active intervals determined " +
                     "at any time will be padded by this value (in the units of bp) in order to obtain the set of " +
                     "intervals on which copy number posterior expectation is performed exactly.",
@@ -161,6 +169,11 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
                 arguments.add("--enable_bias_factors=True");
             } else {
                 arguments.add("--enable_bias_factors=False");
+            }
+            if (enableExplicitGCBiasModeling) {
+                arguments.add("--enable_explicit_gc_bias_modeling=True");
+            } else {
+                arguments.add("--enable_explicit_gc_bias_modeling=False");
             }
             //this python argument is not exposed but we add it for completeness and logging purposes
             arguments.add("--disable_bias_factors_in_active_class=False");

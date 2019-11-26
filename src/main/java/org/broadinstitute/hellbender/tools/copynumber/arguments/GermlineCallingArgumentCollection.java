@@ -21,7 +21,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
     public static final String CLASS_COHERENCE_LENGTH_LONG_NAME = "class-coherence-length";
     public static final String MAX_COPY_NUMBER_LONG_NAME = "max-copy-number";
     public static final String ACTIVE_REGION_PRIOR_ERROR_LONG_NAME = "active-region-prior-error";
-    public static final String IMPOSE_UNIFORM_PRIOR_IN_ACTIVE_REGIONS_LONG_NAME = "impose-uniform-prior-in_active-regions";
+    public static final String IMPOSE_UNIFORM_PRIOR_IN_ACTIVE_REGIONS_LONG_NAME = "impose-uniform-prior-in-active-regions";
     public static final String ACTIVE_REGION_BASELINE_PRIOR_LONG_NAME = "active-region-baseline-prior";
 
     @Argument(
@@ -65,7 +65,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
 
     @Argument(
             doc = "The probability of baseline copy number in active regions if non-uniform prior is imposed.",
-            fullName = IMPOSE_UNIFORM_PRIOR_IN_ACTIVE_REGIONS_LONG_NAME,
+            fullName = ACTIVE_REGION_BASELINE_PRIOR_LONG_NAME,
             minValue = 0.,
             maxValue = 1.,
             optional = true
@@ -102,9 +102,13 @@ public final class GermlineCallingArgumentCollection implements Serializable {
                 String.format("--p_alt=%e", pAlt),
                 String.format("--cnv_coherence_length=%e", cnvCoherenceLength),
                 String.format("--max_copy_number=%d", maxCopyNumber),
-                String.format("--active_region_prior_error", activeRegionPriorError),
-                String.format("--impose_uniform_prior_in_active_regions", imposeUniformPriorActiveRegions),
-                String.format("--active_region_baseline_prior", activeRegionPriorError)));
+                String.format("--active_region_prior_error=%e", activeRegionPriorError),
+                String.format("--active_region_baseline_prior=%e", activeRegionsBaselinePrior)));
+        if (imposeUniformPriorActiveRegions) {
+            arguments.add("--impose_uniform_prior_in_active_regions=True");
+        } else {
+            arguments.add("--impose_uniform_prior_in_active_regions=False");
+        }
         if (runMode == GermlineCNVCaller.RunMode.COHORT) {
             arguments.addAll(Arrays.asList(
                     String.format("--p_active=%f", pActive),
