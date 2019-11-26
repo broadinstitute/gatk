@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 public class Mutect2FilteringEngine {
     public static final double EPSILON = 1.0e-10;
 
+    public static final double MIN_REPORTABLE_ERROR_PROBABILITY = 0.1;
+
     private final List<Mutect2VariantFilter> filters = new ArrayList<>();
     private final Set<String> normalSamples;
 
@@ -173,6 +175,9 @@ public class Mutect2FilteringEngine {
         final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
         filteringOutputStats.recordCall(errorProbabilities, getThreshold() - EPSILON);
 
+        final boolean variantFailsFilters = errorProbabilities.getErrorProbability() > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold()));
+        final double maxErrorProb = errorProbabilities.getProbabilitiesByFilter().values().stream().mapToDouble(p->p).max().orElse(1);
+
         for (final Map.Entry<Mutect2VariantFilter, Double> entry : errorProbabilities.getProbabilitiesByFilter().entrySet()) {
             final double errorProbability = entry.getValue();
 
@@ -184,7 +189,7 @@ public class Mutect2FilteringEngine {
 
             // error probability must exceed threshold, and just in case threshold is bad, probabilities close to 1 must be filtered
             // and probabilities close to 0 must not be filtered
-            if (( errorProbability > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold())))) {
+            if (variantFailsFilters && errorProbability >= Math.min(maxErrorProb, MIN_REPORTABLE_ERROR_PROBABILITY)) {
                 vcb.filter(entry.getKey().filterName());
             }
         }
