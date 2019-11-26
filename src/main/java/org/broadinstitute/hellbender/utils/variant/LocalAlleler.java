@@ -103,7 +103,9 @@ public class LocalAlleler {
 
     private static AlleleListPermutation<Allele> getLocalAlleles(Genotype originalGenotype, VariantContext vc) {
         final IndexedAlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(vc.getAlleles());
+
         //For a no call we have no information about which alleles might be relevant so we have to include them all.
+        //TODO decide if this is the right behavior
         if( originalGenotype.isNoCall()){
             return originalAlleleList.permutation();
         }
@@ -118,9 +120,8 @@ public class LocalAlleler {
         }
 
         try {
-            final AlleleListPermutation<Allele> localAllelesMapping = originalAlleleList.permutation(new IndexedAlleleList<>(localAlleles));
-            return localAllelesMapping;
-        } catch (Exception e){
+            return originalAlleleList.permutation(new IndexedAlleleList<>(localAlleles));
+        } catch (final Exception e){
             throw new RuntimeException("Error at " + vc.getStart(), e);
         }
 
