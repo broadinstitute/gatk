@@ -29,7 +29,8 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftStart;
 public final class ReadClipperUnitTest extends GATKBaseTest {
     private List<Cigar> cigarList;
     // 9 is the minimum necessary number to try all combinations of cigar types with guarantee of clipping an element with length = 2
-    private final int maximumCigarElements = 9;
+    // and there are already 3 cigar elements on the basic cigar
+    private final int maximumCigarElements = 6;
 
     @BeforeClass
     public void init() {

@@ -628,7 +628,7 @@ public final class ClippingOp {
      * @param oldCigar original cigar
      * @param newCigar new cigar (with hard/soft clipping)
      * @return int the offset (from 0 between the alignment start on the old and on the new cigar)
-    */
+     */
     private int calculateAlignmentStartShift(final Cigar oldCigar, final Cigar newCigar) {
         final int newShift = calcHardSoftOffset(newCigar);
         final int oldShift = calcHardSoftOffset(oldCigar);
@@ -637,8 +637,9 @@ public final class ClippingOp {
 
     /**
      * Calculates how much the alignment should be shifted when hard/soft clipping is applied
-    * to the cigar
-     * @param oldCigar the original CIGAR
+     * to the cigar
+     *
+     * @param oldCigar            the original CIGAR
      * @param newReadBasesClipped - number of bases of the read clipped
      * @return int - the offset between the alignment starts in the oldCigar and in
      * the cigar after applying clipping
@@ -649,12 +650,15 @@ public final class ClippingOp {
         int refBasesClipped = 0; // A measure of the reference offset between the oldCigar and the clippedCigar
 
         boolean finalElement = false;
+
         for (final CigarElement e : oldCigar.getCigarElements()) {
 
             int curRefLength = e.getLength();
             int curReadLength = e.getOperator().consumesReadBases() ? e.getLength() : 0;
 
             // needed only if the clipping ended on N or D
+            // TODO: unclear if a single pass is enough to deal with BOTH and N and a D after the clipping...
+
             if (finalElement) {
                 if (!e.getOperator().consumesReadBases() && e.getOperator().consumesReferenceBases()) {
                     refBasesClipped += curRefLength;
@@ -662,13 +666,10 @@ public final class ClippingOp {
                 break;
             }
 
-            final boolean truncated;
-            if (readBasesClipped + curReadLength > newReadBasesClipped) {
+            final boolean truncated = readBasesClipped + curReadLength > newReadBasesClipped;
+            if (truncated) {
                 curReadLength = newReadBasesClipped - readBasesClipped;
                 curRefLength = curReadLength;
-                truncated = true;
-            } else {
-                truncated= false;
             }
 
             if (!e.getOperator().consumesReferenceBases()) {
