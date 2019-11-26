@@ -306,6 +306,7 @@ public class VariantEval extends MultiVariantWalker {
     Map<FeatureInput<VariantContext>, String> inputToNameMap = new HashMap<>();
 
     private final OneShotLogger territoryUnknownWarningLogger = new OneShotLogger(logger);
+    private int referencePositionsCoveredByVariants = 0;
 
     /**
      * Initialize the stratifications, evaluations, evaluation contexts, and reporting object
@@ -491,6 +492,7 @@ public class VariantEval extends MultiVariantWalker {
 
     @Override
     public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        referencePositionsCoveredByVariants += variant.getLengthOnReference();
         aggr.addVariant(variant, readsContext, referenceContext, featureContext);
     }
 
@@ -821,11 +823,16 @@ public class VariantEval extends MultiVariantWalker {
         return sampleDB;
     }
 
+    /**
+     *
+     * Get the size of the input intervals or the input reference or the number of reference positions covered by variants.
+     */
     public long getnProcessedLoci() {
         if(getTraversalIntervals() == null) {
-            territoryUnknownWarningLogger.warn("No reference or intervals were provided so it is not clear how much genomic " +
-                    "territory the input covered. Values that rely on the size of the input territory will not be correct.");
-            return 0;
+            territoryUnknownWarningLogger.warn("No reference or intervals were provided so it is not clear how much " +
+                    "genomic territory the input covered. Values that are calculated based on the size of the input " +
+                    "territory will not be meaningful.");
+            return referencePositionsCoveredByVariants;
         } else {
             return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
         }

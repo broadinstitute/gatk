@@ -92,7 +92,7 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         // This is really not correct.  What we really want here is a polymorphic vs. monomorphic count (i.e. on the Genotypes).
         // So in order to maintain consistency with the previous implementation (and the intention of the original author), I've
         // added in a proxy check for monomorphic status here.
-        // Protect against case when vc only as no-calls too - can happen if we strafity by sample and sample as a single no-call.
+        // Protect against the case when vc only has no-calls too - can happen if we stratify by sample and sample as a single no-call.
        if ( getWalker().ignoreAC0Sites() && vc1.isMonomorphicInSamples() ) {
             nRefLoci++;
         } else {
