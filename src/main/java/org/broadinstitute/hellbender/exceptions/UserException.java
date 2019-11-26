@@ -457,4 +457,16 @@ public class UserException extends RuntimeException {
             super(message);
         }
     }
+
+    public static final class VQSRPositiveModelFailure extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public VQSRPositiveModelFailure(String message) { super(message); }
+    }
+
+    public static final class VQSRNegativeModelFailure extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public VQSRNegativeModelFailure(String message) { super(message); }
+    }
 }

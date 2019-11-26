@@ -117,29 +117,22 @@ final class VariantRecalibratorArgumentCollection {
      * logit on [0,X] (+ epsilon to avoid division by zero) to make the blob more Gaussian-like and (2) the transformed
      * MQ=X are jittered to break the peak into a narrow Gaussian.
      *
-     * Beware that IndelRealigner, if used, adds 10 to MQ for successfully realigned indels. We recommend to either use
-     * --read-filter ReassignOriginalMQAfterIndelRealignment with HaplotypeCaller or use a MQCap=max+10 to take that
-     * into account.
-     *
      * If this option is not used, or if MQCap is set to 0, MQ will not be transformed.
+     * Note that AS_MQ uses --mq-jitter instead to control artificial variance
      */
     @Advanced
     @Argument(fullName="mq-cap-for-logit-jitter-transform", shortName = "mq-cap", doc="Apply logit transform and jitter to MQ values", optional=true)
     public int MQ_CAP = 0;
 
     /**
-     * The following 2 arguments are hidden because they are only for testing different jitter amounts with and without logit transform.
-     * Once this will have been tested, and the correct jitter amount chosen (perhaps as a function of the logit range [0,max]) they can be removed.
+     * Amount of jitter (as a multiplier to a Normal(0,1) distribution) to add to the AS_MQ and transformed MQ values
      */
-
-    @Hidden
     @Advanced
-    @Argument(fullName = "no-mq-logit", doc="MQ is by default transformed to log[(MQ_cap + epsilon - MQ)/(MQ + epsilon)] to make it more Gaussian-like.  Use this flag to not do that.", optional = true)
-    public boolean NO_MQ_LOGIT = false;
-
-    @Hidden
-    @Advanced
-    @Argument(fullName="mq-jitter", doc="Amount of jitter (as a factor to a Normal(0,1) noise) to add to the MQ capped values", optional = true)
+    @Argument(fullName="mq-jitter", doc="Amount of jitter (as a multiplier to a Normal(0,1) distribution) to add to the AS_MQ and transformed MQ values", optional = true)
     public double MQ_JITTER = 0.05;
+
+    @Advanced
+    @Argument(fullName = "debug-stdev-thresholding", doc="Output variants that fail standard deviation thresholding to the log for debugging purposes. Redirection of stdout to a file is recommended.", optional = true)
+    public boolean debugStdevThresholding = false;
 
 }
