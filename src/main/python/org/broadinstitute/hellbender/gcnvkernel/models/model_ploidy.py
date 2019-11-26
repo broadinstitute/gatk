@@ -229,7 +229,7 @@ class PloidyModel(GeneralizedContinuousModel):
 
         # sample-specific contig unexplained variance
         psi_s = Exponential(name='psi_s',
-                            lam=1.0 / ploidy_config.psi_j_scale,
+                            lam=1.0 / ploidy_config.psi_s_scale,
                             shape=(ploidy_workspace.num_samples,))
         register_as_sample_specific(psi_s, sample_axis=0)
 
