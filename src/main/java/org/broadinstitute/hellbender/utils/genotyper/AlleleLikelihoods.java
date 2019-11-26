@@ -1114,7 +1114,15 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                     .collect(Collectors.toList());
             removeSampleEvidence(s, evidenceToRemove, alleleCount);
         }
+
+        subsettedGenomicLoc = location;
     }
+
+    public SimpleInterval getSubsettedGenomicLoc() {
+        return subsettedGenomicLoc;
+    }
+
+    SimpleInterval subsettedGenomicLoc = null;
 
     protected double maximumLikelihoodOverAllAlleles(final int sampleIndex, final int evidenceIndex) {
         double result = Double.NEGATIVE_INFINITY;
