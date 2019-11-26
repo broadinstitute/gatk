@@ -38,16 +38,25 @@ public class GenomicAndInsertionPosition implements Comparable<GenomicAndInserti
         boolean isAdjacent = false;
 
         if ( !this.equals(that) ) {
-            if ( getContig().equals(that.getContig()) ) {
-                final int posOffset = Math.abs( this.getStart() - that.getStart() ) +
-                        Math.abs( this.getInsertionOffset() - that.getInsertionOffset() );
-
-                isAdjacent = posOffset == 1;
-            }
+            isAdjacent = getDistanceTo(that) == 1;
         }
 
         return isAdjacent;
     }
+
+    /**
+     * Gets the genomic position to the given node from this node.
+     * @param that The other {@link GenomicAndInsertionPosition} to check for position.
+     * @return The distance between this and {@code that} {@link GenomicAndInsertionPosition}.
+     */
+    public int getDistanceTo( final GenomicAndInsertionPosition that ) {
+        if ( !getContig().equals(that.getContig()) ) {
+            return -1;
+        }
+        return Math.abs( this.getStart() - that.getStart() ) +
+                Math.abs( this.getInsertionOffset() - that.getInsertionOffset() );
+    }
+
 
     @Override
     public String toString() {

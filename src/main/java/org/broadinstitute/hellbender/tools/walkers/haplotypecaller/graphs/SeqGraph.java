@@ -244,7 +244,7 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
      * @param linearChain a non-empty chain of vertices that can be zipped up into a single vertex
      * @return true if we actually merged at least two vertices together
      */
-    private boolean mergeLinearChain(final LinkedList<SeqVertex> linearChain) {
+    protected boolean mergeLinearChain(final LinkedList<SeqVertex> linearChain) {
         return null != mergeLinearChainVertex(linearChain);
     }
     @VisibleForTesting

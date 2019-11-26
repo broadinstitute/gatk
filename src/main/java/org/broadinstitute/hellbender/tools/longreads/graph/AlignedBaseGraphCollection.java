@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.util.*;
@@ -20,9 +21,13 @@ public class AlignedBaseGraphCollection {
     private final HashMap<String, TreeMap<GenomicAndInsertionPosition, Set<AlignedBaseVertex>>> contigPositionVertexMap
             = new HashMap<>();
 
+    private final HashMap<String, GenomicAndInsertionPosition> contigUncollapsedPositionMap = new HashMap<>();
+
     private boolean isGraphCollapsed = false;
 
     private int numSequencesAdded = 0;
+
+    private int periodicMergeDistance = 100;
 
     //==================================================================================================================
     // Constructors:
@@ -194,6 +199,35 @@ public class AlignedBaseGraphCollection {
         }
     }
 
+    private static void linkAdjacentNodesBefore(final AlignedBaseGraph graph, final GenomicAndInsertionPosition pos) {
+        final HashSet<AlignedBaseVertex> startVertices = new HashSet<>();
+        final HashSet<AlignedBaseVertex> endVertices = new HashSet<>();
+
+        // Get all vertices in the graph that have in- or out-degree of 0:
+        for ( final SeqVertex vertex : graph.vertexSet() ) {
+
+            // Only look at nodes before the given pos:
+            if ( (((AlignedBaseVertex)vertex).getPos().compareTo(pos) < 0) ) {
+                if ( graph.inDegreeOf(vertex) == 0 ) {
+                    startVertices.add((AlignedBaseVertex) vertex);
+                }
+                else if ( graph.outDegreeOf(vertex) == 0 ) {
+                    endVertices.add((AlignedBaseVertex) vertex);
+                }
+            }
+        }
+
+        // Now we can check the starts / ends to see if they're next to eachother.
+        // If so, we can add a link between them:
+        for ( final AlignedBaseVertex endVertex : endVertices ) {
+            for ( final AlignedBaseVertex startVertex : startVertices ) {
+                if ( endVertex.isAdjacentTo(startVertex) ) {
+                    graph.addEdge(endVertex, startVertex);
+                }
+            }
+        }
+    }
+
     /**
      * Add in the given aligned sequence information to this {@link AlignedBaseGraphCollection}.
      * @param read An aligned {@link GATKRead} object to add to this {@link AlignedBaseGraphCollection}.
@@ -236,16 +270,83 @@ public class AlignedBaseGraphCollection {
         // Create a queue of nodes that represent the linear graph of all nodes in the given data:
         final Queue<AlignedBaseVertex> nodeQueue = createAlignedNodes(bases, cigar, contig, startPos, readName);
 
-        // Special handling for empty starting graphs:
-        if ( !contigSubGraphMap.containsKey(contig) ) {
-            initializeGraphWithNodes(contig, nodeQueue);
+        if ( nodeQueue.peek() != null ) {
+            final GenomicAndInsertionPosition firstNewNodePos = nodeQueue.peek().getPos();
+
+            // Special handling for empty starting graphs:
+            if ( !contigSubGraphMap.containsKey(contig) ) {
+                // Initialize the graph:
+                initializeGraphWithNodes(contig, nodeQueue);
+            }
+            else {
+                // Merge the given node queue into the existing graph:
+                mergeNodesIntoGraph(contig, nodeQueue);
+            }
+
+            // Collapse nodes in the graph that occur before this sequence if it's time:
+//            if ( contigUncollapsedPositionMap.get(contig).getDistanceTo(firstNewNodePos) > periodicMergeDistance ) {
+//                collapseEarlierNodes(contig, firstNewNodePos);
+//            }
+
+            ++numSequencesAdded;
         }
         else {
-            // Merge the given node queue into the existing graph:
-            mergeNodesIntoGraph(contig, nodeQueue);
+            logger.info( "No nodes to add in given read: " + readName + " (" + contig + ":" + startPos + ")" );
+        }
+    }
+
+    /**
+     * Collapses the graph for all nodes that occur earlier than the given position.
+     * This prevents memory usage from going too high by consolidating nodes and removing them from the positional map.
+     * @param contig Contig on which to collapse nodes (must not be {@code null}).
+     * @param pos The start position of the read before which all nodes should be collapsed (can be {@code null}).
+     */
+    private void collapseEarlierNodes(final String contig, final GenomicAndInsertionPosition pos) {
+
+        // If we have a null position, do nothing:
+        if ( pos == null ) {
+            return;
         }
 
-        ++numSequencesAdded;
+        // This operation is the same as collapsing the whole graph, but we must do it for a range instead.
+        // We do this to save memory, because this thing eats more memory than a humpback whale in a krill factory.
+        final Map.Entry<GenomicAndInsertionPosition, Set<AlignedBaseVertex>> entry =
+                contigPositionVertexMap.get(contig).floorEntry(pos);
+
+        // Check to see if we have data to collapse:
+        if ( entry.getKey().compareTo(pos) < 0 ) {
+            // OK, we have to collapse some nodes...
+            logger.info("Collapsing nodes before position: " + pos.getContig() + ":" + pos.getStart() + "_" + pos.getInsertionOffset());
+
+            // 1 - Zip linear chains before the given pos:
+            contigSubGraphMap.get(contig).zipLinearChainsBefore(pos);
+
+            // 2 - Link adjacent nodes before the position:
+            linkAdjacentNodesBefore(contigSubGraphMap.get(contig), pos);
+
+            // 3 - Zip linear chains before the given pos (again):
+            contigSubGraphMap.get(contig).zipLinearChainsBefore(pos);
+
+            // 4 - Adjust the contig / position vertex map with data before the given position:
+            updateContigPositionVertexMap(contig, pos);
+
+            // 5 - Update the position of our first uncollapsed node:
+            contigUncollapsedPositionMap.put(contig, pos);
+        }
+    }
+
+    private void updateContigPositionVertexMap(final String contig, final GenomicAndInsertionPosition pos) {
+        // 1 - remove all nodes from the tree that occur before pos:
+        for ( final Map.Entry<GenomicAndInsertionPosition, Set<AlignedBaseVertex>> entry :
+                contigPositionVertexMap.get(contig).entrySet()) {
+            if ( entry.getKey().compareTo(pos) < 0 ) {
+                contigPositionVertexMap.get(contig).remove(entry.getKey(), entry.getValue());
+            }
+        }
+
+        // 2 - rebuild entries in contigPositionVertexMap for the newly created combined nodes:
+        // TODO: FINISHME
+        throw new NotImplementedException();
     }
 
     /**
@@ -262,6 +363,11 @@ public class AlignedBaseGraphCollection {
 
         AlignedBaseVertex lastVertex = null;
         AlignedBaseVertex vertex;
+
+        if ( nodes.peek() != null ) {
+            // Add the first position to our uncollapsed position map:
+            contigUncollapsedPositionMap.put(contig, nodes.peek().getPos());
+        }
 
         while (nodes.peek() != null) {
 

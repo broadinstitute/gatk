@@ -92,6 +92,101 @@ public class AlignedBaseGraph extends SeqGraph {
         zipLinearChains();
     }
 
+    /**
+     * Zip up all of the simple linear chains present in this graph which occur before the given position.
+     *
+     * Functions exactly as {@link #zipLinearChains()} except will only zip chains for nodes
+     * that occur before the given position.
+     *
+     * @return true if any such pair of vertices could be found, false otherwise
+     */
+    public boolean zipLinearChainsBefore(final GenomicAndInsertionPosition position) {
+
+        // create the list of start sites [doesn't modify graph yet]
+        final Collection<SeqVertex> zipStarts = new LinkedList<>();
+        for ( final SeqVertex source : vertexSet() ) {
+
+            final AlignedBaseVertex abv = (AlignedBaseVertex) source;
+
+            if ( (abv.getPos().getContig().equals(position.getContig())) &&
+                    (abv.getPos().compareTo(position) < 0) &&
+                    isLinearChainStart(source) ) {
+                zipStarts.add(source);
+            }
+        }
+
+        if ( zipStarts.isEmpty() ) // nothing to do, as nothing could start a chain
+        {
+            return false;
+        }
+
+        // At this point, zipStarts contains all of the vertices in this graph that might start some linear
+        // chain of vertices.  We walk through each start, building up the linear chain of vertices and then
+        //        // zipping them up with mergeLinearChain, if possible
+        boolean mergedOne = false;
+        for ( final SeqVertex zipStart : zipStarts ) {
+            final LinkedList<SeqVertex> linearChain = traceLinearChainBefore((AlignedBaseVertex)zipStart, position);
+
+            // merge the linearized chain, recording if we actually did some useful work
+            mergedOne |= mergeLinearChain(linearChain);
+        }
+
+        return mergedOne;
+    }
+
+    /**
+     * Traces a linear chain starting at the given vertex through all nodes with position less than the given pos.
+     * 
+     * This method is almost identical to {@link #traceLinearChain(SeqVertex)}, with the addition of another break
+     * condition.
+     * 
+     * @param vertex {@link AlignedBaseVertex} at which to start the trace.  This node is included in the resulting chain.
+     * @param pos {@link GenomicAndInsertionPosition} before which to include nodes in the chain.
+     * @return A {@link LinkedList<SeqVertex>} containing a linear chain of nodes starting at the given vertex, each of which has a position less than the given pos.
+     */
+    private LinkedList<SeqVertex> traceLinearChainBefore(final AlignedBaseVertex vertex, final GenomicAndInsertionPosition pos) {
+        final LinkedList<SeqVertex> linearChain = new LinkedList<>();
+        linearChain.add(vertex);
+
+        boolean lastIsRef = isReferenceNode(vertex); // remember because this calculation is expensive
+        AlignedBaseVertex last = vertex;
+        while (true) {
+            if ( outDegreeOf(last) != 1 )
+            // cannot extend a chain from last if last has multiple outgoing branches
+            {
+                break;
+            }
+
+            // there can only be one (outgoing edge of last) by contract
+            final AlignedBaseVertex target = (AlignedBaseVertex)getEdgeTarget(outgoingEdgeOf(last));
+
+            if ( inDegreeOf(target) != 1 || last.equals(target) )
+            // cannot zip up a target that has multiple incoming nodes or that's a cycle to the last node
+            {
+                break;
+            }
+
+            final boolean targetIsRef = isReferenceNode(target);
+            if ( lastIsRef != targetIsRef ) // both our isRef states must be equal
+            {
+                break;
+            }
+
+            if ( target.getPos().compareTo(pos) >= 0 ) {
+                // Cannot add a target that occurs at or after the given position!
+                break;
+            }
+
+            linearChain.add(target); // extend our chain by one
+
+            // update our last state to be the current state, and continue
+            last = target;
+            lastIsRef = targetIsRef;
+        }
+
+        return linearChain;
+    }
+
     @Override
     protected SeqVertex mergeLinearChainVertices(final Iterable<SeqVertex> vertices) {
         final List<byte[]> seqs = new LinkedList<>();
