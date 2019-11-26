@@ -50,7 +50,11 @@ public final class ClippingOpUnitTest extends GATKBaseTest {
                 {"10H60M", "10H50M10S", 0},
                 {"10H10S50M", "10H20S40M", 10},
                 {"10X60M", "20S50M", 20},
-                {"10I40N20M","10S20M",40}
+                {"10I40N20M","10S20M",40},
+
+                {"5M5D5M","5S5M",10},
+                {"5M5D5N5M","5S5M",15},
+                {"5M5D5M","6S4M",11}
         };
     }
 }

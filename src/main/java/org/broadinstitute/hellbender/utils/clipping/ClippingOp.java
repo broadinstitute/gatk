@@ -9,7 +9,11 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Stack;
+import java.util.Vector;
 
 /**
  * Represents a clip on a read.  It has a type (see the enum) along with a start and stop in the bases
@@ -259,7 +263,9 @@ public final class ClippingOp {
 
             final Cigar newCigar = new Cigar();
             newCigar.add(new CigarElement(cigarLength, CigarOperator.SOFT_CLIP));
-            assert !runAsserts || newCigar.isValid(null, -1) == null;
+            if (runAsserts) {
+                assert newCigar.isValid(null, -1) == null;
+            }
             return newCigar;
         }
 
@@ -297,7 +303,9 @@ public final class ClippingOp {
                     newEnd = new CigarElement(e - __endClipBegin, CigarOperator.SOFT_CLIP);
                     midLength -= newEnd.getLength();
                 }
-                assert !runAsserts || midLength >= 0;
+                if (runAsserts) {
+                    assert midLength >= 0;
+                }
                 if (midLength > 0) {
                     newMid = new CigarElement(midLength, curElem.getOperator());
                 }
@@ -331,7 +339,9 @@ public final class ClippingOp {
         }
 
         final Cigar newCigar = new Cigar(finalNewElements);
-        assert !runAsserts || newCigar.isValid(null, -1) == null;
+        if (runAsserts) {
+            assert newCigar.isValid(null, -1) == null;
+        }
         return newCigar;
     }
 
@@ -406,7 +416,6 @@ public final class ClippingOp {
         final Cigar newCigar = new Cigar();
         int index = 0;
         int totalHardClipCount = stop - start + 1;
-        int alignmentShift = 0; // caused by hard clipping deletions
 
         // hard clip the beginning of the cigar string
         if (start == 0) {
@@ -430,18 +439,15 @@ public final class ClippingOp {
 
                 // we're still clipping or just finished perfectly
                 if (index + shift == stop + 1) {
-                    alignmentShift += calculateHardClippingAlignmentShift(cigarElement, cigarElement.getLength());
                     newCigar.add(new CigarElement(totalHardClipCount, CigarOperator.HARD_CLIP));
                 }
                 // element goes beyond what we need to clip
                 else if (index + shift > stop + 1) {
                     final int elementLengthAfterChopping = cigarElement.getLength() - (stop - index + 1);
-                    alignmentShift += calculateHardClippingAlignmentShift(cigarElement, stop - index + 1);
                     newCigar.add(new CigarElement(totalHardClipCount, CigarOperator.HARD_CLIP));
                     newCigar.add(new CigarElement(elementLengthAfterChopping, cigarElement.getOperator()));
                 }
                 index += shift;
-                alignmentShift += calculateHardClippingAlignmentShift(cigarElement, shift);
 
                 if (index <= stop && cigarElementIterator.hasNext()) {
                     cigarElement = cigarElementIterator.next();
@@ -475,7 +481,6 @@ public final class ClippingOp {
                 }// element goes beyond our clip starting position
                 else {
                     final int elementLengthAfterChopping = start - index;
-                    alignmentShift += calculateHardClippingAlignmentShift(cigarElement, cigarElement.getLength() - (start - index));
 
                     // if this last element is a HARD CLIP operator, just merge it with our hard clip operator to be added later
                     if (cigarElement.getOperator() == CigarOperator.HARD_CLIP) {
@@ -496,7 +501,6 @@ public final class ClippingOp {
             // check if we are hard clipping indels
             while (cigarElementIterator.hasNext()) {
                 cigarElement = cigarElementIterator.next();
-                alignmentShift += calculateHardClippingAlignmentShift(cigarElement, cigarElement.getLength());
 
                 // if the read had a HardClip operator in the end, combine it with the Hard Clip we are adding
                 if (cigarElement.getOperator() == CigarOperator.HARD_CLIP) {
@@ -510,6 +514,11 @@ public final class ClippingOp {
         return cleanHardClippedCigar(newCigar);
     }
 
+    private enum Passes {
+        FIRST,
+        SECOND
+    }
+
     /**
      * Checks if a hard clipped cigar left a read starting or ending with deletions or gap (N)
      * and cleans it up accordingly.
@@ -518,6 +527,7 @@ public final class ClippingOp {
      * @return an object with the shifts (see CigarShift class)
      */
     private CigarShift cleanHardClippedCigar(final Cigar cigar) {
+
         final Cigar cleanCigar = new Cigar();
         int shiftFromStart = 0;
         int shiftFromEnd = 0;
@@ -528,7 +538,7 @@ public final class ClippingOp {
             cigarStack.push(cigarElement);
         }
 
-        for (int i = 1; i <= 2; i++) {
+        for (final Passes pass: Passes.values()) {
             final int shift = 0;
             int totalHardClip = 0;
             boolean readHasStarted = false;
@@ -537,50 +547,51 @@ public final class ClippingOp {
             while (!cigarStack.empty()) {
                 final CigarElement cigarElement = cigarStack.pop();
 
-                if (!readHasStarted &&
-                        cigarElement.getOperator() != CigarOperator.DELETION &&
-                        cigarElement.getOperator() != CigarOperator.SKIPPED_REGION &&
-                        cigarElement.getOperator() != CigarOperator.HARD_CLIP) {
-                    readHasStarted = true;
-                } else if (!readHasStarted && cigarElement.getOperator() == CigarOperator.HARD_CLIP) {
-                    totalHardClip += cigarElement.getLength();
-                } else if (!readHasStarted && cigarElement.getOperator() == CigarOperator.DELETION) {
-                    //totalHardClip += cigarElement.getLength();
-                    totalHardClip += 0;
-                } else if (!readHasStarted && cigarElement.getOperator() == CigarOperator.SKIPPED_REGION) {
+                if (!readHasStarted && (cigarElement.getOperator() == CigarOperator.HARD_CLIP ||
+                        cigarElement.getOperator() == CigarOperator.SKIPPED_REGION)) {
                     totalHardClip += cigarElement.getLength();
                 }
 
+                readHasStarted |= cigarElement.getOperator() != CigarOperator.DELETION &&
+                        cigarElement.getOperator() != CigarOperator.SKIPPED_REGION &&
+                        cigarElement.getOperator() != CigarOperator.HARD_CLIP;
+
                 if (readHasStarted) {
-                    if (i == 1) {
-                        if (!addedHardClips) {
-                            if (totalHardClip > 0) {
-                                inverseCigarStack.push(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
+                    switch (pass) {
+                        case FIRST:
+                            if (!addedHardClips) {
+                                if (totalHardClip > 0) {
+                                    inverseCigarStack.push(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
+                                }
                             }
-                            addedHardClips = true;
-                        }
-                        inverseCigarStack.push(cigarElement);
-                    } else {
-                        if (!addedHardClips) {
-                            if (totalHardClip > 0) {
-                                cleanCigar.add(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
+                            inverseCigarStack.push(cigarElement);
+                            break;
+                        case SECOND:
+                            if (!addedHardClips) {
+                                if (totalHardClip > 0) {
+                                    cleanCigar.add(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
+                                }
                             }
-                            addedHardClips = true;
-                        }
-                        cleanCigar.add(cigarElement);
+                            cleanCigar.add(cigarElement);
+                            break;
                     }
+                    addedHardClips = true;
                 }
             }
-            // first pass  (i=1) is from end to start of the cigar elements
-            if (i == 1) {
-                shiftFromEnd = shift;
-                cigarStack = inverseCigarStack;
-            }
-            // second pass (i=2) is from start to end with the end already cleaned
-            else {
-                shiftFromStart = shift;
+            switch (pass) {
+                // first pass  (i=1) is from end to start of the cigar elements
+                case FIRST:
+                    shiftFromEnd = shift;
+                    cigarStack = inverseCigarStack;
+                    break;
+                case SECOND:
+                    // second pass (i=2) is from start to end with the end already cleaned
+                    shiftFromStart = shift;
+                    break;
+
             }
         }
+
         return new CigarShift(cleanCigar, shiftFromStart, shiftFromEnd);
     }
 
@@ -610,10 +621,9 @@ public final class ClippingOp {
     }
 
     /**
-    * Calculates shift of alignment int the newCigar relative to the oldCigar due to
-     * hard/soft clipping under assumption that the
-    * original clipped bases did not contain insertions/deletions. This is a naive code that
-    * does not work for many CIGAR strings
+     * Calculates shift of alignment in the newCigar relative to the oldCigar due to
+     * hard/soft clipping under assumption that the original clipped bases did not contain
+     * insertions/deletions. This is a naive code that does not work for many CIGAR strings.
      *
      * @param oldCigar original cigar
      * @param newCigar new cigar (with hard/soft clipping)
@@ -626,36 +636,30 @@ public final class ClippingOp {
     }
 
     /**
-    /* Calculates how much the alignment should be shifted when hard/soft clipping is applied
+     * Calculates how much the alignment should be shifted when hard/soft clipping is applied
     * to the cigar
      * @param oldCigar the original CIGAR
-     * @param clipping - number of bases of the read clipped
+     * @param newReadBasesClipped - number of bases of the read clipped
      * @return int - the offset between the alignment starts in the oldCigar and in
      * the cigar after applying clipping
      */
-    private int calculateAlignmentStartShift(final Cigar oldCigar, final int clipping) {
+    private int calculateAlignmentStartShift(final Cigar oldCigar, final int newReadBasesClipped) {
 
-        final int newReadBasesClipped = clipping;
         int readBasesClipped = 0; // The number of read bases consumed on the new cigar before reference bases are consumed
         int refBasesClipped = 0; // A measure of the reference offset between the oldCigar and the clippedCigar
 
-        boolean final_element = false;
+        boolean finalElement = false;
         for (final CigarElement e : oldCigar.getCigarElements()) {
 
-
             int curRefLength = e.getLength();
-            int curReadLength = e.getLength();
+            int curReadLength = e.getOperator().consumesReadBases() ? e.getLength() : 0;
 
             // needed only if the clipping ended on N or D
-            if (final_element) {
+            if (finalElement) {
                 if (!e.getOperator().consumesReadBases() && e.getOperator().consumesReferenceBases()) {
                     refBasesClipped += curRefLength;
                 }
                 break;
-            }
-
-            if (!e.getOperator().consumesReadBases()) {
-                curReadLength = 0;
             }
 
             final boolean truncated;
@@ -677,25 +681,11 @@ public final class ClippingOp {
             if (readBasesClipped > newReadBasesClipped || truncated) {
                 break;
             } else if (readBasesClipped == newReadBasesClipped){
-                final_element = true;
+                finalElement = true;
             }
         }
 
         return refBasesClipped;
-    }
-
-
-    private int calculateHardClippingAlignmentShift(final CigarElement cigarElement, final int clippedLength) {
-        // Insertions should be discounted from the total hard clip count
-        if (cigarElement.getOperator() == CigarOperator.INSERTION) {
-            return -clippedLength;
-        }// Deletions and Ns should be added to the total hard clip count (because we want to maintain the original alignment start)
-        else if (cigarElement.getOperator() == CigarOperator.DELETION || cigarElement.getOperator() == CigarOperator.SKIPPED_REGION) {
-            return cigarElement.getLength();
-        }
-
-        // There is no shift if we are not clipping an indel
-        return 0;
     }
 
     private static final class CigarShift {
