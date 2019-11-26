@@ -98,7 +98,6 @@ public final class CopyNumberArgumentValidationUtils {
     public static SimpleIntervalCollection resolveIntervals(final String readCountPath,
                                                             final IntervalArgumentCollection intervalArgumentCollection,
                                                             final Logger logger) {
-        Utils.nonNull(readCountPath);
         IOUtils.assertFileIsReadable(IOUtils.getPath(readCountPath));
         Utils.nonNull(intervalArgumentCollection);
         Utils.nonNull(logger);
