@@ -273,7 +273,6 @@ task CollectCounts {
     output {
         String entity_id = base_filename
         File counts = counts_filename
-        File counts_idx = if enable_indexing_ then "${base_filename}.${counts_index_filename_extension}" else "/dev/null"
     }
 }
 
