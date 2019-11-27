@@ -221,19 +221,18 @@ public final class ClippingOp {
         }
 
         for (final CigarElement e : oldCigar.getCigarElements()) {
-            final boolean truncated;
-            int curRefLength = e.getLength();
             int curReadLength = e.getLength();
+            int curRefLength = e.getLength();
             if (!e.getOperator().consumesReadBases()) {
                 curReadLength = 0;
             }
 
-            if (curReadCounter + curReadLength > readBasesBeforeReference) {
+            final boolean truncated = curReadCounter + curReadLength > readBasesBeforeReference;
+
+
+            if (truncated) {
                 curReadLength = readBasesBeforeReference - curReadCounter;
                 curRefLength = readBasesBeforeReference - curReadCounter;
-                truncated = true;
-            } else {
-                truncated = false;
             }
 
             if (!e.getOperator().consumesReferenceBases()) {
@@ -560,18 +559,14 @@ public final class ClippingOp {
                 if (readHasStarted) {
                     switch (pass) {
                         case FIRST:
-                            if (!addedHardClips) {
-                                if (totalHardClip > 0) {
-                                    inverseCigarStack.push(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
-                                }
+                            if (!addedHardClips && totalHardClip > 0) {
+                                inverseCigarStack.push(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
                             }
                             inverseCigarStack.push(cigarElement);
                             break;
                         case SECOND:
-                            if (!addedHardClips) {
-                                if (totalHardClip > 0) {
-                                    cleanCigar.add(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
-                                }
+                            if (!addedHardClips && totalHardClip > 0) {
+                                cleanCigar.add(new CigarElement(totalHardClip, CigarOperator.HARD_CLIP));
                             }
                             cleanCigar.add(cigarElement);
                             break;
@@ -682,11 +677,11 @@ public final class ClippingOp {
             while (iterator.hasNext()) {
                 final CigarElement e = iterator.next();
 
-                if (!e.getOperator().consumesReadBases() && e.getOperator().consumesReferenceBases()) {
-                    refBasesClipped += e.getLength();
-                } else {
+                if (e.getOperator().consumesReadBases() || !e.getOperator().consumesReferenceBases()) {
                     break;
                 }
+
+                refBasesClipped += e.getLength();
             }
         }
 
