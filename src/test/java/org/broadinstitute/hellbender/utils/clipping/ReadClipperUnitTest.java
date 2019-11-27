@@ -541,7 +541,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
     }
 
     //test fix for https://github.com/broadinstitute/gatk/issues/6139
-    @DataProvider(name="test-hard-clip-clips-right-amount")
+    @DataProvider()
     Object[][] cigarsToClipData(){
         return new Object[][]{
                 new Object[]{"20M", 6},
@@ -550,6 +550,10 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
                 new Object[]{"3M2D20M", 8},
                 new Object[]{"3M10N20M", 16},
                 new Object[]{"6M2D10M", 8},
+                new Object[]{"6M1D1N10M", 8},
+                new Object[]{"6M1N1D10M", 8},
+                new Object[]{"6M1D1N1D10M", 9},
+                new Object[]{"5M1D1N1D10M", 9},
                 new Object[]{"10M2D10M", 6},
                 new Object[]{"3S10M", 3},
                 new Object[]{"3H10M", 6}
@@ -557,20 +561,21 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
     }
 
     //test fix for https://github.com/broadinstitute/gatk/issues/6139
-    @Test (dataProvider="test-hard-clip-clips-right-amount")
+    @Test (dataProvider="cigarsToClipData")
     public void testHardClipSoftClippedBasesClipsTheCorrectAmount(final String cigarString, final int alignmentOffset) {
+        final int nBasesToClip=6;
         final int start = 100;
         final GATKRead originalRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(cigarString));
         BaseUtils.fillWithRandomBases(originalRead.getBasesNoCopy(),0,originalRead.getLength());
         originalRead.setPosition(originalRead.getContig(), start);
 
-        final GATKRead clippedRead = ReadClipper.hardClipByReadCoordinates(originalRead, 0, 5);
+        final GATKRead clippedRead = ReadClipper.hardClipByReadCoordinates(originalRead, 0, nBasesToClip-1);
         Assert.assertEquals(
                 clippedRead.getCigar().getReadLength() + AlignmentUtils.getNumHardClippedBases(clippedRead),
                 originalRead.getCigar().getReadLength() + AlignmentUtils.getNumHardClippedBases((originalRead))
                 , " Clipped cigar: " + clippedRead.getCigar());
         Assert.assertEquals(clippedRead.getStart(),start + alignmentOffset, " Clipped cigar: " + clippedRead.getCigar());
-        Assert.assertEquals(clippedRead.getBasesNoCopy(),Arrays.copyOfRange(originalRead.getBases(),6,originalRead.getBasesNoCopy().length));
-        Assert.assertEquals(clippedRead.getBaseQualitiesNoCopy(),Arrays.copyOfRange(originalRead.getBaseQualitiesNoCopy(),6,originalRead.getBaseQualitiesNoCopy().length));
+        Assert.assertEquals(clippedRead.getBasesNoCopy(),Arrays.copyOfRange(originalRead.getBases(),nBasesToClip,originalRead.getBasesNoCopy().length));
+        Assert.assertEquals(clippedRead.getBaseQualitiesNoCopy(),Arrays.copyOfRange(originalRead.getBaseQualitiesNoCopy(),nBasesToClip,originalRead.getBaseQualitiesNoCopy().length));
     }
 }

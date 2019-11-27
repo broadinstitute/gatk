@@ -547,14 +547,14 @@ public final class ClippingOp {
             while (!cigarStack.empty()) {
                 final CigarElement cigarElement = cigarStack.pop();
 
-                if (!readHasStarted && (cigarElement.getOperator() == CigarOperator.HARD_CLIP ||
-                        cigarElement.getOperator() == CigarOperator.SKIPPED_REGION)) {
+                if (!readHasStarted && cigarElement.getOperator() == CigarOperator.HARD_CLIP) {
                     totalHardClip += cigarElement.getLength();
                 }
 
-                readHasStarted |= cigarElement.getOperator() != CigarOperator.DELETION &&
-                        cigarElement.getOperator() != CigarOperator.SKIPPED_REGION &&
-                        cigarElement.getOperator() != CigarOperator.HARD_CLIP;
+                // Deletions (D) and gaps (N) are not hardclips (H) and do not consume read bases....
+                // so they gets dropped from the edges of the read since readHasStarted is still false.
+
+                readHasStarted |= cigarElement.getOperator().consumesReadBases();
 
                 if (readHasStarted) {
                     switch (pass) {
@@ -579,16 +579,15 @@ public final class ClippingOp {
                 }
             }
             switch (pass) {
-                // first pass  (i=1) is from end to start of the cigar elements
+                // first pass is from end to start of the cigar elements
                 case FIRST:
                     shiftFromEnd = shift;
                     cigarStack = inverseCigarStack;
                     break;
                 case SECOND:
-                    // second pass (i=2) is from start to end with the end already cleaned
+                    // second pass is from start to end with the end already cleaned
                     shiftFromStart = shift;
                     break;
-
             }
         }
 
@@ -649,24 +648,17 @@ public final class ClippingOp {
         int readBasesClipped = 0; // The number of read bases consumed on the new cigar before reference bases are consumed
         int refBasesClipped = 0; // A measure of the reference offset between the oldCigar and the clippedCigar
 
-        boolean finalElement = false;
+        final Iterator<CigarElement> iterator = oldCigar.getCigarElements().iterator();
+        boolean truncated=false;
 
-        for (final CigarElement e : oldCigar.getCigarElements()) {
+        while (iterator.hasNext()) {
+            final CigarElement e = iterator.next();
 
             int curRefLength = e.getLength();
             int curReadLength = e.getOperator().consumesReadBases() ? e.getLength() : 0;
 
-            // needed only if the clipping ended on N or D
-            // TODO: unclear if a single pass is enough to deal with BOTH and N and a D after the clipping...
 
-            if (finalElement) {
-                if (!e.getOperator().consumesReadBases() && e.getOperator().consumesReferenceBases()) {
-                    refBasesClipped += curRefLength;
-                }
-                break;
-            }
-
-            final boolean truncated = readBasesClipped + curReadLength > newReadBasesClipped;
+            truncated = readBasesClipped + curReadLength > newReadBasesClipped;
             if (truncated) {
                 curReadLength = newReadBasesClipped - readBasesClipped;
                 curRefLength = curReadLength;
@@ -679,10 +671,21 @@ public final class ClippingOp {
             readBasesClipped += curReadLength;
             refBasesClipped += curRefLength;
 
-            if (readBasesClipped > newReadBasesClipped || truncated) {
+            if (readBasesClipped >= newReadBasesClipped || truncated) {
                 break;
-            } else if (readBasesClipped == newReadBasesClipped){
-                finalElement = true;
+            }
+        }
+
+        // needed only if the clipping ended at a cigar element boundary and is followed by either N or D
+        if (readBasesClipped == newReadBasesClipped && !truncated) {
+            while (iterator.hasNext()) {
+                final CigarElement e = iterator.next();
+
+                if (!e.getOperator().consumesReadBases() && e.getOperator().consumesReferenceBases()) {
+                    refBasesClipped += e.getLength();
+                } else {
+                    break;
+                }
             }
         }
 
