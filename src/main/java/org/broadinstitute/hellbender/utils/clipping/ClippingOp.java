@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -133,7 +134,7 @@ public final class ClippingOp {
 
     private void applyWriteNs(final GATKRead readCopied) {
         final byte[] newBases = readCopied.getBases();       //this makes a copy so we can modify in place
-        overwriteFromStartToStop(newBases, (byte) 'N');
+        overwriteFromStartToStop(newBases, Nucleotide.N.encodeAsByte());
         readCopied.setBases(newBases);
     }
 
@@ -440,9 +441,9 @@ public final class ClippingOp {
                 // we're still clipping or just finished perfectly
                 if (index + shift == stop + 1) {
                     newCigar.add(new CigarElement(totalHardClipCount, CigarOperator.HARD_CLIP));
-                }
+
                 // element goes beyond what we need to clip
-                else if (index + shift > stop + 1) {
+                } else if (index + shift > stop + 1) {
                     final int elementLengthAfterChopping = cigarElement.getLength() - (stop - index + 1);
                     newCigar.add(new CigarElement(totalHardClipCount, CigarOperator.HARD_CLIP));
                     newCigar.add(new CigarElement(elementLengthAfterChopping, cigarElement.getOperator()));
