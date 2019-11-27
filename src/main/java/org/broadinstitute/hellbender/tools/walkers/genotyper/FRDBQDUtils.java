@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -20,7 +21,7 @@ public class FRDBQDUtils {
     }
 
     // Orders the reads based on the number of bases there are to the left of the fatherEndComparisonLocation as aligned according to the cigar
-    public static class ReadFeatherEndForwardComparitor implements Comparator<GATKRead>, Serializable {
+    public static class ReadFeatherEndForwardComparitor implements Comparator<Pair<GATKRead, Integer>>, Serializable {
         final SimpleInterval fatherEndComparisonLocation;
 
         public ReadFeatherEndForwardComparitor(final SimpleInterval intervalOfVariant) {
@@ -28,15 +29,15 @@ public class FRDBQDUtils {
         }
 
         @Override
-        public int compare(final GATKRead read1, final GATKRead read2) {
+        public int compare(final Pair<GATKRead, Integer> read1, final Pair<GATKRead, Integer> read2) {
             //TODO possibly some secondary sorting asserting
-            return (read1.getLength() - ReadUtils.getReadCoordinateForReferenceCoordinate(read1, fatherEndComparisonLocation.getStart()).getLeft())
-                    - (read2.getLength() - ReadUtils.getReadCoordinateForReferenceCoordinate(read2, fatherEndComparisonLocation.getStart()).getLeft()) ;
+            return (read1.getLeft().getLength() - ReadUtils.getReadCoordinateForReferenceCoordinate(read1.getLeft(), fatherEndComparisonLocation.getStart()).getLeft())
+                    - (read2.getLeft().getLength() - ReadUtils.getReadCoordinateForReferenceCoordinate(read2.getLeft(), fatherEndComparisonLocation.getStart()).getLeft()) ;
         }
     }
 
     // Orders the reads based on the number of bases in the read that occur before the fatherEndComparisonLocation as aligned according to the cigar
-    public static class ReadFeatherEndRevereseComparitor implements Comparator<GATKRead>, Serializable {
+    public static class ReadFeatherEndRevereseComparitor implements Comparator<Pair<GATKRead, Integer>>, Serializable {
         final SimpleInterval fatherEndComparisonLocation;
 
         public ReadFeatherEndRevereseComparitor(final SimpleInterval intervalOfVariant) {
@@ -44,10 +45,10 @@ public class FRDBQDUtils {
         }
 
         @Override
-        public int compare(final GATKRead read1, final GATKRead read2) {
+        public int compare(final Pair<GATKRead, Integer> read1, final Pair<GATKRead, Integer> read2) {
             //TODO possibly some secondary sorting asserting
-            return ReadUtils.getReadCoordinateForReferenceCoordinate(read1, fatherEndComparisonLocation.getStart()).getLeft()
-                    - ReadUtils.getReadCoordinateForReferenceCoordinate(read2, fatherEndComparisonLocation.getStart()).getLeft() ;
+            return ReadUtils.getReadCoordinateForReferenceCoordinate(read1.getLeft(), fatherEndComparisonLocation.getStart()).getLeft()
+                    - ReadUtils.getReadCoordinateForReferenceCoordinate(read2.getLeft(), fatherEndComparisonLocation.getStart()).getLeft() ;
         }
 
     }

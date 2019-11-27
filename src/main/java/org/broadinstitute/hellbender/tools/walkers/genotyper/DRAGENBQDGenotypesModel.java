@@ -49,8 +49,6 @@ public class DRAGENBQDGenotypesModel extends GenotypersModel {
             return fallbackModel.calculateLikelihoods(genotypingAlleles, data);
         }
 
-        data.readLikelihoods()
-
         final AlleleListPermutation<A> permutation = data.permutation(genotypingAlleles);
         final AlleleLikelihoodMatrixMapper<A> alleleLikelihoodMatrixMapper = new AlleleLikelihoodMatrixMapper(permutation);
 
@@ -74,7 +72,8 @@ public class DRAGENBQDGenotypesModel extends GenotypersModel {
                 }
             }
             ReadUtils.getReadCoordinateForReferenceCoordinate(strandForward.get(1).getLeft(),data.readLikelihoods().getSubsettedGenomicLoc().getStart());
-            strandForward.sort(FRDBQDUtils.ReadFeatherEndForwardComparitor(data.readLikelihoods().getSubsettedGenomicLoc()));
+            strandForward.sort(new FRDBQDUtils.ReadFeatherEndForwardComparitor(data.readLikelihoods().getSubsettedGenomicLoc()));
+            strandReverse.sort(new FRDBQDUtils.ReadFeatherEndRevereseComparitor(data.readLikelihoods().getSubsettedGenomicLoc()));
 
 
             final int samplePloidy = ploidyModel.samplePloidy(i);
