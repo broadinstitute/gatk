@@ -135,6 +135,54 @@ public class AlignedBaseGraph extends SeqGraph {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * Requires that nodes are at most distance 1 away from each other for zipping.
+     */
+    protected LinkedList<SeqVertex> traceLinearChain(final SeqVertex zipStart) {
+        final LinkedList<SeqVertex> linearChain = new LinkedList<>();
+        linearChain.add(zipStart);
+
+        boolean lastIsRef = isReferenceNode(zipStart); // remember because this calculation is expensive
+        SeqVertex last = zipStart;
+        while (true) {
+            if ( outDegreeOf(last) != 1 )
+            // cannot extend a chain from last if last has multiple outgoing branches
+            {
+                break;
+            }
+
+            // there can only be one (outgoing edge of last) by contract
+            final SeqVertex target = getEdgeTarget(outgoingEdgeOf(last));
+
+            if ( inDegreeOf(target) != 1 || last.equals(target) )
+            // cannot zip up a target that has multiple incoming nodes or that's a cycle to the last node
+            {
+                break;
+            }
+
+            final boolean targetIsRef = isReferenceNode(target);
+            if ( lastIsRef != targetIsRef ) // both our isRef states must be equal
+            {
+                break;
+            }
+
+            // Make sure we only zip adjacent nodes.
+            if ( !((AlignedBaseVertex)last).isAdjacentTo((AlignedBaseVertex)target) ) {
+                break;
+            }
+
+            linearChain.add(target); // extend our chain by one
+
+            // update our last state to be the current state, and continue
+            last = target;
+            lastIsRef = targetIsRef;
+        }
+
+        return linearChain;
+    }
+
+    /**
      * Traces a linear chain starting at the given vertex through all nodes with position less than the given pos.
      * 
      * This method is almost identical to {@link #traceLinearChain(SeqVertex)}, with the addition of another break

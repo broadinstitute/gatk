@@ -7,7 +7,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.util.*;
@@ -126,26 +125,27 @@ public class AlignedBaseGraphCollection {
             contigPositionVertexMap.get( contig ).clear();
 
             // First zip chains to make the next step faster.
-            logger.info("    Zipping linear chains (1 / 4)");
+            logger.info("    Zipping linear chains (1 / 2)");
             graph.zipLinearChains();
 
-            // Here we must check for adjacent positions in the which have no links between them and add such links.
-            // We should do this because we know they must be adjacent based on the alignment information we were given
-            // in the supporting reads.
-            logger.info("    Linking adjacent nodes (2 / 4)");
-            linkAdjacentNodes(graph);
+            // the new ZipLinearChains does these steps as well:
 
-            // Because we've modified our graphs, we must Zip all linear chains again.
-            // It will be faster this time around because there are fewer nodes in the graph.
-            logger.info("    Zipping linear chains again (3 / 4)");
-            graph.zipLinearChains();
+//            // Here we must check for adjacent positions in the which have no links between them and add such links.
+//            // We should do this because we know they must be adjacent based on the alignment information we were given
+//            // in the supporting reads.
+//            logger.info("    Linking adjacent nodes (2 / 4)");
+//            linkAdjacentNodes(graph);
+//
+//            // Because we've modified our graphs, we must Zip all linear chains again.
+//            // It will be faster this time around because there are fewer nodes in the graph.
+//            logger.info("    Zipping linear chains again (3 / 4)");
+//            graph.zipLinearChains();
 
             //NOTE: If we want to add more nodes after this it will be hard because
             //      we don't have single base nodes anymore, so the pileups will be hard.
             //      For now, we do not allow it.
-
             // Now we rebuild the contigPositionVertexMap for this contig so we can write out the data later:
-            logger.info("    Rebuilding position node map (4 / 4)");
+            logger.info("    Rebuilding position node map (2 / 2)");
             rebuildContigPositionVertexMap(graph);
 
             logger.info("  Collapsed graph (" + contig + ") size: " + graph.vertexSet().size());
@@ -346,7 +346,7 @@ public class AlignedBaseGraphCollection {
 
         // 2 - rebuild entries in contigPositionVertexMap for the newly created combined nodes:
         // TODO: FINISHME
-        throw new NotImplementedException();
+        throw new GATKException("Not implemented yet.");
     }
 
     /**
