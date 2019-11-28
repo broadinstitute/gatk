@@ -445,9 +445,9 @@ public final class ArtificialReadUtils {
 
     public static SAMRecord createArtificialSAMRecord(final SAMFileHeader header, final Cigar cigar, final String name) {
         final int length = cigar.getReadLength();
-        final Random random = Utils.getRandomGenerator();
+        final byte base = 'A';
         final byte qual = 30;
-        final byte [] bases = SequenceUtil.getRandomBases(random, length);
+        final byte [] bases = Utils.dupBytes(base, length);
         final byte [] quals = Utils.dupBytes(qual, length);
         return createArtificialSAMRecord(header, name, 0, 10000, bases, quals, cigar.toString());
     }
