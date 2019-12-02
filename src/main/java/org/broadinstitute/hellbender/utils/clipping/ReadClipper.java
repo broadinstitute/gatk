@@ -502,6 +502,7 @@ public class ReadClipper {
             throw new GATKException(String.format("Trying to clip the middle of the read: start %d, stop %d, cigar: %s", start, stop, read.getCigar().toString()));
         }
         this.addOp(new ClippingOp(start, stop));
+
         final GATKRead clippedRead = clipRead(clippingOp, runAsserts);
         this.ops = null;
         return clippedRead;
