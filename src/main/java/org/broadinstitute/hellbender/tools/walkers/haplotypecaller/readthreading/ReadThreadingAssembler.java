@@ -188,11 +188,31 @@ public final class ReadThreadingAssembler {
 
                     savedHaplotypes.add(assembledResult);
 
-                    // if the found haplotypes look "good" according to our parameters take the results
-                    if (evaluateFoundHaplotypes(assembledResult.getHaplotypeList(), refHaplotype, savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList())) {
-                        hasAdequatelyAssembledGraph = true;
-                        for (Haplotype h : assembledResult.getHaplotypeList()) {
-                            resultSet.add(h, assembledResult);
+                    // if asssembly failed ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
+                    if (! savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList().isEmpty()) {
+                        // Assembled nothing, in this case we probably pushed the kmer size too far and want to reign it back in an take the
+                        if (savedHaplotypes.size() == 1) {
+                            // search for the last haplotype set that had any results, if none are found just return me
+                            // In this case we prefer the last meaningful haplotype if possible
+                            for (int i = savedHaplotypes.size() - 1; i > 0; i --) {
+                                if (savedHaplotypes.get(i).getHaplotypeList().size() > 1) {
+                                    for (Haplotype h : savedHaplotypes.get(i).getHaplotypeList()) {
+                                        resultSet.add(h, savedHaplotypes.get(i));
+                                    }
+                                    break;
+                                }
+                            }
+                            // if nothing is found at this stage return and forget
+                            for (Haplotype h : assembledResult.getHaplotypeList()) {
+                                resultSet.add(h, assembledResult);
+                            }
+                            hasAdequatelyAssembledGraph = true;
+                        }
+                        if (evaluateFoundHaplotypes(assembledResult.getHaplotypeList(), refHaplotype, savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList())) {
+                            hasAdequatelyAssembledGraph = true;
+                            for (Haplotype h : assembledResult.getHaplotypeList()) {
+                                resultSet.add(h, assembledResult);
+                            }
                         }
                     }
 
@@ -201,16 +221,9 @@ public final class ReadThreadingAssembler {
         }
         // TODO figure out how to stop ourselves from accidentally assembling evergy graph when nothing whatsoever is found
 
-        // we were too conservative about graph assembly, search through the assembled graph and try to recover one
-        if ( ! hasAdequatelyAssembledGraph) {
-            for (int i = savedHaplotypes.size() - 1; i > 0; i --) {
-                if (savedHaplotypes.get(i).getHaplotypeList().size() > 1) {
-                    for (Haplotype h : savedHaplotypes.get(i).getHaplotypeList()) {
-                        resultSet.add(h, savedHaplotypes.get(i));
-                    }
-                    break;
-                }
-            }
+        // If we get to this point then no graph worked... thats bad and indicates something horrible happened, in this case we just return a reference haplotype
+        if (resultSet.getHaplotypeList().isEmpty()) {
+            logger.debug("Graph at position "+resultSet.getPaddedReferenceLoc()+" failed to assemble anything informative; emitting just the reference here" );
         }
 
         // print the graphs if the appropriate debug option has been turned on
@@ -223,19 +236,19 @@ public final class ReadThreadingAssembler {
     //TODO this is going to need tobe well explained as this is a significant difference in appraoch
     private boolean evaluateFoundHaplotypes(final Set<Haplotype> haplotypes, final Haplotype refHap, final Set<Haplotype> previousHaplotypes) {
         // limit graphs that failed due to some error in haplotype recovery (or recovered just the reference)
-        if (haplotypes.isEmpty() || haplotypes.size() == 1) {
-            //TODO but what
-            return false;
-        }
+//        if (haplotypes.isEmpty() || haplotypes.size() == 1) {
+//            //TODO but what
+//            return false;
+//        }
 
         // limit graphs with excessive number of haplotyes found
-        if (haplotypes.size() > 20) {
-            return false;
-        }
+//        if (haplotypes.size() > 20) {
+//            return false;
+//        }
 
         // filtering out graphs that result in very long haplotypes (as these are likely unresolved loops that didn't get captured by other loop code)
         for (Haplotype h : haplotypes) {
-            if (h.length() > refHap.length() * 1.15) {
+            if (h.length() > refHap.length() * 1.20) {
                 return false;
             }
         }
@@ -294,6 +307,11 @@ public final class ReadThreadingAssembler {
                     logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
                 }
             }
+        }
+
+        // Handle the edge case where the graph failed to recover any haplotypes at all (likely due to loop safety code)
+        if (returnHaplotypes.isEmpty()) {
+            return new ArrayList<>(returnHaplotypes);
         }
 
         // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
