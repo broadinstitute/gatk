@@ -219,7 +219,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         forceOutputIntervalsPresent = !forceOutputIntervalStrings.isEmpty();
 
         if (includeNonVariants && forceOutputIntervalsPresent ) {
-            throw new CommandLineException.BadArgumentValue("Force output is incompatible with including non-variants");
+            throw new CommandLineException.BadArgumentValue(String.format("Force output (--%s) is incompatible with including " +
+                    "non-variants (--%s and --%s).  Use the latter to force genotyping at all sites and the former to force genotyping only at given sites." +
+                    "In both cases, variant sites are genotyped as usual.", FORCE_OUTPUT_INTERVALS_NAME, ALL_SITES_LONG_NAME, ALL_SITES_SHORT_NAME));
         }
 
         final GenomeLocSortedSet forceOutputLocs = IntervalUtils.loadIntervals(forceOutputIntervalStrings, IntervalSetRule.UNION,
