@@ -24,7 +24,7 @@ public class GenomicsDBBCFCodec extends BCF2Codec {
             throw new GATKException("The htsjdk supported BCF version does not match the expected supported version");
         }
 
-        if (!actualVersion.equals(expectedGenomicsDBSupportedVersion)) {
+        if (!actualVersion.equals(expectedHTSJDKSupportedVersion) && !actualVersion.equals(expectedGenomicsDBSupportedVersion)) {
             throw new IllegalStateException(
                     String.format("A stream supplied by GenomicsDB contains BCF version %s but GATK expects version %s",
                             new BCFVersion(actualVersion.getMajorVersion(), actualVersion.getMinorVersion()).toString(),
