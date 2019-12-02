@@ -125,10 +125,10 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             final JTBestHaplotype<V, E> pathToExtend = queue.poll();
 
-            // This safeguards against infinite loops and degenerate excessively long paths, only allow 4 decisions without junction tree guidance
-            if (pathToExtend.getDecisionEdgesTakenSinceLastJunctionTreeEvidence() > DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE) {
-                continue;
-            }
+//            // This safeguards against infinite loops and degenerate excessively long paths, only allow 4 decisions without junction tree guidance
+//            if (pathToExtend.getDecisionEdgesTakenSinceLastJunctionTreeEvidence() > DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE) {
+//                continue;
+//            }
 
             ////////////////////////////////////////////////////////////
             // code to discover where the next interesting node is
