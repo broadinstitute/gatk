@@ -309,14 +309,10 @@ public final class ReadThreadingAssembler {
             }
         }
 
-        // Handle the edge case where the graph failed to recover any haplotypes at all (likely due to loop safety code)
-        if (returnHaplotypes.isEmpty()) {
-            return new ArrayList<>(returnHaplotypes);
-        }
-
         // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
         // the first returned by any finder.
-        if (!returnHaplotypes.contains(refHaplotype)) {
+        // HERE we want to preserve the signal that assembly failed completely so in this case we don't add anything to the empty list
+        if (!returnHaplotypes.isEmpty() && !returnHaplotypes.contains(refHaplotype)) {
             returnHaplotypes.add(refHaplotype);
         }
 
