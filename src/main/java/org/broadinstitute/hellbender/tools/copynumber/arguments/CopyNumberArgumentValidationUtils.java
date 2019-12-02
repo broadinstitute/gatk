@@ -2,11 +2,12 @@ package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import com.google.common.collect.Ordering;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.DetermineGermlineContigPloidy;
+import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
@@ -15,14 +16,19 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Locatable
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
@@ -84,30 +90,73 @@ public final class CopyNumberArgumentValidationUtils {
     }
 
     /**
-     * Resolve intervals from an {@link IntervalArgumentCollection} and a read-count file.
+     * Resolve intervals from an {@link IntervalArgumentCollection} and a read-count path.
      * If intervals are not specified in the {@link IntervalArgumentCollection}, they are taken from the
-     * read-count file.  The sequence dictionary is taken from the read-count file.  A {@link SimpleIntervalCollection}
+     * read-count path.  The sequence dictionary is taken from the read-count path.  A {@link SimpleIntervalCollection}
      * constructed using these intervals and sequence dictionary is returned and can be used for further validation.
      */
-    public static SimpleIntervalCollection resolveIntervals(final File readCountFile,
+    public static SimpleIntervalCollection resolveIntervals(final String readCountPath,
                                                             final IntervalArgumentCollection intervalArgumentCollection,
                                                             final Logger logger) {
-        IOUtils.canReadFile(readCountFile);
+        IOUtils.assertFileIsReadable(IOUtils.getPath(readCountPath));
         Utils.nonNull(intervalArgumentCollection);
         Utils.nonNull(logger);
-        final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(readCountFile);
-        final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
-        final LocatableMetadata metadata = new SimpleLocatableMetadata(sequenceDictionary);
 
         if (intervalArgumentCollection.intervalsSpecified()) {
             logger.info("Intervals specified...");
             validateIntervalArgumentCollection(intervalArgumentCollection);
-            return new SimpleIntervalCollection(metadata,
-                    intervalArgumentCollection.getIntervals(sequenceDictionary));
         } else {
-            logger.info(String.format("Retrieving intervals from read-count file (%s)...", readCountFile));
-            return new SimpleIntervalCollection(metadata, firstReadCounts.getIntervals());
+            logger.info(String.format("Retrieving intervals from read-count file (%s)...", readCountPath));
         }
+
+        final SimpleCountCollection readCounts = BucketUtils.isCloudStorageUrl(readCountPath)
+                ? SimpleCountCollection.readFromGCS(readCountPath)
+                : SimpleCountCollection.read(new File(readCountPath));
+        final SAMSequenceDictionary sequenceDictionary = readCounts.getMetadata().getSequenceDictionary();
+        final LocatableMetadata metadata = new SimpleLocatableMetadata(sequenceDictionary);
+        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified()
+                ? intervalArgumentCollection.getIntervals(sequenceDictionary)
+                : readCounts.getIntervals();
+
+        return new SimpleIntervalCollection(metadata, intervals);
+    }
+
+    /**
+     * Common method for subsetting and validating read counts in both {@link DetermineGermlineContigPloidy}
+     * and {@link GermlineCNVCaller}.
+     * @param inputReadCountPaths   for indexed read counts given by GCS paths, counts will be streamed
+     * @param specifiedIntervals    intervals to query and subset
+     */
+    public static Stream<SimpleCountCollection> streamOfSubsettedAndValidatedReadCounts(final List<String> inputReadCountPaths,
+                                                                                        final SimpleIntervalCollection specifiedIntervals,
+                                                                                        final Logger logger) {
+        Utils.nonEmpty(inputReadCountPaths);
+        Utils.nonNull(specifiedIntervals);
+        Utils.nonNull(logger);
+        final int numSamples = inputReadCountPaths.size();
+        final Set<SimpleInterval> intervalSubset = new HashSet<>(specifiedIntervals.getRecords());                       //for subsetting local files
+        final List<SimpleInterval> mergedIntervalSubset = IntervalUtils.getIntervalsWithFlanks(
+                specifiedIntervals.getRecords(), 0, specifiedIntervals.getMetadata().getSequenceDictionary());  //for subsetting GCS files
+
+        return IntStream.range(0, inputReadCountPaths.size()).boxed()
+                .map(sampleIndex -> {
+                    final String inputReadCountPath = inputReadCountPaths.get(sampleIndex);
+                    logger.info(String.format("Aggregating read-count file %s (%d / %d)",
+                            inputReadCountPath, sampleIndex + 1, numSamples));
+                    final SimpleCountCollection subsetReadCounts = BucketUtils.isCloudStorageUrl(inputReadCountPath)
+                            ? SimpleCountCollection.readOverlappingSubsetFromGCS(inputReadCountPath, mergedIntervalSubset)
+                            : SimpleCountCollection.readAndSubset(new File(inputReadCountPath), intervalSubset);
+                    if (!CopyNumberArgumentValidationUtils.isSameDictionary(
+                            subsetReadCounts.getMetadata().getSequenceDictionary(),
+                            specifiedIntervals.getMetadata().getSequenceDictionary())) {
+                        logger.warn("Sequence dictionary for read-count file {} does not match that " +
+                                "in other read-count files.", inputReadCountPath);
+                    }
+                    Utils.validateArg(subsetReadCounts.size() == intervalSubset.size(),
+                            String.format("Intervals for read-count file %s do not contain all specified intervals.",
+                                    inputReadCountPath));
+                    return subsetReadCounts;
+                });
     }
 
     /**
@@ -179,6 +228,19 @@ public final class CopyNumberArgumentValidationUtils {
                     } else if (input.isDirectory() && !input.canRead()) {
                         throw new UserException.CouldNotReadInputFile(input);
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate that input paths are readable if they are not {@code null} (i.e., optional inputs).
+     */
+    public static void validateInputs(final String ... inputs) {
+        if (inputs != null) {
+            for (final String input : inputs) {
+                if (input != null) {
+                    IOUtils.assertFileIsReadable(IOUtils.getPath(input));
                 }
             }
         }

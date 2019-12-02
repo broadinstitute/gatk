@@ -5,21 +5,20 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BufferedLineReader;
 import htsjdk.samtools.util.LineReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Represents {@link METADATA} (which can be represented as a {@link SAMFileHeader}),
@@ -81,7 +80,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         try (final RecordCollectionReader reader = new RecordCollectionReader(IOUtils.fileToPath(inputFile))) {
             metadata = MetadataUtils.fromHeader(reader.getHeader(), getMetadataType());
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
-            records = reader.stream().collect(Collectors.collectingAndThen(Collectors.toList(), ImmutableList::copyOf));
+            records = ImmutableList.copyOf(reader.stream().iterator());     //avoid creation of an intermediate list
         } catch (final IOException | UncheckedIOException e) {
             throw new UserException.CouldNotReadInputFile(inputFile, e);
         }
@@ -118,8 +117,8 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
-        try (final RecordWriter recordWriter = new RecordWriter(new FileWriter(outputFile, true))) {
-            recordWriter.writeAllRecords(records);
+        try (final RecordCollectionWriter writer = new RecordCollectionWriter(new FileWriter(outputFile, true))) {
+            writer.writeAllRecords(records);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
@@ -180,9 +179,10 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
             return recordFromDataLineDecoder.apply(dataLine);
         }
 
-        private SAMFileHeader getHeader() throws IOException {
-            final LineReader lineReader = new BufferedLineReader(Files.newInputStream(path));
-            return new SAMTextHeaderCodec().decode(lineReader, getSource());
+        private SAMFileHeader getHeader() {
+            try (final LineReader lineReader = new BufferedLineReader(BucketUtils.openFile(path.toString()))) { //use BucketUtils.openFile to handle *.gz files
+                return new SAMTextHeaderCodec().decode(lineReader, getSource());
+            }
         }
 
         @Override
@@ -191,8 +191,8 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         }
     }
 
-    final class RecordWriter extends TableWriter<RECORD> {
-        RecordWriter(final Writer writer) throws IOException {
+    final class RecordCollectionWriter extends TableWriter<RECORD> {
+        RecordCollectionWriter(final Writer writer) throws IOException {
             super(writer, mandatoryColumns);
         }
 

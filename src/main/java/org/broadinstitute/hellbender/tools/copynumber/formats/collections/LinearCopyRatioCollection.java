@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
+import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LinearCopyRatio;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
-import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 
 import java.io.File;
 import java.util.List;

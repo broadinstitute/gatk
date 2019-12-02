@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 
 import java.util.Objects;
 

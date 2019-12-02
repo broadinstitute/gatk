@@ -29,7 +29,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.*;

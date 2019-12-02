@@ -47,6 +47,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
     #### optional arguments for CollectCounts ####
     ##############################################
     String? collect_counts_format
+    Boolean? collect_counts_enable_indexing
     Int? mem_gb_for_collect_counts
 
     ######################################################################
@@ -145,6 +146,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 padding = padding,
                 bin_length = bin_length,
                 collect_counts_format = collect_counts_format,
+                collect_counts_enable_indexing = collect_counts_enable_indexing,
                 mem_gb_for_collect_counts = mem_gb_for_collect_counts,
                 ploidy_mapping_error_rate = ploidy_mapping_error_rate,
                 ploidy_sample_psi_scale = ploidy_sample_psi_scale,

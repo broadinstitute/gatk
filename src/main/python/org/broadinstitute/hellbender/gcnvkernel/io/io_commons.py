@@ -323,6 +323,7 @@ def write_dict_to_json_file(output_file: str,
     filtered_dict = {k: v for k, v in sorted(dict_to_write.items()) if k not in ignored_keys}
     with open(output_file, 'w') as fp:
         json.dump(filtered_dict, fp, indent=1)
+        fp.write('\n')  # json.dump does not add newline to end of file
 
 
 def check_gcnvkernel_version_from_json_file(gcnvkernel_version_json_file: str):

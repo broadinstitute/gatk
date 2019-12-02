@@ -182,6 +182,7 @@ task CollectCounts {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
+    Boolean? enable_indexing
     String? format
     File? gatk4_jar_override
 
@@ -196,21 +197,69 @@ task CollectCounts {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
+    Boolean enable_indexing_ = select_first([enable_indexing, false])
+
     # Sample name is derived from the bam filename
     String base_filename = basename(bam, ".bam")
-    String counts_filename = if !defined(format) then "${base_filename}.counts.hdf5" else "${base_filename}.counts.tsv"
+    String format_ = select_first([format, "HDF5"])
+    String hdf5_or_tsv_or_null_format =
+        if format_ == "HDF5" then "HDF5" else
+        (if format_ == "TSV" then "TSV" else
+        (if format_ == "TSV_GZ" then "TSV" else "null")) # until we can write TSV_GZ in CollectReadCounts, we write TSV and use bgzip
+    String counts_filename_extension =
+        if format_ == "HDF5" then "counts.hdf5" else
+        (if format_ == "TSV" then "counts.tsv" else
+        (if format_ == "TSV_GZ" then "counts.tsv.gz" else "null"))
+    String counts_index_filename_extension =
+        if format_ == "HDF5" then "null" else
+        (if format_ == "TSV" then "counts.tsv.idx" else
+        (if format_ == "TSV_GZ" then "counts.tsv.gz.tbi" else "null"))
+    Boolean do_block_compression =
+        if format_ == "HDF5" then false else
+        (if format_ == "TSV" then false else
+        (if format_ == "TSV_GZ" then true else false))
+    String counts_filename = "${base_filename}.${counts_filename_extension}"
+    String counts_filename_for_collect_read_counts = basename(counts_filename, ".gz")
 
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
+        case ${format_} in
+            HDF5 | TSV | TSV_GZ)
+                ;;
+            *)
+                echo "ERROR: Unknown format specified. Format must be one of HDF5, TSV, or TSV_GZ."
+                exit 1
+                ;;
+        esac
+
+        if [ ${format_} = "HDF5" ] && [ ${enable_indexing_} = "true" ]; then
+            echo "ERROR: Incompatible WDL parameters. Cannot have format = HDF5 and enable_indexing = true."
+            exit 1
+        fi
+
+        if [ ${hdf5_or_tsv_or_null_format} = "null" ]; then
+            echo "ERROR: Should never reach here."
+            exit 1
+        fi
+
         gatk --java-options "-Xmx${command_mem_mb}m" CollectReadCounts \
             -L ${intervals} \
             --input ${bam} \
             --reference ${ref_fasta} \
-            --format ${default="HDF5" format} \
+            --format ${default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
-            --output ${counts_filename}
+            --output ${counts_filename_for_collect_read_counts}
+
+        if [ ${do_block_compression} = "true" ]; then
+            bgzip ${counts_filename_for_collect_read_counts}
+        fi
+
+        if [ ${enable_indexing_} = "true" ]; then
+            gatk --java-options "-Xmx${command_mem_mb}m" IndexFeatureFile \
+                -I ${counts_filename}
+        fi
     >>>
 
     runtime {

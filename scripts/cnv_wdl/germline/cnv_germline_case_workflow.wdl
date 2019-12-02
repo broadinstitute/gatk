@@ -57,6 +57,7 @@ workflow CNVGermlineCaseWorkflow {
     #### optional arguments for CollectCounts ####
     ##############################################
     String? collect_counts_format
+    Boolean? collect_counts_enable_indexing
     Int? mem_gb_for_collect_counts
 
     ######################################################################
@@ -144,6 +145,7 @@ workflow CNVGermlineCaseWorkflow {
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
                 format = collect_counts_format,
+                enable_indexing = collect_counts_enable_indexing,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,

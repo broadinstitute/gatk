@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -10,7 +11,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class SimpleCount implements Locatable {
+public class SimpleCount implements Locatable, Feature {
 
     private final SimpleInterval interval;
     private final int count;

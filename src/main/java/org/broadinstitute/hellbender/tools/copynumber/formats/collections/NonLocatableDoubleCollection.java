@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVNamingConstants;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 
 import java.io.File;
 import java.util.function.BiConsumer;
