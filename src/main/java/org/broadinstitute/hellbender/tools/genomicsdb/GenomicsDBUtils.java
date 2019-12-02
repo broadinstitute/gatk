@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.googlecode.protobuf.format.JsonFormat;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -15,7 +16,9 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,9 +40,24 @@ public class GenomicsDBUtils {
     private static final String HISTOGRAM_SUM = "histogram_sum";
     private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
 
+    private static final String NO_COMBINE_OP = "none";
+    private static final String[] NO_COMBINE_FIELDS = {
+            GATKVCFConstants.ALLELE_FRACTION_KEY,           // AF
+            GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY,     // AS_BaseQRankSum
+            GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY, // AS_InbreedingCoeff
+            GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,          // AS_QD
+            GATKVCFConstants.DOWNSAMPLED_KEY,               // DS
+            GATKVCFConstants.HAPLOTYPE_SCORE_KEY,           // HaplotypeScore
+            GATKVCFConstants.INBREEDING_COEFFICIENT_KEY,    // InbreedingCoeff
+            GATKVCFConstants.MLE_ALLELE_COUNT_KEY,          // MLEAC
+            GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY,      // MLEAF
+            GATKVCFConstants.QUAL_BY_DEPTH_KEY,             // QD
+            VCFConstants.ALLELE_COUNT_KEY,                  // AC
+            VCFConstants.ALLELE_NUMBER_KEY                  // AN
+    };
+
     private static final String GDB_TYPE_FLOAT = "float";
     private static final String GDB_TYPE_INT = "int";
-
 
     /**
      * Info and Allele-specific fields that need to be treated differently
@@ -80,6 +98,11 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_INT_SUM);
+
+        for (String field : NO_COMBINE_FIELDS) {
+            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, NO_COMBINE_OP);
+            assert(vidMapPB != null);
+        }
 
         importer.updateProtobufVidMapping(vidMapPB);
     }
@@ -133,8 +156,6 @@ public class GenomicsDBUtils {
         } else {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
-
-
 
         return exportConfigurationBuilder.build();
     }
