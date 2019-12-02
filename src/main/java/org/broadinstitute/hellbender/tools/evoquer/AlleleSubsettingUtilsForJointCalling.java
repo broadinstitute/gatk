@@ -28,6 +28,7 @@ public class AlleleSubsettingUtilsForJointCalling {
         List<VariantContext> callsWithExpandedAlleles = sumAllQualsAndExpandAlleles(unmergedCalls, alleleSpecificQuals, longestRefAllele);
         logger.debug("unique alleles: " + alleleSpecificQuals.size() + alleleSpecificQuals.keySet());
 
+        logger.debug("delete this log message - for testing only");
         // choose the target alleles
         List<Allele> targetAlleles = alleleSpecificQuals.entrySet().stream()
                 // get the highest values
