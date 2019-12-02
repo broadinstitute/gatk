@@ -28,11 +28,23 @@ public class FRDBQDUtils {
             this.fatherEndComparisonLocation = intervalOfVariant;
         }
 
+        //TODO efficeiency
+
+        /**
+         * Evaluate first the number of bases to the end of the read and follow that by the base quality
+         */
         @Override
         public int compare(final Pair<GATKRead, Integer> read1, final Pair<GATKRead, Integer> read2) {
             //TODO possibly some secondary sorting asserting
-            return (read1.getLeft().getLength() - ReadUtils.getReadCoordinateForReferenceCoordinate(read1.getLeft(), fatherEndComparisonLocation.getStart()).getLeft())
-                    - (read2.getLeft().getLength() - ReadUtils.getReadCoordinateForReferenceCoordinate(read2.getLeft(), fatherEndComparisonLocation.getStart()).getLeft()) ;
+            final int read1VariantCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(read1.getLeft(), fatherEndComparisonLocation.getStart()).getLeft();
+            final int read2VariantCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(read2.getLeft(), fatherEndComparisonLocation.getStart()).getLeft();
+            int diffVal = (read1.getLeft().getLength() - read1VariantCoordinate)
+                    - (read2.getLeft().getLength() - read2VariantCoordinate);
+            if (diffVal == 0) {
+                diffVal = read1.getLeft().getBaseQuality(read1VariantCoordinate) - read2.getLeft().getBaseQuality(read2VariantCoordinate);
+            }
+
+            return diffVal;
         }
     }
 
@@ -44,11 +56,21 @@ public class FRDBQDUtils {
             this.fatherEndComparisonLocation = intervalOfVariant;
         }
 
+        /**
+         * Evaluate first the number of bases to the end of the read and follow that by the base quality
+         */
         @Override
         public int compare(final Pair<GATKRead, Integer> read1, final Pair<GATKRead, Integer> read2) {
             //TODO possibly some secondary sorting asserting
-            return ReadUtils.getReadCoordinateForReferenceCoordinate(read1.getLeft(), fatherEndComparisonLocation.getStart()).getLeft()
-                    - ReadUtils.getReadCoordinateForReferenceCoordinate(read2.getLeft(), fatherEndComparisonLocation.getStart()).getLeft() ;
+            final int read1VariantCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(read1.getLeft(), fatherEndComparisonLocation.getStart()).getLeft();
+            final int read2VariantCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinate(read2.getLeft(), fatherEndComparisonLocation.getStart()).getLeft();
+
+            int diffVal = read1VariantCoordinate - read2VariantCoordinate;
+            if (diffVal==0) {
+                //TODO verify this lines up with the sort in DRAGBQD
+                diffVal = read1.getLeft().getBaseQuality(read1VariantCoordinate) - read2.getLeft().getBaseQuality(read2VariantCoordinate);
+            }
+            return diffVal;
         }
 
     }

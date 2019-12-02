@@ -75,6 +75,9 @@ public class DRAGENBQDGenotypesModel extends GenotypersModel {
             strandForward.sort(new FRDBQDUtils.ReadFeatherEndForwardComparitor(data.readLikelihoods().getSubsettedGenomicLoc()));
             strandReverse.sort(new FRDBQDUtils.ReadFeatherEndRevereseComparitor(data.readLikelihoods().getSubsettedGenomicLoc()));
 
+            
+
+
 
             final int samplePloidy = ploidyModel.samplePloidy(i);
 
