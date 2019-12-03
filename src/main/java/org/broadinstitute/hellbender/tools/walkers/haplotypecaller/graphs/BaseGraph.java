@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -389,6 +390,136 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
     }
 
+    /**
+     * @return {@link String} Containing the definition of any attributes that need to be added to each node in this graph.
+     */
+    public String getGexfNodeAttributesDefinition() {
+        return "";
+    }
+
+    /**
+     * @return {@link String} Containing the definition of any attributes that need to be added to each edge in this graph.
+     */
+    public String getGexfEdgeAttributesDefinition() {
+        return "";
+    }
+
+    /**
+     * Print out the graph in the gexf format for visualization.
+     * @param destination File to write to.
+     * @param pruneFactor Edge multiplicity threshold below which to change the color of the edges to grey.  Set to zero to color all edges the same.
+     * @param creatorName String containing information about who/what created this gexf file.
+     * @param description String containing a description of the data in this file.
+     */
+    public final void serializeToGexf(final File destination, final int pruneFactor, final String creatorName, final String description) {
+
+        try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
+            serializeToGexf(stream, pruneFactor, creatorName, description);
+        } catch ( final FileNotFoundException e ) {
+            throw new UserException.CouldNotReadInputFile(destination, e);
+        }
+    }
+
+    public final void serializeToGexf(final PrintStream graphWriter, final int pruneFactor, final String creatorName, final String description) {
+
+        // Print out the header:
+        graphWriter.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        graphWriter.println("<gexf xmlns=\"http://www.gexf.net/1.2draft\" xmlns:viz=\"http://www.gexf.net/1.1draft/viz\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd\" version=\"1.2\">");
+        graphWriter.println("  <meta lastmodifieddate=\"" + new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + "\">");
+        graphWriter.println("    <creator>" + creatorName + "</creator>");
+        graphWriter.println("    <description>" + description + "</description>");
+        graphWriter.println("  </meta>");
+
+        // Start writing our graph data:
+        graphWriter.println("  <graph mode=\"static\" defaultedgetype=\"directed\">");
+
+        // Declare some node attribute types:
+        graphWriter.println(getGexfNodeAttributesDefinition());
+
+        // Declare some edge attribute types:
+        graphWriter.println(getGexfEdgeAttributesDefinition());
+
+
+        // In gephi graphs begin with nodes:
+        graphWriter.println("    <nodes>");
+        for( final V vertex : vertexSet() ) {
+            final String label = sanitizeStringForDotFormat(new String(getAdditionalSequence(vertex)) + vertex.getAdditionalInfo());
+
+            final String attrs = vertex.getGexfAttributesString();
+
+            if ( attrs.isEmpty() ) {
+                graphWriter.println(String.format("      <node id=\"%s\" label=\"%s\" />", sanitizeStringForDotFormat(vertex.toString()), label));
+            }
+            else {
+                graphWriter.println(String.format("      <node id=\"%s\" label=\"%s\">", sanitizeStringForDotFormat(vertex.toString()), label));
+                graphWriter.println("        <attvalues>" + attrs + "</attvalues>");
+                graphWriter.println("      </node>");
+            }
+
+        }
+        graphWriter.println("    </nodes>");
+
+        // Now let's show them our edges:
+        graphWriter.println("    <edges>");
+        int edgeId = 0;
+        for( final E edge : edgeSet() ) {
+
+            final String attrs = edge.getGexfAttributesString();
+
+            if (edge.getMultiplicity() > 0 && edge.getMultiplicity() < pruneFactor) {
+                graphWriter.print(String.format("      <edge id=\"%d\" source=\"%s\" target=\"%s\" label=\"%s\">",
+                        edgeId,
+                        sanitizeStringForDotFormat(getEdgeSource(edge).toString()),
+                        sanitizeStringForDotFormat(getEdgeTarget(edge).toString()),
+                        sanitizeStringForDotFormat(edge.getDotLabel())));
+                if ( !attrs.isEmpty() ) {
+                    graphWriter.print( "<attvalues>" + attrs + "</attvalues>" );
+                }
+                graphWriter.print("<viz:color r=\"150\" g=\"150\" b=\"150\" a=\"1\" />");
+                graphWriter.println("</edge>");
+            }
+            else {
+                if ( !attrs.isEmpty() ) {
+                    graphWriter.print(String.format("      <edge id=\"%d\" source=\"%s\" target=\"%s\" label=\"%s\">",
+                            edgeId,
+                            sanitizeStringForDotFormat(getEdgeSource(edge).toString()),
+                            sanitizeStringForDotFormat(getEdgeTarget(edge).toString()),
+                            sanitizeStringForDotFormat(edge.getDotLabel())));
+                    graphWriter.print( "<attvalues>" + attrs + "</attvalues>" );
+                    graphWriter.println("</edge>");
+                }
+                else {
+                    graphWriter.println(String.format("      <edge id=\"%d\" source=\"%s\" target=\"%s\" label=\"%s\" />",
+                            edgeId,
+                            sanitizeStringForDotFormat(getEdgeSource(edge).toString()),
+                            sanitizeStringForDotFormat(getEdgeTarget(edge).toString()),
+                            sanitizeStringForDotFormat(edge.getDotLabel())));
+                }
+            }
+
+            // Add in the reference edge:
+            // NOTE: Gephi doesn't support parallel edges, so this is moot.
+            if( edge.isRef() ) {
+                graphWriter.print(String.format("      <edge id=\"%d\" source=\"%s\" target=\"%s\" label=\"%s\">",
+                        edgeId,
+                        sanitizeStringForDotFormat(getEdgeSource(edge).toString()),
+                        sanitizeStringForDotFormat(getEdgeTarget(edge).toString()),
+                        sanitizeStringForDotFormat(edge.getDotLabel())));
+                graphWriter.print("<viz:color r=\"255\" g=\"0\" b=\"0\" a=\"1\" />");
+                graphWriter.println("</edge>");
+            }
+
+            edgeId++;
+        }
+        graphWriter.println("    </edges>");
+
+        // Close up all our tags here:
+        graphWriter.println("  </graph>");
+        graphWriter.println("</gexf>");
+        graphWriter.println("");
+        graphWriter.println("");
+    }
+
     public final void printGraph(final PrintStream graphWriter, final boolean writeHeader, final int pruneFactor) {
         if ( writeHeader ) {
             graphWriter.println("digraph assemblyGraphs {");
@@ -420,8 +551,9 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
             }
         }
 
-        for( final V v : vertexSet() ) {
-            graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", sanitizeStringForDotFormat(v.toString()), sanitizeStringForDotFormat(new String(getAdditionalSequence(v)) + v.getAdditionalInfo())));
+        for( final V vertex : vertexSet() ) {
+            final String label = sanitizeStringForDotFormat(new String(getAdditionalSequence(vertex)) + vertex.getAdditionalInfo());
+            graphWriter.println(String.format("\t%s [label=\"%s\",length=%d,shape=box]", sanitizeStringForDotFormat(vertex.toString()), label, label.length()));
         }
 
         getExtraGraphFileLines().forEach(graphWriter::println);

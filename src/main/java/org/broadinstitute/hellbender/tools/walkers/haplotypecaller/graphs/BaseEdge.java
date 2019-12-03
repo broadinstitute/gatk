@@ -140,6 +140,13 @@ public class BaseEdge {
         return new BaseEdge(anyRef, multiplicity);
     }
 
+    /**
+     * @return {@link String} Containing the values of any attributes that need to be added this edge for GEXF serialization.
+     */
+    public String getGexfAttributesString() {
+        return "";
+    }
+
     @Override
     public final String toString() {
         return String.format("BaseEdge{multiplicity=%d, isRef=%b}", multiplicity, isRef);

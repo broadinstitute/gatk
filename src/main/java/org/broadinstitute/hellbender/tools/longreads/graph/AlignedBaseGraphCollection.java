@@ -58,6 +58,23 @@ public class AlignedBaseGraphCollection {
     }
 
     /**
+     * Dumps all graphs in this aligned base graph to disk as GEXF files.
+     * The files will be named according to their contigs and the given {@code baseName}.
+     *
+     * @param baseName The common base for the names of all output files.
+     */
+    public void serializeToGexfFiles(final String baseName) {
+        for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
+            // Print the graph to a file.  We don't want to prune anything, so give the pruner a VERY LARGE NUMBER.
+            entry.getValue().serializeToGexf(
+                    new File(baseName + '.' + entry.getKey() + ".gexf"),
+                    0,
+                    "GATK - " + this.getClass().getCanonicalName(),
+                    "Graph representing genomic data on " + entry.getKey());
+        }
+    }
+
+    /**
      * Dumps all graphs in this aligned base graph to disk as GFA 1.0 files.
      * The files will be named according to their contigs and the given {@code baseName}.
      *

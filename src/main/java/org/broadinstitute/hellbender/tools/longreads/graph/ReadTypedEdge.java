@@ -19,4 +19,9 @@ public class ReadTypedEdge extends BaseEdge {
         return "readType=\"" + readType + "\"";
     }
 
+    @Override
+    public String getGexfAttributesString() {
+        return "<attvalue for=\"0\" value=\"" + readType + "\" />";
+    }
+
 }

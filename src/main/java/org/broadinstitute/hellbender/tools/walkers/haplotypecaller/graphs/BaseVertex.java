@@ -149,6 +149,14 @@ public class BaseVertex {
     public String getAdditionalInfo() { return additionalInfo; }
 
     /**
+     * @return {@link String} Containing the values of any attributes that need to be added this node for GEXF serialization.
+     */
+    public String getGexfAttributesString() {
+        return "";
+    }
+
+
+    /**
      * Checks whether the vertex sequence is ambiguous or not.
      *
      * <p>

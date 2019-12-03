@@ -28,7 +28,7 @@ public class AlignedBaseGraph extends SeqGraph {
     private static class LabeledEdgeFactory implements EdgeFactory<SeqVertex, BaseEdge> {
 
         private static final Pattern CCS_READ_PATTERN = Pattern.compile("/ccs[ \t]*$");
-        private static final Pattern RECLAIMED_READ_PATTERN = Pattern.compile("/reclaimed[ \t]*$");
+        private static final Pattern RECLAIMED_READ_PATTERN = Pattern.compile("^m[0-9]*.*/[0-9]*/[0-9]*_[0-9]*_[0-9]*_[0-9]*_[0-9]*[ \t]*$");
 
         private static final String CCS_LABEL = "CCS";
         private static final String RECLAIMED_LABEL = "RECLAIMED";
@@ -59,6 +59,11 @@ public class AlignedBaseGraph extends SeqGraph {
                 return new ReadTypedEdge(RAW_READ_LABEL);
             }
         }
+    }
+
+    @Override
+    public String getGexfEdgeAttributesDefinition() {
+        return "  <attributes class=\"edge\"><attribute id=\"0\" title=\"readType\" type=\"string\"/></attributes>";
     }
 
     /**

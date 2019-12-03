@@ -42,6 +42,12 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             doc = "Create an additional DOT file for each GFA file created.")
     public Boolean createDotFiles = false;
 
+    @Argument(
+            fullName  = "create-gexf-files",
+            optional = true,
+            doc = "Create an additional GEXF file for each GFA file created.")
+    public Boolean createGexfFiles = false;
+
     //==================================================================================================================
     // Private Members:
 
@@ -67,6 +73,11 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
         if ( createDotFiles ) {
             logger.info("Writing DOT files...");
             alignedBaseGraphCollection.serializeToDotFiles(outputFileBaseName);
+        }
+
+        if ( createGexfFiles ) {
+            logger.info("Writing GEXF files...");
+            alignedBaseGraphCollection.serializeToGexfFiles(outputFileBaseName);
         }
 
         // Write our master GFA files:
