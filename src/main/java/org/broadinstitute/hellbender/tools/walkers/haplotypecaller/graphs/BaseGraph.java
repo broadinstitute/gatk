@@ -398,15 +398,25 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
 
             final String edgeString =  String.format("\t%s -> %s ", sanitizeStringForDotFormat(getEdgeSource(edge).toString()), sanitizeStringForDotFormat(getEdgeTarget(edge).toString()));
             final String edgeLabelString;
+
+            // Get extra edge info:
+            final String extraInfo;
+            if (edge.getDotExtraInfo().isEmpty()) {
+                extraInfo = "";
+            }
+            else {
+                extraInfo = "," + edge.getDotExtraInfo();
+            }
+
             if (edge.getMultiplicity() > 0 && edge.getMultiplicity() < pruneFactor){
-                edgeLabelString = String.format("[style=dotted,color=grey,label=\"%s\"];", sanitizeStringForDotFormat(edge.getDotLabel()));
+                edgeLabelString = String.format("[style=dotted,color=grey,label=\"%s\"%s];", sanitizeStringForDotFormat(edge.getDotLabel()), extraInfo);
             } else {
-                edgeLabelString = String.format("[label=\"%s\"];", sanitizeStringForDotFormat(edge.getDotLabel()));
+                edgeLabelString = String.format("[label=\"%s\"%s];", sanitizeStringForDotFormat(edge.getDotLabel()), extraInfo);
             }
             graphWriter.print(edgeString);
-            graphWriter.print(edgeLabelString);
+            graphWriter.println(edgeLabelString);
             if( edge.isRef() ) {
-                graphWriter.println(edgeString + " [color=red];");
+                graphWriter.println(edgeString + " [color=red" + extraInfo + "];");
             }
         }
 

@@ -44,10 +44,22 @@ public class BaseEdge {
 
     /**
      * Get the DOT format label for this edge, to be displayed when printing this edge to a DOT file
-     * @return a non-null string
+     * @return a non-null {@link String}
      */
     public String getDotLabel() {
         return Integer.toString(getMultiplicity());
+    }
+
+    /**
+     * Get the DOT format string containing extra information in the form of key/value pairs ala:
+     *     key=value
+     *
+     * If value is a {@link String} then it must include enclosing quotes.
+     *
+     * @return a non-null {@link String}
+     */
+    public String getDotExtraInfo() {
+        return "";
     }
 
     /**

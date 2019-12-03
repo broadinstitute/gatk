@@ -46,17 +46,17 @@ public class AlignedBaseGraph extends SeqGraph {
 
             final String readName = ((AlignedBaseVertex)targetVertex).getReadName();
 
-            if ( CCS_READ_PATTERN.matcher(readName).matches() ) {
+            if ( CCS_READ_PATTERN.matcher(readName).find() ) {
                 // This is a CCS read!
-                return new LabeledEdge(CCS_LABEL);
+                return new ReadTypedEdge(CCS_LABEL);
             }
-            else if ( CCS_READ_PATTERN.matcher(readName).matches() ) {
+            else if ( RECLAIMED_READ_PATTERN.matcher(readName).find() ) {
                 // This is a RECLAIMED read!
-                return new LabeledEdge(RECLAIMED_LABEL);
+                return new ReadTypedEdge(RECLAIMED_LABEL);
             }
             else {
                 // This is a NORMAL read!
-                return new LabeledEdge(RAW_READ_LABEL);
+                return new ReadTypedEdge(RAW_READ_LABEL);
             }
         }
     }
