@@ -10,10 +10,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 
@@ -27,7 +25,6 @@ import java.util.*;
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class ReadGroupBlackListReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
-    public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 
     @Argument(fullName= ReadFilterArgumentDefinitions.READ_GROUP_BLACK_LIST_LONG_NAME, doc="The name of the read group to filter out", optional=false)
@@ -39,6 +36,11 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     // Command line parser requires a no-arg constructor
     public ReadGroupBlackListReadFilter() {};
 
+    @Override
+    public void setHeader(final SAMFileHeader samFileHeader) {
+        super.setHeader(samFileHeader);
+        parseReadGroupFilters();
+    }
     /**
      * Creates a filter using the lists of files with blacklisted read groups.
      * Any entry can be a path to a file (ending with "list" or "txt" which
@@ -48,27 +50,22 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     public ReadGroupBlackListReadFilter(final List<String> blackLists, final SAMFileHeader header) {
         super.setHeader(header);
         this.blackList.addAll(blackLists);
+        parseReadGroupFilters();
+    }
+
+    private void parseReadGroupFilters() {
         final Map<String, Collection<String>> filters = new TreeMap<>();
-        for (String blackList : blackLists) {
-            try {
-                addFilter(filters, blackList, null, 0);
-            } catch (IOException e) {
-                throw new UserException("Incorrect blacklist:" + blackList, e);
-            }
+        for (String blackList : this.blackList) {
+                addFilters(filters, blackList, null, 0);
         }
         //merge all the new entries in to the blacklist
-        filters.forEach((k, v) -> blacklistEntries.merge(k, v, (v1, v2) -> {v1.addAll(v2); return v1;}));
+        filters.forEach((k, v) -> blacklistEntries.merge(k, v, (v1, v2) -> {
+            v1.addAll(v2);
+            return v1;
+        }));
     }
 
-    private void addFilter(final Map<String, Collection<String>> filters, final String filter, final File parentFile, final int parentLineNum) throws IOException {
-        if (filter.toLowerCase().endsWith(".list") || filter.toLowerCase().endsWith(".txt")) {
-            addFiltersFromFile(filters, filter);
-        } else {
-            addFiltersFromString(filters, filter, parentFile, parentLineNum);
-        }
-    }
-
-    private void addFiltersFromString(final Map<String, Collection<String>> filters, final String filter, final File parentFile, final int parentLineNum) {
+    private void addFilters(final Map<String, Collection<String>> filters, final String filter, final File parentFile, final int parentLineNum) {
         final String[] split = filter.split(FILTER_ENTRY_SEPARATOR, 2);
         checkValidFilterEntry(filter, parentFile, parentLineNum, split);
 
@@ -90,19 +87,6 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
             }
             message += ", format is <TAG>:<SUBSTRING>";
             throw new UserException(message);
-        }
-    }
-
-    private void addFiltersFromFile(final Map<String, Collection<String>> filters, final String fileName) throws IOException {
-        final File file = new File(fileName);
-        try (final XReadLines lines = new XReadLines(file)) {
-            int lineNum = 0;
-            for (String line : lines) {
-                lineNum++;
-                if (!line.trim().isEmpty() && !line.startsWith(COMMENT_START)) {
-                    addFilter(filters, line, file, lineNum);
-                }
-            }
         }
     }
 
