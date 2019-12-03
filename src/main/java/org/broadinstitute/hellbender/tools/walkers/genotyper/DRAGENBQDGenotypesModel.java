@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DRAGENBQDGenotypesModel extends GenotypersModel {
+public class DRAGENBQDGenotypesModel implements GenotypersModel {
     private static final int DEFAULT_CACHE_PLOIDY_CAPACITY = 10;
     private static final int DEFAULT_CACHE_ALLELE_CAPACITY = 50;
 
