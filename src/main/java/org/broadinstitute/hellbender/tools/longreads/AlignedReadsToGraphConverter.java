@@ -9,8 +9,12 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgr
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.longreads.graph.AlignedBaseGraphCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+
+import java.util.Collections;
+import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "Make a graph from a bam file containing aligned reads to a reference.  This tool will always create a .gfa file representing the graph of the aligned reads.",
@@ -45,7 +49,8 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     @Argument(
             fullName  = "create-gexf-files",
             optional = true,
-            doc = "Create an additional GEXF file for each GFA file created.")
+            doc = "Create an additional GEXF file for each GFA file created.\n" +
+                  "WARNING: GEXF files can get VERY large.  Use this at your own peril.")
     public Boolean createGexfFiles = false;
 
     //==================================================================================================================
@@ -58,6 +63,11 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
 
     //==================================================================================================================
     // Override Methods:
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.emptyList();
+    }
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {

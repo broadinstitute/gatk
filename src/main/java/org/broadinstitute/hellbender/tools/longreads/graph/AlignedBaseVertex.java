@@ -77,7 +77,8 @@ public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBa
     @Override
     public String getGexfAttributesString() {
         return "<attvalue for=\"0\" value=\"" + getSequenceString().length() + "\" />" +
-               "<attvalue for=\"1\" value=\"" + getReadName() + "\" />";
+               "<attvalue for=\"1\" value=\"" + getReadName() + "\" />" +
+               "<attvalue for=\"2\" value=\"" + getPos().getStart() + "." + getPos().getInsertionOffset() + "\" />";
     }
 
     @Override

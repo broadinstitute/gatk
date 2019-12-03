@@ -46,6 +46,11 @@ public class AlignedBaseGraph extends SeqGraph {
 
             final String readName = ((AlignedBaseVertex)targetVertex).getReadName();
 
+//            // TODO: DEBUGGING TO BE REMOVED AT CODE REVIEW TIME
+//            System.out.println("ReadName = " + readName);
+//            System.out.println("CCS_PATTERN_FIND = " + CCS_READ_PATTERN.matcher(readName).find());
+//            System.out.println("RECLAIMED_READ_PATTERN_FIND = " + RECLAIMED_READ_PATTERN.matcher(readName).find());
+
             if ( CCS_READ_PATTERN.matcher(readName).find() ) {
                 // This is a CCS read!
                 return new ReadTypedEdge(CCS_LABEL);
@@ -65,7 +70,8 @@ public class AlignedBaseGraph extends SeqGraph {
     public String getGexfNodeAttributesDefinition() {
         return "  <attributes class=\"node\">" +
                "<attribute id=\"0\" title=\"seqLength\" type=\"integer\"/>" +
-               "<attribute id=\"1\" title=\"readName\" type=\"String\"/>" +
+               "<attribute id=\"1\" title=\"readName\" type=\"string\"/>" +
+               "<attribute id=\"2\" title=\"position\" type=\"string\"/>" +
                "</attributes>";
     }
 
