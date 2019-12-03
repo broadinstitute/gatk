@@ -41,6 +41,9 @@ public class ConvertToLocalAlleles extends VariantWalker {
     @Argument(fullName="keep-non-local", doc="Keep original non-local form of allele annotations in the output vcf.", optional = true)
     public boolean keepNonLocal= false;
 
+    @Argument(fullName="all-output-local", doc="Convert to local form even if the local alleles are the same size as the original allele list", optional = true)
+    public boolean allOutputLocal = false;
+
     public static final VCFFormatHeaderLine LGT_HEADER_LINE = new VCFFormatHeaderLine(LocalAlleler.LGT, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Like GT but with respect to the local alleles (LAA)");
     public static final VCFFormatHeaderLine LAA_HEADER_LINE = new VCFFormatHeaderLine(LocalAlleler.LAA, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Local Alleles, a list of the alleles that this genotype contains information about");
     public static final VCFFormatHeaderLine LAD_HEADER_LINE = new VCFFormatHeaderLine(LocalAlleler.LAD, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "AD but with respect to the local alleles");
@@ -70,7 +73,7 @@ public class ConvertToLocalAlleles extends VariantWalker {
             newMetaData.add(LPL_HEADER_LINE);
         }
 
-        if(!keepNonLocal){
+        if(!keepNonLocal && allOutputLocal){
             newMetaData.removeIf( line -> {
                         if (line.getKey().equals("FORMAT")) {
                             final String id = ((VCFFormatHeaderLine) line).getID();
@@ -92,7 +95,7 @@ public class ConvertToLocalAlleles extends VariantWalker {
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
         final List<Genotype> localizedGenotypes = vc.getGenotypes()
                 .stream()
-                .map(genotype -> LocalAlleler.addLocalFields(genotype, vc, !keepNonLocal))
+                .map(genotype -> LocalAlleler.addLocalFields(genotype, vc, !keepNonLocal, !allOutputLocal))
                 .collect(Collectors.toList());
         return vcb.genotypes(localizedGenotypes).make();
     }

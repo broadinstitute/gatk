@@ -20,11 +20,13 @@ public class LocalAlleler {
     public static final String LAD = "LAD";
     public static final String LPL = "LPL";
 
+    //todo Handle no-calls differently by merging all evidence into non-ref and reducing to 0/non_ref
+    //todo Handle hom-ref in VCF by choosing the second most likely genotype and setting it as a local allele.
     public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc) {
-        return addLocalFields(originalGenotype, vc, true);
+        return addLocalFields(originalGenotype, vc, true, false);
     }
 
-    public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc, final boolean removeNonLocalVersions){
+    public static Genotype addLocalFields(Genotype originalGenotype, VariantContext vc, final boolean removeNonLocalVersions, final boolean allowMixedOutput){
         Utils.nonNull(originalGenotype);
         Utils.nonNull(vc);
         // new LAA
@@ -37,6 +39,11 @@ public class LocalAlleler {
 
         //construct LAA
         final AlleleListPermutation<Allele> localAllelesIncludingRef = getLocalAlleles(originalGenotype, vc);
+
+        if(allowMixedOutput && localAllelesIncludingRef.isNonPermuted()){
+            return originalGenotype;
+        }
+
         final List<Integer> localAlleleIndexes = convertToVCFRepresentationOfLocalAlleles(localAllelesIncludingRef);
         localAttributes.put(LAA, localAlleleIndexes);
 
@@ -98,17 +105,20 @@ public class LocalAlleler {
 
     private static String createLocalGenotypeString(List<Integer> localGenotypes, boolean phased) {
         final String delimiter = phased ? Genotype.PHASED_ALLELE_SEPARATOR : Genotype.UNPHASED_ALLELE_SEPARATOR;
-        return localGenotypes.stream().map(String::valueOf).collect(Collectors.joining(delimiter));
+        return localGenotypes.stream()
+                .map(genotypeIndex -> genotypeIndex == -1 ? "." : String.valueOf(genotypeIndex))
+                .collect(Collectors.joining(delimiter));
     }
 
     private static AlleleListPermutation<Allele> getLocalAlleles(Genotype originalGenotype, VariantContext vc) {
         final IndexedAlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(vc.getAlleles());
 
-        //For a no call we have no information about which alleles might be relevant so we have to include them all.
+        //For a no call (./.) we have no information about which alleles might be relevant so we have to include them all.
         //TODO decide if this is the right behavior
         if( originalGenotype.isNoCall()){
             return originalAlleleList.permutation();
         }
+
         final LinkedHashSet<Allele> localAlleles = new LinkedHashSet<>();
         //add the reference as the 0th allele always
         localAlleles.add(vc.getReference());

@@ -181,7 +181,7 @@ public class LocalAllelerTest extends BaseTest {
         VariantContext vc = (VariantContext)values[0];
         Genotype originalGenotype = (Genotype)values[1];
         Genotype expectedGenotype = (Genotype)values[2];
-        Genotype localizedGenotype = LocalAlleler.addLocalFields(originalGenotype, vc, true);
+        Genotype localizedGenotype = LocalAlleler.addLocalFields(originalGenotype, vc, true, false);
         Assert.assertTrue(localizedGenotype.getAlleles().isEmpty());
         Assert.assertFalse(localizedGenotype.hasAD());
         Assert.assertFalse(localizedGenotype.hasPL());
