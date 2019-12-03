@@ -62,6 +62,14 @@ public class AlignedBaseGraph extends SeqGraph {
     }
 
     @Override
+    public String getGexfNodeAttributesDefinition() {
+        return "  <attributes class=\"node\">" +
+               "<attribute id=\"0\" title=\"seqLength\" type=\"integer\"/>" +
+               "<attribute id=\"1\" title=\"readName\" type=\"String\"/>" +
+               "</attributes>";
+    }
+
+    @Override
     public String getGexfEdgeAttributesDefinition() {
         return "  <attributes class=\"edge\"><attribute id=\"0\" title=\"readType\" type=\"string\"/></attributes>";
     }
@@ -186,6 +194,7 @@ public class AlignedBaseGraph extends SeqGraph {
      *
      * Requires that nodes are at most distance 1 away from each other for zipping.
      */
+    @Override
     protected LinkedList<SeqVertex> traceLinearChain(final SeqVertex zipStart) {
         final LinkedList<SeqVertex> linearChain = new LinkedList<>();
         linearChain.add(zipStart);

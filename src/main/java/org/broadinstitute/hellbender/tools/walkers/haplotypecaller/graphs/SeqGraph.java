@@ -260,6 +260,7 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
     protected boolean mergeLinearChain(final LinkedList<SeqVertex> linearChain) {
         return null != mergeLinearChainVertex(linearChain);
     }
+
     @VisibleForTesting
     protected SeqVertex mergeLinearChainVertex(final LinkedList<SeqVertex> linearChain) {
         Utils.validateArg(

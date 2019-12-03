@@ -155,7 +155,6 @@ public class BaseVertex {
         return "";
     }
 
-
     /**
      * Checks whether the vertex sequence is ambiguous or not.
      *

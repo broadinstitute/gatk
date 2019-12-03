@@ -15,8 +15,14 @@ public class ReadTypedEdge extends BaseEdge {
         return readType;
     }
 
+    @Override
     public String getDotExtraInfo() {
         return "readType=\"" + readType + "\"";
+    }
+
+    @Override
+    public BaseEdge copy() {
+        return new ReadTypedEdge( readType );
     }
 
     @Override
