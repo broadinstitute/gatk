@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.longreads.graph;
 
 import com.google.common.primitives.Bytes;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
+import org.jgrapht.EdgeFactory;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class AlignedBaseGraph extends SeqGraph {
 
@@ -16,7 +19,46 @@ public class AlignedBaseGraph extends SeqGraph {
     private final Set<String> contigSet = new LinkedHashSet<>();
 
     public AlignedBaseGraph() {
-        super(1);
+        super(1, new LabeledEdgeFactory());
+    }
+
+    /**
+     * Edge factory that creates labeled edges for this graph.
+     */
+    private static class LabeledEdgeFactory implements EdgeFactory<SeqVertex, BaseEdge> {
+
+        private static final Pattern CCS_READ_PATTERN = Pattern.compile("/ccs[ \t]*$");
+        private static final Pattern RECLAIMED_READ_PATTERN = Pattern.compile("/reclaimed[ \t]*$");
+
+        private static final String CCS_LABEL = "CCS";
+        private static final String RECLAIMED_LABEL = "RECLAIMED";
+        private static final String RAW_READ_LABEL = "RAW";
+
+        @Override
+        /**
+         * {@inheritDoc}
+         *
+         * Because we add edges to new nodes from existing nodes, we only need to check the target to know what kind of
+         * read the edge came from.
+         * See {@link AlignedBaseGraphCollection#initializeGraphWithNodes} and {@link AlignedBaseGraphCollection#mergeNodesIntoGraph}.
+         */
+        public BaseEdge createEdge(final SeqVertex sourceVertex, final SeqVertex targetVertex) {
+
+            final String readName = ((AlignedBaseVertex)targetVertex).getReadName();
+
+            if ( CCS_READ_PATTERN.matcher(readName).matches() ) {
+                // This is a CCS read!
+                return new LabeledEdge(CCS_LABEL);
+            }
+            else if ( CCS_READ_PATTERN.matcher(readName).matches() ) {
+                // This is a RECLAIMED read!
+                return new LabeledEdge(RECLAIMED_LABEL);
+            }
+            else {
+                // This is a NORMAL read!
+                return new LabeledEdge(RAW_READ_LABEL);
+            }
+        }
     }
 
     /**

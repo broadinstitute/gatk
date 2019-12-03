@@ -54,7 +54,20 @@ public class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
      * @param kmer kmer
      */
     public SeqGraph(final int kmer) {
-        super(kmer, new MyEdgeFactory());
+        this(kmer, new MyEdgeFactory());
+    }
+
+    /**
+     * Construct an empty SeqGraph where we'll add nodes based on a kmer size of kmer
+     *
+     * The kmer size is purely information.  It is useful when converting a Debruijn graph -> SeqGraph
+     * for us to track the kmer used to make the transformation.
+     *
+     * @param kmer kmer
+     * @param edgeFactory edge factory
+     */
+    public SeqGraph(final int kmer, final EdgeFactory<SeqVertex, BaseEdge> edgeFactory) {
+        super(kmer, edgeFactory);
     }
 
     /**
