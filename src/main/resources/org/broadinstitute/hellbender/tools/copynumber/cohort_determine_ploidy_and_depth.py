@@ -82,6 +82,14 @@ if __name__ == "__main__":
 
     logger.info("THEANO_FLAGS environment variable has been set to: {theano_flags}".format(theano_flags=theano_flags))
 
+    # copy the intervals and ploidy priors to the model path
+    # (we do this early to avoid inadvertent cleanup of temporary files)
+    gcnvkernel.io_commons.assert_output_path_writable(args.output_model_path)
+    shutil.copy(args.interval_list,
+                os.path.join(args.output_model_path, gcnvkernel.io_consts.default_interval_list_filename))
+    shutil.copy(args.contig_ploidy_prior_table,
+                os.path.join(args.output_model_path, gcnvkernel.io_consts.default_contig_ploidy_prior_tsv_filename))
+
     # read contig ploidy prior map from file
     contig_ploidy_prior_map = gcnvkernel.io_ploidy.get_contig_ploidy_prior_map_from_tsv_file(
         args.contig_ploidy_prior_table)
@@ -120,9 +128,3 @@ if __name__ == "__main__":
     gcnvkernel.io_ploidy.SamplePloidyWriter(ploidy_config, ploidy_workspace,
                                             ploidy_task.continuous_model, ploidy_task.continuous_model_approx,
                                             args.output_calls_path)()
-
-    # save a copy of interval list and ploidy priors as well
-    shutil.copy(args.interval_list,
-                os.path.join(args.output_model_path, gcnvkernel.io_consts.default_interval_list_filename))
-    shutil.copy(args.contig_ploidy_prior_table,
-                os.path.join(args.output_model_path, gcnvkernel.io_consts.default_contig_ploidy_prior_tsv_filename))
