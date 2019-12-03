@@ -168,9 +168,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
 
-        // posterior probability that at least one alt allele exists in the samples
-        final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.log10ProbVariantPresent());
-
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
                 ! outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs

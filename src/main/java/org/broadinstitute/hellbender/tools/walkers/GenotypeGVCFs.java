@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -16,18 +17,16 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
-import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
@@ -95,6 +94,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String ALL_SITES_SHORT_NAME = "all-sites";
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
+    public static final String FORCE_OUTPUT_INTERVALS_NAME = "force-output-intervals";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -153,6 +153,11 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             optional=true)
     private boolean onlyOutputCallsStartingInIntervals = false;
 
+
+    @Argument(fullName = FORCE_OUTPUT_INTERVALS_NAME,
+            suppressFileExpansion = true, doc = "sites at which to output genotypes even if non-variant in samples", optional = true)
+    protected final List<String> forceOutputIntervalStrings = new ArrayList<>();
+
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set
      * when appropriate. Note that dbSNP is not used in any way for the genotyping calculations themselves.
@@ -169,6 +174,10 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
+
+    private OverlapDetector<GenomeLoc> forceOutputIntervals;
+
+    private boolean forceOutputIntervalsPresent;
 
     private GenotypeGVCFsEngine gvcfEngine;
 
@@ -207,7 +216,20 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
         }
 
-        if (!includeNonVariants) {
+        forceOutputIntervalsPresent = !forceOutputIntervalStrings.isEmpty();
+
+        if (includeNonVariants && forceOutputIntervalsPresent ) {
+            throw new CommandLineException.BadArgumentValue(String.format("Force output (--%s) is incompatible with including " +
+                    "non-variants (--%s and --%s).  Use the latter to force genotyping at all sites and the former to force genotyping only at given sites." +
+                    "In both cases, variant sites are genotyped as usual.", FORCE_OUTPUT_INTERVALS_NAME, ALL_SITES_LONG_NAME, ALL_SITES_SHORT_NAME));
+        }
+
+        final GenomeLocSortedSet forceOutputLocs = IntervalUtils.loadIntervals(forceOutputIntervalStrings, IntervalSetRule.UNION,
+                 IntervalMergingRule.ALL, 0, new GenomeLocParser(getSequenceDictionaryForDrivingVariants()));
+
+        forceOutputIntervals = OverlapDetector.create(forceOutputLocs.toList());
+
+        if (!(includeNonVariants || forceOutputIntervalsPresent)) {
             changeTraversalModeToByVariant();
         }
 
@@ -241,11 +263,13 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Override
     public void apply(final Locatable loc, List<VariantContext> variants, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
 
-        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance);
+        final boolean inForceOutputIntervals = forceOutputIntervalsPresent && forceOutputIntervals.overlapsAny(loc);
+        final boolean forceOutput = includeNonVariants || inForceOutputIntervals;
+        final VariantContext regenotypedVC = gvcfEngine.callRegion(loc, variants, ref, features, merger, somaticInput, tlodThreshold, afTolerance, forceOutput);
 
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if (!GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC) &&
+            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
                     (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
                 vcfWriter.add(regenotypedVC);
             }

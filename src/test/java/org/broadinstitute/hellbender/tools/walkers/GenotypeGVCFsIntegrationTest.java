@@ -14,6 +14,9 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -21,9 +24,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -212,7 +212,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "gvcfsToGenotype")
     public void testGenotypesOnly(File input, File expected, List<String> extraArgs, String reference) throws IOException {
-        assertGenotypesMatch(input, expected, extraArgs, reference);
+        final List<String> extra = new ArrayList<>(extraArgs);
+        assertGenotypesMatch(input, expected, extra, reference);
     }
 
     @DataProvider
@@ -512,5 +513,71 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                     VCFHeaderLineCount.A, false);
         }
 
+    }
+
+    @Test
+    public void testForceOutput() {
+        final File input = getTestFile( "combine.single.sample.pipeline.1.vcf");
+        final File output1 = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addVCF(input)
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
+                .addInterval(new SimpleInterval("20", 10000000, 10010000))
+                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output1);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(argsWithAllSites);
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
+
+        // every site has output
+        Assert.assertEquals(actualVC.size(), 10001);
+
+        final File output2 = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addVCF(input)
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10000100")
+                .addInterval(new SimpleInterval("20", 10000000, 10010000))
+                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output2);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(argsWithSpecificSites);
+
+        final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
+
+        // one requested site and one variant site have output
+        Assert.assertEquals(actualVC2.size(), 2);
+        Assert.assertEquals(actualVC2.get(0).getStart(), 10000100);
+        Assert.assertTrue(actualVC2.get(0).isMonomorphicInSamples());
+        Assert.assertTrue(actualVC2.get(1).isPolymorphicInSamples());
+    }
+
+    @Test
+    public void testForceOutputWithSpanningDeletion() {
+        final File input = getTestFile("leadingDeletion.g.vcf");
+        final File output = createTempFile("genotypegvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37Reference)
+                .addVCF(input)
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
+                .addInterval(new SimpleInterval("20", 69511, 69515))
+                .addOutput(output);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(args);
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+
+        Assert.assertEquals(actualVC.size(), 5);
+        for (final int n : new int[] {1, 2, 3}) {
+            Assert.assertTrue(actualVC.get(n).getAlternateAlleles().stream().anyMatch(a -> a == Allele.SPAN_DEL));
+        }
     }
 }
