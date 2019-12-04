@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.longreads;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -10,9 +13,14 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.longreads.graph.AlignedBaseGraphCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,31 +46,43 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             fullName  = "output-file-base-name",
             optional = true,
             doc = "Base name for output files to be written.")
-    public String outputFileBaseName = "aligned_base_graph";
+    private String outputFileBaseName = "aligned_base_graph";
 
     @Argument(
             fullName  = "skip-zip",
             optional = true,
             doc = "Skip the zipping stage in graph creation.")
-    public Boolean skipZip = false;
+    private Boolean skipZip = false;
+
+    @Argument(
+            fullName  = "graph-input",
+            optional = true,
+            doc = "Initialize the graph object with the file at given path.")
+    private File inputGraphFile = null;
+
+    @Argument(
+            fullName  = "graph-out",
+            optional = true,
+            doc = "Saves the graph to the given path.")
+    private File outputGraphFile = null;
 
     @Argument(
             fullName  = "create-dot-files",
             optional = true,
             doc = "Create an additional DOT file for each GFA file created.")
-    public Boolean createDotFiles = false;
+    private Boolean createDotFiles = false;
 
     @Argument(
             fullName  = "create-gexf-files",
             optional = true,
             doc = "Create an additional GEXF file for each GFA file created.\n" +
                   "WARNING: GEXF files can get VERY large.  Use this at your own peril.")
-    public Boolean createGexfFiles = false;
+    private Boolean createGexfFiles = false;
 
     //==================================================================================================================
     // Private Members:
 
-    private final AlignedBaseGraphCollection alignedBaseGraphCollection = new AlignedBaseGraphCollection();
+    private AlignedBaseGraphCollection alignedBaseGraphCollection;
 
     //==================================================================================================================
     // Constructors:
@@ -73,6 +93,22 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Collections.emptyList();
+    }
+
+    @Override
+    public void onTraversalStart() {
+        if ( inputGraphFile == null ) {
+            alignedBaseGraphCollection = new AlignedBaseGraphCollection();
+        }
+        else {
+            final Kryo kryo = new Kryo();
+            try (final Input input = new Input(new FileInputStream(inputGraphFile))) {
+                alignedBaseGraphCollection = kryo.readObject(input, AlignedBaseGraphCollection.class);
+            }
+            catch ( final FileNotFoundException ex ) {
+                throw new UserException("Can't open graph input file.", ex);
+            }
+        }
     }
 
     @Override
@@ -106,6 +142,17 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
         // DISABLED until we determine if this is actually valid.
 //        logger.info("Writing GFA 2 files...");
 //        alignedBaseGraphCollection.serializeToGfa2Files(outputFileBaseName);
+
+        // Save the graph if we should save it:
+        if ( outputGraphFile != null ) {
+            final Kryo kryo = new Kryo();
+            try (final Output output = new Output(new FileOutputStream(outputGraphFile))) {
+                kryo.writeObject(output, alignedBaseGraphCollection);
+            }
+            catch ( final FileNotFoundException ex ) {
+                throw new UserException("Can't save graph to output file.", ex);
+            }
+        }
     }
 
     //==================================================================================================================
