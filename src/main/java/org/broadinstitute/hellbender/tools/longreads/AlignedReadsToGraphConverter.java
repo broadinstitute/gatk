@@ -148,6 +148,51 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     //==================================================================================================================
     // Static Methods:
 
+//    /**
+//     * Serialize graph data to a file to use in later runs.
+//     * @param alignedBaseGraphCollection {@link AlignedBaseGraphCollection} containing graph data to serialize to a file.
+//     * @param outputGraphFile {@link File} to which to write serialized graph data.
+//     */
+//    private static void serializeGraphToFile(final AlignedBaseGraphCollection alignedBaseGraphCollection,
+//                                             final File outputGraphFile) {
+//        logger.info("Writing graph to file (" + outputGraphFile.getAbsolutePath() + ") ...");
+//
+//        try( final FileOutputStream fileOutputStream = new FileOutputStream(outputGraphFile);
+//            final ObjectOutputStream out = new ObjectOutputStream(fileOutputStream)) {
+//            out.writeObject(alignedBaseGraphCollection);
+//        }
+//        catch ( final FileNotFoundException ex ) {
+//            throw new UserException("Can't save graph to output file.", ex);
+//        }
+//        catch ( final IOException ex ) {
+//            throw new GATKException("Can't save graph to output file.", ex);
+//        }
+//    }
+//
+//    /**
+//     * Deserialize graph data from a file to initialize our graph collection.
+//     * @param inputGraphFile {@link File} from which to read serialized graph data.
+//     * @return A {@link AlignedBaseGraphCollection} containing the data represented in the given {@code inputGraphFile}.
+//     */
+//    private static AlignedBaseGraphCollection deserializeGraphFromFile(final File inputGraphFile) {
+//        logger.info("Initializing graph from file (" + inputGraphFile.getAbsolutePath() + ") ...");
+//
+//        final AlignedBaseGraphCollection alignedBaseGraphCollection;
+//        try (final FileInputStream fileInputStream = new FileInputStream(inputGraphFile);
+//             final ObjectInputStream inputStream = new ObjectInputStream(fileInputStream)) {
+//
+//            alignedBaseGraphCollection = (AlignedBaseGraphCollection) inputStream.readObject();
+//        }
+//        catch ( final FileNotFoundException ex ) {
+//            throw new UserException("Can't open graph input file.", ex);
+//        }
+//        catch ( final Exception ex ) {
+//            throw new GATKException("WTF!?!?!?", ex);
+//        }
+//
+//        return alignedBaseGraphCollection;
+//    }
+
     /**
      * Serialize graph data to a file to use in later runs.
      * @param alignedBaseGraphCollection {@link AlignedBaseGraphCollection} containing graph data to serialize to a file.
@@ -184,11 +229,10 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
         catch ( final FileNotFoundException ex ) {
             throw new UserException("Can't open graph input file.", ex);
         }
-        catch ( final Exception ex) {
+        catch ( final Exception ex ) {
             throw new GATKException("WTF!?!?!?", ex);
         }
-
-        logger.info("AlignedBaseGraphCollection = " + alignedBaseGraphCollection);
+        
         logger.info("Read in graph collection with reads: " + alignedBaseGraphCollection.getNumSequencesAdded());
 
         return alignedBaseGraphCollection;

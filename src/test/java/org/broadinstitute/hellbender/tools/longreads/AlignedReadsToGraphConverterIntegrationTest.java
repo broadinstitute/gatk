@@ -52,16 +52,17 @@ public class AlignedReadsToGraphConverterIntegrationTest extends CommandLineProg
     }
 
     @Test
-    public void testKryoSerialization() {
+    public void testSerialization() {
 
         final File tmpDirName = createTempDir("alignedReadsGraphTest");
 
-        final String graphOutPath = tmpDirName.getAbsolutePath() + "/" + "graph_output.kryo";
+        final String graphOutPath = tmpDirName.getAbsolutePath() + "/" + "graph_output.sdo";
 
         final ArgumentsBuilder graphCreationRunArgs = new ArgumentsBuilder();
         graphCreationRunArgs.addInput(new File(aligned_bam_file));
         graphCreationRunArgs.addArgument("output-file-base-name", tmpDirName.getAbsolutePath());
         graphCreationRunArgs.addArgument("graph-out", graphOutPath);
+        graphCreationRunArgs.addBooleanArgument("skip-zip", true);
 
         // Run the tool with our args to create the kryo file:
         runCommandLine(graphCreationRunArgs);

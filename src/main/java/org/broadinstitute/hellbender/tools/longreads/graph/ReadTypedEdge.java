@@ -2,9 +2,7 @@ package org.broadinstitute.hellbender.tools.longreads.graph;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 
-import java.io.Serializable;
-
-public class ReadTypedEdge extends BaseEdge implements Serializable {
+public class ReadTypedEdge extends BaseEdge {
 
     private static final long serialVersionUID = 0x1337L;
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Comparator;
 
@@ -11,7 +12,10 @@ import java.util.Comparator;
  *
  * Works equally well for all graph types (kmer or sequence)
  */
-public class BaseEdge {
+public class BaseEdge implements Serializable {
+
+    private static final long serialVersionUID = 0x1337L;
+
     private int multiplicity;
     private boolean isRef;
 

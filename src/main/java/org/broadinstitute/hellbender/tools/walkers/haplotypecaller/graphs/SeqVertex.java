@@ -21,6 +21,9 @@ import java.util.Arrays;
  *
  */
 public class SeqVertex extends BaseVertex {
+
+    private static final long serialVersionUID = 0x1337L;
+
     /**
      * Create a new SeqVertex with sequence and the next available id
      * @param sequence our base sequence
