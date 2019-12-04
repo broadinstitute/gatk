@@ -8,13 +8,12 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGra
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.jgrapht.EdgeFactory;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class AlignedBaseGraph extends SeqGraph {
-
+public class AlignedBaseGraph extends SeqGraph implements Serializable {
     private static final Logger logger = LogManager.getLogger(AlignedBaseGraph.class);
-
 
     private static final long serialVersionUID = 0x1337;
 
@@ -30,7 +29,9 @@ public class AlignedBaseGraph extends SeqGraph {
     /**
      * Edge factory that creates labeled edges for this graph.
      */
-    private static class LabeledEdgeFactory implements EdgeFactory<SeqVertex, BaseEdge> {
+    private static class LabeledEdgeFactory implements EdgeFactory<SeqVertex, BaseEdge>, Serializable {
+
+        private static final long serialVersionUID = 0x1337L;
 
         private static final Pattern CCS_READ_PATTERN = Pattern.compile("/ccs[ \t]*$");
         private static final Pattern RECLAIMED_READ_PATTERN = Pattern.compile("^m[0-9]*.*/[0-9]*/[0-9]*_[0-9]*_[0-9]*_[0-9]*_[0-9]*[ \t]*$");

@@ -2,9 +2,13 @@ package org.broadinstitute.hellbender.tools.longreads.graph;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBaseVertex>  {
+public class AlignedBaseVertex extends SeqVertex implements Comparable<AlignedBaseVertex>, Serializable {
+
+    private static final long serialVersionUID = 0x1337L;
+
     private String readName;
     private GenomicAndInsertionPosition pos;
 

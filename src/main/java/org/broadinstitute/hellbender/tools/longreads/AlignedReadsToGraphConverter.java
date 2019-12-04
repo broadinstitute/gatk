@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.longreads;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -101,7 +102,10 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             alignedBaseGraphCollection = new AlignedBaseGraphCollection();
         }
         else {
+            logger.info("Initializing graph from kryo file (" + outputGraphFile.getAbsolutePath() + ")...");
             final Kryo kryo = new Kryo();
+            kryo.register(AlignedBaseGraphCollection.class, new JavaSerializer());
+
             try (final Input input = new Input(new FileInputStream(inputGraphFile))) {
                 alignedBaseGraphCollection = kryo.readObject(input, AlignedBaseGraphCollection.class);
             }
@@ -145,7 +149,10 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
 
         // Save the graph if we should save it:
         if ( outputGraphFile != null ) {
+            logger.info("Writing graph to kryo file (" + outputGraphFile.getAbsolutePath() + ")...");
             final Kryo kryo = new Kryo();
+            kryo.register(AlignedBaseGraphCollection.class, new JavaSerializer());
+
             try (final Output output = new Output(new FileOutputStream(outputGraphFile))) {
                 kryo.writeObject(output, alignedBaseGraphCollection);
             }

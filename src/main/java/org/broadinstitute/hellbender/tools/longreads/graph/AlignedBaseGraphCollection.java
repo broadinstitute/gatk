@@ -9,13 +9,17 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVer
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.*;
 
-public class AlignedBaseGraphCollection {
+public class AlignedBaseGraphCollection implements Serializable {
     private static final Logger logger = LogManager.getLogger(AlignedBaseGraphCollection.class);
 
     //==================================================================================================================
     // Private Members:
+
+    private static final long serialVersionUID = 0x1337L;
+
     private final HashMap<String, AlignedBaseGraph>                                 contigSubGraphMap       = new HashMap<>();
     private final HashMap<String, TreeMap<GenomicAndInsertionPosition, Set<AlignedBaseVertex>>> contigPositionVertexMap
             = new HashMap<>();

@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.longreads.graph;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class GenomicAndInsertionPosition implements Comparable<GenomicAndInsertionPosition> {
+public class GenomicAndInsertionPosition implements Comparable<GenomicAndInsertionPosition>, Serializable {
+
+    private static final long serialVersionUID = 0x1337L;
 
     private String contig;
     private int start;
