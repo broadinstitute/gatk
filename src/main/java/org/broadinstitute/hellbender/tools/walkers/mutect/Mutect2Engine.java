@@ -351,6 +351,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         aligner.close();
         haplotypeBAMWriter.ifPresent(writer -> writer.close());
         referenceReader.close();
+        assemblyEngine.close();
     }
 
     @Override

@@ -26,6 +26,18 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
     public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
 
+
+    //---------------------------------------------------------------------------------------------------------------
+    //
+    // Assembly Region Trimming Parameters
+    //
+    // ---------------------------------------------------------------------------------------------------------------
+    /**
+     * This argument is meant for debugging and is not immediately useful for normal analysis use.
+     */
+    @Argument(fullName="active-region-out", doc="Write debug interval list file containing summary info about each active region", optional = true)
+    public String assemblyRegionOutput = null;
+
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
     // -----------------------------------------------------------------------------------------------

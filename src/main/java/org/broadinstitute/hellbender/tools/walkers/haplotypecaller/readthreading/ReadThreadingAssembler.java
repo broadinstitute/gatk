@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
@@ -17,16 +18,19 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
@@ -40,7 +44,6 @@ public final class ReadThreadingAssembler {
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
     private final boolean generateSeqGraph;
-    private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -69,6 +72,7 @@ public final class ReadThreadingAssembler {
     private File graphHaplotypeHistogramPath = null;
     private Histogram haplotypeHistogram = null;
     private Histogram kmersUsedHistogram = null;
+    private SimpleXSVWriter debugActiveRegionOutputStream = null;
 
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
@@ -265,6 +269,17 @@ public final class ReadThreadingAssembler {
             }
         }
 
+        // print the graphs if the appropriate debug option has been turned on
+        if ( graphOutputPath != null ) { printGraphs(nonRefSeqGraphs); }
+        if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
+        if ( debugActiveRegionOutputStream != null ) {
+            debugActiveRegionOutputStream.getNewLineBuilder()
+                .setRow(new String[]{
+                        assemblyRegion.getSpan().toString(),
+                        !resultSet.getKmerSizes().isEmpty() ?  resultSet.getKmerSizes().stream().map(Object::toString).collect(Collectors.joining(",")) : "ASSEMBLY_FAILED",
+                        Integer.toString(resultSet.getHaplotypeCount())
+                }).write();
+        }
 
         // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
         if (!hasAdequatelyAssembledGraph) {
@@ -736,9 +751,25 @@ public final class ReadThreadingAssembler {
     }
 
     /**
+     * Cleans and closes any streams that might have been opened by the engine for debugging purposes
+     */
+    public void close() {
+        printDebugHistograms();
+
+        if (debugActiveRegionOutputStream != null) {
+            try {
+                debugActiveRegionOutputStream.close();
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile("Error closing the AssemblyRegion debug output", e);
+            }
+        }
+    }
+
+
+    /**
      * Print the generated graphs to the graphWriter
      */
-    public void printDebugHistograms() {
+    private void printDebugHistograms() {
         if (graphHaplotypeHistogramPath != null) {
 
             try (final PrintStream histogramWriter = new PrintStream(graphHaplotypeHistogramPath)) {
@@ -790,6 +821,15 @@ public final class ReadThreadingAssembler {
         this.graphHaplotypeHistogramPath = file;
         this.haplotypeHistogram = new Histogram(1.0);
         this.kmersUsedHistogram = new Histogram(1.0);
+    }
+
+    public void setDebugActiveRegionOut(final File file){
+        try {
+            this.debugActiveRegionOutputStream = new SimpleXSVWriter(file.toPath(), '\t', "HEADER");
+            debugActiveRegionOutputStream.setHeaderLine( Arrays.asList("active_region", "kmers_assembled", "haplotypes_found") );
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(file, "Unable to create output file for activeRegion data", e);
+        }
     }
 
     public void setDebugGraphTransformations(final boolean debugHaplotypeFinding) {

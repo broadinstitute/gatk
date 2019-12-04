@@ -112,7 +112,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
                     throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
                 }
                 final String[] spl = line.split(delimiter_regex);
-                Collections.addAll(header, spl);
+                Collections.addAll(header, spl[0].equals(headerDelimiter) ? Arrays.copyOfRange(spl, 1, spl.length) : spl);
                 return header;
             } else if (line.startsWith(COMMENT_DELIMITER)) {
                 reader.next(); // "Commit" the peek
