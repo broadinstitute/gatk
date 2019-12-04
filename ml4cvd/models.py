@@ -420,6 +420,8 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
                     last_conv = concatenate([last_conv, early_conv])
                 else:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
+                    last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
+
             conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
@@ -754,8 +756,7 @@ def _inspect_model(model: Model,
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
 
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps,
-                            validation_steps=1, validation_data=generate_valid)
+    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     train_speed = (t1 - t0) / (batch_size * training_steps)
     logging.info('Spent:{} seconds training, batch_size:{} steps:{} Per example training speed:{}'.format(

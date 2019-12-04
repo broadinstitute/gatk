@@ -18,7 +18,6 @@ def _run_tests():
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTensorMaps))
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTrainingModels))
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestPretrainedModels))
-
     unittest.TextTestRunner(verbosity=3).run(unittest.TestSuite(suites))
 
 
@@ -142,26 +141,25 @@ class TestPretrainedModels(unittest.TestCase):
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
-    # TODO Enable when sf_nifti is merged
-    # def test_ecg_rhythm(self):
-    #     delta = 1e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted/ecg_rest_rhythm_hyperopted.hd5'
-    #     args.input_tensors = ['ecg_rest']
-    #     args.output_tensors = ['ecg_rhythm_poor']
-    #     args.test_steps = 32
-    #     args.batch_size = 32
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = test_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'Normal_sinus_rhythm': 0.9944891562668626, 'Sinus_bradycardia': 0.9986203969011992, 'Marked_sinus_bradycardia': 0.9998421717171717,
-    #                 'Other_sinus_rhythm': 0.9789624183006536, 'Atrial_fibrillation': 0.9996513944223108, 'Other_rhythm': 0.9476284584980238}
-    #
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
+    def test_ecg_rhythm(self):
+        delta = 1e-1
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted/ecg_rest_rhythm_hyperopted.hd5'
+        args.input_tensors = ['ecg_rest']
+        args.output_tensors = ['ecg_rhythm_poor']
+        args.test_steps = 32
+        args.batch_size = 32
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = test_multimodal_multitask(args)
+        print('expected = ', performances)
+        expected = {'Normal_sinus_rhythm': 0.9944891562668626, 'Sinus_bradycardia': 0.9986203969011992, 'Marked_sinus_bradycardia': 0.9998421717171717,
+                    'Other_sinus_rhythm': 0.9789624183006536, 'Atrial_fibrillation': 0.9996513944223108, 'Other_rhythm': 0.9476284584980238}
+
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
 
     def test_mri_systole_diastole_volumes(self):
         delta = 2e-1

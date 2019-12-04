@@ -4,7 +4,6 @@
 import os
 import math
 import h5py
-import time
 import glob
 import logging
 import hashlib
@@ -33,7 +32,8 @@ import seaborn as sns
 from biosppy.signals import ecg
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
+from ml4cvd.metrics import concordance_index
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -60,7 +60,7 @@ ECG_REST_PLOT_AMP_LEADS = [[0, 3, 6, 9],
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-                         max_melt: int = 5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+                         max_melt: int = 15000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
                          scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = []) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
@@ -85,27 +85,34 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
-        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
-        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
-        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
-        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
-        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
-        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-    elif tm.name == 'aligned_distance':
-        logging.info(f"a dist has y shape:{y_predictions.shape} and test labels has shape:{y_truth.shape}")
+        rocs.append((y_predictions, y_truth, tm.channel_map))
+    elif tm.is_proportional_hazard():
+        plot_survival(y_predictions, y_truth, title, prefix=folder)
+        plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
     elif len(tm.shape) > 1:
-        prediction_flat = tm.rescale(y_predictions).flatten()
-        truth_flat = tm.rescale(y_truth).flatten()
+        prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
+        truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
@@ -164,16 +171,17 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-    logging.info("Pearson coefficient is: {}".format(pearson))
+    logging.info(f'Pearson coefficient is: {pearson}')
     plt.scatter(prediction, truth, label=f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
         # The path of the best prediction, ie the inlier
-        plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
+        _text_on_plot(plt, prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
         # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
+            _text_on_plot(plt, prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
+
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -200,9 +208,9 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
-            plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(plt, predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             for idx in arg_sorted[-top_k:]:
-                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                _text_on_plot(plt, predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -231,10 +239,10 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
             # The path of the best prediction, ie the inlier
-            axes[row, col].text(prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(axes[row, col], prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             # Plot the paths of the worst predictions ie the outliers
             for idx in arg_sorted[-top_k:]:
-                axes[row, col].text(prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                _text_on_plot(axes[row, col], prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
@@ -275,9 +283,9 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
-                axes[row, col].text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                _text_on_plot(axes[row, col], predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
                 for idx in arg_sorted[-top_k:]:
-                    axes[row, col].text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                    _text_on_plot(axes[row, col], predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
@@ -294,6 +302,69 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
+
+
+def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+    cindex, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
+    logging.info(f"C-index:{cindex} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
+    intervals = truth.shape[-1] // 2
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
+    logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
+    logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
+    predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
+    true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
+    logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
+    if paths is not None:
+        pass
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{cindex:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Proportion Surviving')
+    plt.title(title + '\n')
+    plt.legend(loc="upper right")
+
+    figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save survival plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    return {}
+
+
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50, paths=None):
+    intervals = truth.shape[-1] // 2
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
+    sick = np.sum(truth[:, intervals:], axis=-1)
+    x_days = range(0, days_window, 1 + days_window // intervals)
+    cur_sick = 0
+    cur_healthy = 0
+    min_sick = num_curves * 0.1
+    for i in range(truth.shape[0]):
+        p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
+        last_prob = predicted_survivals[i, -1]
+        if sick[i] == 1:
+            sick_period = np.argmax(truth[i, intervals:])
+            sick_day = sick_period*(days_window // intervals)
+            plt.plot(x_days, predicted_survivals[i], label=f'sick:{p} p:{last_prob:0.2f}', color='red')
+            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} id:{p}')
+            cur_sick += 1
+            if cur_sick >= min_sick and i >= num_curves:
+                break
+        elif cur_healthy < num_curves:
+            plt.plot(x_days, predicted_survivals[i], label=f'id:{p} p:{last_prob:0.2f}', color='green')
+            cur_healthy += 1
+    plt.title(title + '\n')
+    plt.legend(loc="upper right")
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Survival Curve Prediction')
+    figure_path = os.path.join(prefix, 'survival_curves_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save survival plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    return {}
 
 
 def plot_noise(noise):
@@ -1023,7 +1094,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [8, 50]
+    perplexities = [10, 25, 60]
     (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
@@ -1044,7 +1115,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
-            ax.set_title(tm.name)  # + ", Perplexity=%d" % p)
+            ax.set_title(f'{tm.name} | t-SNE perplexity:{p}')
             if tm in categorical_labels + gene_labels:
                 color_labels = []
                 for c in tm.channel_map:
@@ -1073,6 +1144,11 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
     return COLOR_ARRAY[int(hashlib.sha1(string.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+
+
+def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
+    t = axes.text(x, y, text)
+    t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
 if __name__ == '__main__':

@@ -19,11 +19,11 @@ import datetime
 import numpy as np
 import multiprocessing
 
-from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
-from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 
 
 def parse_args():
@@ -43,28 +43,22 @@ def parse_args():
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
 
     # Input and Output files and directories
-    parser.add_argument('--db', default='/mnt/disks/data/raw/sql/ukbb7089.r10data.db', help='Path to sqlite3 data base file.')
     parser.add_argument('--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
                         help='Path to service account credentials for looking up BigQuery tables.')
     parser.add_argument('--bigquery_dataset', default='broad-ml4cvd.ukbb7089_r10data', help='BigQuery dataset containing tables we want to query.')
     parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/', help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
-    parser.add_argument('--phenos_folder', default='/mnt/disks/data/raw/phenotypes/', help='Path to folder of phenotype defining CSVs.')
+    parser.add_argument('--phenos_folder', default='gs://ml4cvd/phenotypes/', help='Path to folder of phenotype defining CSVs.')
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
-    parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/cMRI_20190618_manual_qc.all.tsv',
-                        help='Path to left ventricle volumes')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
-    parser.add_argument('--tensors', default='/mnt/disks/data/generated/tensors/test/2019-03-21/',
-                        help='Path to folder containing tensors, or where tensors will be written.')
+    parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
-    parser.add_argument('--lv_mass_csv', default='/mnt/ml4cvd/projects/jamesp/data/returned_lv_mass.tsv',
-                        help='Path to left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964')
 
     # Data selection parameters
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
@@ -148,6 +142,7 @@ def parse_args():
     parser.add_argument('--max_models', default=16, type=int,
                         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
+    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -157,7 +152,6 @@ def parse_args():
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
-    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
 
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")

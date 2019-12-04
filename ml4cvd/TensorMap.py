@@ -7,11 +7,11 @@ import numpy as np
 from scipy.ndimage import zoom
 from keras.utils import to_categorical
 
-from ml4cvd.metrics import sentinel_logcosh_loss, per_class_precision
-from ml4cvd.metrics import per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
+from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 from ml4cvd.defines import DataSetType, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
+from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE, MRI_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
 
 np.set_printoptions(threshold=np.inf)
@@ -69,7 +69,9 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '4429_Average-monthly-beer-plus-cider-intake_0_0'
                                        ]
 
-MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef']
+MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef', 'sax_inlinevf_zoom_mask',
+                              'cine_segmented_sax_inlinevf_segmented', 'mri_systole_diastole_8_segmented', 'mri_systole_diastole_segmented',
+                              'mri_slice_segmented'] # , 'sax_all_diastole_segmented'
 
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
@@ -173,6 +175,9 @@ class TensorMap(object):
             self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
+        elif self.loss is None and self.is_proportional_hazard():
+            self.loss = survival_likelihood_loss(self.shape[0]//2)
+            self.activation = 'sigmoid'
         elif self.loss is None:
             self.loss = 'mse'
 
@@ -190,7 +195,9 @@ class TensorMap(object):
             elif len(self.shape) == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
-        if self.metrics is None:
+        elif self.metrics is None and self.is_continuous_any():
+            self.metrics = [pearson]
+        elif self.metrics is None:
             self.metrics = []
 
         if self.tensor_from_file is None:
@@ -247,7 +254,7 @@ class TensorMap(object):
         return self.group == 'categorical_flag'
 
     def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation()
+        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation() or self.dtype == DataSetType.CATEGORICAL
 
     def is_continuous(self):
         return self.group == 'continuous' or self.dtype == DataSetType.CONTINUOUS
@@ -293,6 +300,9 @@ class TensorMap(object):
 
     def is_imputation_mean(self):
         return self.is_multi_field_continuous() and self.imputation == IMPUTATION_MEAN
+
+    def is_proportional_hazard(self):
+        return self.group == 'proportional_hazard'
 
     def zero_mean_std1(self, np_tensor):
         np_tensor -= np.mean(np_tensor)
@@ -441,7 +451,7 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
     return val
 
 
-def _str2date(d):
+def str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
         return datetime.datetime.now().date()
@@ -519,11 +529,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             index = 0  # Assume no disease if the tensor does not have the dataset
         if index != 0:
             if tm.name + '_date' in hd5:
-                disease_date = _str2date(str(hd5[tm.name + '_date'][0]))
-                assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
+                disease_date = str2date(str(hd5[tm.name + '_date'][0]))
+                assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
             elif tm.name + '_date' in hd5['dates']:
-                disease_date = _str2date(str(hd5['dates'][tm.name + '_date'][0]))
-                assess_date = _str2date(str(hd5['dates']['enroll_date'][0]))
+                disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+                assess_date = str2date(str(hd5['dates']['enroll_date'][0]))
             else:
                 raise ValueError(f"No date found for tensor map: {tm.name}.")
             index = 1 if disease_date < assess_date else 2
@@ -532,8 +542,8 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     elif tm.is_diagnosis_time():
         time_data = np.zeros((1,), dtype=np.float32)
         disease_status = int(hd5[tm.name][0])
-        assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
-        disease_date = _str2date(str(hd5[tm.name + '_date'][0]))
+        assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
+        disease_date = str2date(str(hd5[tm.name + '_date'][0]))
         delta = relativedelta.relativedelta(disease_date, assess_date)
         difference = (delta.years * 12) + delta.months
         if disease_status == 0 or difference == 0:
@@ -629,6 +639,21 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         dependents[tm.dependent_map][:, :, 6, :] = to_categorical(np.array(hd5['diastole_mask_b8']), tm.dependent_map.shape[-1])
         tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
         dependents[tm.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), tm.dependent_map.shape[-1])
+        return tm.normalize_and_validate(tensor)
+    elif tm.name == 'sax_all_diastole':
+        missing = 0
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        for b in range(tm.shape[-2]):
+            try:
+                tensor[:, :, b, 0] = np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32)
+                dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'diastole_mask_b{b}']), tm.dependent_map.shape[-1])
+            except KeyError:
+                missing += 1
+                tensor[:, :, b, 0] = 0
+                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+        if missing == tm.shape[-2]:
+            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
         return tm.normalize_and_validate(tensor)
     elif tm.is_root_array():
         tensor = np.zeros(tm.shape, dtype=np.float32)

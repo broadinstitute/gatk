@@ -7,6 +7,7 @@ class DataSetType(Enum):
     CONTINUOUS = auto()
     CATEGORICAL = auto()
     STRING = auto()
+    SERIES = auto()
 
     def __str__(self):
         """DataSetType.FLOAT_ARRAY becomes float_array"""

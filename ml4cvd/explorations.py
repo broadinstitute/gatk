@@ -22,33 +22,18 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import embed_model_predict
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_tsne, evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
+from ml4cvd.tensor_generators import TensorGenerator
+from ml4cvd.models import make_multimodal_multitask_model
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP
 
 CSV_EXT = '.tsv'
 
 
-def find_tensors(text_file, tensor_folder, tensor_maps_out):
-    with open(text_file, 'w') as f:
-        for tensor_file in sorted([tensor_folder + tp for tp in os.listdir(tensor_folder) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]):
-            with h5py.File(tensor_file, 'r') as hd5:
-                for tm in tensor_maps_out:
-                    if tm.is_categorical_date():
-                        index = int(hd5[tm.name][0])
-                        if index != 0:
-                            disease_date = str2date(str(hd5[tm.name + '_date'][0]))
-                            assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
-                            if disease_date < assess_date:
-                                f.write(f"{tensor_file}\tPrevalent {tm.name}\n")
-                            else:
-                                f.write(f"{tensor_file}\tIncident {tm.name}\n")
-
-
-def sort_csv(input_csv_file, volume_csv):
+def sort_csv(input_csv_file, value_csv):
     lvef = {}
-    with open(volume_csv, 'r') as volumes:
-        lol = list(csv.reader(volumes, delimiter='\t'))
+    with open(value_csv, 'r') as value_file:
+        lol = list(csv.reader(value_file, delimiter='\t'))
         logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
         for row in lol[1:]:
             sample_id = row[0]
@@ -71,7 +56,11 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
         if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = predictions
         logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if len(tm.shape) == 3:
+        if len(tm.shape) == 2:
+            for i in range(y.shape[0]):
+                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :])
+        elif len(tm.shape) == 3:
             input_map = None
             for im in tensor_maps_in:
                 if tm.is_categorical_any() and im.dependent_map == tm:
@@ -81,15 +70,15 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical_any():
-                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1))
-                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1))
+                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1, cmap='gray'))
+                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='gray')
                     if input_map is not None:
-                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0])
+                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0], cmap='gray')
                 else:
                     for j in range(y.shape[3]):
-                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j])
-                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j])
-                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j])
+                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j], cmap='gray')
+                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j], cmap='gray')
+                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j], cmap='gray')
         elif len(tm.shape) == 4:
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
@@ -102,14 +91,14 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)
                         true_donut = np.ma.masked_where(truth == 2, data[im.input_name()][i, :, :, j, 0])
                         predict_donut = np.ma.masked_where(prediction == 2, data[im.input_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, truth)
-                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, prediction)
-                        plt.imsave(folder+sample_id+'_mri_slice_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, data[im.input_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id + '_true_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, true_donut)
-                        plt.imsave(folder + sample_id + '_predict_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, predict_donut)
+                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, truth, cmap='gray')
+                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, prediction, cmap='gray')
+                        plt.imsave(folder+sample_id+'_mri_slice_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, data[im.input_name()][i, :, :, j, 0], cmap='gray')
+                        plt.imsave(folder+sample_id + '_true_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, true_donut, cmap='gray')
+                        plt.imsave(folder + sample_id + '_predict_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, predict_donut, cmap='gray')
                     else:
-                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, labels[tm.output_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, y[i, :, :, j, 0])
+                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
+                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, y[i, :, :, j, 0], cmap='gray')
 
 
 def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
@@ -153,7 +142,8 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth)
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_true_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut)
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, j, 0])
-
+                else:
+                    logging.warning(f'Not writing PNGs')
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
@@ -166,10 +156,10 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
-def plot_histograms_from_tensor_files_in_pdf(run_id: str,
-                                             tensor_folder: str,
-                                             output_folder: str,
-                                             max_samples: int = None) -> None:
+def plot_histograms_of_tensors_in_pdf(run_id: str,
+                                      tensor_folder: str,
+                                      output_folder: str,
+                                      max_samples: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -181,11 +171,11 @@ def plot_histograms_from_tensor_files_in_pdf(run_id: str,
     plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
 
-def plot_heatmap_from_tensor_files(id: str,
-                                   tensor_folder: str,
-                                   output_folder: str,
-                                   min_samples: int,
-                                   max_samples: int = None) -> None:
+def plot_heatmap_of_tensors(id: str,
+                            tensor_folder: str,
+                            output_folder: str,
+                            min_samples: int,
+                            max_samples: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -198,11 +188,11 @@ def plot_heatmap_from_tensor_files(id: str,
     plot_heatmap(stats, id, min_samples, output_folder)
 
 
-def tabulate_correlations_from_tensor_files(run_id: str,
-                                            tensor_folder: str,
-                                            output_folder: str,
-                                            min_samples: int,
-                                            max_samples: int = None) -> None:
+def tabulate_correlations_of_tensors(run_id: str,
+                                     tensor_folder: str,
+                                     output_folder: str,
+                                     min_samples: int,
+                                     max_samples: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -331,7 +321,7 @@ def tensors_to_label_dictionary(categorical_labels: List,
     return label_dict
 
 
-def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> Tuple[Dict[str, np.ndarray], List[str], List[str]]:
+def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> Tuple[Dict[str, np.ndarray], List[str], List[str]]:
     label_dict = {tm: np.zeros((examples,)) for tm in test_labels}
     categorical_labels = []
     continuous_labels = []
@@ -341,11 +331,81 @@ def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], ex
             if tm.is_continuous():
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            else:
+            elif tm.is_categorical_any():
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 
     return label_dict, categorical_labels, continuous_labels
+
+
+def infer_with_pixels(args):
+    stats = Counter()
+    tensor_paths_inferred = {}
+    args.num_workers = 0
+    inference_tsv = os.path.join(args.output_folder, args.id, 'pixel_inference_' + args.id + '.tsv')
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+    model = make_multimodal_multitask_model(**args.__dict__)
+    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
+                                    cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    with open(inference_tsv, mode='w') as inference_file:
+        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        header = ['sample_id']
+        for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
+            if len(otm.shape) == 1 and otm.is_continuous():
+                header.extend([ot+'_prediction', ot+'_actual'])
+            elif len(otm.shape) == 1 and otm.is_categorical_any():
+                channel_columns = []
+                for k in otm.channel_map:
+                    channel_columns.append(ot + '_' + k + '_prediction')
+                    channel_columns.append(ot + '_' + k + '_actual')
+                header.extend(channel_columns)
+            elif otm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
+                pix_tm = args.tensor_maps_in[1]
+                header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual'])
+                if otm.name == 'sax_all_diastole_segmented':
+                    header.append('total_b_slices')
+        inference_writer.writerow(header)
+
+        while True:
+            input_data, true_label, tensor_path = next(generate_test)
+            if tensor_path[0] in tensor_paths_inferred:
+                logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                break
+
+            prediction = model.predict(input_data)
+            if len(args.tensor_maps_out) == 1:
+                prediction = [prediction]
+
+            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            for y, tm in zip(prediction, args.tensor_maps_out):
+                if len(tm.shape) == 1 and tm.is_continuous():
+                    csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
+                    if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
+                        csv_row.append("NA")
+                    else:
+                        csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+                elif len(tm.shape) == 1 and tm.is_categorical_any():
+                    for k in tm.channel_map:
+                        csv_row.append(str(y[0][tm.channel_map[k]]))
+                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
+                elif tm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
+                    csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
+                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
+                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
+                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
+                    if tm.name == 'sax_all_diastole_segmented':
+                        background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
+                        csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
+
+            inference_writer.writerow(csv_row)
+            tensor_paths_inferred[tensor_path[0]] = True
+            stats['count'] += 1
+            if stats['count'] % 250 == 0:
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
 def _sample_with_heat(preds, temperature=1.0):

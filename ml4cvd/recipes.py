@@ -13,14 +13,15 @@ from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
+from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
+from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files, plot_while_learning
-from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
 
 
 def run(args):
@@ -42,6 +43,8 @@ def run(args):
             infer_multimodal_multitask(args)
         elif 'infer_hidden' == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
+        elif 'infer_pixels' == args.mode:
+            infer_with_pixels(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
@@ -55,11 +58,11 @@ def run(args):
         elif 'plot_ecg_dates' == args.mode:
             ecg_dates(args.tensors, args.output_folder, args.id)
         elif 'plot_histograms' == args.mode:
-            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
+            plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'plot_heatmap' == args.mode:
-            plot_heatmap_from_tensor_files(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+            plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'tabulate_correlations' == args.mode:
-            tabulate_correlations_from_tensor_files(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+            tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
         elif 'train_char' == args.mode:
@@ -68,10 +71,8 @@ def run(args):
             train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
-        elif 'find_tensors' == args.mode:
-            find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         elif 'sort_csv' == args.mode:
-            sort_csv(args.app_csv, args.volume_csv)
+            sort_csv(args.app_csv, args.app_csv)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
@@ -185,12 +186,13 @@ def infer_multimodal_multitask(args):
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
-            if stats['count'] % 500 == 0:
+            if stats['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
+    args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
@@ -537,10 +539,10 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
     if embeddings is None:
         embeddings = embed_model_predict(model, tensor_maps_in, hidden_layer_name, test_data, batch_size)
 
-    label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
-
     gene_labels = []
-    plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
+    label_dict, categorical_labels, continuous_labels = test_labels_to_label_map(test_labels, len(test_paths))
+    if len(categorical_labels) > 0 or len(continuous_labels) > 0 or len(gene_labels) > 0:
+        plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
 
 
 def _get_tensor_files(tensor_dir):

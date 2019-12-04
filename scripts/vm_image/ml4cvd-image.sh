@@ -28,11 +28,9 @@ echo "fc-9a7c5487-04c9-4182-b3ec-13de7f6b409b /mnt/imputed_v2 gcsfuse ro,allow_o
 echo "fc-7d5088b4-7673-45b5-95c2-17ae00a04183 /mnt/imputed_v3 gcsfuse ro,allow_other,implicit_dirs,default_permissions,file_mode=777,dir_mode=777" | sudo tee -a /etc/fstab
 
 # Mount the persistent disks
-sudo mkdir -p /mnt/disks/data
 sudo mkdir -p /mnt/disks/survey-tensors2
 sudo mkdir -p /mnt/disks/ecg-text3
 sudo mkdir -p /mnt/disks/pix-size-tensors
-echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
 echo "UUID=65bba926-210b-48ee-aa0e-241599fad8d5 /mnt/disks/survey-tensors2 ext4 ro,norecovery,discard,defaults,nofail 0 2" | sudo tee -a /etc/fstab
 echo "UUID=f27bb394-9fcd-41a8-8374-333cae177af8 /mnt/disks/ecg-text3 ext4 ro,norecovery,discard,defaults,nofail 0 2" | sudo tee -a /etc/fstab
 echo "UUID=46f2f929-44d4-4925-800e-ec08bf3a5a92 /mnt/disks/pix-size-tensors ext4 ro,norecovery,discard,defaults,nofail 0 2" | sudo tee -a /etc/fstab

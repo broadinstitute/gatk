@@ -73,6 +73,7 @@ def custom_loss_keras(user_id, encodings):
 def euclid_dist(v):
     return (v[0] - v[1])**2
 
+
 def angle_between_batches(tensors):
     l0 = K.sqrt(K.sum(K.square(tensors[0]), axis=-1, keepdims=True) + K.epsilon())
     l1 = K.sqrt(K.sum(K.square(tensors[1]), axis=-1, keepdims=True) + K.epsilon())
@@ -127,6 +128,51 @@ def custom_loss_keras(user_id, encodings):
 
     pos_neg = K.cast(pairwise_equal, K.floatx()) * 2 - 1
     return K.sum(pairwise_distance * pos_neg, axis=-1) / 2
+
+
+def pearson(y_true, y_pred):
+    # normalizing stage - setting a 0 mean.
+    y_true -= K.mean(y_true, axis=-1)
+    y_pred -= K.mean(y_pred, axis=-1)
+    # normalizing stage - setting a 1 variance
+    y_true = K.l2_normalize(y_true, axis=-1)
+    y_pred = K.l2_normalize(y_pred, axis=-1)
+    # final result
+    pearson_correlation = K.sum(y_true * y_pred, axis=-1)
+    return pearson_correlation
+
+
+def survival_likelihood_loss(n_intervals):
+    """Create custom Keras loss function for neural network survival model.
+
+    This function is tightly coupled with the function _survival_tensor defined in tensor_from_file.py which builds the y_true tensor.
+
+    Arguments
+        n_intervals: the number of survival time intervals
+    Returns
+        Custom loss function that can be used with Keras
+    """
+
+    def loss(y_true, y_pred):
+        """
+        To play nicely with the Keras framework y_pred is the same shape as y_true.
+        However we only consider the first half (n_intervals) of y_pred.
+        Arguments
+            y_true: Tensor.
+              First half of the values are 1 if individual survived that interval, 0 if not.
+              Second half of the values are for individuals who failed, and are 1 for time interval during which failure occurred, 0 for other intervals.
+              For example given n_intervals = 3 a sample with prevalent disease will have y_true [0, 0, 0, 1, 0, 0]
+              a sample with incident disease occurring in the last time bin will have y_true [1, 1, 0, 0, 0, 1]
+              a sample who is lost to follow up (censored) in middle time bin will have y_true [1, 0, 0, 0, 0, 0]
+            y_pred: Tensor, predicted survival probability (1-hazard probability) for each time interval.
+        Returns
+            Vector of losses for this minibatch.
+        """
+        all_individuals = 1. + y_true[:, 0:n_intervals] * (y_pred[:, 0:n_intervals] - 1.)  # component for all individuals
+        uncensored = 1. - y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals]  # component for only individuals who failed
+        return K.sum(-K.log(K.clip(K.concatenate((all_individuals, uncensored)), K.epsilon(), None)), axis=-1)  # return -log likelihood
+
+    return loss
 
 
 def euclid_dist(v):
@@ -381,3 +427,76 @@ def log_pearson_coefficients(coefs, label):
     for model, coef in coefs.items():
         logging.info(row.format(model, label, coef, coef*coef))
     logging.info(dashes(width))
+
+
+def _unpack_truth_into_events(truth, intervals):
+    event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
+    event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event time to max time
+    event_indicator = np.sum(truth[:, intervals:], axis=-1).astype(np.bool)
+    return event_indicator, event_time
+
+
+def _get_comparable(event_indicator, event_time, order):
+    n_samples = len(event_time)
+    tied_time = 0
+    comparable = {}
+    i = 0
+    while i < n_samples - 1:
+        time_i = event_time[order[i]]
+        start = i + 1
+        end = start
+        while end < n_samples and event_time[order[end]] == time_i:
+            end += 1
+
+        # check for tied event times
+        event_at_same_time = event_indicator[order[i:end]]
+        censored_at_same_time = ~event_at_same_time
+        for j in range(i, end):
+            if event_indicator[order[j]]:
+                mask = np.zeros(n_samples, dtype=bool)
+                mask[end:] = True
+                # an event is comparable to censored samples at same time point
+                mask[i:end] = censored_at_same_time
+                comparable[j] = mask
+                tied_time += censored_at_same_time.sum()
+        i = end
+
+    return comparable, tied_time
+
+
+def concordance_index(prediction, truth, tied_tol=1e-8):
+    intervals = truth.shape[-1] // 2
+    event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
+    estimate = np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
+    order = np.argsort(event_time)
+    comparable, tied_time = _get_comparable(event_indicator, event_time, order)
+
+    concordant = 0
+    discordant = 0
+    tied_risk = 0
+    numerator = 0.0
+    denominator = 0.0
+    for ind, mask in comparable.items():
+        est_i = estimate[order[ind]]
+        event_i = event_indicator[order[ind]]
+
+        est = estimate[order[mask]]
+
+        assert event_i, 'got censored sample at index %d, but expected uncensored' % order[ind]
+
+        ties = np.absolute(est - est_i) <= tied_tol
+        n_ties = ties.sum()
+
+        # an event should have a higher score
+        con = est > est_i
+        n_con = con[~ties].sum()
+
+        numerator += n_con + 0.5 * n_ties
+        denominator += mask.sum()
+
+        tied_risk += n_ties
+        concordant += n_con
+        discordant += est.size - n_con - n_ties
+
+    cindex = numerator / denominator
+    return cindex, concordant, discordant, tied_risk, tied_time

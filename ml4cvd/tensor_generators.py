@@ -42,13 +42,14 @@ class _ShufflePaths(Iterator):
 
     def __init__(self, paths: List[Path]):
         self.paths = paths
+        self.paths.sort()
         self.idx = 0
 
     def __next__(self):
+        self.idx += 1
         if self.idx >= len(self.paths):
             self.idx = 0
             np.random.shuffle(self.paths)
-        self.idx += 1
         return self.paths[self.idx - 1]
 
 
@@ -307,10 +308,13 @@ class _MultiModalMultiTaskWorker:
         for i, path in enumerate(self.path_iter):
             self._handle_tensor_path(path)
             if self.stats['batch_index'] == self.batch_size:
+
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
                 self.q.put(out)
-                self.stats['batch_index'] = 0
                 self.paths_in_batch = []
+                self.stats['batch_index'] = 0
+                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
+                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.output_maps}
             if i > 0 and i % self.true_epoch_len == 0:
                 self._on_epoch_end()
 

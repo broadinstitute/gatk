@@ -41,24 +41,25 @@ from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 
 
-STATS_TYPE = Dict[str, List[float]]
-
+MISSING_DATE = datetime.date(year=1900, month=1, day=1)
 
 MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
+MRI_MITRAL_VALVE_THICKNESS = 6
+MRI_SWI_SLICES_TO_AXIS_SHIFT = 48
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf']
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
+MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'}
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
-DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20252', '20253', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
-NIFTI_MRI_FIELDS = ['20251']
+DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -201,7 +202,6 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
                 # Zero-based column #13 is the LV mass
                 nested_dictionary[sample_id]['lv_mass'] = float(row[13])
 
-
     return nested_dictionary
 
 
@@ -212,7 +212,7 @@ def _sample_has_dicom_mris(zip_folder, sample_id) -> bool:
 
 def _sample_has_nifti_mris(zip_folder, sample_id) -> bool:
     sample_str = str(sample_id)
-    return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in NIFTI_MRI_FIELDS])
+    return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in MRI_NIFTI_FIELD_ID_TO_ROOT])
 
 
 def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
@@ -482,7 +482,7 @@ def _write_tensors_from_zipped_dicoms(x: int,
 
 
 def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str], hd5: h5py.File, sample_id: str, stats: Dict[str, int]) -> None:
-    for mri_field in set(mri_field_ids).intersection(NIFTI_MRI_FIELDS):
+    for mri_field in set(mri_field_ids).intersection(set(MRI_NIFTI_FIELD_ID_TO_ROOT.keys())):
         mris = glob.glob(os.path.join(zip_folder, f'{sample_id}_{mri_field}*.zip'))
         for zipped in mris:
             logging.info(f"Got zipped niftis for sample: {sample_id} with MRI field: {mri_field}")
@@ -561,7 +561,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     systoles = {}
     diastoles = {}
     systoles_pix = {}
-    diastoles_pix = {}
+    systoles_masks = {}
+    diastoles_masks = {}
     full_mask = np.zeros((x, y), dtype=np.float32)
     full_slice = np.zeros((x, y), dtype=np.float32)
 
@@ -570,13 +571,16 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sy = min(slicer.Columns, y)
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         if _has_overlay(slicer):
-            if _is_mitral_valve_segmentation(slicer):
-                stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
+            if slicer.SliceThickness == MRI_MITRAL_VALVE_THICKNESS:
+                stats['Skipped likely mitral valve segmentation'] += 1
+                continue
+            try:
+                overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
+            except KeyError:
+                logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
 
-            overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-
             full_slice[:sx, :sy] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
             full_mask[:sx, :sy] = mask
             hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
@@ -587,33 +591,25 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
             hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
 
-            if write_pngs:
-                overlayed = np.ma.masked_where(overlay != 0, slicer.pixel_array)
-                # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
-                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlayed)
-                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
-                plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
-
-            if cur_angle not in diastoles:
+            if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
                 diastoles[cur_angle] = slicer
-                diastoles_pix[cur_angle] = ventricle_pixels
+                diastoles_masks[cur_angle] = mask
+            if cur_angle not in systoles:
                 systoles[cur_angle] = slicer
                 systoles_pix[cur_angle] = ventricle_pixels
+                systoles_masks[cur_angle] = mask
             else:
-                if ventricle_pixels > diastoles_pix[cur_angle]:
-                    diastoles[cur_angle] = slicer
-                    diastoles_pix[cur_angle] = ventricle_pixels
                 if ventricle_pixels < systoles_pix[cur_angle]:
                     systoles[cur_angle] = slicer
                     systoles_pix[cur_angle] = ventricle_pixels
+                    systoles_masks[cur_angle] = mask
 
     for angle in diastoles:
+        logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(diastoles[angle])
+        full_mask[:sx, :sy] = diastoles_masks[angle][:sx, :sy]
         hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
         hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
         if write_pngs:
@@ -623,7 +619,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sx = min(systoles[angle].Rows, x)
         sy = min(systoles[angle].Columns, y)
         full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(systoles[angle])
+        full_mask[:sx, :sy] = systoles_masks[angle][:sx, :sy]
         hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
         hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
         if write_pngs:
@@ -721,15 +717,14 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         big_structure = _unit_disk(big_radius)
         m2 = binary_closing(overlay, big_structure).astype(np.int)
         anatomical_mask = m1 + m2
-        ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle']) == 0
+        ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
-        if ventricle_pixels and myocardium_pixels > MRI_MAX_MYOCARDIUM:
+        if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:  # try to rescue small ventricles
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
-            ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
-        if debug:
-            logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
-        return overlay, anatomical_mask, ventricle_pixels
+            ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
+            myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
+        return overlay, anatomical_mask, ventricle_pixels, myocardium_pixels
 
 
 def _unit_disk(r) -> np.ndarray:
@@ -828,7 +823,7 @@ def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: 
     return f'/{source}/{dtype}/{name}/{_datetime_to_str(date)}'
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: STATS_TYPE):
+def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: Counter):
     hd5_path = tensor_path(source, dtype, date, name)
     stats[hd5_path.strip(f'{_datetime_to_str(date)}/')] += 1
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
@@ -972,20 +967,22 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         write_to_hd5(dtype=DataSetType.CONTINUOUS, name='max_pred_hr', value=[max_pred_hr])
 
 
-def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Dict[str, int]):
-    field_id_to_root = {
-        '20251': 'SWI',
-    }
-    root_folder = os.path.join(folder, field_id_to_root[field_id])
-    niftis = glob.glob(os.path.join(root_folder, '*nii.gz'))
+def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
+    niftis = glob.glob(os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id], '**/*nii.gz'), recursive=True)
+    logging.info(f'Found {len(niftis)} NIFTI files at {os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id])} ')
     for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
         nifti_mri = nib.load(nifti)
-        data = nifti_mri.get_fdata()
+        nifti_array = nifti_mri.get_fdata()
         nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
+        parent = nifti.split('/')[-2]
+        if parent not in nii_name:
+            nii_name = f'{parent}_{nii_name}'
         stats[nii_name] += 1
-        stats[f'{nii_name}_{data.shape}'] += 1
-        hd5_prefix = f'/ndarray/{field_id}/{nii_name}'
-        hd5.create_dataset(hd5_prefix, data=data, compression='gzip', dtype=np.float32)
+        stats[f'{nii_name} shape:{nifti_array.shape}'] += 1
+        if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
+            nifti_array = np.moveaxis(nifti_array, 0, 1)
+            stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
+        create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype=DataSetType.FLOAT_ARRAY, source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:
