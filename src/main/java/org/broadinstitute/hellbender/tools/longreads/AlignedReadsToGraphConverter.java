@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.longreads.graph.AlignedBaseGraphCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -56,7 +57,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     private Boolean skipZip = false;
 
     @Argument(
-            fullName  = "graph-input",
+            fullName  = "graph-in",
             optional = true,
             doc = "Initialize the graph object with the file at given path.")
     private File inputGraphFile = null;
@@ -102,16 +103,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             alignedBaseGraphCollection = new AlignedBaseGraphCollection();
         }
         else {
-            logger.info("Initializing graph from kryo file (" + outputGraphFile.getAbsolutePath() + ")...");
-            final Kryo kryo = new Kryo();
-            kryo.register(AlignedBaseGraphCollection.class, new JavaSerializer());
-
-            try (final Input input = new Input(new FileInputStream(inputGraphFile))) {
-                alignedBaseGraphCollection = kryo.readObject(input, AlignedBaseGraphCollection.class);
-            }
-            catch ( final FileNotFoundException ex ) {
-                throw new UserException("Can't open graph input file.", ex);
-            }
+            alignedBaseGraphCollection = deserializeGraphFromFile(inputGraphFile);
         }
     }
 
@@ -149,21 +141,58 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
 
         // Save the graph if we should save it:
         if ( outputGraphFile != null ) {
-            logger.info("Writing graph to kryo file (" + outputGraphFile.getAbsolutePath() + ")...");
-            final Kryo kryo = new Kryo();
-            kryo.register(AlignedBaseGraphCollection.class, new JavaSerializer());
-
-            try (final Output output = new Output(new FileOutputStream(outputGraphFile))) {
-                kryo.writeObject(output, alignedBaseGraphCollection);
-            }
-            catch ( final FileNotFoundException ex ) {
-                throw new UserException("Can't save graph to output file.", ex);
-            }
+            serializeGraphToFile(alignedBaseGraphCollection, outputGraphFile);
         }
     }
 
     //==================================================================================================================
     // Static Methods:
+
+    /**
+     * Serialize graph data to a file to use in later runs.
+     * @param alignedBaseGraphCollection {@link AlignedBaseGraphCollection} containing graph data to serialize to a file.
+     * @param outputGraphFile {@link File} to which to write serialized graph data.
+     */
+    private static void serializeGraphToFile(final AlignedBaseGraphCollection alignedBaseGraphCollection,
+                                             final File outputGraphFile) {
+        logger.info("Writing graph to kryo file (" + outputGraphFile.getAbsolutePath() + ")...");
+        final Kryo kryo = new Kryo();
+        kryo.register(AlignedBaseGraphCollection.class, new JavaSerializer());
+
+        try (final Output output = new Output(new FileOutputStream(outputGraphFile))) {
+            kryo.writeObject(output, alignedBaseGraphCollection);
+        }
+        catch ( final FileNotFoundException ex ) {
+            throw new UserException("Can't save graph to output file.", ex);
+        }
+    }
+
+    /**
+     * Deserialize graph data from a file to initialize our graph collection.
+     * @param inputGraphFile {@link File} from which to read serialized graph data.
+     * @return A {@link AlignedBaseGraphCollection} containing the data represented in the given {@code inputGraphFile}.
+     */
+    private static AlignedBaseGraphCollection deserializeGraphFromFile(final File inputGraphFile) {
+        logger.info("Initializing graph from kryo file (" + inputGraphFile.getAbsolutePath() + ") ...");
+        final Kryo kryo = new Kryo();
+        kryo.register(AlignedBaseGraphCollection.class, new JavaSerializer());
+
+        final AlignedBaseGraphCollection alignedBaseGraphCollection;
+        try (final Input input = new Input(new FileInputStream(inputGraphFile))) {
+            alignedBaseGraphCollection = kryo.readObject(input, AlignedBaseGraphCollection.class);
+        }
+        catch ( final FileNotFoundException ex ) {
+            throw new UserException("Can't open graph input file.", ex);
+        }
+        catch ( final Exception ex) {
+            throw new GATKException("WTF!?!?!?", ex);
+        }
+
+        logger.info("AlignedBaseGraphCollection = " + alignedBaseGraphCollection);
+        logger.info("Read in graph collection with reads: " + alignedBaseGraphCollection.getNumSequencesAdded());
+
+        return alignedBaseGraphCollection;
+    }
 
     //==================================================================================================================
     // Instance Methods:

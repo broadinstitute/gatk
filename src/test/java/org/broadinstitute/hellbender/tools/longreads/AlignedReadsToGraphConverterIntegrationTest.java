@@ -25,6 +25,20 @@ public class AlignedReadsToGraphConverterIntegrationTest extends CommandLineProg
     }
 
     @Test
+    public void testSerializeToGexfFile() {
+
+        final File tmpDirName = createTempDir("alignedReadsGraphTest");
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.addInput(new File(aligned_bam_file));
+        arguments.addArgument("output-file-base-name", tmpDirName.getAbsolutePath());
+        arguments.addBooleanArgument("create-gexf-files", true);
+
+        // Run the tool with our args:
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void testSerializeToGfaFile() {
 
         final File tmpDirName = createTempDir("alignedReadsGraphTest");
@@ -35,6 +49,32 @@ public class AlignedReadsToGraphConverterIntegrationTest extends CommandLineProg
 
         // Run the tool with our args:
         runCommandLine(arguments);
+    }
+
+    @Test
+    public void testKryoSerialization() {
+
+        final File tmpDirName = createTempDir("alignedReadsGraphTest");
+
+        final String graphOutPath = tmpDirName.getAbsolutePath() + "/" + "graph_output.kryo";
+
+        final ArgumentsBuilder graphCreationRunArgs = new ArgumentsBuilder();
+        graphCreationRunArgs.addInput(new File(aligned_bam_file));
+        graphCreationRunArgs.addArgument("output-file-base-name", tmpDirName.getAbsolutePath());
+        graphCreationRunArgs.addArgument("graph-out", graphOutPath);
+
+        // Run the tool with our args to create the kryo file:
+        runCommandLine(graphCreationRunArgs);
+
+        //==============================================================================
+
+        final ArgumentsBuilder graphIngestRunArgs = new ArgumentsBuilder();
+        graphIngestRunArgs.addInput(new File(aligned_bam_file));
+        graphIngestRunArgs.addArgument("output-file-base-name", tmpDirName.getAbsolutePath());
+        graphIngestRunArgs.addArgument("graph-in", graphOutPath);
+
+        // Run the tool with our args to create the kryo file:
+        runCommandLine(graphIngestRunArgs);
     }
 
 }

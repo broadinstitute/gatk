@@ -13,7 +13,7 @@ import java.io.Serializable;
 import java.util.*;
 
 public class AlignedBaseGraphCollection implements Serializable {
-    private static final Logger logger = LogManager.getLogger(AlignedBaseGraphCollection.class);
+    transient private static final Logger logger = LogManager.getLogger(AlignedBaseGraphCollection.class);
 
     //==================================================================================================================
     // Private Members:
@@ -88,6 +88,14 @@ public class AlignedBaseGraphCollection implements Serializable {
      */
     public void serializeToGfa1Files(final String baseName) {
         helpSerializeToGfaFile(baseName, false);
+    }
+
+    public boolean isGraphCollapsed() {
+        return isGraphCollapsed;
+    }
+
+    public int getNumSequencesAdded() {
+        return numSequencesAdded;
     }
 
     /**
