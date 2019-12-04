@@ -35,10 +35,13 @@ public class AlignedBaseGraphCollection implements Serializable {
 
     private int periodicMergeDistance = 100;
 
+    private LabeledEdgeType edgeType = LabeledEdgeType.LABELED_EDGE;
+
     //==================================================================================================================
     // Constructors:
 
     public AlignedBaseGraphCollection() {}
+    public AlignedBaseGraphCollection(final LabeledEdgeType edgeType) { this.edgeType = edgeType; }
 
     //==================================================================================================================
     // Override Methods:
@@ -382,7 +385,7 @@ public class AlignedBaseGraphCollection implements Serializable {
      * @param nodes {@link Queue<AlignedBaseVertex>} of nodes representing the aligned linear graph of nodes from a given read that should be added to our graph.
      */
     private void initializeGraphWithNodes(final String contig, final Queue<AlignedBaseVertex> nodes) {
-        final AlignedBaseGraph graph = new AlignedBaseGraph();
+        final AlignedBaseGraph graph = new AlignedBaseGraph(edgeType);
 
         // Set up our node position map:
         final TreeMap<GenomicAndInsertionPosition, Set<AlignedBaseVertex>> nodePositionMap = new TreeMap<>();
@@ -509,11 +512,11 @@ public class AlignedBaseGraphCollection implements Serializable {
                 // If we need to relable edges, we should do so:
                 final BaseEdge edge = graph.getEdge(lastVertex, vertex);
                 if ( edge != null ) {
-                    final ReadTypedEdge readTypedEdge = (ReadTypedEdge)edge;
-                    final String newLabel = ReadTypedEdge.getReadLabel(rawVertex);
-                    if ( !readTypedEdge.getReadType().equals(newLabel) ) {
-                        logger.debug("Relabeling edge: " + readTypedEdge.getReadType() + " -> " + newLabel);
-                        readTypedEdge.setReadType(newLabel);
+                    final LabeledEdge labeledEdge = (LabeledEdge)edge;
+                    final String      newLabel    = LabeledEdge.createLabel(rawVertex);
+                    if ( !labeledEdge.getLabel().equals(newLabel) ) {
+                        logger.debug("Relabeling edge: " + labeledEdge.getLabel() + " -> " + newLabel);
+                        labeledEdge.updateLabel(newLabel);
                     }
                 }
             }

@@ -3,10 +3,8 @@ package org.broadinstitute.hellbender.tools.longreads.graph;
 import com.google.common.primitives.Bytes;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
-import org.jgrapht.EdgeFactory;
 
 import java.io.Serializable;
 import java.util.*;
@@ -22,30 +20,9 @@ public class AlignedBaseGraph extends SeqGraph implements Serializable {
     private final Set<String> contigSet = new LinkedHashSet<>();
 
     public AlignedBaseGraph() {
-        super(1, new LabeledEdgeFactory());
+        super(1, new LabeledEdge.LabeledEdgeFactory());
     }
-
-    /**
-     * Edge factory that creates labeled edges for this graph.
-     */
-    private static class LabeledEdgeFactory implements EdgeFactory<SeqVertex, BaseEdge>, Serializable {
-
-        private static final long serialVersionUID = 0x1337L;
-
-        @Override
-        /**
-         * {@inheritDoc}
-         *
-         * Because we add edges to new nodes from existing nodes, we only need to check the target to know what kind of
-         * read the edge came from.
-         * See {@link AlignedBaseGraphCollection#initializeGraphWithNodes} and {@link AlignedBaseGraphCollection#mergeNodesIntoGraph}.
-         */
-        public BaseEdge createEdge(final SeqVertex sourceVertex, final SeqVertex targetVertex) {
-            final String readName = ((AlignedBaseVertex)targetVertex).getReadName();
-            final String label = ReadTypedEdge.getReadLabel(readName);
-            return new ReadTypedEdge(label);
-        }
-    }
+    public AlignedBaseGraph(final LabeledEdgeType factoryType) { super(1, factoryType.getEdgeFactory());}
 
     @Override
     public String getGexfNodeAttributesDefinition() {

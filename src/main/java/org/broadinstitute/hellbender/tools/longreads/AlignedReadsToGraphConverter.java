@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.longreads.graph.AlignedBaseGraphCollection;
+import org.broadinstitute.hellbender.tools.longreads.graph.LabeledEdgeType;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
@@ -50,24 +52,29 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             doc = "Base name for output files to be written.")
     private String outputFileBaseName = "aligned_base_graph";
 
+    @Advanced
     @Argument(
             fullName  = "skip-zip",
             optional = true,
             doc = "Skip the zipping stage in graph creation.")
     private Boolean skipZip = false;
 
+    @Advanced
     @Argument(
             fullName  = "graph-in",
             optional = true,
+            mutex = {"edge-type"},
             doc = "Initialize the graph object with the file at given path.")
     private File inputGraphFile = null;
 
+    @Advanced
     @Argument(
             fullName  = "graph-out",
             optional = true,
             doc = "Saves the graph to the given path.")
     private File outputGraphFile = null;
 
+    @Advanced
     @Argument(
             fullName  = "relabel-edge-types",
             optional = true,
@@ -86,6 +93,14 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
             doc = "Create an additional GEXF file for each GFA file created.\n" +
                   "WARNING: GEXF files can get VERY large.  Use this at your own peril.")
     private Boolean createGexfFiles = false;
+
+    @Advanced
+    @Argument(
+            fullName  = "edge-type",
+            optional = true,
+            mutex = {"graph-in"},
+            doc = "Use a specific edge type when creating links in the graph.  Will only work when creating a graph from scratch.")
+    private LabeledEdgeType edgeType = LabeledEdgeType.LABELED_EDGE;
 
     //==================================================================================================================
     // Private Members:
@@ -106,7 +121,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     @Override
     public void onTraversalStart() {
         if ( inputGraphFile == null ) {
-            alignedBaseGraphCollection = new AlignedBaseGraphCollection();
+            alignedBaseGraphCollection = new AlignedBaseGraphCollection(edgeType);
         }
         else {
             alignedBaseGraphCollection = deserializeGraphFromFile(inputGraphFile);
