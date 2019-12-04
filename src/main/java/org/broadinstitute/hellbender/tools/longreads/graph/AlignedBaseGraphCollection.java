@@ -100,11 +100,6 @@ public class AlignedBaseGraphCollection {
 
     private void helpSerializeToGfaFile(final String baseName, final boolean isGfa2) {
 
-        // Collapse our graph if we have to:
-        if (!isGraphCollapsed) {
-            collapseAdjacentNodes();
-        }
-
         for ( final Map.Entry<String, AlignedBaseGraph> entry : contigSubGraphMap.entrySet() ) {
 
             final String contig = entry.getKey();

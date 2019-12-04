@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.longreads.graph;
 
 import com.google.common.primitives.Bytes;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
@@ -10,6 +12,9 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class AlignedBaseGraph extends SeqGraph {
+
+    private static final Logger logger = LogManager.getLogger(AlignedBaseGraph.class);
+
 
     private static final long serialVersionUID = 0x1337;
 
@@ -208,29 +213,32 @@ public class AlignedBaseGraph extends SeqGraph {
         boolean lastIsRef = isReferenceNode(zipStart); // remember because this calculation is expensive
         SeqVertex last = zipStart;
         while (true) {
-            if ( outDegreeOf(last) != 1 )
-            // cannot extend a chain from last if last has multiple outgoing branches
-            {
+
+            if ( outDegreeOf(last) != 1 ) {
+                // cannot extend a chain from last if last has multiple outgoing branches
                 break;
             }
 
             // there can only be one (outgoing edge of last) by contract
             final SeqVertex target = getEdgeTarget(outgoingEdgeOf(last));
 
-            if ( inDegreeOf(target) != 1 || last.equals(target) )
-            // cannot zip up a target that has multiple incoming nodes or that's a cycle to the last node
-            {
+            if ( inDegreeOf(target) != 1 || last.equals(target) ) {
+                // cannot zip up a target that has multiple incoming nodes or that's a cycle to the last node
                 break;
             }
 
             final boolean targetIsRef = isReferenceNode(target);
-            if ( lastIsRef != targetIsRef ) // both our isRef states must be equal
-            {
+            if ( lastIsRef != targetIsRef ) {
+                // both our isRef states must be equal
                 break;
             }
 
             // Make sure we only zip adjacent nodes.
-            if ( !((AlignedBaseVertex)last).isAdjacentTo((AlignedBaseVertex)target) ) {
+            final AlignedBaseVertex lastAbv = (AlignedBaseVertex)last;
+            final AlignedBaseVertex targetAbv = (AlignedBaseVertex)target;
+
+            if ( !lastAbv.isAdjacentTo(targetAbv) ) {
+                logger.info( "Not extending chain because of adjacency check failure: " + lastAbv.getPos() + " NOT ADJACENT TO " + targetAbv.getPos() );
                 break;
             }
 

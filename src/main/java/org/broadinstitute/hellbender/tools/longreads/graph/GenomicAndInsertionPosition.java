@@ -38,7 +38,19 @@ public class GenomicAndInsertionPosition implements Comparable<GenomicAndInserti
         boolean isAdjacent = false;
 
         if ( !this.equals(that) ) {
-            isAdjacent = getDistanceTo(that) == 1;
+            if ( Math.abs( this.getStart() - that.getStart() ) == 1 ) {
+                if ( this.getStart() > that.getStart() ) {
+                    // That came earlier in the genome.
+                    isAdjacent = (this.getInsertionOffset() == 0);
+                }
+                else {
+                    // This came earlier in the genome.
+                    isAdjacent = (that.getInsertionOffset() == 0);
+                }
+            }
+            else if (this.getStart() == that.getStart()) {
+                isAdjacent = Math.abs( this.getInsertionOffset() - that.getInsertionOffset() ) == 1;
+            }
         }
 
         return isAdjacent;
@@ -46,6 +58,12 @@ public class GenomicAndInsertionPosition implements Comparable<GenomicAndInserti
 
     /**
      * Gets the genomic position to the given node from this node.
+     *
+     * For positions on the same contig, positions with non-zero insertionOffsets are always adjacent to the genomic position one more than them.
+     *   i.e. pos 123, +8 is adjacent to pos 124.
+     *   i.e. pos 123, +7 is adjacent to pos 124.
+     *   i.e. pos 123, +1 is adjacent to pos 124.
+     *
      * @param that The other {@link GenomicAndInsertionPosition} to check for position.
      * @return The distance between this and {@code that} {@link GenomicAndInsertionPosition}.
      */
@@ -53,8 +71,35 @@ public class GenomicAndInsertionPosition implements Comparable<GenomicAndInserti
         if ( !getContig().equals(that.getContig()) ) {
             return -1;
         }
-        return Math.abs( this.getStart() - that.getStart() ) +
-                Math.abs( this.getInsertionOffset() - that.getInsertionOffset() );
+
+        // Some silly math to account for insertions:
+        if ( Math.abs( this.getStart() - that.getStart() ) == 1 ) {
+            if ( this.getStart() > that.getStart() ) {
+                // That came earlier in the genome.
+                if ( this.getInsertionOffset() == 0 ) {
+                    return 1;
+                }
+                else {
+                    return this.getInsertionOffset();
+                }
+            }
+            else {
+                // This came earlier in the genome.
+                if ( that.getInsertionOffset() == 0 ) {
+                    return 1;
+                }
+                else {
+                    return that.getInsertionOffset();
+                }
+            }
+        }
+        else if (this.getStart() == that.getStart()) {
+             return Math.abs( this.getInsertionOffset() - that.getInsertionOffset() );
+        }
+        else {
+            return Math.abs( this.getStart() - that.getStart() ) +
+                    Math.abs( this.getInsertionOffset() - that.getInsertionOffset() );
+        }
     }
 
 

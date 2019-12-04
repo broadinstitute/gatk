@@ -41,6 +41,12 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     public String outputFileBaseName = "aligned_base_graph";
 
     @Argument(
+            fullName  = "skip-zip",
+            optional = true,
+            doc = "Skip the zipping stage in graph creation.")
+    public Boolean skipZip = false;
+
+    @Argument(
             fullName  = "create-dot-files",
             optional = true,
             doc = "Create an additional DOT file for each GFA file created.")
@@ -77,8 +83,11 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
 
     @Override
     public void closeTool() {
-        // Make sure we zip all adjacent nodes into big boy nodes because they're all grown up now.
-        alignedBaseGraphCollection.collapseAdjacentNodes();
+
+        if ( !skipZip ) {
+            // Make sure we zip all adjacent nodes into big boy nodes because they're all grown up now.
+            alignedBaseGraphCollection.collapseAdjacentNodes();
+        }
 
         if ( createDotFiles ) {
             logger.info("Writing DOT files...");
