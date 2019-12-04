@@ -10,7 +10,6 @@ import org.jgrapht.EdgeFactory;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.regex.Pattern;
 
 public class AlignedBaseGraph extends SeqGraph implements Serializable {
     private static final Logger logger = LogManager.getLogger(AlignedBaseGraph.class);
@@ -33,13 +32,6 @@ public class AlignedBaseGraph extends SeqGraph implements Serializable {
 
         private static final long serialVersionUID = 0x1337L;
 
-        private static final Pattern CCS_READ_PATTERN = Pattern.compile("/ccs[ \t]*$");
-        private static final Pattern RECLAIMED_READ_PATTERN = Pattern.compile("^m[0-9]*.*/[0-9]*/[0-9]*_[0-9]*_[0-9]*_[0-9]*_[0-9]*[ \t]*$");
-
-        private static final String CCS_LABEL = "CCS";
-        private static final String RECLAIMED_LABEL = "RECLAIMED";
-        private static final String RAW_READ_LABEL = "RAW";
-
         @Override
         /**
          * {@inheritDoc}
@@ -49,26 +41,9 @@ public class AlignedBaseGraph extends SeqGraph implements Serializable {
          * See {@link AlignedBaseGraphCollection#initializeGraphWithNodes} and {@link AlignedBaseGraphCollection#mergeNodesIntoGraph}.
          */
         public BaseEdge createEdge(final SeqVertex sourceVertex, final SeqVertex targetVertex) {
-
             final String readName = ((AlignedBaseVertex)targetVertex).getReadName();
-
-//            // TODO: DEBUGGING TO BE REMOVED AT CODE REVIEW TIME
-//            System.out.println("ReadName = " + readName);
-//            System.out.println("CCS_PATTERN_FIND = " + CCS_READ_PATTERN.matcher(readName).find());
-//            System.out.println("RECLAIMED_READ_PATTERN_FIND = " + RECLAIMED_READ_PATTERN.matcher(readName).find());
-
-            if ( CCS_READ_PATTERN.matcher(readName).find() ) {
-                // This is a CCS read!
-                return new ReadTypedEdge(CCS_LABEL);
-            }
-            else if ( RECLAIMED_READ_PATTERN.matcher(readName).find() ) {
-                // This is a RECLAIMED read!
-                return new ReadTypedEdge(RECLAIMED_LABEL);
-            }
-            else {
-                // This is a NORMAL read!
-                return new ReadTypedEdge(RAW_READ_LABEL);
-            }
+            final String label = ReadTypedEdge.getReadLabel(readName);
+            return new ReadTypedEdge(label);
         }
     }
 

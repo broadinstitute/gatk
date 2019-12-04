@@ -5,6 +5,7 @@ import htsjdk.samtools.CigarOperator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -27,6 +28,8 @@ public class AlignedBaseGraphCollection implements Serializable {
     private final HashMap<String, GenomicAndInsertionPosition> contigUncollapsedPositionMap = new HashMap<>();
 
     private boolean isGraphCollapsed = false;
+
+    private boolean relabelEdgeTypes = false;
 
     private int numSequencesAdded = 0;
 
@@ -440,13 +443,15 @@ public class AlignedBaseGraphCollection implements Serializable {
                 contigPositionVertexMap.get(contig);
 
         AlignedBaseVertex lastVertex = null;
+        AlignedBaseVertex rawVertex = null;
         AlignedBaseVertex vertex;
 
         boolean lastNodeWasAddedToGraph = false;
 
         // Iterate through our nodes and find the best place to insert them:
         while (nodes.peek() != null) {
-            vertex = nodes.remove();
+            rawVertex = nodes.remove();
+            vertex = rawVertex;
 
             // Get the nodes in the graph that aligns to this one:
             final Set<AlignedBaseVertex> graphVertices = positionVertexMap.get(vertex.getPos());
@@ -499,6 +504,18 @@ public class AlignedBaseGraphCollection implements Serializable {
                     graph.addEdge(lastVertex, vertex);
                 }
                 lastNodeWasAddedToGraph = true;
+            }
+            else if ( relabelEdgeTypes ) {
+                // If we need to relable edges, we should do so:
+                final BaseEdge edge = graph.getEdge(lastVertex, vertex);
+                if ( edge != null ) {
+                    final ReadTypedEdge readTypedEdge = (ReadTypedEdge)edge;
+                    final String newLabel = ReadTypedEdge.getReadLabel(rawVertex);
+                    if ( !readTypedEdge.getReadType().equals(newLabel) ) {
+                        logger.debug("Relabeling edge: " + readTypedEdge.getReadType() + " -> " + newLabel);
+                        readTypedEdge.setReadType(newLabel);
+                    }
+                }
             }
 
             lastVertex = vertex;
@@ -599,6 +616,14 @@ public class AlignedBaseGraphCollection implements Serializable {
             }
         }
         return cigarElementList.get(cigarElementList.size()-1).getOperator();
+    }
+
+    public boolean isRelabelEdgeTypes() {
+        return relabelEdgeTypes;
+    }
+
+    public void setRelabelEdgeTypes(final boolean relabelEdgeTypes) {
+        this.relabelEdgeTypes = relabelEdgeTypes;
     }
 
     //==================================================================================================================

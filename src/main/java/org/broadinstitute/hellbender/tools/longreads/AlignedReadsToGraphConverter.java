@@ -69,6 +69,12 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
     private File outputGraphFile = null;
 
     @Argument(
+            fullName  = "relabel-edge-types",
+            optional = true,
+            doc = "If true, will overwrite types of existing edges when new data are added.")
+    private boolean relabelEdgeTypes = false;
+
+    @Argument(
             fullName  = "create-dot-files",
             optional = true,
             doc = "Create an additional DOT file for each GFA file created.")
@@ -105,6 +111,12 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
         else {
             alignedBaseGraphCollection = deserializeGraphFromFile(inputGraphFile);
         }
+
+        // Propagate our edge relabeling:
+        if ( relabelEdgeTypes ) {
+            logger.info("Relabeling edge types is ENABLED.");
+        }
+        alignedBaseGraphCollection.setRelabelEdgeTypes(relabelEdgeTypes);
     }
 
     @Override
@@ -232,7 +244,7 @@ public class AlignedReadsToGraphConverter extends ReadWalker {
         catch ( final Exception ex ) {
             throw new GATKException("WTF!?!?!?", ex);
         }
-        
+
         logger.info("Read in graph collection with reads: " + alignedBaseGraphCollection.getNumSequencesAdded());
 
         return alignedBaseGraphCollection;
