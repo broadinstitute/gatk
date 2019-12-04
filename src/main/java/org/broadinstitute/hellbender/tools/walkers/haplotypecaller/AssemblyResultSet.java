@@ -427,6 +427,14 @@ public final class AssemblyResultSet {
     }
 
     /**
+     * Returns an unmodifiable view of the kmersizes represented by this results set
+     * @return
+     */
+    public SortedSet<Integer> getKmerSizes() {
+        return Collections.unmodifiableSortedSet(kmerSizes);
+    }
+
+    /**
      * Returns a read-threading graph in the assembly set that has a particular kmerSize.
      *
      * @param kmerSize the requested kmerSize.

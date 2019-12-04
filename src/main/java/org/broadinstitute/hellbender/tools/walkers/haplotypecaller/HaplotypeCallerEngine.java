@@ -721,8 +721,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             assemblyDebugOutStream.close();
         }
         // Write assembly region debug output if present
-        assemblyEngine.printDebugHistograms();
-
+        assemblyEngine.close();
     }
 
     private Set<GATKRead> filterNonPassingReads( final AssemblyRegion activeRegion ) {

@@ -52,6 +52,12 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="padding-around-snps", doc = "Include at least this many bases around an event for calling snps", optional = true)
     public int snpPadding = 20;
 
+    /**
+     * This argument is meant for debugging and is not immediately useful for normal analysis use.
+     */
+    @Argument(fullName="active-region-out", doc="Write debug interval list file containing summary info about each active region", optional = true)
+    public String assemblyRegionOutput = null;
+
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
     // -----------------------------------------------------------------------------------------------
@@ -61,7 +67,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Advanced
     @Argument(fullName= KMER_SIZE_LONG_NAME, doc="Kmer size to use in the read threading assembler", optional = true)
-    public List<Integer> kmerSizes = Lists.newArrayList( 10, 25);
+    public List<Integer> kmerSizes = Lists.newArrayList(  25);
 
     /**
      * When graph cycles are detected, the normal behavior is to increase kmer sizes iteratively until the cycles are
@@ -159,7 +165,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Hidden
     @Argument(fullName="linked-de-bruijn-graph", doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
-    public boolean useLinkedDeBrujinGraph = false;
+    public boolean useLinkedDeBrujinGraph = true;
 
     /**
      * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the GraphBasedKBestHaplotypeFinder

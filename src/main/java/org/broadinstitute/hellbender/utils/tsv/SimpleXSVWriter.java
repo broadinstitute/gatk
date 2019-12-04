@@ -30,6 +30,7 @@ public class SimpleXSVWriter implements Closeable {
     private int expectedNumColumns;
     private Map<String, Integer> headerMap = null;
     private CSVWriter outputWriter;
+    private String headerDelimiter;
 
     // The current incomplete line in the writer.
     private LineBuilder currentLineBuilder = null;
@@ -42,9 +43,13 @@ public class SimpleXSVWriter implements Closeable {
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
     public SimpleXSVWriter(final Path path, final char separator) throws IOException {
+        this (path, separator, "");
+    }
+
+    public SimpleXSVWriter(final Path path, final char separator, final String headerDelimiter) throws IOException {
         this( new OutputStreamWriter(
                 Files.newOutputStream(Utils.nonNull(path, "The path cannot be null."))),
-        separator);
+        separator, headerDelimiter);
     }
 
     /**
@@ -54,9 +59,10 @@ public class SimpleXSVWriter implements Closeable {
      * @param separator    separator to use for the TSV file
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
-    public SimpleXSVWriter(final Writer writer, final char separator) {
+    public SimpleXSVWriter(final Writer writer, final char separator, final String headerDelimiter) {
         Utils.validate(separator!='\n', "Column separator cannot be a newline character");
         outputWriter = new CSVWriter(writer, separator);
+        this.headerDelimiter = headerDelimiter;
     }
 
     /**
@@ -69,10 +75,17 @@ public class SimpleXSVWriter implements Closeable {
      * @param columns Ordered list of header lines to be built into the XSV
      */
     public void setHeaderLine(List<String> columns) {
+        Utils.nonEmpty(columns);
         if (headerMap != null) {
             throw new GATKException("Cannot modify header line once set");
         }
-        outputWriter.writeNext(columns.toArray(new String[0]), false);
+
+        List<String> headerLineModified = new ArrayList<>(columns);
+        if (headerDelimiter != null && !headerDelimiter.equals("")) {
+            headerLineModified.add(0, headerDelimiter);
+        }
+
+        outputWriter.writeNext(headerLineModified.toArray(new String[0]), false);
         expectedNumColumns = columns.size();
 
         // Create the mapping between header and column
