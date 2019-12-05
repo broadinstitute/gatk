@@ -358,8 +358,7 @@ public final class GnarlyGenotyperEngine {
                     // TODO: Just a workaround for now as the default LazyParser invoked by VCFCodec does not return int[] for "SB" field
                     try {
                         String[] sbbsStr  = ((String) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)).split(",");
-                        int[] sbbsInt = Arrays.stream(sbbsStr).map(String::trim).mapToInt(Integer::parseInt).toArray();
-                        MathUtils.addToArrayInPlace(SBsum, Arrays.stream(sbbsStr).mapToInt(Integer::parseInt).toArray());
+                        MathUtils.addToArrayInPlace(SBsum, Arrays.stream(sbbsStr).map(String::trim).mapToInt(Integer::parseInt).toArray());
                     } catch (final Exception ex) {
                         throw new IllegalStateException("The GnarlyGenotyper tool assumes that input variants have SB FORMAT "
                                 + "fields that have already been parsed into ArrayLists or "
