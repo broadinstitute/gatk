@@ -519,7 +519,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Collections.emptySet(),
                         Collections.emptySet(),
                         Collections.emptySet()),
-                        Arrays.asList(".|PASS", ".|PASS", ".|possible_numt", ".|PASS|possible_numt|possible_numt", ".|PASS", ".|PASS")},
+                        Arrays.asList( ".|PASS", ".|PASS", ".|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, ".|PASS|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME + "|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, ".|PASS", ".|PASS")},
                 {NA12878_MITO_GVCF, .0009, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
@@ -528,7 +528,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME,
                                 GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
                                 GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME)),
-                        Arrays.asList(".|.", ".|PASS|.", ".|possible_numt|.", ".|PASS|PASS|.", ".|possible_numt|.")}
+                        Arrays.asList(".|.", ".|PASS|.", ".|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME + ".", ".|PASS|PASS|.", ".|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME + "|.")}
         };
     }
 
