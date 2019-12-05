@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -23,9 +24,9 @@ public final class ErrorProbabilities {
         probabilitiesByFilterAndAllele = alleleFilters.stream().collect(Collectors.toMap(Function.identity(), f -> f.errorProbability(vc, filteringEngine, referenceContext)));
         probabilitiesByType = Arrays.stream(ErrorType.values()).collect(Collectors.toMap(v -> v, v -> 0.0, (a,b) -> a, () -> new EnumMap<>(ErrorType.class)));
         variantFilters.forEach(f -> probabilitiesByType.compute(f.errorType(), (type,prob) -> Math.max(prob, probabilitiesByFilter.get(f))));
-        alleleFilters.forEach(f -> probabilitiesByType.compute(f.errorType(), (type,prob) ->
-                Math.max(prob,
-                        probabilitiesByFilterAndAllele.get(f).values().stream().max(Double::compare).get())));
+//        alleleFilters.forEach(f -> probabilitiesByType.compute(f.errorType(), (type,prob) ->
+//                Math.max(prob,
+//                        probabilitiesByFilterAndAllele.get(f).values().stream().filter(d -> !d.isNaN()).max(Double::compare).orElseGet(() -> 0.0))));
 
         // treat errors of different types as independent
         double trueProbability = 1;
