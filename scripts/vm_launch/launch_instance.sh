@@ -18,8 +18,6 @@ gcloud compute instances create ${NAME} \
 --image-family ml4cvd-image \
 --boot-disk-type=pd-ssd \
 --boot-disk-size=${DISK_SIZE} \
---disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
---disk=name=survey-tensors2,device-name=survey-tensors2,mode=ro,boot=no,auto-delete=no \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
 --machine-type ${INSTANCE_TYPE} \
