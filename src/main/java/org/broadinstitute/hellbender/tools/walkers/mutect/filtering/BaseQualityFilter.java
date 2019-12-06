@@ -29,10 +29,7 @@ public class BaseQualityFilter extends HardAlleleFilter<Integer> {
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, 0);
         baseQualityByAllele.remove(0); // get rid of ref
-        final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
-
         return baseQualityByAllele.stream().map(qual -> qual < minMedianBaseQuality).collect(Collectors.toList());
-
     }
 
     @Override

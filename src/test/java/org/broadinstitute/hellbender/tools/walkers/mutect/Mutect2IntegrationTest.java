@@ -539,8 +539,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //".|.",
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual|.",
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // ".|weak_evidence, possible_numt|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|PASS|weak_evidence, base_qual|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // ".|weak_evidence, base_qual, possible_numt|."
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD,  VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|PASS|weak_evidence, base_qual|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // ".|weak_evidence, base_qual, map_qual, possible_numt|."
                         )}
         };
     }

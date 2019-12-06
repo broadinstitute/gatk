@@ -263,7 +263,7 @@ public class Mutect2FilteringEngine {
     private void buildFiltersList(final M2FiltersArgumentCollection MTFAC) {
         alleleFilters.add(new TumorEvidenceFilter());
         alleleFilters.add(new BaseQualityFilter(MTFAC.minMedianBaseQuality));
-        filters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
+        alleleFilters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
         filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
         filters.add(new StrandArtifactFilter());
         filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
