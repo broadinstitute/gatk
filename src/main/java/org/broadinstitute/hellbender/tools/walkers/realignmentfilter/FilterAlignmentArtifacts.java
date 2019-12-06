@@ -191,7 +191,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         haplotypeBAMWriter = bamOutputPath == null ? Optional.empty() :
-                Optional.of(new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, IOUtils.getPath(bamOutputPath), true, false, bamHeader));
+                Optional.of(new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, IOUtils.getPath(bamOutputPath), true, false, getHeaderForSAMWriter()));
     }
 
     @Override

@@ -44,7 +44,7 @@ public abstract class HaplotypeBAMDestination {
         readGroups.add(rgRec);
         bamOutputHeader.setReadGroups(readGroups);
         final List<SAMProgramRecord> programRecords = new ArrayList<>(sourceHeader.getProgramRecords());
-        programRecords.add(new SAMProgramRecord("HalpotypeBAMWriter"));
+        programRecords.add(new SAMProgramRecord("HaplotypeBAMWriter"));
         bamOutputHeader.setProgramRecords(programRecords);
     }
 
