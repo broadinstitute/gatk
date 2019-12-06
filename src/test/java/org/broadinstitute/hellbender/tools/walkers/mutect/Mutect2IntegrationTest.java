@@ -519,7 +519,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Collections.emptySet(),
                         Collections.emptySet(),
                         Collections.emptySet()),
-                        Arrays.asList( ".|PASS", ".|PASS", ".|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, ".|PASS|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME + "|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, ".|PASS", ".|PASS")},
+                        Arrays.asList(
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4 , GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, possible_numt|possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4)  // .|PASS
+                        )},
                 {NA12878_MITO_GVCF, .0009, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME),
@@ -528,12 +535,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME,
                                 GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
                                 GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME)),
-                        Arrays.asList(".|.", ".|PASS|.", ".|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME + ".", ".|PASS|PASS|.", ".|" + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME + "|.")}
+                        Arrays.asList(
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //".|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // ".|weak_evidence, possible_numt|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|PASS|weak_evidence, base_qual|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // ".|weak_evidence, base_qual, possible_numt|."
+                        )}
         };
     }
 
     @Test(dataProvider = "vcfsForFiltering")
-    public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final double autosomalCoverage, final List<String> intervals, List<Set<String>> expectedFilters, List<String> expectedASFilters)  {
+    public void testFilterMitochondria(File unfiltered, final double minAlleleFraction, final double autosomalCoverage, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         // vcf sequence dicts don't match ref
@@ -551,17 +564,17 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
                 .map(VariantContext::getFilters).collect(Collectors.toList());
 
-        final List<String> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
-                .map(vc -> vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, "")).collect(Collectors.toList());
-        Assert.assertEquals(expectedASFilters, actualASFilters);
+        final List<List<String>> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(vc -> AnnotationUtils.decodeAnyASList(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
+        Assert.assertEquals(actualASFilters, expectedASFilters);
 
-        Assert.assertEquals(expectedFilters.size(), actualFilters.size());
+        Assert.assertEquals(actualFilters.size(), expectedFilters.size());
         for (int n = 0; n < actualFilters.size(); n++) {
             Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)), "Actual filters missing some expected filters: " + SetUtils.difference(expectedFilters.get(n), actualFilters.get(n)));
             Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)), "Expected filters missing some actual filters: " + SetUtils.difference(actualFilters.get(n), expectedFilters.get(n)));
         }
 
-        Assert.assertEquals(expectedFilters, actualFilters);
+        Assert.assertEquals(actualFilters, expectedFilters);
     }
 
     @Test

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -202,12 +201,13 @@ public class Mutect2FilteringEngine {
 
         // apply allele specific filters
         List<String> siteFilters = new ArrayList<>();
-        List<Map<Allele, String>> ASFilters =
-                errorProbabilities.getProbabilitiesByFilterAndAllele().entrySet().stream().map(
+        List<Iterator<String>> ASFilters =
+                errorProbabilities.getProbabilitiesByFilterAndAllele().entrySet().stream().filter(entry -> !entry.getValue().isEmpty()).map(
                 entry -> addFilterStrings(entry.getValue(), siteFilters, entry.getKey().filterName())).collect(Collectors.toList());
 
         siteFilters.forEach(vcb::filter);
-        List<String> orderedASFilterStrings = vc.getAlleles().stream().map(allele -> getMergedFilterStringForAllele(allele, ASFilters)).collect(Collectors.toList());
+        List<String> orderedASFilterStrings = vc.getAlleles().stream().map(allele -> allele.isReference() || allele.isSymbolic() ?
+            VCFConstants.EMPTY_INFO_FIELD : getMergedFilterStringForAllele(ASFilters)).collect(Collectors.toList());
         String finalAttrString = AnnotationUtils.encodeAnyASList(orderedASFilterStrings);
 
         vcb.putAttributes(Collections.singletonMap(GATKVCFConstants.AS_FILTER_STATUS_KEY, finalAttrString));
@@ -217,13 +217,12 @@ public class Mutect2FilteringEngine {
     /**
      * Creates a comma separated string of all the filters that apply to the allele. This is basically
      * a pivot of the data. we have filterlist -> allele -> filterName. and we want allele -> list of filterName
-     * @param allele the allele to collect filters for
      * @param alleleSpecificFilters all of the allele specific filters with the allele filter info
      * @return encoded (comma separated) list of filters that apply to the allele
      */
-    private String getMergedFilterStringForAllele(Allele allele, List<Map<Allele, String>> alleleSpecificFilters) {
+    private String getMergedFilterStringForAllele(List<Iterator<String>> alleleSpecificFilters) {
         // loop through each filter and pull out the filters the specified allele
-        List<String> results = alleleSpecificFilters.stream().map(m -> m.get(allele)).distinct().collect(Collectors.toList());
+        List<String> results = alleleSpecificFilters.stream().map(alleleValuesIterator -> alleleValuesIterator.next()).distinct().collect(Collectors.toList());
         if (results.size() > 1 && results.contains(VCFConstants.PASSES_FILTERS_v4)) {
             results.remove(VCFConstants.PASSES_FILTERS_v4);
         } else if (results.isEmpty()) {
@@ -237,17 +236,16 @@ public class Mutect2FilteringEngine {
      * @param probabilities the probability computed by the filter for the allele
      * @param siteFilters output value - filter name is added if it should apply to the site
      * @param filterName the name of the filter used in the vcf
-     * @return map of alleles to the appropriate filter string
+     * @return Iterator of filters for an allele
      */
-    private Map<Allele,String> addFilterStrings(Map<Allele, Double> probabilities, List<String> siteFilters, String filterName) {
-        Map<Allele,String> results = probabilities.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                entry -> entry.getValue().isNaN() ? VCFConstants.EMPTY_INFO_FIELD : entry.getValue() > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold())) ?
-                        filterName : VCFConstants.PASSES_FILTERS_v4));
-        List<String> realFilters = results.values().stream().filter(x -> !x.equals(VCFConstants.EMPTY_INFO_FIELD)).collect(Collectors.toList());
-        if (!realFilters.isEmpty() && realFilters.stream().allMatch(x -> x.equals(filterName))) {
+    private Iterator<String> addFilterStrings(List<Double> probabilities, List<String> siteFilters, String filterName) {
+        List<String> results = probabilities.stream().map(value -> value > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold())) ?
+                        filterName : VCFConstants.PASSES_FILTERS_v4).collect(Collectors.toList());
+//        List<String> realFilters = results.stream().filter(x -> !x.equals(VCFConstants.EMPTY_INFO_FIELD)).collect(Collectors.toList());
+        if (!results.isEmpty() && results.stream().allMatch(x -> x.equals(filterName))) {
             siteFilters.add(filterName);
         }
-        return results;
+        return results.iterator();
     }
 
     public static double roundFinitePrecisionErrors(final double probability) {
@@ -263,8 +261,8 @@ public class Mutect2FilteringEngine {
     }
 
     private void buildFiltersList(final M2FiltersArgumentCollection MTFAC) {
-        filters.add(new TumorEvidenceFilter());
-        filters.add(new BaseQualityFilter(MTFAC.minMedianBaseQuality));
+        alleleFilters.add(new TumorEvidenceFilter());
+        alleleFilters.add(new BaseQualityFilter(MTFAC.minMedianBaseQuality));
         filters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
         filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
         filters.add(new StrandArtifactFilter());

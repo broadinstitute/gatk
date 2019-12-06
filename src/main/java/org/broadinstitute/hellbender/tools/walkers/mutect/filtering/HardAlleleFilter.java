@@ -5,15 +5,17 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class HardAlleleFilter<T> extends Mutect2AlleleFilter<T> {
-    public void calculateErrorProbabilityForAlleles(LinkedHashMap<Allele, Double> results, final LinkedHashMap<Allele, List<T>> dataByAllele, final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        Map<Allele, Boolean>  alleleArtifacts = areAllelesArtifacts(dataByAllele, vc, filteringEngine, referenceContext);
+    @Override
+    public List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        List<Boolean>  alleleArtifacts = areAllelesArtifacts(vc, filteringEngine, referenceContext);
         // only set values for alleles returned
-        alleleArtifacts.forEach((key, value) -> results.put(key, value ? 1.0 : 0.0));
+        return alleleArtifacts.stream().map(value -> value ? 1.0 : 0.0).collect(Collectors.toList());
     }
 
-    public abstract Map<Allele, Boolean> areAllelesArtifacts(final LinkedHashMap<Allele, List<T>> dataByAllele, final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
+    public abstract List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
 
     // the posterior of a hard filter is 0 or 1, hence there's no reason to annotate it
     @Override

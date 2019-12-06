@@ -4,24 +4,21 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public final class ErrorProbabilities {
     private final Map<Mutect2VariantFilter, Double> probabilitiesByFilter;
-    private final Map<Mutect2AlleleFilter<?>, Map<Allele, Double>> probabilitiesByFilterAndAllele;
+    private final LinkedHashMap<Mutect2AlleleFilter<?>, List<Double>> probabilitiesByFilterAndAllele;
     private final EnumMap<ErrorType, Double> probabilitiesByType;
     private final double errorProbability;
 
 
     public ErrorProbabilities(final List<Mutect2VariantFilter> variantFilters, final List<Mutect2AlleleFilter<?>> alleleFilters, final VariantContext vc, final Mutect2FilteringEngine filteringEngine, final ReferenceContext referenceContext) {
         probabilitiesByFilter = variantFilters.stream().collect(Collectors.toMap(Function.identity(), f -> f.errorProbability(vc, filteringEngine, referenceContext)));
-        probabilitiesByFilterAndAllele = alleleFilters.stream().collect(Collectors.toMap(Function.identity(), f -> f.errorProbability(vc, filteringEngine, referenceContext)));
+        probabilitiesByFilterAndAllele = alleleFilters.stream().collect(Collectors.toMap(Function.identity(), f -> f.errorProbability(vc, filteringEngine, referenceContext), (a,b) -> a, () -> new LinkedHashMap<>()));
         probabilitiesByType = Arrays.stream(ErrorType.values()).collect(Collectors.toMap(v -> v, v -> 0.0, (a,b) -> a, () -> new EnumMap<>(ErrorType.class)));
         variantFilters.forEach(f -> probabilitiesByType.compute(f.errorType(), (type,prob) -> Math.max(prob, probabilitiesByFilter.get(f))));
 //        alleleFilters.forEach(f -> probabilitiesByType.compute(f.errorType(), (type,prob) ->
@@ -41,5 +38,5 @@ public final class ErrorProbabilities {
     public double getTechnicalArtifactProbability() { return probabilitiesByType.get(ErrorType.ARTIFACT); }
     public double getNonSomaticProbability() { return probabilitiesByType.get(ErrorType.NON_SOMATIC); }
     public Map<Mutect2VariantFilter, Double> getProbabilitiesByFilter() { return probabilitiesByFilter; }
-    public Map<Mutect2AlleleFilter<?>, Map<Allele, Double>> getProbabilitiesByFilterAndAllele() { return probabilitiesByFilterAndAllele; }
+    public Map<Mutect2AlleleFilter<?>, List<Double>> getProbabilitiesByFilterAndAllele() { return probabilitiesByFilterAndAllele; }
 }

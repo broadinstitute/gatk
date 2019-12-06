@@ -50,7 +50,7 @@ public final class AnnotationUtils {
      * @return a list of allele-specific annotation entries
      */
     public static List<String> decodeAnyASList( final String somethingList) {
-        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_REDUCED_DELIM));
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_PRINT_DELIM));
     }
 
     /**

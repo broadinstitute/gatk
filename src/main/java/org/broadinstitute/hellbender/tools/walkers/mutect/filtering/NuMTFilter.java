@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.collections.functors.AndPredicate;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -28,7 +29,6 @@ public class NuMTFilter extends HardAlleleFilter<Integer> {
     @Override
     public ErrorType errorType() { return ErrorType.NON_SOMATIC; }
 
-    @Override
     public Predicate<Genotype> checkPreconditions() {
         return Genotype::hasAD;
     }
@@ -38,12 +38,11 @@ public class NuMTFilter extends HardAlleleFilter<Integer> {
     }
 
     @Override
-    public Map<Allele, Boolean> areAllelesArtifacts(final LinkedHashMap<Allele, List<Integer>> dataByAllele, final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+    public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        LinkedHashMap<Allele, List<Integer>> dataByAllele = getDataByAllele(vc, checkPreconditions(), this::getData, filteringEngine);
         return dataByAllele.entrySet().stream()
                 .filter(entry -> !entry.getKey().isSymbolic() && !vc.getReference().equals(entry.getKey()))
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().stream().max(Integer::compare).orElse(0) < maxAltDepthCutoff));
+                .map(entry -> entry.getValue().stream().max(Integer::compare).orElse(0) < maxAltDepthCutoff).collect(Collectors.toList());
     }
 
     @Override
