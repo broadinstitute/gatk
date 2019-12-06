@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
+import java.util.Stack;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -217,6 +218,52 @@ public class CountingReadFilter extends ReadFilter {
                 filteredCount++;
             }
             return accept;
+        }
+
+        @Override
+        protected String getSummaryLineForLevel(final int indentLevel) {
+            if (0 == filteredCount) {
+                return "No reads filtered by: " + getName();
+            }
+            else if(indentLevel == 0)
+            {
+                String simplifiedSummary = getSummaryLineForLevelAllAndsSimplified();
+                if(!simplifiedSummary.isEmpty())
+                    return simplifiedSummary;
+            }
+            return super.getSummaryLineForLevel(indentLevel);
+        }
+
+        /**
+         * @return simplified summary line if this filter consists only of filters joined by AND, otherwise empty String
+         */
+        private String getSummaryLineForLevelAllAndsSimplified()
+        {
+            StringBuilder summaryLine = new StringBuilder();
+
+            Stack<CountingReadFilter> unread = new Stack<>();
+            unread.push(this.lhs);
+            unread.push(this.rhs);
+            CountingReadFilter curFilter;
+
+            while(!unread.empty())
+            {
+                curFilter = unread.pop();
+                if(curFilter.getFilteredCount() > 0) {
+                    if (curFilter instanceof CountingAndReadFilter) {
+                        unread.push(((CountingAndReadFilter) curFilter).lhs);
+                        unread.push(((CountingAndReadFilter) curFilter).rhs);
+                    } else if (curFilter instanceof CountingBinopReadFilter) {
+                        return "";
+                    } else if (curFilter.getFilteredCount() > 0) {
+                        summaryLine.append(curFilter.getSummaryLineForLevel(0));
+                    }
+                }
+            }
+
+            summaryLine.append(this.getFilteredCount() + " total reads filtered");
+
+            return summaryLine.toString();
         }
 
         @Override
