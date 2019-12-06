@@ -83,7 +83,7 @@ public class Mutect2FilteringEngine {
         return somaticClusteringModel.getLogPriorOfSomaticVariant(vc, altIndex);
     }
 
-    private static double posteriorProbabilityOfError(final double logOddsOfRealVersusError, final double logPriorOfReal) {
+    public static double posteriorProbabilityOfError(final double logOddsOfRealVersusError, final double logPriorOfReal) {
         final double[] unweightedPosteriorOfRealAndError = new double[] {logOddsOfRealVersusError + logPriorOfReal,
                 NaturalLogUtils.log1mexp(logPriorOfReal)};
 

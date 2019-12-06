@@ -162,9 +162,7 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
             // final threshold used corresponds exactly to the filters
             filteringEngine.learnThreshold();
         }else if (n == NUMBER_OF_LEARNING_PASSES + 1) {
-            final Path filteringStats = IOUtils.getPath(
-                filteringStatsOutput != null ? filteringStatsOutput
-                    : outputVcf + FILTERING_STATS_EXTENSION);
+            final Path filteringStats = IOUtils.getPath(filteringStatsOutput != null ? filteringStatsOutput : outputVcf + FILTERING_STATS_EXTENSION);
             filteringEngine.writeFilteringStats(filteringStats);
         } else {
             throw new GATKException.ShouldNeverReachHereException("This walker should never reach (zero-indexed) pass " + n);

@@ -565,6 +565,8 @@ public final class MathUtils {
         Utils.validateArg(log10p < 1.0e-18, "log10p: Log10-probability must be 0 or less");
         if (log10p == Double.NEGATIVE_INFINITY){
             return k == 0 ? 0 : Double.NEGATIVE_INFINITY;
+        } else if (log10p == 0) {
+            return k == n ? 0 : Double.NEGATIVE_INFINITY;
         }
         double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
