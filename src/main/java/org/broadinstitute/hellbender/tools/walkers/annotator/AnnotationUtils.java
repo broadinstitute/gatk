@@ -44,13 +44,17 @@ public final class AnnotationUtils {
         return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
     }
 
+    public static List<String> decodeAnyASListWithPrintDelim( final String somethingList) {
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_PRINT_DELIM));
+    }
+
     /**
      * Helper function to convert a comma-separated String (such as a vc.getAttrbute().toString() output) to a List of Strings
      * @param somethingList the allele-specific annotations string; may have brackets
      * @return a list of allele-specific annotation entries
      */
     public static List<String> decodeAnyASList( final String somethingList) {
-        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_PRINT_DELIM));
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_REDUCED_DELIM));
     }
 
     /**

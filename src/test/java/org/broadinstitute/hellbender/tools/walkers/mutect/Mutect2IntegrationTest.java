@@ -566,7 +566,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .map(VariantContext::getFilters).collect(Collectors.toList());
 
         final List<List<String>> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
-                .map(vc -> AnnotationUtils.decodeAnyASList(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
+                .map(vc -> AnnotationUtils.decodeAnyASListWithPrintDelim(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
         Assert.assertEquals(actualASFilters, expectedASFilters);
 
         Assert.assertEquals(actualFilters.size(), expectedFilters.size());
