@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
@@ -99,7 +100,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
     private SomaticReferenceConfidenceModel referenceConfidenceModel = null;
 
-    private final MutableInt callableSites = new MutableInt(0);
+    private final MutableLong callableSites = new MutableLong(0);
 
     private final Optional<F1R2CountsCollector> f1R2CountsCollector;
 
