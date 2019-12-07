@@ -353,7 +353,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
-        assertForEachElementInLists(actualVC, expectedVC, assertion);
+        try {
+            assertForEachElementInLists(actualVC, expectedVC, assertion);
+        } catch (final AssertionError error) {
+            throw error;
+        }
     }
 
     @Test
