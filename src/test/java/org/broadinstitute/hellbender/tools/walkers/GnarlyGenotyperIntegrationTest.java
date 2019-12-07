@@ -11,11 +11,13 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +58,22 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    /**
+     * Have a customized checker as the VariantContextUtils.assertEqualVariants version does a
+     * simplistic ToString() comparison that does not account for differences in Scientific versus Decimal
+     * notations.
+     * @param v1 List of actual variant contexts
+     * @param v2 List of expected variant contexts
+     */
+    private static void assertEqualVariants(
+            final List<VariantContext> v1, final List<VariantContext> v2) {
+        Utils.nonNull(v1, "v1");
+        Utils.nonNull(v2, "v2");
+        Assert.assertEquals(v1.size(), v2.size());
+        for (int i = 0; i < v1.size(); i++) {
+            VariantContextTestUtils.assertVariantContextsAreEqual(v1.get(i), v2.get(i), new ArrayList<String>(), new ArrayList<String>());
+        }
+    }
 
     @Test (dataProvider = "VCFdata")
     public void testUsingGenomicsDB(File[] inputs, File expected, File expectedDb, List<SimpleInterval> intervals, List<String> additionalArguments, String reference) throws IOException {
@@ -72,11 +90,11 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> expectedVC = getVariantContexts(expected);
         final List<VariantContext> actualVC = getVariantContexts(output);
-        VariantContextTestUtils.assertEqualVariants(actualVC, expectedVC);
+        assertEqualVariants(actualVC, expectedVC);
         if (expectedDb != null) {
             final List<VariantContext> expectedDB = getVariantContexts(expectedDb);
             final List<VariantContext> actualDB = getVariantContexts(outputDatabase);
-            VariantContextTestUtils.assertEqualVariants(actualDB, expectedDB);
+            assertEqualVariants(actualDB, expectedDB);
         }
     }
 

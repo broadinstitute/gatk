@@ -5,8 +5,8 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
+import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.readers.LineIterator;
-import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -42,7 +42,6 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GenomicsDBBCFCodec;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -529,7 +528,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                                                        final List<String> attributesToIgnore,
                                                        final boolean produceGTField,
                                                        final boolean sitesOnlyQuery) throws IOException {
-        final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+        final FeatureReader<VariantContext> genomicsDBFeatureReader =
                 getGenomicsDBFeatureReader(workspace, referenceFile, produceGTField, sitesOnlyQuery);
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
@@ -713,6 +712,16 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         return out.iterator();
     }
 
+    /**
+     * Genotype.getAnyAttribute() returns String or Integer based on the VC being decoded fully, so use this routine instead to
+     * guarantee that it is an int.
+     */
+    private static int getAttributeAsInt(Genotype genotype, String key) {
+        Object x = genotype.getExtendedAttribute(key);
+        if (x == null) throw new RuntimeException("Genotype field key does not exist");
+        if (x instanceof Integer) return (Integer)x;
+        return Integer.parseInt((String)x); // throws an exception if this isn't a string
+    }
 
     @Test(dataProvider = "getRenameCombinations")
     public void testRenamingSamples(final Map<String, String> renamingMap, final int threads, final int batchSize) throws IOException {
@@ -732,16 +741,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
         runCommandLine(args);
         final Set<String> expectedSampleNames = sampleMap.keySet();
-        try(final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> reader = getGenomicsDBFeatureReader(workspace, b37_reference_20_21)) {
+        try(final FeatureReader<VariantContext> reader = getGenomicsDBFeatureReader(workspace, b37_reference_20_21)) {
             final CloseableTribbleIterator<VariantContext> iterator = reader.iterator();
             Assert.assertTrue(iterator.hasNext(), "expected to see a variant");
             Assert.assertTrue(expectedSampleNames.size() > 0);
             Assert.assertEquals(expectedSampleNames.size(), renamingMap.size());
             iterator.forEachRemaining(vc -> {
-                   Assert.assertEquals(vc.getSampleNames(), expectedSampleNames);
+                Assert.assertEquals(vc.getSampleNames().size(), expectedSampleNames.size());
+                Assert.assertEqualsNoOrder(vc.getSampleNames().toArray(), expectedSampleNames.toArray());
                 expectedSampleNames.forEach( sample -> {
-                   Assert.assertEquals(vc.getGenotype(sample).getAnyAttribute(SAMPLE_NAME_KEY), renamingMap.get(sample));
-                   Assert.assertEquals(vc.getGenotype(sample).getAnyAttribute(ANOTHER_ATTRIBUTE_KEY), 10); //check another attribute just to make sure we're not mangling things
+                    Assert.assertEquals(vc.getGenotype(sample).getAnyAttribute(SAMPLE_NAME_KEY), renamingMap.get(sample));
+                    //check another attribute just to make sure we're not mangling things
+                    Assert.assertEquals(getAttributeAsInt(vc.getGenotype(sample), ANOTHER_ATTRIBUTE_KEY), 10);
                 });
             });
         }
@@ -819,7 +830,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final String workspace = createTempDir("genomicsdb-tests").getAbsolutePath() + "/workspace";
 
         writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, 1);
-        try(final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+        try(final FeatureReader<VariantContext> genomicsDBFeatureReader =
                     getGenomicsDBFeatureReader(workspace, b38_reference_20_21))
         {
             final VCFHeader header = (VCFHeader) genomicsDBFeatureReader.getHeader();
@@ -840,7 +851,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(Arrays.asList(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf",
                 GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting2.g.vcf"), intervals, workspace, 0, false, 0, 1);
 
-        try ( final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+        try ( final FeatureReader<VariantContext> genomicsDBFeatureReader =
                       getGenomicsDBFeatureReader(workspace, b38_reference_20_21);
 
              final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
@@ -853,14 +864,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         }
 
     }
-    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
+    private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(
             final String workspace, final String reference,
             final boolean produceGTField) throws IOException {
         return getGenomicsDBFeatureReader(workspace, reference,
                 produceGTField, false);
     }
 
-    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
+    private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(
             final String workspace, final String reference,
             final boolean produceGTField,
             final boolean sitesOnlyQuery) throws IOException {
@@ -891,10 +902,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             exportConfigurationBuilder.setVidMapping(vidMapPB);
         }
 
-        return new GenomicsDBFeatureReader<>(exportConfigurationBuilder.build(), new GenomicsDBBCFCodec(), Optional.empty());
+        return new GenomicsDBFeatureReader<>(exportConfigurationBuilder.build(), new VCFCodec(), Optional.empty());
     }
 
-    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
+    private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(
             final String workspace, final String reference) throws IOException {
         return getGenomicsDBFeatureReader(workspace, reference, false);
     }

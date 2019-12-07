@@ -349,15 +349,7 @@ public final class GnarlyGenotyperEngine {
             mergedGenotypes.add(calledGT);
 
             if (g.hasAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
-                try {
-                    @SuppressWarnings("unchecked")
-                    final List<Integer> sbbsList = (ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
-                    MathUtils.addToArrayInPlace(SBsum, Ints.toArray(sbbsList));
-                }
-                catch (final ClassCastException e) {
-                    throw new IllegalStateException("The GnarlyGenotyper tool assumes that input variants have SB FORMAT " +
-                            "fields that have already been parsed into ArrayLists.");
-                }
+                MathUtils.addToArrayInPlace(SBsum, getSBFieldAsIntArray(g));
             }
 
             //running total for AC values
@@ -582,5 +574,35 @@ public final class GnarlyGenotyperEngine {
         }
         return calledAllelePLPositions.stream().distinct().collect(Collectors.toList());
 
+    }
+
+  /**
+   * Parse SB field into an array of ints to pass to MathUtils. This method is required as we cannot always expect the
+   * variant context to be fully decoded.
+   * @param g genotype for a sample
+   * @return int array for the given genotype
+   */
+  private static int[] getSBFieldAsIntArray(Genotype g) {
+      Object sbbsObj = g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
+      if (sbbsObj == null) {
+          return new int[0];
+      } else if (sbbsObj instanceof String) {
+          final String[] sbbsStr = ((String)sbbsObj).split(",");
+          try {
+              return Arrays.stream(sbbsStr).map(String::trim).mapToInt(Integer::parseInt).toArray();
+          } catch (final Exception ex) {
+              throw new IllegalStateException("The GnarlyGenotyper tool assumes that input variants have SB FORMAT "
+                      + " fields as a list of integers separated by commas.", ex);
+          }
+      } else {
+          try {
+              @SuppressWarnings("unchecked")
+              final List<Integer> sbbsList = (ArrayList<Integer>) sbbsObj;
+              return Ints.toArray(sbbsList);
+          } catch (final ClassCastException e) {
+              throw new IllegalStateException("The GnarlyGenotyper tool assumes that input variants have SB FORMAT " +
+                      "fields parsed into ArrayLists.");
+          }
+      }
     }
 }

@@ -64,7 +64,7 @@ final sparkVersion = System.getProperty('spark.version', '2.4.3')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
 final disqVersion = System.getProperty('disq.version','0.3.4')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.1.2.2')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.2.0')
 final testNGVersion = '6.11'
 // Using the shaded version to avoid conflicts between its protobuf dependency
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
