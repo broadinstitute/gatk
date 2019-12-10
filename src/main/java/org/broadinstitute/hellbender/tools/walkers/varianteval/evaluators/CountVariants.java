@@ -191,4 +191,9 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         indelRatePerBp = perLocusRInverseRate(nDeletions + nInsertions + nComplex);
         insertionDeletionRatio = ratio(nInsertions, nDeletions);
     }
+
+    @Override
+    public boolean requiresTerritoryToBeSpecified() {
+        return true;
+    }
 }

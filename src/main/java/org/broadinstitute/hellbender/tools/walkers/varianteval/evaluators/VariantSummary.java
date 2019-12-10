@@ -248,4 +248,9 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         SNPDPPerSample = depthPerSample.meanValue(Type.SNP);
         IndelDPPerSample = depthPerSample.meanValue(Type.INDEL);
     }
+
+    @Override
+    public boolean requiresTerritoryToBeSpecified() {
+        return true;
+    }
 }

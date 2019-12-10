@@ -142,4 +142,9 @@ public class MultiallelicSummary extends VariantEvaluator implements StandardEva
         SNPNoveltyRate = Utils.formattedPercent(all - known, all);
         indelNoveltyRate = Utils.formattedPercent(all - known, all);
     }
+
+    @Override
+    public boolean requiresTerritoryToBeSpecified() {
+        return true;
+    }
 }

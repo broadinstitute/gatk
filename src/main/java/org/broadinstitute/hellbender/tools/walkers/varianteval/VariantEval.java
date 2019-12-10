@@ -29,7 +29,6 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalU
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
@@ -41,6 +40,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -198,7 +199,7 @@ public class VariantEval extends MultiVariantWalker {
     /**
      * See the -list argument to view available modules.
      */
-    @Argument(fullName="eval-module", shortName="EV", doc="One or more specific eval modules to apply to the eval track(s) (in addition to the standard modules, unless -noEV is specified)", optional=true)
+    @Argument(fullName="eval-module", shortName="EV", doc="One or more specific eval modules to apply to the eval track(s) (in addition to the standard modules, unless -no-ev is specified)", optional=true)
     protected List<String> MODULES_TO_USE = new ArrayList<>();
 
     @Argument(fullName="do-not-use-all-standard-modules", shortName="no-ev", doc="Do not use the standard modules by default (instead, only those that are specified with the -EV option)", optional=true)
@@ -236,7 +237,7 @@ public class VariantEval extends MultiVariantWalker {
     /**
      * File containing tribble-readable features for the IntervalStratificiation
      */
-    @Argument(fullName="strat-intervals", shortName="strat-intervals", doc="File containing tribble-readable features for the IntervalStratification", optional=true)
+    @Argument(fullName="strat-intervals", shortName="strat-intervals", doc="File containing tribble-readable features for the IntervalStratificiation", optional=true)
     public FeatureInput<Feature> intervalsFile = null;
 
     /**
@@ -304,9 +305,6 @@ public class VariantEval extends MultiVariantWalker {
 
     // maintain the mapping of FeatureInput to name used in output file
     Map<FeatureInput<VariantContext>, String> inputToNameMap = new HashMap<>();
-
-    private final OneShotLogger territoryUnknownWarningLogger = new OneShotLogger(logger);
-    private int referencePositionsCoveredByVariants = 0;
 
     /**
      * Initialize the stratifications, evaluations, evaluation contexts, and reporting object
@@ -414,6 +412,24 @@ public class VariantEval extends MultiVariantWalker {
                 throw new GATKException(String.format("The ancestral alignments file, '%s', could not be found", ancestralAlignmentsFile.getAbsolutePath()));
             }
         }
+
+        assertThatTerritoryIsSpecifiedIfNecessary();
+    }
+
+    private void assertThatTerritoryIsSpecifiedIfNecessary() {
+        final Set<String> evaluatorsWichRequireTerritory = stratManager.values()
+                .stream()
+                .flatMap(ctx -> ctx.getVariantEvaluators().stream())
+                .filter(Objects::nonNull)
+                .filter(VariantEvaluator::requiresTerritoryToBeSpecified)
+                .map(VariantEvaluator::getSimpleName)
+                .collect(Collectors.toSet());
+        if(!evaluatorsWichRequireTerritory.isEmpty() && getTraversalIntervals() == null){
+            throw new UserException("You specified evaluators which require a covered territory to be specified.  " +
+                    "\nPlease specify intervals or a reference file or disable all of the following evaluators:" +
+                    evaluatorsWichRequireTerritory.stream()
+                            .collect(Collectors.joining(", ")));
+        }
     }
 
     private void checkForIncompatibleEvaluatorsAndStratifiers( final List<VariantStratifier> stratificationObjects,
@@ -492,7 +508,6 @@ public class VariantEval extends MultiVariantWalker {
 
     @Override
     public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        referencePositionsCoveredByVariants += variant.getLengthOnReference();
         aggr.addVariant(variant, readsContext, referenceContext, featureContext);
     }
 
@@ -824,18 +839,21 @@ public class VariantEval extends MultiVariantWalker {
     }
 
     /**
-     *
-     * Get the size of the input intervals or the input reference or the number of reference positions covered by variants.
+     * If an evaluator calls this method it must override {@link VariantEvaluator#requiresTerritoryToBeSpecified()} to return true.
+     * @return either the size of the interval list given to the tool or the size of the reference given to the tool
      */
     public long getnProcessedLoci() {
-        if(getTraversalIntervals() == null) {
-            territoryUnknownWarningLogger.warn("No reference or intervals were provided so it is not clear how much " +
-                    "genomic territory the input covered. Values that are calculated based on the size of the input " +
-                    "territory will not be meaningful.");
-            return referencePositionsCoveredByVariants;
-        } else {
-            return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
+        if(getTraversalIntervals() == null){
+            throw new GATKException("BUG: One of the evaluators used should have overriden requiresTerritoryToBeSpecified, please report this to the developers." +
+                    "\nEvaluators: " + stratManager.values()
+                    .stream()
+                    .flatMap(evaluator -> evaluator.getVariantEvaluators().stream())
+                    .map(VariantEvaluator::getSimpleName)
+                    .sorted()
+                    .distinct()
+                    .collect(Collectors.joining(", ")));
         }
+        return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
     }
 
     public FeatureInput<Feature> getKnownCNVsFile() {
