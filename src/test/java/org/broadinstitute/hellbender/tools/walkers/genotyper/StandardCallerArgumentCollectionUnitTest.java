@@ -122,7 +122,7 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
 
         // The returned map should be officially empty, but return 0.0 on query for any sample (it's a DefaultedMap)
         Assert.assertTrue(returnedContaminationMap.isEmpty());
-        Assert.assertEquals(returnedContaminationMap.get("MySample"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("MySample"), 0.0);
     }
 
     @Test
@@ -135,7 +135,7 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
 
         // The returned map should be officially empty, but return 0.1 on query for any sample (it's a DefaultedMap)
         Assert.assertTrue(returnedContaminationMap.isEmpty());
-        Assert.assertEquals(returnedContaminationMap.get("MySample"), 0.1);
+        Assert.assertEquals((double) returnedContaminationMap.get("MySample"), 0.1);
     }
 
     @Test
@@ -152,10 +152,10 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
         
         // The returned map should be of size 2, and return 0.0 on query for unknown samples (it's a DefaultedMap)
         Assert.assertEquals(returnedContaminationMap.size(), 2);
-        Assert.assertEquals(returnedContaminationMap.get("Sample1"), 0.1);
-        Assert.assertEquals(returnedContaminationMap.get("Sample2"), 0.2);
-        Assert.assertEquals(returnedContaminationMap.get("Sample3"), 0.0);
-        Assert.assertEquals(returnedContaminationMap.get("Sample4"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample1"), 0.1);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample2"), 0.2);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample3"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample4"), 0.0);
     }
 
     @Test
@@ -173,10 +173,10 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
 
         // The returned map should be of size 2, and return 0.05 on query for unknown samples (it's a DefaultedMap)
         Assert.assertEquals(returnedContaminationMap.size(), 2);
-        Assert.assertEquals(returnedContaminationMap.get("Sample1"), 0.1);
-        Assert.assertEquals(returnedContaminationMap.get("Sample2"), 0.2);
-        Assert.assertEquals(returnedContaminationMap.get("Sample3"), 0.05);
-        Assert.assertEquals(returnedContaminationMap.get("Sample4"), 0.05);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample1"), 0.1);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample2"), 0.2);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample3"), 0.05);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample4"), 0.05);
     }
 
     @Test
@@ -194,9 +194,9 @@ public final class StandardCallerArgumentCollectionUnitTest extends GATKBaseTest
 
         // The returned map should be of size 2, and return 0.0 on queries for any sample (it's a DefaultedMap)
         Assert.assertEquals(returnedContaminationMap.size(), 2);
-        Assert.assertEquals(returnedContaminationMap.get("Sample1"), 0.0);
-        Assert.assertEquals(returnedContaminationMap.get("Sample2"), 0.0);
-        Assert.assertEquals(returnedContaminationMap.get("Sample3"), 0.0);
-        Assert.assertEquals(returnedContaminationMap.get("Sample4"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample1"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample2"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample3"), 0.0);
+        Assert.assertEquals((double) returnedContaminationMap.get("Sample4"), 0.0);
     }
 }

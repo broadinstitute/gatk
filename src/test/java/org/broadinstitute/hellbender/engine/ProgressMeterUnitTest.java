@@ -136,7 +136,7 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
                 meter.update(new SimpleInterval("1", 1, 1));
             }
 
-            Assert.assertEquals(meter.secondsSinceLastPrint(), expectedSecondsSinceLastPrint.get(i - 1), "Wrong number of seconds reported since last print");
+            Assert.assertEquals(meter.secondsSinceLastPrint(), (double) expectedSecondsSinceLastPrint.get(i - 1), "Wrong number of seconds reported since last print");
         }
 
     }
