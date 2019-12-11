@@ -357,7 +357,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
         logger.info(String.format("Writing intervals VCF file to %s...", outputIntervalsVCFFile.getAbsolutePath()));
         for (int shardIndex = 0; shardIndex < numShards; shardIndex++) {
-            logger.info(String.format("Analyzing shard %d / %d...", shardIndex, numShards));
+            logger.info(String.format("Analyzing shard %d / %d...", shardIndex + 1, numShards));
             germlineCNVIntervalVariantComposer.writeAll(getShardIntervalCopyNumberPosteriorData(shardIndex));
         }
         intervalsVCFWriter.close();
