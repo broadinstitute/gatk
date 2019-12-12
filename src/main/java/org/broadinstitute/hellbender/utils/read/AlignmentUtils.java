@@ -1247,7 +1247,7 @@ public final class AlignmentUtils {
      * ref   : ACGTAC
      * hap   : AC---C  - 2M3D1M
      * read  : AC---C  - 3M
-     * result: AG---C => 2M3D
+     * result: AC---C => 2M3D1M
      *
      * The constraint here is that both cigars should imply that the result have the same number of
      * reference bases (i.e.g, cigar.getReferenceLength() are equals).

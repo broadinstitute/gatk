@@ -1331,7 +1331,7 @@ public final class AlignmentUtilsUnitTest {
 //        * ref   : ACGTAC
 //        * hap   : AC---C  - 2M3D1M
 //        * read  : AC---C  - 3M
-//        * result: AG---C => 2M3D
+//        * result: AC---C => 2M3D1M
         tests.add(new Object[]{"3M", "2M3D1M", "2M3D1M"});
 
 //        * ref   : ACxG-TA
