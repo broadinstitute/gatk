@@ -55,12 +55,12 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param samples {@inheritDoc}
      * @param doPhysicalPhasing whether to try physical phasing.
      */
-    public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples, final boolean doPhysicalPhasing) {
+    public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples, final boolean doPhysicalPhasing, final boolean applyBQD) {
         super(configuration.standardArgs, samples, false);
         hcArgs = configuration;
         this.doPhysicalPhasing = doPhysicalPhasing;
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.standardArgs.genotypeArgs.samplePloidy);
-        genotypingModel = new IndependentSampleGenotypesModel();
+        genotypingModel = applyBQD ? new DRAGENBQDGenotypesModel() : new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
         snpHeterozygosity = configuration.standardArgs.genotypeArgs.snpHeterozygosity;

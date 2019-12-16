@@ -119,6 +119,14 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
             optional = true)
     public boolean disableOptimizations = false;
 
+
+    /**
+     * These arguments are associated with DRAGEN-GATK
+     */
+    @Advanced
+    @Argument(fullName = "apply-bqd", doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
+    public boolean applyBQD = false;
+
     @Hidden
     @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
     public String keepRG = null;
