@@ -16,7 +16,6 @@ import java.util.List;
  * Either uses a constant 0.005 frequency grid, and projects the AF INFO field value or logit scale from -30 to 30.
  * Requires that AF be present in every ROD, otherwise this stratification throws an exception
  */
-@DocumentedFeature(groupName= "tools", summary = "Stratify by  eval RODs by the allele frequency of the alternate allele") // , extraDocs = {VariantEval.class})
 public class AlleleFrequency extends VariantStratifier {
 
     public enum StratifyingScale {
