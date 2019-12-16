@@ -54,6 +54,10 @@ repositories {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
 
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots" //for disq snapshots
+    }
+
     mavenLocal()
 }
 
@@ -63,7 +67,7 @@ final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.4.3')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
-final disqVersion = System.getProperty('disq.version','0.3.4')
+final disqVersion = System.getProperty('disq.version','0.3.5')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.1.2.2')
 final testNGVersion = '7.0.0'
 // Using the shaded version to avoid conflicts between its protobuf dependency
