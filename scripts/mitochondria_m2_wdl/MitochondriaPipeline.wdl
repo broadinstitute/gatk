@@ -45,8 +45,6 @@ workflow MitochondriaPipeline {
     File mt_shifted_bwt
     File mt_shifted_pac
     File mt_shifted_sa
-    File blacklisted_sites_shifted
-    File blacklisted_sites_shifted_index
 
     File shift_back_chain
 
@@ -115,8 +113,6 @@ workflow MitochondriaPipeline {
       mt_shifted_bwt = mt_shifted_bwt,
       mt_shifted_pac = mt_shifted_pac,
       mt_shifted_sa = mt_shifted_sa,
-      blacklisted_sites_shifted = blacklisted_sites_shifted,
-      blacklisted_sites_shifted_index = blacklisted_sites_shifted_index,
       shift_back_chain = shift_back_chain,
       gatk_override = gatk_override,
       m2_extra_args = m2_extra_args,

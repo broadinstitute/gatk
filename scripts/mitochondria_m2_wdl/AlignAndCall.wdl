@@ -33,8 +33,6 @@ workflow AlignAndCall {
     File mt_shifted_bwt
     File mt_shifted_pac
     File mt_shifted_sa
-    File blacklisted_sites_shifted
-    File blacklisted_sites_shifted_index
 
     File shift_back_chain
 
@@ -417,7 +415,7 @@ task M2 {
       gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
         -R ~{ref_fasta} \
         -I ~{input_bam} \
-        ~{"--genotyping-mode GENOTYPE_GIVEN_ALLELES --alleles " + gga_vcf} \
+        ~{"--alleles " + gga_vcf} \
         -O ~{output_vcf} \
         ~{true='--bam-output bamout.bam' false='' make_bamout} \
         ~{m2_extra_args} \
