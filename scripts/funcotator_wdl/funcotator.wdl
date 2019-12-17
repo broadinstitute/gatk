@@ -87,169 +87,169 @@ workflow Funcotator {
 
 task Funcotate {
 
-     # ==============
-     # Inputs
-     File ref_fasta
-     File ref_fasta_index
-     File ref_dict
+    # ==============
+    # Inputs
+    File ref_fasta
+    File ref_fasta_index
+    File ref_dict
 
-     File input_vcf
-     File input_vcf_idx
+    File input_vcf
+    File input_vcf_idx
 
-     String reference_version
+    String reference_version
 
-     String output_file_base_name
-     String output_format
+    String output_file_base_name
+    String output_format
 
-     Boolean compress
-     Boolean use_gnomad
+    Boolean compress
+    Boolean use_gnomad
 
-     # This should be updated when a new version of the data sources is released
-     # TODO: Make this dynamically chosen in the command.
-     File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+    # This should be updated when a new version of the data sources is released
+    # TODO: Make this dynamically chosen in the command.
+    File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
 
-     String? control_id
-     String? case_id
-     String? sequencing_center
-     String? sequence_source
-     String? transcript_selection_mode
-     File? transcript_selection_list
-     Array[String]? annotation_defaults
-     Array[String]? annotation_overrides
-     Array[String]? funcotator_excluded_fields
-     Boolean? filter_funcotations
-     File? interval_list
+    String? control_id
+    String? case_id
+    String? sequencing_center
+    String? sequence_source
+    String? transcript_selection_mode
+    File? transcript_selection_list
+    Array[String]? annotation_defaults
+    Array[String]? annotation_overrides
+    Array[String]? funcotator_excluded_fields
+    Boolean? filter_funcotations
+    File? interval_list
 
-     String? extra_args
+    String? extra_args
 
-     # ==============
-     # Process input args:
+    # ==============
+    # Process input args:
 
-     String output_maf = output_file_base_name + ".maf"
-     String output_maf_index = output_maf + ".idx"
+    String output_maf = output_file_base_name + ".maf"
+    String output_maf_index = output_maf + ".idx"
 
-     String output_vcf = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
-     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
+    String output_vcf = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
 
-     String output_file = if output_format == "MAF" then output_maf else output_vcf
-     String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_idx
+    String output_file = if output_format == "MAF" then output_maf else output_vcf
+    String output_file_index = if output_format == "MAF" then output_maf_index else output_vcf_idx
 
-     String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
-     String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
-     String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
-     String filter_funcotations_args = if defined(filter_funcotations) && (filter_funcotations) then " --remove-filtered-variants " else ""
-     String excluded_fields_args = if defined(funcotator_excluded_fields) then " --exclude-field " else ""
+    String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
+    String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
+    String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
+    String filter_funcotations_args = if defined(filter_funcotations) && (filter_funcotations) then " --remove-filtered-variants " else ""
+    String excluded_fields_args = if defined(funcotator_excluded_fields) then " --exclude-field " else ""
 
-     String interval_list_arg = if defined(interval_list) then " -L " else ""
+    String interval_list_arg = if defined(interval_list) then " -L " else ""
 
-     String extra_args_arg = select_first([extra_args, ""])
+    String extra_args_arg = select_first([extra_args, ""])
 
-     # ==============
-     # Runtime options:
-     String gatk_docker
+    # ==============
+    # Runtime options:
+    String gatk_docker
 
-     File? gatk_override
-     Int? mem
-     Int? preemptible_attempts
-     Int? max_retries
-     Int? disk_space_gb
-     Int? cpu
+    File? gatk_override
+    Int? mem
+    Int? preemptible_attempts
+    Int? max_retries
+    Int? disk_space_gb
+    Int? cpu
 
-     Boolean use_ssd = false
+    Boolean use_ssd = false
 
-     # Mem is in units of GB but our command and memory runtime values are in MB
-     Int default_ram_mb = 1024 * 3
-     Int machine_mem = if defined(mem) then mem *1024 else default_ram_mb
-     Int command_mem = machine_mem - 1024
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int default_ram_mb = 1024 * 3
+    Int machine_mem = if defined(mem) then mem *1024 else default_ram_mb
+    Int command_mem = machine_mem - 1024
 
-     # Calculate disk size:
-     Float ref_size_gb = size(ref_fasta, "GiB") + size(ref_fasta_index, "GiB") + size(ref_dict, "GiB")
-     Float vcf_size_gb = size(input_vcf, "GiB") + size(input_vcf_idx, "GiB")
-     Float ds_size_gb = size(data_sources_tar_gz, "GiB")
+    # Calculate disk size:
+    Float ref_size_gb = size(ref_fasta, "GiB") + size(ref_fasta_index, "GiB") + size(ref_dict, "GiB")
+    Float vcf_size_gb = size(input_vcf, "GiB") + size(input_vcf_idx, "GiB")
+    Float ds_size_gb = size(data_sources_tar_gz, "GiB")
 
-     Int default_disk_space_gb = ceil( ref_size_gb + (ds_size_gb * 2) + (vcf_size_gb * 10) ) + 20
+    Int default_disk_space_gb = ceil( ref_size_gb + (ds_size_gb * 2) + (vcf_size_gb * 10) ) + 20
 
-     # Silly hack to allow us to use the dollar sign in the command section:
-     String dollar = "$"
+    # Silly hack to allow us to use the dollar sign in the command section:
+    String dollar = "$"
 
-     command <<<
-         set -e
-         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-         # =======================================
-         # Hack to validate our WDL inputs:
-         #
-         # NOTE: This happens here so that we don't waste time copying down the data sources if there's an error.
+        # =======================================
+        # Hack to validate our WDL inputs:
+        #
+        # NOTE: This happens here so that we don't waste time copying down the data sources if there's an error.
 
-         if [[ "${output_format}" != "MAF" ]] && [[ "${output_format}" != "VCF" ]] ; then
+        if [[ "${output_format}" != "MAF" ]] && [[ "${output_format}" != "VCF" ]] ; then
             echo "ERROR: Output format must be MAF or VCF."
-         fi
+        fi
 
-         # =======================================
-         # Handle our data sources:
+        # =======================================
+        # Handle our data sources:
 
-         # Extract the tar.gz:
-         echo "Extracting data sources tar/gzip file..."
-         mkdir datasources_dir
-         tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
-         DATA_SOURCES_FOLDER="$PWD/datasources_dir"
+        # Extract the tar.gz:
+        echo "Extracting data sources tar/gzip file..."
+        mkdir datasources_dir
+        tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+        DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
-         # Handle gnomAD:
-         if ${use_gnomad} ; then
-             echo "Enabling gnomAD..."
-             for potential_gnomad_gz in gnomAD_exome.tar.gz gnomAD_genome.tar.gz ; do
-                 if [[ -f ${dollar}{DATA_SOURCES_FOLDER}/${dollar}{potential_gnomad_gz} ]] ; then
-                     cd ${dollar}{DATA_SOURCES_FOLDER}
-                     tar -zvxf ${dollar}{potential_gnomad_gz}
-                     cd -
-                 else
-                     echo "ERROR: Cannot find gnomAD folder: ${dollar}{potential_gnomad_gz}" 1>&2
-                     false
-                 fi
-             done
-         fi
+        # Handle gnomAD:
+        if ${use_gnomad} ; then
+            echo "Enabling gnomAD..."
+            for potential_gnomad_gz in gnomAD_exome.tar.gz gnomAD_genome.tar.gz ; do
+                if [[ -f ${dollar}{DATA_SOURCES_FOLDER}/${dollar}{potential_gnomad_gz} ]] ; then
+                    cd ${dollar}{DATA_SOURCES_FOLDER}
+                    tar -zvxf ${dollar}{potential_gnomad_gz}
+                    cd -
+                else
+                    echo "ERROR: Cannot find gnomAD folder: ${dollar}{potential_gnomad_gz}" 1>&2
+                    false
+                fi
+            done
+        fi
 
-         # =======================================
-         # Run Funcotator:
-         gatk --java-options "-Xmx${command_mem}m" Funcotator \
-             --data-sources-path $DATA_SOURCES_FOLDER \
-             --ref-version ${reference_version} \
-             --output-file-format ${output_format} \
-             -R ${ref_fasta} \
-             -V ${input_vcf} \
-             -O ${output_file} \
-             ${interval_list_arg} ${default="" interval_list} \
-             --annotation-default normal_barcode:${default="Unknown" control_id} \
-             --annotation-default tumor_barcode:${default="Unknown" case_id} \
-             --annotation-default Center:${default="Unknown" sequencing_center} \
-             --annotation-default source:${default="Unknown" sequence_source} \
-             ${"--transcript-selection-mode " + transcript_selection_mode} \
-             ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
-             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
-             ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
-             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
-             ${filter_funcotations_args} \
-             ${extra_args_arg}
+        # =======================================
+        # Run Funcotator:
+        gatk --java-options "-Xmx${command_mem}m" Funcotator \
+            --data-sources-path $DATA_SOURCES_FOLDER \
+            --ref-version ${reference_version} \
+            --output-file-format ${output_format} \
+            -R ${ref_fasta} \
+            -V ${input_vcf} \
+            -O ${output_file} \
+            ${interval_list_arg} ${default="" interval_list} \
+            --annotation-default normal_barcode:${default="Unknown" control_id} \
+            --annotation-default tumor_barcode:${default="Unknown" case_id} \
+            --annotation-default Center:${default="Unknown" sequencing_center} \
+            --annotation-default source:${default="Unknown" sequence_source} \
+            ${"--transcript-selection-mode " + transcript_selection_mode} \
+            ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
+            ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
+            ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
+            ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
+            ${filter_funcotations_args} \
+            ${extra_args_arg}
 
-         # =======================================
-         # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:
-         if [[ "${output_format}" == "MAF" ]] ; then
+        # =======================================
+        # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:
+        if [[ "${output_format}" == "MAF" ]] ; then
             touch ${output_maf_index}
-         fi
-     >>>
+        fi
+    >>>
 
-     runtime {
-         docker: gatk_docker
-         bootDiskSizeGb: 20
-         memory: machine_mem + " MB"
-         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
-         preemptible: select_first([preemptible_attempts, 3])
-         maxRetries: select_first([max_retries, 0])
-         cpu: select_first([cpu, 1])
-     }
+    runtime {
+        docker: gatk_docker
+        bootDiskSizeGb: 20
+        memory: machine_mem + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        maxRetries: select_first([max_retries, 0])
+        cpu: select_first([cpu, 1])
+    }
 
-     output {
-         File funcotated_output_file = "${output_file}"
-         File funcotated_output_file_index = "${output_file_index}"
-     }
- }
+    output {
+        File funcotated_output_file = "${output_file}"
+        File funcotated_output_file_index = "${output_file_index}"
+    }
+}
