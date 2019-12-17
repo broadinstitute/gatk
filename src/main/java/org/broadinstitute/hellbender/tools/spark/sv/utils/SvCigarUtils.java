@@ -35,9 +35,11 @@ public final class SvCigarUtils {
      * from the start or from the end
      * @param fromStart from the start of the template or not
      * @param cigar     the {@link Cigar} to be inspected
+     * @throws          IllegalArgumentException if the input cigar is null or empty
      */
     @VisibleForTesting
     public static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
+        Utils.nonNull(cigar, "Provided CIGAR is null. Please check if the input is unmapped.");
         return getNumClippedBases(fromStart, cigar.getCigarElements());
     }
 
@@ -46,9 +48,11 @@ public final class SvCigarUtils {
      * from the start or from the end
      * @param fromStart     from the start of the template or not
      * @param cigarElements the ordered {@link CigarElement}'s of a cigar
+     * @throws              IllegalArgumentException if the input cigar is null or empty
      */
     @VisibleForTesting
     public static int getNumClippedBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+        Utils.nonEmpty(cigarElements, "Provided CIGAR elements is empty. Please check if the input is unmapped.");
 
         final int sz = cigarElements.size();
         if(sz==1) return 0; // cannot be a giant clip

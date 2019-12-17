@@ -68,6 +68,18 @@ public class SvCigarUtilsUnitTest extends GATKBaseTest {
         SvCigarUtils.validateCigar(TextCigarCodec.decode("10H10S10I10S10H").getCigarElements());
     }
 
+    @Test(expectedExceptions=IllegalArgumentException.class, groups = "sv")
+    public void testGetNumClippingBases_exceptions() {
+        final Cigar nullCigar = null;
+        SvCigarUtils.getNumClippedBases(true, nullCigar);
+    }
+
+    @Test(expectedExceptions=IllegalArgumentException.class, groups = "sv")
+    public void testGetNumClippingBases_exceptions_list() {
+        final List<CigarElement> cigarElements = new ArrayList<>();
+        SvCigarUtils.getNumClippedBases(true, cigarElements);
+    }
+
     @Test(groups = "sv")
     public void testGetNumClippingBases_hardAndSoftSeparately() {
         List<CigarElement> cigarElements = TextCigarCodec.decode("10H20S30M40D50M60S70H").getCigarElements();
