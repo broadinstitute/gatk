@@ -467,6 +467,16 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runMutect2(bam, outputVcf, "20:10018000-10020000", b37Reference, Optional.empty());
     }
 
+    // In the rare case that a particular fragment is only supported by supplementary reads, that should not
+    // result in an exception.  This test ensures that Mutect2 does not fail to finish in that case.
+    @Test
+    public void testBamWithOnlySupplementaryReads() {
+        final File bam = new File(toolsTestDir + "mutect/only_supplementary_reads.bam");
+        final File outputVcf = createTempFile("output", ".vcf");
+
+        runMutect2(bam, outputVcf, "20:10018000-10020000", b37Reference, Optional.empty());
+    }
+
     // basic test on a small chunk of NA12878 mitochondria.  This is not a validation, but rather a sanity check
     // that M2 makes obvious calls, doesn't trip up on the beginning of the circular chromosome, and can handle high depth
     @Test
