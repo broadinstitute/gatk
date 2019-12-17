@@ -78,6 +78,12 @@ public abstract class LocusWalkerByInterval extends LocusWalker {
         logger.info(countedFilter.getSummaryLine());
     }
 
+    @Override
+    // A locusWalkerByIntervalRequires intervals be specified
+    public final boolean requiresIntervals() {
+        return true;
+    }
+
     /**
      * Tool specified list of Locatable objects (which have been read into memory) that will have overlaps queried at each locus
      *

@@ -94,17 +94,6 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
      */
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Base file location to which to write coverage summary information")
     private String baseFileName = null;
-
-    /**
-     * Reads with mapping quality values lower than this threshold will be skipped. This is set to -1 by default to disable the evaluation and ignore this threshold.
-     */
-    @Argument(fullName = "min-mapping-quality", shortName = "mmq", doc = "Minimum mapping quality of reads to count towards depth", optional = true, minValue = 0, maxValue = Integer.MAX_VALUE)
-    private int minMappingQuality = -1;
-    /**
-     * Reads with mapping quality values higher than this threshold will be skipped. The default value is the largest number that can be represented as an integer by the program.
-     */
-    @Argument(fullName = "max-mapping-quality", doc = "Maximum mapping quality of reads to count towards depth", optional = true, minValue = 0, maxValue = Integer.MAX_VALUE)
-    private int maxMappingQuality = Integer.MAX_VALUE;
     /**
      * Bases with quality scores lower than this threshold will be skipped. This is set to -1 by default to disable the evaluation and ignore this threshold.
      */
@@ -141,6 +130,11 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
      */
     @Argument(fullName = "omit-depth-output-at-each-base", doc = "Do not output depth of coverage at each base", optional = true)
     private boolean omitDepthOutput = false;
+    /**
+     * This option simply disables writing separate files for per-sample summary statistics (total, mean, median, quartile coverage per sample). These statistics are still calculated internally, so enabling this option will not improve runtime.
+     */
+    @Argument(fullName = "omit-per-sample-statistics", doc = "Do not output the summary files per-sample", optional = true)
+    private boolean omitSampleSummary = false;
 
     /**
      * Specify a RefSeq file for use in aggregating coverage statistics over genes.
@@ -193,11 +187,6 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
     @Argument(fullName = "nBins", doc = "Number of bins to use for granular binning", optional = true, minValue = 0, minRecommendedValue = 1)
     private int nBins = 499;
 
-    /**
-     * This option simply disables writing separate files for per-sample summary statistics (total, mean, median, quartile coverage per sample). These statistics are still calculated internally, so enabling this option will not improve runtime.
-     */
-    @Argument(fullName = "omit-per-sample-stats", doc = "Do not output the summary files per-sample", optional = true)
-    private boolean omitSampleSummary = false;
     /**
      * By default, coverage is partitioning by sample, but it can be any combination of sample, readgroup and/or library.
      */
@@ -288,7 +277,7 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext, Set<Locatable> overlappingIntervals) {
         // TODO evaluate consequences of supporting nonexistant references
         if (includeRefNBases || (hasReference() && BaseUtils.isRegularBase(referenceContext.getBase()))) {
-            final Map<DoCOutputType.Partition, Map<String, int[]>> countsByPartition = CoverageUtils.getBaseCountsByPartition(alignmentContext, minMappingQuality, maxMappingQuality, minBaseQuality, maxBaseQuality, countType, partitionTypes, getHeaderForReads());
+            final Map<DoCOutputType.Partition, Map<String, int[]>> countsByPartition = CoverageUtils.getBaseCountsByPartition(alignmentContext, minBaseQuality, maxBaseQuality, countType, partitionTypes, getHeaderForReads());
 
             if (!omitDepthOutput) {
                 writer.writePerLocusDepthSummary(referenceContext.getInterval(), countsByPartition, globalIdentifierMap, includeDeletions);
@@ -331,23 +320,23 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
      *
      * @param activeInterval
      */
-    public void onIntervalEnd(Locatable activeInterval) {
+    public void onIntervalEnd(final Locatable activeInterval) {
         final DepthOfCoveragePartitionedDataStore partitionerToRemove = activeCoveragePartitioners.remove(activeInterval);
         if (activeInterval instanceof SimpleInterval) {
             // For each partition type we are managing, make sure we update the active statistics table
-            for (DoCOutputType.Partition p : partitionTypes) {
-                // Write the per-interval depth information as necessary
-                final DepthOfCoverageStats coverageByAggregationPartitionType = partitionerToRemove.getCoverageByAggregationType(p);
-                writer.writePerIntervalDepthInformation(p, (SimpleInterval) activeInterval, coverageByAggregationPartitionType, globalIdentifierMap.get(p));
+            if (!omitIntervals) {
+                for (DoCOutputType.Partition p : partitionTypes) {
+                    // Write the per-interval depth information as necessary
+                    final DepthOfCoverageStats coverageByAggregationPartitionType = partitionerToRemove.getCoverageByAggregationType(p);
 
-                // Create a new table if necessary
-                if (!perIntervalStatisticsAggrigationByPartitioning.containsKey(p)) {
-                    perIntervalStatisticsAggrigationByPartitioning.put(p, new int[coverageByAggregationPartitionType.getHistograms().size()][coverageByAggregationPartitionType.getEndpoints().length + 1]);
+                    // Create a new table if necessary
+                    if (!perIntervalStatisticsAggrigationByPartitioning.containsKey(p)) {
+                        perIntervalStatisticsAggrigationByPartitioning.put(p, new int[coverageByAggregationPartitionType.getHistograms().size()][coverageByAggregationPartitionType.getEndpoints().length + 1]);
+                    }
+                    // Update the target table to reflect the updated coverage information for this target
+                    CoverageUtils.updateTargetTable(perIntervalStatisticsAggrigationByPartitioning.get(p), coverageByAggregationPartitionType);
                 }
-                // Update the target table to reflect the updated coverage information for this target
-                CoverageUtils.updateTargetTable(perIntervalStatisticsAggrigationByPartitioning.get(p), coverageByAggregationPartitionType);
             }
-
 
         } else if (activeInterval instanceof RefSeqFeature) {
             DepthOfCoverageStats coverageBySample = partitionerToRemove.getCoverageByAggregationType(DoCOutputType.Partition.sample);

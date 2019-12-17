@@ -87,20 +87,18 @@ public class CoverageUtils {
      * {@link DoCOutputType.Partition} and then by sampleID.
      *
      * @param context Alignment context to compute base counts over
-     * @param minMapQ nimmun mapping qualiyt
-     * @param maxMapQ
-     * @param minBaseQ
-     * @param maxBaseQ
+     * @param minBaseQ minimum base quality for read to be counted towards depth
+     * @param maxBaseQ maximum base quality for read to be counted towards depth
      * @param countType
      * @param types
      * @param header
      * @return
      */
     public static Map<DoCOutputType.Partition,Map<String,int[]>>
-                    getBaseCountsByPartition(AlignmentContext context, int minMapQ, int maxMapQ, byte minBaseQ, byte maxBaseQ, CountPileupType countType, Collection<DoCOutputType.Partition> types, SAMFileHeader header) {
+                    getBaseCountsByPartition(final AlignmentContext context, final byte minBaseQ, final byte maxBaseQ, final CountPileupType countType, final Collection<DoCOutputType.Partition> types, final SAMFileHeader header) {
 
-        Map<DoCOutputType.Partition,Map<String,int[]>> countsByIDByType = new HashMap<>();
-        Map<SAMReadGroupRecord,int[]> countsByRG = getBaseCountsByReadGroup(context, minMapQ, maxMapQ, minBaseQ, maxBaseQ, countType, header);
+        final Map<DoCOutputType.Partition,Map<String,int[]>> countsByIDByType = new HashMap<>();
+        final Map<SAMReadGroupRecord,int[]> countsByRG = getBaseCountsByReadGroup(context, minBaseQ, maxBaseQ, countType, header);
         for (DoCOutputType.Partition t : types ) {
             // iterate through the read group counts and build the type associations
             for ( Map.Entry<SAMReadGroupRecord,int[]> readGroupCountEntry : countsByRG.entrySet() ) {
@@ -134,7 +132,7 @@ public class CoverageUtils {
      *
      * NOTE: this currently doesn't support counts by fragments as was the case in gatk3
      */
-    private static Map<SAMReadGroupRecord,int[]> getBaseCountsByReadGroup(AlignmentContext context, int minMapQ, int maxMapQ, byte minBaseQ, byte maxBaseQ, CountPileupType countType, SAMFileHeader header) {
+    private static Map<SAMReadGroupRecord,int[]> getBaseCountsByReadGroup(final AlignmentContext context, final byte minBaseQ, final byte maxBaseQ, final CountPileupType countType, final SAMFileHeader header) {
         Map<SAMReadGroupRecord, int[]> countsByRG = new HashMap<>();
 
         Map<String, int[]> countsByRGName = new HashMap<>();
@@ -145,9 +143,9 @@ public class CoverageUtils {
         switch (countType) {
 
             case COUNT_READS:
-                for (PileupElement e : context.getBasePileup()) {
-                    if (filterElementFromCount(e, minMapQ, maxMapQ, minBaseQ, maxBaseQ)) {
-                        countPileup.add(e);
+                for (PileupElement read : context.getBasePileup()) {
+                    if (filterElementFromCount(read, minBaseQ, maxBaseQ)) {
+                        countPileup.add(read);
                     }
                 }
                 break;
@@ -187,8 +185,8 @@ public class CoverageUtils {
     }
 
     // Applies the provided mapping and base quality filters to the provided read
-    private static boolean filterElementFromCount(PileupElement e, int minMapQ, int maxMapQ, byte minBaseQ, byte maxBaseQ) {
-        return (e.getMappingQual() >= minMapQ && e.getMappingQual() <= maxMapQ && ( e.getQual() >= minBaseQ && e.getQual() <= maxBaseQ || e.isDeletion() ));
+    private static boolean filterElementFromCount(final PileupElement e, final byte minBaseQ, final byte maxBaseQ) {
+        return ( e.getQual() >= minBaseQ && e.getQual() <= maxBaseQ || e.isDeletion() );
     }
 
     private static void updateCounts(int[] counts, PileupElement e) {

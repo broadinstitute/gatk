@@ -51,6 +51,22 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    // Asserting that the per-base statistics are reasonable when run without an interval list file
+    public void testCoverageBehaviorWhenProvidedNoIntervalFile() throws IOException {
+        final String expectedBaseName = "testCoverageBehaviorWhenProvidedNoIntervalFile";
+        final File baseOutputFile = createTempDir("testCoverageBehaviorWhenProvidedNoIntervalFile");
+        final File output = IOUtils.createTempFileInDirectory( "testNoCoverageDueToFiltering", ".csv", baseOutputFile);
+
+        String cmd = "-R "+hg38Reference+" " +
+        "-I "+largeFileTestDir+"multiSampleSubsetted.bam"+
+        " -O "+output.getAbsolutePath() + " -L chr1:1570000-1571000 --omit-interval-statistics --omit-locus-table --omit-per-sample-statistics";
+        runCommandLine(cmd.split(" "));
+        File[] actualFiles = baseOutputFile.listFiles();
+
+        compareOutputDirectories(expectedBaseName, output.getName(), actualFiles);
+    }
+
+    @Test
     // Coverage drops to nothing because '--max-base-quality 4' is set, resuling in very poor output coverage
     public void testNoCoverageDueToFiltering() throws IOException {
         final String expectedBaseName = "depthofcoveragenwithiltering";
@@ -81,7 +97,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L",getTestFile("artificial.gene_target.interval_list").getAbsolutePath(),
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "-mmq","0","-mbq","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-stats",
+                "-mmq","0","-mbq","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 
@@ -101,7 +117,6 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         cmd.addReference(new File(hg38Reference));
         cmd.addInput(new File(largeFileTestDir+"multiSampleSubsetted.bam"));
         cmd.addArgument("min-base-quality","0");
-        cmd.addArgument("min-mapping-quality","0");
         cmd.addArgument("include-deletions");
         cmd.addArgument("partition-type", "sample");
         cmd.addArgument("omit-depth-output-at-each-base");
