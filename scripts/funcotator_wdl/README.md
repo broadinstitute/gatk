@@ -36,7 +36,7 @@ String output_file_name             - Path to desired output file.
 
 String output_format                - Output file format (either VCF or MAF).
 
-Boolean compress				      - Whether to compress the resulting output file.
+Boolean compress				    - Whether to compress the resulting output file.
 
 Boolean use_gnomad                  - If true, will enable the gnomAD data sources in the data source tar.gz, if they exist.
 
@@ -86,6 +86,6 @@ The follwing is an example of a JSON input file.  It will not work as-is but is 
 
 ## Further Information
  - https://software.broadinstitute.org/gatk/documentation/article?id=11193
- - https://software.broadinstitute.org/gatk/documentation/tooldocs/4.1.2.0/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php
+ - https://software.broadinstitute.org/gatk/documentation/tooldocs/4.1.4.0/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php
  
  
