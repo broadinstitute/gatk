@@ -821,6 +821,20 @@ public final class ReadFilterLibraryUnitTest {
     }
 
     @Test
+    public void testMateDistantReadFilter() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead pairedRead = simpleGoodRead(header);
+        pairedRead.setMateIsUnmapped();
+        Assert.assertFalse(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
+        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.mateTooDistantLength - 1);
+        Assert.assertFalse(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
+        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.mateTooDistantLength);
+        Assert.assertTrue(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
+        pairedRead.setMatePosition("differentContig", pairedRead.getStart());
+        Assert.assertTrue(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
+    }
+
+    @Test
     public void testNonZeroFragmentLengthReadFilter() {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
@@ -829,6 +843,19 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertFalse(NONZERO_FRAGMENT_LENGTH_READ_FILTER.test(read), "NONZERO_FRAGMENT_LENGTH_READ_FILTER " + read.toString());
         read.setFragmentLength(9);
         Assert.assertTrue(NONZERO_FRAGMENT_LENGTH_READ_FILTER.test(read), "NONZERO_FRAGMENT_LENGTH_READ_FILTER " + read.toString());
+    }
+
+    @Test
+    public void testNotProperlyPaired() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setIsPaired(false);
+        Assert.assertFalse(NOT_PROPERLY_PAIRED.test(read), "NOT_PROPERLY_PAIRED " + read.toString());
+        read.setIsPaired(true);
+        read.setIsProperlyPaired(true);
+        Assert.assertFalse(NOT_PROPERLY_PAIRED.test(read), "NOT_PROPERLY_PAIRED " + read.toString());
+        read.setIsProperlyPaired(false);
+        Assert.assertTrue(NOT_PROPERLY_PAIRED.test(read), "NOT_PROPERLY_PAIRED " + read.toString());
     }
 
     @Test
