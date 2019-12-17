@@ -86,6 +86,6 @@ The follwing is an example of a JSON input file.  It will not work as-is but is 
 
 ## Further Information
  - https://software.broadinstitute.org/gatk/documentation/article?id=11193
- - https://software.broadinstitute.org/gatk/documentation/tooldocs/4.1.2.0/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php
+ - https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php
  
  
