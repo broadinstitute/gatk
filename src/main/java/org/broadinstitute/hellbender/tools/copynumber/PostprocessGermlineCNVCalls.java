@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -26,6 +27,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -372,7 +374,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
     private void generateIntervalsVCFFileFromAllShards() {
         logger.info("Generating intervals VCF file...");
-        final VariantContextWriter intervalsVCFWriter = createVCFWriter(outputIntervalsVCFFile);
+        final VariantContextWriter intervalsVCFWriter = GATKVariantContextUtils.createVCFWriter(
+                outputIntervalsVCFFile.toPath(), sequenceDictionary, false, Options.INDEX_ON_THE_FLY);
 
         final GermlineCNVIntervalVariantComposer germlineCNVIntervalVariantComposer =
                 new GermlineCNVIntervalVariantComposer(intervalsVCFWriter, sampleName,
@@ -412,7 +415,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
         /* write variants */
         logger.info(String.format("Writing segments VCF file to %s...", outputSegmentsVCFFile.getAbsolutePath()));
-        final VariantContextWriter segmentsVCFWriter = createVCFWriter(outputSegmentsVCFFile);
+        final VariantContextWriter segmentsVCFWriter = GATKVariantContextUtils.createVCFWriter(
+                outputSegmentsVCFFile.toPath(), sequenceDictionary, false, Options.INDEX_ON_THE_FLY);
         final GermlineCNVSegmentVariantComposer germlineCNVSegmentVariantComposer =
                 new GermlineCNVSegmentVariantComposer(segmentsVCFWriter, sampleName,
                         refAutosomalIntegerCopyNumberState, allosomalContigSet);

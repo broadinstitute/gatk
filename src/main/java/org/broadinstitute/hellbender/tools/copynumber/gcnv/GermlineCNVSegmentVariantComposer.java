@@ -128,7 +128,7 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
         int copyNumberCall = segment.getCallIntegerCopyNumberState().getCopyNumber();
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
-        variantContextBuilder.alleles(ALL_ALLELES);
+        //variantContextBuilder.alleles(ALL_ALLELES);
         variantContextBuilder.chr(contig);
         variantContextBuilder.start(start);
         variantContextBuilder.stop(end);
@@ -155,8 +155,14 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
         genotypeBuilder.attribute(QSE, FastMath.round(segment.getQualityEnd()));
         final Genotype genotype = genotypeBuilder.make();
 
+        final List<Allele> vcAlleles = new ArrayList<>(Collections.singletonList(REF_ALLELE));
+        if (!allele.equals(REF_ALLELE)) {
+            vcAlleles.add(allele);
+        }
+        variantContextBuilder.alleles(vcAlleles);
         variantContextBuilder.attribute(VCFConstants.END_KEY, end);
         variantContextBuilder.genotypes(genotype);
+        variantContextBuilder.log10PError(segment.getQualitySomeCalled()/-10.0);
         return variantContextBuilder.make();
     }
 }
