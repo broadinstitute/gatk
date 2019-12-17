@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -63,12 +64,15 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
     }
 
     @Override
-    public void composeVariantContextHeader(final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
+    public void composeVariantContextHeader(final SAMSequenceDictionary sequenceDictionary,
+                                            final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
         final VCFHeader result = new VCFHeader(Collections.emptySet(), Collections.singletonList(sampleName));
 
         /* add VCF version */
         result.addMetaDataLine(new VCFHeaderLine(VCFHeaderVersion.VCF4_2.getFormatString(),
                 VCFHeaderVersion.VCF4_2.getVersionString()));
+
+        result.setSequenceDictionary(sequenceDictionary);
 
         /* add default tool header lines */
         vcfDefaultToolHeaderLines.forEach(result::addMetaDataLine);
