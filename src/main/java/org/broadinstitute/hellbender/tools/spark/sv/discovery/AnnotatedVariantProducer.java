@@ -120,7 +120,7 @@ public class AnnotatedVariantProducer implements Serializable {
                 new SVAlignmentLengthFilter(discoveryArgs.minAlignLength));
         for (final VariantContext variant : variants) {
             String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
-            if (svType.equals(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS) || svType.equals(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP)) {
+            if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_INS) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) {
                 if (Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND )
                     continue;
             }

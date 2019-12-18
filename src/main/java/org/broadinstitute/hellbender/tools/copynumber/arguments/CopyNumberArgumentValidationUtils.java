@@ -48,7 +48,7 @@ public final class CopyNumberArgumentValidationUtils {
     }
 
     /**
-     * Validate that a list of locatables is valid and sorted according to a sequence dictionary and contains no duplicates or overlaps.
+     * Validate that a list of locatables is valid and sorted according to a sequence dictionary
      */
     public static <T extends Locatable> void validateIntervals(final List<T> intervals,
                                                                final SAMSequenceDictionary sequenceDictionary) {
@@ -56,9 +56,16 @@ public final class CopyNumberArgumentValidationUtils {
         Utils.nonNull(sequenceDictionary);
         Utils.validateArg(intervals.stream().allMatch(i -> IntervalUtils.intervalIsOnDictionaryContig(new SimpleInterval(i), sequenceDictionary)),
                 "Records contained at least one interval that did not validate against the sequence dictionary.");
-        if (!Ordering.from(IntervalUtils.getDictionaryOrderComparator(sequenceDictionary)).isStrictlyOrdered(intervals)) {
-            throw new IllegalArgumentException("Records were not strictly sorted in dictionary order.");
+        if (!Ordering.from(IntervalUtils.getDictionaryOrderComparator(sequenceDictionary)).isOrdered(intervals)) {
+            throw new IllegalArgumentException("Records were not sorted in dictionary order.");
         }
+    }
+
+    /**
+     * Validate that a list of Locatables does not contain duplicates or overlaps
+     */
+    public static <T extends Locatable> void validateNonOverlappingIntervals(final List<T> intervals,
+                                                                             final SAMSequenceDictionary sequenceDictionary) {
         final OptionalInt failureIndex = IntStream.range(1, intervals.size())
                 .filter(i -> IntervalUtils.overlaps(intervals.get(i - 1), intervals.get(i)))
                 .findFirst();
@@ -67,6 +74,9 @@ public final class CopyNumberArgumentValidationUtils {
             throw new IllegalArgumentException(
                     String.format("Records contain at least two overlapping intervals: %s and %s",
                             intervals.get(index - 1), intervals.get(index)));
+        }
+        if (!Ordering.from(IntervalUtils.getDictionaryOrderComparator(sequenceDictionary)).isStrictlyOrdered(intervals)) {
+            throw new IllegalArgumentException("Records were not strictly sorted in dictionary order.");
         }
     }
 

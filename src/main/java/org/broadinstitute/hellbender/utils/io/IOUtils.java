@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.io;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -651,6 +652,17 @@ public final class IOUtils {
             return new PrintStream(new GZIPOutputStream(filePath.getOutputStream()));
         } else {
             return new PrintStream(filePath.getOutputStream());
+        }
+    }
+
+    /**
+     * Makes a print stream for a file, blocked-gzipping on the fly if the file's name ends with '.gz'.
+     */
+    public static PrintStream makePrintStreamMaybeBlockGzipped(File file, int compressionLevel) throws IOException {
+        if (file.getPath().endsWith(".gz")) {
+            return new PrintStream(new BlockCompressedOutputStream(file, compressionLevel));
+        } else {
+            return new PrintStream(file);
         }
     }
 

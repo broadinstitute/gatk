@@ -38,7 +38,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
     private static final File SIMPLE_LOCATABLE_COLLECTION_MISSING_COLUMN_FILE =
             new File(TEST_SUB_DIR, "locatable-collection-tsv-simple-locatable-collection-missing-column.tsv");
 
-    private static final SampleLocatableMetadata METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
+    static final SampleLocatableMetadata METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
             "test-sample",
             new SAMSequenceDictionary(Arrays.asList(
                     new SAMSequenceRecord("1", 20000),
@@ -54,11 +54,11 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
                     new SimpleLocatable(new SimpleInterval("10", 1, 1), Double.NaN)));
 
     //simple example of a record class
-    private static final class SimpleLocatable implements Locatable {
+    static final class SimpleLocatable implements Locatable {
         private final SimpleInterval interval;
         private final double value;
 
-        private SimpleLocatable(final SimpleInterval interval, final double value) {
+        SimpleLocatable(final SimpleInterval interval, final double value) {
             this.interval = Utils.nonNull(interval);
             this.value = value;
         }
@@ -119,7 +119,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
     }
 
     //simple example of a collection class
-    private static final class SimpleSampleLocatableCollection extends AbstractSampleLocatableCollection<SimpleLocatable> {
+    static final class SimpleSampleLocatableCollection extends AbstractSampleLocatableCollection<SimpleLocatable> {
         enum SimpleLocatableTableColumn {
             CONTIG,
             START,
@@ -148,7 +148,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
             super(inputFile, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
 
-        private SimpleSampleLocatableCollection(final SampleLocatableMetadata metadata,
+        SimpleSampleLocatableCollection(final SampleLocatableMetadata metadata,
                                                 final List<SimpleLocatable> simpleLocatables) {
             super(metadata, simpleLocatables, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
@@ -202,13 +202,15 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
         new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithDuplicates);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    //Overlaps should be allowed, except by subclass NonOverlappingIntegerCopyNumberSegmentCollection
+    @Test()
     public void testIntervalsWithOverlaps() {
         final List<SimpleLocatable> intervalsWithOverlaps = Arrays.asList(
                 new SimpleLocatable(new SimpleInterval("1", 1, 100), 1.),
                 new SimpleLocatable(new SimpleInterval("1", 100, 200), 1.),
                 new SimpleLocatable(new SimpleInterval("2", 1, 1), 1.));
-        new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithOverlaps);
+        final SimpleSampleLocatableCollection overlaps = new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithOverlaps);
+        Assert.assertEquals(overlaps.size(), 3);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

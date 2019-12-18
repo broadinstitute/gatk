@@ -163,6 +163,7 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
         final SampleLocatableMetadata metadata = (SampleLocatableMetadata) simpleCountsFeatureDataSource.getHeader();
         if (overlapIntervals != null) {
             CopyNumberArgumentValidationUtils.validateIntervals(overlapIntervals, metadata.getSequenceDictionary());
+            CopyNumberArgumentValidationUtils.validateNonOverlappingIntervals(overlapIntervals, metadata.getSequenceDictionary());
         }
         simpleCountsFeatureDataSource.setIntervalsForTraversal(overlapIntervals);
         final List<SimpleCount> simpleCounts = ImmutableList.copyOf(simpleCountsFeatureDataSource.iterator());

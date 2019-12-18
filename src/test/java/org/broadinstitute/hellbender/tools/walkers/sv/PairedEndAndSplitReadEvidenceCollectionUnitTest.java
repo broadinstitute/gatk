@@ -8,7 +8,7 @@ import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -86,7 +86,7 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         final GATKRead rightClip = ArtificialReadUtils.createArtificialRead(header, "rightClip", 0, 1000, ArtificialReadUtils.createRandomReadBases(151, false),
                 ArtificialReadUtils.createRandomReadQuals(151), "100M51S");
 
-        final OutputStreamWriter mockSrWriter = Mockito.mock(OutputStreamWriter.class);
+        final PrintStream mockSrWriter = Mockito.mock(PrintStream.class);
 
         PairedEndAndSplitReadEvidenceCollection tool = new PairedEndAndSplitReadEvidenceCollection();
         final PriorityQueue<PairedEndAndSplitReadEvidenceCollection.SplitPos> splitCounts = new PriorityQueue<>(new PairedEndAndSplitReadEvidenceCollection.SplitPosComparator());
@@ -119,8 +119,8 @@ public class PairedEndAndSplitReadEvidenceCollectionUnitTest extends GATKBaseTes
         Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.RIGHT)));
         Assert.assertFalse(counts.containsKey(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1100, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)));
         Assert.assertEquals(counts.get(new PairedEndAndSplitReadEvidenceCollection.SplitPos(1600, PairedEndAndSplitReadEvidenceCollection.POSITION.LEFT)).intValue(), 1);
-        Mockito.verify(mockSrWriter).write("1" + "\t" + 1099 + "\t" + "left" + "\t" + 1 + "\t" + "sample" + "\n");
-        Mockito.verify(mockSrWriter).write("1" + "\t" + 1099 + "\t" + "right" + "\t" + 2 + "\t" + "sample" + "\n");
+        Mockito.verify(mockSrWriter).write(("1" + "\t" + 1099 + "\t" + "left" + "\t" + 1 + "\t" + "sample" + "\n").getBytes());
+        Mockito.verify(mockSrWriter).write(("1" + "\t" + 1099 + "\t" + "right" + "\t" + 2 + "\t" + "sample" + "\n").getBytes());
         Mockito.verifyNoMoreInteractions(mockSrWriter);
 
     }

@@ -29,7 +29,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -85,7 +84,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
     private static final String MAPPING_FULL_NAME = "alias-to-key-mapping";
 
     @Argument(
-            doc = "Input segment file (tab-separated values).  Must have a call column.",
+            doc = "Input segment file URI (tab-separated values).  Must have a call column.",
             fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME
     )
     private GATKPath segmentFile;
@@ -205,7 +204,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
     }
 
     @Override
-    public GATKPath getDrivingFeaturePath() {
+    public GATKPath getDrivingFeaturesPath() {
         return segmentFile;
     }
 

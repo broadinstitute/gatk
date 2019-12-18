@@ -16,6 +16,7 @@ channels:
 # verify that key dependencies are installed from the correct channel and compiled against MKL
 - conda-forge
 - defaults
+- pytorch
 dependencies:
 
 # core python dependencies
@@ -26,21 +27,11 @@ dependencies:
 - conda-forge::numpy=1.17.5         # do not update, this will break scipy=1.0.0
                                     #   verify that numpy is compiled against MKL (e.g., by checking *_mkl_info using numpy.show_config())
                                     #   and that it is used in tensorflow, theano, and other key dependencies
-- conda-forge::theano=1.0.4         # it is unlikely that new versions of theano will be released
-                                    #   verify that this is using numpy compiled against MKL (e.g., by the presence of -lmkl_rt in theano.config.blas.ldflags)
-- defaults::tensorflow=1.15.0       # update only if absolutely necessary, as this may cause conflicts with other core dependencies
-                                    #   verify that this is using numpy compiled against MKL (e.g., by checking tensorflow.pywrap_tensorflow.IsMklEnabled())
-- conda-forge::scipy=1.0.0          # do not update, this will break a scipy.misc.logsumexp import (deprecated in scipy=1.0.0) in pymc3=3.1
-- conda-forge::pymc3=3.1            # do not update, this will break gcnvkernel
-- conda-forge::h5py=2.10.0          # required by keras 2.2.4
-- conda-forge::keras=2.2.4          # updated from pip-installed 2.2.0, which caused various conflicts/clobbers of conda-installed packages
-                                    #   conda-installed 2.2.4 appears to be the most recent version with a consistent API and without conflicts/clobbers
-                                    #   if you wish to update, note that versions of conda-forge::keras after 2.2.5
-                                    #   undesirably set the environment variable KERAS_BACKEND = theano by default
+
 - defaults::intel-openmp=2019.4
-- conda-forge::scikit-learn=0.22.2
 - conda-forge::matplotlib=3.2.1
 - conda-forge::pandas=1.0.3
+- pytorch::pytorch=1.6.0
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=3.6.2
@@ -58,6 +49,8 @@ dependencies:
 - pyvcf=0.6.8
 - bioconda::pysam=0.15.3            # using older conda-installed versions may result in libcrypto / openssl bugs
 
+
 # pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
 - pip:
   - gatkPythonPackageArchive.zip
+  - pyro-ppl==1.5.0

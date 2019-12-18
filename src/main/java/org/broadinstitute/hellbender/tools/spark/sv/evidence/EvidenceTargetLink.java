@@ -4,12 +4,16 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervals;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Collections;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * This class holds information about pairs of intervals on the reference that are connected by one or more
@@ -28,6 +32,7 @@ public final class EvidenceTargetLink {
     final int readPairs;
     private final Set<String> readPairTemplateNames;
     private final Set<String> splitReadTemplateNames;
+    private static final int NUM_BEDPE_TOKENS = 12;
 
     public EvidenceTargetLink(final StrandedInterval source, final StrandedInterval target,
                               final int splitReads, final int readPairs,
@@ -85,6 +90,65 @@ public final class EvidenceTargetLink {
                 "\t"  + getId(readMetadata) + "\t" +
                 (readPairs + splitReads) + "\t" + (source.getStrand() ? "+" : "-") + "\t" + (target.getStrand() ? "+" : "-")
                 + "\t" + "SR:" + Utils.join(",", splitReadTemplateNames) + "\t" + "RP:" + Utils.join(",", readPairTemplateNames);
+    }
+
+    public static EvidenceTargetLink fromBedpeString(final String str, final SAMSequenceDictionary dictionary) {
+        return fromBedpeString(str, dictionary::getSequenceIndex);
+    }
+    public static EvidenceTargetLink fromBedpeString(final String str, final ReadMetadata readMetadata) {
+        return fromBedpeString(str, readMetadata::getContigID);
+    }
+
+    public static EvidenceTargetLink fromBedpeString(final String str, Function<String,Integer> sequenceNameToIndexFunction) {
+        final String[] tokens = str.split("\t");
+        if (tokens.length != NUM_BEDPE_TOKENS) {
+            throw new IllegalArgumentException("Could not create " + EvidenceTargetLink.class.getSimpleName() + " because " + NUM_BEDPE_TOKENS + " tab-delimited tokens were expected but found " + tokens.length + " in the bedpe string: " + str);
+        }
+        final int sourceContig = sequenceNameToIndexFunction.apply(tokens[0]);
+        final int sourceStart = parseInteger(tokens[1]);
+        final int sourceEnd = parseInteger(tokens[2]);
+        final int targetContig = sequenceNameToIndexFunction.apply(tokens[3]);
+        final int targetStart = parseInteger(tokens[4]);
+        final int targetEnd = parseInteger(tokens[5]);
+        final int numReadPairsAndSplitReads = parseInteger(tokens[7]);
+        final boolean sourceStrand = parseStrand(tokens[8]);
+        final boolean targetStrand = parseStrand(tokens[9]);
+        final Set<String> splitReadNames = parseTemplateNames(tokens[10]);
+        final Set<String> readPairNames = parseTemplateNames(tokens[11]);
+
+        if (numReadPairsAndSplitReads != splitReadNames.size() + readPairNames.size()) {
+            throw new IllegalArgumentException("Sum of split read (" + splitReadNames.size() + ") and read pair (" + readPairNames.size() + ") template names does not equal the listed sum " + numReadPairsAndSplitReads + " in record: " + str);
+        }
+
+        final StrandedInterval source = new StrandedInterval(new SVInterval(sourceContig, sourceStart, sourceEnd), sourceStrand);
+        final StrandedInterval target = new StrandedInterval(new SVInterval(targetContig, targetStart, targetEnd), targetStrand);
+        return new EvidenceTargetLink(source, target, splitReadNames.size(), readPairNames.size(), readPairNames, splitReadNames);
+
+    }
+
+    private static int parseInteger(final String str) {
+        try {
+            return Integer.parseInt(str);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException("Could not parse string as integer: " + str);
+        }
+    }
+
+    private static boolean parseStrand(final String str) {
+        if (str.equals("+")) {
+            return true;
+        } else if (str.equals("-")) {
+            return false;
+        } else {
+            throw new IllegalArgumentException("Unrecognized strand token:" + str);
+        }
+    }
+
+    private static Set<String> parseTemplateNames(final String str) {
+        final String trimmedStr = str.substring(3); //remove "RP:" or "SR:" prefix
+        if (trimmedStr.isEmpty()) return Collections.emptySet();
+        final String[] tokens = trimmedStr.split(",");
+        return Sets.newHashSet(tokens);
     }
 
     private String getId(final ReadMetadata readMetadata) {

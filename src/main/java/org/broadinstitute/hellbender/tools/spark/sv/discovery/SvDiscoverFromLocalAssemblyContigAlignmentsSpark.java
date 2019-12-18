@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,14 +21,17 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsRDDProcessor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
@@ -372,6 +376,123 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     }
 
     //==================================================================================================================
+
+    /**
+     * Apply filters (that implements {@link StructuralVariantFilter}) given list of variants,
+     * and write the variants to a single VCF file.
+     * @param outputPrefixWithSampleName    prefix with sample name
+     * @param variants                      variants to which filters are to be applied and written to file
+     * @param svDiscoveryInputMetaData      metadata for use in filtering and file output
+     */
+    public static void filterAndWriteMergedVCF(final String outputPrefixWithSampleName,
+                                               final List<VariantContext> variants,
+                                               final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+        final List<VariantContext> variantsWithFilterApplied = new ArrayList<>(variants.size());
+        final List<StructuralVariantFilter> filters = Arrays.asList(
+                new SVMappingQualityFilter(svDiscoveryInputMetaData.getDiscoverStageArgs().minMQ),
+                new SVAlignmentLengthFilter(svDiscoveryInputMetaData.getDiscoverStageArgs().minAlignLength));
+        for (final VariantContext variant : variants) {
+            String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
+            if (svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DEL) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_INS) || svType.equals(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)) {
+                if (Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND )
+                    continue;
+            }
+            variantsWithFilterApplied.add(applyFilters(variant, filters));
+        }
+
+        final String out = outputPrefixWithSampleName + MERGED_VCF_FILE_NAME;
+        SVVCFWriter.writeVCF(variantsWithFilterApplied, out,
+                svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
+                svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines(),
+                svDiscoveryInputMetaData.getToolLogger());
+    }
+
+    /**
+     * Filters out variants by testing against provided
+     * filter key, threshold.
+     *
+     * Variants with value below specified threshold (or null value)
+     * are filtered out citing given reason.
+     *
+     * @throws ClassCastException if the value corresponding to provided key cannot be casted as a {@link Double}
+     */
+    private static VariantContext applyFilters(final VariantContext variantContext,
+                                               final List<StructuralVariantFilter> filters) {
+
+        final Set<String> appliedFilters = new HashSet<>();
+        for (final StructuralVariantFilter filter : filters) {
+            if ( !filter.test(variantContext) )
+                appliedFilters.add(filter.getName());
+        }
+
+        if (appliedFilters.isEmpty())
+            return variantContext;
+        else {
+            return new VariantContextBuilder(variantContext).filters(appliedFilters).make();
+        }
+    }
+
+    public interface StructuralVariantFilter extends VariantFilter {
+
+        /**
+         * @return name of filter for use in filtered record
+         */
+        String getName();
+    }
+    public static final class SVMappingQualityFilter implements StructuralVariantFilter {
+        static final long serialVersionUID = 1L;
+
+        private static final String attributeKey = GATKSVVCFConstants.MAPPING_QUALITIES;
+        private final int threshold;
+
+        public SVMappingQualityFilter(final int threshold) {
+            this.threshold = threshold;
+        }
+
+        @Override
+        public String getName() {
+            return GATKSVVCFConstants.ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY;
+        }
+
+        @Override
+        public boolean test(final VariantContext variantContext) {
+            if ( !variantContext.hasAttribute(GATKSVVCFConstants.CONTIG_NAMES) )
+                return true;
+
+            final List<String> mapQuals = SVUtils.getAttributeAsStringList(variantContext, attributeKey);
+            int maxMQ = 0;
+            for (final String mapQual : mapQuals) {
+                Integer integer = Integer.valueOf(mapQual);
+                maxMQ = maxMQ < integer ? integer : maxMQ;
+            }
+            return maxMQ >= threshold;
+        }
+    }
+
+    public static final class SVAlignmentLengthFilter implements StructuralVariantFilter {
+        static final long serialVersionUID = 1L;
+
+        private static final String attributeKey = GATKSVVCFConstants.MAX_ALIGN_LENGTH;
+        private final int threshold;
+
+        public SVAlignmentLengthFilter(final int threshold) {
+            this.threshold = threshold;
+        }
+
+        @Override
+        public String getName() {
+            return GATKSVVCFConstants.ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY;
+        }
+
+        @Override
+        public boolean test(final VariantContext variantContext) {
+            if ( !variantContext.hasAttribute(GATKSVVCFConstants.CONTIG_NAMES) )
+                return true;
+
+            final int alnLength = variantContext.getAttributeAsInt(attributeKey, 0);
+            return alnLength >= threshold;
+        }
+    }
 
     //==================================================================================================================
 

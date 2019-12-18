@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import htsjdk.variant.variantcontext.Allele;
+
 public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
@@ -13,12 +15,16 @@ public final class GATKSVVCFConstants {
     public static final String BREAKEND_STR = "BND";
     public static final String BND_MATEID_STR = "MATEID";
 
+    // symbolic alt allele names
+    public static final String SYMB_ALT_STRING_INV = "INV";
+    public static final String SYMB_ALT_STRING_DEL = "DEL";
+    public static final String SYMB_ALT_STRING_INS = "INS";
+    public static final String SYMB_ALT_STRING_DUP = "DUP";
+    public static final String SYMB_ALT_STRING_INVDUP = "DUP:INV";
+
     // symbolic alt alleles
-    public static final String SYMB_ALT_ALLELE_INV = "INV";
-    public static final String SYMB_ALT_ALLELE_DEL = "DEL";
-    public static final String SYMB_ALT_ALLELE_INS = "INS";
-    public static final String SYMB_ALT_ALLELE_DUP = "DUP";
-    public static final String SYMB_ALT_ALLELE_INVDUP = "DUP:INV";
+    public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
+    public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
 
     // GATK-SV specific header lines
     // TODO: 10/3/17 the following comment is a goal we are trying to achieve
@@ -74,6 +80,12 @@ public final class GATKSVVCFConstants {
     public static final String DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
     public static final String DUP_INV_INTERNAL_ID_START_STRING = "INS-DUPLICATION-INVERTED-EXPANSION";
 
+    // for breakpoint segmentation
+    public static final String ALGORITHMS_ATTRIBUTE = "ALGORITHMS";
+    public static final String STRANDS_ATTRIBUTE = "STRANDS";
+    public static final String DEPTH_ALGORITHM = "depth";
+    public static final String CONTIG2_ATTRIBUTE = "CHR2";
+    public static final String END2_ATTRIBUTE = "END2";
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
@@ -82,6 +94,46 @@ public final class GATKSVVCFConstants {
     // filter block
     public static final String ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY = "LOW_MQ";
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";
+    public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
+    public static final String FREQUENCY_FILTER_KEY = "FREQ";
+
+    // evidence metrics
+    public static final String COPY_NUMBER_LOG_POSTERIORS_KEY = "CNLP";
+    public static final String NEUTRAL_COPY_NUMBER_KEY = "NCN";
+    public static final String DEPTH_P_HARDY_WEINBERG_LOSS_FIELD = "PHW_L";
+    public static final String DEPTH_P_HARDY_WEINBERG_GAIN_FIELD = "PHW_G";
+    public static final String DEPTH_BACKGROUND_FIELD = "ERD";
+    public static final String DEPTH_MEAN_BIAS_FIELD = "PHI_RD";
+    public static String START_SPLIT_READ_COUNT_ATTRIBUTE = "SR1";
+    public static String END_SPLIT_READ_COUNT_ATTRIBUTE = "SR2";
+    public static String DISCORDANT_PAIR_COUNT_ATTRIBUTE = "PE";
+    public static String RAW_CALL_ATTRIBUTE = "RC";
+    public static int RAW_CALL_ATTRIBUTE_TRUE = 1;
+    public static int RAW_CALL_ATTRIBUTE_FALSE = 0;
+
+    // genotyping
+    public static final String COPY_NUMBER_FIELD = "CN";
+    public static final String PAIRED_END_PROB_FIELD = "PPE";
+    public static final String FIRST_SPLIT_READ_PROB_FIELD = "PSR1";
+    public static final String SECOND_SPLIT_READ_PROB_FIELD = "PSR2";
+    public static final String PAIRED_END_BACKGROUND_FIELD = "EPE";
+    public static final String FIRST_SPLIT_READ_BACKGROUND_FIELD = "ESR1";
+    public static final String SECOND_SPLIT_READ_BACKGROUND_FIELD = "ESR2";
+    public static final String PAIRED_END_MEDIAN_BIAS_FIELD = "PHI_PE";
+    public static final String FIRST_SPLIT_READ_MEDIAN_BIAS_FIELD = "PHI_SR1";
+    public static final String SECOND_SPLIT_READ_MEDIAN_BIAS_FIELD = "PHI_SR2";
+    public static final String MEDIAN_HARDY_WEINBERG_Q_FIELD = "HWQ";
+    public static final String MEDIAN_HARDY_WEINBERG_R_FIELD = "HWR";
+
+    public static final String PAIRED_END_BACKGROUND_IQR_FIELD = "EPE_IQR";
+    public static final String FIRST_SPLIT_READ_BACKGROUND_IQR_FIELD = "ESR1_IQR";
+    public static final String SECOND_SPLIT_READ_BACKGROUND_IQR_FIELD = "ESR2_IQR";
+    public static final String PAIRED_END_BIAS_IQR_FIELD = "PHI_PE_IQR";
+    public static final String FIRST_SPLIT_READ_BIAS_IQR_FIELD = "PHI_SR1_IQR";
+    public static final String SECOND_SPLIT_READ_BIAS_IQR_FIELD = "PHI_SR2_IQR";
+    public static final String HARDY_WEINBERG_Q_IQR_FIELD = "HWQ_IQR";
+    public static final String HARDY_WEINBERG_R_IQR_FIELD = "HWR_IQR";
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

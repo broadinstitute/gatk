@@ -8,7 +8,7 @@ import numpy as np
 
 from .segment_quality_utils import HMMSegmentationQualityCalculator
 from .. import types
-from ..io import io_consts, io_commons, io_denoising_calling, io_intervals_and_counts
+from ..io import io_consts, io_commons, io_denoising_calling, io_intervals_and_counts, io_vcf_parsing
 from ..models.model_denoising_calling import DenoisingModelConfig, CopyNumberCallingConfig, \
     HHMMClassAndCopyNumberBasicCaller
 from ..models.theano_hmm import TheanoForwardBackward, TheanoViterbi
@@ -33,7 +33,9 @@ class ViterbiSegmentationEngine:
                  calls_shards_paths: List[str],
                  sample_metadata_collection: SampleMetadataCollection,
                  sample_index: int,
-                 output_path: str):
+                 output_path: str,
+                 combined_intervals_vcf: str = None,
+                 clustered_vcf: str = None):
         """Initializer.
         
         Args:
@@ -42,6 +44,7 @@ class ViterbiSegmentationEngine:
             sample_metadata_collection: sample metadata collection (must contain sample being analyzed)
             sample_index: index of the sample in the callset
             output_path: output path for writing segmentation results
+            clustered_vcf: file with clustered breakpoints and calls for each sample
         """
         try:
             self._validate_args(model_shards_paths, calls_shards_paths, sample_metadata_collection, sample_index)
@@ -54,6 +57,8 @@ class ViterbiSegmentationEngine:
         self.sample_metadata_collection = sample_metadata_collection
         self.denoising_config = self._get_denoising_config(model_shards_paths[0])
         self.calling_config = self._get_calling_config(model_shards_paths[0])
+        self.combined_intervals_vcf = combined_intervals_vcf
+        self.clustered_vcf = clustered_vcf
 
         # assemble scattered global entities (interval list, log_q_tau_tk)
         _logger.info("Assembling interval list and copy-number class posterior from model shards...")
@@ -163,24 +168,35 @@ class ViterbiSegmentationEngine:
             alpha_tc = fb_result.alpha_tc
             beta_tc = fb_result.beta_tc
 
-            # run viterbi algorithm
-            viterbi_path_t_contig = self.theano_viterbi.get_viterbi_path(
-                log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
-
             # initialize the segment quality calculator
             segment_quality_calculator: HMMSegmentationQualityCalculator = HMMSegmentationQualityCalculator(
                 copy_number_log_emission_contig_tc, log_trans_contig_tcc,
                 alpha_tc, beta_tc, log_posterior_prob_tc, log_data_likelihood)
 
-            # coalesce into piecewise constant copy-number segments, calculate qualities
-            for call_copy_number, start_index, end_index in self._coalesce_seq_into_segments(viterbi_path_t_contig):
+            if self.clustered_vcf is None or self.combined_intervals_vcf is None:
+                # TODO: validate args -- should be both none or neither none
+                # run viterbi algorithm
+                viterbi_path_t_contig = self.theano_viterbi.get_viterbi_path(
+                    log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
+
+                # coalesce into piecewise constant copy-number segments
+                segments = self._coalesce_seq_into_segments(viterbi_path_t_contig)
+            else:
+                # use events from clustered_vcf
+                segments = io_vcf_parsing.read_sample_segments_and_calls(self.combined_intervals_vcf, self.clustered_vcf, self.sample_name, contig)
+
+            # calculate qualities
+            for call_copy_number, start_index, end_index in segments:
                 num_points = end_index - start_index + 1
-                segment = IntegerCopyNumberSegment(contig,
-                                                   contig_interval_list[start_index].start,
-                                                   contig_interval_list[end_index].end,
-                                                   num_points,
-                                                   call_copy_number,
-                                                   contig_baseline_copy_number)
+                try:
+                    segment = IntegerCopyNumberSegment(contig,
+                                                       contig_interval_list[start_index].start,
+                                                       contig_interval_list[end_index].end,
+                                                       num_points,
+                                                       call_copy_number,
+                                                       contig_baseline_copy_number)
+                except IndexError:
+                    print("end index out of bounds: {0} requested, max is {1}".format(end_index, len(contig_interval_list)))
                 if num_points > 1:
                     segment.quality_some_called = segment_quality_calculator.get_segment_quality_some_called(
                         start_index, end_index, call_copy_number)
@@ -285,6 +301,8 @@ class ViterbiSegmentationEngine:
         # all scattered calls have the same set of samples and in the same order
         assert len(set(scattered_sample_names)) == 1,\
             "The calls shards contain different sample names and/or different number of samples."
+
+        #TODO: validate sample names in clustered_vcf
 
         # all samples have ploidy calls in the metadata collection
         sample_names = list(scattered_sample_names[0])

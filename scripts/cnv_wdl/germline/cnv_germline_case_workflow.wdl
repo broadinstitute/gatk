@@ -43,6 +43,7 @@ workflow CNVGermlineCaseWorkflow {
       File ref_fasta_fai
       File ref_fasta
       String gatk_docker
+      String gatk_latest_docker
 
       ##################################
       #### optional basic arguments ####
@@ -247,7 +248,7 @@ workflow CNVGermlineCaseWorkflow {
                 contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
                 sample_index = sample_index,
                 gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
+                gatk_docker = gatk_latest_docker,
                 preemptible_attempts = preemptible_attempts
         }
 
@@ -276,9 +277,10 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] sample_contig_ploidy_calls_tars = ScatterPloidyCallsBySample.sample_contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
-        Array[File] genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
-        Array[File] genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
-        Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
+        Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        Array[File] genotyped_intervals_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_intervals_vcf_index
+        Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] genotyped_segments_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_segments_vcf_index
         Array[File] qc_status_files = CollectSampleQualityMetrics.qc_status_file
         Array[String] qc_status_strings = CollectSampleQualityMetrics.qc_status_string
     }

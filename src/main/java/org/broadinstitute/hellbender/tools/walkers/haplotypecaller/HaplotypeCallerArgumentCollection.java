@@ -178,6 +178,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName="debug-genotyper-output", doc ="Location to write genotyper debug stream that contains detailed information about the internal state of the genotyepr", optional = true)
     public String genotyperDebugOutStream = null;
 
+    @Hidden
+    @Advanced
+    @Argument(fullName="debug-genotyper-output", doc ="Location to write genotyper debug stream that contains detailed information about the internal state of the genotyepr", optional = true)
+    public String genotyperDebugOutStream = null;
+
     /**
      * This argument is intended for benchmarking and scalability testing.
      */

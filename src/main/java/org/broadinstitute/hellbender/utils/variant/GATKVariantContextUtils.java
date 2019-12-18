@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.TribbleException;
 import htsjdk.utils.ValidationUtils;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -15,12 +14,12 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -340,6 +339,20 @@ public final class GATKVariantContextUtils {
         }
     }
 
+    private static String formatGP(final double gp) {
+        final String formatted = String.format("%.2f", gp);
+        int last = formatted.length() - 1;
+        if (formatted.charAt(last) == '0') {
+            if (formatted.charAt(--last) == '0') {
+                return formatted.substring(0, --last); // exclude the '.' as-well.
+            } else {
+                return formatted.substring(0, ++last);
+            }
+        } else {
+            return formatted;
+        }
+    }
+
     private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
         if (bestGenotypeIndex < 0) {
             return CommonInfo.NO_LOG10_PERROR;
@@ -378,6 +391,23 @@ public final class GATKVariantContextUtils {
         } else {
             return formatted;
         }
+    }
+
+    /**
+     *
+     * @param ploidy
+     * @param allele
+     * @return (return a single no-call allele for ploidy 0, as on Y for females)
+     */
+    public static List<Allele> makePloidyLengthAlleleList(final int ploidy, final Allele allele) {
+        if (ploidy == 0) {
+            return Arrays.asList(Allele.NO_CALL);
+        }
+        final List<Allele> repeatedList = new ArrayList<>();
+        for (int i = 0; i < ploidy; i++) {
+            repeatedList.add(allele);
+        }
+        return repeatedList;
     }
 
     public static void makeGenotypeCall(final int ploidy,

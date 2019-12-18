@@ -46,7 +46,7 @@ public final class ExampleFeatureWalker extends FeatureWalker<BEDFeature> {
     }
 
     @Override
-    public GATKPath getDrivingFeaturePath() {
+    public GATKPath getDrivingFeaturesPath() {
         return featuresFile;
     }
 

@@ -54,6 +54,34 @@ group.add_argument("--sample_index",
                    default=argparse.SUPPRESS,
                    help="Sample index to process")
 
+# add optional args
+opt_group = parser.add_argument_group(title="Optional arguments")
+
+opt_group.add_argument("--combined_intervals_vcf",
+                       type=str,
+                       required=False,
+                       help="VCF with combined intervals and calls for each sample")
+
+opt_group.add_argument("--clustered_vcf",
+                       type=str,
+                       required=False,
+                       help="VCF with clustered breakpoints and calls for each sample")
+
+opt_group.add_argument("--duplication_qs_threshold",
+                       type=float,
+                       required=False,
+                       help="Filter duplications with QS less than this threshold")
+
+opt_group.add_argument("--het_deletion_qs_threshold",
+                       type=float,
+                       required=False,
+                       help="Filter heterozygous deletions with QS less than this threshold")
+
+opt_group.add_argument("--hom_deletion_qs_threshold",
+                       type=float,
+                       required=False,
+                       help="Filter homozygous deletions with QS less than this threshold")
+
 if __name__ == "__main__":
 
     # parse arguments
@@ -75,5 +103,6 @@ if __name__ == "__main__":
     logger.debug("Calls shards path(s): {0}".format(repr(args.model_shards)))
 
     viterbi_engine = gcnvkernel.ViterbiSegmentationEngine(
-        args.model_shards, args.calls_shards, sample_metadata_collection, args.sample_index, args.output_path)
+        args.model_shards, args.calls_shards, sample_metadata_collection, args.sample_index, args.output_path,
+        args.combined_intervals_vcf, args.clustered_vcf)
     viterbi_engine.write_copy_number_segments()

@@ -32,6 +32,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
       File ref_fasta_fai
       File ref_fasta
       String gatk_docker
+      String gatk_latest_docker
       Int num_samples_per_scatter_block
 
       ##################################
@@ -123,7 +124,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
             num_inputs_in_scatter_block = num_samples_per_scatter_block,
             gatk_docker = gatk_docker
     }
-    
+
     call SplitInputArray as SplitInputBaisList {
         input:
             input_array = normal_bais,
@@ -149,6 +150,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta = ref_fasta,
                 gatk_docker = gatk_docker,
+                gatk_latest_docker = gatk_latest_docker,
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
                 gcs_project_for_requester_pays = gcs_project_for_requester_pays,

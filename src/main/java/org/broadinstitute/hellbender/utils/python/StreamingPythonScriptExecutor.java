@@ -286,9 +286,12 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
      * @return returns null if no previous work to complete, otherwise a completed Future
      */
     public Future<Integer> waitForPreviousBatchCompletion() {
+        if (isAckRequestOutstanding) {
+            waitForAck();
+        }
         // wait for the batch queue to be completely written
         final Future<Integer> numberOfItemsWritten = asyncWriter.waitForPreviousBatchCompletion();
-        if (numberOfItemsWritten != null) {
+        if (isAckRequestOutstanding && numberOfItemsWritten != null) {
             // wait for the written items to be completely consumed
             waitForAck();
         }
