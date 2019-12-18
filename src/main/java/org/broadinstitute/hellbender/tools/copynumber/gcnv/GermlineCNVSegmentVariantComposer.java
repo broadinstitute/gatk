@@ -26,32 +26,32 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
     /**
      * Segment copy-number call
      */
-    static final String CN = "CN";
+    public static final String CN = "CN";
 
     /**
      * Number of points in the segment
      */
-    static final String NP = "NP";
+    public static final String NP = "NP";
 
     /**
      * Quality metric (some points called)
      */
-    static final String QS = "QS";
+    public static final String QS = "QS";
 
     /**
      * Quality metric (all points called)
      */
-    static final String QA = "QA";
+    public static final String QA = "QA";
 
     /**
      * Quality metric (segment start)
      */
-    static final String QSS = "QSS";
+    public static final String QSS = "QSS";
 
     /**
      * Quality metric (segment end)
      */
-    static final String QSE = "QSE";
+    public static final String QSE = "QSE";
 
     private final IntegerCopyNumberState refAutosomalCopyNumberState;
     private final Set<String> allosomalContigSet;
