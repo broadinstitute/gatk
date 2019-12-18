@@ -25,6 +25,8 @@ import java.io.File;
  * equivalent representations randomly or used different aligning conventions), so this tool can be used to left-align
  * them according to convention. </p>
  *
+ *<p><b>This tool will left-align reads with one and only one indel</b>.</p> 
+ *
  * <h3>Input</h3>
  * <p>
  * A BAM or CRAM file to left-align.
