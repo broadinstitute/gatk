@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -12,7 +14,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.*;
 
 @CommandLineProgramProperties(
@@ -44,6 +47,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     HashMap<SplitPos, Integer> splitCounts;
     List<DiscordantRead> discordantPairs;
+    private SAMSequenceDictionary sequenceDictionary;
 
     @Override
     public boolean requiresReads() {
@@ -54,13 +58,14 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        peWriter = new OutputStreamWriter(new BlockCompressedOutputStream(peFile));
-        srWriter = new OutputStreamWriter(new BlockCompressedOutputStream(srFile));
+        peWriter = new OutputStreamWriter(new BlockCompressedOutputStream(peFile, 6));
+        srWriter = new OutputStreamWriter(new BlockCompressedOutputStream(srFile, 6));
 
         splitCounts = new HashMap<>(maxSplitDist * 3);
 
         discordantPairs = new ArrayList<>();
 
+        sequenceDictionary = getBestAvailableSequenceDictionary();
     }
 
     public boolean isExcluded(final GATKRead read) {
@@ -206,7 +211,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         }
 
         if (isSoftClipped(read)) {
-            countSplitRead(read);
+            prevClippedReadEndPos = countSplitRead(read, splitCounts, prevClippedReadEndPos);
         }
 
         if (! read.isProperlyPaired()) {
@@ -218,24 +223,36 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         if (read.getStart() != currentDiscordantPosition) {
             flushDiscordantReadPairs();
             currentDiscordantPosition = read.getStart();
+            observedDiscordantNames.clear();
         }
 
-        final int readSeqId = getBestAvailableSequenceDictionary().getSequenceIndex(read.getContig());
-        final int mateSeqId = getBestAvailableSequenceDictionary().getSequenceIndex(read.getMateContig());
+        final DiscordantRead reportableDiscordantReadPair = getReportableDiscordantReadPair(read, observedDiscordantNames,
+                sequenceDictionary);
+        if (reportableDiscordantReadPair != null) {
+            discordantPairs.add(reportableDiscordantReadPair);
+        }
+    }
+
+    @VisibleForTesting
+    public DiscordantRead getReportableDiscordantReadPair(final GATKRead read, final Set<String> observedDiscordantNamesAtThisLocus,
+                                                          final SAMSequenceDictionary samSequenceDictionary) {
+        final int readSeqId = samSequenceDictionary.getSequenceIndex(read.getContig());
+        final int mateSeqId = samSequenceDictionary.getSequenceIndex(read.getMateContig());
         if (readSeqId < mateSeqId) {
-            discordantPairs.add(new DiscordantRead(read));
+            return new DiscordantRead(read);
         } else if (readSeqId == mateSeqId) {
             if (read.getStart() < read.getMateStart()) {
-                discordantPairs.add(new DiscordantRead(read));
+                return new DiscordantRead(read);
             } else if (read.getStart() == read.getMateStart()) {
-
-                final boolean seenBefore = observedDiscordantNames.remove(read.getName());
+                final boolean seenBefore = observedDiscordantNamesAtThisLocus.remove(read.getName());
                 if (! seenBefore) {
-                    discordantPairs.add(new DiscordantRead(read));
-                    observedDiscordantNames.add(read.getName());
+                    final DiscordantRead discordantRead = new DiscordantRead(read);
+                    observedDiscordantNamesAtThisLocus.add(read.getName());
+                    return discordantRead;
                 }
             }
         }
+        return null;
     }
 
     private void flushDiscordantReadPairs() {
@@ -263,18 +280,19 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         }
     }
 
-    private void countSplitRead(final GATKRead read) {
+    private int countSplitRead(final GATKRead read, final HashMap<SplitPos, Integer> splitCounts, final int prevClippedReadEndPos) {
+        int newPrevClippedReadEndPos = prevClippedReadEndPos;
         final SplitPos splitPosition = getSplitPosition(read);
         if (splitPosition.direction == POSITION.MIDDLE) {
-            return;
+            return 0;
         }
         final int dist;
         if (prevClippedReadEndPos == -1) {
             dist = 0;
         } else {
-            dist = Math.abs(splitPosition.pos - prevClippedReadEndPos);
+            dist = Math.abs(splitPosition.pos - newPrevClippedReadEndPos);
         }
-        prevClippedReadEndPos = read.getEnd();
+        newPrevClippedReadEndPos = read.getEnd();
         if (currentChrom == null) {
             currentChrom = read.getContig();
         }
@@ -282,7 +300,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             flushSplitCounts();
             if (!currentChrom.equals(read.getContig())) {
                 currentChrom = read.getContig();
-                prevClippedReadEndPos = -1;
+                newPrevClippedReadEndPos = -1;
             }
         }
 
@@ -291,6 +309,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         } else {
             splitCounts.put(splitPosition, splitCounts.get(splitPosition) + 1);
         }
+        return newPrevClippedReadEndPos;
     }
 
     private void flushSplitCounts() {
