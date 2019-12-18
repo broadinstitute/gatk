@@ -1135,11 +1135,13 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         public int[] getRefCodonValues() { return refCodonValues; }
         public long[][] getCodonCounts() { return codonCounts; }
 
+        /** Turns a list of variant base calls into a list of variant codons */
         public List<CodonVariation> encodeSNVsAsCodons( final List<SNV> snvs ) {
             final List<CodonVariation> codonVariations = new ArrayList<>();
             final Iterator<SNV> snvIterator = snvs.iterator();
             SNV snv = null;
             final int orfStart = exonList.get(0).getStart();
+            // find 1st exonic SNV
             while ( snvIterator.hasNext() ) {
                 final SNV testSNV = snvIterator.next();
                 final int refIndex = testSNV.getRefIndex();
@@ -1152,7 +1154,8 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
 
             int frameShiftCodonId = findFrameShift(snvs);
 
-            final int lastExonEnd = exonList.get(exonList.size() - 1).getEnd();
+            final int lastExonEnd = exonList.get(exonList.size() - 1).getEnd(); // ref coordinate of end of final exon
+            // while there's another exonic SNV to process
             while ( snv != null ) {
                 int refIndex = snv.getRefIndex();
                 if ( refIndex >= lastExonEnd ) {
@@ -1160,6 +1163,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                 }
                 Interval curExon = null;
                 final Iterator<Interval> exonIterator = exonList.iterator();
+                // find the exon in which this SNV lives
                 while ( exonIterator.hasNext() ) {
                     final Interval testExon = exonIterator.next();
                     if ( testExon.getStart() <= refIndex && testExon.getEnd() > refIndex ) {
@@ -1171,24 +1175,27 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                     throw new GATKException("can't find current exon, even though refIndex should be exonic.");
                 }
 
+                // get the codon number and phase of the current SNV
                 int codonId = exonicBaseIndex(refIndex);
                 int codonPhase = codonId % 3;
                 codonId /= 3;
 
-                int codonValue = refCodonValues[codonId];
+                // patch up the codon value when we're not at a codon boundary
+                int codonValue = refCodonValues[codonId]; // 6-bit value (2 bits for each of 3 bases)
                 if ( codonPhase == 0 ) codonValue = 0;
                 else if ( codonPhase == 1 ) codonValue >>= 4;
                 else codonValue >>= 2;
 
-                int leadLag = 0;
+                int leadLag = 0; // when positive, the number of inserted bases.  when negative, # of deleted bases.
                 do {
-                    boolean codonValueAltered = false;
-                    boolean bumpRefIndex = false;
+                    boolean codonValueAltered = false; // have we modified the ref codon value with a SNV?
+                    boolean bumpRefIndex = false; // have we consumed a ref base?
                     if ( snv == null || snv.getRefIndex() != refIndex ) {
                         codonValue = (codonValue << 2) | "ACGT".indexOf(refSeq[refIndex]);
                         codonValueAltered = true;
                         bumpRefIndex = true;
                     } else {
+                        // process a SNV that describes a deletion
                         if ( snv.getVariantCall() == NO_CALL ) {
                             if ( codonId == frameShiftCodonId ) {
                                 codonVariations.add(CodonVariation.createFrameshift(codonId));
@@ -1202,15 +1209,18 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                                 leadLag = 0;
                             }
                             bumpRefIndex = true;
+                        // process a SNV that describes an insertion
                         } else if ( snv.getRefCall() == NO_CALL ) {
                             leadLag += 1;
                             codonValue = (codonValue << 2) | "ACGT".indexOf(snv.getVariantCall());
                             codonValueAltered = true;
+                        // process a SNV that describes a substitution
                         } else {
                             codonValue = (codonValue << 2) | "ACGT".indexOf(snv.getVariantCall());
                             codonValueAltered = true;
                             bumpRefIndex = true;
                         }
+                        // move to the next SNV
                         snv = null;
                         while ( snvIterator.hasNext() ) {
                             final SNV testSNV = snvIterator.next();
@@ -1220,7 +1230,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                             }
                         }
                     }
-                    if ( bumpRefIndex ) {
+                    if ( bumpRefIndex ) { // will be true except for insertions
                         if ( ++refIndex == curExon.getEnd() ) {
                             if ( exonIterator.hasNext() ) {
                                 curExon = exonIterator.next();
@@ -1231,15 +1241,15 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                             return codonVariations;
                         }
                     }
-                    if ( codonValueAltered ) {
-                        if ( ++codonPhase == 3 ) {
+                    if ( codonValueAltered ) { // if we changed anything
+                        if ( ++codonPhase == 3 ) { // if we're at a codon boundary
                             if ( codonId == frameShiftCodonId ) {
                                 codonVariations.add(CodonVariation.createFrameshift(codonId));
                                 frameShiftCodonId = NO_FRAME_SHIFT_CODON;
                             }
-                            if ( leadLag == 3 ) {
+                            if ( leadLag >= 3 ) {
                                 codonVariations.add(CodonVariation.createInsertion(codonId, codonValue));
-                                leadLag = 0;
+                                leadLag -= 3;
                                 codonId -= 1;
                             } else if ( codonValue != refCodonValues[codonId] ) {
                                 codonVariations.add(CodonVariation.createModification(codonId, codonValue));
@@ -1254,6 +1264,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                             codonValue = 0;
                         }
                     }
+                    // keep going until we're in frame (leadLag == 0), and at a codon boundary (codonPhase == 0)
                 } while ( leadLag != 0 || codonPhase != 0 );
             }
 
