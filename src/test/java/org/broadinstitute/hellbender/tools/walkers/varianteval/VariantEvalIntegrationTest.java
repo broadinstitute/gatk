@@ -3,11 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -666,4 +666,29 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 new File(getToolTestDataDir() + "expected/" + "testPrintMissingComp" + ".expected.txt"));
     }
 
+    private void testForCrashWithGivenEvaluator(final String countVariants) {
+        final String vcf = getTestFilePath("/CEU.trio.callsForVE.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput( createTempFile("out",".stuff"))
+                .addArgument("eval", vcf)
+                .addArgument("do-not-use-all-standard-modules")
+                .addArgument("EV", countVariants);
+
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testWithoutRequiringAReference() {
+        testForCrashWithGivenEvaluator("IndelSummary");
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testNoReferenceWithEvaluatorsThatRequireOne() {
+        testForCrashWithGivenEvaluator("CountVariants");
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testIncorrectlyLabelledEvaluator(){
+        testForCrashWithGivenEvaluator("TestEvaluatorWhichRequiresReferenceButDoesntSayItDoes");
+    }
 }

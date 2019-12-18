@@ -107,4 +107,12 @@ public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
     public boolean supportsCombine() {
         return false;
     }
+
+    /**
+     * Subclasses must overload this to return true if they require an input to include a calling territory, either
+     * an interval list or a reference.
+     */
+    public boolean requiresTerritoryToBeSpecified() {
+        return false;
+    }
 }
