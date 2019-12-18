@@ -74,6 +74,14 @@ public final class GATKSVVCFConstants {
     public static final String DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
     public static final String DUP_INV_INTERNAL_ID_START_STRING = "INS-DUPLICATION-INVERTED-EXPANSION";
 
+    // for breakpoint segmentation
+    public static final String ALGORITHMS_ATTRIBUTE = "ALGORITHMS";
+    public static final String STRANDS_ATTRIBUTE = "STRANDS";
+    public static final String DEPTH_ALGORITHM = "depth";
+    public static final String END_CONTIG_ATTRIBUTE = "CHR2";
+    public static String START_SPLIT_READ_COUNT_ATTRIBUTE = "SSR";
+    public static String END_SPLIT_READ_COUNT_ATTRIBUTE = "ESR";
+    public static String DISCORDANT_PAIR_COUNT_ATTRIBUTE = "PE";
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
