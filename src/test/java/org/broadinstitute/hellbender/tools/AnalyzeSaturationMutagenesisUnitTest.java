@@ -268,6 +268,17 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
                         new SNV(5, NO_CALL, CALL_T, QUAL_30))),
                 Collections.singletonList(
                         CodonVariation.createInsertion(1, 63)));
+        Assert.assertEquals(
+                localCodonTracker.encodeSNVsAsCodons(Arrays.asList(
+                        new SNV(4, NO_CALL, CALL_G, QUAL_30),
+                        new SNV(4, NO_CALL, CALL_C, QUAL_30),
+                        new SNV(4, NO_CALL, CALL_T, QUAL_30),
+                        new SNV(4, NO_CALL, CALL_G, QUAL_30),
+                        new SNV(4, NO_CALL, CALL_C, QUAL_30),
+                        new SNV(4, NO_CALL, CALL_T, QUAL_30))),
+                Arrays.asList(
+                        CodonVariation.createInsertion(1, 30),
+                        CodonVariation.createInsertion(1, 30)));
     }
 
     @Test
@@ -332,7 +343,7 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         final List<Interval> exons = CodonTracker.getExons(orfCoords, refSeq.length);
         Assert.assertEquals(exons, Arrays.asList(new Interval(2, 6), new Interval(7, 12)));
         final int[] expectedCodonValues = {14, 29, 50};
-        Assert.assertEquals(CodonTracker.parseReferenceIntoCodons(refSeq, exons, null), expectedCodonValues);
+        Assert.assertTrue(Arrays.equals(CodonTracker.parseReferenceIntoCodons(refSeq, exons, null), expectedCodonValues));
     }
 
     @Test
