@@ -417,17 +417,17 @@ public class VariantEval extends MultiVariantWalker {
     }
 
     private void assertThatTerritoryIsSpecifiedIfNecessary() {
-        final Set<String> evaluatorsWichRequireTerritory = stratManager.values()
+        final Set<String> evaluatorsWhichRequireTerritory = stratManager.values()
                 .stream()
                 .flatMap(ctx -> ctx.getVariantEvaluators().stream())
                 .filter(Objects::nonNull)
                 .filter(VariantEvaluator::requiresTerritoryToBeSpecified)
                 .map(VariantEvaluator::getSimpleName)
                 .collect(Collectors.toSet());
-        if(!evaluatorsWichRequireTerritory.isEmpty() && getTraversalIntervals() == null){
+        if(!evaluatorsWhichRequireTerritory.isEmpty() && getTraversalIntervals() == null){
             throw new UserException("You specified evaluators which require a covered territory to be specified.  " +
                     "\nPlease specify intervals or a reference file or disable all of the following evaluators:" +
-                    evaluatorsWichRequireTerritory.stream()
+                    evaluatorsWhichRequireTerritory.stream()
                             .collect(Collectors.joining(", ")));
         }
     }
