@@ -149,8 +149,8 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * @return the full set of intervals specified on the command line, without any merging performed
      */
     public List<SimpleInterval> getIntervalsWithoutMerging(final SAMSequenceDictionary sequenceDict ) {
-        if (!intervalsSpecified()) {
-            throw new GATKException("Cannot call getIntervalsWithoutMerging() without specifying either intervals to include or exclude.");
+        if (getIntervalStrings().isEmpty() ) {
+            throw new GATKException("Cannot call getIntervalsWithoutMerging() without specifying either intervals to include.");
         }
 
         List<GenomeLoc> intervals = IntervalUtils.loadIntervalsNonMerging(getIntervalStrings(), intervalPadding, new GenomeLocParser(sequenceDict));
