@@ -12,10 +12,11 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.*;
 
 @CommandLineProgramProperties(
@@ -58,8 +59,26 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        peWriter = new OutputStreamWriter(new BlockCompressedOutputStream(peFile, 6));
-        srWriter = new OutputStreamWriter(new BlockCompressedOutputStream(srFile, 6));
+
+        try {
+            if (peFile.endsWith(".gz")) {
+                peWriter = new OutputStreamWriter(new BlockCompressedOutputStream(peFile, 6));
+            } else {
+                peWriter = new OutputStreamWriter(new FileOutputStream(new File(peFile)));
+            }
+        } catch (FileNotFoundException e) {
+            throw new UserException("Could not open " + peFile);
+        }
+
+        try {
+            if (srFile.endsWith(".gz")) {
+                srWriter = new OutputStreamWriter(new BlockCompressedOutputStream(srFile, 6));
+            } else {
+                srWriter = new OutputStreamWriter(new FileOutputStream(new File(srFile)));
+            }
+        } catch (FileNotFoundException e) {
+            throw new UserException("Could not open " + srFile);
+        }
 
         splitCounts = new HashMap<>(maxSplitDist * 3);
 
@@ -211,7 +230,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         }
 
         if (isSoftClipped(read)) {
-            prevClippedReadEndPos = countSplitRead(read, splitCounts, prevClippedReadEndPos);
+            prevClippedReadEndPos = countSplitRead(read, splitCounts, prevClippedReadEndPos, srWriter);
         }
 
         if (! read.isProperlyPaired()) {
@@ -280,7 +299,12 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         }
     }
 
-    private int countSplitRead(final GATKRead read, final HashMap<SplitPos, Integer> splitCounts, final int prevClippedReadEndPos) {
+    /**
+     * Adds read information to the counts in splitCounts.
+     * @return the new prevClippedReadEndPos after counting this read, which is the rightmost aligned position of the read
+     */
+    @VisibleForTesting
+    public int countSplitRead(final GATKRead read, final HashMap<SplitPos, Integer> splitCounts, final int prevClippedReadEndPos, final OutputStreamWriter srWriter) {
         int newPrevClippedReadEndPos = prevClippedReadEndPos;
         final SplitPos splitPosition = getSplitPosition(read);
         if (splitPosition.direction == POSITION.MIDDLE) {
@@ -297,7 +321,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             currentChrom = read.getContig();
         }
         if (dist > maxSplitDist || !currentChrom.equals(read.getContig())) {
-            flushSplitCounts();
+            flushSplitCounts(srWriter, splitCounts);
             if (!currentChrom.equals(read.getContig())) {
                 currentChrom = read.getContig();
                 newPrevClippedReadEndPos = -1;
@@ -312,7 +336,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         return newPrevClippedReadEndPos;
     }
 
-    private void flushSplitCounts() {
+    private void flushSplitCounts(final OutputStreamWriter srWriter, final HashMap<SplitPos, Integer> splitCounts) {
         final Comparator<SplitPos> comparator = (o1, o2) -> {
             if (o1.pos != o2.pos) {
                 return Integer.compare(o1.pos, o2.pos);
@@ -353,7 +377,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        flushSplitCounts();
+        flushSplitCounts(srWriter, splitCounts);
         flushDiscordantReadPairs();
         return null;
     }
