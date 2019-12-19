@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.apache.avro.reflect.Union;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -141,20 +140,28 @@ public abstract class IntervalArgumentCollection implements Serializable {
     }
 
     /**
-     * Returns the full set of traversal parameters specified on the command line, including parsed intervals without
+     * Returns the full set of traversal intervals specified on the command line, including parsed intervals without
      * merging intervals specified by the user on the command line. This is an advanced use case
      *
      * NOTE: this currently does not account for interval exclusion arguments
      *
      * @param sequenceDict used to validate intervals
-     * @return the full set of traversal parameters specified on the command line
+     * @return the full set of intervals specified on the command line, without any merging performed
      */
-    public List<SimpleInterval> getSpecifiedIntervalsWithoutMerging(final SAMSequenceDictionary sequenceDict ) {
-        if ( ! intervalsSpecified() ) {
-            throw new GATKException("Cannot call getTraversalParameters() without specifying either intervals to include or exclude.");
+    public List<SimpleInterval> getIntervalsWithoutMerging(final SAMSequenceDictionary sequenceDict ) {
+        if (!intervalsSpecified()) {
+            throw new GATKException("Cannot call getIntervalsWithoutMerging() without specifying either intervals to include or exclude.");
         }
 
-        return parseIntervals(new GenomeLocParser(sequenceDict), IntervalMergingRule.NONE, IntervalSetRule.UNION, new ArrayList<String>()).getIntervalsForTraversal();
+        List<GenomeLoc> intervals = IntervalUtils.loadIntervalsNonMerging(getIntervalStrings(), intervalPadding, new GenomeLocParser(sequenceDict));
+
+        // Separate out requests for unmapped records from the rest of the intervals.
+        boolean traverseUnmapped = false;
+        if (intervals.contains(GenomeLoc.UNMAPPED)) {
+            traverseUnmapped = true;
+            intervals.remove(GenomeLoc.UNMAPPED);
+        }
+        return new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals), traverseUnmapped).getIntervalsForTraversal();
     }
 
     /**
@@ -167,10 +174,6 @@ public abstract class IntervalArgumentCollection implements Serializable {
     public TraversalParameters getTraversalParameters( final SAMSequenceDictionary sequenceDict ) {
         if ( ! intervalsSpecified() ) {
             throw new GATKException("Cannot call getTraversalParameters() without specifying either intervals to include or exclude.");
-        }
-
-        if (intervalMergingRule == IntervalMergingRule.NONE) {
-            logger.warn("The user has specified `--interval-merging-rule NONE`. This is an advanced traversal mode that may cause problems with engine traversal code. Use at your own risk.");
         }
 
         if ( traversalParameters == null ) {
@@ -187,80 +190,54 @@ public abstract class IntervalArgumentCollection implements Serializable {
             throw new GATKException("Cannot call parseIntervals() without specifying either intervals to include or exclude.");
         }
 
-        if (intervalMergingRule == IntervalMergingRule.NONE ) {
-            if ( !excludeIntervalStrings.isEmpty()) {
-                throw new UserException("-XL and '--interval-merging-rule NONE' is a currently unsupported argument combination");
-            }
-            if ( intervalSetRule != IntervalSetRule.UNION) {
-                throw new UserException("'--"+intervalSetRule+"'and '--interval-merging-rule NONE' is a currently unsupported argument combination");
-            }
-
-            List<GenomeLoc> intervals = IntervalUtils.loadIntervalsNonMerging(getIntervalStrings(), intervalPadding, genomeLocParser);
-
-            logger.info(String.format("Processing %d bp from intervals", intervals.stream().mapToInt(GenomeLoc::size).sum()));
-
-
-            // Separate out requests for unmapped records from the rest of the intervals.
-            boolean traverseUnmapped = false;
-            if ( intervals.contains(GenomeLoc.UNMAPPED) ) {
-                traverseUnmapped = true;
-                intervals.remove(GenomeLoc.UNMAPPED);
-            }
-
-            return new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals), traverseUnmapped);
-
-        // The typical case where we don't treat unmerged intervals specially
+        GenomeLocSortedSet includeSortedSet;
+        if (getIntervalStrings().isEmpty()) {
+            // the -L argument isn't specified, which means that -XL was, since we checked intervalsSpecified()
+            // therefore we set the include set to be the entire reference territory
+            includeSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(genomeLocParser.getSequenceDictionary());
         } else {
-            GenomeLocSortedSet includeSortedSet;
-            if (getIntervalStrings().isEmpty()) {
-                // the -L argument isn't specified, which means that -XL was, since we checked intervalsSpecified()
-                // therefore we set the include set to be the entire reference territory
-                includeSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(genomeLocParser.getSequenceDictionary());
-            } else {
-                try {
-                    includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMergingRule, intervalPadding, genomeLocParser);
-                } catch (UserException.EmptyIntersection e) {
-                    throw new CommandLineException.BadArgumentValue("-L, --" + IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, getIntervalStrings() + "," + intervalSetRule, "The specified intervals had an empty intersection");
-                }
+            try {
+                includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMergingRule, intervalPadding, genomeLocParser);
+            } catch (UserException.EmptyIntersection e) {
+                throw new CommandLineException.BadArgumentValue("-L, --" + IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, getIntervalStrings() + "," + intervalSetRule, "The specified intervals had an empty intersection");
             }
-
-            final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMergingRule, intervalExclusionPadding, genomeLocParser);
-            if (excludeSortedSet.contains(GenomeLoc.UNMAPPED)) {
-                throw new UserException("-XL unmapped is not currently supported");
-            }
-
-            GenomeLocSortedSet intervals;
-            // if no exclude arguments, can return the included set directly
-            if (excludeSortedSet.isEmpty()) {
-                intervals = includeSortedSet;
-            }// otherwise there are exclude arguments => must merge include and exclude GenomeLocSortedSets
-            else {
-                intervals = includeSortedSet.subtractRegions(excludeSortedSet);
-
-                if (intervals.isEmpty()) {
-                    throw new CommandLineException.BadArgumentValue("-L,-XL", getIntervalStrings().toString() + ", " + excludeIntervalStrings.toString(), "The intervals specified for exclusion with -XL removed all territory specified by -L.");
-                }
-                // logging messages only printed when exclude (-XL) arguments are given
-                final long toPruneSize = includeSortedSet.coveredSize();
-                final long toExcludeSize = excludeSortedSet.coveredSize();
-                final long intervalSize = intervals.coveredSize();
-                logger.info(String.format("Initial include intervals span %d loci; exclude intervals span %d loci", toPruneSize, toExcludeSize));
-                logger.info(String.format("Excluding %d loci from original intervals (%.2f%% reduction)",
-                        toPruneSize - intervalSize, (toPruneSize - intervalSize) / (0.01 * toPruneSize)));
-            }
-
-            logger.info(String.format("Processing %d bp from intervals", intervals.coveredSize()));
-
-            // Separate out requests for unmapped records from the rest of the intervals.
-            boolean traverseUnmapped = false;
-            if ( intervals.contains(GenomeLoc.UNMAPPED) ) {
-                traverseUnmapped = true;
-                intervals.remove(GenomeLoc.UNMAPPED);
-            }
-
-            return new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList()), traverseUnmapped);
         }
 
+        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMergingRule, intervalExclusionPadding, genomeLocParser);
+        if (excludeSortedSet.contains(GenomeLoc.UNMAPPED)) {
+            throw new UserException("-XL unmapped is not currently supported");
+        }
+
+        GenomeLocSortedSet intervals;
+        // if no exclude arguments, can return the included set directly
+        if (excludeSortedSet.isEmpty()) {
+            intervals = includeSortedSet;
+        }// otherwise there are exclude arguments => must merge include and exclude GenomeLocSortedSets
+        else {
+            intervals = includeSortedSet.subtractRegions(excludeSortedSet);
+
+            if (intervals.isEmpty()) {
+                throw new CommandLineException.BadArgumentValue("-L,-XL", getIntervalStrings().toString() + ", " + excludeIntervalStrings.toString(), "The intervals specified for exclusion with -XL removed all territory specified by -L.");
+            }
+            // logging messages only printed when exclude (-XL) arguments are given
+            final long toPruneSize = includeSortedSet.coveredSize();
+            final long toExcludeSize = excludeSortedSet.coveredSize();
+            final long intervalSize = intervals.coveredSize();
+            logger.info(String.format("Initial include intervals span %d loci; exclude intervals span %d loci", toPruneSize, toExcludeSize));
+            logger.info(String.format("Excluding %d loci from original intervals (%.2f%% reduction)",
+                    toPruneSize - intervalSize, (toPruneSize - intervalSize) / (0.01 * toPruneSize)));
+        }
+
+        logger.info(String.format("Processing %d bp from intervals", intervals.coveredSize()));
+
+        // Separate out requests for unmapped records from the rest of the intervals.
+        boolean traverseUnmapped = false;
+        if (intervals.contains(GenomeLoc.UNMAPPED)) {
+            traverseUnmapped = true;
+            intervals.remove(GenomeLoc.UNMAPPED);
+        }
+
+        return new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList()), traverseUnmapped);
     }
 
 

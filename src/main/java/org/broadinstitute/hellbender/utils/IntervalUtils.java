@@ -235,6 +235,16 @@ public final class IntervalUtils {
         return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
     }
 
+
+    /**
+     * Method that takes a list of interval strings in the command line format and parses them into GenomicLoc objects
+     * without attempting to perform any sort of interval merging whatsover regardless of overlap between the intervals.
+     *
+     * @param intervalStrings interval strings from the command line
+     * @param padding         padding to be added to the intervals
+     * @param genomeLocParser parser to be applied to the provided intervals
+     * @return a list of intervals parsed into genomic locs without merging.
+     */
     public static List<GenomeLoc> loadIntervalsNonMerging(
             final List<String> intervalStrings,
             final int padding,
@@ -257,7 +267,6 @@ public final class IntervalUtils {
                 .sorted()
                 .collect(Collectors.toList());
     }
-
 
     /**
      * Turns a set of strings describing intervals into a parsed set of intervals.  Valid string elements can be files,
