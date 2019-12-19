@@ -151,7 +151,7 @@ public class CountingReadFilter extends ReadFilter {
 
         @Override
         public String getName() {
-            return "Not " + delegateCountingFilter.getName();
+            return "NOT " + delegateCountingFilter.getName();
         }
     }
 
@@ -183,8 +183,8 @@ public class CountingReadFilter extends ReadFilter {
             }
             else {
                 return indent + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + "\n"
-                        + (lhs.getFilteredCount() > 0 ? indent + lhs.getSummaryLineForLevel(indentLevel + 1) : "")
-                        + (rhs.getFilteredCount() > 0 ? indent + rhs.getSummaryLineForLevel(indentLevel + 1) : "");
+                        + (lhs.getFilteredCount() > 0 ? lhs.getSummaryLineForLevel(indentLevel + 1) : "")
+                        + (rhs.getFilteredCount() > 0 ? rhs.getSummaryLineForLevel(indentLevel + 1) : "");
             }
         }
 
@@ -225,11 +225,11 @@ public class CountingReadFilter extends ReadFilter {
             if (0 == filteredCount) {
                 return "No reads filtered by: " + getName();
             }
-            else if(indentLevel == 0)
-            {
+            else if(indentLevel == 0) {
                 String simplifiedSummary = getSummaryLineForLevelAllAndsSimplified();
-                if(!simplifiedSummary.isEmpty())
+                if(!simplifiedSummary.isEmpty()) {
                     return simplifiedSummary;
+                }
             }
             return super.getSummaryLineForLevel(indentLevel);
         }
@@ -237,27 +237,23 @@ public class CountingReadFilter extends ReadFilter {
         /**
          * @return simplified summary line if this filter consists only of filters joined by AND, otherwise empty String
          */
-        private String getSummaryLineForLevelAllAndsSimplified()
-        {
+        private String getSummaryLineForLevelAllAndsSimplified() {
             StringBuilder summaryLine = new StringBuilder();
 
             Stack<CountingReadFilter> unread = new Stack<>();
-            unread.push(this.lhs);
             unread.push(this.rhs);
+            unread.push(this.lhs);
             CountingReadFilter curFilter;
 
-            while(!unread.empty())
-            {
+            while(!unread.empty()) {
                 curFilter = unread.pop();
-                if(curFilter.getFilteredCount() > 0) {
-                    if (curFilter instanceof CountingAndReadFilter) {
-                        unread.push(((CountingAndReadFilter) curFilter).lhs);
-                        unread.push(((CountingAndReadFilter) curFilter).rhs);
-                    } else if (curFilter instanceof CountingBinopReadFilter) {
-                        return "";
-                    } else if (curFilter.getFilteredCount() > 0) {
-                        summaryLine.append(curFilter.getSummaryLineForLevel(0));
-                    }
+                if (curFilter instanceof CountingAndReadFilter) {
+                    unread.push(((CountingAndReadFilter) curFilter).rhs);
+                    unread.push(((CountingAndReadFilter) curFilter).lhs);
+                } else if (curFilter instanceof CountingBinopReadFilter || curFilter instanceof CountingNegateReadFilter) {
+                    return "";
+                } else if (curFilter.getFilteredCount() > 0) {
+                    summaryLine.append(curFilter.getSummaryLineForLevel(0));
                 }
             }
 
