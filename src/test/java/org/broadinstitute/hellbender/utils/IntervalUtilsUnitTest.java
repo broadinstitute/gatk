@@ -1244,6 +1244,25 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(sorted, expected);
     }
 
+    @DataProvider(name="loadIntervalsNonMerge")
+    public Object[][] getloadIntervalsNonMerge(){
+        final String severalIntervals = "src/test/resources/org/broadinstitute/hellbender/utils/interval/example_intervals.list";
+
+        return new Object[][]{
+                new Object[]{Arrays.asList("1:5-5","1:6","1:7","1:8","1:9","1:10"), 0, intervalStringsToGenomeLocs("1:5-5","1:6","1:7","1:8","1:9","1:10")},
+                new Object[]{Arrays.asList("1:1-2", "2:1-2"), 0, intervalStringsToGenomeLocs("1:1-2", "2:1-2")},
+                new Object[]{Arrays.asList("1:1-10", "1:5-15"), 0, intervalStringsToGenomeLocs("1:1-10", "1:5-15")},
+                new Object[]{Arrays.asList("1:5-5"), 5, intervalStringsToGenomeLocs("1:1-10")},
+                new Object[]{Arrays.asList(severalIntervals), 0, intervalStringsToGenomeLocs("1:100-200", "2:20-30", "4:50")}
+        };
+    }
+
+    @Test( dataProvider = "loadIntervalsNonMerge")
+    public void testLoadIntervalsNonMerging(List<String> intervals, int padding, List<GenomeLoc> results) {
+        List<GenomeLoc> loadedIntervals = IntervalUtils.loadIntervalsNonMerging(intervals, padding, hg19GenomeLocParser);
+        Assert.assertEquals(loadedIntervals, results);
+    }
+
     @DataProvider(name="loadintervals")
     public Object[][] getloadIntervals(){
         final String severalIntervals = "src/test/resources/org/broadinstitute/hellbender/utils/interval/example_intervals.list";

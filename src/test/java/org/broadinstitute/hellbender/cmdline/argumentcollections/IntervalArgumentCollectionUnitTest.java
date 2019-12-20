@@ -16,9 +16,11 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-public final class IntervalArgumentCollectionTest extends GATKBaseTest {
+public final class IntervalArgumentCollectionUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "optionalOrNot")
     public Object[][] optionalOrNot(){
@@ -109,6 +111,76 @@ public final class IntervalArgumentCollectionTest extends GATKBaseTest {
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 1, 100));
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).get(1), new SimpleInterval("1", 101, 200));
     }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalMergingRuleOverlappingNoMerge(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:51-200");
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).size(), 2);
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 1, 100));
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(1), new SimpleInterval("1", 51, 200));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalUnmergingWithUnmappedIntervalsAndPadding(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:100-200");
+        iac.addToIntervalStrings("UNMAPPED");
+        iac.intervalPadding = 50;
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).size(), 1);
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 50, 250));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalUnmergingWithIntervalPaddingOverlap(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:100-200");
+        iac.addToIntervalStrings("1:250-350");
+        iac.intervalPadding = 50;
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).size(), 2);
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 50, 250));
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(1), new SimpleInterval("1", 200, 400));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalMergingRuleOverlappingNoMergeWithPadding(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:51-200");
+        iac.intervalPadding = 10;
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).size(), 2);
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 1, 110));
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()).get(1), new SimpleInterval("1", 41, 210));
+    }
+
+
+    @DataProvider(name = "NoMergeIllegalArguments")
+    public Object[][] NoMergeIllegalArguments(){
+        List<Object[]> argumentCollections = new ArrayList<>();
+
+        IntervalArgumentCollection iacXL = new RequiredIntervalArgumentCollection();
+        iacXL.excludeIntervalStrings.add("1:1-100");
+        argumentCollections.add(new Object[]{iacXL});
+
+        IntervalArgumentCollection iacMergingRule = new RequiredIntervalArgumentCollection();
+        iacMergingRule.intervalSetRule = IntervalSetRule.INTERSECTION;
+        argumentCollections.add(new Object[]{iacMergingRule});
+
+        return argumentCollections.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "NoMergeIllegalArguments", expectedExceptions = GATKException.class)
+    // Test asserting that an exception is thrown when getIntervalsWithoutMerging is called but not intervals have been specified by the user
+    public void testIntervalsWithoutMergingWithNoIntervalsSpecified(IntervalArgumentCollection iac) {
+        iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary());
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void getUserSpecifiedIntervalsWithoutMerging(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:90-200");
+        iac.intervalSetRule = IntervalSetRule.INTERSECTION;
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 90, 100)));
+        Assert.assertEquals(iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 90, 200)));
+    }
+
 
     /**
      * Asserts that the interval set rule is applied first, then the interval ordering rule. This should give an error because the overlap is empty.
