@@ -1249,7 +1249,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         final String severalIntervals = "src/test/resources/org/broadinstitute/hellbender/utils/interval/example_intervals.list";
 
         return new Object[][]{
-                new Object[]{Arrays.asList("1:1-2"), 0, intervalStringsToGenomeLocs("1:1-2")},
+                new Object[]{Arrays.asList("1:5-5","1:6","1:7","1:8","1:9","1:10"), 0, intervalStringsToGenomeLocs("1:5-5","1:6","1:7","1:8","1:9","1:10")},
                 new Object[]{Arrays.asList("1:1-2", "2:1-2"), 0, intervalStringsToGenomeLocs("1:1-2", "2:1-2")},
                 new Object[]{Arrays.asList("1:1-10", "1:5-15"), 0, intervalStringsToGenomeLocs("1:1-10", "1:5-15")},
                 new Object[]{Arrays.asList("1:5-5"), 5, intervalStringsToGenomeLocs("1:1-10")},

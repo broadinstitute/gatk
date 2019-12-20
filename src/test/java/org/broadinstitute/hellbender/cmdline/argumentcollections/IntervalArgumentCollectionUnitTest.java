@@ -166,10 +166,9 @@ public final class IntervalArgumentCollectionUnitTest extends GATKBaseTest {
         return argumentCollections.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "NoMergeIllegalArguments", expectedExceptions = UserException.class)
-    public void testIntervalMergingRuleNoMergeIllegalArgumentCombinations(IntervalArgumentCollection iac) {
-        iac.addToIntervalStrings("1:1-100");
-        iac.addToIntervalStrings("1:51-200");
+    @Test(dataProvider = "NoMergeIllegalArguments", expectedExceptions = GATKException.class)
+    // Test asserting that an exception is thrown when getIntervalsWithoutMerging is called but not intervals have been specified by the user
+    public void testIntervalsWithoutMergingWithNoIntervalsSpecified(IntervalArgumentCollection iac) {
         iac.getIntervalsWithoutMerging(hg19GenomeLocParser.getSequenceDictionary());
     }
 
