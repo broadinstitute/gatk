@@ -97,7 +97,7 @@ public class DepthOfCoverage extends LocusWalkerByInterval {
     /**
      * Bases with quality scores lower than this threshold will be skipped. This is set to -1 by default to disable the evaluation and ignore this threshold.
      */
-    @Argument(fullName = "min-base-quality", shortName = "mbq", doc = "Minimum quality of bases to count towards depth", optional = true, minValue = 0, maxValue = Byte.MAX_VALUE)
+    @Argument(fullName = "min-base-quality", doc = "Minimum quality of bases to count towards depth", optional = true, minValue = 0, maxValue = Byte.MAX_VALUE)
     private byte minBaseQuality = -1;
     /**
      * Bases with quality scores higher than this threshold will be skipped. The default value is the largest number that can be represented as a byte.

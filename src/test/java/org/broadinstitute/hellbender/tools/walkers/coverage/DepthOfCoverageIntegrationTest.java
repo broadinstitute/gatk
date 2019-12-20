@@ -41,7 +41,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         String cmd = "-R "+hg38Reference+" " +
                 "-I "+largeFileTestDir + "multiSampleSubsetted.bam " +
                 "-L "+ getTestFile("artificial.target_region.interval_list ")+
-                "-mmq 0 -mbq 0 -dels --print-base-counts -pt readgroup -pt sample -pt platform -pt library --output-format CSV -ct 10 -ct 15 -ct 20 -ct 25";
+                "--min-base-quality 0 -dels --print-base-counts -pt readgroup -pt sample -pt platform -pt library --output-format CSV -ct 10 -ct 15 -ct 20 -ct 25";
         cmd += " -O "+output.getAbsolutePath();
         runCommandLine(cmd.split(" "));
 
@@ -76,7 +76,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
         String cmd = "-R "+hg38Reference+" " +
                 "-I "+largeFileTestDir + "multiSampleSubsetted.bam " +
                 "-L "+ getTestFile("artificial.target_region.interval_list ")+
-                "-mmq 0 -mbq 5 --max-base-quality 4 -dels --print-base-counts -pt readgroup -pt sample -pt library -pt platform --output-format CSV";
+                "--min-base-quality 5 --max-base-quality 4 -dels --print-base-counts -pt readgroup -pt sample -pt library -pt platform --output-format CSV";
         cmd += " -O "+output.getAbsolutePath();
         runCommandLine(cmd.split(" "));
 
@@ -97,7 +97,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L",getTestFile("artificial.gene_target.interval_list").getAbsolutePath(),
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "-mmq","0","-mbq","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics",
+                "--min-base-quality","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 
@@ -143,7 +143,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L", "chr1:1656275-1677440", // this should only completely span two of the genes in the list
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "-mmq","0","-mbq","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-stats","--omit-genes-not-entirely-covered-by-traversal",
+                "--min-base-quality","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics","--omit-genes-not-entirely-covered-by-traversal",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 
@@ -168,7 +168,7 @@ public class DepthOfCoverageIntegrationTest extends CommandLineProgramTest {
                 "-I",largeFileTestDir+"multiSampleSubsetted.bam",
                 "-L", "chr1:1656275-1666275", "-L", "chr1:1666280-1677440", // this has a gap that aligns with introns for both genes
                 "--calculate-coverage-over-genes",getTestFile("refGene_CDK11B.refseq").getAbsolutePath(),
-                "-mmq","0","-mbq","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-stats","--omit-genes-not-entirely-covered-by-traversal",
+                "--min-base-quality","0","-dels","-pt","sample","--output-format","CSV","--omit-depth-output-at-each-base","--omit-per-sample-statistics","--omit-genes-not-entirely-covered-by-traversal",
                 "-O",output.getAbsolutePath()};
         runCommandLine(cmd);
 
