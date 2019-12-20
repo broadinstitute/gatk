@@ -82,12 +82,7 @@ public class CountingReadFilter extends ReadFilter {
     public String getSummaryLine() {return getSummaryLineForLevel(0);}
 
     protected String getSummaryLineForLevel(final int indentLevel) {
-        if (0 == filteredCount) {
-            return "No reads filtered by: " + getName();
-        }
-        else {
-            return getIndentString(indentLevel) + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + " \n";
-        }
+        return getIndentString(indentLevel) + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + " \n";
     }
 
     protected String getIndentString(final int indentLevel) {
@@ -179,7 +174,7 @@ public class CountingReadFilter extends ReadFilter {
         protected String getSummaryLineForLevel(final int indentLevel) {
             final String indent = getIndentString(indentLevel);
             if (0 == filteredCount) {
-                return "No reads filtered by: " + getName();
+                return indent +  "0 read(s) filtered by: " + getName() + " \n";
             }
             else {
                 return indent + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + "\n"
@@ -222,10 +217,7 @@ public class CountingReadFilter extends ReadFilter {
 
         @Override
         protected String getSummaryLineForLevel(final int indentLevel) {
-            if (0 == filteredCount) {
-                return "No reads filtered by: " + getName();
-            }
-            else if(indentLevel == 0) {
+            if(indentLevel == 0) {
                 String simplifiedSummary = getSummaryLineForLevelAllAndsSimplified();
                 if(!simplifiedSummary.isEmpty()) {
                     return simplifiedSummary;
@@ -252,7 +244,7 @@ public class CountingReadFilter extends ReadFilter {
                     unread.push(((CountingAndReadFilter) curFilter).lhs);
                 } else if (curFilter instanceof CountingBinopReadFilter || curFilter instanceof CountingNegateReadFilter) {
                     return "";
-                } else if (curFilter.getFilteredCount() > 0) {
+                } else {
                     summaryLine.append(curFilter.getSummaryLineForLevel(0));
                 }
             }

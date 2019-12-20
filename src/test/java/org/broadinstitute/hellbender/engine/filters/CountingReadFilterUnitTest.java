@@ -324,11 +324,14 @@ public final class CountingReadFilterUnitTest {
         final CountingReadFilter firstOfPair1AndMappingQuality0 = firstOfPair1.and(mappingQuality0);
         firstOfPair1AndMappingQuality0.filteredCount = 1;
         final String andWith1CountAbove0 = "1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
                 + "1 total reads filtered";
 
         final CountingReadFilter mappingQuality0AndGoodCigar0 = mappingQuality0.and(goodCigar0);
         mappingQuality0AndGoodCigar0.filteredCount = 0;
-        final String andWithBoth0Counts = "No reads filtered by: (MappingQualityAvailableReadFilter AND GoodCigarReadFilter)";
+        final String andWithBoth0Counts = "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
+                + "0 read(s) filtered by: GoodCigarReadFilter \n"
+                + "0 total reads filtered";
 
 
         final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0 = firstOfPair1AndMappingQuality0.and(goodCigar0);
@@ -336,6 +339,8 @@ public final class CountingReadFilterUnitTest {
         final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2 = firstOfPair1AndMappingQuality0AndGoodCigar0.and(secondOfPair2);
         firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2.filteredCount = 3;
         final String multiAndWithMixCounts = "1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
+                + "0 read(s) filtered by: GoodCigarReadFilter \n"
                 + "2 read(s) filtered by: SecondOfPairReadFilter \n"
                 + "3 total reads filtered";
 
@@ -370,6 +375,7 @@ public final class CountingReadFilterUnitTest {
 
     @Test(dataProvider = "testAndFilterSummaryLineDataProvider")
     public void testAndFilterSummaryLine(CountingReadFilter filter, String output) {
+        String test = filter.getSummaryLine();
         Assert.assertEquals(filter.getSummaryLine(), output);
     }
 
