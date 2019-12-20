@@ -37,10 +37,24 @@ public final class CountingReadFilterUnitTest {
 
         if (expected) {
             Assert.assertTrue(0 == count);
-            Assert.assertEquals(0, rfSummary.indexOf("No reads filtered"));
+            Assert.assertEquals(0, rfSummary.indexOf("0 read(s) filtered"));
         } else {
             Assert.assertTrue(1 == count);
             Assert.assertEquals(0, rfSummary.indexOf("1 read(s) filtered"));
+        }
+    }
+
+    // Helper to verify post-filtering filter state for AND (since the output for ANDed filters is different)
+    private void verifyFilterStateForAnd(CountingReadFilter rf, boolean expected) {
+        long count = rf.getFilteredCount();
+        String rfSummary = rf.getSummaryLine();
+
+        if (expected) {
+            Assert.assertTrue(0 == count);
+            Assert.assertNotEquals(-1, rfSummary.indexOf("0 total reads filtered"));
+        } else {
+            Assert.assertTrue(1 == count);
+            Assert.assertNotEquals(-1, rfSummary.indexOf("1 total reads filtered"));
         }
     }
 
@@ -92,11 +106,11 @@ public final class CountingReadFilterUnitTest {
 
         CountingReadFilter startAndEndOk = new CountingReadFilter(startOk).and(new CountingReadFilter(endOk));
         Assert.assertEquals(startAndEndOk.test(read), expected);
-        verifyFilterState(startAndEndOk, expected);
+        verifyFilterStateForAnd(startAndEndOk, expected);
 
         CountingReadFilter endAndStartOk = new CountingReadFilter(endOk).and(new CountingReadFilter(startOk));
         Assert.assertEquals(endAndStartOk.test(read), expected);
-        verifyFilterState(endAndStartOk, expected);
+        verifyFilterStateForAnd(endAndStartOk, expected);
     }
 
     @DataProvider(name = "readsOr")
