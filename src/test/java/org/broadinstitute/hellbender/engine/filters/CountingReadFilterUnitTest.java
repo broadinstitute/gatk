@@ -37,10 +37,24 @@ public final class CountingReadFilterUnitTest {
 
         if (expected) {
             Assert.assertTrue(0 == count);
-            Assert.assertEquals(0, rfSummary.indexOf("No reads filtered"));
+            Assert.assertEquals(0, rfSummary.indexOf("0 read(s) filtered"));
         } else {
             Assert.assertTrue(1 == count);
             Assert.assertEquals(0, rfSummary.indexOf("1 read(s) filtered"));
+        }
+    }
+
+    // Helper to verify post-filtering filter state for AND (since the output for ANDed filters is different)
+    private void verifyFilterStateForAnd(CountingReadFilter rf, boolean expected) {
+        long count = rf.getFilteredCount();
+        String rfSummary = rf.getSummaryLine();
+
+        if (expected) {
+            Assert.assertTrue(0 == count);
+            Assert.assertNotEquals(-1, rfSummary.indexOf("0 total reads filtered"));
+        } else {
+            Assert.assertTrue(1 == count);
+            Assert.assertNotEquals(-1, rfSummary.indexOf("1 total reads filtered"));
         }
     }
 
@@ -92,11 +106,11 @@ public final class CountingReadFilterUnitTest {
 
         CountingReadFilter startAndEndOk = new CountingReadFilter(startOk).and(new CountingReadFilter(endOk));
         Assert.assertEquals(startAndEndOk.test(read), expected);
-        verifyFilterState(startAndEndOk, expected);
+        verifyFilterStateForAnd(startAndEndOk, expected);
 
         CountingReadFilter endAndStartOk = new CountingReadFilter(endOk).and(new CountingReadFilter(startOk));
         Assert.assertEquals(endAndStartOk.test(read), expected);
-        verifyFilterState(endAndStartOk, expected);
+        verifyFilterStateForAnd(endAndStartOk, expected);
     }
 
     @DataProvider(name = "readsOr")
@@ -302,6 +316,81 @@ public final class CountingReadFilterUnitTest {
         Assert.assertTrue(andFilter.lhs.delegateFilter.getClass() == ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE.getClass());
         Assert.assertTrue(andFilter.rhs.getClass() == CountingReadFilter.class);
         Assert.assertTrue(andFilter.rhs.delegateFilter.getClass() == ReadFilterLibrary.MAPPED.getClass());
+    }
+
+    @DataProvider(name = "testAndFilterSummaryLineDataProvider")
+    public Object[][] testAndFilterSummaryLineDataProvider() {
+        final CountingReadFilter mappingQuality0 = new CountingReadFilter(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        mappingQuality0.filteredCount = 0;
+        final CountingReadFilter goodCigar0 = new CountingReadFilter(ReadFilterLibrary.GOOD_CIGAR);
+        goodCigar0.filteredCount = 0;
+        final CountingReadFilter firstOfPair1 = new CountingReadFilter(ReadFilterLibrary.FIRST_OF_PAIR);
+        firstOfPair1.filteredCount = 1;
+        final CountingReadFilter secondOfPair2 = new CountingReadFilter(ReadFilterLibrary.SECOND_OF_PAIR);
+        secondOfPair2.filteredCount = 2;
+
+        final CountingReadFilter firstOfPair1AndSecondOfPair2 = firstOfPair1.and(secondOfPair2);
+        firstOfPair1AndSecondOfPair2.filteredCount = 3;
+        final String andWithCountsAbove0 = "1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "2 read(s) filtered by: SecondOfPairReadFilter \n"
+                + "3 total reads filtered";
+
+        final CountingReadFilter firstOfPair1AndMappingQuality0 = firstOfPair1.and(mappingQuality0);
+        firstOfPair1AndMappingQuality0.filteredCount = 1;
+        final String andWith1CountAbove0 = "1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
+                + "1 total reads filtered";
+
+        final CountingReadFilter mappingQuality0AndGoodCigar0 = mappingQuality0.and(goodCigar0);
+        mappingQuality0AndGoodCigar0.filteredCount = 0;
+        final String andWithBoth0Counts = "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
+                + "0 read(s) filtered by: GoodCigarReadFilter \n"
+                + "0 total reads filtered";
+
+
+        final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0 = firstOfPair1AndMappingQuality0.and(goodCigar0);
+        firstOfPair1AndMappingQuality0AndGoodCigar0.filteredCount = 1;
+        final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2 = firstOfPair1AndMappingQuality0AndGoodCigar0.and(secondOfPair2);
+        firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2.filteredCount = 3;
+        final String multiAndWithMixCounts = "1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
+                + "0 read(s) filtered by: GoodCigarReadFilter \n"
+                + "2 read(s) filtered by: SecondOfPairReadFilter \n"
+                + "3 total reads filtered";
+
+        final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0OrSecondOfPair2 = firstOfPair1AndMappingQuality0AndGoodCigar0.or(secondOfPair2);
+        firstOfPair1AndMappingQuality0AndGoodCigar0OrSecondOfPair2.filteredCount = 3;
+        final String multiAndWithOr = "3 read(s) filtered by: (((FirstOfPairReadFilter AND MappingQualityAvailableReadFilter) AND GoodCigarReadFilter) OR SecondOfPairReadFilter)\n"
+                + "  1 read(s) filtered by: ((FirstOfPairReadFilter AND MappingQualityAvailableReadFilter) AND GoodCigarReadFilter)\n"
+                + "    1 read(s) filtered by: (FirstOfPairReadFilter AND MappingQualityAvailableReadFilter)\n"
+                + "      1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "  2 read(s) filtered by: SecondOfPairReadFilter \n";
+
+        final CountingReadFilter notSecondOfPair2 = secondOfPair2.negate();
+        notSecondOfPair2.filteredCount = 2;
+        final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0AndNotSecondOfPair2 = firstOfPair1AndMappingQuality0AndGoodCigar0.and(notSecondOfPair2);
+        firstOfPair1AndMappingQuality0AndGoodCigar0AndNotSecondOfPair2.filteredCount = 3;
+        final String multiAndWithNot = "3 read(s) filtered by: (((FirstOfPairReadFilter AND MappingQualityAvailableReadFilter) AND GoodCigarReadFilter) AND NOT SecondOfPairReadFilter)\n"
+                + "  1 read(s) filtered by: ((FirstOfPairReadFilter AND MappingQualityAvailableReadFilter) AND GoodCigarReadFilter)\n"
+                + "    1 read(s) filtered by: (FirstOfPairReadFilter AND MappingQualityAvailableReadFilter)\n"
+                + "      1 read(s) filtered by: FirstOfPairReadFilter \n"
+                + "  2 read(s) filtered by: NOT SecondOfPairReadFilter \n";
+
+        return new Object[][]{
+                {firstOfPair1AndSecondOfPair2, andWithCountsAbove0},
+                {firstOfPair1AndMappingQuality0, andWith1CountAbove0},
+                {mappingQuality0AndGoodCigar0, andWithBoth0Counts},
+                {firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2, multiAndWithMixCounts},
+                {firstOfPair1AndMappingQuality0AndGoodCigar0OrSecondOfPair2, multiAndWithOr},
+                {firstOfPair1AndMappingQuality0AndGoodCigar0AndNotSecondOfPair2, multiAndWithNot}
+        };
+
+    }
+
+    @Test(dataProvider = "testAndFilterSummaryLineDataProvider")
+    public void testAndFilterSummaryLine(CountingReadFilter filter, String output) {
+        String test = filter.getSummaryLine();
+        Assert.assertEquals(filter.getSummaryLine(), output);
     }
 
 }

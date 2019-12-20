@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
+import java.util.Stack;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -81,12 +82,7 @@ public class CountingReadFilter extends ReadFilter {
     public String getSummaryLine() {return getSummaryLineForLevel(0);}
 
     protected String getSummaryLineForLevel(final int indentLevel) {
-        if (0 == filteredCount) {
-            return "No reads filtered by: " + getName();
-        }
-        else {
-            return getIndentString(indentLevel) + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + " \n";
-        }
+        return getIndentString(indentLevel) + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + " \n";
     }
 
     protected String getIndentString(final int indentLevel) {
@@ -150,7 +146,7 @@ public class CountingReadFilter extends ReadFilter {
 
         @Override
         public String getName() {
-            return "Not " + delegateCountingFilter.getName();
+            return "NOT " + delegateCountingFilter.getName();
         }
     }
 
@@ -178,12 +174,12 @@ public class CountingReadFilter extends ReadFilter {
         protected String getSummaryLineForLevel(final int indentLevel) {
             final String indent = getIndentString(indentLevel);
             if (0 == filteredCount) {
-                return "No reads filtered by: " + getName();
+                return indent +  "0 read(s) filtered by: " + getName() + " \n";
             }
             else {
                 return indent + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + "\n"
-                        + (lhs.getFilteredCount() > 0 ? indent + lhs.getSummaryLineForLevel(indentLevel + 1) : "")
-                        + (rhs.getFilteredCount() > 0 ? indent + rhs.getSummaryLineForLevel(indentLevel + 1) : "");
+                        + (lhs.getFilteredCount() > 0 ? lhs.getSummaryLineForLevel(indentLevel + 1) : "")
+                        + (rhs.getFilteredCount() > 0 ? rhs.getSummaryLineForLevel(indentLevel + 1) : "");
             }
         }
 
@@ -217,6 +213,45 @@ public class CountingReadFilter extends ReadFilter {
                 filteredCount++;
             }
             return accept;
+        }
+
+        @Override
+        protected String getSummaryLineForLevel(final int indentLevel) {
+            if(indentLevel == 0) {
+                String simplifiedSummary = getSummaryLineForLevelAllAndsSimplified();
+                if(!simplifiedSummary.isEmpty()) {
+                    return simplifiedSummary;
+                }
+            }
+            return super.getSummaryLineForLevel(indentLevel);
+        }
+
+        /**
+         * @return simplified summary line if this filter consists only of filters joined by AND, otherwise empty String
+         */
+        private String getSummaryLineForLevelAllAndsSimplified() {
+            StringBuilder summaryLine = new StringBuilder();
+
+            Stack<CountingReadFilter> unread = new Stack<>();
+            unread.push(this.rhs);
+            unread.push(this.lhs);
+            CountingReadFilter curFilter;
+
+            while(!unread.empty()) {
+                curFilter = unread.pop();
+                if (curFilter instanceof CountingAndReadFilter) {
+                    unread.push(((CountingAndReadFilter) curFilter).rhs);
+                    unread.push(((CountingAndReadFilter) curFilter).lhs);
+                } else if (curFilter instanceof CountingBinopReadFilter || curFilter instanceof CountingNegateReadFilter) {
+                    return "";
+                } else {
+                    summaryLine.append(curFilter.getSummaryLineForLevel(0));
+                }
+            }
+
+            summaryLine.append(this.getFilteredCount() + " total reads filtered");
+
+            return summaryLine.toString();
         }
 
         @Override
