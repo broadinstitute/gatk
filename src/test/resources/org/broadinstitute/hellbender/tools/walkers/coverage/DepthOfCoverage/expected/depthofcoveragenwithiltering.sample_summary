@@ -1,0 +1,8 @@
+sample_id,total,mean,granular_third_quartile,granular_median,granular_first_quartile,%_bases_above_15
+NA19238,70,0.05,1,1,1,0.1
+NA19239,56,0.04,1,1,1,0.1
+NA12892,0,0.00,1,1,1,0.0
+NA12891,0,0.00,1,1,1,0.0
+NA19240,40,0.03,1,1,1,0.1
+NA12878,0,0.00,1,1,1,0.0
+Total,166,0.12,N/A,N/A,N/A

@@ -34,6 +34,9 @@ public final class BaseUtils {
     public static final byte[] BASES = {'A', 'C', 'G', 'T'};
     public static final char[] BASE_CHARS = {'A', 'C', 'G', 'T'};
 
+    public static final byte[] BASES_EXTENDED = {'A', 'C', 'G', 'T', 'N', 'D'};
+    public static final char[] BASE_CHARS_EXTENDED = {'A', 'C', 'G', 'T', 'N', 'D'};
+
     private static final int[] baseIndexMap = new int[256];
     static {
         Arrays.fill(baseIndexMap, -1);
@@ -137,6 +140,26 @@ public final class BaseUtils {
         Utils.validateArg( base >= 0 && base < 256,
                 "Non-standard bases were encountered in either the input reference or BAM file(s)");
         return baseIndexMap[base];
+    }
+
+    /**
+     * Converts a base including extended bases to a base index
+     *
+     * @param base [AaCcGgTtDdNn]
+     * @return 0, 1, 2, 3, 4, or -1 if the base can't be understood
+     */
+    static public int extendedBaseToBaseIndex(byte base) {
+        switch (base) {
+            case 'd':
+            case 'D':
+                return Base.D.ordinal();
+            case 'n':
+            case 'N':
+                return Base.N.ordinal();
+
+            default:
+                return simpleBaseToBaseIndex(base);
+        }
     }
 
     /**

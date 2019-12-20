@@ -247,7 +247,6 @@ public final class IntervalUtils {
         return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
     }
 
-
     /**
      * Method that takes a list of interval strings in the command line format and parses them into GenomicLoc objects
      * without attempting to perform any sort of interval merging whatsover regardless of overlap between the intervals.
@@ -917,6 +916,8 @@ public final class IntervalUtils {
      */
     public static List<GenomeLoc> mergeIntervalLocations(final List<GenomeLoc> raw, final IntervalMergingRule rule) {
         if (raw.size() <= 1) {
+            return Collections.unmodifiableList(raw);
+        } else if (rule == IntervalMergingRule.NONE) {
             return Collections.unmodifiableList(raw);
         } else {
             final ArrayList<GenomeLoc> merged = new ArrayList<>();
