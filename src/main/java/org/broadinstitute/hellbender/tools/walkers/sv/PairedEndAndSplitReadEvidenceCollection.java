@@ -13,11 +13,11 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.*;
 import java.util.*;
+import java.util.function.Predicate;
 
 @CommandLineProgramProperties(
         summary = "Gathers paired-end and split read evidence files",
@@ -35,9 +35,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Argument(fullName = "sample-name", doc = "Sample name")
     String sampleName = null;
 
-    @Argument(fullName = "max-split-dist", doc = "Maxiumum split distance", optional = true)
-    Integer maxSplitDist = 300;
-
 
     Set<String> observedDiscordantNames = new HashSet<>();
     int currentDiscordantPosition = -1;
@@ -46,7 +43,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private OutputStreamWriter peWriter;
     private OutputStreamWriter srWriter;
 
-    HashMap<SplitPos, Integer> splitCounts;
+    PriorityQueue<SplitPos> splitPosBuffer;
     List<DiscordantRead> discordantPairs;
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -80,7 +77,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             throw new UserException("Could not open " + srFile);
         }
 
-        splitCounts = new HashMap<>(maxSplitDist * 3);
+        splitPosBuffer = new PriorityQueue<>(new SplitPosComparator());
 
         discordantPairs = new ArrayList<>();
 
@@ -196,8 +193,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     static class SplitPos {
-        private POSITION direction;
-        private int pos;
+        public POSITION direction;
+        public int pos;
 
         public SplitPos(final int start, final POSITION direction) {
             this.pos = start;
@@ -230,7 +227,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         }
 
         if (isSoftClipped(read)) {
-            prevClippedReadEndPos = countSplitRead(read, splitCounts, prevClippedReadEndPos, srWriter);
+            countSplitRead(read, splitPosBuffer, srWriter);
         }
 
         if (! read.isProperlyPaired()) {
@@ -278,9 +275,10 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         final Comparator<DiscordantRead> discReadComparator =
                 Comparator.comparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
                         .thenComparing(DiscordantRead::getStart)
+                        .thenComparing(DiscordantRead::isReadReverseStrand)
                         .thenComparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
                         .thenComparing(DiscordantRead::getMateStart)
-                        .thenComparing(DiscordantRead::getName);
+                        .thenComparing(DiscordantRead::isMateReverseStrand);
 
         discordantPairs.sort(discReadComparator);
         discordantPairs.forEach(this::writeDiscordantPair);
@@ -304,57 +302,39 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
      * @return the new prevClippedReadEndPos after counting this read, which is the rightmost aligned position of the read
      */
     @VisibleForTesting
-    public int countSplitRead(final GATKRead read, final HashMap<SplitPos, Integer> splitCounts, final int prevClippedReadEndPos, final OutputStreamWriter srWriter) {
-        int newPrevClippedReadEndPos = prevClippedReadEndPos;
+    public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final OutputStreamWriter srWriter) {
         final SplitPos splitPosition = getSplitPosition(read);
+        final int readStart = read.getStart();
         if (splitPosition.direction == POSITION.MIDDLE) {
-            return 0;
+            return;
         }
-        final int dist;
-        if (prevClippedReadEndPos == -1) {
-            dist = 0;
-        } else {
-            dist = Math.abs(splitPosition.pos - newPrevClippedReadEndPos);
-        }
-        newPrevClippedReadEndPos = read.getEnd();
         if (currentChrom == null) {
             currentChrom = read.getContig();
-        }
-        if (dist > maxSplitDist || !currentChrom.equals(read.getContig())) {
-            flushSplitCounts(srWriter, splitCounts);
-            if (!currentChrom.equals(read.getContig())) {
-                currentChrom = read.getContig();
-                newPrevClippedReadEndPos = -1;
-            }
+        } else if (!currentChrom.equals(read.getContig())) {
+            flushSplitCounts(splitPos -> true, srWriter, splitCounts);
+            currentChrom = read.getContig();
+        } else {
+            flushSplitCounts(sp -> (sp.pos < readStart - 1), srWriter, splitCounts);
         }
 
-        if (! splitCounts.containsKey(splitPosition)) {
-            splitCounts.put(splitPosition, 1);
-        } else {
-            splitCounts.put(splitPosition, splitCounts.get(splitPosition) + 1);
-        }
-        return newPrevClippedReadEndPos;
+        splitCounts.add(splitPosition);
     }
 
-    private void flushSplitCounts(final OutputStreamWriter srWriter, final HashMap<SplitPos, Integer> splitCounts) {
-        final Comparator<SplitPos> comparator = (o1, o2) -> {
-            if (o1.pos != o2.pos) {
-                return Integer.compare(o1.pos, o2.pos);
-            } else {
-                return o1.direction.compareTo(o2.direction);
-            }
-        };
+    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition, final OutputStreamWriter srWriter, final PriorityQueue<SplitPos> splitCounts) {
 
-        splitCounts.keySet().stream().sorted(comparator).forEach(position -> {
+        while (splitCounts.size() > 0 && flushablePosition.test(splitCounts.peek())) {
+            SplitPos pos = splitCounts.poll();
+            int countAtPos = 1;
+            while (splitCounts.size() > 0 && splitCounts.peek().equals(pos)) {
+                countAtPos++;
+                splitCounts.poll();
+            }
             try {
-                int count = splitCounts.get(position);
-                // subtract one from pos to match pysam results
-                srWriter.write(currentChrom + "\t" + (position.pos - 1) + "\t" + position.direction.getDescription() + "\t" + count + "\t" + sampleName + "\n");
+                srWriter.write(currentChrom + "\t" + (pos.pos - 1) + "\t" + pos.direction.getDescription() + "\t" + countAtPos + "\t" + sampleName + "\n");
             } catch (IOException e) {
                 throw new GATKException("Could not write to sr file", e);
             }
-        });
-        splitCounts.clear();
+        }
     }
 
     private SplitPos getSplitPosition(GATKRead read) {
@@ -377,7 +357,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        flushSplitCounts(srWriter, splitCounts);
+        flushSplitCounts(splitPos -> true, srWriter, splitPosBuffer);
         flushDiscordantReadPairs();
         return null;
     }
@@ -406,6 +386,17 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
         public String getDescription() {
             return description;
+        }
+    }
+
+    static class SplitPosComparator implements Comparator<SplitPos> {
+        @Override
+        public int compare(final SplitPos o1, final SplitPos o2) {
+            if (o1.pos != o2.pos) {
+                return Integer.compare(o1.pos, o2.pos);
+            } else {
+                return o1.direction.compareTo(o2.direction);
+            }
         }
     }
 }
