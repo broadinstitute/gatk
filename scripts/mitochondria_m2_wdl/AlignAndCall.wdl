@@ -425,7 +425,7 @@ task M2 {
         --max-mnp-distance 0
   >>>
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: "us.gcr.io/broad-gatk/gatk:4.1.4.0"
       memory: machine_mem + " MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -507,7 +507,7 @@ task Filter {
 
   >>>
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: "us.gcr.io/broad-gatk/gatk:4.1.4.0"
       memory: "4 MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
@@ -538,7 +538,7 @@ task MergeStats {
     File stats = "raw.combined.stats"
   }
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+      docker: "us.gcr.io/broad-gatk/gatk:4.1.4.0"
       memory: "3 MB"
       disks: "local-disk 20 HDD"
       preemptible: select_first([preemptible_tries, 5])

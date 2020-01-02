@@ -206,7 +206,7 @@ task SubsetBamToChrM {
   runtime {
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.1.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.1.4.0"
     preemptible: select_first([preemptible_tries, 5])
   }
   output {
