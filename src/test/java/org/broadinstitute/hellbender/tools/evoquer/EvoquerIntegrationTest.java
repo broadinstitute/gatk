@@ -246,13 +246,19 @@ public class EvoquerIntegrationTest extends CommandLineProgramTest {
             Map<Allele, Integer> expectedToActualIndexMap = expectedAlleles.stream()
                     .collect(Collectors.toMap(Function.identity(), allele -> variant.getAlleleIndex(allele), (a, b)->a, () -> new HashMap<>()));
 
-            Genotype sample = variant.getGenotypes("M3399").get(0);
-            List<Integer> PLs = Arrays.stream(sample.getPL()).sorted().boxed().collect(Collectors.toList());
-            List<Integer> expectedPLs = Arrays.asList(34,0,68,0,68,68,0,68,68,68,0,68,68,68,68,0,68,68,68,68,68,0,68,68,68,68,68,68);
-            expectedPLs.sort(Integer::compareTo);
-            Assert.assertEquals(PLs, expectedPLs);
 
-
+            // one allele subsetted
+            verifyGenotype(variant.getGenotypes("M3399").get(0), "GGCCGCCGCC/.",
+                    Arrays.asList(34,0,68,0,68,68,0,68,68,68,0,68,68,68,68,0,68,68,68,68,68,0,68,68,68,68,68,68),
+                    Arrays.asList(3,0,0,0,0,0,0));
+            // both alleles subsetted
+            verifyGenotype(variant.getGenotypes("102185").get(0), "./.",
+                    Arrays.asList(85,10,0,10,0,0,10,0,0,0,10,0,0,0,0,10,0,0,0,0,0,10,0,0,0,0,0,0),
+                    Arrays.asList(0,0,0,0,0,0,0));
+            // no alleles subsetted
+            verifyGenotype(variant.getGenotypes("8917408").get(0), "GGCCGCCGCC/AGCCGCCGCC",
+                    Arrays.asList(141,174,423,174,423,423,174,423,423,423,0,249,249,249,225,174,423,423,423,249,423,174,423,423,423,249,423,423),
+                    Arrays.asList(11,0,0,0,8,0,0));
 
         } catch (Exception ex) {
             Assert.fail("caught exception", ex);
@@ -260,5 +266,14 @@ public class EvoquerIntegrationTest extends CommandLineProgramTest {
     }
 
 
+    private void verifyGenotype(Genotype sample, String expectedGenotype, List<Integer> expectedPLs, List<Integer> expectedADs) {
+        Assert.assertEquals(sample.getGenotypeString(), expectedGenotype);
+        List<Integer> PLs = Arrays.stream(sample.getPL()).sorted().boxed().collect(Collectors.toList());
+        expectedPLs.sort(Integer::compareTo);
+        Assert.assertEquals(PLs, expectedPLs);
+        List<Integer> ADs = Arrays.stream(sample.getAD()).sorted().boxed().collect(Collectors.toList());
+        expectedADs.sort(Integer::compareTo);
+        Assert.assertEquals(ADs, expectedADs);
+    }
 
 }
