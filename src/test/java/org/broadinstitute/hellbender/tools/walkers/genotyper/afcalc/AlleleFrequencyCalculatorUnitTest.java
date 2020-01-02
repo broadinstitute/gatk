@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -290,6 +291,36 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         final List<int[]> pls = Arrays.asList(new int[] {0,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000,10000,10000,10000,10000});
         final VariantContext vc = makeVC(alleles, pls.stream().map(pl -> makeGenotype(ploidy, pl)).collect(Collectors.toList()));
         final double log10PVariant = afCalc.calculate(vc).log10ProbVariantPresent();
+    }
+
+    //check the exact integration calculation
+    @Test
+    public void testSingleSampleBiallelicShortcut() {
+        // in the haploid case, if the AF calc has equal pseudocounts of ref and alt, the posterior is proportional to the likelihoods:
+        for (final double pseudocount : new double[] { 1, 5, 10} ) {
+            final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(pseudocount, pseudocount, pseudocount, DEFAULT_PLOIDY);
+            for (int pl : new int[]{10, 100, 1000}) {
+                final double[] log10Likelihoods = new double[]{0, pl / 10.0};
+                final double result = afCalc.calculateSingleSampleBiallelicNonRefPosterior(log10Likelihoods, false);
+                final double expected = MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods)[1];
+                Assert.assertEquals(result, expected, 1.0e-10);
+            }
+        }
+
+        // in the diploid case, we roughly multiply the prior by the likelihoods -- it's not exact because the allele frequency is a random variable and not a single value
+        for (final double heterozygosity : new double[] {0.1, 0.01, 0.001}) {
+            final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(100, 100*heterozygosity, 100*heterozygosity, DEFAULT_PLOIDY);
+            for (int pl : new int[]{10, 100, 1000}) {
+                final double log10Likelihood = pl / 10.0;
+                final double[] log10Likelihoods = new double[]{0, log10Likelihood, -100}; //assume hom alt is very unlikely
+                final double[] log10Priors = new double[] {Math.log10(MathUtils.square(1 - heterozygosity)), Math.log10(2*heterozygosity*(1-heterozygosity)), MathUtils.square(heterozygosity)};
+                final double result = afCalc.calculateSingleSampleBiallelicNonRefPosterior(log10Likelihoods, false);
+                final double expected = 1 - MathUtils.normalizeFromLog10ToLinearSpace(MathArrays.ebeAdd(log10Likelihoods, log10Priors))[0];
+                Assert.assertEquals(result, expected, 0.03);
+            }
+        }
+
+
     }
 
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero

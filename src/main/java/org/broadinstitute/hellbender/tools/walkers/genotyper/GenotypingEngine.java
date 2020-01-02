@@ -4,16 +4,14 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -40,8 +38,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected final SampleList samples;
 
-    private final AFPriorProvider log10AlleleFrequencyPriorsSNPs;
-
     private final List<SimpleInterval> upstreamDeletionsLoc = new LinkedList<>();
 
     private final boolean doAlleleSpecificCalcs;
@@ -64,39 +60,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
-        log10AlleleFrequencyPriorsSNPs = composeAlleleFrequencyPriorProvider(numberOfGenomes,
-                configuration.genotypeArgs.snpHeterozygosity, configuration.genotypeArgs.inputPrior);
         alleleFrequencyCalculator = AlleleFrequencyCalculator.makeCalculator(configuration.genotypeArgs);
-    }
-
-    /**
-     * Function that fills vector with allele frequency priors. By default, infinite-sites, neutral variation prior is used,
-     * where Pr(AC=i) = theta/i where theta is heterozygosity
-     * @param N                                Number of chromosomes
-     * @param heterozygosity                   default heterozygosity to use, if inputPriors is empty
-     * @param inputPriors                      Input priors to use (in which case heterozygosity is ignored)
-     *
-     * @throws IllegalArgumentException if {@code inputPriors} has size != {@code N} or any entry in {@code inputPriors} is not in the (0,1) range.
-     *
-     * @return never {@code null}.
-     */
-    public static AFPriorProvider composeAlleleFrequencyPriorProvider(final int N, final double heterozygosity, final List<Double> inputPriors) {
-
-        if (!inputPriors.isEmpty()) {
-            // user-specified priors
-            if (inputPriors.size() != N) {
-                throw new CommandLineException.BadArgumentValue("inputPrior", "Invalid length of inputPrior vector: vector length must be equal to # samples +1 ");
-            }
-            for (final Double prior : inputPriors) {
-                if (prior <= 0 || prior >= 1) {
-                    throw new CommandLineException.BadArgumentValue("inputPrior", "inputPrior vector values must be greater than 0 and less than 1");
-                }
-            }
-            return new CustomAFPriorProvider(inputPriors);
-        }
-        else {
-            return new HeterozygosityAFPriorProvider(heterozygosity);
-        }
     }
 
     /**
@@ -439,43 +403,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     public double calculateSingleSampleRefVsAnyActiveStateProfileValue(final double[] log10GenotypeLikelihoods) {
         Utils.nonNull(log10GenotypeLikelihoods, "the input likelihoods cannot be null");
-        Utils.validateArg(log10GenotypeLikelihoods.length == this.configuration.genotypeArgs.samplePloidy + 1, "wrong likelihoods dimensions");
-
-        final double[] log10Priors = log10AlleleFrequencyPriorsSNPs.forTotalPloidy(this.configuration.genotypeArgs.samplePloidy);
-        final double log10ACeq0Likelihood = log10GenotypeLikelihoods[0];
-        final double log10ACeq0Prior = log10Priors[0];
-        final double log10ACeq0Posterior = log10ACeq0Likelihood + log10ACeq0Prior;
-
-        // If the maximum a posteriori AC is 0 then the profile value must be 0.0 as per existing code; it does
-        // not matter whether AC > 0 is at all plausible.
-        boolean mapACeq0 = true;
-        for (int AC = 1; AC < log10Priors.length; AC++) {
-            if (log10Priors[AC] + log10GenotypeLikelihoods[AC] > log10ACeq0Posterior) {
-                mapACeq0 = false;
-                break;
-            }
-        }
-        if (mapACeq0) {
-            return 0.0;
-        }
-
-        //TODO bad way to calculate AC > 0 posterior that follows the current behaviour of ExactAFCalculator (StateTracker)
-        //TODO this is the lousy part... this code just adds up lks and priors of AC != 0 before as if
-        //TODO Sum(a_i * b_i) is equivalent to Sum(a_i) * Sum(b_i)
-        //TODO This has to be changed not just here but also in the AFCalculators (StateTracker).
-        final double log10ACgt0Likelihood = MathUtils.approximateLog10SumLog10(log10GenotypeLikelihoods, 1, log10GenotypeLikelihoods.length);
-        final double log10ACgt0Prior = MathUtils.approximateLog10SumLog10(log10Priors, 1, log10Priors.length);
-        final double log10ACgt0Posterior = log10ACgt0Likelihood + log10ACgt0Prior;
-        final double log10PosteriorNormalizationConstant = MathUtils.approximateLog10SumLog10(log10ACeq0Posterior, log10ACgt0Posterior);
-        //TODO End of lousy part.
-
-        final double normalizedLog10ACeq0Posterior = log10ACeq0Posterior - log10PosteriorNormalizationConstant;
-        // This is another condition to return a 0.0 also present in AlleleFrequencyCalculator code as well.
-        if (normalizedLog10ACeq0Posterior >= QualityUtils.qualToErrorProbLog10(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING)) {
-            return 0.0;
-        }
-
-        return 1.0 - Math.pow(10.0, normalizedLog10ACeq0Posterior);
-
+        return alleleFrequencyCalculator.calculateSingleSampleBiallelicNonRefPosterior(log10GenotypeLikelihoods, true);
     }
 }

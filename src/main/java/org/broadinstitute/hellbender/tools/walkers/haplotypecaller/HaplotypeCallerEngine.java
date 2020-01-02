@@ -490,9 +490,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final double isActiveProb;
 
         if (genotypes.size() == 1) {
-            // Faster implementation avoiding the AlleleFrequencyCalculator
-            // This is the case when doing GVCF output.
-            // TODO: now that old qual is gone, do we still need this?
+            // Faster implementation using exact marginalization instead of iteration
             isActiveProb = activeRegionEvaluationGenotyperEngine.calculateSingleSampleRefVsAnyActiveStateProfileValue(genotypes.get(0).getLikelihoods().getAsVector());
         } else {
             final VariantContext vcOut = activeRegionEvaluationGenotyperEngine.calculateGenotypes(new VariantContextBuilder("HCisActive!", context.getContig(), context.getLocation().getStart(), context.getLocation().getEnd(), alleles).genotypes(genotypes).make(), GenotypeLikelihoodsCalculationModel.SNP);
