@@ -94,6 +94,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
     private static final boolean CALL_GENOTYPES = true;
+    private static final boolean RE_CALL_GENOTYPES = true;  // set to false when using allele subsetting with evoquer code
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -190,7 +191,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         setupVCFWriter(inputVCFHeader, samples);
 
-        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.MAX_ALTERNATE_ALLELES, SUMMARIZE_PLs, stripASAnnotations);
+        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.MAX_ALTERNATE_ALLELES, SUMMARIZE_PLs, stripASAnnotations, RE_CALL_GENOTYPES);
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         //not InfoFieldAnnotation.class because we don't want AS_InbreedingCoeff

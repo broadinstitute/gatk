@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.evoquer;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
@@ -10,12 +12,16 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class EvoquerIntegrationTest extends CommandLineProgramTest {
+
 
     @Test(groups = {"cloud"})
     public void test3ExomesWithGnarlyGenotyper() throws IOException {
@@ -191,4 +197,68 @@ public class EvoquerIntegrationTest extends CommandLineProgramTest {
         //Spanning deletions don't work yet
         //Assert.assertEquals(variants.get(0).getAlleles().toString(), "[G*, A, *]");
     }
+
+    @Test
+    public void testAlleleSubsetting() {
+        try {
+
+            final String avrolist = toolsTestDir + "evoquer/subsetting-data.avro";
+            final String interval = "chr20:62065822";
+            final File outputVCF = createTempFile("output", ".vcf");
+
+            final File avrolistFile = createTempFile("avrolist", "");
+            try (final PrintWriter writer = new PrintWriter(avrolistFile)) {
+                writer.println(avrolist);
+            }
+
+            final String[] args = {
+                    "-R", hg38Reference,
+                    "--precomputed-query-results", avrolistFile.getAbsolutePath(),
+                    "--sample-list-file", toolsTestDir + "evoquer/subsetting-samples",
+                    "-L", interval,
+                    "-O", outputVCF.getAbsolutePath(),
+                    "--run-query-only", "false",
+                    "--subset-alleles", "6",
+                    "--disable-gnarly-genotyper", "false"
+            };
+
+            runCommandLine(args);
+
+            final List<VariantContext> variants = VariantContextTestUtils.streamVcf(outputVCF)
+                    .collect(Collectors.toList());
+            Assert.assertEquals(variants.size(), 1);
+            VariantContext variant = variants.get(0);
+
+            Allele ref = Allele.create("GGCCGCCGCC", true);
+            Assert.assertEquals(ref, variant.getReference());
+            List<Allele> expectedAlleles = Arrays.asList(
+                    ref,
+                    Allele.create("AGCCGCCGCC"),
+                    Allele.create("G"),
+                    Allele.create("GGCC"),
+                    Allele.create("GGCCGCC"),
+                    Allele.create("GGCCGCCGCCGCCGCC"),
+                    Allele.create("GGCCGCCGCCGCCGCCGCC")
+            );
+
+            Assert.assertEquals(variant.getAlleles().stream().collect(Collectors.toSet()), expectedAlleles.stream().collect(Collectors.toSet()));
+
+            Map<Allele, Integer> expectedToActualIndexMap = expectedAlleles.stream()
+                    .collect(Collectors.toMap(Function.identity(), allele -> variant.getAlleleIndex(allele), (a, b)->a, () -> new HashMap<>()));
+
+            Genotype sample = variant.getGenotypes("M3399").get(0);
+            List<Integer> PLs = Arrays.stream(sample.getPL()).sorted().boxed().collect(Collectors.toList());
+            List<Integer> expectedPLs = Arrays.asList(34,0,68,0,68,68,0,68,68,68,0,68,68,68,68,0,68,68,68,68,68,0,68,68,68,68,68,68);
+            expectedPLs.sort(Integer::compareTo);
+            Assert.assertEquals(PLs, expectedPLs);
+
+
+
+        } catch (Exception ex) {
+            Assert.fail("caught exception", ex);
+        }
+    }
+
+
+
 }

@@ -54,7 +54,7 @@ public class AlleleSubsettingUtilsForJointCalling {
             Set<Allele> allelesToSubset = SetUtils.intersection(vcAltAllelesSet, allelesToDrop);
             if (allelesToSubset.isEmpty()) {
                 results.add(vc);
-            } else if (containsMeaningfulAllele(SetUtils.difference(vcAltAllelesSet, allelesToSubset))) {
+            } else { // need to calculate this even if both alleles are subsetted, so it won't be counted as GQ60
                 logger.debug("subsetting alleles for sample: " + vc.getSampleNames());
                 Genotype g =  vc.getGenotype(0);
                 GenotypeBuilder gb = new GenotypeBuilder(g);

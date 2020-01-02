@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.VCFWriterHelper;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -180,7 +181,7 @@ class EvoquerEngine {
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false, false);
     }
 
     EvoquerEngine( final List<String> sampleNames,
@@ -220,7 +221,7 @@ class EvoquerEngine {
         this.sampleNames.addAll(sampleNames);
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false);
+        this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false, false);
     }
 
     /**

@@ -44,13 +44,15 @@ public final class GnarlyGenotyperEngine {
     private final boolean summarizePls;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
     private final boolean keepAllSites;
     private final boolean stripASAnnotations;
+    private final boolean reCallGenotypes;
 
 
-    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean stripASAnnotations) {
+    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean stripASAnnotations, final boolean reCallGenotypes) {
         this.maxAltAllelesToOutput = maxAltAllelesToOutput;
         this.summarizePls = summarizePls;
         this.keepAllSites = keepAllSites;
         this.stripASAnnotations = stripASAnnotations;
+        this.reCallGenotypes = reCallGenotypes;
 
         if (!summarizePls) {
             final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
@@ -351,9 +353,11 @@ public final class GnarlyGenotyperEngine {
                     final int[] PLs = trimPLs(g, newPLsize);
                     genotypeBuilder.PL(PLs);
                     genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
-                    //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
-                    // then we need to actually find the GT from PLs
-                    makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
+                    if (reCallGenotypes) {
+                        //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
+                        // then we need to actually find the GT from PLs
+                        makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
+                    }
                 }
             }
             final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());

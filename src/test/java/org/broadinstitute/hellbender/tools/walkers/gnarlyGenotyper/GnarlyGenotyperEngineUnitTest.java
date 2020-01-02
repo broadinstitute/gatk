@@ -31,7 +31,7 @@ public class GnarlyGenotyperEngineUnitTest {
     //use more alts than the maxAltAllelesToOutput for the engine, forcing on-the-fly generation of PL counts not in the cache
     @Test
     public void testLotsOfAlts() {
-        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, false, true);
+        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, false, true, true);
 
         final Genotype g1 = VariantContextTestUtils.makeG("g1", oneInserted, twoInserted, sample1pls);
         final Genotype g2 = VariantContextTestUtils.makeG("g1", Aref, oneInserted, sample2pls);
@@ -54,7 +54,7 @@ public class GnarlyGenotyperEngineUnitTest {
     //use more alts than the maxAltAllelesToOutput for the engine, forcing on-the-fly generation of GLCalculator not in the cache
     @Test
     public void testGenotypeCallForLotsOfAlts() {
-        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, false, true);
+        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, false, true, true);
 
         final Genotype g1 = VariantContextTestUtils.makeG("g1", oneInserted, twoInserted, sample1pls);
         final Genotype g2 = VariantContextTestUtils.makeG("g1", Aref, oneInserted, sample2pls);
