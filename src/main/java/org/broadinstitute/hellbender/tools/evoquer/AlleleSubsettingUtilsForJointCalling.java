@@ -180,10 +180,10 @@ public class AlleleSubsettingUtilsForJointCalling {
             if (alleleMappingsWithRef.containsKey(allele)) {
                 Allele mappedAllele = alleleMappingsWithRef.get(allele);
                 Collections.replaceAll(modifyableAlleles, allele, mappedAllele);
+                vcb.alleles(modifyableAlleles);
 
                 // replace every instance of allele in the genotype alleles
                 Collections.replaceAll(updatedGenotypeAlleles, allele, mappedAllele);
-                vcb.alleles(modifyableAlleles);
             }
         });
 
