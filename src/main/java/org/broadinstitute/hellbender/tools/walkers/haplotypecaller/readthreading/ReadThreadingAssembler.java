@@ -598,7 +598,7 @@ public final class ReadThreadingAssembler {
 ////            }
 ////        }
 ////        return returnList;
-        return Collections.singletonList(25);
+        return Collections.singletonList(35);
     }
 
     private static int arrayMaxInt(final List<Integer> array) {
