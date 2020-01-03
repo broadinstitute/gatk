@@ -8,11 +8,15 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * //TODO fill this in
+ */
 public class AlleleSubsettingUtilsForJointCalling {
     private static final Logger logger = LogManager.getLogger(AlleleSubsettingUtilsForJointCalling.class);
 
@@ -23,45 +27,46 @@ public class AlleleSubsettingUtilsForJointCalling {
      * @return
      */
     public static List<VariantContext> subsetAlleles(List<VariantContext> unmergedCalls, int maxAlleles, Allele longestRefAllele) {
-
         Map<Allele, Integer> alleleSpecificQuals = new HashMap<>();
         List<VariantContext> callsWithExpandedAlleles = sumAllQualsAndExpandAlleles(unmergedCalls, alleleSpecificQuals, longestRefAllele);
-        logger.debug("unique alleles: " + alleleSpecificQuals.size() + alleleSpecificQuals.keySet());
 
-        logger.debug("delete this log message - for testing only");
         // choose the target alleles
-        List<Allele> targetAlleles = alleleSpecificQuals.entrySet().stream()
+        List<Allele> allelesToKeep = alleleSpecificQuals.entrySet().stream()
                 // get the highest values
-                .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed()).limit(maxAlleles)
+                .sorted(Map.Entry.<Allele, Integer>comparingByValue().reversed())
+                .limit(maxAlleles)
                 .map(entry -> entry.getKey()).collect(Collectors.toList());
-        logger.debug(targetAlleles);
+        logger.debug(() -> allelesToKeep);
 
         Set<Allele> allelesToDrop = new HashSet<>(alleleSpecificQuals.keySet());
-        allelesToDrop.removeAll(targetAlleles);
+        allelesToDrop.removeAll(allelesToKeep);
 
         if (allelesToDrop.isEmpty()) {
             // there were not enough alleles for us to subset any
             return callsWithExpandedAlleles;
         }
 
+        logger.debug(() -> "subsetting alleles: \nref: " + longestRefAllele + "\nkeeping: " + allelesToKeep + "\ndropping: " + allelesToDrop);
+
         // how do i do this without hardcoding?
         int[] relevantAlleleIndexes = new int[] {0,2};
 
         List<VariantContext> results = new ArrayList<>(unmergedCalls.size());
 
-        callsWithExpandedAlleles.stream().forEach(vc -> {
+        callsWithExpandedAlleles.forEach(vc -> {
             Set<Allele> vcAltAllelesSet = new HashSet<>(vc.getAlternateAlleles());
             Set<Allele> allelesToSubset = SetUtils.intersection(vcAltAllelesSet, allelesToDrop);
             if (allelesToSubset.isEmpty()) {
                 results.add(vc);
             } else { // need to calculate this even if both alleles are subsetted, so it won't be counted as GQ60
-                logger.debug("subsetting alleles for sample: " + vc.getSampleNames());
+                logger.debug(() -> "subsetting alleles for sample: " + vc.getSampleNames());
                 Genotype g =  vc.getGenotype(0);
                 GenotypeBuilder gb = new GenotypeBuilder(g);
 
                 List<Allele> galleles = g.getAlleles();
-                List<Allele> updatedGAlleles = galleles.stream().map(gallele ->
-                        allelesToSubset.contains(gallele) ? Allele.NO_CALL : gallele).collect(Collectors.toList());
+                List<Allele> updatedGAlleles = galleles.stream()
+                        .map(gallele -> allelesToSubset.contains(gallele) ? Allele.NO_CALL : gallele)
+                        .collect(Collectors.toList());
                 gb.alleles(updatedGAlleles);
                 // TODO use methods to return index mapping?
                 GenotypeLikelihoods gll = GenotypeLikelihoods.fromPLs(g.getPL());
@@ -111,6 +116,7 @@ public class AlleleSubsettingUtilsForJointCalling {
         return AnnotationUtils.encodeAnyASList(subsetList);
     }
 
+
     /**
      *
      * @param variantContexts
@@ -144,11 +150,11 @@ public class AlleleSubsettingUtilsForJointCalling {
         }
 
         List<Allele> alleles = vc.getAlleles();
-        VariantContextBuilder vcb = null;
+        VariantContextBuilder vcb = new VariantContextBuilder(vc);
         List<Allele> updatedGenotypeAlleles = new ArrayList<>(vc.getGenotype(0).getAlleles());
         VariantContext result = vc;     // default the result
 
-        String rawDataString = vc.getAttributeAsString("AS_QUALapprox", null);
+        String rawDataString = vc.getAttributeAsString(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, null);
         String[] rawDataPerAllele = null;
         if (rawDataString != null && !rawDataString.isEmpty()) {
             rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
@@ -162,44 +168,31 @@ public class AlleleSubsettingUtilsForJointCalling {
                     sumQuals(alleleSpecificQuals, alleleMappings.getOrDefault(allele, allele), Integer.parseInt(alleleQual));
                 }
             }
-            // now replace the original allele with the expanded allele in the genotype and vc
-            if (i == 0) {
-                Allele oldRef = vc.getReference();
-                vcb = new VariantContextBuilder(vc);
-                setVariantContextBuilderAllele(vcb, 0, longestRefAllele);
-                if (updatedGenotypeAlleles.contains(oldRef)) {
-                    Collections.replaceAll(updatedGenotypeAlleles, oldRef, longestRefAllele);
-                }
-            }
-            else if (alleleMappings.containsKey(allele)) {
-                Allele mappedAllele = alleleMappings.get(allele);
+        }
 
-                // replace allele in new vc
-                setVariantContextBuilderAllele(vcb, i, mappedAllele);
+        // now replace the original allele with the expanded allele in the genotype and vc
+        // we need to replace the ref with the expanded ref also, so we add it to the map
+        Map<Allele, Allele> alleleMappingsWithRef = new HashMap<>();
+        alleleMappingsWithRef.putAll(alleleMappings);
+        alleleMappingsWithRef.put(vc.getReference(), longestRefAllele);
+        List<Allele> modifyableAlleles = vcb.getAlleles();
+        alleles.forEach(allele -> {
+            if (alleleMappingsWithRef.containsKey(allele)) {
+                Allele mappedAllele = alleleMappingsWithRef.get(allele);
+                Collections.replaceAll(modifyableAlleles, allele, mappedAllele);
 
                 // replace every instance of allele in the genotype alleles
-                if (updatedGenotypeAlleles.contains(allele)) {
-                    Collections.replaceAll(updatedGenotypeAlleles, allele, mappedAllele);
-                }
+                Collections.replaceAll(updatedGenotypeAlleles, allele, mappedAllele);
+                vcb.alleles(modifyableAlleles);
             }
-        }
-        if (vcb != null) {  // this should never be null
-            GenotypeBuilder genotypeBuilder = new GenotypeBuilder(vc.getGenotype(0));
-            genotypeBuilder.alleles(updatedGenotypeAlleles);
-            vcb.genotypes(Collections.singletonList(genotypeBuilder.make()));
-            result = vcb.make();
-        } else {
-            logger.warn("vcb is null! " + vc.getAlleles());
-        }
+        });
+
+        GenotypeBuilder genotypeBuilder = new GenotypeBuilder(vc.getGenotype(0));
+        genotypeBuilder.alleles(updatedGenotypeAlleles);
+        vcb.genotypes(Collections.singletonList(genotypeBuilder.make()));
+        result = vcb.make();
         return result;
     }
-
-    private static void setVariantContextBuilderAllele(VariantContextBuilder vcb, int index, Allele newAllele) {
-        List<Allele> modifyableAlleles = vcb.getAlleles();
-        modifyableAlleles.set(index, newAllele);
-        vcb.alleles(modifyableAlleles);
-    }
-
 
     private static void sumQuals(Map<Allele, Integer> alleleSpecificQuals, Allele mappedAllele, int alleleQual) {
         int currentQual = 0;

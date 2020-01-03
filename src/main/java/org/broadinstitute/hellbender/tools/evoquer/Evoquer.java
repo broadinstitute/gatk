@@ -158,6 +158,7 @@ public class Evoquer extends GATKTool {
 
     @Argument(fullName = "subset-alleles",
             doc = "The maximum number of alternate alleles at each position. Set to 0 for no limit.",
+            minValue = 0, maxRecommendedValue = 20,
             optional=true)
     private int maxAltAlleles = 6;
 

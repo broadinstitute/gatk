@@ -560,13 +560,9 @@ class EvoquerEngine {
 
         if (maxAltAlleles > 0) {
             Allele longestRefAllele = GATKVariantContextUtils.determineReferenceAllele(unmergedCalls, null);
-
-            if (longestRefAllele.length() > 1) {
-                logger.info("subsetting alleles; chosen reference: " + longestRefAllele);
-                List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, maxAltAlleles, longestRefAllele);
-                unmergedCalls = unmergedSubsettedCalls;
-                refAllele = longestRefAllele;
-            }
+            List<VariantContext> unmergedSubsettedCalls = AlleleSubsettingUtilsForJointCalling.subsetAlleles(unmergedCalls, maxAltAlleles, longestRefAllele);
+            unmergedCalls = unmergedSubsettedCalls;
+            refAllele = longestRefAllele;
         }
 
         finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, contig, currentPosition, refAllele);
