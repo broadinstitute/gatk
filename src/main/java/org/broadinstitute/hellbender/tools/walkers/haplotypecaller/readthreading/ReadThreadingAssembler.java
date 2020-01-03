@@ -188,33 +188,38 @@ public final class ReadThreadingAssembler {
 
                     savedHaplotypes.add(assembledResult);
 
-                    // if asssembly failed ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
-                    if (! savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList().isEmpty()) {
-                        // Assembled nothing, in this case we probably pushed the kmer size too far and want to reign it back in an take the
-                        if (savedHaplotypes.size() == 1) {
-                            // search for the last haplotype set that had any results, if none are found just return me
-                            // In this case we prefer the last meaningful haplotype if possible
-                            for (int i = savedHaplotypes.size() - 1; i > 0; i --) {
-                                if (savedHaplotypes.get(i).getHaplotypeList().size() > 1) {
-                                    for (Haplotype h : savedHaplotypes.get(i).getHaplotypeList()) {
-                                        resultSet.add(h, savedHaplotypes.get(i));
-                                    }
-                                    break;
-                                }
-                            }
-                            // if nothing is found at this stage return and forget
-                            for (Haplotype h : assembledResult.getHaplotypeList()) {
-                                resultSet.add(h, assembledResult);
-                            }
-                            hasAdequatelyAssembledGraph = true;
-                        }
-                        if (evaluateFoundHaplotypes(assembledResult.getHaplotypeList(), refHaplotype, savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList())) {
-                            hasAdequatelyAssembledGraph = true;
-                            for (Haplotype h : assembledResult.getHaplotypeList()) {
-                                resultSet.add(h, assembledResult);
-                            }
-                        }
+                    // if nothing is found at this stage return and forget
+                    for (Haplotype h : assembledResult.getHaplotypeList()) {
+                        resultSet.add(h, assembledResult);
                     }
+
+//                    // if asssembly failed ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
+//                    if (! savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList().isEmpty()) {
+//                        // Assembled nothing, in this case we probably pushed the kmer size too far and want to reign it back in an take the
+//                        if (savedHaplotypes.size() == 1) {
+//                            // search for the last haplotype set that had any results, if none are found just return me
+//                            // In this case we prefer the last meaningful haplotype if possible
+//                            for (int i = savedHaplotypes.size() - 1; i > 0; i --) {
+//                                if (savedHaplotypes.get(i).getHaplotypeList().size() > 1) {
+//                                    for (Haplotype h : savedHaplotypes.get(i).getHaplotypeList()) {
+//                                        resultSet.add(h, savedHaplotypes.get(i));
+//                                    }
+//                                    break;
+//                                }
+//                            }
+//                            // if nothing is found at this stage return and forget
+//                            for (Haplotype h : assembledResult.getHaplotypeList()) {
+//                                resultSet.add(h, assembledResult);
+//                            }
+//                            hasAdequatelyAssembledGraph = true;
+//                        }
+//                        if (evaluateFoundHaplotypes(assembledResult.getHaplotypeList(), refHaplotype, savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList())) {
+//                            hasAdequatelyAssembledGraph = true;
+//                            for (Haplotype h : assembledResult.getHaplotypeList()) {
+//                                resultSet.add(h, assembledResult);
+//                            }
+//                        }
+//                    }
 
                 }
             }
@@ -582,17 +587,18 @@ public final class ReadThreadingAssembler {
      * @return
      */
     List<Integer> getExpandedKmerList() {
-        List<Integer> returnList = new ArrayList<>(kmerSizes);
-        if ( !dontIncreaseKmerSizesForCycles ) {
-            int kmerSize = arrayMaxInt(kmerSizes) + KMER_SIZE_ITERATION_INCREASE;
-            int numIterations = 1;
-            while (  numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
-                returnList.add(kmerSize);
-                kmerSize += KMER_SIZE_ITERATION_INCREASE;
-                numIterations++;
-            }
-        }
-        return returnList;
+//        List<Integer> returnList = new ArrayList<>(kmerSizes);
+////        if ( !dontIncreaseKmerSizesForCycles ) {
+////            int kmerSize = arrayMaxInt(kmerSizes) + KMER_SIZE_ITERATION_INCREASE;
+////            int numIterations = 1;
+////            while (  numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
+////                returnList.add(kmerSize);
+////                kmerSize += KMER_SIZE_ITERATION_INCREASE;
+////                numIterations++;
+////            }
+////        }
+////        return returnList;
+        return Collections.singletonList(25);
     }
 
     private static int arrayMaxInt(final List<Integer> array) {
