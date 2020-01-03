@@ -60,12 +60,8 @@ public class AlleleSubsettingUtilsForJointCalling {
                 GenotypeBuilder gb = new GenotypeBuilder(g);
 
                 List<Allele> galleles = g.getAlleles();
-                List<Allele> updatedGAlleles = galleles.stream().map(gallele -> {
-                    if (allelesToSubset.contains(gallele)) {
-                        return Allele.NO_CALL;
-                    } else {
-                        return gallele;
-                    }}).collect(Collectors.toList());
+                List<Allele> updatedGAlleles = galleles.stream().map(gallele ->
+                        allelesToSubset.contains(gallele) ? Allele.NO_CALL : gallele).collect(Collectors.toList());
                 gb.alleles(updatedGAlleles);
                 // TODO use methods to return index mapping?
                 GenotypeLikelihoods gll = GenotypeLikelihoods.fromPLs(g.getPL());
