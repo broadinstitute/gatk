@@ -522,8 +522,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Arrays.asList(
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, possible_numt
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4 , GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, possible_numt|possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, low_allele_frac, possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, low_allele_frac, possible_numt|low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4)  // .|PASS
                         )},
@@ -539,8 +539,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.EMPTY_INFO_FIELD), //".|.",
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|weak_evidence, base_qual|.",
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), // ".|weak_evidence, possible_numt|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD,  VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|PASS|weak_evidence, base_qual|.",
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // ".|weak_evidence, base_qual, map_qual, possible_numt|."
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD), //".|PASS|weak_evidence, base_qual, low_allele_frac|.",
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, VCFConstants.EMPTY_INFO_FIELD) // ".|weak_evidence, base_qual, map_qual, position, low_allele_frac, possible_numt|."
                         )}
         };
     }
