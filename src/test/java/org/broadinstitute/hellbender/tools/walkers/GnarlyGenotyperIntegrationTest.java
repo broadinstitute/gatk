@@ -10,12 +10,15 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.writers.IntervalFilteringVcfWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -68,10 +71,10 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         // Simple Test, spanning deletions; standard calling confidence
                 //No variants outside requested intervals; no SNPs with QUAL < 60, no INDELs with QUAL < 69?; has star alleles after deletion at chr20:263497; has AC, AF, AN, DP, ExcessHet, FS, MQ, (MQRankSum), (ReadPosRankSum), SOR, QD; has called genotypes
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
+                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--"+GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString()), b38_reference_20_21},
                 // Same as above, but with GenomicsDB using BCF2Codec for interchange
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
-                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals", "--genomicsdb-use-bcf-codec"), b38_reference_20_21},
+                         getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--"+GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, IntervalFilteringVcfWriter.Mode.STARTS_IN.toString(), "--genomicsdb-use-bcf-codec"), b38_reference_20_21},
                 //lower calling confidence
                 //same as above except (different intervals and) with SNPs with 40 < QUAL < 60 and INDELs with 49 < QUAL < 69
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
@@ -176,7 +179,7 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         args.addReference(new File(hg38Reference))
                 .add("V", input)
                 .add("L", "chr20:10000000-10030000")
-                .add("only-output-calls-starting-in-intervals", true)
+                .add(GATKTool.VARIANT_OUTPUT_INTERVAL_FILTERING_MODE, IntervalFilteringVcfWriter.Mode.STARTS_IN)
                 .add("keep-all-sites", true)
                 .addOutput(outputPath)
                 .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
