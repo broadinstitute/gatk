@@ -17,6 +17,16 @@ public abstract class Mutect2AlleleFilter<T> extends Mutect2Filter {
     public LinkedHashMap<Allele, List<T>> getDataByAllele(final VariantContext vc, Predicate<Genotype> preconditions, Function<Genotype, List<T>> getData, final Mutect2FilteringEngine filteringEngine) {
         // create and initialize a map with all the alleles in the vc as keys and new, empty lists as values
         LinkedHashMap<Allele, List<T>> dataByAllele = vc.getAlleles().stream().collect(Collectors.toMap(Function.identity(), allele -> new ArrayList<>(), (a, b) -> a, () -> new LinkedHashMap<>()));
+        return combineDataByAllele(dataByAllele, vc, preconditions, getData, filteringEngine);
+    }
+
+    public LinkedHashMap<Allele, List<T>> getAltDataByAllele(final VariantContext vc, Predicate<Genotype> preconditions, Function<Genotype, List<T>> getAltData, final Mutect2FilteringEngine filteringEngine) {
+        // create and initialize a map with all the alleles in the vc as keys and new, empty lists as values
+        LinkedHashMap<Allele, List<T>> dataByAllele = vc.getAlternateAlleles().stream().collect(Collectors.toMap(Function.identity(), allele -> new ArrayList<>(), (a, b) -> a, () -> new LinkedHashMap<>()));
+        return combineDataByAllele(dataByAllele, vc, preconditions, getAltData, filteringEngine);
+    }
+
+    private LinkedHashMap<Allele, List<T>> combineDataByAllele(final LinkedHashMap<Allele, List<T>> dataByAllele, final VariantContext vc, Predicate<Genotype> preconditions, Function<Genotype, List<T>> getData, final Mutect2FilteringEngine filteringEngine) {
 
         // pull all the allele specific data out of each genotype (that passes preconditions) and add it to the list for the allele
         vc.getGenotypes().stream().filter(preconditions).filter(filteringEngine::isTumor)
