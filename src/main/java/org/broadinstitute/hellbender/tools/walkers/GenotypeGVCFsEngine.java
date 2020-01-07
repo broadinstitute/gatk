@@ -95,9 +95,9 @@ public class GenotypeGVCFsEngine
         }
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
-        genotypingEngine = new MinimalGenotypingEngine(createUAC(false), samples,
+        genotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(false), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
-        forceOutputGenotypingEngine = new MinimalGenotypingEngine(createUAC(true), samples,
+        forceOutputGenotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(true), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
 
         if ( includeNonVariants ) {
@@ -315,7 +315,7 @@ public class GenotypeGVCFsEngine
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final VariantContext regenotypedVC = builder.genotypes(newGenotypes).make();
 
-        final int maxAltAlleles = ((UnifiedArgumentCollection)genotypingEngine.getConfiguration()).genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.MAX_ALTERNATE_ALLELES;
         List<Allele> allelesToKeep;
 
         //we need to make sure all alleles pass the tlodThreshold
@@ -382,15 +382,15 @@ public class GenotypeGVCFsEngine
      * Creates a UnifiedArgumentCollection with appropriate values filled in from the arguments in this walker
      * @return a complete UnifiedArgumentCollection
      */
-    private UnifiedArgumentCollection createUAC(final boolean forceOutput) {
-        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
-        uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+    private StandardCallerArgumentCollection createMinimalArgs(final boolean forceOutput) {
+        final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
+        args.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
 
-        //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to uac separately
+        //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
         //GATK4 uses EMIT_ALL_ACTIVE_SITES to ensure LowQual sites are emitted.
-        uac.outputMode = forceOutput ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
-        return uac;
+        args.outputMode = forceOutput ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
+        return args;
     }
 
     /**

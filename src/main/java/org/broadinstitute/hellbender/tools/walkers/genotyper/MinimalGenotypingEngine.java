@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
  * used only by the HaplotypeCaller for its isActive() determination. Should not be used for
  * any other purpose!
  */
-public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgumentCollection> {
+public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
 
     /**
      * Creates a new unified genotyping given the UG configuration parameters and the targeted set of samples
@@ -18,7 +18,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
      * @param configuration the UG configuration.
      * @param samples list of samples
      */
-    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples) {
+    public MinimalGenotypingEngine(final StandardCallerArgumentCollection configuration, final SampleList samples) {
         this(configuration, samples, false);
     }
 
@@ -29,12 +29,8 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
      * @param samples list of samples
      * @param doAlleleSpecificCalcs Whether to calculate genotyping annotations needed for allele specific annotations
      */
-    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples, boolean doAlleleSpecificCalcs ) {
+    public MinimalGenotypingEngine(final StandardCallerArgumentCollection configuration, final SampleList samples, boolean doAlleleSpecificCalcs ) {
         super(configuration, samples, doAlleleSpecificCalcs);
-
-       if ( configuration.COMPUTE_SLOD ) {
-            throw new UserException("--computeSLOD not supported in the MinimalGenotypingEngine");
-        }
     }
 
     @Override

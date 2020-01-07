@@ -100,10 +100,10 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
         }
 
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false, false);
-        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
-        uac.genotypeArgs = new GenotypeCalculationArgumentCollection();
+        final StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
+        standardArgs.genotypeArgs = new GenotypeCalculationArgumentCollection();
 
-        GenotypingEngine<?> genotypingEngine = new MinimalGenotypingEngine(uac, new IndexedSampleList(result.getSampleNamesOrderedByName()));
+        GenotypingEngine<?> genotypingEngine = new MinimalGenotypingEngine(standardArgs, new IndexedSampleList(result.getSampleNamesOrderedByName()));
         genotypingEngine.setAnnotationEngine(annotatorEngine);
         VariantContext withGenotypes = genotypingEngine.calculateGenotypes(result);
         withGenotypes = new VariantContextBuilder(withGenotypes).attributes(result.getAttributes()).make();
