@@ -1,7 +1,10 @@
 import datetime
 from typing import List, Dict, Tuple
 
+import os
+import csv
 import h5py
+import logging
 import numpy as np
 from keras.utils import to_categorical
 
@@ -60,6 +63,42 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
     return _slice_subset_tensor_from_file
 
 
+def _build_tensor_from_file(file_name: str, target_column: str, normalization: bool = False, delimiter: str = '\t'):
+    """
+    Build a tensor_from_file function from a column in a file.
+    Only works for continuous values.
+    When normalization is True values will be normalized according to the mean and std of all of the values in the column.
+    """
+    error = None
+    try:
+        with open(file_name, 'r') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            index = header.index(target_column)
+            table = {row[0]: np.array([float(row[index])]) for row in reader}
+            if normalization:
+                value_array = np.array([sub_array[0] for sub_array in table.values()])
+                mean = value_array.mean()
+                std = value_array.std()
+                logging.info(f'Normalizing TensorMap from file {file_name}, column {target_column} with mean: '
+                             f'{mean:.2f}, std: {std:.2f}')
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+        try:
+            t = table[os.path.basename(hd5.filename).replace('.hd5', '')]
+            if normalization:
+                tm.normalization = {'mean': mean, 'std': std}
+            tn = tm.normalize_and_validate(t)
+            return tn
+        except KeyError:
+            raise KeyError(f'User id not in file {file_name}.')
+    return tensor_from_file
+
+
 def _survival_tensor(start_date_key, day_window):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
@@ -106,7 +145,8 @@ def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> Li
 
 
 def _pass_nan(tensor):
-    return (tensor)
+    return tensor
+
 
 
 def _fail_nan(tensor):
@@ -210,13 +250,6 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     return _first_date_hrr(tm, hd5)
 
 
-def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
-    _check_phase_full_len(hd5, 'rest')
-    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
-    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    return tm.normalize_and_validate(max_hr - last_hr)
-
-
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_time')
@@ -237,6 +270,16 @@ def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     if hrr > 80:
         raise ValueError('HRR too high.')
     return tm.normalize_and_validate(hrr)
+
+
+_HRR_SENTINEL = -1000
+
+
+def _sentinel_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    try:
+        return _new_hrr(tm, hd5)
+    except ValueError:
+        return _HRR_SENTINEL
 
 
 def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -278,9 +321,18 @@ TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike
 TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), group='ecg_bike', validator=no_nans,
                                       normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
                                       tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), group='ecg_bike', validator=no_nans,
+                                      normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
+                                      tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                       normalization={'mean': 31, 'std': 12},
                                       tensor_from_file=_new_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
+                                           normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
+                                           tensor_from_file=_sentinel_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
+                                          normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
+                                          tensor_from_file=_build_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)

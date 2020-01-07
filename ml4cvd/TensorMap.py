@@ -206,9 +206,6 @@ class TensorMap(object):
         if self.validator is None:
             self.validator = lambda tm, x: x
 
-        if self.normalization is None and not self.is_categorical_any():
-            self.normalization = {'zero_mean_std1': 1.0}
-
     def __hash__(self):
         return hash((self.name, self.shape, self.group))
 

@@ -6,11 +6,13 @@ import numpy as np
 from typing import List
 from typing.io import TextIO
 
+from ml4cvd.tensor_from_file import _build_tensor_from_file
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
-from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, dataset_name_from_meaning
+from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, \
+    dataset_name_from_meaning, DataSetType
 from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, JOIN_CHAR
 
 
@@ -314,3 +316,8 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], includ
                                                   imputation=imputation_method)
 
     return multi_field_continuous_tensor_map
+
+
+def generate_continuous_tensor_map_from_file(file_name: str, column_name, tensor_map_name: str, normalization: bool) -> TensorMap:
+    return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0}, dtype=DataSetType.CONTINUOUS,
+                     tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))

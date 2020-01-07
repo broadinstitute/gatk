@@ -23,7 +23,7 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
+from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map, generate_continuous_tensor_map_from_file
 
 
 def parse_args():
@@ -59,8 +59,13 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
+    parser.add_argument('--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
+                                                               'Note that setting this argument has the effect of linking the first output_tensors'
+                                                               'argument to the TensorMap made from this file.')
 
     # Data selection parameters
+    parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
+    parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.')
     parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
@@ -174,17 +179,8 @@ def _get_tmap(name: str) -> TensorMap:
 
 
 def _process_args(args):
-    args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
-    if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
-                                                                             args.imputation_method_for_continuous_fields)]
-        args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
-
-    args.tensor_maps_out = [_get_tmap(ot) for ot in args.output_tensors]
-    np.random.seed(args.random_seed)
-
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-    args_file = os.path.join(args.output_folder, args.id, 'arguments_'+now_string+'.txt')
+    args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
     command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
@@ -192,7 +188,21 @@ def _process_args(args):
         f.write(command_line)
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
+    load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
+    args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
+    if len(args.input_continuous_tensors) > 0:
+        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
+                                                                             args.imputation_method_for_continuous_fields)]
+        args.tensor_maps_in.extend(multi_field_tensor_map)
 
-    load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
+    args.tensor_maps_out = []
+    if args.continuous_file is not None:
+        # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
+        args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file, args.continuous_file_column,
+                                                                             args.output_tensors.pop(0), args.continuous_file_normalize))
+    args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+
+    np.random.seed(args.random_seed)
+
     logging.info(f"Command Line was:{command_line}")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
