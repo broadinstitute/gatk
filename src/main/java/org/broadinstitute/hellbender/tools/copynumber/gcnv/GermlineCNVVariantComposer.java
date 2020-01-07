@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -35,9 +36,10 @@ public abstract class GermlineCNVVariantComposer<DATA extends Locatable> {
     /**
      * Compose the header of the variant context.
      *
+     * @param sequenceDictionary sequence dictionary to use for contig header lines
      * @param vcfDefaultToolHeaderLines default header lines of the VCF generation tool
      */
-    abstract void composeVariantContextHeader(final Set<VCFHeaderLine> vcfDefaultToolHeaderLines);
+    abstract void composeVariantContextHeader(final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine> vcfDefaultToolHeaderLines);
 
     abstract VariantContext composeVariantContext(final DATA data);
 

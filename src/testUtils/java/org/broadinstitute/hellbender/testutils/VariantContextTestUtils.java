@@ -79,6 +79,18 @@ public final class VariantContextTestUtils {
         }
     }
 
+    public static VCFHeader getVCFHeader(final String vcfPath) {
+        Utils.nonNull(vcfPath);
+
+        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(vcfPath) ) {
+            final Object header = vcfReader.getHeader();
+            if (!(header instanceof VCFHeader)) {
+                throw new IllegalArgumentException(vcfPath + " does not have a valid VCF header");
+            }
+            return (VCFHeader)header;
+        }
+    }
+
     private static void assertAttributeEquals(final String key, final Object actual, final Object expected) {
         final Object notationCorrectedActual = normalizeScientificNotation(actual);
         final Object notationCorrectedExpected = normalizeScientificNotation(expected);

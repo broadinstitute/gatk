@@ -223,6 +223,16 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     private Set<String> allosomalContigSet;
 
     /**
+     * Intervals extracted from call shards, unsorted
+     */
+    private List<SimpleIntervalCollection> unsortedIntervalCollectionsFromCalls;
+
+    /**
+     * Intervals extracted from model shards, unsorted
+     */
+    private List<SimpleIntervalCollection> unsortedIntervalCollectionsFromModels;
+
+    /**
      * Call shard directories put in correct order
      */
     private List<File> sortedCallsShardPaths;
@@ -240,16 +250,15 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     }
 
     /**
-     * Performs various validations on input arguments. Since many of these validations requires loading and parsing
-     * reusable data, we store them as global variables (shard interval lists, sample name, etc).
+     * Inputs to this tool are directories, not files, so we need a custom method to find an appropriate file inside the
+     * directories to pull a dictionary out of
+     * @return a SAM sequence dictionary that is consistent for all shards
      */
     @Override
-    public void onTraversalStart() {
-        validateArguments();
-
-        numShards = inputUnsortedCallsShardPaths.size();
-
-        /* get intervals from each call and model shard in the provided (potentially arbitrary) order */
+    public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+        if (sequenceDictionary != null) {
+            return sequenceDictionary;
+        }
         final List<SimpleIntervalCollection> unsortedIntervalCollectionsFromCalls =
                 getIntervalCollectionsFromPaths(inputUnsortedCallsShardPaths);
         final List<SimpleIntervalCollection> unsortedIntervalCollectionsFromModels =
@@ -272,11 +281,26 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                 "The SAM sequence dictionary is either not the same for all of the model shards, " +
                         "or is different from the SAM sequence dictionary of calls shards.");
 
+        return sequenceDictionary;
+    }
+
+    /**
+     * Performs various validations on input arguments. Since many of these validations requires loading and parsing
+     * reusable data, we store them as global variables (shard interval lists, sample name, etc).
+     */
+    @Override
+    public void onTraversalStart() {
+        validateArguments();
+
+        numShards = inputUnsortedCallsShardPaths.size();
+
+        sequenceDictionary = getBestAvailableSequenceDictionary();
+
         /* get the correct shard sort order and sort all collections */
         final List<Integer> sortedCallShardsOrder = AbstractLocatableCollection.getShardedCollectionSortOrder(
-                unsortedIntervalCollectionsFromCalls);
+                getUnsortedIntervalCollectionsFromCalls());
         final List<Integer> sortedModelShardsOrder = AbstractLocatableCollection.getShardedCollectionSortOrder(
-                unsortedIntervalCollectionsFromModels);
+                getUnsortedIntervalCollectionsFromModels());
         sortedCallsShardPaths = sortedCallShardsOrder.stream()
                 .map(inputUnsortedCallsShardPaths::get)
                 .collect(Collectors.toList());
@@ -284,10 +308,10 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                 .map(inputUnsortedModelShardPaths::get)
                 .collect(Collectors.toList());
         final List<SimpleIntervalCollection> sortedIntervalCollectionsFromCalls = sortedCallShardsOrder.stream()
-                .map(unsortedIntervalCollectionsFromCalls::get)
+                .map(getUnsortedIntervalCollectionsFromCalls()::get)
                 .collect(Collectors.toList());
         final List<SimpleIntervalCollection> sortedIntervalCollectionsFromModels = sortedModelShardsOrder.stream()
-                .map(unsortedIntervalCollectionsFromModels::get)
+                .map(getUnsortedIntervalCollectionsFromModels()::get)
                 .collect(Collectors.toList());
         Utils.validateArg(sortedIntervalCollectionsFromCalls.equals(sortedIntervalCollectionsFromModels),
                 "The interval lists found in model and call shards do not match. Make sure that the calls and model " +
@@ -353,7 +377,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final GermlineCNVIntervalVariantComposer germlineCNVIntervalVariantComposer =
                 new GermlineCNVIntervalVariantComposer(intervalsVCFWriter, sampleName,
                         refAutosomalIntegerCopyNumberState, allosomalContigSet);
-        germlineCNVIntervalVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
+        germlineCNVIntervalVariantComposer.composeVariantContextHeader(sequenceDictionary, getDefaultToolVCFHeaderLines());
 
         logger.info(String.format("Writing intervals VCF file to %s...", outputIntervalsVCFFile.getAbsolutePath()));
         for (int shardIndex = 0; shardIndex < numShards; shardIndex++) {
@@ -392,7 +416,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final GermlineCNVSegmentVariantComposer germlineCNVSegmentVariantComposer =
                 new GermlineCNVSegmentVariantComposer(segmentsVCFWriter, sampleName,
                         refAutosomalIntegerCopyNumberState, allosomalContigSet);
-        germlineCNVSegmentVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
+        germlineCNVSegmentVariantComposer.composeVariantContextHeader(sequenceDictionary, getDefaultToolVCFHeaderLines());
         germlineCNVSegmentVariantComposer.writeAll(integerCopyNumberSegmentCollection.getRecords());
         segmentsVCFWriter.close();
     }
@@ -607,5 +631,27 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                 pythonSegmenterOutputPath.getAbsolutePath(),
                 GermlineCNVNamingConstants.SAMPLE_PREFIX + sampleIndex,
                 GermlineCNVNamingConstants.COPY_NUMBER_SEGMENTS_FILE_NAME).toFile();
+    }
+
+    /**
+     * Get intervals from each call shard in the provided (potentially arbitrary) order
+     * @return unsorted intervals
+     */
+    private List<SimpleIntervalCollection> getUnsortedIntervalCollectionsFromCalls() {
+        if (unsortedIntervalCollectionsFromCalls == null) {
+            unsortedIntervalCollectionsFromCalls = getIntervalCollectionsFromPaths(inputUnsortedCallsShardPaths);
+        }
+        return unsortedIntervalCollectionsFromCalls;
+    }
+
+    /**
+     * Get intervals from each model shard in the provided (potentially arbitrary) order
+     * @return unsorted intervals
+     */
+    private List<SimpleIntervalCollection> getUnsortedIntervalCollectionsFromModels() {
+        if (unsortedIntervalCollectionsFromModels == null) {
+            unsortedIntervalCollectionsFromModels = getIntervalCollectionsFromPaths(inputUnsortedModelShardPaths);
+        }
+        return unsortedIntervalCollectionsFromModels;
     }
 }

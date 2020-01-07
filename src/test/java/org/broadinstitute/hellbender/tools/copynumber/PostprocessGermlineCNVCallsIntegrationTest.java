@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.util.FileExtensions;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -105,6 +109,10 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
                                         final List<String> modelShards) throws IOException {
         final File actualIntervalsOutputVCF = createTempFile("intervals-output-vcf-" + sampleIndex, ".vcf");
         final File actualSegmentsOutputVCF = createTempFile("segments-output-vcf-" + sampleIndex, ".vcf");
+        final File intervalsIndex = new File(actualIntervalsOutputVCF.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX);
+        Assert.assertFalse(intervalsIndex.exists());
+        final File segmentsIndex = new File(actualIntervalsOutputVCF.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX);
+        Assert.assertFalse(segmentsIndex.exists());
         final File actualDenoisedCopyRatiosOutput = createTempFile("denoised-copy-ratios-output-" + sampleIndex, ".tsv");
         final File expectedIntervalsOutputVCF = INTERVALS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
         final File expectedSegmentsOutputVCF = SEGMENTS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
@@ -112,8 +120,15 @@ public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLin
         runToolForSingleSample(callShards, modelShards, sampleIndex,
                 actualIntervalsOutputVCF, actualSegmentsOutputVCF, actualDenoisedCopyRatiosOutput,
                 ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER);
+
+        Assert.assertTrue(intervalsIndex.exists());
+        Assert.assertTrue(segmentsIndex.exists());
         IntegrationTestSpec.assertEqualTextFiles(actualIntervalsOutputVCF, expectedIntervalsOutputVCF, "##");
+        final VCFHeader intervalsHeader = VariantContextTestUtils.getVCFHeader(actualIntervalsOutputVCF.getAbsolutePath());
+        Assert.assertTrue(intervalsHeader.getContigLines().size() > 0);
         IntegrationTestSpec.assertEqualTextFiles(actualSegmentsOutputVCF, expectedSegmentsOutputVCF, "##");
+        final VCFHeader segmentsHeader = VariantContextTestUtils.getVCFHeader(actualIntervalsOutputVCF.getAbsolutePath());
+        Assert.assertTrue(segmentsHeader.getContigLines().size() > 0);
         IntegrationTestSpec.assertEqualTextFiles(actualDenoisedCopyRatiosOutput, expectedDenoisedCopyRatiosOutput, "##");
     }
 
