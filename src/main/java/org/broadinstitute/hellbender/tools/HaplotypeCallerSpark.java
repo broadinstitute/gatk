@@ -175,7 +175,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             Iterator<Iterator<VariantContext>> iterators = Utils.stream(contexts).map(context -> {
                 AssemblyRegion region = context.getAssemblyRegion();
                 FeatureContext featureContext = context.getFeatureContext();
-                return hcEngine.callRegion(region, featureContext).iterator();
+                return hcEngine.callRegion(region, featureContext, context.getReferenceContext()).iterator();
             }).iterator();
 
             return Iterators.concat(iterators);

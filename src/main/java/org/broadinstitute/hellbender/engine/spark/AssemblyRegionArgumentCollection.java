@@ -27,6 +27,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final int DEFAULT_MAX_PROB_PROPAGATION_DISTANCE = 50;
     public static final String INDEL_PADDING_LONG_NAME = "padding-around-indels";
     public static final String SNP_PADDING_LONG_NAME = "padding-around-snps";
+    public static final String STR_PADDING_LONG_NAME = "padding-around-strs";
 
     /**
      * The following parameters can be confusing due to the overlap between active regions, assembly regions, and genotyping regions,
@@ -95,11 +96,15 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
     @Hidden
     @Argument(fullName= INDEL_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling indels", optional = true)
-    public int indelPaddingForGenotyping = 150;
+    public int indelPaddingForGenotyping = 75;
 
     @Hidden
     @Argument(fullName= SNP_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling snps", optional = true)
     public int snpPaddingForGenotyping = 20;
+
+    @Hidden
+    @Argument(fullName= STR_PADDING_LONG_NAME, doc = "Include at least this many bases around an event for calling STR indels", optional = true)
+    public int strPaddingForGenotyping = 75;
 
 
     /**

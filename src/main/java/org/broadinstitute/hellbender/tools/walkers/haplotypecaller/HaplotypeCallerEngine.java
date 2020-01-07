@@ -502,7 +502,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param features Features overlapping the assembly region
      * @return List of variants discovered in the region (may be empty)
      */
-    public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features) {
+    public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features, final ReferenceContext referenceContext) {
         if ( hcArgs.justDetermineActiveRegions ) {
             // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
@@ -549,7 +549,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
 
-        final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents);
+        final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
 
         if ( ! trimmingResult.isVariationPresent() && ! hcArgs.disableOptimizations ) {
             return referenceModelForNoVariation(region, false, VCpriors);

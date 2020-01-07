@@ -2,11 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.annotator.TandemRepeat;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -151,22 +154,38 @@ public final class AssemblyRegionTrimmer {
      * @param region the genome location range to trim.
      * @param variants list of variants contained in the trimming location. Variants therein
      *                                        not overlapping with {@code region} are simply ignored.
+     * @param referenceContext
      * @return never {@code null}.
      */
-    public Result trim(final AssemblyRegion region, final SortedSet<VariantContext> variants) {
+    public Result trim(final AssemblyRegion region, final SortedSet<VariantContext> variants, ReferenceContext referenceContext) {
         final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
 
         if ( variantsInRegion.isEmpty() ) {
             return noVariation(region);
         }
 
-        final int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
-        final int maxEnd = variantsInRegion.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+        int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
+        int maxEnd = variantsInRegion.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
         final SimpleInterval variantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
 
-        final boolean foundNonSnp = variantsInRegion.stream().anyMatch(vc -> !vc.isSNP());
-        final int padding = foundNonSnp ? assemblyRegionArgs.indelPaddingForGenotyping : assemblyRegionArgs.snpPaddingForGenotyping;
-        final SimpleInterval paddedVariantSpan = variantSpan.expandWithinContig(padding, sequenceDictionary);
+        for (final VariantContext vc : variantsInRegion) {
+            int padding = assemblyRegionArgs.snpPaddingForGenotyping;
+            if (vc.isIndel()) {
+                padding = assemblyRegionArgs.indelPaddingForGenotyping;
+                final Pair<List<Integer>, byte[]> numRepeatsAndUnit = TandemRepeat.getNumTandemRepeatUnits(referenceContext, vc);
+                if (numRepeatsAndUnit != null && numRepeatsAndUnit.getRight() != null) {
+                    final int repeatLength = numRepeatsAndUnit.getRight() == null ? 0 : numRepeatsAndUnit.getRight().length;
+                    final int mostRepeats = numRepeatsAndUnit.getLeft().stream().max(Integer::compareTo).orElse(0);
+                    final int longestSTR = mostRepeats * repeatLength;
+                    padding = assemblyRegionArgs.strPaddingForGenotyping + longestSTR;
+                }
+            }
+
+            minStart = Math.min(minStart, Math.max(vc.getStart() - padding,1));
+            maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
+        }
+
+        final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
 
         return new Result(region, variantSpan, paddedVariantSpan);
     }

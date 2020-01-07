@@ -33,7 +33,7 @@ public final class TandemRepeat extends InfoFieldAnnotation implements StandardM
             return Collections.emptyMap();
         }
 
-        final Pair<List<Integer>,byte[]> result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, getRefBasesStartingAtVariantLocus(ref, vc));
+        final Pair<List<Integer>,byte[]> result = getNumTandemRepeatUnits(ref, vc);
         if (result == null) {
             return Collections.emptyMap();
         }
@@ -48,18 +48,19 @@ public final class TandemRepeat extends InfoFieldAnnotation implements StandardM
         return Collections.unmodifiableMap(map);
     }
 
+    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final ReferenceContext ref, final VariantContext vc) {
+        final byte[] refBases = ref.getBases();
+        final int startIndex = vc.getStart() - ref.getWindow().getStart();
+        final byte[] refBasesStartingAtVariantLocus = new String(refBases).substring(startIndex).getBytes();
+        return GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBasesStartingAtVariantLocus);
+    }
+
     @Override
     public List<String> getKeyNames() {
         return Arrays.asList(
                 GATKVCFConstants.STR_PRESENT_KEY,
                 GATKVCFConstants.REPEAT_UNIT_KEY,
                 GATKVCFConstants.REPEATS_PER_ALLELE_KEY);
-    }
-
-    private static byte[] getRefBasesStartingAtVariantLocus(final ReferenceContext ref, final VariantContext vc) {
-        final byte[] bases = ref.getBases();
-        final int startIndex = vc.getStart() - ref.getWindow().getStart();
-        return new String(bases).substring(startIndex).getBytes();
     }
 
 }

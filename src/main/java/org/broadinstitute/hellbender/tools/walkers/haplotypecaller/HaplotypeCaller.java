@@ -209,7 +209,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        hcEngine.callRegion(region, featureContext).forEach(vcfWriter::add);
+        hcEngine.callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
     }
 
     @Override
