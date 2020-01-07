@@ -605,20 +605,6 @@ public final class AssemblyBasedCallerUtils {
         return result;
     }
 
-    private static boolean eventMatchesGivenAllele(final List<VariantContext> activeAllelesToGenotype, final VariantContext spanningEvent) {
-        for (VariantContext givenVC : activeAllelesToGenotype) {
-            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
-                for (Allele a : spanningEvent.getAlternateAlleles()) {
-                    if (givenVC.hasAlternateAllele(a)) {
-                        return true;
-                    }
-                }
-            }
-
-        }
-        return false;
-    }
-
     /**
      * Tries to phase the individual alleles based on pairwise comparisons to the other alleles based on all called haplotypes
      *
