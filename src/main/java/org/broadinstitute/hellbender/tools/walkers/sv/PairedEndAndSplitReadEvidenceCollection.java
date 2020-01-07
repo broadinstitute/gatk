@@ -19,9 +19,42 @@ import java.io.*;
 import java.util.*;
 import java.util.function.Predicate;
 
+/**
+ * Creates discordant read pair and split read evidence files for use in the GATK-SV pipeline.
+ *
+ * This tool emulates the functionality of the "svtk collect-pesr" used in v1 of the GATK-SV pipeline.
+ * The first output file is a tab-delimited file containing information on discordant read pairs in the
+ * input cram, with the following columns:
+ *
+ * <ul>
+ *     <li>read contig</li>
+ *     <li>read start</li>
+ *     <li>read strand</li>
+ *     <li>mate contig</li>
+ *     <li>mate start</li>
+ *     <li>mate strand</li>
+ *     <li>sample name</li>
+ * </ul>
+ *
+ * Only one record is emitted for each discordant read pair, at the read in the pair with the "upstream" start
+ * position according to the sequence dictionary contig ordering and coordinate.
+ *
+ * The second file contains the locations of all split read clippings in the input bam or cram, with the
+ * following columns:
+ *
+ * <ul>
+ *     <li>contig</li>
+ *     <li>clipping position</li>
+ *     <li>direction: either LEFT or RIGHT depending on whether the reads were clipped on the left or right side</li>
+ *     <li>count: the number of reads clipped at this location in this direction</li>
+ *     <li>sample name</li>
+ * </ul>
+ */
 @CommandLineProgramProperties(
-        summary = "Gathers paired-end and split read evidence files",
-        oneLineSummary = "Gathers paired-end and split read evidence files",
+        summary = "Gathers paired-end and split read evidence files for use in the GATK-SV pipeline. Output files " +
+                "are a file containing the location of and orientation of read pairs marked as discordant, and a " +
+                "file containing the clipping location of all soft clipped reads and the orientation of the clipping.",
+        oneLineSummary = "Gathers paired-end and split read evidence files for use in the GATK-SV pipeline.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
@@ -35,10 +68,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Argument(fullName = "sample-name", doc = "Sample name")
     String sampleName = null;
 
-
     Set<String> observedDiscordantNames = new HashSet<>();
     int currentDiscordantPosition = -1;
-    int prevClippedReadEndPos = -1;
     String currentChrom = null;
     private OutputStreamWriter peWriter;
     private OutputStreamWriter srWriter;
@@ -88,137 +119,6 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         return read.isUnmapped() || read.mateIsUnmapped() || read.isSecondaryAlignment() || read.isDuplicate() || read.isSupplementaryAlignment();
     }
 
-    static class DiscordantRead {
-        private boolean readReverseStrand;
-        private boolean mateReverseStrand;
-        private String contig;
-        private int start;
-        private String mateContig;
-        private int mateStart;
-        private String name;
-
-        public DiscordantRead(final GATKRead read) {
-            this.readReverseStrand = read.isReverseStrand();
-            this.mateReverseStrand = read.mateIsReverseStrand();
-            this.contig = read.getContig();
-            this.start = read.getStart();
-            this.mateContig = read.getMateContig();
-            this.mateStart = read.getMateStart();
-            this.name = read.getName();
-        }
-
-        public boolean isReadReverseStrand() {
-            return readReverseStrand;
-        }
-
-        public void setReadReverseStrand(final boolean readReverseStrand) {
-            this.readReverseStrand = readReverseStrand;
-        }
-
-        public boolean isMateReverseStrand() {
-            return mateReverseStrand;
-        }
-
-        public void setMateReverseStrand(final boolean mateReverseStrand) {
-            this.mateReverseStrand = mateReverseStrand;
-        }
-
-        public String getContig() {
-            return contig;
-        }
-
-        public void setContig(final String contig) {
-            this.contig = contig;
-        }
-
-        public int getStart() {
-            return start;
-        }
-
-        public void setStart(final int start) {
-            this.start = start;
-        }
-
-        public String getMateContig() {
-            return mateContig;
-        }
-
-        public void setMateContig(final String mateContig) {
-            this.mateContig = mateContig;
-        }
-
-        public int getMateStart() {
-            return mateStart;
-        }
-
-        public void setMateStart(final int mateStart) {
-            this.mateStart = mateStart;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(final String name) {
-            this.name = name;
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            final DiscordantRead that = (DiscordantRead) o;
-
-            if (readReverseStrand != that.readReverseStrand) return false;
-            if (mateReverseStrand != that.mateReverseStrand) return false;
-            if (start != that.start) return false;
-            if (mateStart != that.mateStart) return false;
-            if (contig != null ? !contig.equals(that.contig) : that.contig != null) return false;
-            if (mateContig != null ? !mateContig.equals(that.mateContig) : that.mateContig != null) return false;
-            return name != null ? name.equals(that.name) : that.name == null;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = (readReverseStrand ? 1 : 0);
-            result = 31 * result + (mateReverseStrand ? 1 : 0);
-            result = 31 * result + (contig != null ? contig.hashCode() : 0);
-            result = 31 * result + start;
-            result = 31 * result + (mateContig != null ? mateContig.hashCode() : 0);
-            result = 31 * result + mateStart;
-            result = 31 * result + (name != null ? name.hashCode() : 0);
-            return result;
-        }
-    }
-
-    static class SplitPos {
-        public POSITION direction;
-        public int pos;
-
-        public SplitPos(final int start, final POSITION direction) {
-            this.pos = start;
-            this.direction = direction;
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            final SplitPos splitPos = (SplitPos) o;
-
-            if (pos != splitPos.pos) return false;
-            return direction.ordinal() == splitPos.direction.ordinal();
-        }
-
-        @Override
-        public int hashCode() {
-            int result = direction != null ? direction.ordinal() : 0;
-            result = 31 * result + pos;
-            return result;
-        }
-    }
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
@@ -389,7 +289,139 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         }
     }
 
-    static class SplitPosComparator implements Comparator<SplitPos> {
+    @VisibleForTesting final static class DiscordantRead {
+        private boolean readReverseStrand;
+        private boolean mateReverseStrand;
+        private String contig;
+        private int start;
+        private String mateContig;
+        private int mateStart;
+        private String name;
+
+        public DiscordantRead(final GATKRead read) {
+            this.readReverseStrand = read.isReverseStrand();
+            this.mateReverseStrand = read.mateIsReverseStrand();
+            this.contig = read.getContig();
+            this.start = read.getStart();
+            this.mateContig = read.getMateContig();
+            this.mateStart = read.getMateStart();
+            this.name = read.getName();
+        }
+
+        public boolean isReadReverseStrand() {
+            return readReverseStrand;
+        }
+
+        public void setReadReverseStrand(final boolean readReverseStrand) {
+            this.readReverseStrand = readReverseStrand;
+        }
+
+        public boolean isMateReverseStrand() {
+            return mateReverseStrand;
+        }
+
+        public void setMateReverseStrand(final boolean mateReverseStrand) {
+            this.mateReverseStrand = mateReverseStrand;
+        }
+
+        public String getContig() {
+            return contig;
+        }
+
+        public void setContig(final String contig) {
+            this.contig = contig;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public void setStart(final int start) {
+            this.start = start;
+        }
+
+        public String getMateContig() {
+            return mateContig;
+        }
+
+        public void setMateContig(final String mateContig) {
+            this.mateContig = mateContig;
+        }
+
+        public int getMateStart() {
+            return mateStart;
+        }
+
+        public void setMateStart(final int mateStart) {
+            this.mateStart = mateStart;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(final String name) {
+            this.name = name;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final DiscordantRead that = (DiscordantRead) o;
+
+            if (readReverseStrand != that.readReverseStrand) return false;
+            if (mateReverseStrand != that.mateReverseStrand) return false;
+            if (start != that.start) return false;
+            if (mateStart != that.mateStart) return false;
+            if (contig != null ? !contig.equals(that.contig) : that.contig != null) return false;
+            if (mateContig != null ? !mateContig.equals(that.mateContig) : that.mateContig != null) return false;
+            return name != null ? name.equals(that.name) : that.name == null;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = (readReverseStrand ? 1 : 0);
+            result = 31 * result + (mateReverseStrand ? 1 : 0);
+            result = 31 * result + (contig != null ? contig.hashCode() : 0);
+            result = 31 * result + start;
+            result = 31 * result + (mateContig != null ? mateContig.hashCode() : 0);
+            result = 31 * result + mateStart;
+            result = 31 * result + (name != null ? name.hashCode() : 0);
+            return result;
+        }
+    }
+
+    @VisibleForTesting final static class SplitPos {
+        public POSITION direction;
+        public int pos;
+
+        public SplitPos(final int start, final POSITION direction) {
+            this.pos = start;
+            this.direction = direction;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final SplitPos splitPos = (SplitPos) o;
+
+            if (pos != splitPos.pos) return false;
+            return direction.ordinal() == splitPos.direction.ordinal();
+        }
+
+        @Override
+        public int hashCode() {
+            int result = direction != null ? direction.ordinal() : 0;
+            result = 31 * result + pos;
+            return result;
+        }
+    }
+
+    @VisibleForTesting final static class SplitPosComparator implements Comparator<SplitPos> {
         @Override
         public int compare(final SplitPos o1, final SplitPos o2) {
             if (o1.pos != o2.pos) {
