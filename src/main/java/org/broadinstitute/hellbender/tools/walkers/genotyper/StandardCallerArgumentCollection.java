@@ -34,7 +34,6 @@ public class StandardCallerArgumentCollection implements Serializable {
         if ( other.sampleContamination != null ) {
             setSampleContamination(other.sampleContamination);
         }
-        this.exactCallsLog = other.exactCallsLog != null ? new File(other.exactCallsLog.getAbsolutePath()) : null;
         this.outputMode = other.outputMode;
         this.annotateAllSitesWithPLs = other.annotateAllSitesWithPLs;
     }
@@ -129,10 +128,6 @@ public class StandardCallerArgumentCollection implements Serializable {
 
         return false;
     }
-
-    @Hidden
-    @Argument(shortName = "log-exact-calls", optional=true)
-    public File exactCallsLog = null;
 
     @Argument(fullName = "output-mode", doc = "Specifies which type of calls we should output", optional = true)
     public OutputMode outputMode = OutputMode.EMIT_VARIANTS_ONLY;
