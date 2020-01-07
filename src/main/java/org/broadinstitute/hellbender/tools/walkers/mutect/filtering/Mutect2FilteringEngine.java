@@ -111,14 +111,6 @@ public class Mutect2FilteringEngine {
         return result;
     }
 
-//    public int[] sumStrandCountsOverSamplesByAllele(final VariantContext vc, final boolean includeTumor, final boolean includeNormal) {
-//        final int[] result = new int[4];
-//        vc.getGenotypes().stream().filter(g -> (includeTumor && isTumor(g)) || (includeNormal && isNormal(g)))
-//                .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY))
-//                .map(g -> StrandBiasTest.getStrandCounts(g)).forEach(sbbs -> new IndexRange(0, 4).forEach(n -> result[n] += sbbs[n]));
-//        return result;
-//    }
-
     public double[] weightedAverageOfTumorAFs(final VariantContext vc) {
         final MutableDouble totalWeight = new MutableDouble(0);
         final double[] AFs = new double[vc.getNAlleles() - 1];
@@ -274,13 +266,19 @@ public class Mutect2FilteringEngine {
         alleleFilters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
         alleleFilters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
         filters.add(new StrandArtifactFilter());
-        filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
-        filters.add(new PanelOfNormalsFilter());
-        filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
-        filters.add(new NRatioFilter(MTFAC.nRatio));
+        alleleFilters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
         alleleFilters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
         alleleFilters.add(new MinAlleleFractionFilter(MTFAC.minAf));
+
+        // convert to allele specific later
+        // Normal Artifact Filter doesn't apply to mitochondria because we are not comparing
+        // tumor and normal
+        filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
+        filters.add(new NRatioFilter(MTFAC.nRatio));
+
+        // filters that don't apply to specific alleles
+        filters.add(new PanelOfNormalsFilter());
 
         if (!MTFAC.readOrientationPriorTarGzs.isEmpty()) {
             final List<File> artifactTables = MTFAC.readOrientationPriorTarGzs.stream().flatMap(tarGz -> {

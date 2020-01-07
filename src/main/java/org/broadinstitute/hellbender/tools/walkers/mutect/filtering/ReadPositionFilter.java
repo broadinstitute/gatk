@@ -20,8 +20,9 @@ public class ReadPositionFilter extends HardAlleleFilter<Integer> {
 
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        // MPOS doesn't have data for ref allele
         final List<Integer> readPositionByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_READ_POSITON_KEY, 0);
-        return readPositionByAllele.stream()
+        return readPositionByAllele.subList(0, readPositionByAllele.size()).stream()
                 // a negative value is possible due to a bug: https://github.com/broadinstitute/gatk/issues/5492
                 .map(readPos -> readPos > -1 && readPos < minMedianReadPosition).collect(Collectors.toList());
     }
