@@ -41,7 +41,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.indelHeterozygosity = other.indelHeterozygosity;
         this.STANDARD_CONFIDENCE_FOR_CALLING = other.STANDARD_CONFIDENCE_FOR_CALLING;
         this.MAX_ALTERNATE_ALLELES = other.MAX_ALTERNATE_ALLELES;
-        this.inputPrior = new ArrayList<>(other.inputPrior);
         this.samplePloidy = other.samplePloidy;
         this.supportVariants = other.supportVariants;
         this.numRefIfMissing = other.numRefIfMissing;
@@ -151,29 +150,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     @Advanced
     @Argument(fullName = "max-genotype-count", doc = "Maximum number of genotypes to consider at any site", optional = true)
     public int MAX_GENOTYPE_COUNT = 1024;
-
-    /**
-     * By default, the prior specified with the argument --heterozygosity/-hets is used for variant discovery at a particular locus, using an infinite sites model,
-     * see e.g. Waterson (1975) or Tajima (1996).
-     * This model asserts that the probability of having a population of k variant sites in N chromosomes is proportional to theta/k, for 1=1:N
-     *
-     * There are instances where using this prior might not be desireable, e.g. for population studies where prior might not be appropriate,
-     * as for example when the ancestral status of the reference allele is not known.
-     * By using this argument, user can manually specify priors to be used for calling as a vector for doubles, with the following restriciotns:
-     * a) User must specify 2N values, where N is the number of samples.
-     * b) Only diploid calls supported.
-     * c) Probability values are specified in double format, in linear space.
-     * d) No negative values allowed.
-     * e) Values will be added and Pr(AC=0) will be 1-sum, so that they sum up to one.
-     * f) If user-defined values add to more than one, an error will be produced.
-     *
-     * If user wants completely flat priors, then user should specify the same value (=1/(2*N+1)) 2*N times,e.g.
-     *   --input-prior 0.33 --input-prior 0.33
-     * for the single-sample diploid case.
-     */
-    @Advanced
-    @Argument(fullName = "input-prior",  doc = "Input prior for calls", optional = true)
-    public List<Double> inputPrior = new ArrayList<>();
 
     /**
      *   Sample ploidy - equivalent to number of chromosomes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy

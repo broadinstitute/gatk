@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
@@ -152,6 +153,30 @@ public final class AlleleFrequencyCalculator {
                 .collect(Collectors.toMap(alleles::get, a -> log10POfZeroCountsByAllele[a]));
 
         return new AFCalculationResult(integerAltAlleleCounts, alleles, log10PNoVariant, log10PRefByAllele);
+    }
+
+    /**
+     * Calculate the posterior probability that a single biallelic genotype is non-ref
+     *
+     * The nth genotype (n runs from 0 to the sample ploidy, inclusive) contains n copies of the alt allele
+     * @param log10GenotypeLikelihoods
+     * @return
+     */
+    public double calculateSingleSampleBiallelicNonRefPosterior(final double[] log10GenotypeLikelihoods, final boolean returnZeroIfRefIsMax) {
+        Utils.nonNull(log10GenotypeLikelihoods);
+
+        if (returnZeroIfRefIsMax && MathUtils.maxElementIndex(log10GenotypeLikelihoods) == 0) {
+            return 0;
+        }
+
+        final int ploidy = log10GenotypeLikelihoods.length - 1;
+
+        final double[] log10UnnormalizedPosteriors = new IndexRange(0, ploidy + 1)
+                .mapToDouble(n -> log10GenotypeLikelihoods[n] + MathUtils.log10BinomialCoefficient(ploidy, n)
+                        + MathUtils.logToLog10(Gamma.logGamma(n + snpPseudocount ) + Gamma.logGamma(ploidy - n + refPseudocount)));
+
+        return (returnZeroIfRefIsMax && MathUtils.maxElementIndex(log10UnnormalizedPosteriors) == 0) ? 0.0 :
+                1 - MathUtils.normalizeFromLog10ToLinearSpace(log10UnnormalizedPosteriors)[0];
     }
 
     // effectiveAlleleCounts[allele a] = SUM_{genotypes g} (posterior_probability(g) * num_copies of a in g), which we denote as SUM [n_g p_g]
