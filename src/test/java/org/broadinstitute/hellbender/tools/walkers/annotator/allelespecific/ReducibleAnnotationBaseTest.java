@@ -105,10 +105,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
 
         GenotypingEngine<?> genotypingEngine = new MinimalGenotypingEngine(uac, new IndexedSampleList(result.getSampleNamesOrderedByName()));
         genotypingEngine.setAnnotationEngine(annotatorEngine);
-        GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
-                ? GenotypeLikelihoodsCalculationModel.INDEL
-                : GenotypeLikelihoodsCalculationModel.SNP;
-        VariantContext withGenotypes = genotypingEngine.calculateGenotypes(result, model);
+        VariantContext withGenotypes = genotypingEngine.calculateGenotypes(result);
         withGenotypes = new VariantContextBuilder(withGenotypes).attributes(result.getAttributes()).make();
         VariantContext finalized = annotatorEngine.finalizeAnnotations(withGenotypes, result);
         finalized =  GATKVariantContextUtils.reverseTrimAlleles(finalized);

@@ -32,9 +32,7 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
     public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples, boolean doAlleleSpecificCalcs ) {
         super(configuration, samples, doAlleleSpecificCalcs);
 
-       if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
-            throw new UserException("Only the diploid SNP model is supported in the MinimalGenotypingEngine");
-        } else if ( configuration.COMPUTE_SLOD ) {
+       if ( configuration.COMPUTE_SLOD ) {
             throw new UserException("--computeSLOD not supported in the MinimalGenotypingEngine");
         }
     }
