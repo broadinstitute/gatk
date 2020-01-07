@@ -44,7 +44,7 @@ public final class FragmentUtils {
             return;
         }
 
-        final Pair<Integer, Boolean> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart());
+        final Pair<Integer, Boolean> offset = ReadUtils.getReadCoordinateForReferenceCoordinate(firstRead, secondRead.getStart(), false);
         final int firstReadStop = (offset.getRight() ? offset.getLeft() + 1 : offset.getLeft());
         final int numOverlappingBases = Math.min(firstRead.getLength() - firstReadStop, secondRead.getLength());
 
