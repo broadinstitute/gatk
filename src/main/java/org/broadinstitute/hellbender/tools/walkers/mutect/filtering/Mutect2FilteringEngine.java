@@ -279,8 +279,8 @@ public class Mutect2FilteringEngine {
         filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
         filters.add(new NRatioFilter(MTFAC.nRatio));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));
-        filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
-        filters.add(new MinAlleleFractionFilter(MTFAC.minAf));
+        alleleFilters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
+        alleleFilters.add(new MinAlleleFractionFilter(MTFAC.minAf));
 
         if (!MTFAC.readOrientationPriorTarGzs.isEmpty()) {
             final List<File> artifactTables = MTFAC.readOrientationPriorTarGzs.stream().flatMap(tarGz -> {
