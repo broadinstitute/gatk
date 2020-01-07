@@ -223,6 +223,16 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     private Set<String> allosomalContigSet;
 
     /**
+     * Intervals extracted from call shards, unsorted
+     */
+    private List<SimpleIntervalCollection> unsortedIntervalCollectionsFromCalls;
+
+    /**
+     * Intervals extracted from model shards, unsorted
+     */
+    private List<SimpleIntervalCollection> unsortedIntervalCollectionsFromModels;
+
+    /**
      * Call shard directories put in correct order
      */
     private List<File> sortedCallsShardPaths;
@@ -231,8 +241,6 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      * Model shard directories put in correct order
      */
     private List<File> sortedModelShardPaths;
-    private List<SimpleIntervalCollection> unsortedIntervalCollectionsFromCalls;
-    private List<SimpleIntervalCollection> unsortedIntervalCollectionsFromModels;
 
     @Override
     public void onStartup() {
@@ -626,7 +634,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     }
 
     /**
-     * get intervals from each call shard in the provided (potentially arbitrary) order
+     * Get intervals from each call shard in the provided (potentially arbitrary) order
      * @return unsorted intervals
      */
     private List<SimpleIntervalCollection> getUnsortedIntervalCollectionsFromCalls() {
@@ -637,7 +645,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     }
 
     /**
-     * get intervals from each model shard in the provided (potentially arbitrary) order
+     * Get intervals from each model shard in the provided (potentially arbitrary) order
      * @return unsorted intervals
      */
     private List<SimpleIntervalCollection> getUnsortedIntervalCollectionsFromModels() {
