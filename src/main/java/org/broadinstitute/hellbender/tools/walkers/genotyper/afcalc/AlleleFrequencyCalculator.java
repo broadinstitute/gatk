@@ -156,7 +156,7 @@ public final class AlleleFrequencyCalculator {
     }
 
     /**
-     * Calculate the posterior probability that a single biallelic sample is non-ref
+     * Calculate the posterior probability that a single biallelic genotype is non-ref
      *
      * The nth genotype (n runs from 0 to the sample ploidy, inclusive) contains n copies of the alt allele
      * @param log10GenotypeLikelihoods
