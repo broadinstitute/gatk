@@ -120,7 +120,6 @@ public final class GATKVCFConstants {
     public static final String ALLELE_BALANCE_KEY =                 "AB";
     public static final String JOINT_LIKELIHOOD_TAG_NAME =          "JL"; //FamilyLikelihoodsUtils
     public static final String JOINT_POSTERIOR_TAG_NAME =           "JP"; //FamilyLikelihoodsUtils
-    public static final String LOW_COVERAGE_LOCI =                  "LL"; //DiagnoseTargets
     public final static String MIN_DP_FORMAT_KEY =                  "MIN_DP";
     public static final String MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY = "MQ0";
     public static final String HAPLOTYPE_CALLER_PHASING_GT_KEY =    "PGT";
