@@ -51,7 +51,6 @@ public final class GATKVCFConstants {
     public static final String AS_INBREEDING_COEFFICIENT_KEY =      "AS_InbreedingCoeff";
     public static final String EXCESS_HET_KEY =                     "ExcessHet";
     public static final String RAW_GENOTYPE_COUNT_KEY =             "RAW_GT_COUNT";
-    public static final String AS_HETEROZYGOSITY_KEY =              "AS_InbreedingCoeff";
     public static final String LIKELIHOOD_RANK_SUM_KEY =            "LikelihoodRankSum";
     public static final String LO_CONF_DENOVO_KEY =                 "loConfDeNovo";
     public static final String LOW_MQ_KEY =                         "LowMQ";
