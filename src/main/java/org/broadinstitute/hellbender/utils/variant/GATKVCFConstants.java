@@ -30,7 +30,6 @@ public final class GATKVCFConstants {
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
     public static final String ORIGINAL_AN_KEY =                    "AN_Orig"; //SelectVariants
     public static final String AC_ADJUSTED_KEY =                    "AC_adj"; //GnarlyGenotyper
-    public static final String BASE_COUNTS_KEY =                    "BaseCounts";
     public static final String BASE_QUAL_RANK_SUM_KEY =             "BaseQRankSum";
     public static final String AS_BASE_QUAL_RANK_SUM_KEY =          "AS_BaseQRankSum";
     public static final String AS_RAW_BASE_QUAL_RANK_SUM_KEY =      "AS_RAW_BaseQRankSum";
