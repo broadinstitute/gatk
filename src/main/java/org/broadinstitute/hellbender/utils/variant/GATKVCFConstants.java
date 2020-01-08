@@ -46,7 +46,6 @@ public final class GATKVCFConstants {
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
     public static final String HAPLOTYPE_SCORE_KEY =                "HaplotypeScore";
     public static final String HI_CONF_DENOVO_KEY =                 "hiConfDeNovo";
-    public static final String AVG_INTERVAL_DP_KEY =                "IDP"; //DiagnoseTargets
     public static final String INTERVAL_GC_CONTENT_KEY =            "IGC";
     public static final String INBREEDING_COEFFICIENT_KEY =         "InbreedingCoeff";
     public static final String AS_INBREEDING_COEFFICIENT_KEY =      "AS_InbreedingCoeff";
@@ -133,7 +132,6 @@ public final class GATKVCFConstants {
     public static final String ALLELE_BALANCE_KEY =                 "AB";
     public static final String PL_FOR_ALL_SNP_ALLELES_KEY =         "APL";
     public static final String RBP_HAPLOTYPE_KEY =                  "HP"; //ReadBackedPhasing
-    public static final String AVG_INTERVAL_DP_BY_SAMPLE_KEY =      "IDP"; //DiagnoseTargets
     public static final String JOINT_LIKELIHOOD_TAG_NAME =          "JL"; //FamilyLikelihoodsUtils
     public static final String JOINT_POSTERIOR_TAG_NAME =           "JP"; //FamilyLikelihoodsUtils
     public static final String LOW_COVERAGE_LOCI =                  "LL"; //DiagnoseTargets
