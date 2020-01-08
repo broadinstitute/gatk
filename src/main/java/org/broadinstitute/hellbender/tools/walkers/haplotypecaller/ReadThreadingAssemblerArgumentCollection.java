@@ -203,7 +203,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Hidden
     @Argument(fullName = ERROR_CORRECT_READS_LONG_NAME, doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
-    public boolean errorCorrectReads = false;
+    public boolean errorCorrectReads = true;
 
     /**
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
