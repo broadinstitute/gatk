@@ -51,7 +51,6 @@ public final class GATKVCFConstants {
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
     public static final String HAPLOTYPE_SCORE_KEY =                "HaplotypeScore";
     public static final String HI_CONF_DENOVO_KEY =                 "hiConfDeNovo";
-    public static final String HOMOPOLYMER_RUN_KEY =                "HRun";
     public static final String HARDY_WEINBERG_KEY =                 "HW";
     public static final String AVG_INTERVAL_DP_KEY =                "IDP"; //DiagnoseTargets
     public static final String INTERVAL_GC_CONTENT_KEY =            "IGC";
