@@ -118,7 +118,6 @@ public final class GATKVCFConstants {
 
     // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
-    public static final String PL_FOR_ALL_SNP_ALLELES_KEY =         "APL";
     public static final String RBP_HAPLOTYPE_KEY =                  "HP"; //ReadBackedPhasing
     public static final String JOINT_LIKELIHOOD_TAG_NAME =          "JL"; //FamilyLikelihoodsUtils
     public static final String JOINT_POSTERIOR_TAG_NAME =           "JP"; //FamilyLikelihoodsUtils
