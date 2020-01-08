@@ -81,7 +81,6 @@ public final class GATKVCFConstants {
     public static final String STRAND_ODDS_RATIO_KEY =              "SOR";
     public static final String AS_STRAND_ODDS_RATIO_KEY =           "AS_SOR";
     public static final String STR_PRESENT_KEY =                    "STR";
-    public static final String TRANSMISSION_DISEQUILIBRIUM_KEY =    "TDT";
     public static final String VARIANT_TYPE_KEY =                   "VariantType";
     public static final String VQS_LOD_KEY =                        "VQSLOD";
     public static final String CNN_1D_KEY =                         "CNN_1D";
