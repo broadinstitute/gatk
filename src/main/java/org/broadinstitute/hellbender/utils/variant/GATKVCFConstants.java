@@ -59,7 +59,6 @@ public final class GATKVCFConstants {
     public static final String RAW_MAP_QUAL_RANK_SUM_KEY =          "RAW_MQRankSum";
     public static final String AS_MAP_QUAL_RANK_SUM_KEY =           "AS_MQRankSum";
     public static final String AS_RAW_MAP_QUAL_RANK_SUM_KEY =       "AS_RAW_MQRankSum";
-    public static final String MENDEL_VIOLATION_LR_KEY =            "MVLR";
     public static final String NOCALL_CHROM_KEY =                   "NCC";
     public static final String NUMBER_OF_DISCOVERED_ALLELES_KEY =   "NDA";
     public static final String NEGATIVE_LABEL_KEY =                 "NEGATIVE_TRAIN_SITE";
