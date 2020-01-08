@@ -55,8 +55,6 @@ public final class GATKVCFConstants {
     public static final String LO_CONF_DENOVO_KEY =                 "loConfDeNovo";
     public static final String MLE_ALLELE_COUNT_KEY =               "MLEAC";
     public static final String MLE_ALLELE_FREQUENCY_KEY =           "MLEAF";
-    public static final String MLE_PER_SAMPLE_ALLELE_COUNT_KEY =    "MLPSAC";
-    public static final String MLE_PER_SAMPLE_ALLELE_FRACTION_KEY = "MLPSAF";
     public static final String MAP_QUAL_RANK_SUM_KEY =              "MQRankSum";
     public static final String RAW_MAP_QUAL_RANK_SUM_KEY =          "RAW_MQRankSum";
     public static final String AS_MAP_QUAL_RANK_SUM_KEY =           "AS_MQRankSum";
