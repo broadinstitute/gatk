@@ -306,7 +306,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     private void initializeActiveRegionEvaluationGenotyperEngine() {
-        // create a UAC but with the exactCallsLog = null, so we only output the log for the HC caller itself, if requested
         final StandardCallerArgumentCollection activeRegionArgs = new StandardCallerArgumentCollection();
         activeRegionArgs.copyStandardCallerArgsFrom(hcArgs.standardArgs);
 
@@ -314,8 +313,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         activeRegionArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = Math.min(MAXMIN_CONFIDENCE_FOR_CONSIDERING_A_SITE_AS_POSSIBLE_VARIANT_IN_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING ); // low values used for isActive determination only, default/user-specified values used for actual calling
         activeRegionArgs.CONTAMINATION_FRACTION = 0.0;
         activeRegionArgs.CONTAMINATION_FRACTION_FILE = null;
-        // Seems that at least with some test data we can lose genuine haploid variation if we use
-        // UGs engine with ploidy == 1
+        // Seems that at least with some test data we can lose genuine haploid variation if we use ploidy == 1
         activeRegionArgs.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.samplePloidy);
 
         activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(activeRegionArgs, samplesList);

@@ -44,7 +44,6 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
     private static GenotypingEngine<?> getGenotypingEngine() {
         final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
         final StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
-        standardArgs.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
         return new MinimalGenotypingEngine(standardArgs, SAMPLES);
     }
 

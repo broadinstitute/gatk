@@ -13,9 +13,9 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCallerArgumentCollection> {
 
     /**
-     * Creates a new unified genotyping given the UG configuration parameters and the targeted set of samples
+     * Creates a new genotyping engine given the configuration parameters and the targeted set of samples
      *
-     * @param configuration the UG configuration.
+     * @param configuration the configuration.
      * @param samples list of samples
      */
     public MinimalGenotypingEngine(final StandardCallerArgumentCollection configuration, final SampleList samples) {
@@ -23,9 +23,9 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<StandardCall
     }
 
     /**
-     * Creates a new unified genotyping given the UG configuration parameters and the targeted set of samples
+     * Creates a new genotyping engine given the configuration parameters and the targeted set of samples
      *
-     * @param configuration the UG configuration.
+     * @param configuration the configuration.
      * @param samples list of samples
      * @param doAlleleSpecificCalcs Whether to calculate genotyping annotations needed for allele specific annotations
      */

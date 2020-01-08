@@ -379,8 +379,7 @@ public class GenotypeGVCFsEngine
     }
 
     /**
-     * Creates a UnifiedArgumentCollection with appropriate values filled in from the arguments in this walker
-     * @return a complete UnifiedArgumentCollection
+     * Creates a StandardCallerArgumentCollection with appropriate values filled in from the arguments in this walker
      */
     private StandardCallerArgumentCollection createMinimalArgs(final boolean forceOutput) {
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
