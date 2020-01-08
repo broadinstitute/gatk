@@ -62,7 +62,6 @@ public final class GATKVCFConstants {
     public static final String NOCALL_CHROM_KEY =                   "NCC";
     public static final String NUMBER_OF_DISCOVERED_ALLELES_KEY =   "NDA";
     public static final String NEGATIVE_LABEL_KEY =                 "NEGATIVE_TRAIN_SITE";
-    public static final String NON_DIPLOID_RATIO_KEY =              "OND";
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
     public static final String RBP_INCONSISTENT_KEY =               "PhasingInconsistent"; //ReadBackedPhasing
