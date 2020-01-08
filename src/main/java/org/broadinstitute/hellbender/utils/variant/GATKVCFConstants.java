@@ -131,7 +131,6 @@ public final class GATKVCFConstants {
     public static final String STRAND_COUNT_BY_SAMPLE_KEY =         "SAC";
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
-    public static final String ZERO_COVERAGE_LOCI =                 "ZL"; //DiagnoseTargets
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
