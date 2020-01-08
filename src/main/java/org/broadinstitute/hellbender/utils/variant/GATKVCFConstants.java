@@ -75,7 +75,6 @@ public final class GATKVCFConstants {
     public static final String READ_POS_RANK_SUM_KEY =              "ReadPosRankSum";
     public static final String AS_READ_POS_RANK_SUM_KEY =           "AS_ReadPosRankSum";
     public static final String AS_RAW_READ_POS_RANK_SUM_KEY =       "AS_RAW_ReadPosRankSum";
-    public static final String REFSAMPLE_DEPTH_KEY =                "REFDEPTH";
     public static final String REPEATS_PER_ALLELE_KEY =             "RPA";
     public static final String REPEAT_UNIT_KEY =                    "RU";
     public static final String SAMPLE_LIST_KEY =                    "Samples";
