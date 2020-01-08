@@ -204,8 +204,8 @@ public final class IntegrationTestSpec {
      */
     public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix) throws IOException {
 
-        XReadLines actual = new XReadLines(resultFile, true, commentPrefix);
-        XReadLines expected = new XReadLines(expectedFile, true, commentPrefix);
+        XReadLines actual = new XReadLines(resultFile, false, commentPrefix);
+        XReadLines expected = new XReadLines(expectedFile, false, commentPrefix);
 
         // For ease of debugging, we look at the lines first and only then check their counts.
         // For performance, we stream the lines through instead of loading everything first.
