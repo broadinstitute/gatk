@@ -36,7 +36,6 @@ public final class GATKVCFConstants {
     public static final String GENOTYPE_AND_VALIDATE_STATUS_KEY =   "callStatus";
     public static final String CLIPPING_RANK_SUM_KEY =              "ClippingRankSum";
     public static final String CULPRIT_KEY =                        "culprit";
-    public static final String SPANNING_DELETIONS_KEY =             "Dels";
     public static final String ORIGINAL_DP_KEY =                    "DP_Orig"; //SelectVariants
     public static final String EVENT_COUNT_IN_HAPLOTYPE_KEY =       "ECNT"; //M2
     public static final String FISHER_STRAND_KEY =                  "FS";
