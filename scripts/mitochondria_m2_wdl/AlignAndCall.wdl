@@ -404,7 +404,7 @@ task M2 {
   }
   parameter_meta {
     input_bam: "Aligned Bam"
-    gga_vcf: "VCF for genotype given alleles mode"
+    gga_vcf: "VCF for force-calling mode"
   }
   command <<<
       set -e
@@ -417,7 +417,7 @@ task M2 {
       gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
         -R ~{ref_fasta} \
         -I ~{input_bam} \
-        ~{"--genotyping-mode GENOTYPE_GIVEN_ALLELES --alleles " + gga_vcf} \
+        ~{"--alleles " + gga_vcf} \
         -O ~{output_vcf} \
         ~{true='--bam-output bamout.bam' false='' make_bamout} \
         ~{m2_extra_args} \
