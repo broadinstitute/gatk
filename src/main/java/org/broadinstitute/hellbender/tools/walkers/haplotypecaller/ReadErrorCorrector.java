@@ -215,8 +215,8 @@ public final class ReadErrorCorrector {
 
                 //  do the actual correction
                 // todo - do we need to clone anything else from read?
-                correctedRead.setBaseQualities(inputRead.getBaseQualities());
-                correctedRead.setBases(inputRead.getBases());
+                correctedRead.setBaseQualities(correctedQuals);
+                correctedRead.setBases(correctedBases);
                 correctedRead.setReadGroup(inputRead.getReadGroup());
                 return correctedRead;
             }
