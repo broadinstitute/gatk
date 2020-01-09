@@ -18,7 +18,7 @@ public final class HomoSapiensConstants {
     /**
      * Standard heterozygous rate for INDEL variation.
      */
-    public static final double INDEL_HETEROZYGOSITY = 1.0/8000;
+    public static final double INDEL_HETEROZYGOSITY = 1.0/8000; // ts: putting a pin (12/3/19)
 
     /**
      * Standard ploidy for autosomal chromosomes.

@@ -508,7 +508,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param features Features overlapping the assembly region
      * @return List of variants discovered in the region (may be empty)
      */
-    public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features) {
+    public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features) { // ts: should I just call this? What would be a feature here?
         if ( hcArgs.justDetermineActiveRegions ) {
             // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
@@ -612,7 +612,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
 
-        final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
+        final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods( // ts: should I just call this?
                 haplotypes,
                 readLikelihoods,
                 perSampleFilteredReadList,

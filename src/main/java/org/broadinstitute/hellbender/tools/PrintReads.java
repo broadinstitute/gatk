@@ -106,12 +106,24 @@ public final class PrintReads extends ReadWalker {
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-
         if (standardizeUMI){
             final String originalUMI = read.getAttributeAsString(UMI_TAG);
             read.setAttribute(UMI_TAG, new UMI(read).getStandardizedUMI()); // use static method
             read.setAttribute(ORIGINAL_UMI_TAG, originalUMI);
         }
+
+        final boolean oneTimeOnlyFilter = true;
+        if (oneTimeOnlyFilter){
+            final int readStart = 7_578_417;
+            final int epsilon = 2;
+            final boolean readWithinRange = readStart - epsilon < read.getStart() && read.getStart() < readStart + epsilon;
+            final boolean mateWithinRange = readStart - epsilon < read.getMateStart() && read.getMateStart() < readStart + epsilon;
+
+            if (!(readWithinRange || mateWithinRange)){
+                return;
+            }
+        }
+
         outputWriter.addRead(read);
     }
 

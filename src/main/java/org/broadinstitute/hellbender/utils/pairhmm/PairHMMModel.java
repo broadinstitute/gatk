@@ -167,7 +167,7 @@ public final class PairHMMModel {
         if (dest.length < readLength + 1) throw new IllegalArgumentException("destination length is not enough for the read length: " + dest.length + " < " + readLength + " + 1");
 
         for (int i = 0; i < readLength; i++) {
-            qualToTransProbs(dest[i + 1], insQuals[i], delQuals[i], gcps[i]);
+            qualToTransProbs(dest[i + 1], insQuals[i], delQuals[i], gcps[i]); // ts: dest is the transition probabilities...
         }
     }
 

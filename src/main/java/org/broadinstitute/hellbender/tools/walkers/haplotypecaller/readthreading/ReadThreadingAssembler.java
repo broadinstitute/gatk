@@ -178,10 +178,10 @@ public final class ReadThreadingAssembler {
 
         for( final SeqGraph graph : graphs ) {
             final SeqVertex source = graph.getReferenceSourceVertex();
-            final SeqVertex sink = graph.getReferenceSinkVertex();
+            final SeqVertex sink = graph.getReferenceSinkVertex(); // ts: why is sink interesting in de bruijn graph? the end of ref haplotype?
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
-            for (final KBestHaplotype kBestHaplotype : new KBestHaplotypeFinder(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
+            for (final KBestHaplotype kBestHaplotype : new KBestHaplotypeFinder(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) { // ts: pin
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
                     if (kBestHaplotype.isReference()) {
@@ -205,7 +205,7 @@ public final class ReadThreadingAssembler {
                     }
 
                     h.setCigar(cigar);
-                    h.setAlignmentStartHapwrtRef(activeRegionStart);
+                    h.setAlignmentStartHapwrtRef(activeRegionStart); // ts: what is activeRegionStart.
                     h.setGenomeLocation(activeRegionWindow);
                     returnHaplotypes.add(h);
                     assemblyResultSet.add(h, assemblyResultByGraph.get(graph));

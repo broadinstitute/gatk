@@ -1221,7 +1221,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      */
     public void filterPoorlyModeledEvidence(final ToDoubleFunction<EVIDENCE> log10MinTrueLikelihood) {
         Utils.validateArg(alleles.numberOfAlleles() > 0, "unsupported for read-likelihood collections with no alleles");
-
+        // ts: what is this doing?!
         final int numberOfSamples = samples.numberOfSamples();
         for (int s = 0; s < numberOfSamples; s++) {
             final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(s);

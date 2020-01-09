@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -25,11 +26,14 @@ public class UMIReadFilterTest extends CommandLineProgramIntegrationTest {
     final String C04Chr20Bam = "/dsde/working/tsato/consensus/bams/C04_denovo_bloodbiopsy_2-5pct_rep1.bqsr.bam";
     final String C04Chr20BamPreConcensus = "/dsde/working/tsato/consensus/bams/Jonna_Grimsby_C04_denovo_bloodbiopsy_2-5pct_rep1.bam";
 
+    final String tp53dir = "/dsde/working/tsato/consensus/tp53/";
+
     @Test
     public void test(){
-        final String bam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.tiny.bam";
+        final String bam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.bam";
         // final String umi = "AGG-TGA"; // this is a good one
-        final List<String> umis = Arrays.asList("GAC-ATA", "ATT-TTG", "CTG-GCC", "TTG-TAC");
+        // final List<String> umis = Arrays.asList("AGG-TGA", "GAC-ATA", "ATT-TTG", "CTG-GCC", "TTG-TAC");
+        final List<String> umis = Arrays.asList("AGG-TGA");
         for (String umi : umis){
             final File out = new File("/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53."+ umi + ".bam");
             final ArgumentsBuilder args = new ArgumentsBuilder()
@@ -144,16 +148,28 @@ public class UMIReadFilterTest extends CommandLineProgramIntegrationTest {
         // call mutect, find the indel positions, then maybe create an interval file of these spots with
         // also add the "modulo flipping" of UMI
         // data is much, much messier than we thought
+        final String tp53Dir = "/dsde/working/tsato/consensus/tp53/";
 
-        final String bam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.tiny.bam";
+        // pre-consensus bam at a deletion locus, only keep reads with indels
+        final String deletionLoc = "17:7578712-7578712";
+        final String bam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.bam";
         final File out = new File("/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.indels_at_17_7578712.bam");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument("R", hg19)
                 .addArgument("I", bam)
                 .addArgument("read-filter", "RemoveReadsWithoutIndelsReadFilter")
-                .addArgument("L", "17:7578712-7578712")
+                .addArgument("L", deletionLoc)
                 .addArgument("O", out.getAbsolutePath());
         runCommandLine(args, PrintReads.class.getSimpleName());
+
+        // keep all the reads
+        final File all = new File(tp53Dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.17_7578712.bam");
+        final ArgumentsBuilder argsAll = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", bam)
+                .addArgument("L", deletionLoc)
+                .addArgument("O", all.getAbsolutePath());
+        runCommandLine(argsAll, PrintReads.class.getSimpleName());
 
         // Filter the post-consensus bam too
         final String postConsensusBam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.bqsr.bam";
@@ -164,6 +180,33 @@ public class UMIReadFilterTest extends CommandLineProgramIntegrationTest {
                 .addArgument("L", "17:7578712-7578712")
                 .addArgument("O", out2.getAbsolutePath());
         runCommandLine(args2, PrintReads.class.getSimpleName());
+
+        int d = 3;
+    }
+
+    @Test
+    public void groupByUMI(){
+        // Run fgbio GroupByUMI on this subset bam
+        final String fgbioGroupByUMIScript = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/fgbio_group_reads_by_umi.sh";
+        final String bam = tp53dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.bam";
+        final String out = tp53dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
+        runProcess(new ProcessController(), new String[]{ fgbioGroupByUMIScript, bam, out, tp53dir });
+
+        // then select only the fragment we're interested in
+//        final String out2 = tp53dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.selected.bam";
+//        final ArgumentsBuilder args = new ArgumentsBuilder()
+//                .addArgument("R", hg19)
+//                .addArgument("I", out)
+//                .addArgument("O", out2);
+//        runCommandLine(args, PrintReads.class.getSimpleName());
+    }
+
+    @Test
+    public void debugFgbioConsensusCaller(){
+        // Run fgbio GroupByUMI on this subset bam
+        final String fgbioConsensusScript = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/fgbio_consensus.sh";
+        final String groupedBam = tp53dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
+        runProcess(new ProcessController(), new String[]{ fgbioConsensusScript, groupedBam, "tp53", tp53dir});
 
         int d = 3;
     }

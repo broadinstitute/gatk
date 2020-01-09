@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import picard.cmdline.argumentcollections.ReferenceArgumentCollection;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,7 +52,6 @@ public class ConsensusReadsByRealignment extends ReadWalker {
 
         final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(),
                 mtac, getHeaderForReads(), sample, logger, referenceReader, assemblyEngine, aligner, false);
-
         int d = 3;
 
         return "SUCCESS";

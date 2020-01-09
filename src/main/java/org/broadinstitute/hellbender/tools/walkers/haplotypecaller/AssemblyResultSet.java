@@ -535,7 +535,7 @@ public final class AssemblyResultSet {
      * @param haplotypes the set of haplotypes to grab the VCs from
      * @return a sorted set of variant contexts
      */
-    private static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
+    public static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         final TreeSet<VariantContext> vcs = new TreeSet<>(Comparator.comparingInt(VariantContext::getStart));
 

@@ -153,7 +153,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
-        final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES; // ts: 6 by default
 
 
         VariantContext reducedVC = vc;
@@ -164,18 +164,17 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
-
-        final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
+        // ts: how do we get alleleFrequency without an outside resource like gnomad?
+        final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy); // ts: this I should look into at some point
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
 
         // posterior probability that at least one alt allele exists in the samples
         final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.log10ProbVariantPresent());
-
+        // ts: what confidence is this?
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
                 ! outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
                         ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0 ;
-
 
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
@@ -200,7 +199,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if ( ! passesCallThreshold(phredScaledConfidence) ) {
             builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
         }
-
+        // ts: where do we calculate the genotype likelihoods?!????
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
@@ -280,7 +279,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
                 final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
                 final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
-
+                // ts: aha, must pass this afcalculator.....what is it?
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
 

@@ -9,7 +9,7 @@ import java.util.List;
  * providing a more liberal equals method so that VariantContext objects can be placed into a Set
  * which retains only VCs that have non-redundant location and Allele lists.
  */
-class LocationAndAlleles {
+public class LocationAndAlleles {
     private final int loc;
     private final List<Allele> alleles;
 

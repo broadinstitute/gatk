@@ -278,7 +278,7 @@ public final class VariantAnnotatorEngine {
 
         // annotate genotypes, creating another new VC in the process
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        builder.genotypes(annotateGenotypes(ref, vc, likelihoods, addAnnot));
+        builder.genotypes(annotateGenotypes(ref, vc, likelihoods, addAnnot)); // ts: is this where we create genotypes for the first time?
         final VariantContext newGenotypeAnnotatedVC = builder.make();
 
         final Map<String, Object> infoAnnotMap = new LinkedHashMap<>(newGenotypeAnnotatedVC.getAttributes());
