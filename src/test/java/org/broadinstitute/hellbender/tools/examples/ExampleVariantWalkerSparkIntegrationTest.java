@@ -32,7 +32,7 @@ public final class ExampleVariantWalkerSparkIntegrationTest extends CommandLineP
         args.add(hg19MiniReference);
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleVariantWalkerSparkIntegrationTest_output.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 
 }
