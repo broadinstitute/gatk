@@ -40,7 +40,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by davidben on 9/8/16.
@@ -277,14 +276,15 @@ public final class AssemblyBasedCallerUtils {
         final SimpleInterval paddedReferenceLoc = getPaddedReferenceLoc(region, REFERENCE_PADDING_FOR_ASSEMBLY, referenceReader);
         final Haplotype refHaplotype = createReferenceHaplotype(region, paddedReferenceLoc, referenceReader);
 
-        final ReadErrorCorrector readErrorCorrector = argumentCollection.assemblerArgs.errorCorrectReads ?
-                new ReadErrorCorrector(argumentCollection.assemblerArgs.kmerLengthForReadErrorCorrection,
-                        HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
-                        argumentCollection.assemblerArgs.minObservationsForKmerToBeSolid,
-                        argumentCollection.assemblerArgs.debugAssembly,
-                        fullReferenceWithPadding) :
-                null;
-
+        final ReadErrorCorrector readErrorCorrector = argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds == Double.NEGATIVE_INFINITY ?
+                (argumentCollection.assemblerArgs.errorCorrectReads ?
+                        new NearbyKmerErrorCorrector(argumentCollection.assemblerArgs.kmerLengthForReadErrorCorrection,
+                                HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
+                                argumentCollection.assemblerArgs.minObservationsForKmerToBeSolid,
+                                argumentCollection.assemblerArgs.debugAssembly,
+                                fullReferenceWithPadding) :
+                        null)
+                : new PileupReadErrorCorrector(argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds, header);
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner);

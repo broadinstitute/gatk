@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class ReadErrorCorrectorUnitTest {
+public final class NearbyKmerErrorCorrectorUnitTest {
     private static final boolean debug = true;
     final String refChunk = "GCATAAACATGGCTCACTGC";
     final String refChunkHard = "AGCCTTGAACTCCTGGGCTCAAGTGATCCTCCTGCCTCAGTTTCCCATGTAGCTGGGACCACAGGTGGGGGCTCCACCCCTGGCTGATTTTTTTTTTTTTTTTTTTTTGAGATAGGGT";
@@ -19,7 +19,7 @@ public final class ReadErrorCorrectorUnitTest {
 
         final byte[] trueBases = refChunk.getBytes();
         final int numCorrections = 50;
-        final ReadErrorCorrector.CorrectionSet correctionSet = new ReadErrorCorrector.CorrectionSet(trueBases.length);
+        final NearbyKmerErrorCorrector.CorrectionSet correctionSet = new NearbyKmerErrorCorrector.CorrectionSet(trueBases.length);
 
         int offset = 2;
         for (int k=0; k < numCorrections; k++) {
@@ -43,7 +43,7 @@ public final class ReadErrorCorrectorUnitTest {
 
         final byte[] trueBases = refChunk.getBytes();
         final int numCorrections = 50;
-        final ReadErrorCorrector.CorrectionSet correctionSet = new ReadErrorCorrector.CorrectionSet(trueBases.length);
+        final NearbyKmerErrorCorrector.CorrectionSet correctionSet = new NearbyKmerErrorCorrector.CorrectionSet(trueBases.length);
 
         for (int offset=0; offset < trueBases.length; offset++) {
             // insert k corrections at offset k and make sure we get exactly k bases back
@@ -75,7 +75,7 @@ public final class ReadErrorCorrectorUnitTest {
             finalizedReadList.add(read);
         }
 
-        ReadErrorCorrector readErrorCorrector = new ReadErrorCorrector(kmerLengthForReadErrorCorrection,(byte)6,10, debug,refChunkHard.getBytes());
+        NearbyKmerErrorCorrector readErrorCorrector = new NearbyKmerErrorCorrector(kmerLengthForReadErrorCorrection,(byte)6,10, debug,refChunkHard.getBytes());
         readErrorCorrector.addReadsToKmers(finalizedReadList);
 
         // special trivial case: kmer length is equal to read length.
@@ -89,7 +89,7 @@ public final class ReadErrorCorrectorUnitTest {
         // special case 2: kmers are all the same but length < read length.
         // Each kmer is added then readLength-kmerLength+1 times
         final int KMER_LENGTH = 10;
-        readErrorCorrector = new ReadErrorCorrector(KMER_LENGTH,(byte)6,10, debug,refChunkHard.getBytes());
+        readErrorCorrector = new NearbyKmerErrorCorrector(KMER_LENGTH,(byte)6,10, debug,refChunkHard.getBytes());
         readErrorCorrector.addReadsToKmers(finalizedReadList);
         Assert.assertEquals(readErrorCorrector.countsByKMer.getCountedKmers().size(), 1);
         for (final KMerCounter.CountedKmer kmer : readErrorCorrector.countsByKMer.getCountedKmers()) {
@@ -130,8 +130,7 @@ public final class ReadErrorCorrectorUnitTest {
         }
 
         // now correct all reads
-        final ReadErrorCorrector readErrorCorrector = new ReadErrorCorrector(kmerLengthForReadErrorCorrection,(byte)6,10, debug,refChunkHard.getBytes());
-        readErrorCorrector.addReadsToKmers(finalizedReadList);
+        final NearbyKmerErrorCorrector readErrorCorrector = new NearbyKmerErrorCorrector(kmerLengthForReadErrorCorrection,(byte)6,10, debug,refChunkHard.getBytes());
         readErrorCorrector.correctReads(finalizedReadList);
 
         // check that corrected reads have exactly same content as original reads
