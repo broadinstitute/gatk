@@ -14,7 +14,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -257,14 +256,15 @@ public final class AssemblyBasedCallerUtils {
         final SimpleInterval paddedReferenceLoc = getPaddedReferenceLoc(region, REFERENCE_PADDING_FOR_ASSEMBLY, referenceReader);
         final Haplotype refHaplotype = createReferenceHaplotype(region, paddedReferenceLoc, referenceReader);
 
-        final ReadErrorCorrector readErrorCorrector = argumentCollection.assemblerArgs.errorCorrectReads ?
-                new ReadErrorCorrector(argumentCollection.assemblerArgs.kmerLengthForReadErrorCorrection,
-                        HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
-                        argumentCollection.assemblerArgs.minObservationsForKmerToBeSolid,
-                        argumentCollection.assemblerArgs.debugAssembly,
-                        fullReferenceWithPadding) :
-                null;
-
+        final ReadErrorCorrector readErrorCorrector = argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds == Double.NEGATIVE_INFINITY ?
+                (argumentCollection.assemblerArgs.errorCorrectReads ?
+                        new NearbyKmerErrorCorrector(argumentCollection.assemblerArgs.kmerLengthForReadErrorCorrection,
+                                HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
+                                argumentCollection.assemblerArgs.minObservationsForKmerToBeSolid,
+                                argumentCollection.assemblerArgs.debugAssembly,
+                                fullReferenceWithPadding) :
+                        null)
+                : new PileupReadErrorCorrector(argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds, header);
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner);
