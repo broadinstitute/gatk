@@ -180,7 +180,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
-            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), getGLModel(mergedVC), givenAlleles);
+            final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), givenAlleles);
             if( call != null ) {
 
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
@@ -397,12 +397,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      */
     public PloidyModel getPloidyModel() {
         return ploidyModel;
-    }
-
-    // check whether all alleles of a vc, including the ref but excluding the NON_REF allele, are one base in length
-    protected static GenotypeLikelihoodsCalculationModel getGLModel(final VariantContext vc) {
-        final boolean isSNP = vc.getAlleles().stream().filter(a -> !a.isSymbolic()).allMatch(a -> a.length() == 1);
-        return isSNP ? GenotypeLikelihoodsCalculationModel.SNP : GenotypeLikelihoodsCalculationModel.INDEL;
     }
 
     // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection

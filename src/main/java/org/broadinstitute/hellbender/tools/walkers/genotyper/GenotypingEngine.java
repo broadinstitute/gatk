@@ -107,10 +107,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * the model that need to be applied.
      *
      * @param vc                                 Input variant context to complete.
-     * @param model                              GL calculation model
      * @return                                   VC with assigned genotypes
      */
-    public VariantContext calculateGenotypes(final VariantContext vc, final GenotypeLikelihoodsCalculationModel model, final List<VariantContext> givenAlleles) {
+    public VariantContext calculateGenotypes(final VariantContext vc, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return null;
@@ -174,8 +173,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
-    public VariantContext calculateGenotypes(final VariantContext vc, final GenotypeLikelihoodsCalculationModel model) {
-        return calculateGenotypes(vc, model, Collections.emptyList());
+    public VariantContext calculateGenotypes(final VariantContext vc) {
+        return calculateGenotypes(vc, Collections.emptyList());
     }
 
     @VisibleForTesting

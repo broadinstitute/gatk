@@ -306,20 +306,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     private void initializeActiveRegionEvaluationGenotyperEngine() {
-        // create a UAC but with the exactCallsLog = null, so we only output the log for the HC caller itself, if requested
-        final UnifiedArgumentCollection simpleUAC = new UnifiedArgumentCollection();
-        simpleUAC.copyStandardCallerArgsFrom(hcArgs.standardArgs);
+        final StandardCallerArgumentCollection activeRegionArgs = new StandardCallerArgumentCollection();
+        activeRegionArgs.copyStandardCallerArgsFrom(hcArgs.standardArgs);
 
-        simpleUAC.outputMode = OutputMode.EMIT_VARIANTS_ONLY;
-        simpleUAC.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = Math.min(MAXMIN_CONFIDENCE_FOR_CONSIDERING_A_SITE_AS_POSSIBLE_VARIANT_IN_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING ); // low values used for isActive determination only, default/user-specified values used for actual calling
-        simpleUAC.CONTAMINATION_FRACTION = 0.0;
-        simpleUAC.CONTAMINATION_FRACTION_FILE = null;
-        simpleUAC.exactCallsLog = null;
-        // Seems that at least with some test data we can lose genuine haploid variation if we use
-        // UGs engine with ploidy == 1
-        simpleUAC.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.samplePloidy);
+        activeRegionArgs.outputMode = OutputMode.EMIT_VARIANTS_ONLY;
+        activeRegionArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = Math.min(MAXMIN_CONFIDENCE_FOR_CONSIDERING_A_SITE_AS_POSSIBLE_VARIANT_IN_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING ); // low values used for isActive determination only, default/user-specified values used for actual calling
+        activeRegionArgs.CONTAMINATION_FRACTION = 0.0;
+        activeRegionArgs.CONTAMINATION_FRACTION_FILE = null;
+        // Seems that at least with some test data we can lose genuine haploid variation if we use ploidy == 1
+        activeRegionArgs.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.samplePloidy);
 
-        activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(simpleUAC, samplesList);
+        activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(activeRegionArgs, samplesList);
         activeRegionEvaluationGenotyperEngine.setLogger(logger);
     }
 
@@ -493,7 +490,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             // Faster implementation using exact marginalization instead of iteration
             isActiveProb = activeRegionEvaluationGenotyperEngine.calculateSingleSampleRefVsAnyActiveStateProfileValue(genotypes.get(0).getLikelihoods().getAsVector());
         } else {
-            final VariantContext vcOut = activeRegionEvaluationGenotyperEngine.calculateGenotypes(new VariantContextBuilder("HCisActive!", context.getContig(), context.getLocation().getStart(), context.getLocation().getEnd(), alleles).genotypes(genotypes).make(), GenotypeLikelihoodsCalculationModel.SNP);
+            final VariantContext vcOut = activeRegionEvaluationGenotyperEngine.calculateGenotypes(new VariantContextBuilder("HCisActive!", context.getContig(), context.getLocation().getStart(), context.getLocation().getEnd(), alleles).genotypes(genotypes).make());
             isActiveProb = vcOut == null ? 0.0 : QualityUtils.qualToProb(vcOut.getPhredScaledQual());
         }
         return new ActivityProfileState(ref.getInterval(), isActiveProb, averageHQSoftClips.mean() > AVERAGE_HQ_SOFTCLIPS_HQ_BASES_THRESHOLD ? ActivityProfileState.Type.HIGH_QUALITY_SOFT_CLIPS : ActivityProfileState.Type.NONE, averageHQSoftClips.mean() );

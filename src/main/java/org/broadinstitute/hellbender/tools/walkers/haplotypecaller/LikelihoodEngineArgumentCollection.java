@@ -15,12 +15,6 @@ import java.io.Serializable;
 public final class LikelihoodEngineArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Hidden
-    @Advanced
-    @Argument(fullName = "likelihood-calculation-engine",
-            doc= "What likelihood calculation engine to use to calculate the relative likelihood of reads vs haplotypes", optional = true)
-    public ReadLikelihoodCalculationEngine.Implementation likelihoodEngineImplementation = ReadLikelihoodCalculationEngine.Implementation.PairHMM;
-
     /**
      * Bases with a quality below this threshold will reduced to the minimum usable qualiy score (6).
      */
