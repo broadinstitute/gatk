@@ -118,27 +118,10 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                 final V pivotalVerex = graph.getEdgeSource(firstEdge);
                 Optional<JTBestHaplotype<V, E>> bestMatchingHaplotype = result.stream().filter(path -> path.containsVertex(pivotalVerex)).max(Comparator.comparingDouble(JTBestHaplotype::score));
                 if (bestMatchingHaplotype.isPresent()) {
-                    // Now we try to construct a reference covering haplotype from the one we just discovered
-                    List<E> bestMatchingHaplotypeEdges = bestMatchingHaplotype.get().getEdges();
-                    List<E> edgesIncomingToSplitPoint = bestMatchingHaplotypeEdges.stream().filter(edge -> graph.getEdgeTarget(edge).equals(pivotalVerex)).collect(Collectors.toList());
-                    //todo it is either an error state to find nothing or could mean we accidentally did the search over the source vertex, either way shoudl be a bug
-                    if (edgesIncomingToSplitPoint.isEmpty()) {
-                        continue;
+                    JTBestHaplotype<V, E> pathToAdd = constructArtificialHaplotypePath(firstEdge, pivotalVerex, bestMatchingHaplotype.get());
+                    if (pathToAdd != null) {
+                        queue.add(pathToAdd);
                     }
-
-                    // TODO maybe this will matter some day, simply select the last edge
-                    List<E> edgesBeforeSplit = new ArrayList<>(bestMatchingHaplotypeEdges.subList(0, bestMatchingHaplotypeEdges.lastIndexOf(edgesIncomingToSplitPoint.get(edgesIncomingToSplitPoint.size() - 1)) + 1));
-                    edgesBeforeSplit.add(firstEdge);
-
-                    // create a new path with the beginging of the best edge stapled to the front
-                    JTBestHaplotype<V, E> pathToAdd = new JTBestHaplotype<>(new JTBestHaplotype<>(bestMatchingHaplotype.get().getFirstVertex(), graph), edgesBeforeSplit, bestMatchingHaplotype.get().score());
-                    List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> treesPassed = pathToAdd.getVertices().stream()
-                            .map(v -> junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) v))
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
-                            .collect(Collectors.toList());
-                    pathToAdd.markTreesAsVisited(treesPassed);
-                    queue.add(pathToAdd);
                 }
                 continue;
             }
@@ -195,21 +178,16 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(weightThreshold)) {
                 //TODO this will probably be resolved using a junction tree on that node and treating it as an edge to extend
                 //todo the proposal here would be to check if there is an active tree left for us at this point and if so keep going
-                if (chain.isEmpty()) {
-                    JTBestHaplotype<V, E> newPath = reconcilePathMissingReferenceStartPositions(pathToExtend, result, graph);
-                    if (newPath != null) {
-                        result.add(newPath);
-                    }
-                    pathToExtend.getEdges().forEach(e -> unvisitedPivotalEdges.remove(e));
-
-                } else {
-                    JTBestHaplotype<V, E> newPath = new JTBestHaplotype<>(pathToExtend, chain, 0);
-                    newPath = reconcilePathMissingReferenceStartPositions(newPath, result, graph);
-                    if (newPath != null) {
-                        result.add(reconcilePathMissingReferenceStartPositions(newPath, result, graph));
-                    }
-                    pathToExtend.getEdges().forEach(e -> unvisitedPivotalEdges.remove(e));
+                JTBestHaplotype<V, E> newPath =
+                        reconcilePathMissingReferenceStartPositions(
+                                chain.isEmpty() ? pathToExtend : new JTBestHaplotype<>(pathToExtend, chain, 0),
+                                result,
+                                graph);
+                if (newPath != null) {
+                    annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
+                    result.add(newPath);
                 }
+                pathToExtend.getEdges().forEach(e -> unvisitedPivotalEdges.remove(e));
             }
             // NOTE: even if we are at the reference stop and there is evidence in the junction trees of a stop we still want to explore other edges potentially
 
@@ -258,6 +236,43 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
         }
 
         return result.stream().map(n -> (KBestHaplotype<V, E>) n).collect(Collectors.toList());
+    }
+
+    //TODO thiss might be best computed in the paths as they are being expanded
+    private void annotatePathBasedOnGraph(final JTBestHaplotype<V, E> newPath, final JunctionTreeLinkedDeBruinGraph graph) {
+
+    }
+
+    /**
+     * Method that performs the stitching of another paths begining onto the front of a new path that is being recovered after not being discovered.
+     *
+     * @param firstEdge
+     * @param pivotalVerex
+     * @param bestMatchingHaplotype
+     * @return
+     */
+    private JTBestHaplotype<V, E> constructArtificialHaplotypePath(final E firstEdge, final V pivotalVerex, final JTBestHaplotype<V, E> bestMatchingHaplotype) {
+        // Now we try to construct a reference covering haplotype from the one we just discovered
+        List<E> bestMatchingHaplotypeEdges = bestMatchingHaplotype.getEdges();
+        List<E> edgesIncomingToSplitPoint = bestMatchingHaplotypeEdges.stream().filter(edge -> graph.getEdgeTarget(edge).equals(pivotalVerex)).collect(Collectors.toList());
+        //todo it is either an error state to find nothing or could mean we accidentally did the search over the source vertex, either way shoudl be a bug
+        if (edgesIncomingToSplitPoint.isEmpty()) {
+            return null;
+        }
+
+        // TODO maybe this will matter some day, simply select the last edge
+        List<E> edgesBeforeSplit = new ArrayList<>(bestMatchingHaplotypeEdges.subList(0, bestMatchingHaplotypeEdges.lastIndexOf(edgesIncomingToSplitPoint.get(edgesIncomingToSplitPoint.size() - 1)) + 1));
+        edgesBeforeSplit.add(firstEdge);
+
+        // create a new path with the beginging of the best edge stapled to the front
+        JTBestHaplotype<V, E> pathToAdd = new JTBestHaplotype<>(new JTBestHaplotype<>(bestMatchingHaplotype.getFirstVertex(), graph), edgesBeforeSplit, bestMatchingHaplotype.score());
+        List<JunctionTreeLinkedDeBruinGraph.ThreadingTree> treesPassed = pathToAdd.getVertices().stream()
+                .map(v -> junctionTreeLinkedDeBruinGraph.getJunctionTreeForNode((MultiDeBruijnVertex) v))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+        pathToAdd.markTreesAsVisited(treesPassed);
+        return pathToAdd;
     }
 
 
