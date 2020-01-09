@@ -5,13 +5,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -397,6 +393,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      * @param refHaplotype ref haplotype location
      */
     public void postProcessForHaplotypeFinding(final File debugGraphOutputPath, final Locatable refHaplotype) {
+        annotateEdgesWithReferenceIndecies();
         generateJunctionTrees();
         if (debugGraphTransformations) {
             printGraph(new File(debugGraphOutputPath, refHaplotype + "-sequenceGraph." + kmerSize + ".0.4.JT_unpruned.dot"), 10000);
@@ -404,6 +401,20 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         pruneJunctionTrees(JunctionTreeKBestHaplotypeFinder.DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED);
         if (debugGraphTransformations) {
             printGraph(new File(debugGraphOutputPath, refHaplotype + "-sequenceGraph." + kmerSize + ".0.5.JT_pruned.dot"), 10000);
+        }
+    }
+
+    //TODO this should really be easy enough to write a test for
+    @VisibleForTesting
+    private void annotateEdgesWithReferenceIndecies() {
+        final List<MultiDeBruijnVertex> referencePath = getReferencePath(TraversalDirection.downwards);
+        MultiDeBruijnVertex lastVert = null;
+        int refIndex = 0;
+        for (MultiDeBruijnVertex nextVert : referencePath) {
+            if (lastVert != null) {
+                getEdge(lastVert, nextVert).addReferenceIndex(refIndex++);
+            }
+            lastVert = nextVert;
         }
     }
 

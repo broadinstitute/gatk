@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.PriorityQueue;
 
 /**
@@ -29,6 +31,9 @@ public final class MultiSampleEdge extends BaseEdge {
     private int currentSingleSampleMultiplicity;
     private final int singleSampleCapacity;
     private final PriorityQueue<Integer> singleSampleMultiplicities;
+
+    //TODO this will want to be moved to somewhere specific later
+    private final List<Integer> referencePathIndexes = new ArrayList<>(2);
 
     /**
      * Create a new MultiSampleEdge with weight multiplicity and, if isRef == true, indicates a path through the reference
@@ -85,5 +90,13 @@ public final class MultiSampleEdge extends BaseEdge {
     @VisibleForTesting
     int getCurrentSingleSampleMultiplicity() {
         return currentSingleSampleMultiplicity;
+    }
+
+    public void addReferenceIndex(int i) {
+        referencePathIndexes.add(i);
+    }
+
+    public List<Integer> getReferencePathIndexes() {
+        return referencePathIndexes;
     }
 }
