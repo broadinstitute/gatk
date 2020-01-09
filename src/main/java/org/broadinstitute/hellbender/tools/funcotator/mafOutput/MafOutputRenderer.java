@@ -25,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A Funcotator output renderer for writing to MAF files.
@@ -344,11 +345,7 @@ public class MafOutputRenderer extends OutputRenderer {
 
                 try {
                     // Write the output (with manual annotations at the end):
-                    for (final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet()) {
-                        writeString(entry.getValue());
-                        writeString(MafOutputRendererConstants.FIELD_DELIMITER);
-                    }
-                    writeLine("");
+                    writeLine(Stream.concat(mafCompliantOutputMap.values().stream(), manualAnnotations.values().stream()).collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
                 } catch (IOException e){
                     throw new UserException.CouldNotCreateOutputFile("Error while writing maf file, cause by: " + e.getMessage(), e);
                 }
@@ -665,10 +662,7 @@ public class MafOutputRenderer extends OutputRenderer {
             writeLine("");
 
             // Write the column headers for our output set and our manual annotations:
-            writer.write(outputFields.stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
-            writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet()
-                    .stream()
-                    .collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
+            writeLine(Stream.concat(outputFields.stream(), manualAnnotations.keySet().stream()).collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
 
             // Make sure we keep track of the fact that we've now written the header:
             hasWrittenHeader = true;

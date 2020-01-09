@@ -192,6 +192,10 @@ public final class IntegrationTestSpec {
     }
 
     public static void assertEqualTextFiles(final File resultFile, final File expectedFile) throws IOException {
+        assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath());
+    }
+
+    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile) throws IOException {
         assertEqualTextFiles(resultFile, expectedFile, null);
     }
 
@@ -199,13 +203,21 @@ public final class IntegrationTestSpec {
         assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath(), commentPrefix);
     }
 
+    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix) throws IOException {
+        assertEqualTextFiles(resultFile, expectedFile, commentPrefix, false);
+    }
+
+    public static void assertEqualTextFiles(final File resultFile, final File expectedFile, final String commentPrefix, final Boolean trimWhitespace) throws IOException {
+        assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath(), commentPrefix, trimWhitespace);
+    }
+
     /**
      * Compares two text files and ignores all lines that start with the comment prefix.
      */
-    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix) throws IOException {
+    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix, final Boolean trimWhitespace) throws IOException {
 
-        XReadLines actual = new XReadLines(resultFile, false, commentPrefix);
-        XReadLines expected = new XReadLines(expectedFile, false, commentPrefix);
+        XReadLines actual = new XReadLines(resultFile, trimWhitespace, commentPrefix);
+        XReadLines expected = new XReadLines(expectedFile, trimWhitespace, commentPrefix);
 
         // For ease of debugging, we look at the lines first and only then check their counts.
         // For performance, we stream the lines through instead of loading everything first.

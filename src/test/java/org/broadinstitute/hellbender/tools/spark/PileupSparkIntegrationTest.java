@@ -47,7 +47,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedSimplePileup.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 
     @Test(dataProvider = "shuffle")
@@ -68,7 +68,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedVerbosePileup.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 
     @Test(dataProvider = "shuffle")
@@ -89,7 +89,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 
     @Test(dataProvider = "shuffle")
@@ -110,7 +110,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedInsertLengthPileup.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 
     @Test(dataProvider = "shuffle")
@@ -143,7 +143,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
             }
             this.runCommandLine(args.getArgsArray());
             File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
-            IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+            IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
 
         });
 

@@ -28,6 +28,6 @@ public final class ExampleReadWalkerWithVariantsSparkIntegrationTest extends Com
         args.add(TEST_DATA_DIRECTORY + "example_variants_withSequenceDict.vcf");
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleReadWalkerWithVariantsIntegrationTest_output.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 }

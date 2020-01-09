@@ -29,6 +29,6 @@ public final class ExampleIntervalWalkerSparkIntegrationTest extends CommandLine
         args.add(hg19MiniReference);
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleIntervalWalkerIntegrationTest_output.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 }

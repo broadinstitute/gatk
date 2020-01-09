@@ -1,8 +1,8 @@
 Current locus 1:200 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:199-200, Ref:GG*, Alt(s):[G]
-        1:200-200, Ref:G*, Alt(s):[A]
+		1:199-200, Ref:GG*, Alt(s):[G]
+		1:200-200, Ref:G*, Alt(s):[A]
 
 Current locus 1:201 (coverage=1)
 	Reference base(s): N
@@ -13,22 +13,22 @@ Current locus 1:202 (coverage=1)
 Current locus 1:203 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-       	1:203-206, Ref:GGGG*, Alt(s):[G]
+		1:203-206, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:204 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:203-206, Ref:GGGG*, Alt(s):[G]
+		1:203-206, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:205 (coverage=2)
 	Reference base(s): N
 	Overlapping variant(s):
-        1:203-206, Ref:GGGG*, Alt(s):[G]
+		1:203-206, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:206 (coverage=2)
 	Reference base(s): N
 	Overlapping variant(s):
-        1:203-206, Ref:GGGG*, Alt(s):[G]
+		1:203-206, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:207 (coverage=2)
 	Reference base(s): N
@@ -252,7 +252,7 @@ Current locus 1:279 (coverage=2)
 Current locus 1:280 (coverage=2)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:280-280, Ref:G*, Alt(s):[A]
+		1:280-280, Ref:G*, Alt(s):[A]
 
 Current locus 1:281 (coverage=1)
 	Reference base(s): N
@@ -266,34 +266,34 @@ Current locus 1:283 (coverage=1)
 Current locus 1:284 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-        1:284-286, Ref:GGG*, Alt(s):[G]
+		1:284-286, Ref:GGG*, Alt(s):[G]
 
 Current locus 1:285 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:284-286, Ref:GGG*, Alt(s):[G]
-    	1:285-285, Ref:G*, Alt(s):[A]
+		1:284-286, Ref:GGG*, Alt(s):[G]
+		1:285-285, Ref:G*, Alt(s):[A]
 
 Current locus 1:1000 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:1000-1000, Ref:G*, Alt(s):[A]
-    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+		1:1000-1000, Ref:G*, Alt(s):[A]
+		1:1000-1003, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:1001 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+		1:1000-1003, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:1002 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+		1:1000-1003, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:1003 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+		1:1000-1003, Ref:GGGG*, Alt(s):[G]
 
 Current locus 1:1004 (coverage=1)
 	Reference base(s): N
@@ -664,7 +664,7 @@ Current locus 1:1149 (coverage=1)
 Current locus 1:1150 (coverage=1)
 	Reference base(s): N
 	Overlapping variant(s):
-    	1:1150-1150, Ref:G*, Alt(s):[A]
+		1:1150-1150, Ref:G*, Alt(s):[A]
 
 Current locus 1:1151 (coverage=1)
 	Reference base(s): N
@@ -740,3 +740,4 @@ Current locus 1:1174 (coverage=1)
 
 Current locus 1:1175 (coverage=1)
 	Reference base(s): N
+

@@ -13,3 +13,4 @@ Current feature: htsjdk.tribble.bed.FullBEDFeature:1:11-300
 	Overlapping variant at 1:284-286. Ref: GGG* Alt(s): [G]
 	Overlapping variant at 1:285-285. Ref: G* Alt(s): [A]
 	Overlapping variant at 1:286-286. Ref: G* Alt(s): [A]
+

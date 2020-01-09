@@ -26,6 +26,6 @@ public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends Co
         args.add(hg19MiniReference);
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleReadWalkerWithReferenceIntegrationTest_output.txt");
-        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+        IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected, null, true);
     }
 }

@@ -5887,3 +5887,4 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20GAVAAXX100126.8            45  TTG             Context        I                   45.0000          4003    0.00
 20GAVAAXX100126.8            45  TTT             Context        D                   45.0000          8673    1.00
 20GAVAAXX100126.8            45  TTT             Context        I                   45.0000          8673    0.00
+
