@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotype<V, E> {
     private JunctionTreeManager junctionTreeManager; // An object for storing and managing operations on the queue of junction trees active for this path
     private int decisionEdgesTakenSinceLastJunctionTreeEvidence;
+    private int maxReferenceSpan;
 
     // NOTE, this constructor is used by JunctionTreeKBestHaplotypeFinder, in both cases paths are chosen by non-junction tree paths
     public JTBestHaplotype(final JTBestHaplotype<V, E> previousPath, final List<E> edgesToExtend, final double edgePenalty) {
