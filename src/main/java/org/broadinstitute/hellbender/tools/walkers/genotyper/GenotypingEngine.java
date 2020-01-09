@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import htsjdk.variant.variantcontext.GenotypesContext;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.math3.special.Gamma;
@@ -9,7 +13,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculationResult;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFPriorProvider;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AlleleFrequencyCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.CustomAFPriorProvider;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.HeterozygosityAFPriorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -17,7 +25,15 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -118,7 +134,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
         final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
 
-
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
@@ -127,28 +142,26 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
-
         final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
-                ! outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
-                        ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0 ;
-
+                !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                        ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0;
 
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
 
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
-        if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllActiveSites()
+        if (!passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllActiveSites()
                 && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && givenAlleles.isEmpty()) {
             return null;
         }
 
         // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
-        if (! emitAllActiveSites() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
+        if (!emitAllActiveSites() && outputAlternativeAlleles.alleles.size() == 1 && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
             return null;
         }
 
@@ -157,18 +170,18 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final VariantContextBuilder builder = new VariantContextBuilder(callSourceString(), vc.getContig(), vc.getStart(), vc.getEnd(), outputAlleles);
 
         builder.log10PError(log10Confidence);
-        if ( ! passesCallThreshold(phredScaledConfidence) ) {
+        if (!passesCallThreshold(phredScaledConfidence)) {
             builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
         }
 
         // create the genotypes
-        //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                outputAlleles.size() == vc.getAlleles().size() ? vc.getGenotypes() :
+                        AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(vc, outputAlternativeAlleles.alternativeAlleleMLECounts(),
-                AFresult, outputAlternativeAlleles.outputAlleles(vc.getReference()),genotypes);
+                AFresult, outputAlternativeAlleles.outputAlleles(vc.getReference()), genotypes);
 
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
@@ -233,7 +246,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, vc);
 
         for (final Allele allele : alleles) {
-            if (allele.isReference() ) {
+            if (allele.isReference()) {
                 referenceAlleleSize = allele.length();
             } else {
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
