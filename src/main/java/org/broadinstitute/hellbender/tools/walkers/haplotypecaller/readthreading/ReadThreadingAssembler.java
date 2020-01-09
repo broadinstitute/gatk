@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.NearbyKmerErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
@@ -127,17 +128,8 @@ public final class ReadThreadingAssembler {
         Utils.validateArg( fullReferenceWithPadding.length == refLoc.size(), "Reference bases and reference loc must be the same size.");
         ParamUtils.isPositiveOrZero(pruneFactor, "Pruning factor cannot be negative");
 
-        // error-correct reads before clipping low-quality tails: some low quality bases might be good and we want to recover them
-        final List<GATKRead> correctedReads;
-        if ( readErrorCorrector != null ) {
-            // now correct all reads in active region after filtering/downsampling
-            // Note that original reads in active region are NOT modified by default, since they will be used later for GL computation,
-            // and we only want the read-error corrected reads for graph building.
-            readErrorCorrector.addReadsToKmers(assemblyRegion.getReads());
-            correctedReads = new ArrayList<>(readErrorCorrector.correctReads(assemblyRegion.getReads()));
-        } else {
-            correctedReads = assemblyRegion.getReads();
-        }
+        // Note that error correction does not modify the original reads, which are used for genotyping
+        final List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();

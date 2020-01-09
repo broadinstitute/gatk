@@ -88,16 +88,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     private static final String CHROMOSOME_20 = "20";
 
-    // tumor bams, normal bams, truth vcf, mask, required sensitivity
+    // tumor bams, normal bams, truth vcf, mask, required sensitivity, whether to error-correct
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                {DREAM_1_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.97},
-                {DREAM_2_TUMOR, Optional.of(DREAM_2_NORMAL), DREAM_2_TRUTH, DREAM_2_MASK, 0.95},
-                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95},
-                {DREAM_3_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.90},
-                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65},
-                {DREAM_4_TUMOR, Optional.empty(), DREAM_4_TRUTH, DREAM_4_MASK, 0.65},
+                {DREAM_1_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.97, false},
+                {DREAM_2_TUMOR, Optional.of(DREAM_2_NORMAL), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
+                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
+                {DREAM_2_TUMOR, Optional.empty(), DREAM_2_TRUTH, DREAM_2_MASK, 0.95, true},
+                {DREAM_3_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.90, false},
+                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
+                {DREAM_4_TUMOR, Optional.of(DREAM_4_NORMAL), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, true},
+                {DREAM_4_TUMOR, Optional.empty(), DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
         };
     }
 
@@ -119,7 +121,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
      */
     @Test(dataProvider = "dreamSyntheticData")
     public void testDreamTumorNormal(final File tumor, final Optional<File> normal, final File truth, final File mask,
-                                     final double requiredSensitivity) throws Exception {
+                                     final double requiredSensitivity, final boolean errorCorrectReads) throws Exception {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
@@ -128,7 +130,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
-                args -> args.addMask(mask).addFileArgument(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts));
+                args -> args.addMask(mask).addFileArgument(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
+                        args -> errorCorrectReads ? args.addNumericArgument(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
+        );
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
         // also check that alleles have been properly clipped after dropping any non-called alleles, i.e. if we had AAA AA A

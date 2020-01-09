@@ -477,7 +477,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return result;
     }
 
-    private static double logLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
+    public static double logLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
         return logLikelihoodRatio(refCount, altQuals, 1);
     }
 
