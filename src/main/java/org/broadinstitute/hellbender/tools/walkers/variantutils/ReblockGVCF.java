@@ -132,8 +132,7 @@ public final class ReblockGVCF extends VariantWalker {
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
     // the INFO field annotation key names to remove
-    private final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK,
-            GATKVCFConstants.DOWNSAMPLED_KEY, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
+    private final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
             GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, GATKVCFConstants.EXCESS_HET_KEY);
 
