@@ -21,6 +21,12 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
     private int decisionEdgesTakenSinceLastJunctionTreeEvidence;
     private int maxReferenceSpan;
 
+    public boolean isWasPoorlyRecovered() {
+        return wasPoorlyRecovered;
+    }
+
+    private boolean wasPoorlyRecovered = false;
+
     // NOTE, this constructor is used by JunctionTreeKBestHaplotypeFinder, in both cases paths are chosen by non-junction tree paths
     public JTBestHaplotype(final JTBestHaplotype<V, E> previousPath, final List<E> edgesToExtend, final double edgePenalty) {
         super(previousPath, edgesToExtend, edgePenalty);
@@ -176,6 +182,14 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
         if (junctionTreeManager.addJunctionTree(junctionTreeForNode)) {
             decisionEdgesTakenSinceLastJunctionTreeEvidence = 0;
         }
+    }
+
+    /**
+     * Add a flag of graph
+     * @param b
+     */
+    public void setIsWonky(final boolean b) {
+        this.wasPoorlyRecovered = b;
     }
 
     /**

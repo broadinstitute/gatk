@@ -16,6 +16,7 @@ public final class AssemblyResult {
     private final AbstractReadThreadingGraph threadingGraph;
     private final SeqGraph graph;
     private Set<Haplotype> haplotypeList;
+    private boolean containsSuspectHaplotypes;
 
     /**
      * Create a new assembly result
@@ -53,6 +54,14 @@ public final class AssemblyResult {
 
     public void setHaplotypeList(Set<Haplotype> haplotypeList) {
         this.haplotypeList = haplotypeList;
+    }
+
+    public boolean isContainsSuspectHaplotypes() {
+        return containsSuspectHaplotypes;
+    }
+
+    public void setContainsSuspectHaplotypes(boolean containsSuspectHaplotypes) {
+        this.containsSuspectHaplotypes = containsSuspectHaplotypes;
     }
 
     /**
