@@ -154,7 +154,7 @@ public final class ReadThreadingAssembler {
 //        List<AssemblyResult> assembledGraphs = assemble(correctedReads, refHaplotype, header, aligner);
 
         final List<AssemblyResult> results = new ArrayList<>();
-        final List<AssemblyResult> savedHaplotypes = new ArrayList<>();
+        final List<AssemblyResult> savedAssemblyResults = new ArrayList<>();
 
         boolean hasAdequatelyAssembledGraph = false;
         // first, try using the requested kmer sizes
@@ -186,39 +186,43 @@ public final class ReadThreadingAssembler {
                         findBestPathForSingleGraph(assembledResult, refHaplotype, refLoc, activeRegionExtendedLocation, aligner);
                     }
 
-                    savedHaplotypes.add(assembledResult);
+                    savedAssemblyResults.add(assembledResult);
 
-                    // if asssembly failed ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
-                    if (! savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList().isEmpty()) {
-                        // Assembled nothing, in this case we probably pushed the kmer size too far and want to reign it back in an take the
-                        if (savedHaplotypes.size() == 1) {
-                            // search for the last haplotype set that had any results, if none are found just return me
-                            // In this case we prefer the last meaningful haplotype if possible
-                            for (int i = savedHaplotypes.size() - 1; i > 0; i --) {
-                                if (savedHaplotypes.get(i).getHaplotypeList().size() > 1) {
-                                    for (Haplotype h : savedHaplotypes.get(i).getHaplotypeList()) {
-                                        resultSet.add(h, savedHaplotypes.get(i));
-                                    }
-                                    break;
-                                }
-                            }
-                            // if nothing is found at this stage return and forget
+                    //TODO LOGIC PLAN HERE - we want to check if we have a trustworthy graph (i.e. no badly assembled haplotypes) if we do, emit it.
+                    //TODO                 - but if we failed to assemble due to excessive looping or did have badly assembled haplotypes then we expand kmer size.
+                    //TODO                 - If we get no variation
+
+                    // if asssembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
+                    if (! savedAssemblyResults.get(savedAssemblyResults.size() - 1).getHaplotypeList().isEmpty()) {
+                        // we have found our workable kmer size so lets add the results and finish
+                        if (!assembledResult.isContainsSuspectHaplotypes()) {
                             for (Haplotype h : assembledResult.getHaplotypeList()) {
                                 resultSet.add(h, assembledResult);
                             }
                             hasAdequatelyAssembledGraph = true;
-                        }
-                        if (evaluateFoundHaplotypes(assembledResult.getHaplotypeList(), refHaplotype, savedHaplotypes.get(savedHaplotypes.size() - 1).getHaplotypeList())) {
-                            hasAdequatelyAssembledGraph = true;
-                            for (Haplotype h : assembledResult.getHaplotypeList()) {
-                                resultSet.add(h, assembledResult);
-                            }
                         }
                     }
 
                 }
             }
         }
+
+
+        // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
+        if (!hasAdequatelyAssembledGraph) {
+            // search for the last haplotype set that had any results, if none are found just return me
+            // In this case we prefer the last meaningful kmer size if possible
+            for (int i = savedAssemblyResults.size() - 1; i > 0; i --) {
+                if (savedAssemblyResults.get(i).getHaplotypeList().size() > 1) {
+                    for (Haplotype h : savedAssemblyResults.get(i).getHaplotypeList()) {
+                        resultSet.add(h, savedAssemblyResults.get(i));
+                    }
+                    break;
+                }
+            }
+        }
+
+
         // TODO figure out how to stop ourselves from accidentally assembling evergy graph when nothing whatsoever is found
 
         // If we get to this point then no graph worked... thats bad and indicates something horrible happened, in this case we just return a reference haplotype
@@ -247,11 +251,9 @@ public final class ReadThreadingAssembler {
 //        }
 
         // filtering out graphs that result in very long haplotypes (as these are likely unresolved loops that didn't get captured by other loop code)
-        for (Haplotype h : haplotypes) {
-            if (h.length() > refHap.length() * 1.20) {
-                return false;
-            }
-        }
+//        for (Haplotype h : haplotypes) {
+//
+//        }
         return true;
     }
 
@@ -276,6 +278,11 @@ public final class ReadThreadingAssembler {
                         new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
                         .findBestHaplotypes(numBestHaplotypesPerGraph)) {
             final Haplotype h = kBestHaplotype.haplotype();
+            // TODO for now this seems like the solution, perhaps in the future it will be to excise the haplotype completely)
+            if (kBestHaplotype instanceof JTBestHaplotype && ((JTBestHaplotype<V, E>) kBestHaplotype).isWasPoorlyRecovered()) {
+                assemblyResult.setContainsSuspectHaplotypes(true);
+            }
+
             if( !returnHaplotypes.contains(h) ) {
                 // TODO this score seems to be irrelevant at this point...
                 if (kBestHaplotype.isReference()) {

@@ -8,9 +8,10 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends BaseEdge> extends KBestHaplotypeFinder<V, E> {
+    public static final int DEFAULT_MAX_UPSTREAM_REFERENCE_JUMP_TO_ALLOW = 40;
+    public static final int DEFAULT_NUM_UPSTREAM_REFERENCE_EDGES_TO_TOLERATE = 10;
     public static final int DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE = 3;
     public static final int DEFAULT_MINIMUM_WEIGHT_FOR_JT_BRANCH_TO_NOT_BE_PRUNED = 1;
     public static final int DEFAULT_MAX_ACCEPTABLE_DECISION_EDGES_WITHOUT_JT_GUIDANCE = 5;
@@ -183,10 +184,8 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                                 chain.isEmpty() ? pathToExtend : new JTBestHaplotype<>(pathToExtend, chain, 0),
                                 result,
                                 graph);
-                if (newPath != null) {
-                    annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
-                    result.add(newPath);
-                }
+                annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
+                result.add(newPath);
                 pathToExtend.getEdges().forEach(e -> unvisitedPivotalEdges.remove(e));
             }
             // NOTE: even if we are at the reference stop and there is evidence in the junction trees of a stop we still want to explore other edges potentially
@@ -240,7 +239,37 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
     //TODO thiss might be best computed in the paths as they are being expanded
     private void annotatePathBasedOnGraph(final JTBestHaplotype<V, E> newPath, final JunctionTreeLinkedDeBruinGraph graph) {
+        int farthestReferenceEdgeReached = 0;
+        int numUpstreamRefEdgesEncountered = 0;
+        int lastReferenceEdgeVisited = 0;
+        for (E edge : newPath.getEdges()) {
+            List<Integer> refOccurances = ((MultiSampleEdge)edge).getReferencePathIndexes();
 
+            // if we are not on a reference edge don't worry
+            if (!refOccurances.isEmpty()) {
+                // find the next lowest ref occurance that is incrementally higher than our current one (assumes sorted ref occurrences list)
+                int refIndex = 0;
+                for (Integer index : refOccurances) {
+                    refIndex = index;
+                    if (refIndex > lastReferenceEdgeVisited) {
+                        break;
+                    }
+                }
+
+                // check if we are too far upstream
+                if (farthestReferenceEdgeReached > refIndex + DEFAULT_MAX_UPSTREAM_REFERENCE_JUMP_TO_ALLOW) {
+                    numUpstreamRefEdgesEncountered++;
+                } else if (refIndex > farthestReferenceEdgeReached) {
+                    farthestReferenceEdgeReached = refIndex;
+                }
+                lastReferenceEdgeVisited = refIndex;
+            }
+        }
+
+        // if we saw too many out of sequence reference edges then we report it as a potentially bad haplotype
+        if (numUpstreamRefEdgesEncountered > DEFAULT_NUM_UPSTREAM_REFERENCE_EDGES_TO_TOLERATE) {
+            newPath.setIsWonky(true);
+        }
     }
 
     /**
