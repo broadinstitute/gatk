@@ -23,7 +23,8 @@ public class TumorEvidenceFilter extends Mutect2AlleleFilter<Integer> {
         SomaticClusteringModel model = filteringEngine.getSomaticClusteringModel();
 
         List<Double> altResults = new ArrayList<>();
-        new IndexRange(1, tumorLods.length).forEach(i ->
+        // 0 is the correct value. problem with threshold
+        new IndexRange(0, tumorLods.length).forEach(i ->
                 altResults.add(model.probabilityOfSequencingError(new Datum(tumorLods[i], 0, 0, ADs[i+1], totalCount, SomaticClusteringModel.indelLength(vc, i)))));
 
         return altResults;

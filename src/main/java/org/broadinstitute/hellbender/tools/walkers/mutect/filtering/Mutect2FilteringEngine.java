@@ -239,6 +239,8 @@ public class Mutect2FilteringEngine {
      * @return Iterator of filters for an allele
      */
     private Iterator<String> addFilterStrings(List<Double> probabilities, List<String> siteFilters, String filterName) {
+        double thresh = getThreshold();
+        double min = Math.min(1 - EPSILON, Math.max(EPSILON, thresh));
         List<String> results = probabilities.stream().map(value -> value > Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold())) ?
                         filterName : VCFConstants.PASSES_FILTERS_v4).collect(Collectors.toList());
 //        List<String> realFilters = results.stream().filter(x -> !x.equals(VCFConstants.EMPTY_INFO_FIELD)).collect(Collectors.toList());
