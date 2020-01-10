@@ -46,26 +46,13 @@ import java.util.List;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 public final class RepairLongReadBam extends ReadWalker {
-    @Argument(fullName = "aligned",
-            shortName = "A",
-            doc="aligned reads")
+    @Argument(fullName = "aligned", shortName = "A", doc="aligned reads")
     public String aligned;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="Write output to this file")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public String output;
 
-    @Argument(fullName = "sample_name",
-            shortName = "S",
-            doc="Sample name",
-            optional = true)
-    public String sample_name;
-
-    @Argument(fullName = "sort",
-            shortName = "s",
-            doc="Sort output",
-            optional = true)
+    @Argument(fullName = "sort", shortName = "s", doc="Sort output", optional = true)
     public boolean sort = false;
 
     private SAMFileWriter writer;
@@ -81,18 +68,14 @@ public final class RepairLongReadBam extends ReadWalker {
         SamReaderFactory srf = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
         SamReader srs = srf.open(IOUtils.getPath(aligned));
 
-//        if (getHeaderForReads() != null && getHeaderForReads().getReadGroups() != null && getHeaderForReads().getReadGroups().size() != 1) {
-//            throw new UserException("One (and only one) read group per aligned/unaligned BAM file required");
-//        }
-
-        it = srs.iterator();
-        if (!it.hasNext()) {
-            throw new UserException("Aligned BAM file is empty");
+        if (getHeaderForReads() != null && getHeaderForReads().getReadGroups() != null && getHeaderForReads().getReadGroups().size() != 1) {
+            throw new UserException("One (and only one) read group per aligned/unaligned BAM file required");
         }
 
-        currentAlignedRead = it.next();
+        it = srs.iterator();
+        currentAlignedRead = it.hasNext() ? it.next() : null;
 
-        writer = createWriter(output, getHeaderForReads(), srs.getFileHeader().getSequenceDictionary(), sort);
+        writer = createWriter(output, srs.getFileHeader(), srs.getFileHeader().getSequenceDictionary(), sort);
     }
 
     @Override
@@ -139,12 +122,6 @@ public final class RepairLongReadBam extends ReadWalker {
     private SAMFileWriter createWriter(String out, SAMFileHeader sfh, SAMSequenceDictionary ssd, boolean sortOutput) {
         sfh.setSortOrder(sortOutput ? SAMFileHeader.SortOrder.coordinate : SAMFileHeader.SortOrder.unsorted);
         sfh.setSequenceDictionary(ssd);
-
-        if (sample_name != null) {
-            for (SAMReadGroupRecord rg : sfh.getReadGroups()) {
-                rg.setSample(sample_name);
-            }
-        }
 
         return new SAMFileWriterFactory().makeSAMOrBAMWriter(sfh, !sortOutput, new File(out));
     }
