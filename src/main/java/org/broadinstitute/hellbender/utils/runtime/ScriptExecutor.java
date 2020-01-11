@@ -117,6 +117,10 @@ public abstract class ScriptExecutor {
                                 externalScriptExecutableName,
                                 exitValue,
                                 String.join(" ", commandLineArguments)));
+                if (exitValue == 137) {
+                    // process received SIGKILL, which might indicate OOM
+                    message.append("\nThe exit code indicates that the process was terminated. This may mean the process requires additional memory.\n");
+                }
                 //if debug was enabled the stdout/error were already output somewhere
                 if (!logger.isDebugEnabled()){
                     message.append(String.format("\nStdout: %s\nStderr: %s",
