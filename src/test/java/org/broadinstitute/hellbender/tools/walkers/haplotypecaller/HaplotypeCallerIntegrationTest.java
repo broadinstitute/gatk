@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
@@ -97,6 +98,29 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
             IntegrationTestSpec.assertEqualTextFiles(output, expected);
         }
+    }
+
+    @DataProvider
+    public Object[][] getEdgeOfIntervals(){
+        return new Object[][]{
+                {new SimpleInterval("20:10187110-10187119")}
+        };
+    }
+
+    //expected variant is 20   10187114    .    CAACCTCATTCTTTTGCAAATG C
+    @Test(dataProvider="getEdgeOfIntervals")
+    public void testEdgeOfIntervalDeletion(SimpleInterval interval) throws Exception {
+        Utils.resetRandomGenerator();
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        File out = BaseTest.createTempFile("out", ".vcf");
+        args.addInput(new File("src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam"))
+                .addOutput(out)
+                .addReference(new File("src/test/resources/large/human_g1k_v37.20.21.fasta"))
+                .addInterval(interval);
+
+        runCommandLine(args);
+        Pair<VCFHeader, List<VariantContext>> vcfHeaderListPair = VariantContextTestUtils.readEntireVCFIntoMemory(out.getPath());
+        Assert.assertEquals(vcfHeaderListPair.getRight().size(), 1);
     }
 
     @Test(dataProvider="HaplotypeCallerTestInputs", enabled = false)
