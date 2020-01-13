@@ -381,7 +381,7 @@ task ScatterIntervals {
         NUM_INTERVALS=$(grep -v '@' ~{interval_list} | wc -l)
         NUM_SCATTERS=$(echo $((NUM_INTERVALS / ~{num_intervals_per_scatter})))
 
-        if [ ~NUM_SCATTERS -le 1 ]; then
+        if [ $NUM_SCATTERS -le 1 ]; then
             # if only a single shard is required, then we can just rename the original interval list
             >&2 echo "Not running IntervalListTools because only a single shard is required. Copying original interval list..."
             cp ~{interval_list} ~{output_dir_}/~{base_filename}.scattered.0001.interval_list
@@ -396,7 +396,7 @@ task ScatterIntervals {
             # we rename them as output_dir_/base_filename.scattered.0001.interval_list, etc.
             ls -v ~{output_dir_}/*/scattered.interval_list | \
                 cat -n | \
-                while read n filename; do mv ~filename ~{output_dir_}/~{base_filename}.scattered.$(printf "%04d" $n).interval_list; done
+                while read n filename; do mv $filename ~{output_dir_}/~{base_filename}.scattered.$(printf "%04d" $n).interval_list; done
             rm -rf ~{output_dir_}/temp_*_of_*
         fi
     >>>
