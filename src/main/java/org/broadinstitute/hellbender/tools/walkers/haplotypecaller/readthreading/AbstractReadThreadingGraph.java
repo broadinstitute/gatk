@@ -240,7 +240,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * @param count    the representative count of this sequence (to use as the weight)
      * @param isRef    is this the reference sequence.
      */
-    private void addSequence(final String seqName, final String sampleName, final byte[] sequence, final int start, final int stop, final int count, final boolean isRef) {
+    protected void addSequence(final String seqName, final String sampleName, final byte[] sequence, final int start, final int stop, final int count, final boolean isRef) {
         // note that argument testing is taken care of in SequenceForKmers
         Utils.validate(!alreadyBuilt, "Attempting to add sequence to a graph that has already been built");
 
