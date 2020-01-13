@@ -7,6 +7,7 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
@@ -407,7 +408,6 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         }
     }
 
-
     // Generate threading trees
     public void generateJunctionTrees() {
         Utils.validate(alreadyBuilt, "Assembly graph has not been constructed, please call BuildGraphIfNecessary() before trying to thread reads to the graph");
@@ -455,25 +455,42 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
 
         // loop over all of the bases in sequence, extending the graph by one base at each point, as appropriate
         MultiDeBruijnVertex lastVertex = startingVertex;
-        int kmersPastSinceLast = 0;
+        boolean hasToRediscoverKmer = false;
+        int kmersPastSinceLastNullVertex = 0;
         for ( int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
-            final MultiDeBruijnVertex vertex;
-            if (kmersPastSinceLast == 0) {
+            MultiDeBruijnVertex vertex;
+            if (!hasToRediscoverKmer) {
                 vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodeHelper);
             } else {
                 Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
                 vertex = kmerToVertexMap.get(kmer);
-                // TODO this might cause problems
-                if (vertex != null) {
-                   attemptToResolveThreadingBetweenVertexes(lastVertex, nodeHelper, vertex);
+            }
+            // we found a null path in the grpah
+            if (vertex == null) {
+                // if we are not in an error kmer try to extend the path anyway assuming its a one base mismatch
+                if (kmersPastSinceLastNullVertex == 0) {
+                    Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(startingVertex);
+                    if (outgoingEdges.size()==1) {
+                        vertex = getEdgeTarget(outgoingEdges.stream().findFirst().get());
+                        kmersPastSinceLastNullVertex = 1;
+                    }
+                // if we dropped multiple bases from the read following an already missing path from the reference then we throw it away and try to catch the trail from kmers again
+                } else {
+                    hasToRediscoverKmer = true;
                 }
             }
+
             // If for whatever reason vertex = null, then we have fallen off the corrected graph so we don't update anything
             if (vertex != null) {
                 lastVertex = vertex;
-                kmersPastSinceLast = 0;
-            } else {
-                kmersPastSinceLast++;
+
+                // If we aren't in an error state do nothing, otherwise we increment the count of bases, if we are over kmersize then revert to a safety state
+                if (kmersPastSinceLastNullVertex > 0) {
+                    kmersPastSinceLastNullVertex++;
+                    if (kmersPastSinceLastNullVertex > kmerSize) {
+                        kmersPastSinceLastNullVertex = 0;
+                    }
+                }
             }
         }
 
@@ -516,10 +533,17 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
 
     // TODO this needs to be filled out and resolved
     // TODO as an extension, this should be made to intelligently pick nodes if there is a fork (possibly an expensive step)
-    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, JunctionTreeThreadingHelper threadingNodes, MultiDeBruijnVertex vertex) {
-        threadingNodes.clear(); // Clear the nodes currently as they might cause issues down the line.
-        return Collections.emptyList();
-    }
+//    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, JunctionTreeThreadingHelper threadingNodes, MultiDeBruijnVertex vertex, int kmersPastBetweenStartingAndEndingVertex) {
+//        final int maxLengthToSearch = (int)(kmersPastBetweenStartingAndEndingVertex * 1.10);
+//        // do a depth first search for an unambiguous path from startingVertex to
+//        final LinkedList<Pair<MultiSampleEdge, Integer>> searchQueue = new LinkedList<>();
+//        outgoingEdgesOf(startingVertex).stream().map(v -> Pair.of(v, 1)).forEach(searchQueue::push);
+//
+//        while ()
+//
+//        threadingNodes.clear(); // Clear the nodes currently as they might cause issues down the line.
+//        return Collections.emptyList();
+//    }
 
     @VisibleForTesting
     // Test method for returning all existing junction trees.
