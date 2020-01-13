@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.AbstractReadThreadingGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.Utils;
