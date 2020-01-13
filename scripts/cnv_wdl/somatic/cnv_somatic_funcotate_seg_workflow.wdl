@@ -31,33 +31,37 @@
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 # independent of what is in the docker file.  See the README.md for more info.
 
+version 1.0
+
 workflow CNVFuncotateSegmentsWorkflow {
 
-    File input_seg_file
-    File ref_fasta
-    File ref_fasta_fai
-    File ref_fasta_dict
-    String funcotator_ref_version
-    File? gatk4_jar_override
-    File? funcotator_data_sources_tar_gz
-    String? transcript_selection_mode
-    File? transcript_selection_list
-    Array[String]? annotation_defaults
-    Array[String]? annotation_overrides
-    Array[String]? funcotator_excluded_fields
-    File? interval_list
-    String? extra_args
+    input {
+      File input_seg_file
+      File ref_fasta
+      File ref_fasta_fai
+      File ref_fasta_dict
+      String funcotator_ref_version
+      File? gatk4_jar_override
+      File? funcotator_data_sources_tar_gz
+      String? transcript_selection_mode
+      File? transcript_selection_list
+      Array[String]? annotation_defaults
+      Array[String]? annotation_overrides
+      Array[String]? funcotator_excluded_fields
+      File? interval_list
+      String? extra_args
 
-    # Set to true when running local or on-prem
-    Boolean? is_removing_untared_datasources
+      # Set to true when running local or on-prem
+      Boolean? is_removing_untared_datasources
 
-    # Runtime parameters
-    String gatk_docker
-    Int? mem_gb
-    Int? disk_space_gb
-    Boolean? use_ssd = false
-    Int? cpu
-    Int? preemptible_attempts
+      # Runtime parameters
+      String gatk_docker
+      Int? mem_gb
+      Int? disk_space_gb
+      Boolean? use_ssd = false
+      Int? cpu
+      Int? preemptible_attempts
+    }
 
     call FuncotateSegments {
         input:
@@ -92,31 +96,33 @@ workflow CNVFuncotateSegmentsWorkflow {
 
 task FuncotateSegments {
 
-    File input_seg_file
-    File ref_fasta
-    File ref_fasta_fai
-    File ref_fasta_dict
-    String funcotator_ref_version
-    File? gatk4_jar_override
-    File? funcotator_data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
-    String? transcript_selection_mode = "CANONICAL"
-    File? transcript_selection_list
-    Array[String]? annotation_defaults
-    Array[String]? annotation_overrides
-    Array[String]? funcotator_excluded_fields
-    File? interval_list
-    String? extra_args
+    input {
+      File input_seg_file
+      File ref_fasta
+      File ref_fasta_fai
+      File ref_fasta_dict
+      String funcotator_ref_version
+      File? gatk4_jar_override
+      File? funcotator_data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+      String? transcript_selection_mode = "CANONICAL"
+      File? transcript_selection_list
+      Array[String]? annotation_defaults
+      Array[String]? annotation_overrides
+      Array[String]? funcotator_excluded_fields
+      File? interval_list
+      String? extra_args
 
-    # Set to true when running local or on-prem
-    Boolean? is_removing_untared_datasources
+      # Set to true when running local or on-prem
+      Boolean? is_removing_untared_datasources
 
-    # Runtime parameters
-    String gatk_docker
-    Int? mem_gb
-    Int? disk_space_gb
-    Boolean use_ssd = false
-    Int? cpu
-    Int? preemptible_attempts
+      # Runtime parameters
+      String gatk_docker
+      Int? mem_gb
+      Int? disk_space_gb
+      Boolean use_ssd = false
+      Int? cpu
+      Int? preemptible_attempts
+    }
 
     # You may have to change the following two parameter values depending on the task requirements
     Int default_ram_mb = 3000
@@ -139,36 +145,36 @@ task FuncotateSegments {
     String basename_input_seg_file = basename(input_seg_file)
 
     command <<<
-        set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        set -eu
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
 
          # Extract our data sources:
          echo "Extracting data sources zip file..."
          mkdir datasources_dir
-         tar zxvf ${funcotator_data_sources_tar_gz} -C datasources_dir --strip-components 1
+         tar zxvf ~{funcotator_data_sources_tar_gz} -C datasources_dir --strip-components 1
          DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
          # Run FuncotateSegments:
-         gatk --java-options "-Xmx${command_mem_mb}m" FuncotateSegments \
+         gatk --java-options "-Xmx~{command_mem_mb}m" FuncotateSegments \
              --data-sources-path $DATA_SOURCES_FOLDER \
-             --ref-version ${funcotator_ref_version} \
+             --ref-version ~{funcotator_ref_version} \
              --output-file-format SEG \
-             -R ${ref_fasta} \
-             --segments ${input_seg_file} \
-             -O ${basename_input_seg_file}.funcotated.tsv \
-             ${interval_list_arg} ${default="" interval_list} \
-             ${"--transcript-selection-mode " + transcript_selection_mode} \
-             ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
-             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
-             ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
-             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
-             ${extra_args_arg}
+             -R ~{ref_fasta} \
+             --segments ~{input_seg_file} \
+             -O ~{basename_input_seg_file}.funcotated.tsv \
+             ~{interval_list_arg} ~{default="" interval_list} \
+             ~{"--transcript-selection-mode " + transcript_selection_mode} \
+             ~{transcript_selection_arg}~{default="" sep=" --transcript-list " transcript_selection_list} \
+             ~{annotation_def_arg}~{default="" sep=" --annotation-default " annotation_defaults} \
+             ~{annotation_over_arg}~{default="" sep=" --annotation-override " annotation_overrides} \
+             ~{excluded_fields_args}~{default="" sep=" --exclude-field " funcotator_excluded_fields} \
+             ~{extra_args_arg}
 
-         ${removing_untared_datasources}
+         ~{removing_untared_datasources}
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
+        docker: "~{gatk_docker}"
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
@@ -176,7 +182,7 @@ task FuncotateSegments {
     }
 
     output {
-        File funcotated_seg_simple_tsv = "${basename_input_seg_file}.funcotated.tsv"
-        File funcotated_gene_list_tsv = "${basename_input_seg_file}.funcotated.tsv.gene_list.txt"
+        File funcotated_seg_simple_tsv = "~{basename_input_seg_file}.funcotated.tsv"
+        File funcotated_gene_list_tsv = "~{basename_input_seg_file}.funcotated.tsv.gene_list.txt"
     }
 }

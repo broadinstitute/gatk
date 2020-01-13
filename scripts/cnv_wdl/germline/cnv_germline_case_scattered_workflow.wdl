@@ -1,7 +1,7 @@
 #
 # A wrapper for the gCNV case workflow intended for lowering computing cost by making it feasible to use 
 # preemptible cloud instances with low memory requirements. CPU, memory and disk requirements can be 
-# lowered for GermlineCNVCaller and DetermineGermlineContigPloidy tasks. 
+# lowered for GermlineCNVCaller and DetermineGermlineContigPloidy tasks.
 # 
 #
 # - Example invocation:
@@ -10,104 +10,108 @@
 #
 ####################
 
+version 1.0
+
 import "cnv_germline_case_workflow.wdl" as GermlineCNVCaseWorkflow
 
 workflow CNVGermlineCaseScatteredWorkflow {
 
-    ##################################
-    #### required basic arguments ####
-    ##################################
-    File intervals
-    File? blacklist_intervals
-    File filtered_intervals
-    Array[String]+ normal_bams
-    Array[String]+ normal_bais
-    File contig_ploidy_model_tar
-    Array[File]+ gcnv_model_tars
-    Int num_intervals_per_scatter
-    File ref_fasta_dict
-    File ref_fasta_fai
-    File ref_fasta
-    String gatk_docker
-    Int num_samples_per_scatter_block
+    input {
+      ##################################
+      #### required basic arguments ####
+      ##################################
+      File intervals
+      File? blacklist_intervals
+      File filtered_intervals
+      Array[String]+ normal_bams
+      Array[String]+ normal_bais
+      File contig_ploidy_model_tar
+      Array[File]+ gcnv_model_tars
+      Int num_intervals_per_scatter
+      File ref_fasta_dict
+      File ref_fasta_fai
+      File ref_fasta
+      String gatk_docker
+      Int num_samples_per_scatter_block
 
-    ##################################
-    #### optional basic arguments ####
-    ##################################
-    File? gatk4_jar_override
-    Int? preemptible_attempts
+      ##################################
+      #### optional basic arguments ####
+      ##################################
+      File? gatk4_jar_override
+      Int? preemptible_attempts
 
-    ####################################################
-    #### optional arguments for PreprocessIntervals ####
-    ####################################################
-    Int? padding
-    Int? bin_length
+      ####################################################
+      #### optional arguments for PreprocessIntervals ####
+      ####################################################
+      Int? padding
+      Int? bin_length
 
-    ##############################################
-    #### optional arguments for CollectCounts ####
-    ##############################################
-    String? collect_counts_format
-    Boolean? collect_counts_enable_indexing
-    Int? mem_gb_for_collect_counts
+      ##############################################
+      #### optional arguments for CollectCounts ####
+      ##############################################
+      String? collect_counts_format
+      Boolean? collect_counts_enable_indexing
+      Int? mem_gb_for_collect_counts
 
-    ######################################################################
-    #### optional arguments for DetermineGermlineContigPloidyCaseMode ####
-    ######################################################################
-    Float? ploidy_mapping_error_rate
-    Float? ploidy_sample_psi_scale
-    Int? mem_gb_for_determine_germline_contig_ploidy
-    Int? cpu_for_determine_germline_contig_ploidy
-    Int? disk_for_determine_germline_contig_ploidy    
+      ######################################################################
+      #### optional arguments for DetermineGermlineContigPloidyCaseMode ####
+      ######################################################################
+      Float? ploidy_mapping_error_rate
+      Float? ploidy_sample_psi_scale
+      Int? mem_gb_for_determine_germline_contig_ploidy
+      Int? cpu_for_determine_germline_contig_ploidy
+      Int? disk_for_determine_germline_contig_ploidy
 
-    ##########################################################
-    #### optional arguments for GermlineCNVCallerCaseMode ####
-    ##########################################################
-    Float? gcnv_p_alt
-    Float? gcnv_cnv_coherence_length
-    Int? gcnv_max_copy_number
-    Int? mem_gb_for_germline_cnv_caller
-    Int? cpu_for_germline_cnv_caller
-    Int? disk_for_germline_cnv_caller
+      ##########################################################
+      #### optional arguments for GermlineCNVCallerCaseMode ####
+      ##########################################################
+      Float? gcnv_p_alt
+      Float? gcnv_cnv_coherence_length
+      Int? gcnv_max_copy_number
+      Int? mem_gb_for_germline_cnv_caller
+      Int? cpu_for_germline_cnv_caller
+      Int? disk_for_germline_cnv_caller
 
-    # optional arguments for germline CNV denoising model
-    Float? gcnv_mapping_error_rate
-    Float? gcnv_sample_psi_scale
-    Float? gcnv_depth_correction_tau
-    String? gcnv_copy_number_posterior_expectation_mode
-    Int? gcnv_active_class_padding_hybrid_mode
+      # optional arguments for germline CNV denoising model
+      Float? gcnv_mapping_error_rate
+      Float? gcnv_sample_psi_scale
+      Float? gcnv_depth_correction_tau
+      String? gcnv_copy_number_posterior_expectation_mode
+      Int? gcnv_active_class_padding_hybrid_mode
 
-    # optional arguments for Hybrid ADVI
-    Float? gcnv_learning_rate
-    Float? gcnv_adamax_beta_1
-    Float? gcnv_adamax_beta_2
-    Int? gcnv_log_emission_samples_per_round
-    Float? gcnv_log_emission_sampling_median_rel_error
-    Int? gcnv_log_emission_sampling_rounds
-    Int? gcnv_max_advi_iter_first_epoch
-    Int? gcnv_max_advi_iter_subsequent_epochs
-    Int? gcnv_min_training_epochs
-    Int? gcnv_max_training_epochs
-    Float? gcnv_initial_temperature
-    Int? gcnv_num_thermal_advi_iters
-    Int? gcnv_convergence_snr_averaging_window
-    Float? gcnv_convergence_snr_trigger_threshold
-    Int? gcnv_convergence_snr_countdown_window
-    Int? gcnv_max_calling_iters
-    Float? gcnv_caller_update_convergence_threshold
-    Float? gcnv_caller_internal_admixing_rate
-    Float? gcnv_caller_external_admixing_rate
-    Boolean? gcnv_disable_annealing
+      # optional arguments for Hybrid ADVI
+      Float? gcnv_learning_rate
+      Float? gcnv_adamax_beta_1
+      Float? gcnv_adamax_beta_2
+      Int? gcnv_log_emission_samples_per_round
+      Float? gcnv_log_emission_sampling_median_rel_error
+      Int? gcnv_log_emission_sampling_rounds
+      Int? gcnv_max_advi_iter_first_epoch
+      Int? gcnv_max_advi_iter_subsequent_epochs
+      Int? gcnv_min_training_epochs
+      Int? gcnv_max_training_epochs
+      Float? gcnv_initial_temperature
+      Int? gcnv_num_thermal_advi_iters
+      Int? gcnv_convergence_snr_averaging_window
+      Float? gcnv_convergence_snr_trigger_threshold
+      Int? gcnv_convergence_snr_countdown_window
+      Int? gcnv_max_calling_iters
+      Float? gcnv_caller_update_convergence_threshold
+      Float? gcnv_caller_internal_admixing_rate
+      Float? gcnv_caller_external_admixing_rate
+      Boolean? gcnv_disable_annealing
 
-    ###################################################
-    #### arguments for PostprocessGermlineCNVCalls ####
-    ###################################################
-    Int ref_copy_number_autosomal_contigs
-    Array[String]? allosomal_contigs
+      ###################################################
+      #### arguments for PostprocessGermlineCNVCalls ####
+      ###################################################
+      Int ref_copy_number_autosomal_contigs
+      Array[String]? allosomal_contigs
 
-    ##########################
-    #### arguments for QC ####
-    ##########################
-    Int maximum_number_events_per_sample
+      ##########################
+      #### arguments for QC ####
+      ##########################
+      Int maximum_number_events_per_sample
+    }
 
     call SplitInputArray as SplitInputBamsList {
         input:
@@ -206,15 +210,17 @@ workflow CNVGermlineCaseScatteredWorkflow {
 }
 
 task SplitInputArray {
-    Array[String] input_array
-    Int num_inputs_in_scatter_block
-    String gatk_docker
+    input {
+      Array[String] input_array
+      Int num_inputs_in_scatter_block
+      String gatk_docker
 
-    Int machine_mem_mb = 4000
-    Int disk_space_gb = 20
-    Int cpu = 1
-    Int? preemptible_attempts
-    Boolean use_ssd = false
+      Int machine_mem_mb = 4000
+      Int disk_space_gb = 20
+      Int cpu = 1
+      Int? preemptible_attempts
+      Boolean use_ssd = false
+    }
 
     File input_array_file = write_lines(input_array)
 
@@ -224,9 +230,9 @@ task SplitInputArray {
     command <<<
         python <<CODE
         import math
-        with open("${input_array_file}", "r") as input_array_file:
+        with open("~{input_array_file}", "r") as input_array_file:
             input_array = input_array_file.read().splitlines()
-        num = ${num_inputs_in_scatter_block}
+        num = ~{num_inputs_in_scatter_block}
         values_to_write = [input_array[num*i:num*i+min(num, len(input_array)-num*i)] for i in range(int(math.ceil(len(input_array)/num)))]
         with open('input_array_split.tsv', 'w') as outfile:
             for i in range(len(values_to_write)):
@@ -240,8 +246,8 @@ task SplitInputArray {
     runtime {
         docker: gatk_docker
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
-        cpu: select_first([cpu, 8])
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: cpu
         preemptible: select_first([preemptible_attempts, 5])
     }
 
