@@ -1,0 +1,69 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=base_qual,Description="alt median base quality">
+##FILTER=<ID=clustered_events,Description="Clustered events observed in the tumor">
+##FILTER=<ID=contamination,Description="contamination">
+##FILTER=<ID=duplicate,Description="evidence for alt allele is overrepresented by apparent duplicates">
+##FILTER=<ID=fragment,Description="abs(ref - alt) median fragment length">
+##FILTER=<ID=germline,Description="Evidence indicates this site is germline, not somatic">
+##FILTER=<ID=haplotype,Description="Variant near filtered variant on same haplotype.">
+##FILTER=<ID=low_allele_frac,Description="Allele fraction is below specified threshold">
+##FILTER=<ID=low_het,Description="All low heteroplasmy sites are filtered when at least x low het sites pass all other filters">
+##FILTER=<ID=map_qual,Description="ref - alt median mapping quality">
+##FILTER=<ID=multiallelic,Description="Site filtered because too many alt alleles pass tumor LOD">
+##FILTER=<ID=n_ratio,Description="Ratio of N to alt exceeds specified ratio">
+##FILTER=<ID=normal_artifact,Description="artifact_in_normal">
+##FILTER=<ID=numt_chimera,Description="NuMT variant with too many ALT reads originally from autosome">
+##FILTER=<ID=orientation,Description="orientation bias detected by the orientation bias mixture model">
+##FILTER=<ID=panel_of_normals,Description="Blacklisted site in panel of normals">
+##FILTER=<ID=position,Description="median distance of alt variants from end of reads">
+##FILTER=<ID=possible_numt,Description="Allele depth is below expected coverage of NuMT in autosome">
+##FILTER=<ID=slippage,Description="Site filtered due to contraction of short tandem repeat region">
+##FILTER=<ID=strand_bias,Description="Evidence for alt allele comes from one read direction only">
+##FILTER=<ID=strict_strand,Description="Evidence for alt allele is not represented in both directions">
+##FILTER=<ID=weak_evidence,Description="Mutation does not meet likelihood threshold">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##FORMAT=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##FORMAT=<ID=MMQ,Number=A,Type=Integer,Description="median mapping quality">
+##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=POTENTIAL_POLYMORPHIC_NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
+##FORMAT=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##FORMAT=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##GATKCommandLine=<ID=FilterMutectCalls,CommandLine="FilterMutectCalls  --output /var/folders/93/_k0rj4yx0j3bmkf8zg0hjv_40000gq/T/filtered774383520072759063.vcf --mitochondria-mode true --autosomal-coverage 30.0 --max-numt-autosomal-copies 4.0 --min-allele-fraction 0.5 --variant /Users/ahaessly/code/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/unfiltered.vcf --reference /Users/ahaessly/code/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/Homo_sapiens_assembly38.mt_only.fasta --disable-sequence-dictionary-validation true --verbosity ERROR  --threshold-strategy OPTIMAL_F_SCORE --f-score-beta 1.0 --false-discovery-rate 0.05 --initial-threshold 0.1 --max-events-in-region 2 --max-alt-allele-count 1 --unique-alt-read-count 0 --min-median-mapping-quality 30 --min-median-base-quality 20 --max-median-fragment-length-difference 10000 --min-median-read-position 1 --max-n-ratio Infinity --min-reads-per-strand 0 --max-numt-fraction 0.85 --contamination-estimate 0.0 --log-snv-prior -13.815510557964275 --log-indel-prior -16.11809565095832 --log-artifact-prior -2.302585092994046 --normal-p-value-threshold 0.001 --min-slippage-length 8 --pcr-slippage-rate 0.1 --distance-on-haplotype 100 --long-indel-length 5 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="Unavailable",Date="January 10, 2020 4:15:47 PM EST">
+##INFO=<ID=AS_FilterStatus,Number=A,Type=String,Description="Filter status for each allele, as assessed by ApplyRecalibration. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles.">
+##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Posterior probability for alt allele to be due to contamination">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=GERMQ,Number=A,Type=Float,Description="Posterior probability for alt allele to be germline variants">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal LOD score">
+##INFO=<ID=N_ART_LOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
+##INFO=<ID=PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=POPAF,Number=A,Type=Float,Description="population allele frequencies of alt alleles">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=SEQQ,Number=1,Type=Integer,Description="None">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=STRANDQ,Number=1,Type=Integer,Description="None">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="LOD score for variant">
+##Mutect Version=2.1
+##contig=<ID=chrM,length=16569>
+##filtering_status=These calls have been filtered by FilterMutectCalls to label false positives with a list of failed filters and true positives with PASS.
+##source=FilterMutectCalls
+##source=Mutect2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
+chrM	152	.	T	C	.	PASS	AS_FilterStatus=.|PASS;DP=1582;ECNT=1;OCM=0;POPAF=5.000e-08;STRANDQ=93;TLOD=5266.19	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:POTENTIAL_POLYMORPHIC_NUMT	0/1:3,1556:0.998:2,777:1,779:30,30:16270,369:60,60:42:true
+chrM	263	.	A	G	.	numt_chimera	AS_FilterStatus=.|PASS;DP=858;ECNT=4;OCM=800;POPAF=5.000e-08;STRANDQ=93;TLOD=2641.72	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1:1,831:0.999:0,403:1,428:10,30:292,305:60,60:32
+chrM	301	.	A	AC	.	low_allele_frac;possible_numt;weak_evidence	AS_FilterStatus=.|weak_evidence,low_allele_frac,possible_numt;DP=680;ECNT=4;OCM=0;POPAF=5.000e-08;STRANDQ=93;TLOD=3.32	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1:579,53:0.084:243,27:336,26:30,20:309,324:60,60:34
+chrM	302	.	A	AC,C,ACC	.	PASS	AS_FilterStatus=.|PASS|weak_evidence,low_allele_frac,possible_numt|low_allele_frac,possible_numt;DP=659;ECNT=4;OCM=0;POPAF=5.000e-08,5.000e-08,5.000e-08;STRANDQ=93;TLOD=891.23,10.66,67.66	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1/2/3:5,401,67,49:0.768,0.128,0.094:2,163,35,20:3,238,32,29:20,20,30,20:419,316,340,278:60,60,60,60:41,33,38
+chrM	310	.	T	TC	.	PASS	AS_FilterStatus=.|PASS;DP=705;ECNT=4;OCM=0;POPAF=5.000e-08;RPA=5,6;RU=C;STR;STRANDQ=93;TLOD=1974.89	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1:0,658:1.00:0,273:0,385:0,30:0,311:60,60:33
+chrM	750	.	A	G	.	PASS	AS_FilterStatus=.|PASS;DP=1568;ECNT=1;OCM=0;POPAF=5.000e-08;STRANDQ=93;TLOD=5097.90	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:POTENTIAL_POLYMORPHIC_NUMT	0/1:1,1524:0.999:0,728:1,796:2,30:417,335:60,60:40:true

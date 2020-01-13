@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
@@ -577,6 +578,17 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(actualFilters, expectedFilters);
     }
+
+//    @Test
+//    public void testLowHetTool() throws IOException {
+//        final IntegrationTestSpec testSpec = new IntegrationTestSpec(
+//                        " -R " + MITO_REF.getAbsolutePath() +
+//                        " -V " + NA12878_MITO_FILTERED_VCF +
+//                        " -O %s",
+//                Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleVariantWalkerIntegrationTest_output.txt")
+//        );
+//        testSpec.executeTest("testExampleVariantWalker", this);
+//    }
 
     @Test
     public void testMitochondrialRefConf()  {
