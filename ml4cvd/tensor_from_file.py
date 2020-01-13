@@ -148,7 +148,6 @@ def _pass_nan(tensor):
     return tensor
 
 
-
 def _fail_nan(tensor):
     if np.isnan(tensor).any():
         raise ValueError('Tensor contains nans.')
