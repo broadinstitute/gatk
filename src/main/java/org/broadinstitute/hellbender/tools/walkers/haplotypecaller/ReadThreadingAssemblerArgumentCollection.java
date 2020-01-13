@@ -101,7 +101,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Advanced
     @Argument(fullName="recover-all-dangling-branches", doc="Recover all dangling branches", optional = true)
-    public boolean recoverAllDanglingBranches = false;
+    public boolean recoverAllDanglingBranches = true;
 
     /**
      * The assembly graph can be quite complex, and could imply a very large number of possible haplotypes.  Each haplotype
