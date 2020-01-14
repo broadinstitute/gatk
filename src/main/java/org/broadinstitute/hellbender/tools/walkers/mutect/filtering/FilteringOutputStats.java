@@ -46,7 +46,7 @@ public class FilteringOutputStats {
         });
 
         new IndexRange(0, probabilitiesPerAllele.size()).forEach(i -> {
-            errorProbabilities.getProbabilitiesForAlleleFilters().entrySet().stream().forEach(entry -> {
+            errorProbabilities.getProbabilitiesByFilter().entrySet().stream().forEach(entry -> {
                 double alleleProb = entry.getValue().get(i);
                 if (alleleProb > Mutect2FilteringEngine.EPSILON && alleleProb > threshold - Mutect2FilteringEngine.EPSILON) {
                     filterFNs.get(entry.getKey()).add(1 - probabilitiesPerAllele.get(i));
@@ -56,25 +56,7 @@ public class FilteringOutputStats {
             });
         });
 
-//        for (final Map.Entry<Mutect2Filter, Double> entry : errorProbabilities.getProbabilitiesForVariantFilters().entrySet()) {
-//            final double filterArtifactProbability = entry.getValue();
-//            if (filterArtifactProbability > Mutect2FilteringEngine.EPSILON && filterArtifactProbability > threshold - Mutect2FilteringEngine.EPSILON) {
-//                filterFNs.get(entry.getKey()).add(1 - errorProbability);
-//            } else if (!filtered) {
-//                filterFPs.get(entry.getKey()).add(filterArtifactProbability);
-//            }
-//        }
     }
-
-//    for (final Map.Entry<Mutect2VariantFilter, Double> entry : errorProbabilities.getProbabilitiesByFilter().entrySet()) {
-//        final double filterArtifactProbability = entry.getValue();
-//        if (filterArtifactProbability > Mutect2FilteringEngine.EPSILON && filterArtifactProbability > threshold - Mutect2FilteringEngine.EPSILON) {
-//            filterFNs.get(entry.getKey()).add(1 - errorProbability);
-//        } else if (!filtered) {
-//            filterFPs.get(entry.getKey()).add(filterArtifactProbability);
-//        }
-//    }
-
 
     public void writeFilteringStats(final Path filteringStats, final double threshold, List<Pair<String, String>> clusteringMetadata) {
         final double totalTrueVariants = TPs + FNs;

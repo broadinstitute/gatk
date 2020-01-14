@@ -46,7 +46,7 @@ public abstract class Mutect2AlleleFilter<T> extends Mutect2Filter {
      * @param vc
      * @param filteringEngine
      * @param referenceContext
-     * @return The probability that each alternate allele should be filtered out. This list should NOT include data for the reference allele
+     * @return The probability that each alternate allele should be filtered out. This list should NOT include data for the reference allele or altAllele
      */
     @Override
     public List<Double> errorProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {

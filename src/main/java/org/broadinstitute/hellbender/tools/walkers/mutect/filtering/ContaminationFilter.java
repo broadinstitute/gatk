@@ -80,42 +80,6 @@ public class ContaminationFilter extends Mutect2AlleleFilter<Integer> {
         return depthsAndPosteriorsPerAllele.stream().map(alleleData -> alleleData.isEmpty() ? Double.NaN : weightedMedianPosteriorProbability(alleleData)).collect(Collectors.toList());
     }
 
-//    @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        final List<ImmutablePair<Integer, Double>> depthsAndPosteriors = new ArrayList<>();
-
-        for (final Genotype tumorGenotype : vc.getGenotypes()) {
-            if (filteringEngine.isNormal(tumorGenotype)) {
-                continue;
-            }
-
-            final double contaminationFromFile = contaminationBySample.getOrDefault(tumorGenotype.getSampleName(), defaultContamination);
-            final double contamination = Math.max(0, Math.min(contaminationFromFile, 1 - EPSILON)); // handle file with contamination == 1
-            final double[] alleleFractions = VariantContextGetters.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
-                    () -> new double[] {1.0}, 1.0);
-            final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
-            final int[] ADs = tumorGenotype.getAD();
-            final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
-            final int depth = (int) MathUtils.sum(ADs);
-            final double[] negativeLog10AlleleFrequencies = VariantContextGetters.getAttributeAsDoubleArray(vc,
-                    GATKVCFConstants.POPULATION_AF_KEY, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
-            final double alleleFrequency = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x))[maxFractionIndex];
-
-            final double logSomaticLikelihood = filteringEngine.getSomaticClusteringModel().logLikelihoodGivenSomatic(depth, altCount);
-
-            final double singleContaminantLikelihood = 2 * alleleFrequency * (1 - alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination /2)
-                    + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
-            final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
-            final double logContaminantLikelihood = Math.log(Math.max(singleContaminantLikelihood, manyContaminantLikelihood));
-            final double logOddsOfRealVsContamination = logSomaticLikelihood - logContaminantLikelihood;
-            final double posteriorProbOfContamination = filteringEngine.posteriorProbabilityOfError(vc, logOddsOfRealVsContamination, maxFractionIndex);
-
-            depthsAndPosteriors.add(ImmutablePair.of(altCount, posteriorProbOfContamination));
-        }
-
-        return weightedMedianPosteriorProbability(depthsAndPosteriors);
-    }
-
     @Override
     public String filterName() {
         return GATKVCFConstants.CONTAMINATION_FILTER_NAME;

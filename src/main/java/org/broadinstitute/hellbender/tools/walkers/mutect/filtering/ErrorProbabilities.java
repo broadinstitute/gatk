@@ -23,11 +23,17 @@ public final class ErrorProbabilities {
                 .collect(toMap(
                         Function.identity(),
                         f -> f.errorProbabilities(vc, filteringEngine, referenceContext),
-                        (a, b) -> a, LinkedHashMap::new));
-
+                        (a, b) -> a, LinkedHashMap::new))
                 // remove filters that were not applied. i.e. returned empty list
-        alleleProbabilitiesByFilter = alleleProbabilitiesByFilter.entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
+                .entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
                 .collect(toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
+
+        // if vc has symbolic allele, remove it
+        if (vc.hasSymbolicAlleles()) {
+            // can we assume it's the last allele?
+            int symIndex = numAltAlleles - 1;
+            alleleProbabilitiesByFilter.values().stream().forEach(probList -> probList.remove(symIndex));
+        }
         LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
         probabilitiesByAllelesForEachFilter.replaceAll((k, v) -> ErrorProbabilities.transpose(v));
