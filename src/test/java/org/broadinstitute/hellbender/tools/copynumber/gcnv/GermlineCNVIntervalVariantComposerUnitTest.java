@@ -77,7 +77,7 @@ public final class GermlineCNVIntervalVariantComposerUnitTest extends CommandLin
                 outputWriter, "TEST_SAMPLE_NAME", new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs);
         final VariantContext var = variantComposer.composeVariantContext(
                 new IntervalCopyNumberGenotypingData(TEST_INTERVAL, TEST_DISTRIBUTION,
-                        new IntegerCopyNumberState(baselineCopyNumber)));
+                        new IntegerCopyNumberState(baselineCopyNumber), ));
         final List<Allele> allAlleles = var.getAlleles();
         Assert.assertEquals(allAlleles, GermlineCNVIntervalVariantComposer.ALL_ALLELES);
         final Genotype gen = var.getGenotype(TEST_SAMPLE_NAME);

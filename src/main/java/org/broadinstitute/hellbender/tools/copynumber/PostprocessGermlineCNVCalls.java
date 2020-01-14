@@ -517,6 +517,18 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                                 "different from the expected sample name (found: %s, expected: %s).",
                         shardIndex, sampleNameFromBaselineCopyNumberFile, sampleName));
 
+        final File sampleDenoisedCopyNumberFile = getSampleDenoisedCopyRatioFile(shardRootDirectory, sampleIndex);
+        final NonLocatableDoubleCollection shardNonLocatableLinearCopyRatioCollectionForShard = new NonLocatableDoubleCollection(sampleDenoisedCopyNumberFile);
+        final String sampleNameFromDenoisedCopyRatioFile = shardNonLocatableLinearCopyRatioCollectionForShard
+                .getMetadata().getSampleName();
+        Utils.validate(sampleNameFromDenoisedCopyRatioFile.equals(sampleName),
+                String.format("Sample name found in the header of denoised copy ratio file for shard %d " +
+                                "is different from the expected sample name (found: %s, expected: %s).",
+                        shardIndex, sampleNameFromDenoisedCopyRatioFile, sampleName));
+        final List<Double> shardDenoisedCopyRatioRecords = shardNonLocatableLinearCopyRatioCollectionForShard.getRecords();
+        //TODO: validate the length of the list
+
+
         /* attach the intervals to make locatable posteriors */
         final List<SimpleInterval> shardIntervals = sortedIntervalCollections.get(shardIndex).getIntervals();
         final List<CopyNumberPosteriorDistribution> copyNumberPosteriorDistributionList =
@@ -538,7 +550,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                         .mapToObj(intervalIndex -> new IntervalCopyNumberGenotypingData(
                                 shardIntervals.get(intervalIndex),
                                 copyNumberPosteriorDistributionList.get(intervalIndex),
-                                baselineCopyNumberList.get(intervalIndex)))
+                                baselineCopyNumberList.get(intervalIndex),
+                                shardDenoisedCopyRatioRecords.get(intervalIndex)))
                         .collect(Collectors.toList());
     }
 

@@ -161,6 +161,26 @@ public final class GATKVCFConstants {
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
 
+    //GermlineCNVCaller FORMAT keys
+    /* VCF FORMAT header keys */
+
+    /**
+     * Copy number maximum a posteriori value
+     */
+    public static final String CN = "CN";
+
+    /**
+     * Copy number log posterior (in Phred-scale)
+     */
+    public static final String CNLP = "CNLP";
+
+    /**
+     * Genotype call quality
+     */
+    public static final String CNQ = "CNQ";
+
+    public static final String LINEAR_DENOISED_COPY_NUMBER_KEY = "DCN";
+
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,
        their names (or descriptions) depend on some threshold.  Those filters are not included here

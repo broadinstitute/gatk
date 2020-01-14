@@ -12,9 +12,13 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumber
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntervalCopyNumberGenotypingData;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.CNLP;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.CNQ;
 
 /**
  * Helper class for {@link PostprocessGermlineCNVCalls} for single-sample postprocessing of
@@ -24,23 +28,6 @@ import java.util.stream.Collectors;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariantComposer<IntervalCopyNumberGenotypingData> {
-
-    /* VCF FORMAT header keys */
-
-    /**
-     * Copy number maximum a posteriori value
-     */
-    static final String CN = "CN";
-
-    /**
-     * Copy number log posterior (in Phred-scale)
-     */
-    static final String CNLP = "CNLP";
-
-    /**
-     * Genotype call quality
-     */
-    static final String CNQ = "CNQ";
 
     private final IntegerCopyNumberState refAutosomalCopyNumberState;
     private final Set<String> allosomalContigSet;
@@ -78,15 +65,18 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
         vcfDefaultToolHeaderLines.forEach(result::addMetaDataLine);
 
         /* header lines related to genotype formatting */
+        //TODO: move these into GATKVCFHeaders
         result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1,
                 VCFHeaderLineType.Integer, "Genotype"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(CN, 1,
+        result.addMetaDataLine(new VCFFormatHeaderLine(GATKVCFConstants.CN, 1,
                 VCFHeaderLineType.Integer, "Copy number maximum a posteriori value"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(CNLP, VCFHeaderLineCount.UNBOUNDED,
+        result.addMetaDataLine(new VCFFormatHeaderLine(GATKVCFConstants.CNLP, VCFHeaderLineCount.UNBOUNDED,
                 VCFHeaderLineType.Integer, "Copy number log posterior (in Phred-scale) rounded down"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(CNQ, 1,
+        result.addMetaDataLine(new VCFFormatHeaderLine(GATKVCFConstants.CNQ, 1,
                 VCFHeaderLineType.Integer, "Genotype call quality as the difference between" +
                 " the best and second best phred-scaled log posterior scores"));
+        result.addMetaDataLine(new VCFFormatHeaderLine(GATKVCFConstants.LINEAR_DENOISED_COPY_NUMBER_KEY, 1,
+                VCFHeaderLineType.Integer, "(Linear) denoised copy number"));
 
         /* INFO header lines */
         result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.END_KEY, 1,
@@ -101,6 +91,7 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
         final List<Integer> copyNumberPLVector = calculateCopyNumberPLVector(copyNumberPosteriorDistribution);
         final int copyNumberMAP = calculateMAPCopyNumberState(copyNumberPosteriorDistribution).getCopyNumber();
         final int GQ = calculateGenotypeQuality(copyNumberPosteriorDistribution);
+        final double linearDenoisedCopyNumber = intervalCopyNumberGenotypingData.getLinearCopyNumber();
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
         variantContextBuilder.alleles(ALL_ALLELES);
@@ -127,9 +118,10 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariant
             allele = REF_ALLELE;
         }
         genotypeBuilder.alleles(Collections.singletonList(allele));
-        genotypeBuilder.attribute(CN, copyNumberMAP);
-        genotypeBuilder.attribute(CNLP, copyNumberPLVector);
-        genotypeBuilder.attribute(CNQ, GQ);
+        genotypeBuilder.attribute(GATKVCFConstants.CN, copyNumberMAP);
+        genotypeBuilder.attribute(GATKVCFConstants.LINEAR_DENOISED_COPY_NUMBER_KEY, linearDenoisedCopyNumber);
+        genotypeBuilder.attribute(GATKVCFConstants.CNLP, copyNumberPLVector);
+        genotypeBuilder.attribute(GATKVCFConstants.CNQ, GQ);
         final Genotype genotype = genotypeBuilder.make();
 
         variantContextBuilder.attribute(VCFConstants.END_KEY, intervalCopyNumberGenotypingData.getEnd());

@@ -18,13 +18,15 @@ public class IntervalCopyNumberGenotypingData implements Locatable {
     private final SimpleInterval interval;
     private final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution;
     private final IntegerCopyNumberState baselineCopyNumberState;
+    private final double linearCopyNumber;
 
     public IntervalCopyNumberGenotypingData(final SimpleInterval interval,
                                             final CopyNumberPosteriorDistribution copyNumberStatePosteriors,
-                                            final IntegerCopyNumberState baselineCopyNumberState) {
+                                            final IntegerCopyNumberState baselineCopyNumberState, double linearCopyNumber) {
         this.interval = Utils.nonNull(interval);
         this.copyNumberPosteriorDistribution = Utils.nonNull(copyNumberStatePosteriors);
         this.baselineCopyNumberState = Utils.nonNull(baselineCopyNumberState);
+        this.linearCopyNumber = linearCopyNumber;
     }
 
     public CopyNumberPosteriorDistribution getCopyNumberPosteriorDistribution() {
@@ -34,6 +36,8 @@ public class IntervalCopyNumberGenotypingData implements Locatable {
     public IntegerCopyNumberState getBaselineIntegerCopyNumberState() {
         return baselineCopyNumberState;
     }
+
+    public double getLinearCopyNumber() { return linearCopyNumber; }
 
     public SimpleInterval getInterval() {
         return interval;
