@@ -43,9 +43,6 @@ import java.util.stream.Collectors;
 class EvoquerEngine {
     private static final Logger logger = LogManager.getLogger(EvoquerEngine.class);
 
-
-    public static final String SAMPLE_TABLE_NAME = "sample_list";
-
     public static final String POSITION_FIELD_NAME = "position";
     public static final String VALUES_ARRAY_FIELD_NAME = "values";
 
@@ -132,6 +129,7 @@ class EvoquerEngine {
                    final Set<VCFHeaderLine> toolDefaultVCFHeaderLines,
                    final VariantAnnotatorEngine annotationEngine,
                    final ReferenceDataSource refSource,
+                   final String sampleTableName,
                    final boolean doLocalSort,
                    final int localSortMaxRecordsInRam,
                    final boolean runQueryOnly,
@@ -164,7 +162,7 @@ class EvoquerEngine {
         for ( final Map.Entry<String, Evoquer.EvoquerDataset> datasetEntry : datasetMap.entrySet() ) {
             tmpContigToPositionTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + datasetEntry.getValue().getPetTableName());
             tmpContigToVariantTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + datasetEntry.getValue().getVetTableName());
-            tmpContigToSampleTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + SAMPLE_TABLE_NAME);
+            tmpContigToSampleTableMap.put(datasetEntry.getKey(), datasetEntry.getValue().getDatasetName() + "." + sampleTableName);
         }
         contigToPositionTableMap = Collections.unmodifiableMap(tmpContigToPositionTableMap);
         contigToVariantTableMap = Collections.unmodifiableMap(tmpContigToVariantTableMap);
@@ -843,7 +841,9 @@ class EvoquerEngine {
                         "    (\n" +
                         "      SELECT DISTINCT position FROM `%s`\n" +
                         "      WHERE position >= %d AND position <= %d\n" +
+                        "      AND sample IN (SELECT sample FROM `%s`)\n" +
                         "    )\n" +
+                        "    AND sample IN (SELECT sample FROM `%s`)\n" +
                         ")\n" +
                         "SELECT\n" +
                         "  new_pet.position,\n" +
@@ -879,6 +879,8 @@ class EvoquerEngine {
                 getFQVariantTable(interval),
                 interval.getStart(),
                 interval.getEnd(),
+                getFQTableName(contigToSampleTableMap.entrySet().iterator().next().getValue()),
+                getFQTableName(contigToSampleTableMap.entrySet().iterator().next().getValue()),
                 getFQVariantTable(interval),
                 interval.getStart(),
                 interval.getEnd()
