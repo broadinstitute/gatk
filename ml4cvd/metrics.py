@@ -406,6 +406,14 @@ def log_aucs(**aucs):
         logging.info(dashes(width))
 
 
+def coefficient_of_determination(truth, predictions, eps=1e-6):
+    true_mean = np.mean(truth)
+    total_sum_of_squares = np.sum((truth - true_mean) * (truth - true_mean))
+    residual_sum_of_squares = np.sum((predictions - truth) * (predictions - truth))
+    r_squared = 1 - (residual_sum_of_squares / (total_sum_of_squares + eps))
+    return r_squared
+
+
 def get_pearson_coefficients(predictions, truth):
     coefs = dict()
     for model in predictions.keys():

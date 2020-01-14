@@ -46,6 +46,8 @@ def run(args):
             optimize_architecture(args)
         elif 'ecg_rest' == args.mode:
             optimize_ecg_rest_architecture(args)
+        elif 'ecg_rest_unet' == args.mode:
+            optimize_ecg_rest_unet_architecture(args)
         elif 'mri_sax' == args.mode:
             optimize_mri_sax_architecture(args)
         else:
@@ -60,7 +62,6 @@ def run(args):
 
 
 def hyperparameter_optimizer(args, space, param_lists={}):
-    stats = Counter()
     args.keep_paths = False
     args.keep_paths_test = False
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
@@ -85,13 +86,13 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
                                                          args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                          args.inspect_model, args.inspect_show_labels, True, False)
+            history.history['parameter_count'] = [model.count_params()]
             histories.append(history.history)
             title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
             plot_metric_history(history, title, fig_path)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
-            stats['count'] += 1
-            logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
-            logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
+            logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
+            logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
             return loss_and_metrics[0]
 
         except ValueError:
@@ -104,7 +105,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             del model
             gc.collect()
             if history is None:
-                histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
+                histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS], 'parameter_count': [0]})
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
@@ -149,23 +150,23 @@ def optimize_architecture(args):
 
 
 def optimize_ecg_rest_architecture(args):
-    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
-    conv_layers_sets = [[16], [32], [48], [32, 32], [48, 32], [48, 32, 24]]
-    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
+    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    conv_layers_sets = [[16], [32], [48], [32, 32], [48, 32], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    dense_layers_sets = [[32, 32], [16, 64], [8, 128], [16, 16], [8, 8], [48], [32], [24], [16], [8]]
     conv_dilate = [True, False]
     activation = ['leaky', 'prelu', 'relu']
-    conv_bn = [True, False]
+    conv_normalize = ['', 'batch_norm']
     pool_type = ['max', 'average']
     space = {
-        'pool_x': hp.quniform('pool_x', 1, 8, 1),
+        'pool_x': hp.quniform('pool_x', 1, 16, 1),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
         'conv_dilate': hp.choice('conv_dilate', conv_dilate),
         'activation': hp.choice('activation', activation),
-        'conv_bn': hp.choice('conv_bn', conv_bn),
+        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
         'pool_type': hp.choice('pool_type', pool_type),
-        'conv_width': hp.loguniform('conv_width', 1, 8),
+        'conv_width': hp.loguniform('conv_width', 1, 5),
         'block_size': hp.quniform('block_size', 1, 6, 1),
     }
     param_lists = {
@@ -174,7 +175,40 @@ def optimize_ecg_rest_architecture(args):
         'dense_layers': dense_layers_sets,
         'conv_dilate': conv_dilate,
         'activation': activation,
-        'conv_bn': conv_bn,
+        'conv_normalize': conv_normalize,
+        'pool_type': pool_type,
+    }
+    hyperparameter_optimizer(args, space, param_lists)
+
+
+def optimize_ecg_rest_unet_architecture(args):
+    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    conv_layers_sets = [[16], [32], [48], [32, 32], [48, 32], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    dense_layers_sets = [[32, 32], [16, 64], [8, 128], [16, 16], [8, 8], [48], [32], [24], [16], [8]]
+    conv_dilate = [True, False]
+    activation = ['leaky', 'prelu', 'relu']
+    conv_normalize = ['', 'batch_norm']
+    pool_type = ['max', 'average']
+    pool_xs = [1, 5, 10, 25]
+    space = {
+        'pool_x': hp.choice('pool_x', pool_xs),
+        'conv_layers': hp.choice('conv_layers', conv_layers_sets),
+        'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
+        'dense_layers': hp.choice('dense_layers', dense_layers_sets),
+        'conv_dilate': hp.choice('conv_dilate', conv_dilate),
+        'activation': hp.choice('activation', activation),
+        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
+        'pool_type': hp.choice('pool_type', pool_type),
+        'conv_width': hp.loguniform('conv_width', 1, 5),
+        'block_size': hp.quniform('block_size', 1, 6, 1),
+    }
+    param_lists = {
+        'conv_layers': conv_layers_sets,
+        'dense_blocks': dense_blocks_sets,
+        'dense_layers': dense_layers_sets,
+        'conv_dilate': conv_dilate,
+        'activation': activation,
+        'conv_normalize': conv_normalize,
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)
@@ -277,7 +311,7 @@ def string_from_arch_dict(x):
     return '\n'.join([f'{k} = {x[k]}' for k in x])
 
 
-def string_from_trials(trials, index, param_lists={}):
+def _string_from_trials(trials, index, param_lists={}):
     s = ''
     x = trials.trials[index]['misc']['vals']
     for k in x:
@@ -292,6 +326,13 @@ def string_from_trials(trials, index, param_lists={}):
         else:
             s += f'{v:.2f}'
     return s
+
+
+def _model_label_from_losses_and_histories(i, all_losses, histories, trials, param_lists):
+    label = f'Trial {i}: \nTest Loss:{all_losses[i]:.3f}\nTrain Loss:{histories[i]["loss"][-1]:.3f}\nValidation Loss:{histories[i]["val_loss"][-1]:.3f}'
+    label += f'Model parameter count: {histories[i]["parameter_count"][-1]}'
+    label += f'{_string_from_trials(trials, i, param_lists)}'
+    return label
 
 
 def plot_trials(trials, histories, figure_path, param_lists={}):
@@ -309,10 +350,9 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
     plt.plot(lplot)
     with open(os.path.join(figure_path, 'loss_by_params.txt'), 'w') as f:
         for i in range(len(trials.trials)):
-            text = f'Trial {i}: \nTest Loss:{all_losses[i]:.2f}\nTrain Loss:{histories[i]["loss"][-1]:.2f}\nValidation Loss:{histories[i]["val_loss"][-1]:.2f}'
-            text += f'{string_from_trials(trials, i, param_lists)}'
-            plt.text(i, lplot[i], text, color=colors[i])
-            f.write(text.replace('\n', ',') + '\n')
+            label = _model_label_from_losses_and_histories(i, all_losses, histories, trials, param_lists)
+            plt.text(i, lplot[i], label, color=colors[i])
+            f.write(label.replace('\n', ',') + '\n')
     plt.xlabel('Iterations')
     plt.ylabel('Losses')
     plt.ylim(min(lplot) * .95, max(lplot) * 1.05)
@@ -336,8 +376,7 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
         color = cm(i / len(histories))
         training_loss = np.clip(history['loss'], a_min=-np.inf, a_max=cutoff)
         val_loss = np.clip(history['val_loss'], a_min=-np.inf, a_max=cutoff)
-        label = f'\nTrial {i}:\nTest Loss:{all_losses[i]:.3f}\nTrain Loss:{histories[i]["loss"][-1]:.2f}\nValidation Loss:{histories[i]["val_loss"][-1]:.2f}'
-        label += string_from_trials(trials, i, param_lists)
+        label = _model_label_from_losses_and_histories(i, all_losses, histories, trials, param_lists)
         ax1.plot(training_loss, label=label, linestyle=linestyles[i % 4], color=color)
         ax1.text(len(training_loss) - 1, training_loss[-1], str(i))
         ax2.plot(val_loss, label=label, linestyle=linestyles[i % 4], color=color)

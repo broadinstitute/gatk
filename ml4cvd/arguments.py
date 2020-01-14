@@ -107,11 +107,10 @@ def parse_args():
     parser.add_argument('--conv_y', default=3, type=int, help='Y dimension of convolutional kernel.')
     parser.add_argument('--conv_z', default=2, type=int, help='Z dimension of convolutional kernel.')
     parser.add_argument('--conv_width', default=71, type=int, help='Width of convolutional kernel for 1D CNNs.')
-    parser.add_argument('--conv_bn', default=False, action='store_true', help='Batch normalize convolutional layers.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
-    parser.add_argument('--conv_normalize', default=None, choices=['batch_norm'], help='Type of normalization layer for convolutions')
+    parser.add_argument('--conv_normalize', default=None, choices=['', 'batch_norm'], help='Type of normalization layer for convolutions')
     parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
@@ -160,7 +159,7 @@ def parse_args():
 
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
-    parser.add_argument('--cache_size', default=4e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
+    parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
     args = parser.parse_args()
     _process_args(args)

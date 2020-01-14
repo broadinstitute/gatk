@@ -340,7 +340,18 @@ TMAPS['RAQC'] = TensorMap('RAQC',  group='continuous', normalization={'mean': 1.
 TMAPS['RVQC'] = TensorMap('RVQC',  group='continuous', normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='logcosh',
                           validator=make_range_validator(0, 200), channel_map={'RVQC': 0})
 
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  group='continuous', validator=make_range_validator(0, 400), loss='logcosh',
+                                     channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+TMAPS['myocardial_mass_noheritable'] = TensorMap('inferred_myocardial_mass_noheritable',  group='continuous',
+                                                 loss='logcosh', validator=make_range_validator(0, 400), normalization={'mean': 89.70, 'std': 24.80},
+                                                 channel_map={'inferred_myocardial_mass_noheritable': 0})
+TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_mass_noheritable',  group='continuous', sentinel=0, loss='logcosh',
+                                                          normalization={'mean': 89.70, 'std': 24.80},
+                                                          channel_map={'inferred_myocardial_mass_noheritable': 0})
 
+TMAPS['proton_fat'] = TensorMap('22402_Proton-density-fat-fraction-PDFF_2_0', group='continuous', channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
+                               activation='linear', loss='logcosh',  annotation_units=1,
+                               validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', group='continuous', channel_map={'22402_Liver-fat-percentage_2_0': 0},
                                activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
@@ -429,11 +440,26 @@ TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', (256, 256, 12
 TMAPS['sax_all_diastole_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1), dependent_map=TMAPS['sax_all_diastole_segmented_13'])
 TMAPS['sax_all_diastole_weighted_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1), dependent_map=TMAPS['sax_all_diastole_segmented_weighted_13'])
 
-TMAPS['genetic_pca_5'] = TensorMap('genetic_pca_5', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-                                   loss='logcosh', annotation_units=5, shape=(5,), activation='linear',
-                                   channel_map={'22009_Genetic-principal-components_0_0': 0, '22009_Genetic-principal-components_0_1': 1,
-                                                '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3,
-                                                '22009_Genetic-principal-components_0_4': 4})
+
+TMAPS['genetic_pca_1'] = TensorMap('22009_Genetic-principal-components_0_1', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                   loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0})
+TMAPS['genetic_pca_2'] = TensorMap('22009_Genetic-principal-components_0_2', group='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                   loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_2': 0})
+TMAPS['genetic_pca_3'] = TensorMap('22009_Genetic-principal-components_0_3', group='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                   loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_3': 0})
+TMAPS['genetic_pca_4'] = TensorMap('22009_Genetic-principal-components_0_4', group='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                   loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_4': 0})
+TMAPS['genetic_pca_5'] = TensorMap('22009_Genetic-principal-components_0_5', group='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                   loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_5': 0})
+TMAPS['genetic_pca_all5'] = TensorMap('genetic_pca_all5', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                      loss='logcosh', annotation_units=5, shape=(5,), activation='linear',
+                                      channel_map={'22009_Genetic-principal-components_0_0': 0, '22009_Genetic-principal-components_0_1': 1,
+                                                   '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3,
+                                                   '22009_Genetic-principal-components_0_4': 4})
+
+TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', group='categorical_flag', channel_map={'no_caucasian': 0, 'caucasian': 1})
+TMAPS['genetic_caucasian_weighted'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', group='categorical_flag',
+                                                channel_map={'no_caucasian': 0, 'caucasian': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'))
 
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},

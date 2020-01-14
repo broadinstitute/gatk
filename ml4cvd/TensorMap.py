@@ -195,7 +195,7 @@ class TensorMap(object):
             elif len(self.shape) == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
-        elif self.metrics is None and self.is_continuous_any():
+        elif self.metrics is None and self.is_continuous_any() and self.shape[-1] == 1:
             self.metrics = [pearson]
         elif self.metrics is None:
             self.metrics = []
@@ -738,29 +738,22 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     elif tm.name in MERGED_MAPS:
         return tm._merged_tensor_from_file(hd5)
     elif tm.is_continuous():
+        missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.name in hd5:
+            missing = False
             if hasattr(hd5[tm.name], "__shape__"):
                 continuous_data[0] = hd5[tm.name][0]
             else:
                 continuous_data[0] = hd5[tm.name][()]
-        missing = True
         for k in tm.channel_map:
             if k in hd5[tm.group]:
-                value = hd5[tm.group][k][0]
                 missing = False
-                if k in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
-                    if value in CODING_VALUES_LESS_THAN_ONE:
-                        value = .5
-                    if value in CODING_VALUES_MISSING:
-                        # need to set missing values to 0 so normalization works
-                        value = 0
-                        missing = True
-                continuous_data[tm.channel_map[k]] = value
-        if NOT_MISSING in tm.channel_map and not missing:
-            continuous_data[tm.channel_map[NOT_MISSING]] = 1
-        if continuous_data[0] == 0 and (tm.sentinel is None and tm.name in CONTINUOUS_NEVER_ZERO):
-            raise ValueError(tm.name + ' is a continuous value that cannot be set to 0, but no value was found.')
+                continuous_data[tm.channel_map[k]] = hd5[tm.group][k][0]
+        if missing and tm.sentinel is None:
+            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
+        elif missing:
+            continuous_data[:] = tm.sentinel
         return tm.normalize_and_validate(continuous_data)
     elif tm.is_multi_field_continuous():
         if tm.is_multi_field_continuous_with_missing_channel():

@@ -52,21 +52,32 @@ def sort_csv(input_csv_file, value_csv):
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
                         labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
+    input_map = tensor_maps_in[0]
     for y, tm in zip(predictions, tensor_maps_out):
         if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = predictions
+        for im in tensor_maps_in:
+            if tm.is_categorical_any() and im.dependent_map == tm:
+                input_map = im
+            elif len(tm.shape) == len(im.shape):
+                input_map = im
         logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if len(tm.shape) == 2:
+        if len(tm.shape) in [1, 2]:
+            vmin = np.min(data[input_map.input_name()])
+            vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :])
+                if len(data[input_map.input_name()].shape) == 3:
+                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                elif len(data[input_map.input_name()].shape) == 4:
+                    for j in range(data[input_map.input_name()].shape[-1]):
+                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
+                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
+                elif len(data[input_map.input_name()].shape) == 5:
+                    for j in range(data[input_map.input_name()].shape[-1]):
+                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
+                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
         elif len(tm.shape) == 3:
-            input_map = None
-            for im in tensor_maps_in:
-                if tm.is_categorical_any() and im.dependent_map == tm:
-                    input_map = im
-                elif len(tm.shape) == len(im.shape):
-                    input_map = im
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical_any():
@@ -112,36 +123,35 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         rocs = []
         scatters = []
         predictions = model.predict(test_data, batch_size=batch_size)
+        if len(tensor_maps_out) == 1:
+            predictions = [predictions]
         for y, tm in zip(predictions, tensor_maps_out):
-            if len(tensor_maps_out) == 1:
-                predictions = [predictions]
+            for im in tensor_maps_in:
+                if im.dependent_map == tm:
+                    break
             if not write_pngs:
+                mri_in = test_data[im.input_name()]
+                vmin = np.min(mri_in)
+                vmax = np.max(mri_in)
+                logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                 if tm.is_categorical_any() and len(tm.shape) == 3:
-                    for im in tensor_maps_in:
-                        if im.dependent_map == tm:
-                            break
-                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
-                        plt.imsave(f"{folder}batch_index_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(test_labels[tm.output_name()][yi], axis=-1))
-                        plt.imsave(f"{folder}batch_index_{yi}_prediction_epoch_{i:03d}{IMAGE_EXT}", np.argmax(y[yi], axis=-1))
-                        plt.imsave(f"{folder}batch_index_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, 0])
+                        plt.imsave(f"{folder}batch_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(test_labels[tm.output_name()][yi], axis=-1), cmap='gray')
+                        plt.imsave(f"{folder}batch_{yi}_prediction_epoch_{i:03d}{IMAGE_EXT}", np.argmax(y[yi], axis=-1), cmap='gray')
+                        plt.imsave(f"{folder}batch_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", mri_in[yi, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
                 elif tm.is_categorical_any() and len(tm.shape) == 4:
-                    for im in tensor_maps_in:
-                        if im.dependent_map == tm:
-                            break
-                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
                         for j in range(y.shape[3]):
                             truth = np.argmax(test_labels[tm.output_name()][yi, :, :, j, :], axis=-1)
                             prediction = np.argmax(y[yi, :, :, j, :], axis=-1)
-                            true_donut = np.ma.masked_where(truth == 2, test_data[im.input_name()][yi, :, :, j, 0])
-                            predict_donut = np.ma.masked_where(prediction == 2, test_data[im.input_name()][yi, :, :, j, 0])
-                            plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}", prediction)
-                            plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_predict_donut_epoch_{i:03d}{IMAGE_EXT}", predict_donut)
+                            true_donut = np.ma.masked_where(truth == 2, mri_in[yi, :, :, j, 0])
+                            predict_donut = np.ma.masked_where(prediction == 2, mri_in[yi, :, :, j, 0])
+                            plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}", prediction, cmap='gray')
+                            plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_p_donut_epoch_{i:03d}{IMAGE_EXT}", predict_donut, cmap='gray', vmin=vmin, vmax=vmax)
                             if i == 0:
-                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth)
-                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_true_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut)
-                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, j, 0])
+                                plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth, cmap='gray')
+                                plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_t_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut, cmap='gray', vmin=vmin, vmax=vmax)
+                                plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", mri_in[yi, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
                 else:
                     logging.warning(f'Not writing PNGs')
             elif write_pngs:

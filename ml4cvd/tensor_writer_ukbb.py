@@ -1079,6 +1079,10 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
             with h5py.File(tensors + tp, 'a') as hd5:
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
+                    stats['Samples found'] += 1
+                    if stats['Samples found'] % 250 == 0:
+                        for k in stats:
+                            logging.info(f'{k} has: {stats[k]}')
                     for field in data_maps[sample_id]:
                         value = data_maps[sample_id][field]
                         if group == 'continuous':
@@ -1119,13 +1123,13 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                         else:
                             hd5.create_dataset(hd5_key, data=[value])
                             stats['created'] += 1
-
                 else:
                     stats['sample id missing']
         except:
             print('could not open', tp, traceback.format_exc())
             stats['failed'] += 1
 
+    logging.info(f'Finished appending data!')
     for k in stats:
         logging.info(f'{k} has: {stats[k]}')
 
