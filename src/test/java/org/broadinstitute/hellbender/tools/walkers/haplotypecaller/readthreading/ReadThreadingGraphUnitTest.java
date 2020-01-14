@@ -122,6 +122,9 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         }
     }
 
+
+
+
     @Test(enabled = !DEBUG)
     public void testCyclesInGraph() {
 
@@ -339,7 +342,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
         // construct the haplotypes
         final String commonPrefix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
-        final String refEnd = "GCTAGCTAATCG";
+        final String refEnd  = "GCTAGCTAATCG";
         final String altEnd1 = "ACTAGCTAATCG";
         final String altEnd2 = "ACTAGATAATCG";
         final String ref = commonPrefix + refEnd;
@@ -356,7 +359,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         rtgraph.addRead(read2, header);
         rtgraph.buildGraphIfNecessary();
 
-       Assert.assertEquals(rtgraph.getSinks().size(), 3);
+        Assert.assertEquals(rtgraph.getSinks().size(), 3);
 
         for (final MultiDeBruijnVertex altSink : rtgraph.getSinks()) {
             if (rtgraph.isReferenceNode(altSink)) {
@@ -433,6 +436,12 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
         return tests.toArray(new Object[][]{});
     }
+
+    //TODO this test should exist
+    public void testDanglingHeadRecoveryInteractionWithVeryShortForks() {
+        //TODO this is going to be a test that asserts the behavior is rational with a fork where one is very short
+    }
+
 
     @Test(dataProvider = "DanglingHeads")
     public void testDanglingHeads(final String ref,

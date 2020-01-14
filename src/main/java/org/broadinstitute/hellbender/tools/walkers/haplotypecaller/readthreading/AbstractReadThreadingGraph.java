@@ -643,8 +643,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * has an ancestor with multiple incoming edges before hitting the reference path
      */
     private List<MultiDeBruijnVertex> findPathUpwardsToLowestCommonAncestor(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
-        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, v -> incomingEdgeOf(v), e -> getEdgeSource(e))
-                : findPath(vertex, pruneFactor, v -> hasIncidentRefEdge(v) || inDegreeOf(v) == 0, v -> outDegreeOf(v) > 1 && hasIncidentRefEdge(v), this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
+        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2,   v -> outDegreeOf(v) > 1,                          v -> incomingEdgeOf(v),        e -> getEdgeSource(e))
+                              : findPath(vertex, pruneFactor, v -> hasIncidentRefEdge(v) || inDegreeOf(v) == 0, v -> outDegreeOf(v) > 1 && hasIncidentRefEdge(v), this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
     }
 
     private boolean hasIncidentRefEdge(final MultiDeBruijnVertex v) {
@@ -674,8 +674,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * has a descendant with multiple outgoing edges before hitting the reference path
      */
     private List<MultiDeBruijnVertex> findPathDownwardsToHighestCommonDescendantOfReference(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
-        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v), e -> getEdgeTarget(e))
-                : findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) == 0, v -> isReferenceNode(v), this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
+        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v),       e -> getEdgeTarget(e))
+                              : findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) == 0, v -> isReferenceNode(v), this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
     }
 
     private MultiSampleEdge getHeaviestOutgoingEdge(final MultiDeBruijnVertex v) {
