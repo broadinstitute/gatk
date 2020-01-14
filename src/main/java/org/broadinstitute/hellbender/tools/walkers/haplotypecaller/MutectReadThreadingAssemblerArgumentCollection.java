@@ -27,7 +27,7 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
         assemblyEngine.setRecoverDanglingBranches(true);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
-        assemblyEngine.setExperimentalDanglingEndRecoveryMode(experimentalDanglingBranchRecoveryMode);
+        assemblyEngine.setArtificialHaplotypeRecoveryMode(disableArtificialHaplotypeRecovery);
 
         if ( graphOutput != null ) {
             assemblyEngine.setGraphWriter(new File(graphOutput));
