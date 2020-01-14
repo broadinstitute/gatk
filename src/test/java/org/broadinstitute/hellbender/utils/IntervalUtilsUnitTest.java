@@ -1120,6 +1120,22 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(merged.size(), 1);
     }
 
+    @Test
+    public void testIntervalFileIntervalsAreTrimmed() throws Exception {
+        final GenomeLoc expectedGenomeLoc = hg19GenomeLocParser.createGenomeLoc("1", 1, 10);
+        final File gatkIntervalFile = createTempFile("testIntervalFileIntervalsAreTrimmed", ".intervals.list",
+                // add some spaces around the start/end to test that it gets trimmed down to something valid
+                String.format(" %s:%d-%d ", expectedGenomeLoc.getContig(), expectedGenomeLoc.getStart(), expectedGenomeLoc.getEnd()));
+
+        final List<String> intervalArgs = new ArrayList<>(1);
+        intervalArgs.add(gatkIntervalFile.getAbsolutePath());
+
+        final GenomeLocSortedSet locs = IntervalUtils.loadIntervals(
+                intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        Assert.assertEquals(locs.size(), 1);
+        Assert.assertEquals(locs.toList().get(0), expectedGenomeLoc);
+    }
+
     @Test(expectedExceptions=UserException.MalformedGenomeLoc.class, dataProvider="invalidIntervalTestData")
     public void testInvalidGATKFileIntervalHandling(GenomeLocParser genomeLocParser,
                                                     String contig, int intervalStart, int intervalEnd ) throws Exception {
