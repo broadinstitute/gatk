@@ -469,7 +469,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
             if (vertex == null) {
                 // if we are not in an error kmer try to extend the path anyway assuming its a one base mismatch
                 if (kmersPastSinceLastNullVertex == 0) {
-                    Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(startingVertex);
+                    Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(lastVertex);
                     if (outgoingEdges.size()==1) {
                         vertex = getEdgeTarget(outgoingEdges.stream().findFirst().get());
                         kmersPastSinceLastNullVertex = 1;
@@ -477,6 +477,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
                 // if we dropped multiple bases from the read following an already missing path from the reference then we throw it away and try to catch the trail from kmers again
                 } else {
                     hasToRediscoverKmer = true;
+                    nodeHelper.clear();
                 }
             }
 

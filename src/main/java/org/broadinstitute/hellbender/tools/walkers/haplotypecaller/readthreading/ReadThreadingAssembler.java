@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
-import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -40,7 +39,7 @@ public final class ReadThreadingAssembler {
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
     private final boolean generateSeqGraph;
-    private boolean experimentalEndRecoveryMode = false;
+    private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -189,7 +188,7 @@ public final class ReadThreadingAssembler {
 
     private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
     List<Haplotype> findBestPaths(final Collection<T> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
-                                          final Map<T, AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet, final SmithWatermanAligner aligner) {
+                                  final Map<T, AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet, final SmithWatermanAligner aligner) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
@@ -203,7 +202,7 @@ public final class ReadThreadingAssembler {
 
             for (final KBestHaplotype<V, E> kBestHaplotype :
                     (generateSeqGraph ? new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
-                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
+                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
                             .findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
@@ -691,13 +690,12 @@ public final class ReadThreadingAssembler {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
     }
 
-    public void setExperimentalDanglingEndRecoveryMode(boolean experimentalDanglingBranchRecoveryMode) {
-        if (experimentalDanglingBranchRecoveryMode) {
+    public void setArtificialHaplotypeRecoveryMode(boolean disableUncoveredJunctionTreeHaplotypeRecovery) {
+        if (disableUncoveredJunctionTreeHaplotypeRecovery) {
             if (!generateSeqGraph) {
-                throw new UserException("Argument '--experimental-dangling-branch-recover' requires '--disable-sequence-graph-simplification' to be set");
+                throw new UserException("Argument '--experimental-dangling-branch-recover' requires '--linked-de-bruijn-graph' to be set");
             }
-            recoverDanglingBranches = false;
-            experimentalEndRecoveryMode = true;
+            recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = false;
         }
     }
 }
