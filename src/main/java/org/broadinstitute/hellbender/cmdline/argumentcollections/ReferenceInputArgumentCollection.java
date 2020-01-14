@@ -1,10 +1,17 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 
-import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
+
+//TODO: get rid of getReferenceFileName
+//TODO: addReferenceFilesForSpark -> take/return GATKPathSpecifier
+//TODO: PSBwaUtils.addReferenceSequencesToHeader
+//TODO: HtsjdkReadsRddStorage.referenceSource
+//TODO: ReferenceTwoBitSparkSource.isTwoBit
+//TODO: SparkUtils.pathExists
+//TODO: ReferenceMultiSparkSource
 
 /**
  * An abstract ArgumentCollection for specifying a reference sequence file
@@ -13,14 +20,23 @@ public abstract class ReferenceInputArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Get the name of the reference input specified at the command line.
+     */
+    public abstract GATKPathSpecifier getReferenceInputPath();
+
+    // TODO: get rid of this
+    /**
      * Get the name of the reference file specified at the command line.
      */
-    public abstract String getReferenceFileName();
+    public String getReferenceFileName() {
+        final GATKPathSpecifier inputPath = getReferenceInputPath();
+        return inputPath == null ? null : getReferenceInputPath().toString();
+    }
 
     /**
      * Get the Path to the reference, may be null
      */
     public Path getReferencePath() {
-        return getReferenceFileName() != null ? IOUtils.getPath(getReferenceFileName()) : null;
+        return getReferenceInputPath() != null ? getReferenceInputPath().toPath() : null;
     }
 }

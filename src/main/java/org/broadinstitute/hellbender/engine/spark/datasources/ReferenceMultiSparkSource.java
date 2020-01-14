@@ -33,6 +33,7 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
      * @param referenceURL the name of the reference (if using the Google Genomics API), or a path to the reference file
      * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
      */
+    //TODO: change this signature to GATKPathSpecifier
     public ReferenceMultiSparkSource( final String referenceURL,
                                       final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);

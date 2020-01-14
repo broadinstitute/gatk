@@ -156,7 +156,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
-            PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
+            PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath.getURI().toString(), getReferenceWindowFunction());
             final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize, useNio);
             return new Tuple2<>(header, reads);
         }
