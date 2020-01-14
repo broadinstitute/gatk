@@ -37,7 +37,7 @@ import java.util.*;
  *
  * @param <T> the type of Feature that this FeatureInput file contains (eg., VariantContext, BEDFeature, etc.)
  */
-public final class FeatureInput<T extends Feature> extends GATKPathSpecifier implements Serializable {
+public final class FeatureInput<T extends Feature> extends GATKInputPath implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

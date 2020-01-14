@@ -65,7 +65,7 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
     }
 
     @Override
-    public SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
+    public SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) {
         List<SAMSequenceRecord> records = twoBitSeqEntries.entrySet().stream()
                 .map(pair -> new SAMSequenceRecord(pair.getKey(), pair.getValue().dnaSize()))
                 .collect(Collectors.toList());

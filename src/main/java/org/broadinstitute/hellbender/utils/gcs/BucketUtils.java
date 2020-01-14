@@ -88,6 +88,9 @@ public final class BucketUtils {
      * @param path the path
      * @return an absolute file path if the original path was a relative file path, otherwise the original path
      */
+    //NOTE: this should no longer be needed once everything uses GATKPathSpecifier, since the URI underlying
+    // a GATKPathSpecifier always has a protocol; for a local file the protocol is "file", and the file protocol
+    // requires absolute paths
     public static String makeFilePathAbsolute(String path){
         if (isCloudStorageUrl(path) || isHadoopUrl(path) || isFileUrl(path)){
             return path;
@@ -116,7 +119,9 @@ public final class BucketUtils {
                 FileSystem fs = file.getFileSystem(new Configuration());
                 inputStream = fs.open(file);
             } else {
-                 inputStream = new FileInputStream(path);
+                //TODO: move this to a higher level (or make GATKPathSpecifier.inputStream do the block
+                // compressed wrapping, or else make this
+                 inputStream = new GATKPathSpecifier(path).getInputStream();
             }
 
             if(IOUtil.hasBlockCompressedExtension(path)){

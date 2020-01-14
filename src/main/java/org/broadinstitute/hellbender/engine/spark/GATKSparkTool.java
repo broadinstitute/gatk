@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.*;
@@ -346,8 +347,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             if (hasCramInput() && !hasReference()){
                 throw UserException.MISSING_REFERENCE_FOR_CRAM;
             }
-            final String refPath = hasReference() ?  referenceArguments.getReferenceFileName() : null;
-            output = source.getParallelReads(input, refPath, traversalParameters, bamPartitionSplitSize, useNio);
+            output = source.getParallelReads(input, referenceArguments.getReferenceInputPath(), traversalParameters, bamPartitionSplitSize, useNio);
         }
         return output;
     }
@@ -372,7 +372,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads, SAMFileHeader header, final boolean sortReadsToHeader) {
         try {
             ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferencePath().toAbsolutePath().toUri().toString() : null,
+                    hasReference() ? referenceArguments.getReferenceInputPath() : null,
                     reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     getRecommendedNumReducers(), shardedPartsDir, createOutputBamIndex, createOutputBamSplittingIndex, sortReadsToHeader, splittingIndexGranularity);
         } catch (IOException e) {
@@ -567,8 +567,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         readInputs = new LinkedHashMap<>();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
         for (String input : readArguments.getReadFilesNames()) {
-            readInputs.put(input, readsSource.getHeader(
-                    input, hasReference() ?  referenceArguments.getReferenceFileName() : null));
+            readInputs.put(input, readsSource.getHeader(input, referenceArguments.getReferenceInputPath()));
         }
         readsHeader = createHeaderMerger().getMergedHeader();
     }
@@ -594,12 +593,12 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Initializes our reference source. Does nothing if no reference was specified.
      */
     private void initializeReference() {
-        final String referenceURL = referenceArguments.getReferenceFileName();
-        if ( referenceURL != null ) {
-            referenceSource = new ReferenceMultiSparkSource(referenceURL, getReferenceWindowFunction());
+        final GATKPathSpecifier referencePath = referenceArguments.getReferenceInputPath();
+        if ( referencePath != null ) {
+            referenceSource = new ReferenceMultiSparkSource(referencePath.getURI().toString(), getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
             if (referenceDictionary == null) {
-                throw new UserException.MissingReferenceDictFile(referenceURL);
+                throw new UserException.MissingReferenceDictFile(referencePath.getURI().toString());
             }
         }
     }
@@ -673,19 +672,19 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Register the reference file (and associated dictionary and index) to be downloaded to every node using Spark's
      * copying mechanism ({@code SparkContext#addFile()}).
      * @param ctx the Spark context
-     * @param referenceFile the reference file, can be a local file or a remote path
+     * @param referencePath the reference file, can be a local file or a remote path
      * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
      */
-    protected static String addReferenceFilesForSpark(JavaSparkContext ctx, String referenceFile) {
-        if (referenceFile == null) {
+    //TODO: Update the signature for this to take and return a GATKPathSpecifier
+    protected static String addReferenceFilesForSpark(JavaSparkContext ctx, Path referencePath) {
+        if (referencePath == null) {
             return null;
         }
-        Path referencePath = IOUtils.getPath(referenceFile);
         Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referencePath);
         Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referencePath);
         Path gziPath = GZIIndex.resolveIndexNameForBgzipFile(referencePath);
 
-        ctx.addFile(referenceFile);
+        ctx.addFile(referencePath.toUri().toString());
         if (Files.exists(indexPath)) {
             ctx.addFile(indexPath.toUri().toString());
         }

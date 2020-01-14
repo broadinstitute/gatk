@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.utils.read.*;
 import scala.Tuple2;
 
 import java.io.*;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -110,17 +111,18 @@ public final class SparkUtils {
     /**
      * Determine if the <code>targetPath</code> exists.
      * @param ctx JavaSparkContext
-     * @param targetPath the <code>org.apache.hadoop.fs.Path</code> object to check
+     * @param targetURI the <code>org.apache.hadoop.fs.Path</code> URI to check
      * @return true if the targetPath exists, otherwise false
      */
-    public static boolean pathExists(final JavaSparkContext ctx, final Path targetPath) {
+    public static boolean pathExists(final JavaSparkContext ctx, final URI targetURI) {
         Utils.nonNull(ctx);
-        Utils.nonNull(targetPath);
+        Utils.nonNull(targetURI);
         try {
-            final FileSystem fs = targetPath.getFileSystem(ctx.hadoopConfiguration());
-            return fs.exists(targetPath);
+            final Path targetHadoopPath = new Path(targetURI);
+            final FileSystem fs = targetHadoopPath.getFileSystem(ctx.hadoopConfiguration());
+            return fs.exists(targetHadoopPath);
         } catch (IOException e) {
-            throw new UserException("Error validating existence of path " + targetPath + ": " + e.getMessage());
+            throw new UserException("Error validating existence of path " + targetURI + ": " + e.getMessage());
         }
     }
 
