@@ -346,6 +346,20 @@ public class BigQueryUtils {
         return result;
     }
 
+    private static long getQueryCostBytesProcessedEstimate(String queryString) {
+        final QueryJobConfiguration dryRunQueryConfig =
+                QueryJobConfiguration.newBuilder( queryString )
+                        .setUseLegacySql(false)
+                        .setDryRun(true)
+                        .setUseQueryCache(false)
+                        .setPriority(QueryJobConfiguration.Priority.INTERACTIVE)
+                        .build();
+
+        Job dryRunJob = getBigQueryEndPoint().create(JobInfo.newBuilder(dryRunQueryConfig).build());
+        long bytesProcessed = ((JobStatistics.QueryStatistics) dryRunJob.getStatistics()).getTotalBytesProcessed();
+        return bytesProcessed;
+    }
+
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID) {
 
         return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false);
@@ -355,6 +369,9 @@ public class BigQueryUtils {
         final String tempTableDataset = "temp_tables";
         final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
+
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
+        logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
         final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
                 "OPTIONS(\n" +
