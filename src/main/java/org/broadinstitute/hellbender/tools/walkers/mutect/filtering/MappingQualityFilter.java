@@ -31,7 +31,7 @@ public class MappingQualityFilter extends HardAlleleFilter<Integer> {
         // annotation.  We have to do this because the indel, even if it maps uniquely, gets a poor mapping quality
         // by virtue of its mismatch.  The reference mapping quality is a decent proxy for the region's mappability.
         int refQual = mappingQualityByAllele.remove(0); // get the ref value and convert list to alts only
-        new IndexRange(0, mappingQualityByAllele.size()-1).forEach(i -> {
+        new IndexRange(0, mappingQualityByAllele.size()).forEach(i -> {
             if (indelLengths != null && indelLengths.get(i) >= longIndelSize) {
                 mappingQualityByAllele.set(i, refQual);
             }

@@ -56,7 +56,6 @@ public class FilteringOutputStats {
             });
         });
 
-        //TODO fix this for variant only filters!!
 //        for (final Map.Entry<Mutect2Filter, Double> entry : errorProbabilities.getProbabilitiesForVariantFilters().entrySet()) {
 //            final double filterArtifactProbability = entry.getValue();
 //            if (filterArtifactProbability > Mutect2FilteringEngine.EPSILON && filterArtifactProbability > threshold - Mutect2FilteringEngine.EPSILON) {

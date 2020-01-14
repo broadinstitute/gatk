@@ -38,7 +38,7 @@ public class MinAlleleFractionFilter extends HardAlleleFilter<Double> {
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         LinkedHashMap<Allele, List<Double>> dataByAllele = getAltDataByAllele(vc, checkPreconditions(), this::getAltData, filteringEngine);
         return dataByAllele.entrySet().stream()
-                .filter(entry -> !entry.getKey().isSymbolic() && !vc.getReference().equals(entry.getKey()))
+                .filter(entry -> /*!entry.getKey().isSymbolic() &&*/ !vc.getReference().equals(entry.getKey()))
                 .map(entry -> entry.getValue().stream().max(Double::compare).orElse(1.0) < minAf).collect(Collectors.toList());
     }
 

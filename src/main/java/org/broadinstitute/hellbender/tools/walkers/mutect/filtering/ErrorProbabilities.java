@@ -11,7 +11,7 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.*;
 
 public final class ErrorProbabilities {
-    private final LinkedHashMap<Mutect2Filter, List<Double>> alleleProbabilitiesByFilter;
+    private  LinkedHashMap<Mutect2Filter, List<Double>> alleleProbabilitiesByFilter;
     private final Map<ErrorType, List<Double>> probabilitiesByTypeAndAllele;
     private final List<Double> combinedErrorProbabilitiesByAllele;
     private final int numAltAlleles;
@@ -23,9 +23,10 @@ public final class ErrorProbabilities {
                 .collect(toMap(
                         Function.identity(),
                         f -> f.errorProbabilities(vc, filteringEngine, referenceContext),
-                        (a, b) -> a, LinkedHashMap::new))
+                        (a, b) -> a, LinkedHashMap::new));
+
                 // remove filters that were not applied. i.e. returned empty list
-                .entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
+        alleleProbabilitiesByFilter = alleleProbabilitiesByFilter.entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
                 .collect(toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
         LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
@@ -54,7 +55,7 @@ public final class ErrorProbabilities {
     }
 
     public Map<Mutect2Filter, Double> getProbabilitiesForVariantFilters() {
-        return getPartitionedProbabilitiesByFilter(false).entrySet().stream()
+        return getPartitionedProbabilitiesByFilter(true).entrySet().stream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
                 .collect(toMap(entry -> entry.getKey(), entry -> entry.getValue().get(0)));
     }
@@ -62,7 +63,7 @@ public final class ErrorProbabilities {
     private Map<Mutect2Filter, List<Double>> getPartitionedProbabilitiesByFilter(boolean variantOnly) {
         Map<Boolean, LinkedHashMap<Mutect2Filter, List<Double>>> groups =
                 alleleProbabilitiesByFilter.entrySet().stream().collect(Collectors.partitioningBy(
-                        entry -> entry.getKey().getClass().isInstance(Mutect2VariantFilter.class),
+                        entry -> Mutect2VariantFilter.class.isAssignableFrom(entry.getKey().getClass()),
                         toMap(Map.Entry::getKey, Map.Entry::getValue, (a,b) -> a, LinkedHashMap::new)));
         return groups.get(variantOnly);
     }

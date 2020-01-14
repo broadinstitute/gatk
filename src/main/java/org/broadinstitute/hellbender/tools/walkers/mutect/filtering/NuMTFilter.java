@@ -41,7 +41,7 @@ public class NuMTFilter extends HardAlleleFilter<Integer> {
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         LinkedHashMap<Allele, List<Integer>> dataByAllele = getDataByAllele(vc, checkPreconditions(), this::getData, filteringEngine);
         return dataByAllele.entrySet().stream()
-                .filter(entry -> !entry.getKey().isSymbolic() && !vc.getReference().equals(entry.getKey()))
+                .filter(entry -> /*!entry.getKey().isSymbolic() &&*/ !vc.getReference().equals(entry.getKey()))
                 .map(entry -> entry.getValue().stream().max(Integer::compare).orElse(0) < maxAltDepthCutoff).collect(Collectors.toList());
     }
 
