@@ -20,7 +20,7 @@ public class ThresholdCalculator {
 
     private double threshold;
 
-    final List<Double> artifactProbabilities = new ArrayList<>();
+    final List<Double> errorProbabilities = new ArrayList<>();
 
     public ThresholdCalculator(final Strategy strategy, final double initialThreshold, final double maxFalseDiscoveryRate, final double fScoreBeta) {
         this.strategy = strategy;
@@ -29,8 +29,8 @@ public class ThresholdCalculator {
         this.fScoreBeta = fScoreBeta;
     }
 
-    public void addArtifactProbability(final double artifactProbability) {
-        artifactProbabilities.add(artifactProbability);
+    public void addCombinedErrorProbabilites(final List<Double> errorProbabilities) {
+        this.errorProbabilities.addAll(errorProbabilities);
     }
 
     public void relearnThresholdAndClearAcumulatedProbabilities() {
@@ -38,10 +38,10 @@ public class ThresholdCalculator {
             case CONSTANT:  // don't adjust
                 break;
             case FALSE_DISCOVERY_RATE:
-                threshold = ThresholdCalculator.calculateThresholdBasedOnFalseDiscoveryRate(artifactProbabilities, maxFalseDiscoveryRate);
+                threshold = ThresholdCalculator.calculateThresholdBasedOnFalseDiscoveryRate(errorProbabilities, maxFalseDiscoveryRate);
                 break;
             case OPTIMAL_F_SCORE:
-                threshold = ThresholdCalculator.calculateThresholdBasedOnOptimalFScore(artifactProbabilities, fScoreBeta);
+                threshold = ThresholdCalculator.calculateThresholdBasedOnOptimalFScore(errorProbabilities, fScoreBeta);
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Invalid threshold strategy type: " + strategy + ".");
@@ -50,7 +50,7 @@ public class ThresholdCalculator {
     }
 
     public void clear() {
-        artifactProbabilities.clear();
+        errorProbabilities.clear();
     }
 
     public double getThreshold() {

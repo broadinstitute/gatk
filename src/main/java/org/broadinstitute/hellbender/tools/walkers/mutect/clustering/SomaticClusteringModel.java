@@ -88,19 +88,20 @@ public class SomaticClusteringModel {
         logClusterWeights = new double[] {Math.log1p(INITIAL_HIGH_AF_WEIGHT), Math.log(INITIAL_HIGH_AF_WEIGHT)};
     }
 
-    public void record(final int[] tumorADs, final double[] tumorLogOdds, final double artifactProbability, final double nonSomaticProbability, final VariantContext vc) {
-        // things that are definitely not somatic don't need to go in the somatic clustering model
-        if (artifactProbability > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
-            obviousArtifactCount.increment();
-            return;
-        } else if (nonSomaticProbability > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
-            return;
-        }
+    public void record(final int[] tumorADs, final double[] tumorLogOdds, final List<Double> artifactProbabilities, final List<Double> nonSomaticProbabilities, final VariantContext vc) {
 
         final int totalAD = (int) MathUtils.sum(tumorADs);
         // split into one-vs-all biallelics for clustering
         for (int i = 0; i < tumorLogOdds.length; i++) {
-            data.add(new Datum(tumorLogOdds[i], artifactProbability, nonSomaticProbability, tumorADs[i+1], totalAD, indelLength(vc, i)));
+            // things that are definitely not somatic don't need to go in the somatic clustering model
+            if (artifactProbabilities.get(i) > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
+                obviousArtifactCount.increment();
+                continue;
+            } else if (nonSomaticProbabilities.get(i) > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
+                continue;
+            }
+
+            data.add(new Datum(tumorLogOdds[i], artifactProbabilities.get(i), nonSomaticProbabilities.get(i), tumorADs[i+1], totalAD, indelLength(vc, i)));
         }
     }
 
