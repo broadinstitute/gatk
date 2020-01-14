@@ -41,7 +41,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
      * Constructor for the special case of a single source and sink
      */
     public JunctionTreeKBestHaplotypeFinder(final BaseGraph<V, E> graph, final V source, final V sink) {
-        this(graph, Collections.singleton(source), Collections.singleton(sink), DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, false);
+        this(graph, Collections.singleton(source), Collections.singleton(sink), DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, true);
     }
 
     /**
@@ -94,8 +94,8 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     @Override
     @SuppressWarnings({"unchecked"})
     public List<KBestHaplotype<V, E>> findBestHaplotypes(final int maxNumberOfHaplotypes) {
-        //pre-process step: find pivotal edges so they can be marked off as visited
-        final LinkedHashSet<E> unvisitedPivotalEdges = createMapOfPivotalEdgesInTopologicalOrder();
+        //pre-process step: find pivotal edges so they can be marked off as visited (if we want to recover edges uncovered in the graph).
+        final LinkedHashSet<E> unvisitedPivotalEdges = experimentalEndRecoveryMode ? createMapOfPivotalEdgesInTopologicalOrder() : new LinkedHashSet<>();
 
         final List<JTBestHaplotype<V, E>> result = new ArrayList<>();
         final PriorityQueue<JTBestHaplotype<V, E>> queue = new PriorityQueue<>(Comparator.comparingDouble(KBestHaplotype<V, E>::score).reversed());
