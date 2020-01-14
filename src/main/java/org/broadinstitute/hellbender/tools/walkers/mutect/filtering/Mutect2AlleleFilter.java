@@ -48,7 +48,8 @@ public abstract class Mutect2AlleleFilter<T> extends Mutect2Filter {
      * @param referenceContext
      * @return The probability that each alternate allele should be filtered out. This list should NOT include data for the reference allele
      */
-    public List<Double> errorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+    @Override
+    public List<Double> errorProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         return requiredAnnotations().stream().allMatch(vc::hasAttribute) ?
                 calculateErrorProbabilityForAlleles(vc, filteringEngine, referenceContext) :
                 // TODO make sure that somewhere the roundFinitePrecisionErrors is called when not a hard filter

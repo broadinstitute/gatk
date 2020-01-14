@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.util.Comparator;
 import java.util.List;
@@ -22,7 +23,16 @@ public abstract class Mutect2Filter {
     public abstract Optional<String> phredScaledPosteriorAnnotationName();
     protected abstract List<String> requiredAnnotations();
 
-    // weighted median -- what's the lowest posterior probability that accounts for samples with half of the total alt depth
+    /**
+     *
+     * @param vc
+     * @param filteringEngine
+     * @param referenceContext
+     * @return The probability that each alternate allele should be filtered out. This list should NOT include data for the reference allele
+     */
+    public abstract List<Double> errorProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
+
+        // weighted median -- what's the lowest posterior probability that accounts for samples with half of the total alt depth
     protected static double weightedMedianPosteriorProbability(List<ImmutablePair<Integer, Double>> depthsAndPosteriors) {
         final int totalAltDepth = depthsAndPosteriors.stream().mapToInt(ImmutablePair::getLeft).sum();
 
