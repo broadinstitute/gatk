@@ -39,7 +39,7 @@ public final class ReadThreadingAssembler {
     private final boolean dontIncreaseKmerSizesForCycles;
     private final boolean allowNonUniqueKmersInRef;
     private final boolean generateSeqGraph;
-    private boolean experimentalEndRecoveryMode = false;
+    private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
 
@@ -275,7 +275,7 @@ public final class ReadThreadingAssembler {
         for (final KBestHaplotype<V, E> kBestHaplotype :
                 (generateSeqGraph ?
                         new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
-                        new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
+                        new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
                         .findBestHaplotypes(numBestHaplotypesPerGraph)) {
             final Haplotype h = kBestHaplotype.haplotype();
             // TODO for now this seems like the solution, perhaps in the future it will be to excise the haplotype completely)
@@ -363,7 +363,7 @@ public final class ReadThreadingAssembler {
 //            for (final KBestHaplotype<V, E> kBestHaplotype :
 //                    (generateSeqGraph ?
 //                            new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
-//                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, experimentalEndRecoveryMode))
+//                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
 //                            .findBestHaplotypes(numBestHaplotypesPerGraph)) {
 //                final Haplotype h = kBestHaplotype.haplotype();
 //                if( !returnHaplotypes.contains(h) ) {
@@ -869,13 +869,12 @@ public final class ReadThreadingAssembler {
         this.removePathsNotConnectedToRef = removePathsNotConnectedToRef;
     }
 
-    public void setExperimentalDanglingEndRecoveryMode(boolean experimentalDanglingBranchRecoveryMode) {
-        if (experimentalDanglingBranchRecoveryMode) {
+    public void setArtificialHaplotypeRecoveryMode(boolean disableUncoveredJunctionTreeHaplotypeRecovery) {
+        if (disableUncoveredJunctionTreeHaplotypeRecovery) {
             if (!generateSeqGraph) {
-                throw new UserException("Argument '--experimental-dangling-branch-recover' requires '--disable-sequence-graph-simplification' to be set");
+                throw new UserException("Argument '--experimental-dangling-branch-recover' requires '--linked-de-bruijn-graph' to be set");
             }
-            recoverDanglingBranches = false;
-            experimentalEndRecoveryMode = true;
+            recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = false;
         }
     }
 }
