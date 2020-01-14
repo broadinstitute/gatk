@@ -128,7 +128,6 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
         int copyNumberCall = segment.getCallIntegerCopyNumberState().getCopyNumber();
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
-        //variantContextBuilder.alleles(ALL_ALLELES);
         variantContextBuilder.chr(contig);
         variantContextBuilder.start(start);
         variantContextBuilder.stop(end);

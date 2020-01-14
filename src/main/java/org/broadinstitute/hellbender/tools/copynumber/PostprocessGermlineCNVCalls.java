@@ -374,8 +374,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
     private void generateIntervalsVCFFileFromAllShards() {
         logger.info("Generating intervals VCF file...");
-        final VariantContextWriter intervalsVCFWriter = GATKVariantContextUtils.createVCFWriter(
-                outputIntervalsVCFFile.toPath(), sequenceDictionary, false, Options.INDEX_ON_THE_FLY);
+        final VariantContextWriter intervalsVCFWriter = createVCFWriter(outputIntervalsVCFFile);
 
         final GermlineCNVIntervalVariantComposer germlineCNVIntervalVariantComposer =
                 new GermlineCNVIntervalVariantComposer(intervalsVCFWriter, sampleName,
@@ -415,8 +414,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
         /* write variants */
         logger.info(String.format("Writing segments VCF file to %s...", outputSegmentsVCFFile.getAbsolutePath()));
-        final VariantContextWriter segmentsVCFWriter = GATKVariantContextUtils.createVCFWriter(
-                outputSegmentsVCFFile.toPath(), sequenceDictionary, false, Options.INDEX_ON_THE_FLY);
+        final VariantContextWriter segmentsVCFWriter = createVCFWriter(outputSegmentsVCFFile.toPath());
         final GermlineCNVSegmentVariantComposer germlineCNVSegmentVariantComposer =
                 new GermlineCNVSegmentVariantComposer(segmentsVCFWriter, sampleName,
                         refAutosomalIntegerCopyNumberState, allosomalContigSet);
