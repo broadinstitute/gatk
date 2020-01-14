@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 public final class PSBwaUtils {
 
     static void addReferenceSequencesToHeader(final SAMFileHeader header,
-                                              final String referencePath,
+                                              final GATKPathSpecifier referencePath,
                                               final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
         final List<SAMSequenceRecord> refSeqs = getReferenceSequences(referencePath, windowFunction);
         for (final SAMSequenceRecord rec : refSeqs) {
@@ -31,12 +32,12 @@ public final class PSBwaUtils {
         }
     }
 
-    private static List<SAMSequenceRecord> getReferenceSequences(final String referencePath,
+    private static List<SAMSequenceRecord> getReferenceSequences(final GATKPathSpecifier referencePath,
                                                                  final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
         final ReferenceMultiSparkSource referenceSource = new ReferenceMultiSparkSource(referencePath, windowFunction);
         final SAMSequenceDictionary referenceDictionary = referenceSource.getReferenceSequenceDictionary(null);
         if (referenceDictionary == null) {
-            throw new UserException.MissingReferenceDictFile(referencePath);
+            throw new UserException.MissingReferenceDictFile(referencePath.getRawInputString());
         }
         return referenceDictionary.getSequences();
     }

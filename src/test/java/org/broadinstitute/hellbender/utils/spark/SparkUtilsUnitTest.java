@@ -76,12 +76,12 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
             final Path tempPath = new Path(workingDirectory, "testFileExists.txt");
             final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-            Assert.assertFalse(SparkUtils.pathExists(ctx, tempPath));
+            Assert.assertFalse(SparkUtils.hadoopPathExists(ctx, tempPath.toUri()));
             final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
             final FSDataOutputStream fsOutStream = fs.create(tempPath);
             fsOutStream.close();
             fs.deleteOnExit(tempPath);
-            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
+            Assert.assertTrue(SparkUtils.hadoopPathExists(ctx, tempPath.toUri()));
         });
     }
 

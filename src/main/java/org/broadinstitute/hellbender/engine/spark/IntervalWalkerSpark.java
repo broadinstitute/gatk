@@ -89,7 +89,7 @@ public abstract class IntervalWalkerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(JavaSparkContext ctx) {
-        referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
+        referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferencePath());
         processIntervals(getIntervals(ctx), ctx);
     }
 

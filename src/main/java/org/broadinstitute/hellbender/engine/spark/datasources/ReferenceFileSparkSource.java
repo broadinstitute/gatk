@@ -7,7 +7,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -31,20 +31,16 @@ public class ReferenceFileSparkSource implements ReferenceSparkSource, Serializa
     private transient Path referencePath;
 
     /**
-     * @param referenceUri the path to the reference file
+     * @param referenceSpecifier the path to the reference file
      */
-    public ReferenceFileSparkSource( final String referenceUri) {
-        this(IOUtils.getPath(referenceUri));
-    }
-
-    /**
-     * @param referencePath the path to the reference file
-     */
-    public ReferenceFileSparkSource( final Path referencePath) {
-        this.referencePath = referencePath;
-        this.referenceUri = referencePath.toUri();
-        if (!Files.exists(this.referencePath)) {
-            throw new UserException.MissingReference("The specified fasta file (" + referencePath.toAbsolutePath().toUri().toString() + ") does not exist.");
+    public ReferenceFileSparkSource( final GATKPathSpecifier referenceSpecifier) {
+        // It would simplify this class if we could cache the GATKPathSpecifier, but ReferenceFileSparkSource
+        // objects are used as Spark broadcast variables, and caching GATKPathSpecifier here triggers a known
+        // issue during broadcast with the Java 11 GATK build. See https://issues.apache.org/jira/browse/SPARK-26963.
+        referencePath = referenceSpecifier.toPath();
+        referenceUri = referencePath.toUri();
+        if (!Files.exists(referencePath)) {
+            throw new UserException.MissingReference("The specified fasta file (" + referenceSpecifier.getRawInputString() + ") does not exist.");
         }
     }
 

@@ -5,6 +5,7 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -57,7 +58,9 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
             final String expectedResultsFile) throws IOException {
 
         final String inputPath = new File(TEST_DATA_DIR, fileName).getAbsolutePath();
-        final String referencePath = referenceName != null ? new File(referenceName).getAbsolutePath() : null;
+        final GATKPathSpecifier referencePath = referenceName != null ?
+                new GATKPathSpecifier(referenceName) :
+                null;
 
         final File outfile = GATKBaseTest.createTempFile("test", ".insert_size_metrics");
 

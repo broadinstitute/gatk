@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -19,10 +20,13 @@ public class ReferenceHadoopSparkSource implements ReferenceSparkSource, Seriali
     private final String referencePath;
 
     /**
-     * @param referencePath the path to the reference file on HDFS
+     * @param referencePathSpecifier the path to the reference file on HDFS
      */
-    public ReferenceHadoopSparkSource( final String referencePath) {
-        this.referencePath = referencePath;
+    public ReferenceHadoopSparkSource( final GATKPathSpecifier referencePathSpecifier) {
+        // It would simplify this class if we could cache the GATKPathSpecifier, but ReferenceFileSparkSource
+        // objects are used as Spark broadcast variables, and caching GATKPathSpecifier here triggers a known
+        // issue during broadcast with the Java 11 GATK build. See https://issues.apache.org/jira/browse/SPARK-26963.
+        this.referencePath = referencePathSpecifier.getRawInputString();
     }
 
     @Override

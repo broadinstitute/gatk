@@ -7,6 +7,7 @@ import htsjdk.samtools.*;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -70,12 +71,13 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         doLoadReads(bam, referencePath, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
     }
 
-    private void doLoadReads(String bam, String referencePath, ValidationStringency validationStringency) {
+    private void doLoadReads(String bam, String referencePathName, ValidationStringency validationStringency) {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
+        final GATKPathSpecifier referenceInputPath = referencePathName == null ? null : new GATKPathSpecifier(referencePathName);
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, validationStringency);
-        JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, bam, referencePath, validationStringency);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(bam, referencePath);
+        JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, bam, referenceInputPath, validationStringency);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(bam, referenceInputPath);
 
         List<GATKRead> serialReads = rddSerialReads.collect();
         List<GATKRead> parallelReads = rddParallelReads.collect();
@@ -112,10 +114,11 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
     @Test(dataProvider = "loadShardedReads", groups = "spark")
     public void shardedReadsSparkSourceTest(String expectedBam, String shardedBam, String referencePath) {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final GATKPathSpecifier referenceInputPath = referencePath == null ? null : new GATKPathSpecifier(referencePath);
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, expectedBam, referencePath, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(shardedBam, referencePath);
+        JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, expectedBam, referenceInputPath, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(shardedBam, referenceInputPath);
 
         List<GATKRead> serialReads = rddSerialReads.collect();
         List<GATKRead> parallelReads = rddParallelReads.collect();
@@ -180,8 +183,8 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
     @Test(groups = "spark")
     public void testCRAMReferenceFromHDFS() throws Exception {
         final File cram = new File(NA12878_chr17_1k_CRAM);
-        final File reference = new File(v37_chr17_1Mb_Reference);
-        final File referenceIndex = new File(v37_chr17_1Mb_Reference + ".fai");
+        final GATKPathSpecifier reference = new GATKPathSpecifier(v37_chr17_1Mb_Reference);
+        final GATKPathSpecifier referenceIndex = new GATKPathSpecifier(v37_chr17_1Mb_Reference + ".fai");
 
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
@@ -189,13 +192,13 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
             final Path refHDFSPath = new Path(workingDirectory, "hdfs.fasta");
             final Path refIndexHDFSPath = new Path(workingDirectory, "hdfs.fasta.fai");
             cluster.getFileSystem().copyFromLocalFile(new Path(cram.toURI()), cramHDFSPath);
-            cluster.getFileSystem().copyFromLocalFile(new Path(reference.toURI()), refHDFSPath);
-            cluster.getFileSystem().copyFromLocalFile(new Path(referenceIndex.toURI()), refIndexHDFSPath);
+            cluster.getFileSystem().copyFromLocalFile(new Path(reference.getURI()), refHDFSPath);
+            cluster.getFileSystem().copyFromLocalFile(new Path(referenceIndex.getURI()), refIndexHDFSPath);
 
             final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
             final ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
-            final List<GATKRead> localReads = readsSparkSource.getParallelReads(cram.toURI().toString(), reference.toURI().toString()).collect();
-            final List<GATKRead> hdfsReads = readsSparkSource.getParallelReads(cramHDFSPath.toUri().toString(), refHDFSPath.toUri().toString()).collect();
+            final List<GATKRead> localReads = readsSparkSource.getParallelReads(cram.toURI().toString(), reference).collect();
+            final List<GATKRead> hdfsReads = readsSparkSource.getParallelReads(cramHDFSPath.toUri().toString(), new GATKPathSpecifier(refHDFSPath.toUri().toString())).collect();
 
             Assert.assertFalse(localReads.isEmpty());
             Assert.assertEquals(localReads, hdfsReads);
@@ -245,13 +248,12 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
      * @param bam file to load
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getSerialReads(final JavaSparkContext ctx, final String bam, final String referencePath, final ValidationStringency validationStringency) {
+    public JavaRDD<GATKRead> getSerialReads(final JavaSparkContext ctx, final String bam, final GATKPathSpecifier referencePath, final ValidationStringency validationStringency) {
         final SAMFileHeader readsHeader = new ReadsSparkSource(ctx, validationStringency).getHeader(bam, referencePath);
 
         final SamReaderFactory samReaderFactory;
         if (referencePath != null) {
-            final File reference = new File(referencePath);
-            samReaderFactory = SamReaderFactory.makeDefault().validationStringency(validationStringency).referenceSequence(reference);
+            samReaderFactory = SamReaderFactory.makeDefault().validationStringency(validationStringency).referenceSequence(referencePath.toPath());
         } else {
             samReaderFactory = SamReaderFactory.makeDefault().validationStringency(validationStringency);
         }

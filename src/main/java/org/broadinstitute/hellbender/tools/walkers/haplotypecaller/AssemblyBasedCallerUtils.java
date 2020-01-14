@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -180,9 +181,9 @@ public final class AssemblyBasedCallerUtils {
         return new SimpleInterval(region.getPaddedSpan().getContig(), padLeft, padRight);
     }
 
-    public static CachingIndexedFastaSequenceFile createReferenceReader(final String reference) {
+    public static CachingIndexedFastaSequenceFile createReferenceReader(final GATKPathSpecifier referenceInput) {
         // fasta reference reader to supplement the edges of the reference sequence
-        return new CachingIndexedFastaSequenceFile(IOUtils.getPath(reference));
+        return new CachingIndexedFastaSequenceFile(referenceInput.toPath());
     }
 
     /**
