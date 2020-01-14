@@ -182,19 +182,13 @@ public class Mutect2FilteringEngine {
         // and probabilities close to 0 must not be filtered
         double errorThreshold = Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold()));
 
-        Map<Mutect2Filter, List<Double>>  alleleProbsByFilter = errorProbabilities.getAlleleProbabilitiesByFilter();
-        Map<Boolean, List<Mutect2Filter>> groups =
-                alleleProbsByFilter.keySet().stream().collect(Collectors.partitioningBy(f -> f.getClass().isInstance(Mutect2VariantFilter.class)));
-        List<Mutect2Filter> variantFilters = groups.get(Boolean.TRUE);
-        List<Mutect2Filter> alleleFilters = groups.get(Boolean.FALSE);
-
         Map<String, Double> siteFiltersWithErrorProb = new LinkedHashMap<>();
 
         // apply allele specific filters
         List<Iterator<String>> ASFilters =
-                alleleFilters.stream()
-                        .filter(aFilter -> !alleleProbsByFilter.get(aFilter).isEmpty())
-                        .map(aFilter -> addFilterStrings(alleleProbsByFilter.get(aFilter), siteFiltersWithErrorProb, errorThreshold, aFilter.filterName())).collect(Collectors.toList());
+                errorProbabilities.getProbabilitiesForAlleleFilters().entrySet().stream()
+                        .filter(entry -> !entry.getValue().isEmpty())
+                        .map(entry -> addFilterStrings(entry.getValue(), siteFiltersWithErrorProb, errorThreshold, entry.getKey().filterName())).collect(Collectors.toList());
 
         List<String> orderedASFilterStrings = vc.getAlleles().stream().map(allele -> allele.isReference() || allele.isSymbolic() ?
                 VCFConstants.EMPTY_INFO_FIELD : getMergedFilterStringForAllele(ASFilters)).collect(Collectors.toList());
@@ -204,23 +198,18 @@ public class Mutect2FilteringEngine {
 
 
         // compute site-only filters
-        for (final Mutect2Filter vFilter: variantFilters) {
-            final List<Double> filterProbabilities = alleleProbsByFilter.get(vFilter);
-            if (filterProbabilities == null || filterProbabilities.isEmpty()) continue;
+        errorProbabilities.getProbabilitiesForVariantFilters().entrySet().stream()
+                .forEach(entry -> {
+                    entry.getKey().phredScaledPosteriorAnnotationName().ifPresent(annotation -> {
+                        if (entry.getKey().requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
+                            vcb.attribute(annotation, QualityUtils.errorProbToQual(entry.getValue()));
+                        }
+                    });
+                    if (entry.getValue() > errorThreshold) {
+                        siteFiltersWithErrorProb.put(entry.getKey().filterName(), entry.getValue());
+                    }
 
-            // should we check to see if all probs are the same? they should be for variant filters
-            double errorProbability = filterProbabilities.get(0);
-
-            vFilter.phredScaledPosteriorAnnotationName().ifPresent(annotation -> {
-                if (vFilter.requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
-                    vcb.attribute(annotation, QualityUtils.errorProbToQual(errorProbability));
-                }
-            });
-
-            if (errorProbability > errorThreshold) {
-                siteFiltersWithErrorProb.put(vFilter.filterName(), errorProbability);
-            }
-        }
+                });
 
         // TO reviewers - should there be a flag where this is skipped and all filters are in the output vcf?
         // otherwise things may seem erroneous. and should we apply this type of limit on the allele specific filters too?

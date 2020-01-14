@@ -19,18 +19,16 @@ public final class ErrorProbabilities {
 
     public ErrorProbabilities(final List<Mutect2Filter> filters, final VariantContext vc, final Mutect2FilteringEngine filteringEngine, final ReferenceContext referenceContext) {
         numAltAlleles = vc.getAlternateAlleles().size();
-//        EnumMap<ErrorType, List<Mutect2Filter>> filterByType = filters.stream()
-//                .collect(groupingBy(Mutect2Filter::errorType, () -> new EnumMap<>(ErrorType.class), toList()));
-        alleleProbabilitiesByFilter = filters.stream().collect(toMap(
-                Function.identity(),
-                f -> f.errorProbabilities(vc, filteringEngine, referenceContext),
-                (a,b) -> a, LinkedHashMap::new));
+        alleleProbabilitiesByFilter = filters.stream()
+                .collect(toMap(
+                        Function.identity(),
+                        f -> f.errorProbabilities(vc, filteringEngine, referenceContext),
+                        (a, b) -> a, LinkedHashMap::new))
+                // remove filters that were not applied. i.e. returned empty list
+                .entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
+                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
         LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
-//        probabilitiesByAllelesForEachFilter = filterByType.entrySet().stream().collect(Collectors.toMap(
-//                Map.Entry::getKey,
-//                entry -> entry.getValue().stream().map(f -> f.errorProbabilities(vc, filteringEngine, referenceContext)).collect(Collectors.toList()),
-//                (a,b) -> a, LinkedHashMap::new));
         probabilitiesByAllelesForEachFilter.replaceAll((k, v) -> ErrorProbabilities.transpose(v));
 
         probabilitiesByTypeAndAllele = probabilitiesByAllelesForEachFilter.entrySet().stream().collect(toMap(
@@ -49,7 +47,25 @@ public final class ErrorProbabilities {
     public List<Double> getCombinedErrorProbabilities() { return combinedErrorProbabilitiesByAllele; }
     public List<Double> getTechnicalArtifactProbabilities() { return probabilitiesByTypeAndAllele.get(ErrorType.ARTIFACT); }
     public List<Double> getNonSomaticProbabilities() { return probabilitiesByTypeAndAllele.get(ErrorType.NON_SOMATIC); }
-    public Map<Mutect2Filter, List<Double>> getAlleleProbabilitiesByFilter() { return alleleProbabilitiesByFilter; }
+    public Map<Mutect2Filter, List<Double>> getProbabilitiesByFilter() { return alleleProbabilitiesByFilter; }
+
+    public Map<Mutect2Filter, List<Double>> getProbabilitiesForAlleleFilters() {
+        return getPartitionedProbabilitiesByFilter(false);
+    }
+
+    public Map<Mutect2Filter, Double> getProbabilitiesForVariantFilters() {
+        return getPartitionedProbabilitiesByFilter(false).entrySet().stream()
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                .collect(toMap(entry -> entry.getKey(), entry -> entry.getValue().get(0)));
+    }
+
+    private Map<Mutect2Filter, List<Double>> getPartitionedProbabilitiesByFilter(boolean variantOnly) {
+        Map<Boolean, LinkedHashMap<Mutect2Filter, List<Double>>> groups =
+                alleleProbabilitiesByFilter.entrySet().stream().collect(Collectors.partitioningBy(
+                        entry -> entry.getKey().getClass().isInstance(Mutect2VariantFilter.class),
+                        toMap(Map.Entry::getKey, Map.Entry::getValue, (a,b) -> a, LinkedHashMap::new)));
+        return groups.get(variantOnly);
+    }
 
     // TODO would this be useful in a util class somewhere?
     private static <T> List<List<T>> transpose(List<List<T>> list) {
