@@ -485,6 +485,106 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         Assert.assertNotNull(startAlt);
     }
 
+    @Test
+    public void testJunctionTreeErrorCorreciton() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
+        final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
+        // This path has an undersupported edge that gets pruned, we want to assert that we can recover the proper junction tree weights regardless
+        final String unSupportedAlt = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"C"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        // Only provide a single instance of the path so that its middle C variant gets pruned
+        assembler.addSequence("anonymous", getBytes(unSupportedAlt), false);
+        assembler.buildGraphIfNecessary();
+        new LowWeightChainPruner<MultiDeBruijnVertex, MultiSampleEdge>(2).pruneLowWeightChains(assembler);
+        assembler.generateJunctionTrees();
+
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> bestPaths =
+                new JunctionTreeKBestHaplotypeFinder<>(assembler,assembler.getReferenceSourceVertex(),assembler.getReferenceSinkVertex(), 0, false).findBestHaplotypes(10);
+
+        Assert.assertEquals(bestPaths.size(),2);
+        Assert.assertEquals(new String(bestPaths.get(0).getBases()), supportedAlt);
+        Assert.assertEquals(new String(bestPaths.get(1).getBases()), "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT");
+    }
+
+    @Test
+    public void testJunctionTreeErrorCorrecitonUnrecoverableWithInsertion() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
+        final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
+        // This path has an undersupported edge that gets pruned, we want to assert that we can recover the proper junction tree weights regardless
+        final String unSupportedAlt = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"CAAT"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        // Only provide a single instance of the path so that its middle C variant gets pruned
+        assembler.addSequence("anonymous", getBytes(unSupportedAlt), false);
+        assembler.buildGraphIfNecessary();
+        new LowWeightChainPruner<MultiDeBruijnVertex, MultiSampleEdge>(2).pruneLowWeightChains(assembler);
+        assembler.generateJunctionTrees();
+
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> bestPaths =
+                new JunctionTreeKBestHaplotypeFinder<>(assembler,assembler.getReferenceSourceVertex(),assembler.getReferenceSinkVertex(), 0, false).findBestHaplotypes(10);
+
+        // We only see the supported alt path because the unsupported alt path is never recovered
+        Assert.assertEquals(bestPaths.size(),1);
+        Assert.assertEquals(new String(bestPaths.get(0).getBases()), supportedAlt);
+    }
+
+    @Test
+    public void testJunctionTreeErrorCorrecitonKmerSizeDistanceAllowance() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
+        final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCCTTTTTT"+"A"+"TTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"A"+"TTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
+        // This path has two unsupported edges which should be pruned, however they are more than kmer size apart so the junction tree code should still work to recover the connectivity
+        final String unSupportedAlt = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"G"+"TTTTTGGGGGGG"+"T"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        // Only provide a single instance of the path so that its middle C variant gets pruned
+        assembler.addSequence("anonymous", getBytes(unSupportedAlt), false);
+        assembler.buildGraphIfNecessary();
+        new LowWeightChainPruner<MultiDeBruijnVertex, MultiSampleEdge>(2).pruneLowWeightChains(assembler);
+        assembler.generateJunctionTrees();
+
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> bestPaths =
+                new JunctionTreeKBestHaplotypeFinder<>(assembler,assembler.getReferenceSourceVertex(),assembler.getReferenceSinkVertex(), 0, false).findBestHaplotypes(10);
+
+        Assert.assertEquals(bestPaths.size(),2);
+        Assert.assertEquals(new String(bestPaths.get(0).getBases()), supportedAlt);
+        Assert.assertEquals(new String(bestPaths.get(1).getBases()), "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"A"+"TTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT");
+    }
+
+    @Test
+    public void testJuncitonTreeErrorCorrectionFailingIfWithinKmerSizeForConsistencySake() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
+        final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCCTTTTTT"+"A"+"TTTTGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"A"+"TTTTGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
+        // This path has two unsupported edges which should be pruned, however they are less than a kmer size apart and should result in the path being unable to find
+        final String unSupportedAlt = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"G"+"TTTTGGGG"+"T"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt), false);
+        // Only provide a single instance of the path so that its middle C variant gets pruned
+        assembler.addSequence("anonymous", getBytes(unSupportedAlt), false);
+        assembler.buildGraphIfNecessary();
+        new LowWeightChainPruner<MultiDeBruijnVertex, MultiSampleEdge>(2).pruneLowWeightChains(assembler);
+        assembler.generateJunctionTrees();
+
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> bestPaths =
+                new JunctionTreeKBestHaplotypeFinder<>(assembler,assembler.getReferenceSourceVertex(),assembler.getReferenceSinkVertex(), 0, false).findBestHaplotypes(10);
+
+        // We only see the supported alt path because the unsupported alt path is never recovered
+        Assert.assertEquals(bestPaths.size(),1);
+        Assert.assertEquals(new String(bestPaths.get(0).getBases()), supportedAlt);
+    }
+
     @Test(enabled = ! DEBUG)
     public void testNonUniqueMiddle() {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(3);
