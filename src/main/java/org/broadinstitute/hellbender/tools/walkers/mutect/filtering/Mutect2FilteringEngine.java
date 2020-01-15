@@ -279,7 +279,7 @@ public class Mutect2FilteringEngine {
         filters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
         filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
         filters.add(new StrandArtifactFilter());  // convert
-        filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate)); // test
+        filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
         filters.add(new StrictStrandBiasFilter(MTFAC.minReadsOnEachStrand));  // convert
         filters.add(new ReadPositionFilter(MTFAC.minMedianReadPosition));
         filters.add(new MinAlleleFractionFilter(MTFAC.minAf));
@@ -290,7 +290,7 @@ public class Mutect2FilteringEngine {
         filters.add(new NormalArtifactFilter(MTFAC.normalPileupPValueThreshold));
         filters.add(new NRatioFilter(MTFAC.nRatio));
 
-        // filters that don't apply to specific alleles
+        // filters that don't apply to specific alleles but can still be converted
         filters.add(new PanelOfNormalsFilter());
 
         if (!MTFAC.readOrientationPriorTarGzs.isEmpty()) {

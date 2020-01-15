@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQuality;
-import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
-import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
-import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -211,6 +207,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new FragmentLength().getDescriptions().get(0));
         addInfoLine(new MappingQuality().getDescriptions().get(0));
         addInfoLine(new ReadPosition().getDescriptions().get(0));
+        addInfoLine(new AS_StrandBiasMutectAnnotation().getDescriptions().get(0));
         addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
