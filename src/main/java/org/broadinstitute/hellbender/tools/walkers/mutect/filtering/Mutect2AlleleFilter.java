@@ -57,5 +57,6 @@ public abstract class Mutect2AlleleFilter<T> extends Mutect2Filter {
                 Collections.<Double>emptyList();
     }
 
+    // returning an empty list means filter is not evaluated
     protected abstract List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
 }
