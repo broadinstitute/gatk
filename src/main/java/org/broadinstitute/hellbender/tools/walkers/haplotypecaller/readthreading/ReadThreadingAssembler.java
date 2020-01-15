@@ -176,51 +176,48 @@ public final class ReadThreadingAssembler {
                         nonRefRTGraphs.add(assembledResult.getThreadingGraph());
                     }
 
-                    if (graphHaplotypeHistogramPath != null) {
-                        kmersUsedHistogram.add((double) assembledResult.getKmerSize());
-                    }
-
                     if (generateSeqGraph) {
                         findBestPathForSingleGraph(assembledResult, refHaplotype, refLoc, activeRegionExtendedLocation, aligner);
                     } else {
                         findBestPathForSingleGraph(assembledResult, refHaplotype, refLoc, activeRegionExtendedLocation, aligner);
                     }
 
-                    savedAssemblyResults.add(assembledResult);
+//                    savedAssemblyResults.add(assembledResult);
 
                     //TODO LOGIC PLAN HERE - we want to check if we have a trustworthy graph (i.e. no badly assembled haplotypes) if we do, emit it.
                     //TODO                 - but if we failed to assemble due to excessive looping or did have badly assembled haplotypes then we expand kmer size.
                     //TODO                 - If we get no variation
 
                     // if asssembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
-                    if (! savedAssemblyResults.get(savedAssemblyResults.size() - 1).getHaplotypeList().isEmpty()) {
+                    if (!assembledResult.getHaplotypeList().isEmpty()) {
                         // we have found our workable kmer size so lets add the results and finish
-                        if (!assembledResult.isContainsSuspectHaplotypes()) {
-                            for (Haplotype h : assembledResult.getHaplotypeList()) {
-                                resultSet.add(h, assembledResult);
-                            }
-                            hasAdequatelyAssembledGraph = true;
+                        for (Haplotype h : assembledResult.getHaplotypeList()) {
+                            resultSet.add(h, assembledResult);
                         }
+                        hasAdequatelyAssembledGraph = true;
                     }
 
+                    if (graphHaplotypeHistogramPath != null) {
+                        kmersUsedHistogram.add((double) assembledResult.getKmerSize());
+                    }
                 }
             }
         }
 
 
-        // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
-        if (!hasAdequatelyAssembledGraph) {
-            // search for the last haplotype set that had any results, if none are found just return me
-            // In this case we prefer the last meaningful kmer size if possible
-            for (int i = savedAssemblyResults.size() - 1; i > 0; i --) {
-                if (savedAssemblyResults.get(i).getHaplotypeList().size() > 1) {
-                    for (Haplotype h : savedAssemblyResults.get(i).getHaplotypeList()) {
-                        resultSet.add(h, savedAssemblyResults.get(i));
-                    }
-                    break;
-                }
-            }
-        }
+//        // This indicates that we have thrown everything away... we should go back and check that we weren't too conservative about assembly results that might otherwise be good
+//        if (!hasAdequatelyAssembledGraph) {
+//            // search for the last haplotype set that had any results, if none are found just return me
+//            // In this case we prefer the last meaningful kmer size if possible
+//            for (int i = savedAssemblyResults.size() - 1; i > 0; i --) {
+//                if (savedAssemblyResults.get(i).getHaplotypeList().size() > 1) {
+//                    for (Haplotype h : savedAssemblyResults.get(i).getHaplotypeList()) {
+//                        resultSet.add(h, savedAssemblyResults.get(i));
+//                    }
+//                    break;
+//                }
+//            }
+//        }
 
 
         // TODO figure out how to stop ourselves from accidentally assembling evergy graph when nothing whatsoever is found
@@ -279,9 +276,9 @@ public final class ReadThreadingAssembler {
                         .findBestHaplotypes(numBestHaplotypesPerGraph)) {
             final Haplotype h = kBestHaplotype.haplotype();
             // TODO for now this seems like the solution, perhaps in the future it will be to excise the haplotype completely)
-            if (kBestHaplotype instanceof JTBestHaplotype && ((JTBestHaplotype<V, E>) kBestHaplotype).isWasPoorlyRecovered()) {
-                assemblyResult.setContainsSuspectHaplotypes(true);
-            }
+//            if (kBestHaplotype instanceof JTBestHaplotype && ((JTBestHaplotype<V, E>) kBestHaplotype).isWasPoorlyRecovered()) {
+//                assemblyResult.setContainsSuspectHaplotypes(true);
+//            }
 
             if( !returnHaplotypes.contains(h) ) {
                 // TODO this score seems to be irrelevant at this point...
@@ -321,6 +318,10 @@ public final class ReadThreadingAssembler {
         // HERE we want to preserve the signal that assembly failed completely so in this case we don't add anything to the empty list
         if (!returnHaplotypes.isEmpty() && !returnHaplotypes.contains(refHaplotype)) {
             returnHaplotypes.add(refHaplotype);
+        } else {
+            if (returnHaplotypes.isEmpty()) {
+                System.out.println("failedstate");
+            }
         }
 
         assemblyResult.setHaplotypeList(returnHaplotypes);
