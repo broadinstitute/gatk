@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -45,7 +47,7 @@ import java.util.function.Predicate;
  * <ul>
  *     <li>contig</li>
  *     <li>clipping position</li>
- *     <li>direction: either LEFT or RIGHT depending on whether the reads were clipped on the left or right side</li>
+ *     <li>direction: side of the read that was clipped (either "left" or "right")</li>
  *     <li>count: the number of reads clipped at this location in this direction</li>
  *     <li>sample name</li>
  * </ul>
@@ -59,23 +61,31 @@ import java.util.function.Predicate;
 )
 public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
-    @Argument(shortName = "p", fullName = "pe-file", doc = "Output file for paired end evidence", optional=false)
+    public static final String PAIRED_END_FILE_ARGUMENT_SHORT_NAME = "PE";
+    public static final String PAIRED_END_FILE_ARGUMENT_LONG_NAME = "pe-file";
+    public static final String SPLIT_READ_FILE_ARGUMENT_SHORT_NAME = "SR";
+    public static final String SPLIT_READ_FILE_ARGUMENT_LONG_NAME = "sr-file";
+    public static final String SAMPLE_NAME_ARGUMENT_LONG_NAME = "sample-name";
+
+    @Argument(shortName = PAIRED_END_FILE_ARGUMENT_SHORT_NAME, fullName = PAIRED_END_FILE_ARGUMENT_LONG_NAME, doc = "Output file for paired end evidence", optional=false)
     public String peFile;
 
-    @Argument(shortName = "s", fullName = "sr-file", doc = "Output file for split read evidence", optional=false)
+    @Argument(shortName = SPLIT_READ_FILE_ARGUMENT_SHORT_NAME, fullName = SPLIT_READ_FILE_ARGUMENT_LONG_NAME, doc = "Output file for split read evidence", optional=false)
     public String srFile;
 
-    @Argument(fullName = "sample-name", doc = "Sample name")
+    @Argument(fullName = SAMPLE_NAME_ARGUMENT_LONG_NAME, doc = "Sample name")
     String sampleName = null;
 
-    Set<String> observedDiscordantNames = new HashSet<>();
+    final Set<String> observedDiscordantNames = new HashSet<>();
+    final PriorityQueue<SplitPos> splitPosBuffer = new PriorityQueue<>(new SplitPosComparator());
+    final List<DiscordantRead> discordantPairs = new ArrayList<>();
+
     int currentDiscordantPosition = -1;
     String currentChrom = null;
+
     private OutputStreamWriter peWriter;
     private OutputStreamWriter srWriter;
 
-    PriorityQueue<SplitPos> splitPosBuffer;
-    List<DiscordantRead> discordantPairs;
     private SAMSequenceDictionary sequenceDictionary;
 
     @Override
@@ -108,24 +118,21 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             throw new UserException("Could not open " + srFile);
         }
 
-        splitPosBuffer = new PriorityQueue<>(new SplitPosComparator());
-
-        discordantPairs = new ArrayList<>();
-
         sequenceDictionary = getBestAvailableSequenceDictionary();
     }
 
-    public boolean isExcluded(final GATKRead read) {
-        return read.isUnmapped() || read.mateIsUnmapped() || read.isSecondaryAlignment() || read.isDuplicate() || read.isSupplementaryAlignment();
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
+        readFilters.add(ReadFilterLibrary.MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER);
+        readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        readFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
+        readFilters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
+        return readFilters;
     }
-
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        if (isExcluded(read)) {
-            return;
-        }
-
         if (isSoftClipped(read)) {
             countSplitRead(read, splitPosBuffer, srWriter);
         }
@@ -172,13 +179,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     private void flushDiscordantReadPairs() {
-        final Comparator<DiscordantRead> discReadComparator =
-                Comparator.comparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
-                        .thenComparing(DiscordantRead::getStart)
-                        .thenComparing(DiscordantRead::isReadReverseStrand)
-                        .thenComparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
-                        .thenComparing(DiscordantRead::getMateStart)
-                        .thenComparing(DiscordantRead::isMateReverseStrand);
+        final Comparator<DiscordantRead> discReadComparator = new DiscordantReadComparator(sequenceDictionary);
 
         discordantPairs.sort(discReadComparator);
         discordantPairs.forEach(this::writeDiscordantPair);
@@ -198,8 +199,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     /**
-     * Adds read information to the counts in splitCounts.
-     * @return the new prevClippedReadEndPos after counting this read, which is the rightmost aligned position of the read
+     * Adds split read information about the current read to the counts in splitCounts. Flushes split read counts to
+     * srWriter if necessary.
      */
     @VisibleForTesting
     public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final OutputStreamWriter srWriter) {
@@ -429,6 +430,26 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
             } else {
                 return o1.direction.compareTo(o2.direction);
             }
+        }
+    }
+
+    @VisibleForTesting final static class DiscordantReadComparator implements Comparator<DiscordantRead> {
+
+        private final Comparator<DiscordantRead> internalComparator;
+
+        public DiscordantReadComparator(final SAMSequenceDictionary sequenceDictionary) {
+            internalComparator = Comparator.comparing((DiscordantRead r) -> sequenceDictionary.getSequenceIndex(r.getContig()))
+                    .thenComparing(DiscordantRead::getStart)
+                    .thenComparing(DiscordantRead::isReadReverseStrand)
+                    .thenComparing((DiscordantRead r) -> sequenceDictionary.getSequenceIndex(r.getMateContig()))
+                    .thenComparing(DiscordantRead::getMateStart)
+                    .thenComparing(DiscordantRead::isMateReverseStrand);
+
+        }
+
+        @Override
+        public int compare(final DiscordantRead o1, final DiscordantRead o2) {
+            return internalComparator.compare(o1, o2);
         }
     }
 }
