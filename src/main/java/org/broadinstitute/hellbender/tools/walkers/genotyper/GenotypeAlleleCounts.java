@@ -371,13 +371,12 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
             return "";
         }
         final StringBuilder sb = new StringBuilder(distinctAlleleCount * 3);
-        for (int i = 0; i < distinctAlleleCount; i += 2) {
+        for (int i = 0; i < distinctAlleleCount * 2; i += 2) {
             final int alleleIndex = sortedAlleleCounts[i];
             final int alleleCount = sortedAlleleCounts[i + 1];
             for (int j = 0; j < alleleCount; j++) {
                 sb.append(alleleIndex).append('/');
             }
-
         }
         sb.setLength(sb.length() - 1);
         return sb.toString();

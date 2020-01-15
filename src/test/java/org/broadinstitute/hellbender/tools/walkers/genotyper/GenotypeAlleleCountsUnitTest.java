@@ -7,10 +7,15 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
- * Test {@link org.broadinstitute.gatk.tools.walkers.genotyper.GenotypeAlleleCounts}
+ * Test {@link org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts}
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -413,4 +418,22 @@ public final class GenotypeAlleleCountsUnitTest {
         return result;
     }
 
+    @DataProvider
+    public Object[][] genotypeAlleleCountDataWithToStringOutput() {
+        return new Object[][]{
+                new Object[]{1, new String[]{"0", "1", "2"}},
+                new Object[]{2, new String[]{"0/0", "0/1", "1/1", "0/2", "1/2", "2/2"}},
+                new Object[]{3, new String[]{"0/0/0", "0/0/1", "0/1/1","1/1/1","0/0/2","0/1/2","1/1/2","0/2/2","1/2/2","2/2/2"}}};
+    }
+
+    @Test(dataProvider = "genotypeAlleleCountDataWithToStringOutput")
+    public void testToString(final int ploidy, final String[] expectedtoStrings) {
+        GenotypeAlleleCounts current = GenotypeAlleleCounts.first(ploidy);
+        int i = 0;
+        do {
+            Assert.assertEquals(current.toString(), expectedtoStrings[i],String.format("genotype index: %d",i));
+            i++;
+            current = current.next();
+        } while (i < expectedtoStrings.length);
+    }
 }
