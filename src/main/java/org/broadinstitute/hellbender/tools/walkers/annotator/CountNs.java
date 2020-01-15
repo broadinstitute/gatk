@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -53,8 +54,21 @@ public class CountNs extends InfoFieldAnnotation {
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.N_COUNT_KEY); }
 
-    private Boolean doesReadHaveN(final GATKRead read, final VariantContext vc) {
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        return ( offset != ReadUtils.CLIPPING_GOAL_NOT_REACHED && !AlignmentUtils.isInsideDeletion(read.getCigar(), offset) && read.getBase(offset) == 'N');
+    @VisibleForTesting
+    static Boolean doesReadHaveN(final GATKRead read, final VariantContext vc) {
+
+        if (vc.getStart() < read.getStart() || read.getEnd() < vc.getStart()) {
+            return false;
+        }
+
+        final Pair<Integer, Boolean> offsetAndInsideDeletion = ReadUtils.getReadCoordinateForReferenceCoordinate(read, vc.getStart(), true);
+
+        if (offsetAndInsideDeletion.getRight()) {
+            return false;
+        } else {
+            final int offset = offsetAndInsideDeletion.getLeft();
+            return !(offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || offset < 0 || offset >= read.getLength() || AlignmentUtils.isInsideDeletion(read.getCigar(), offset))
+                    && read.getBase(offset) == 'N';
+        }
     }
 }
