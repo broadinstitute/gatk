@@ -44,7 +44,6 @@ public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTes
             Assert.assertEquals(var.getContig(), segment.getContig());
             Assert.assertEquals(var.getStart(), segment.getStart());
             Assert.assertEquals(var.getEnd(), segment.getEnd());
-            Assert.assertEquals(var.getAlleles(), GermlineCNVSegmentVariantComposer.ALL_ALLELES);
 
             final Genotype gt = var.getGenotype(IntegerCopyNumberSegmentCollectionUnitTest.EXPECTED_SAMPLE_NAME);
 
@@ -62,6 +61,9 @@ public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTes
                 expectedAllele = GermlineCNVSegmentVariantComposer.REF_ALLELE;
             }
             Assert.assertEquals(actualAllele, expectedAllele);
+            Assert.assertTrue(var.getAlleles().size() == (expectedAllele.equals(GermlineCNVSegmentVariantComposer.REF_ALLELE) ? 1 : 2));
+            Assert.assertTrue(var.getAlleles().contains(Allele.REF_N));
+            Assert.assertTrue(var.getAlleles().contains(expectedAllele));
 
             /* assert correctness of quality metrics */
             Assert.assertEquals(
