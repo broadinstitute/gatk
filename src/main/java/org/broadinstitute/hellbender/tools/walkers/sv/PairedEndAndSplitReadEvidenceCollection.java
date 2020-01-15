@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -52,6 +53,7 @@ import java.util.function.Predicate;
  *     <li>sample name</li>
  * </ul>
  */
+@BetaFeature
 @CommandLineProgramProperties(
         summary = "Gathers paired-end and split read evidence files for use in the GATK-SV pipeline. Output files " +
                 "are a file containing the location of and orientation of read pairs marked as discordant, and a " +
