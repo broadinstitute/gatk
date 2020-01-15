@@ -379,6 +379,45 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         this.increaseCountsThroughBranches = increaseCountsThroughBranches;
     }
 
+
+
+    public void recoverDanglingBranches(int pruneFactor, int minDanglingBranchLength, boolean recoverAllDanglingBranches, SmithWatermanAligner aligner) {
+        Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
+        Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
+
+        if (!alreadyBuilt) {
+            throw new IllegalStateException("recoverDanglingTails requires the graph be already built");
+        }
+        int attempted = 0;
+        int nRecovered = 0;
+
+        PriorityQueue<DanglingPathCandidate>
+
+        for (final MultiDeBruijnVertex v : vertexSet()) {
+            if (outDegreeOf(v) == 0 && !isRefSink(v)) {
+                attempted++;
+                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+            } else if (inDegreeOf(v) == 0 && !isRefSource(v)) {
+                attempted++;
+                nRecovered += recoverDanglingHead(v, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+            }
+        }
+
+
+
+        ReadThreadingGraph.logger.debug(String.format("Recovered %d of %d dangling tails", nRecovered, attempted));
+    }
+
+    private class DanglingPathCandidate {
+        private TraversalDirection direction;
+        private boolean isForked;
+        private List<MultiSampleEdge> pathToMerge;
+
+
+
+
+    }
+
     /**
      * Try to recover dangling tails
      *

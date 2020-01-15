@@ -507,6 +507,8 @@ public final class ReadThreadingAssembler {
         if ( recoverDanglingBranches ) {
             rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
             rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+
+            rtgraph.recoverDanglingBranches(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
         }
 
         // remove all heading and trailing paths
