@@ -201,6 +201,9 @@ public final class ReadThreadingAssembler {
                         kmersUsedHistogram.add((double) assembledResult.getKmerSize());
                     }
                 }
+                if (!(assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION)) {
+                    hasAdequatelyAssembledGraph = true;
+                }
             }
         }
 
