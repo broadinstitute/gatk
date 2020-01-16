@@ -176,28 +176,6 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(enabled = false)
-    public void testHardClipLeadingInsertions() {
-        for (final Cigar cigar : cigarList) {
-            if (startsWithInsertion(cigar)) {
-                final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
-                final GATKRead clippedRead = ReadClipper.hardClipLeadingInsertions(read);
-
-                assertUnclippedLimits(read, clippedRead);        // Make sure limits haven't changed
-
-                int expectedLength = read.getLength() - leadingCigarElementLength(read.getCigar(), CigarOperator.INSERTION);
-                if (cigarHasElementsDifferentThanInsertionsAndHardClips(read.getCigar())) {
-                    expectedLength -= leadingCigarElementLength(CigarUtils.invertCigar(read.getCigar()), CigarOperator.INSERTION);
-                }
-                if (!clippedRead.isEmpty()) {
-                    Assert.assertEquals(expectedLength, clippedRead.getLength(), String.format("%s -> %s", read.getCigar().toString(), clippedRead.getCigar().toString()));  // check that everything else is still there
-                    Assert.assertFalse(startsWithInsertion(clippedRead.getCigar()));                                                                                   // check that the insertions are gone
-                } else
-                    Assert.assertEquals(expectedLength, 0, String.format("expected length: %d", expectedLength));                                                      // check that the read was expected to be fully clipped
-            }
-        }
-    }
-
     @Test
     public void testRevertSoftClippedBases() {
         for (final Cigar cigar : cigarList) {

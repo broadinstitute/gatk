@@ -179,7 +179,7 @@ public class ReadClipper {
     public static GATKRead hardClipByReferenceCoordinatesRightTail(final GATKRead read, final int refStart) {
         return (new ReadClipper(read)).clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
-    
+
     /**
      * Hard clips both tails of a read.
      *   Left tail goes from the beginning to the 'left' coordinate (inclusive)
@@ -373,32 +373,6 @@ public class ReadClipper {
     }
     public static GATKRead hardClipAdaptorSequence (final GATKRead read) {
         return new ReadClipper(read).hardClipAdaptorSequence();
-    }
-
-    /**
-     * Hard clips any leading insertions in the read. Only looks at the beginning of the read, not the end.
-     *
-     * @return a new read without leading insertions (Could return an empty, unmapped read)
-     */
-    private GATKRead hardClipLeadingInsertions() {
-        if (read.isEmpty()) {
-            return read;
-        }
-
-        for(final CigarElement cigarElement : read.getCigarElements()) {
-            if (cigarElement.getOperator() != CigarOperator.HARD_CLIP && cigarElement.getOperator() != CigarOperator.SOFT_CLIP &&
-                    cigarElement.getOperator() != CigarOperator.INSERTION) {
-                break;
-            }
-            else if (cigarElement.getOperator() == CigarOperator.INSERTION) {
-                this.addOp(new ClippingOp(0, cigarElement.getLength() - 1));
-            }
-        }
-        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
-    }
-
-    public static GATKRead hardClipLeadingInsertions(final GATKRead read) {
-        return (new ReadClipper(read)).hardClipLeadingInsertions();
     }
 
     /**
