@@ -124,10 +124,6 @@ public class ReadClipper {
      * @return the read with the clipping applied (Could be an empty, unmapped read if the clip removed all bases)
      */
     public GATKRead clipRead(final ClippingRepresentation algorithm) {
-        return clipRead(algorithm, true);
-    }
-
-    private GATKRead clipRead(final ClippingRepresentation algorithm, boolean runAsserts) {
         Utils.nonNull(algorithm);
         if (ops == null) {
             return getRead();
@@ -143,7 +139,7 @@ public class ReadClipper {
                     fixedOperation = new ClippingOp(op.start, readLength - 1);
                 }
 
-                clippedRead = fixedOperation.apply(algorithm, clippedRead, runAsserts);
+                clippedRead = fixedOperation.apply(algorithm, clippedRead);
             }
         }
         wasClipped = true;
@@ -163,10 +159,10 @@ public class ReadClipper {
      * @return a new read, without the left tail (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead hardClipByReferenceCoordinatesLeftTail(final int refStop) {
-        return clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
+        return clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES);
     }
     public static GATKRead hardClipByReferenceCoordinatesLeftTail(final GATKRead read, final int refStop) {
-        return (new ReadClipper(read)).clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
+        return (new ReadClipper(read)).clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES);
     }
 
     /**
@@ -177,10 +173,10 @@ public class ReadClipper {
      * @return a new read, without the right tail (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead hardClipByReferenceCoordinatesRightTail(final int refStart) {
-        return clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES, true);
+        return clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
     public static GATKRead hardClipByReferenceCoordinatesRightTail(final GATKRead read, final int refStart) {
-        return (new ReadClipper(read)).clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES, true);
+        return (new ReadClipper(read)).clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
 
     /**
@@ -217,7 +213,7 @@ public class ReadClipper {
         if (read.isEmpty() || left == right) {
             return ReadUtils.emptyRead(read);
         }
-        final GATKRead leftTailRead = clipByReferenceCoordinates(right, -1, ClippingRepresentation.HARDCLIP_BASES, true);
+        final GATKRead leftTailRead = clipByReferenceCoordinates(right, -1, ClippingRepresentation.HARDCLIP_BASES);
 
         // after clipping one tail, it is possible that the consequent hard clipping of adjacent deletions
         // make the left cut index no longer part of the read. In that case, clip the read entirely.
@@ -449,7 +445,7 @@ public class ReadClipper {
     }
 
     protected GATKRead hardClipByReferenceCoordinates(final int refStart, final int refStop) {
-        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
+        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.HARDCLIP_BASES);
     }
 
     /**
@@ -464,7 +460,7 @@ public class ReadClipper {
      * @param clippingOp clipping operation to be performed
      * @return a new read, without the clipped bases (May return empty, unclipped reads)
      */
-    protected GATKRead clipByReferenceCoordinates(final int refStart, final int refStop, ClippingRepresentation clippingOp, boolean runAsserts) {
+    protected GATKRead clipByReferenceCoordinates(final int refStart, final int refStop, ClippingRepresentation clippingOp) {
         if (read.isEmpty()) {
             return read;
         }
@@ -504,7 +500,7 @@ public class ReadClipper {
         }
         this.addOp(new ClippingOp(start, stop));
 
-        final GATKRead clippedRead = clipRead(clippingOp, runAsserts);
+        final GATKRead clippedRead = clipRead(clippingOp);
         this.ops = null;
         return clippedRead;
     }
@@ -583,7 +579,7 @@ public class ReadClipper {
      * @return a new read, with the soft clipped bases
      */
     protected GATKRead softClipByReferenceCoordinates(final int refStart, final int refStop) {
-        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.SOFTCLIP_BASES, true);
+        return clipByReferenceCoordinates(refStart, refStop, ClippingRepresentation.SOFTCLIP_BASES);
     }
 
 

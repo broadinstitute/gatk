@@ -36,19 +36,14 @@ public final class ClippingOp {
         return stop - start + 1;
     }
 
+
     /**
      * Clips the bases in read according to this operation's start and stop.  Uses the clipping
      * representation used is the one provided by algorithm argument.
-     *
-     * @param algorithm    clipping algorithm to use
+     *  @param algorithm    clipping algorithm to use
      * @param originalRead the read to be clipped
      */
-    public GATKRead apply(final ClippingRepresentation algorithm, final GATKRead originalRead) {
-        return apply(algorithm, originalRead, true);
-    }
-
-    // Warning, this method is intended for testing purposes
-    GATKRead apply(final ClippingRepresentation algorithm, final GATKRead originalRead, final boolean runAsserts) {
+    GATKRead apply(final ClippingRepresentation algorithm, final GATKRead originalRead) {
         switch (algorithm) {
             // important note:
             //   it's not safe to call read.getBases()[i] = 'N' or read.getBaseQualities()[i] = 0
@@ -78,7 +73,7 @@ public final class ClippingOp {
             }
 
             case SOFTCLIP_BASES: {
-                return applySoftClipBases(originalRead.copy(), runAsserts);
+                return applySoftClipBases(originalRead.copy());
             }
 
             case REVERT_SOFTCLIPPED_BASES: {
@@ -91,7 +86,7 @@ public final class ClippingOp {
         }
     }
 
-    private GATKRead applySoftClipBases(final GATKRead readCopied, final boolean runAsserts) {
+    private GATKRead applySoftClipBases(final GATKRead readCopied) {
         if (readCopied.isUnmapped()) {
             // we can't process unmapped reads
             throw new UserException("Read Clipper cannot soft clip unmapped reads");
@@ -117,7 +112,7 @@ public final class ClippingOp {
             scRight = start;
         }
 
-        final Cigar newCigar = softClip(oldCigar, scLeft, scRight, runAsserts);
+        final Cigar newCigar = softClip(oldCigar, scLeft, scRight);
         readCopied.setCigar(newCigar);
 
         final int newClippedStart = getNewAlignmentStartOffset(newCigar, oldCigar);
@@ -253,7 +248,7 @@ public final class ClippingOp {
     /**
      * Given a cigar string, soft clip up to startClipEnd and soft clip starting at endClipBegin
      */
-    private Cigar softClip(final Cigar __cigar, final int __startClipEnd, final int __endClipBegin, final boolean runAsserts) {
+    private Cigar softClip(final Cigar __cigar, final int __startClipEnd, final int __endClipBegin) {
         if (__endClipBegin <= __startClipEnd) {
             //whole thing should be soft clipped
             int cigarLength = 0;
@@ -263,9 +258,7 @@ public final class ClippingOp {
 
             final Cigar newCigar = new Cigar();
             newCigar.add(new CigarElement(cigarLength, CigarOperator.SOFT_CLIP));
-            if (runAsserts) {
-                assert newCigar.isValid(null, -1) == null;
-            }
+
             return newCigar;
         }
 
@@ -303,9 +296,6 @@ public final class ClippingOp {
                     newEnd = new CigarElement(e - __endClipBegin, CigarOperator.SOFT_CLIP);
                     midLength -= newEnd.getLength();
                 }
-                if (runAsserts) {
-                    assert midLength >= 0;
-                }
                 if (midLength > 0) {
                     newMid = new CigarElement(midLength, curElem.getOperator());
                 }
@@ -339,9 +329,7 @@ public final class ClippingOp {
         }
 
         final Cigar newCigar = new Cigar(finalNewElements);
-        if (runAsserts) {
-            assert newCigar.isValid(null, -1) == null;
-        }
+
         return newCigar;
     }
 
