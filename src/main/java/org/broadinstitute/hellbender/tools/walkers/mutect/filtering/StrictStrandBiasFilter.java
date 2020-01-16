@@ -22,19 +22,14 @@ public class StrictStrandBiasFilter extends HardAlleleFilter<List<Integer>> {
 
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        String sbStr = vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_SB_TABLE_KEY, null);
-        if (sbStr == null) {
-            return Collections.emptyList();
-        }
-
-        List<String> alleleSBs = AnnotationUtils.decodeAnyASListWithPrintDelim(sbStr);
-        if (alleleSBs.size() <= 1) {
+        List<String> sbStr = vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_SB_TABLE_KEY, null);
+        if (sbStr == null || sbStr.size() <= 1) {
             return Collections.emptyList();
         }
 
         // skip the reference
-        List<List<Integer>> sbs = alleleSBs.subList(1, alleleSBs.size()).stream().map(
-                asb -> AnnotationUtils.decodeAnyASList(asb).stream()
+        List<List<Integer>> sbs = sbStr.subList(1, sbStr.size()).stream().map(
+                asb -> AnnotationUtils.decodeAnyASListWithPrintDelim(asb).stream()
                         .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());
 
         return sbs.stream().map(altList -> altList.stream().anyMatch(x -> x == 0)).collect(Collectors.toList());

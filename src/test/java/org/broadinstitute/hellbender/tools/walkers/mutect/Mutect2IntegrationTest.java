@@ -75,7 +75,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File TEN_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/ten-pct-contamination.table");
 
     private static final File NA12878_MITO_BAM = new File(toolsTestDir, "mutect/mito/NA12878.bam");
-    private static final File NA12878_MITO_VCF = new File(toolsTestDir, "mutect/mito/unfiltered.vcf");
+    private static final File NA12878_MITO_VCF = new File(toolsTestDir, "mutect/mito/unfiltered-with-assb.vcf");
+//    private static final File NA12878_MITO_VCF = new File(toolsTestDir, "mutect/mito/unfiltered.vcf");
+//    private static final File NA12878_MITO_GVCF = new File(toolsTestDir, "mutect/mito/unfiltered-assb.g.vcf");
     private static final File NA12878_MITO_GVCF = new File(toolsTestDir, "mitochondria/NA12878.MT.g.vcf");
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
@@ -512,7 +514,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public Object[][] vcfsForFiltering() {
         return new Object[][]{
                 {NA12878_MITO_VCF, 0.5, 30, Collections.emptyList(), Arrays.asList(
-                        Collections.emptySet(),
+                        ImmutableSet.of(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
                         ImmutableSet.of(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME),
                         ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
                                 GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
@@ -521,10 +523,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Collections.emptySet(),
                         Collections.emptySet()),
                         Arrays.asList(
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // .|strict_stand
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, low_allele_frac, possible_numt
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, low_allele_frac, possible_numt|low_allele_frac, possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME  + ", " +  GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, low_allele_frac, possible_numt|strict_strand, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4)  // .|PASS
                         )},
