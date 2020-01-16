@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.spark.graphx.Edge;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KmerSearchableGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
@@ -19,6 +23,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.jgrapht.EdgeFactory;
+import sun.security.provider.certpath.Vertex;
 
 import java.io.File;
 import java.util.*;
@@ -380,10 +385,10 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     }
 
 
-
     public void recoverDanglingBranches(int pruneFactor, int minDanglingBranchLength, boolean recoverAllDanglingBranches, SmithWatermanAligner aligner) {
         Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
         Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
+        final int minPathLength = Math.max(1, minDanglingBranchLength);
 
         if (!alreadyBuilt) {
             throw new IllegalStateException("recoverDanglingTails requires the graph be already built");
@@ -391,31 +396,228 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         int attempted = 0;
         int nRecovered = 0;
 
-        PriorityQueue<DanglingPathCandidate>
+        //TODO this is important, this needs to be vetted as PriorityQueueu might or might not be determinisitc and we may want to use a different class
+        PriorityQueue<DanglingPathCandidate> danglingPathForkCandidates = new PriorityQueue<>();
+        Map<MultiDeBruijnVertex, List<DanglingPathCandidate>> mapOfRoots = new HashMap<>();
 
-        for (final MultiDeBruijnVertex v : vertexSet()) {
-            if (outDegreeOf(v) == 0 && !isRefSink(v)) {
+        for (final MultiDeBruijnVertex vertex : vertexSet()) {
+            // find potential dangling tales
+            if (outDegreeOf(vertex) == 0 && !isRefSink(vertex)) {
                 attempted++;
-                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
-            } else if (inDegreeOf(v) == 0 && !isRefSource(v)) {
+                Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> pathForCandidate = findPath(vertex, pruneFactor, v -> inDegreeOf(v) < 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
+                if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().isEmpty()) {
+                    if (pathForCandidate.getRight() != null) {
+                        removeEdge(pathForCandidate.getRight());
+                    }
+                } else {
+                    DanglingPathCandidate candidate = new DanglingPathCandidate(TraversalDirection.upwards,
+                            pathForCandidate.getLeft());
+                    mapOfRoots.merge(candidate.getRootVertex(), new ArrayList<>(Collections.singletonList(candidate)), (v1, v2) -> {
+                        v1.addAll(v2);
+                        return v1;
+                    });
+                    danglingPathForkCandidates.add(candidate);
+                }
+
+            // find potential dangling heads
+            } else if (inDegreeOf(vertex) == 0 && !isRefSource(vertex)) {
                 attempted++;
-                nRecovered += recoverDanglingHead(v, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+                Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> pathForCandidate = findPath(vertex, pruneFactor, v -> inDegreeOf(v) >= 2 || outDegreeOf(v) < 1, v -> inDegreeOf(v) > 1, this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
+
+                if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().isEmpty()) {
+                    if (pathForCandidate.getRight() != null) {
+                        removeEdge(pathForCandidate.getRight());
+                    }
+                    nRecovered += recoverDanglingHead(vertex, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+                } else {
+                    DanglingPathCandidate candidate = new DanglingPathCandidate(TraversalDirection.downwards,
+                            pathForCandidate.getLeft());
+                    mapOfRoots.merge(candidate.getRootVertex(), new ArrayList<>(Collections.singletonList(candidate)), (v1, v2) -> {
+                        v1.addAll(v2);
+                        return v1;
+                    });
+                    danglingPathForkCandidates.add(candidate);
+                }
             }
         }
 
+        // The loop of operation - pull from our priority queue
+        while (!danglingPathForkCandidates.isEmpty()) {
+            final DanglingPathCandidate nextCandidate = danglingPathForkCandidates.poll();
+            // Because pruning might have happened in a previous iteration of the queue, check that hte parameters for the danging candidate are still satisified
+            if ((nextCandidate.direction == TraversalDirection.upwards && outDegreeOf(nextCandidate.getRootVertex()) < 2) ||
+                    (nextCandidate.direction == TraversalDirection.downwards && inDegreeOf(nextCandidate.getRootVertex()) < 2)) {
 
+                DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
+                if (extended != null) {
+                    danglingPathForkCandidates.add(extended);
+                    mapOfRoots.merge(extended.getRootVertex(), new ArrayList<>(Collections.singletonList(extended)), (v1, v2) -> {
+                        v1.addAll(v2);
+                        return v1;
+                    });
+                }
+                continue;
+            }
+
+
+            // now that we necessarily have the root of ourselves after previous rounds of purning, attempt to reconcile with the reference
+            if (nextCandidate.isRootedInReference()) {
+                // the actual merging step, handle for both directions differently
+                if (nextCandidate.direction == TraversalDirection.upwards) {
+                    final DanglingChainMergeHelper danglingTailMergeResult = getDanglingTailPathCigar(aligner, nextCandidate.pathToMerge);
+                    // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
+                    if (danglingTailMergeResult == null || !cigarIsOkayToMerge(danglingTailMergeResult.cigar, false, true)) {
+                        continue;
+                    }
+                    // merge
+                    mergeDanglingTail(danglingTailMergeResult);
+                } else {
+                    // generate the CIGAR string from Smith-Waterman between the dangling tail and reference paths
+                    final DanglingChainMergeHelper danglingHeadMergeResult = getDanglingHeadPathCigar(aligner, nextCandidate.pathToMerge);
+
+                    // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
+                    if (danglingHeadMergeResult == null || !cigarIsOkayToMerge(danglingHeadMergeResult.cigar, true, false)) {
+                        continue;
+                    }
+
+                    // merge
+                    mergeDanglingHead(danglingHeadMergeResult);
+                }
+            } else {
+
+                // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
+                List<DanglingPathCandidate> neighbors = mapOfRoots.get(nextCandidate.getRootVertex())
+                        .stream()
+                        .filter(c -> c != nextCandidate
+                                && c.direction == nextCandidate.direction
+                                && c.getRootEdge() != nextCandidate.getRootEdge())
+                        .collect(Collectors.toList());
+
+                // if we have no neighbors one of two things is true, either there are higher coverage forks elsewhere in the queue to be handled, or we are dangling off of a variant branch that is not dangling
+
+                if (nextCandidate.pathToMerge.size() < minPathLength) {
+                    removeEdge(nextCandidate.getRootEdge());
+                    mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
+                    continue;
+                }
+
+                // This case corresponds to there either being a dangling end hanging off of a variant path or off of the reference.
+                if (neighbors.isEmpty()) {
+                    if (nextCandidate.direction == TraversalDirection.upwards) {
+                        final DanglingChainMergeHelper danglingTailMergeResult = getDanglingTailPathCigar(aligner, nextCandidate.pathToMerge);
+                        // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
+                        if (danglingTailMergeResult == null || !cigarIsOkayToMerge(danglingTailMergeResult.cigar, false, true)) {
+                            continue;
+                        }
+                        // merge
+                        mergeDanglingTail(danglingTailMergeResult);
+                    } else {
+                        // generate the CIGAR string from Smith-Waterman between the dangling tail and reference paths
+                        final DanglingChainMergeHelper danglingHeadMergeResult = getDanglingHeadPathCigar(aligner, nextCandidate.pathToMerge);
+
+                        // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
+                        if (danglingHeadMergeResult == null || !cigarIsOkayToMerge(danglingHeadMergeResult.cigar, true, false)) {
+                            continue;
+                        }
+
+                        // merge
+                        mergeDanglingHead(danglingHeadMergeResult);
+                    }
+                    // or we have neighbors, in which case evaluate
+                } else {
+                    // if there are multiple choices and one of them is higher weight but too short, choose that one.
+                    if (neighbors.stream().anyMatch(n -> n.maxWeight > nextCandidate.maxWeight && n.pathToMerge.size() < minPathLength)) {
+                        removeEdge(nextCandidate.getRootEdge());
+                        mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
+                    } else {// otherwise attempt to extend both
+                        DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
+                        if (extended != null) {
+                            danglingPathForkCandidates.add(extended);
+                            mapOfRoots.merge(extended.getRootVertex(), new ArrayList<>(Collections.singletonList(extended)), (v1, v2) -> {
+                                v1.addAll(v2);
+                                return v1;
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
         ReadThreadingGraph.logger.debug(String.format("Recovered %d of %d dangling tails", nRecovered, attempted));
     }
 
-    private class DanglingPathCandidate {
+    /**
+     * Helper method whos responsibility is to take a candidate path and extend its root vertex as the start of the dangling upstream code
+     *
+     * @param pruneFactor
+     * @param nextCandidate
+     * @return
+     */
+    private DanglingPathCandidate extendCandidateToNextJunctionPoint(final int pruneFactor, final DanglingPathCandidate nextCandidate) {
+        List<MultiDeBruijnVertex> pathForCandidate = nextCandidate.direction == TraversalDirection.upwards ?
+                findPath(nextCandidate.getRootVertex(), pruneFactor, v -> inDegreeOf(v) < 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, this::getHeaviestIncomingEdge, e -> getEdgeSource(e)).getLeft() :
+                findPath(nextCandidate.getRootVertex(), pruneFactor, v -> inDegreeOf(v) >= 2 || outDegreeOf(v) < 1, v -> inDegreeOf(v) > 1, this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e)).getLeft();
+        if (pathForCandidate != null && pathForCandidate.size() > 1) {
+            pathForCandidate.remove(nextCandidate.getRootVertex()); // we need to remove the root vertex here becuase its included in both paths we want to merge
+            pathForCandidate.addAll(nextCandidate.direction == TraversalDirection.upwards ? 0 : pathForCandidate.size() - 1 , nextCandidate.pathToMerge);
+            return new DanglingPathCandidate(TraversalDirection.upwards, pathForCandidate);
+        }
+        return null;
+    }
+
+    private int getMaxEdgeWeight(final List<MultiDeBruijnVertex> path, TraversalDirection direction) {
+        int maxEdgeWeight = 0;
+        for (int i = 1; i < path.size(); i++) {
+            maxEdgeWeight = Math.max(maxEdgeWeight, getEdge(path.get(i-1), path.get(i)).getPruningMultiplicity());
+        }
+
+        return maxEdgeWeight;
+    }
+
+
+    private class DanglingPathCandidate implements Comparable<DanglingPathCandidate> {
         private TraversalDirection direction;
-        private boolean isForked;
-        private List<MultiSampleEdge> pathToMerge;
+        private boolean expandWhenSeen;
+        private List<MultiDeBruijnVertex> pathToMerge;
+        private int maxWeight;
 
+        private DanglingPathCandidate(TraversalDirection direction, List<MultiDeBruijnVertex> path) {
+            this.direction = direction;
+            this.pathToMerge = path;
+            maxWeight = getMaxEdgeWeight(pathToMerge, direction);
+        }
 
+        private MultiDeBruijnVertex getRootVertex() {
+            return direction == TraversalDirection.upwards ? pathToMerge.get(0) : pathToMerge.get(pathToMerge.size() - 1);
+        }
 
+        @Override
+        public int compareTo(final DanglingPathCandidate other) {
+            int result = maxWeight - other.maxWeight;
+            if (result == 0) {
+                return pathToMerge.size() - other.pathToMerge.size();
+            }
+            return result;
+        }
 
+        private boolean isRootedInReference() {
+            switch (direction) {
+                case downwards:
+                    return hasIncidentRefEdge(getRootVertex());
+                default:
+                    return isReferenceNode(getRootVertex());
+            }
+
+        }
+
+        private MultiSampleEdge getRootEdge() {
+            switch (direction) {
+                case upwards:
+                    return getEdge(pathToMerge.get(0), pathToMerge.get(1));
+                default:
+                    return getEdge(pathToMerge.get(pathToMerge.size() - 2), pathToMerge.get(pathToMerge.size() - 1));
+            }
+        }
     }
 
     /**
@@ -626,7 +828,11 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         {
             return null;
         }
+        return getDanglingTailPathCigar(aligner, altPath);
 
+    }
+
+    private DanglingChainMergeHelper getDanglingTailPathCigar(SmithWatermanAligner aligner, List<MultiDeBruijnVertex> altPath) {
         // now get the reference path from the LCA
         final List<MultiDeBruijnVertex> refPath = getReferencePath(altPath.get(0), TraversalDirection.downwards, Optional.ofNullable(getHeaviestIncomingEdge(altPath.get(1))));
 
@@ -658,7 +864,11 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         {
             return null;
         }
+        return getDanglingHeadPathCigar(aligner, altPath);
 
+    }
+
+    private DanglingChainMergeHelper getDanglingHeadPathCigar(SmithWatermanAligner aligner, List<MultiDeBruijnVertex> altPath) {
         // now get the reference path from the LCA
         final List<MultiDeBruijnVertex> refPath = getReferencePath(altPath.get(0), TraversalDirection.upwards, Optional.empty());
 
@@ -682,8 +892,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * has an ancestor with multiple incoming edges before hitting the reference path
      */
     private List<MultiDeBruijnVertex> findPathUpwardsToLowestCommonAncestor(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
-        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2,   v -> outDegreeOf(v) > 1,                          v -> incomingEdgeOf(v),        e -> getEdgeSource(e))
-                              : findPath(vertex, pruneFactor, v -> hasIncidentRefEdge(v) || inDegreeOf(v) == 0, v -> outDegreeOf(v) > 1 && hasIncidentRefEdge(v), this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
+        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2,   v -> outDegreeOf(v) > 1,                          v -> incomingEdgeOf(v),        e -> getEdgeSource(e)).getLeft()
+                              : findPath(vertex, pruneFactor, v -> hasIncidentRefEdge(v) || inDegreeOf(v) == 0, v -> outDegreeOf(v) > 1 && hasIncidentRefEdge(v), this::getHeaviestIncomingEdge, e -> getEdgeSource(e)).getLeft();
     }
 
     private boolean hasIncidentRefEdge(final MultiDeBruijnVertex v) {
@@ -713,8 +923,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * has a descendant with multiple outgoing edges before hitting the reference path
      */
     private List<MultiDeBruijnVertex> findPathDownwardsToHighestCommonDescendantOfReference(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
-        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v),       e -> getEdgeTarget(e))
-                              : findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) == 0, v -> isReferenceNode(v), this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
+        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v),       e -> getEdgeTarget(e)).getLeft()
+                              : findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) == 0, v -> isReferenceNode(v), this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e)).getLeft();
     }
 
     private MultiSampleEdge getHeaviestOutgoingEdge(final MultiDeBruijnVertex v) {
@@ -732,28 +942,29 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * @param returnPath  test for whether to return a found path based on its terminal vertex
      * @param nextEdge    function on vertices returning the next edge in the path
      * @param nextNode    function of edges returning the next vertex in the path
-     * @return a path, if one satisfying all predicates is found, {@code null} otherwise
+     * @return a tuple with a path followed by an edge, if one satisfying all predicates is found, {@code null} otherwise
      */
-    private List<MultiDeBruijnVertex> findPath(final MultiDeBruijnVertex vertex, final int pruneFactor,
-                                               final Predicate<MultiDeBruijnVertex> done,
-                                               final Predicate<MultiDeBruijnVertex> returnPath,
-                                               final Function<MultiDeBruijnVertex, MultiSampleEdge> nextEdge,
-                                               final Function<MultiSampleEdge, MultiDeBruijnVertex> nextNode) {
+    private Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> findPath(final MultiDeBruijnVertex vertex, final int pruneFactor,
+                                                                      final Predicate<MultiDeBruijnVertex> done,
+                                                                      final Predicate<MultiDeBruijnVertex> returnPath,
+                                                                      final Function<MultiDeBruijnVertex, MultiSampleEdge> nextEdge,
+                                                                      final Function<MultiSampleEdge, MultiDeBruijnVertex> nextNode) {
         final LinkedList<MultiDeBruijnVertex> path = new LinkedList<>();
         final Set<MultiDeBruijnVertex> visitedNodes = new HashSet<>(); // This code is necessary to
+        MultiSampleEdge lastEdgeVisited = null;
 
         MultiDeBruijnVertex v = vertex;
         while (!done.test(v)) {
-            final MultiSampleEdge edge = nextEdge.apply(v);
+            lastEdgeVisited = nextEdge.apply(v);
             // if it has too low a weight, don't use it (or previous vertexes) for the path
-            if (edge.getPruningMultiplicity() < pruneFactor) {
+            if (lastEdgeVisited.getPruningMultiplicity() < pruneFactor) {
                 // save the previously visited notes to protect us from riding forever 'neath the streets of boston
                 visitedNodes.addAll(path);
                 path.clear();
             } else {
                 path.addFirst(v);
             }
-            v = nextNode.apply(edge);
+            v = nextNode.apply(lastEdgeVisited);
             // Check that we aren't stuck in a loop
             if (path.contains(v) || visitedNodes.contains(v)) {
                 System.err.println("Dangling End recovery killed because of a loop (findPath)");
@@ -762,7 +973,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
         path.addFirst(v);
 
-        return returnPath.test(v) ? path : null;
+        return Pair.of(returnPath.test(v) ? path : null, lastEdgeVisited);
     }
 
     /**

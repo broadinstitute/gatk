@@ -336,6 +336,99 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testForkedDanglingEndsWithCombinedMode() {
+
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonPrefix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String refEnd  = "GCTAGCTAATCG";
+        final String altEnd1 = "ACTAGCTAATCG";
+        final String altEnd2 = "ACTAGATAATCG";
+        final String ref = commonPrefix + refEnd;
+        final String alt1 = commonPrefix + altEnd1;
+        final String alt2 = commonPrefix + altEnd2;
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1a = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read1b = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2a = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final GATKRead read2b = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.addRead(read1a, header);
+        rtgraph.addRead(read2a, header);
+        rtgraph.addRead(read1b, header);
+        rtgraph.addRead(read2b, header);
+        rtgraph.buildGraphIfNecessary();
+
+        Assert.assertEquals(rtgraph.getSinks().size(), 3);
+
+        rtgraph.recoverDanglingBranches(1, 3, true,  SmithWatermanJavaAligner.getInstance());
+
+        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
+        seqGraph.simplifyGraph();
+
+        final List<String> paths = new GraphBasedKBestHaplotypeFinder<>(seqGraph).findBestHaplotypes().stream()
+                .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(paths.size(), 3);
+        Assert.assertEquals(paths, Arrays.asList(ref, alt1, alt2).stream().sorted().collect(Collectors.toList()));
+    }
+
+    @Test
+    public void testForkedDanglingEndsWithCombinedModeHeadsChoosingShortHigherWeightEdge() {
+
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonPrefix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String refEnd  = "GCTAGCTAATCG";
+        final String altEnd1 = "ACTAGCTAATCG";
+        final String altEnd2 = "ACTAGATA"; // note here that this is the shorter of the two forkign paths, it will however receive higher weight and ideally we will choose this path over the logner lower weight path
+        final String ref = commonPrefix + refEnd;
+        final String alt1 = commonPrefix + altEnd1;
+        final String alt2 = commonPrefix + altEnd2;
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1a = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read1b = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2a = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final GATKRead read2b = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final GATKRead read2c = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.addRead(read1a, header);
+        rtgraph.addRead(read2a, header);
+        rtgraph.addRead(read1b, header);
+        rtgraph.addRead(read2b, header);
+        rtgraph.addRead(read2c, header);
+        rtgraph.buildGraphIfNecessary();
+
+        Assert.assertEquals(rtgraph.getSinks().size(), 3);
+
+        rtgraph.recoverDanglingBranches(1, 5, true,  SmithWatermanJavaAligner.getInstance());
+
+        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
+        seqGraph.simplifyGraph();
+
+        final List<String> paths = new GraphBasedKBestHaplotypeFinder<>(seqGraph).findBestHaplotypes().stream()
+                .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(paths.size(), 2);
+        // We don't expect Alt1 in the tree because it should have been pruned
+        Assert.assertEquals(paths, Arrays.asList(ref, alt2).stream().sorted().collect(Collectors.toList()));
+    }
+
+    @Test
     public void testForkedDanglingEnds() {
 
         final int kmerSize = 15;
