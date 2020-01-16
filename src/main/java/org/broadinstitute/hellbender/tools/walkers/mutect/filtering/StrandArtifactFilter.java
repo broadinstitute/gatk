@@ -4,7 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -13,7 +15,7 @@ import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
 
-public class StrandArtifactFilter extends Mutect2VariantFilter {
+public class StrandArtifactFilter extends Mutect2AlleleFilter<Integer> {
     // beta prior on strand bias allele fraction
     private double INITIAL_ALPHA_STRAND = 1.0;
     private double INITIAL_BETA_STRAND = 20.0;
@@ -31,85 +33,103 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
 
     private static final double INITIAL_STRAND_ARTIFACT_PRIOR = 0.001;
 
-    private double strandArtifactPrior = INITIAL_STRAND_ARTIFACT_PRIOR;
+    private List<Double> alleleStrandArtifactPriors;
 
     private static final double ARTIFACT_PSEUDOCOUNT = 1;
 
     private static final double NON_ARTIFACT_PSEUDOCOUNT = 1000;
 
-    private final List<EStep> eSteps = new ArrayList<>();
+    private final List<List<EStep>> eStepsForAltAlleles = new ArrayList<>();
 
     @Override
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        final EStep probabilities = calculateArtifactProbabilities(vc, filteringEngine);
-        return probabilities.forwardArtifactResponsibility + probabilities.reverseArtifactResponsibility;
+    public List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        final List<EStep> alleleProbs = calculateArtifactProbabilities(vc, filteringEngine);
+        return alleleProbs.isEmpty() ? Collections.emptyList() :
+                alleleProbs.stream().map(probabilities -> probabilities.forwardArtifactResponsibility + probabilities.reverseArtifactResponsibility).collect(Collectors.toList());
     }
 
-    public EStep calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        // {fwd ref, rev ref, fwd alt, rev alt}
-        final int[] counts = filteringEngine.sumStrandCountsOverSamples(vc, true, false);
-
-        final int indelSize = Math.abs(vc.getReference().length() - vc.getAlternateAllele(0).length());
-        if (counts[2] + counts[3] == 0 || indelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
-            return new EStep(0, 0, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3]);
+    public List<EStep> calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+        // for each allele, forward and reverse count
+        List<List<Integer>> sbs = StrandBiasUtils.getSBsForAlleles(vc);
+        if (sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
+            return Collections.emptyList();
         }
 
+        if (alleleStrandArtifactPriors == null) {
+            alleleStrandArtifactPriors = Collections.nCopies(sbs.size()-1, INITIAL_STRAND_ARTIFACT_PRIOR);
+        }
 
-        return strandArtifactProbability(strandArtifactPrior, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3], indelSize);
+        final ListIterator<Integer> indelSizeIterator = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList()).listIterator();
+        final ListIterator<Double> priorIterator = alleleStrandArtifactPriors.listIterator();
+        int refFwd = sbs.get(0).get(0);
+        int refRev = sbs.get(0).get(1);
+        // skip the reference
+        List<List<Integer>> altSBs = sbs.subList(1, sbs.size());
 
+        return altSBs.stream().map(altSB -> {
+            final int altIndelSize = indelSizeIterator.next();
+            final double altPrior = priorIterator.next();
+            if (altSB.stream().mapToInt(Integer::intValue).sum() == 0 || altIndelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
+                return new EStep(0, 0, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1));
+            } else {
+                return new EStep(altPrior, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1), altIndelSize);
+            }
+        }).collect(Collectors.toList());
     }
 
     @Override
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) {
         if (requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
-            final EStep eStep = calculateArtifactProbabilities(vc, filteringEngine);
-            eSteps.add(eStep);
+            final ListIterator<EStep> eStepsIterator = calculateArtifactProbabilities(vc, filteringEngine).listIterator();
+            eStepsForAltAlleles.stream().forEach(step -> step.add(eStepsIterator.next()));
         }
     }
 
     @Override
     protected void clearAccumulatedData() {
-        eSteps.clear();
+        eStepsForAltAlleles.clear();
     }
 
     @Override
     protected void learnParameters() {
-        final List<EStep> potentialArtifacts = eSteps.stream()
-                .filter(eStep -> eStep.getArtifactProbability() > 0.1).collect(Collectors.toList());
-        final double totalArtifacts = potentialArtifacts.stream().mapToDouble(EStep::getArtifactProbability).sum();
-        final double totalNonArtifacts = eSteps.stream().mapToDouble(e -> 1 - e.getArtifactProbability()).sum();
-        strandArtifactPrior = (totalArtifacts + ARTIFACT_PSEUDOCOUNT) / (totalArtifacts + ARTIFACT_PSEUDOCOUNT + totalNonArtifacts + NON_ARTIFACT_PSEUDOCOUNT);
+        new IndexRange(0, eStepsForAltAlleles.size()).forEach(i -> {
+            List<EStep> alleleESteps = eStepsForAltAlleles.get(i);
+            final List<EStep> potentialArtifacts = alleleESteps.stream()
+                    .filter(eStep -> eStep.getArtifactProbability() > 0.1).collect(Collectors.toList());
+            final double totalArtifacts = potentialArtifacts.stream().mapToDouble(EStep::getArtifactProbability).sum();
+            final double totalNonArtifacts = alleleESteps.stream().mapToDouble(e -> 1 - e.getArtifactProbability()).sum();
+            alleleStrandArtifactPriors.set(i, (totalArtifacts + ARTIFACT_PSEUDOCOUNT) / (totalArtifacts + ARTIFACT_PSEUDOCOUNT + totalNonArtifacts + NON_ARTIFACT_PSEUDOCOUNT));
 
-
-        final double artifactAltCount = potentialArtifacts.stream()
-                .mapToDouble(e -> e.forwardArtifactResponsibility * e.forwardAltCount + e.reverseArtifactResponsibility * e.reverseAltCount)
-                .sum();
-
-        final double artifactDepth = potentialArtifacts.stream()
-                .mapToDouble(e -> e.forwardArtifactResponsibility * e.forwardCount + e.reverseArtifactResponsibility * e.reverseCount)
-                .sum();
-
-        final double artifactBetaMean = (artifactAltCount + INITIAL_ALPHA_STRAND) / (artifactDepth + INITIAL_ALPHA_STRAND + INITIAL_BETA_STRAND);
-
-        // We do the M step for the beta prior on the artifact allele fraction by brute force single-parameter optimization.
-        // By estimating the mean empirically as above we can fix mean = alpha / (alpha + beta), hence beta = (1/mean - 1) * alpha.
-        // This lets us do single-parameter optimization on alpha with beta/alpha fixed.
-        // brute force optimization is fairly cheap because the objective includes only calls that show some evidence of strand bias.
-        final DoubleUnaryOperator objective = alpha -> {
-            final double beta = (1 / artifactBetaMean - 1) * alpha;
-            return potentialArtifacts.stream()
-                    .mapToDouble( e -> e.getForwardArtifactResponsibility() * artifactStrandLogLikelihood(e.forwardCount, e.forwardAltCount, alpha, beta)
-                            + e.getReverseArtifactResponsibility() * artifactStrandLogLikelihood(e.reverseCount, e.reverseAltCount, alpha, beta))
+            final double artifactAltCount = potentialArtifacts.stream()
+                    .mapToDouble(e -> e.forwardArtifactResponsibility * e.forwardAltCount + e.reverseArtifactResponsibility * e.reverseAltCount)
                     .sum();
-        };
 
-        alphaStrand = OptimizationUtils.max(objective, 0.01, 100, INITIAL_ALPHA_STRAND, 0.01, 0.01, 100).getPoint();
-        betaStrand = (1/artifactBetaMean - 1)*alphaStrand;
-        // free up memory
-        eSteps.clear();
+            final double artifactDepth = potentialArtifacts.stream()
+                    .mapToDouble(e -> e.forwardArtifactResponsibility * e.forwardCount + e.reverseArtifactResponsibility * e.reverseCount)
+                    .sum();
+
+            final double artifactBetaMean = (artifactAltCount + INITIAL_ALPHA_STRAND) / (artifactDepth + INITIAL_ALPHA_STRAND + INITIAL_BETA_STRAND);
+
+            // We do the M step for the beta prior on the artifact allele fraction by brute force single-parameter optimization.
+            // By estimating the mean empirically as above we can fix mean = alpha / (alpha + beta), hence beta = (1/mean - 1) * alpha.
+            // This lets us do single-parameter optimization on alpha with beta/alpha fixed.
+            // brute force optimization is fairly cheap because the objective includes only calls that show some evidence of strand bias.
+            final DoubleUnaryOperator objective = alpha -> {
+                final double beta = (1 / artifactBetaMean - 1) * alpha;
+                return potentialArtifacts.stream()
+                        .mapToDouble( e -> e.getForwardArtifactResponsibility() * artifactStrandLogLikelihood(e.forwardCount, e.forwardAltCount, alpha, beta)
+                                + e.getReverseArtifactResponsibility() * artifactStrandLogLikelihood(e.reverseCount, e.reverseAltCount, alpha, beta))
+                        .sum();
+            };
+
+            alphaStrand = OptimizationUtils.max(objective, 0.01, 100, INITIAL_ALPHA_STRAND, 0.01, 0.01, 100).getPoint();
+            betaStrand = (1/artifactBetaMean - 1)*alphaStrand;
+            // free up memory
+            alleleESteps.clear();
+        });
     }
 
     @VisibleForTesting

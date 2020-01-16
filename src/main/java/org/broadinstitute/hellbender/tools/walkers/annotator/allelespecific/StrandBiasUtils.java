@@ -2,10 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class StrandBiasUtils {
     public static final int FORWARD = 0;
@@ -142,5 +146,14 @@ public class StrandBiasUtils {
     }
 
 
+    public static List<List<Integer>> getSBsForAlleles(VariantContext vc) {
+        List<String> sbStr = vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_SB_TABLE_KEY, null);
+        if (sbStr == null || sbStr.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return sbStr.stream().map(
+                asb -> AnnotationUtils.decodeAnyASListWithPrintDelim(asb).stream()
+                        .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());
 
+    }
 }

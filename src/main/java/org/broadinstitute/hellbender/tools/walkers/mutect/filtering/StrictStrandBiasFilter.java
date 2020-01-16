@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
@@ -22,18 +23,12 @@ public class StrictStrandBiasFilter extends HardAlleleFilter<List<Integer>> {
 
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        List<String> sbStr = vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_SB_TABLE_KEY, null);
-        if (sbStr == null || sbStr.size() <= 1) {
+        List<List<Integer>> sbs = StrandBiasUtils.getSBsForAlleles(vc);
+        if (sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
             return Collections.emptyList();
         }
-
         // skip the reference
-        List<List<Integer>> sbs = sbStr.subList(1, sbStr.size()).stream().map(
-                asb -> AnnotationUtils.decodeAnyASListWithPrintDelim(asb).stream()
-                        .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());
-
-        return sbs.stream().map(altList -> altList.stream().anyMatch(x -> x == 0)).collect(Collectors.toList());
-
+        return sbs.subList(1, sbs.size()).stream().map(altList -> altList.stream().anyMatch(x -> x == 0)).collect(Collectors.toList());
     }
 
     @Override
