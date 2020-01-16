@@ -476,4 +476,69 @@ public final class CigarUtilsUnitTest {
     public void testRevertSoftClips(final String original, final String expected) {
         Assert.assertEquals(CigarUtils.revertSoftClips(TextCigarCodec.decode(original)).toString(), expected);
     }
+
+    @DataProvider(name = "clip_cigar")
+    public Object[][] ClipCigar() {
+        return new Object[][] {
+                //simple cases
+                {"10M", 0, 5, "5S5M", "5H5M"},
+                {"10M", 5, 10, "5M5S", "5M5H"},
+                {"10H10M", 0, 5, "10H5S5M", "15H5M"},
+                {"10H10M", 5, 10, "10H5M5S", "10H5M5H"},
+                {"10M10H", 0, 5, "5S5M10H", "5H5M10H"},
+
+                // clipping into insertion
+                {"10M10I10M", 0, 5, "5S5M10I10M", "5H5M10I10M"},
+                {"10M10I10M", 0, 15, "15S5I10M", "15H5I10M"},
+                {"10M10I10M", 15, 30, "10M5I15S", "10M5I15H"},
+
+                // clipping into a soft clip
+                {"10S10M10S", 0, 5, "10S10M10S", "5H5S10M10S"},
+                {"10S10M10S", 25, 30, "10S10M10S", "10S10M5S5H"},
+                {"10S10M10S", 0, 15, "15S5M10S", "15H5M10S"},
+
+                // clipping over a deletion
+                {"10M10D10M", 0, 10, "10S10M", "10H10M"},
+                {"10M10D10M", 0, 15, "15S5M", "15H5M"},
+                {"10M10D10M", 5, 20, "5M15S", "5M15H"},
+
+                // removing leading deletions
+                {"10D10M", 0, 5, "5S5M", "5H5M"}
+        };
+    }
+
+    @Test(dataProvider = "clip_cigar")
+    public void testClipCigar(final String original, final int start, final int stop, final String expectedSoftClip, final String expectedHardClip) {
+        Assert.assertEquals(CigarUtils.clipCigar(TextCigarCodec.decode(original), start, stop, CigarOperator.SOFT_CLIP).toString(), expectedSoftClip);
+        Assert.assertEquals(CigarUtils.clipCigar(TextCigarCodec.decode(original), start, stop, CigarOperator.HARD_CLIP).toString(), expectedHardClip);
+    }
+
+    @DataProvider(name = "alignment_start_shift")
+    public Object[][] alignmentStartShift() {
+        return new Object[][] {
+                {"70M", 10, 10},
+                {"70M", 0, 0},
+
+                {"30M10D30M", 29, 29},
+                {"30M10D30M", 30, 40},
+                {"30M10D30M", 31, 41},
+
+                {"30M10D30M", 29, 29},
+                {"30M10I30M", 30, 30},
+                {"30M10I30M", 31, 30},
+                {"30M10I30M", 40, 30},
+                {"30M10I30M", 41, 31},
+
+                {"10H10M", 5, 5},
+                {"10S10M", 5, 0},
+                {"10S10M", 5, 0},
+        };
+    }
+
+    @Test(dataProvider = "alignment_start_shift")
+    public void testAlignmentStartShift(final String cigarString, final int numClips, final int expectedResult) {
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final int actualResult = CigarUtils.alignmentStartShift(cigar, numClips);
+        Assert.assertEquals(actualResult, expectedResult);
+    }
 }

@@ -404,4 +404,81 @@ public final class CigarUtils {
 
         return builder.make();
     }
+
+    /**
+     * Given a cigar string, soft clip up to leftClipEnd and soft clip starting at rightClipBegin
+     * @param start initial index to clip within read bases, inclusive
+     * @param stop final index to clip within read bases exclusive
+     * @param clippingOperator      type of clipping -- must be either hard clip or soft clip
+     */
+    public static Cigar clipCigar(final Cigar cigar, final int start, final int stop, CigarOperator clippingOperator) {
+        Utils.validateArg(clippingOperator.isClipping(), "Not a clipping operator");
+        final boolean clipLeft = start == 0;
+
+        final CigarBuilder newCigar = new CigarBuilder();
+
+        int elementStart = 0;
+        for (final CigarElement element : cigar.getCigarElements()) {
+            final CigarOperator operator = element.getOperator();
+            // copy hard clips
+            if (operator == CigarOperator.HARD_CLIP) {
+                newCigar.add(new CigarElement(element.getLength(), element.getOperator()));
+                continue;
+            }
+            final int elementEnd = elementStart + (operator.consumesReadBases() ? element.getLength() : 0);
+
+            // element precedes start or follows end of clip, copy it to new cigar
+            if (elementEnd <= start || elementStart >= stop) {
+                // edge case: deletions at edge of clipping are meaningless and we skip them
+                if (operator.consumesReadBases() || (elementStart != start && elementStart != stop)) {
+                    newCigar.add(new CigarElement(element.getLength(), operator));
+                }
+            } else {    // otherwise, some or all of the element is soft-clipped
+                final int unclippedLength = clipLeft ? elementEnd - stop : start - elementStart;
+                final int clippedLength = element.getLength() - unclippedLength;
+
+                if (unclippedLength <= 0) { // totally clipped
+                    if (operator.consumesReadBases()) {
+                        newCigar.add(new CigarElement(element.getLength(), clippingOperator));
+                    }
+                } else if (clipLeft) {
+                    newCigar.add(new CigarElement(clippedLength, clippingOperator));
+                    newCigar.add(new CigarElement(unclippedLength, operator));
+                } else {
+                    newCigar.add(new CigarElement(unclippedLength, operator));
+                    newCigar.add(new CigarElement(clippedLength, clippingOperator));
+                }
+            }
+            elementStart = elementEnd;
+        }
+
+        return newCigar.make();
+    }
+
+    /**
+     * How many bases to the right does a read's alignment start shift given its cigar and the number of left soft clips
+     */
+    public static int alignmentStartShift(final Cigar cigar, final int numClipped) {
+        int refBasesClipped = 0;
+
+        int elementStart = 0;   // this and elementEnd are indices in the read's bases
+        for (final CigarElement element : cigar.getCigarElements()) {
+            final CigarOperator operator = element.getOperator();
+            // hard clips consume neither read bases nor reference bases and are irrelevant
+            if (operator == CigarOperator.HARD_CLIP) {
+                continue;
+            }
+            final int elementEnd = elementStart + (operator.consumesReadBases() ? element.getLength() : 0);
+
+            if (elementEnd <= numClipped) {  // totally within clipped span -- this includes deletions immediately following clipping
+                refBasesClipped += operator.consumesReferenceBases() ? element.getLength() : 0;
+            } else if (elementStart < numClipped) { // clip in middle of element, which means the element necessarily consumes read bases
+                final int clippedLength = numClipped - elementStart;
+                refBasesClipped += operator.consumesReferenceBases() ? clippedLength : 0;
+                break;
+            }
+            elementStart = elementEnd;
+        }
+        return refBasesClipped;
+    }
 }
