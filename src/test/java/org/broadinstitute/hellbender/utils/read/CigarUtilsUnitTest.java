@@ -460,4 +460,20 @@ public final class CigarUtilsUnitTest {
         Assert.assertEquals(CigarUtils.countAlignedBases(TextCigarCodec.decode("797S966M")), 966);
         Assert.assertEquals(CigarUtils.countAlignedBases(TextCigarCodec.decode("79H113M14D15M16D16M3I17M2I117M797H")), 278);
     }
+
+    @DataProvider(name = "revert_soft_clips")
+    public Object[][] revertSoftClips() {
+        return new Object[][] {
+                {"10M","10M"},
+                {"10H10M", "10H10M"},
+                {"10S10M", "20M"},
+                {"10S10M10S", "30M"},
+                {"10S10M10S10H", "30M10H"}
+        };
+    }
+
+    @Test(dataProvider = "revert_soft_clips")
+    public void testRevertSoftClips(final String original, final String expected) {
+        Assert.assertEquals(CigarUtils.revertSoftClips(TextCigarCodec.decode(original)).toString(), expected);
+    }
 }

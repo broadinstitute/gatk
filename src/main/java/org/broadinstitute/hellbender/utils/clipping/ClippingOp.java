@@ -7,6 +7,7 @@ import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -140,25 +141,11 @@ public final class ClippingOp {
     private GATKRead applyRevertSoftClippedBases(final GATKRead read) {
         GATKRead unclipped = read.copy();
 
-        final Cigar unclippedCigar = new Cigar();
-        int matchesCount = 0;
-        for (final CigarElement element : read.getCigarElements()) {
-            if (element.getOperator() == CigarOperator.SOFT_CLIP || element.getOperator() == CigarOperator.MATCH_OR_MISMATCH) {
-                matchesCount += element.getLength();
-            } else if (matchesCount > 0) {
-                unclippedCigar.add(new CigarElement(matchesCount, CigarOperator.MATCH_OR_MISMATCH));
-                matchesCount = 0;
-                unclippedCigar.add(element);
-            } else {
-                unclippedCigar.add(element);
-            }
-        }
-        if (matchesCount > 0) {
-            unclippedCigar.add(new CigarElement(matchesCount, CigarOperator.MATCH_OR_MISMATCH));
-        }
+        final Cigar unclippedCigar = CigarUtils.revertSoftClips(read.getCigar());
 
         unclipped.setCigar(unclippedCigar);
-        final int newStart = read.getStart() + calculateAlignmentStartShift(read.getCigar(), unclippedCigar);
+
+        final int newStart = read.getSoftStart();
 
         if (newStart <= 0) {
             // if the start of the unclipped read occurs before the contig,

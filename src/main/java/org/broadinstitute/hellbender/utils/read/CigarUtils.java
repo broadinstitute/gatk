@@ -388,4 +388,20 @@ public final class CigarUtils {
                 .mapToInt(CigarElement::getLength)
                 .sum();
     }
+
+    /**
+     * replace soft clips (S) with match (M) operators, merging any consecutive M's that result eg 10S10M -> 20M.
+     */
+    public static Cigar revertSoftClips(final Cigar originalCigar) {
+        final CigarBuilder builder = new CigarBuilder();
+        for (final CigarElement element : originalCigar.getCigarElements()) {
+            if (element.getOperator() == CigarOperator.SOFT_CLIP) {
+                builder.add(new CigarElement(element.getLength(), CigarOperator.MATCH_OR_MISMATCH));
+            } else {
+                builder.add(element);
+            }
+        }
+
+        return builder.make();
+    }
 }
