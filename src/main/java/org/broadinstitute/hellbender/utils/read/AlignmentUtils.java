@@ -289,46 +289,6 @@ public final class AlignmentUtils {
         }
     }
 
-    /**
-     * Get the number of bases at which refSeq and readSeq differ, given their alignment
-     *
-     * @param cigar the alignment of readSeq to refSeq
-     * @param refSeq the bases of the reference sequence
-     * @param readSeq the bases of the read sequence
-     * @return the number of bases that differ between refSeq and readSeq
-     */
-    @SuppressWarnings("fallthrough")
-    public static int calcNumDifferentBases(final Cigar cigar, final byte[] refSeq, final byte[] readSeq) {
-        int refIndex = 0, readIdx = 0, delta = 0;
-
-        for (final CigarElement ce : cigar.getCigarElements()) {
-            final int elementLength = ce.getLength();
-            switch (ce.getOperator()) {
-                case X:case EQ:case M:
-                    for (int j = 0; j < elementLength; j++, refIndex++, readIdx++)
-                        delta += refSeq[refIndex] != readSeq[readIdx] ? 1 : 0;
-                    break;
-                case I:
-                    delta += elementLength;
-                case S:
-                    readIdx += elementLength;
-                    break;
-                case D:
-                    delta += elementLength;
-                case N:
-                    refIndex += elementLength;
-                    break;
-                case H:
-                case P:
-                    break;
-                default:
-                    throw new GATKException("The " + ce.getOperator() + " cigar element is not currently supported");
-            }
-        }
-
-        return delta;
-    }
-
     public static class MismatchCount {
         public int numMismatches = 0;
         public long mismatchQualities = 0;

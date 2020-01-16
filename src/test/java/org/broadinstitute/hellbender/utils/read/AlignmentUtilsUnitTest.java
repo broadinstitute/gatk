@@ -331,35 +331,6 @@ public final class AlignmentUtilsUnitTest {
     /**********************************************************
      * End of Tests for AlignmentUtils.createReadAlignedToRef()
      **********************************************************/
-
-
-    @DataProvider(name = "CalcNumDifferentBasesData")
-    public Object[][] makeCalcNumDifferentBasesData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        tests.add(new Object[]{"5M", "ACGTA", "ACGTA", 0});
-        tests.add(new Object[]{"5M", "ACGTA", "ACGTT", 1});
-        tests.add(new Object[]{"5M", "ACGTA", "TCGTT", 2});
-        tests.add(new Object[]{"5M", "ACGTA", "TTGTT", 3});
-        tests.add(new Object[]{"5M", "ACGTA", "TTTTT", 4});
-        tests.add(new Object[]{"5M", "ACGTA", "TTTCT", 5});
-        tests.add(new Object[]{"2M3I3M", "ACGTA", "ACNNNGTA", 3});
-        tests.add(new Object[]{"2M3I3M", "ACGTA", "ACNNNGTT", 4});
-        tests.add(new Object[]{"2M3I3M", "ACGTA", "TCNNNGTT", 5});
-        tests.add(new Object[]{"2M2D1M", "ACGTA", "ACA", 2});
-        tests.add(new Object[]{"2M2D1M", "ACGTA", "ACT", 3});
-        tests.add(new Object[]{"2M2D1M", "ACGTA", "TCT", 4});
-        tests.add(new Object[]{"2M2D1M", "ACGTA", "TGT", 5});
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "CalcNumDifferentBasesData")
-    public void testCalcNumDifferentBases(final String cigarString, final String ref, final String read, final int expectedDifferences) {
-        final Cigar cigar = TextCigarCodec.decode(cigarString);
-        Assert.assertEquals(AlignmentUtils.calcNumDifferentBases(cigar, ref.getBytes(), read.getBytes()), expectedDifferences);
-    }
-
     @DataProvider(name = "NumAlignedBasesCountingSoftClips")
     public Object[][] makeNumAlignedBasesCountingSoftClips() {
         List<Object[]> tests = new ArrayList<>();
