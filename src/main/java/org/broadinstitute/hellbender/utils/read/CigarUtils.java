@@ -31,39 +31,6 @@ public final class CigarUtils {
     private CigarUtils(){}
 
     /**
-     * Combines equal adjacent elements of a Cigar object
-     *
-     * @param rawCigar the cigar object
-     * @return a combined cigar object
-     */
-    public static Cigar combineAdjacentCigarElements(final Cigar rawCigar) {
-        Utils.nonNull(rawCigar);
-        final Cigar combinedCigar = new Cigar();
-        CigarElement lastElement = null;
-        int lastElementLength = 0;
-        for (final CigarElement cigarElement : rawCigar.getCigarElements()) {
-            if (lastElement != null &&
-                    ((lastElement.getOperator() == cigarElement.getOperator()) ||
-                            (lastElement.getOperator() == CigarOperator.I && cigarElement.getOperator() == CigarOperator.D) ||
-                            (lastElement.getOperator() == CigarOperator.D && cigarElement.getOperator() == CigarOperator.I)))
-                lastElementLength += cigarElement.getLength();
-            else
-            {
-                if (lastElement != null)
-                    combinedCigar.add(new CigarElement(lastElementLength, lastElement.getOperator()));
-
-                lastElement = cigarElement;
-                lastElementLength = cigarElement.getLength();
-            }
-        }
-        if (lastElement != null) {
-            combinedCigar.add(new CigarElement(lastElementLength, lastElement.getOperator()));
-        }
-
-        return combinedCigar;
-    }
-
-    /**
      * Checks whether the cigar has any element that is not H or S
      * @return true the cigar has elements other than S or H, false otherwise.
      */

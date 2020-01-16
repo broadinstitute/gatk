@@ -20,28 +20,6 @@ import java.util.stream.Stream;
 
 public final class CigarUtilsUnitTest {
 
-    @DataProvider(name = "testData_testCombineAdjacentCigarElements")
-    public Iterator<Object[]> testData_testCombineAdjacentCigarElements(final Method testMethod) {
-        final String[][] TEST_CIGARS = {
-                {"10M", "10M"},
-                {"10M10M", "20M"},
-                {"10M10D", "10M10D"},
-                {"2I2D", "4I"},//Ds and Is get combined
-                {"2D2I", "4D"},//Ds and Is get combined
-        };
-        final List<Object[]> result = new LinkedList<>();
-        Collections.addAll(result, TEST_CIGARS);
-        return result.iterator();
-    }
-
-    @Test(dataProvider = "testData_testCombineAdjacentCigarElements")
-    public void testCombineAdjacentCigarElements(final String cigarStrIn, final String expectedCigarStrOut){
-        final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn);
-        final Cigar cigarOut = CigarUtils.combineAdjacentCigarElements(cigarIn);
-        final String actualCigarStrOut = TextCigarCodec.encode(cigarOut);
-        Assert.assertEquals(actualCigarStrOut, expectedCigarStrOut);
-    }
-
     @DataProvider(name = "testData_ReadHasNonClippedBases")
     public Iterator<Object[]> testData_ReadHasNonClippedBases(final Method testMethod) {
         final Object[][] TEST_CIGARS = {

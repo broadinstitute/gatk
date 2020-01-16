@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -97,11 +98,12 @@ public final class ReadClipperTestUtils {
         Arrays.fill(cigarCombination, (byte) 0);
         int currentIndex = 0;
         while (true) {
-            Cigar cigar = createCigarFromCombination(cigarCombination, cigarElements);    // create the cigar
-            cigar = CigarUtils.combineAdjacentCigarElements(cigar);                   // combine adjacent elements
-            if (CigarUtils.isGood(cigar)) {                                     // check if it's valid
-                cigarList.add(cigar);                                      // add it
-            }
+            try {
+                final Cigar cigar = createCigarFromCombination(cigarCombination, cigarElements);    // create the cigar
+                if (CigarUtils.isGood(cigar)) {                                     // check if it's valid
+                    cigarList.add(cigar);                                      // add it
+                }
+            } catch (final Exception ex) {} // we are creating random cigars, many of which are invalid.
 
             boolean currentIndexChanged = false;
             while (currentIndex < maximumCigarElements && cigarCombination[currentIndex] == numCigarElements - 1) {
@@ -125,10 +127,10 @@ public final class ReadClipperTestUtils {
     }
 
     private static Cigar createCigarFromCombination(byte[] cigarCombination, CigarElement[] cigarElements) {
-        Cigar cigar = new Cigar();
+        final CigarBuilder cigarBuilder = new CigarBuilder();
         for (byte i : cigarCombination) {
-            cigar.add(cigarElements[i]);
+            cigarBuilder.add(cigarElements[i]);
         }
-        return cigar;
+        return cigarBuilder.make();
     }
 }
