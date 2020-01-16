@@ -324,20 +324,6 @@ public class ReadClipper {
         return hardClipToRegion(read, refStart, refStop, start, stop);
     }
 
-    /**
-     * Hard clip the read to the variable region (from refStart to refStop) processing also the clipped bases
-     *
-     * @param read     the read to be clipped
-     * @param refStart the beginning of the variant region (inclusive)
-     * @param refStop  the end of the variant region (inclusive)
-     * @return the read hard clipped to the variant region (Could return an empty, unmapped read)
-     */
-    public static GATKRead hardClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
-        final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 0, read.numCigarElements()) - 1;
-        return hardClipToRegion(read, refStart, refStop, start, stop);
-    }
-
     private static GATKRead hardClipToRegion( final GATKRead read, final int refStart, final int refStop, final int alignmentStart, final int alignmentStop){
         // check if the read is contained in region
         if (alignmentStart <= refStop && alignmentStop >= refStart) {
@@ -471,7 +457,7 @@ public class ReadClipper {
      */
     public static GATKRead softClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 0, read.numCigarElements()) - 1;
+        final int stop = start + CigarUtils.countRefBasesAndClips(read.getCigar(), 0, read.numCigarElements()) - 1;
 
         if (start <= refStop && stop >= refStart) {
             if (start < refStart && stop > refStop) {

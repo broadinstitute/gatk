@@ -162,32 +162,28 @@ public final class CigarUtilsUnitTest {
 
     @Test(dataProvider = "testData_countRefBasesBasedOnCigar")
     public void testCountRefBasesBasedOnCigar(final String cigarStrIn, final int start, final int end, final int expected){
-        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        final int actual = CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, start, end);
+        final int actual = CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), start, end);
         Assert.assertEquals(actual, expected, cigarStrIn);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarNull(){
-        CigarUtils.countRefBasesBasedOnUnclippedAlignment(null, 1, 2);
+        CigarUtils.countRefBasesAndClips(null, 1, 2);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart1(){
         final String cigarStrIn = "1M1=1X";
-        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, -1, 1);
+        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), -1, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart2(){
         final String cigarStrIn = "1M1=1X";
-        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 2, 1);
+        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), 2, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarEnd2(){
         final String cigarStrIn = "1M1=1X";
-        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 1, 6);
+        CigarUtils.countRefBasesAndClips(TextCigarCodec.decode(cigarStrIn), 1, 6);
     }
 
 

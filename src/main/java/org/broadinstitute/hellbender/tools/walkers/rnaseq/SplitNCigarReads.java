@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -29,7 +26,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -297,12 +293,13 @@ public final class SplitNCigarReads extends MultiplePassReadWalker {
 
         // we keep only the section of the read that is aligned to the reference between startRefIndex and stopRefIndex (inclusive).
         // the other sections of the read are clipped:
-        final int startRefIndex = read.getUnclippedStart() + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 0, cigarFirstIndex); //goes through the prefix of the cigar (up to cigarStartIndex) and move the reference index.
-        final int stopRefIndex = startRefIndex + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read,cigarFirstIndex,cigarSecondIndex)-1; //goes through a consecutive non-N section of the cigar (up to cigarEndIndex) and move the reference index.
+        final Cigar cigar = read.getCigar();
+        final int startRefIndex = read.getUnclippedStart() + CigarUtils.countRefBasesAndClips(cigar, 0, cigarFirstIndex); //goes through the prefix of the cigar (up to cigarStartIndex) and move the reference index.
+        final int stopRefIndex = startRefIndex + CigarUtils.countRefBasesAndClips(cigar, cigarFirstIndex,cigarSecondIndex)-1; //goes through a consecutive non-N section of the cigar (up to cigarEndIndex) and move the reference index.
 
         if ( forSplitPositions != null ) {
             final String contig = read.getContig();
-            final int splitStart = startRefIndex + CigarUtils.countRefBasesBasedOnUnclippedAlignment(read,cigarFirstIndex,cigarEndIndex);  //we use cigarEndIndex instead of cigarSecondIndex so we won't take into account the D's at the end.
+            final int splitStart = startRefIndex + CigarUtils.countRefBasesAndClips(cigar,cigarFirstIndex,cigarEndIndex);  //we use cigarEndIndex instead of cigarSecondIndex so we won't take into account the D's at the end.
             final int splitEnd = splitStart + read.getCigarElement(cigarEndIndex).getLength() - 1;
             forSplitPositions.addSplicePosition(contig, splitStart, splitEnd);
         }

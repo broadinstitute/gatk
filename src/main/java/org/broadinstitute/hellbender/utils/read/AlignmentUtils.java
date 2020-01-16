@@ -258,7 +258,7 @@ public final class AlignmentUtils {
             return new ImmutablePair<>(bases, baseQualities);
         }
         else {
-            final int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesIncludingSoftClips(read, 0, numCigarElements);
+            final int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesAndSoftClips(read.getCigar(), 0, numCigarElements);
             final byte[] paddedBases = new byte[numberRefBasesIncludingSoftclips];
             final byte[] paddedBaseQualities = new byte[numberRefBasesIncludingSoftclips];
             int literalPos = 0;

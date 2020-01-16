@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 public final class CigarUtils {
 
@@ -56,40 +57,25 @@ public final class CigarUtils {
      * For example original position = 10. cigar: 2M3I2D1M. If you remove the 2M the new starting position is 12.
      * If you remove the 2M3I it is still 12. If you remove 2M3I2D (not reasonable cigar), you will get position 14.
      */
-    public static int countRefBasesBasedOnUnclippedAlignment(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
-        if (read == null){
-            throw new IllegalArgumentException("null read");
-        }
-        final List<CigarElement> elems = read.getCigarElements();
-        if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
-            throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
-        }
-        int result = 0;
-        for(int i = cigarStartIndex; i < cigarEndIndex; i++){
-            final CigarElement cigarElement = elems.get(i);
-            final CigarOperator operator = cigarElement.getOperator();
-            if (operator.consumesReferenceBases() || operator.isClipping()) {
-                result += cigarElement.getLength();
-            }
-        }
-        return result;
+    public static int countRefBasesAndClips(final Cigar cigar, final int cigarStartIndex, final int cigarEndIndex){
+        return countRefBasesAndMaybeAlsoClips(cigar, cigarStartIndex, cigarEndIndex, true, true);
     }
 
-    public static int countRefBasesIncludingSoftClips(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
-        Utils.nonNull(read, "null read");
-        final List<CigarElement> elems = read.getCigarElements();
-        if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
-            throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
-        }
-        int result = 0;
-        for(int i = cigarStartIndex; i < cigarEndIndex; i++){
-            final CigarElement cigarElement = elems.get(i);
-            final CigarOperator operator = cigarElement.getOperator();
-            if (operator.consumesReferenceBases() || operator == CigarOperator.S) {
-                result += cigarElement.getLength();
-            }
-        }
-        return result;
+    public static int countRefBasesAndSoftClips(final Cigar cigar, final int cigarStartIndex, final int cigarEndIndex){
+        return countRefBasesAndMaybeAlsoClips(cigar, cigarStartIndex, cigarEndIndex, true, false);
+    }
+
+    private static int countRefBasesAndMaybeAlsoClips(final Cigar cigar, final int cigarStartIndex, final int cigarEndIndex, final boolean includeSoftClips, final boolean includeHardClips) {
+        final List<CigarElement> elems = Utils.nonNull(cigar).getCigarElements();
+        Utils.validateArg(cigarStartIndex >= 0 && cigarEndIndex <= elems.size() && cigarStartIndex <= cigarEndIndex, () -> "invalid index:" + 0 + " -" + elems.size());
+        final Predicate<CigarOperator> consumesRefBases = CigarOperator::consumesReferenceBases;
+        final Predicate<CigarOperator> clippingPredicate = op -> (includeSoftClips && op == CigarOperator.SOFT_CLIP) || (includeHardClips && op == CigarOperator.HARD_CLIP);
+        final Predicate<CigarOperator> countOperator = consumesRefBases.or(clippingPredicate);
+
+        return elems.subList(cigarStartIndex, cigarEndIndex).stream()
+                .filter(elem -> countOperator.test(elem.getOperator()))
+                .mapToInt(CigarElement::getLength)
+                .sum();
     }
 
     /**
