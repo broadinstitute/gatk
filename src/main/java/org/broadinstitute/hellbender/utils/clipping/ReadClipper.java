@@ -175,31 +175,11 @@ public class ReadClipper {
     private GATKRead hardClipByReferenceCoordinatesRightTail(final int refStart) {
         return clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
+
     public static GATKRead hardClipByReferenceCoordinatesRightTail(final GATKRead read, final int refStart) {
         return (new ReadClipper(read)).clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES);
     }
-
-    /**
-     * Hard clips a read using read coordinates.
-     *
-     * @param start the first base to clip (inclusive)
-     * @param stop the last base to clip (inclusive)
-     * @return a new read, without the clipped bases (Could return an empty, unmapped read)
-     */
-    private GATKRead hardClipByReadCoordinates(final int start, final int stop) {
-        if (read.isEmpty() || (start == 0 && stop == read.getLength() - 1)) {
-            return ReadUtils.emptyRead(read);
-        }
-
-        this.addOp(new ClippingOp(start, stop));
-        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
-    }
-
-    public static GATKRead hardClipByReadCoordinates(final GATKRead read, final int start, final int stop) {
-        return (new ReadClipper(read)).hardClipByReadCoordinates(start, stop);
-    }
-
-
+    
     /**
      * Hard clips both tails of a read.
      *   Left tail goes from the beginning to the 'left' coordinate (inclusive)
