@@ -157,10 +157,13 @@ public final class ReadThreadingAssembler {
         final List<AssemblyResult> savedAssemblyResults = new ArrayList<>();
 
         boolean hasAdequatelyAssembledGraph = false;
+        List<Integer> kmersToTry = getExpandedKmerList();
         // first, try using the requested kmer sizes
-        for ( final int kmerSize : getExpandedKmerList() ) {
+        for ( int i = 0; i < kmersToTry.size(); i++ ) {
+            final int kmerSize = kmersToTry.get(i);
+            final boolean isLastCycle = i == kmersToTry.size() - 1;
             if (!hasAdequatelyAssembledGraph) {
-                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner);
+                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, isLastCycle || allowNonUniqueKmersInRef, header, aligner);
                 if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
                     // do some QC on the graph
                     if (generateSeqGraph) {
@@ -343,89 +346,6 @@ public final class ReadThreadingAssembler {
 
         return new ArrayList<>(returnHaplotypes);
     }
-
-//
-//
-//    private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
-//    List<Haplotype> findBestPaths(final Collection<T> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
-//                                          final Map<T, AssemblyResult> assemblyResultByGraph, final SmithWatermanAligner aligner) {
-//        // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
-//        final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
-//
-//        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-//        int failedCigars = 0;
-//
-//        for( final BaseGraph<V, E> graph : graphs ) {
-//            final V source = graph.getReferenceSourceVertex();
-//            final V sink = graph.getReferenceSinkVertex();
-//            Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
-//
-//            for (final KBestHaplotype<V, E> kBestHaplotype :
-//                    (generateSeqGraph ?
-//                            new GraphBasedKBestHaplotypeFinder<>(graph,source,sink) :
-//                            new JunctionTreeKBestHaplotypeFinder<>(graph,source,sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
-//                            .findBestHaplotypes(numBestHaplotypesPerGraph)) {
-//                final Haplotype h = kBestHaplotype.haplotype();
-//                if( !returnHaplotypes.contains(h) ) {
-//                    // TODO this score seems to be irrelevant at this point...
-//                    if (kBestHaplotype.isReference()) {
-//                        refHaplotype.setScore(kBestHaplotype.score());
-//                    }
-//                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
-//
-//                    if ( cigar == null ) {
-//                        failedCigars++; // couldn't produce a meaningful alignment of haplotype to reference, fail quietly
-//                        continue;
-//                    } else if( cigar.isEmpty() ) {
-//                        throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length " + cigar.getReferenceLength() +
-//                                " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength());
-//                    } else if ( pathIsTooDivergentFromReference(cigar) || cigar.getReferenceLength() < MIN_HAPLOTYPE_REFERENCE_LENGTH ) {
-//                        // N cigar elements means that a bubble was too divergent from the reference so skip over this path
-//                        continue;
-//                    } else if( cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength() ) { // SW failure
-//                        throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
-//                                + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
-//                                + " ref = " + refHaplotype + " path " + new String(h.getBases()));
-//                    }
-//
-//                    h.setCigar(cigar);
-//                    h.setAlignmentStartHapwrtRef(activeRegionStart);
-//                    h.setGenomeLocation(activeRegionWindow);
-//                    returnHaplotypes.add(h);
-//                    assemblyResultSet.add(h, assemblyResultByGraph.get(graph));
-//
-//                    if ( debug ) {
-//                        logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + graph.getKmerSize());
-//                    }
-//                }
-//            }
-//        }
-//
-//        // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
-//        // the first returned by any finder.
-//        if (!returnHaplotypes.contains(refHaplotype)) {
-//            returnHaplotypes.add(refHaplotype);
-//        }
-//
-//        if (failedCigars != 0) {
-//            logger.debug(String.format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
-//        }
-//
-//        if ( debug ) {
-//            if( returnHaplotypes.size() > 1 ) {
-//                logger.info("Found " + returnHaplotypes.size() + " candidate haplotypes of " + returnHaplotypes.size() + " possible combinations to evaluate every read against.");
-//            } else {
-//                logger.info("Found only the reference haplotype in the assembly graph.");
-//            }
-//            for( final Haplotype h : returnHaplotypes ) {
-//                logger.info( h.toString() );
-//                logger.info( "> Cigar = " + h.getCigar() + " : " + h.getCigar().getReferenceLength() + " score " + h.getScore() + " ref " + h.isReference());
-//            }
-//        }
-//
-//        return new ArrayList<>(returnHaplotypes);
-//
-//    }
     /**
      * We use CigarOperator.N as the signal that an incomplete or too divergent bubble was found during bubble traversal
      * @param c the cigar to test
