@@ -39,6 +39,7 @@ public class InferOriginalRead extends ReadWalker {
 
     @Override
     public void onTraversalStart(){
+        createOutputBamIndex = true;
         outputWriter = createSAMWriter(IOUtils.getPath(outputBam.getAbsolutePath()), false);
         engine = new InferOriginalReadEngine(getHeaderForReads(), referenceArguments, outputWriter);
 
@@ -63,6 +64,7 @@ public class InferOriginalRead extends ReadWalker {
         if (!currentReads.isEmpty()){
             engine.letsDoIt(currentReads, lastSeenReferenceContext, currentUMI);
         }
+        outputWriter.close();
 
         return "SUCCESS";
     }

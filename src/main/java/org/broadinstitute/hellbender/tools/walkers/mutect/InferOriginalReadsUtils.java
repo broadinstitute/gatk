@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -30,9 +31,9 @@ public class InferOriginalReadsUtils {
 
     // TODO: can this be refactored to share code with AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes?
     // TODO: write tests
-    public static Map<LocationAndAlleles, List<Haplotype>> countAllelesForAtThisLoc(final int loc,
-                                                                            final List<Haplotype> haplotypes,
-                                                                            final boolean includeSpanningEvents) {
+    public static Map<LocationAndAlleles, List<Haplotype>> groupHaplotypesByAllelesAtThisLoc(final int loc,
+                                                                                             final List<Haplotype> haplotypes,
+                                                                                             final boolean includeSpanningEvents) {
         final Map<LocationAndAlleles, List<Haplotype>> results = new HashMap<>();
 
         haplotypes.stream()
@@ -48,7 +49,9 @@ public class InferOriginalReadsUtils {
                         if (results.containsKey(locationAndAlleles)) {
                             results.get(locationAndAlleles).add(pair.left);
                         } else {
-                            results.put(locationAndAlleles, Arrays.asList(pair.left));
+                            final List<Haplotype> haplotypeList = new ArrayList<>();
+                            haplotypeList.add(pair.left);
+                            results.put(locationAndAlleles, haplotypeList);
                         }
                     }
                 });
@@ -57,13 +60,24 @@ public class InferOriginalReadsUtils {
     }
 
     // TODO: write tests
-    public static double computeVarianceAroundMostCommon(final Map<LocationAndAlleles, List<Haplotype>> countsByAllele, final int center) {
+    public static double computeVarianceAroundMostCommon(final Map<LocationAndAlleles, List<Haplotype>> haplotypesByAllele,
+                                                         final LocationAndAlleles mostCommonAllele) {
+        final int alleleLengthOfMostCommon = getAlleleLength(mostCommonAllele.getAlleles().get(0), mostCommonAllele.getAlleles().get(1));
+
         double variance = 0.0;
-        final List<Integer> counts = countsByAllele.values().stream().map(x -> x.size()).collect(Collectors.toList());
-        for (int count : counts){
-           variance += Math.pow(count - center, 2);
+        for (Map.Entry<LocationAndAlleles, List<Haplotype>> pair : haplotypesByAllele.entrySet()){
+            final LocationAndAlleles allele = pair.getKey();
+            final int alleleLength = getAlleleLength(allele.getAlleles().get(0), allele.getAlleles().get(1));
+            final int count = pair.getValue().size();
+            variance += count * Math.pow(alleleLength - alleleLengthOfMostCommon, 2);
         }
+
         return variance;
+    }
+
+    /** *signed* length of an alt allele (deletion is negative) **/
+    private static int getAlleleLength(final Allele ref, final Allele alt){
+        return ref.length() - alt.length();
     }
 
     public byte computeHaplotypePosteriorWithPairHMM(final ReadLikelihoodCalculationEngine likelihoodCalculationEngine,
@@ -112,12 +126,13 @@ public class InferOriginalReadsUtils {
     }
 
     /**  Code skeleton borrowed from HaplotypeBAMWriter.writeHaplotype **/
-    private GATKRead haplotype2Read(final Haplotype haplotype,
-                                    final GATKRead sampleRead,
-                                    final String umi,
-                                    final InferOriginalReadEngine.Strand strand,
-                                    final InferOriginalReadEngine.ReadNum readNumber,
-                                    final SAMFileHeader header) {
+    public static GATKRead haplotype2Read(final Haplotype haplotype,
+                                          final GATKRead sampleRead,
+                                          final String umi,
+                                          final InferOriginalReadEngine.Strand strand,
+                                          final InferOriginalReadEngine.ReadNum readNumber,
+                                          final SAMFileHeader header) {
+        // TOOD: perhaps benefitial to create a class for haplotype/GATKRead pair
         Utils.nonNull(haplotype, "haplotype cannot be null");
 
         /** Placeholders for read attributes that I will eventually have to assign properly **/
@@ -172,12 +187,13 @@ public class InferOriginalReadsUtils {
         final int numHaplotypes = haplotypes.size();
 
         final boolean DEBUG = true;
-        if (DEBUG){
-            final Path bam = Paths.get("/dsde/working/tsato/consensus/tp53/test/haplotypes.bam");
-            final HaplotypeBAMWriter hbw = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES, bam, true, false, header);
-            hbw.writeHaplotypesAsReads(haplotypes, new TreeSet<>(haplotypes), referenceLoc, referenceLoc);
-            hbw.close();
-        }
+// temporarily block
+//        if (DEBUG){
+//            final Path bam = Paths.get("/dsde/working/tsato/consensus/tp53/test/haplotypes.bam");
+//            final HaplotypeBAMWriter hbw = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES, bam, true, false, header);
+//            hbw.writeHaplotypesAsReads(haplotypes, new TreeSet<>(haplotypes), referenceLoc, referenceLoc);
+//            hbw.close();
+//        }
 
         // multiply \prod_i p(read_i|haplotype_k) for each of k haplotypes
         final double[] log10HaplotypeLikelihoods = new double[numHaplotypes];

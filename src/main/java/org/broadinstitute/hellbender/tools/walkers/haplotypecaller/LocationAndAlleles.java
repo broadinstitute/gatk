@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 
@@ -40,6 +41,14 @@ public class LocationAndAlleles {
     @Override
     public int hashCode() {
         return 31 * loc + (alleles != null ? alleles.hashCode() : 0);
+    }
+
+    public boolean isInsertion(final int alleleIndex){
+        Utils.validateArg(alleleIndex > 0, "alleleIndex must specify an alt allele. Index 0 refers to the ref allele");
+        Utils.validateArg(alleleIndex < this.alleles.size(), "allele index out of bounds: " + alleleIndex);
+        final int refLength = this.alleles.get(0).length();
+        final int altLength = this.alleles.get(alleleIndex).length();
+        return refLength < altLength;
     }
 
 }
