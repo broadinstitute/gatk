@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ClippingTail;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -480,13 +481,13 @@ public class ReadClipper {
                 throw new GATKException("Only one of refStart or refStop must be < 0, not both (" + refStart + ", " + refStop + ")");
             }
             start = 0;
-            stop = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop, ReadUtils.ClippingTail.LEFT_TAIL);
+            stop = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop, ClippingTail.LEFT_TAIL);
         }
         else {
             if (refStop >= 0) {
                 throw new GATKException("Either refStart or refStop must be < 0 (" + refStart + ", " + refStop + ")");
             }
-            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ReadUtils.ClippingTail.RIGHT_TAIL);
+            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ClippingTail.RIGHT_TAIL);
             stop = read.getLength() - 1;
         }
 
