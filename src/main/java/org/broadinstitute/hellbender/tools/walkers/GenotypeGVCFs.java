@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -95,6 +96,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
     public static final String FORCE_OUTPUT_INTERVALS_NAME = "force-output-intervals";
+    public static final boolean CALL_GENOTYPES = false;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
@@ -194,6 +196,15 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         } else {
             return getIntervals;
         }
+    }
+
+    @Override
+    protected GenomicsDBOptions getGenomicsDBOptions() {
+        if (genomicsDBOptions == null) {
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), CALL_GENOTYPES,
+                    genotypeArgs.MAX_ALTERNATE_ALLELES, genotypeArgs.MAX_GENOTYPE_COUNT);
+        }
+        return genomicsDBOptions;
     }
 
     @Override

@@ -108,8 +108,9 @@ public class GenomicsDBUtils {
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
         if (genomicsDBOptions != null) {
-            exportConfigurationBuilder.setProduceGTField(genomicsDBOptions.doCallGenotypes()).
-                    setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles());
+            exportConfigurationBuilder.setProduceGTField(genomicsDBOptions.doCallGenotypes())
+                    .setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles())
+                    .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount());
         }
 
 
