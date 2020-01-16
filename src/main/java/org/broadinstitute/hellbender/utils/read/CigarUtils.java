@@ -128,7 +128,7 @@ public final class CigarUtils {
     /**
      * Removes all clipping operators from the cigar.
      */
-    public static Cigar trimReadToUnclippedBases(final Cigar cigar) {
+    public static Cigar removeClipsAndPadding(final Cigar cigar) {
         Utils.nonNull(cigar, "cigar is null");
         final List<CigarElement> elements = new ArrayList<>(cigar.numCigarElements());
         for ( final CigarElement ce : cigar.getCigarElements() ) {

@@ -128,7 +128,7 @@ public final class CigarUtilsUnitTest {
     @Test(dataProvider = "testData_unclipCigar")
     public void testUnclipCigar(final String cigarStrIn, final String expectedCigarStrOut){
         final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn);
-        final Cigar cigarOut = CigarUtils.trimReadToUnclippedBases(cigarIn);
+        final Cigar cigarOut = CigarUtils.removeClipsAndPadding(cigarIn);
         final String actualCigarStrOut = TextCigarCodec.encode(cigarOut);
         Assert.assertEquals(actualCigarStrOut, expectedCigarStrOut);
     }
