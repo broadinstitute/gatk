@@ -271,7 +271,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
      * @param clipped clipped read
      */
     private void assertUnclippedLimits(final GATKRead original, final GATKRead clipped) {
-        if (CigarUtils.hasNonClippedBases(clipped.getCigar())) {
+        if (original.getCigarElements().stream().anyMatch(el -> !el.getOperator().isClipping())) {
             Assert.assertEquals(original.getUnclippedStart(), clipped.getUnclippedStart());
             Assert.assertEquals(original.getUnclippedEnd(), clipped.getUnclippedEnd());
         }

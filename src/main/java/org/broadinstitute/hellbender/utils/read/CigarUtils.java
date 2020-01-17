@@ -32,16 +32,7 @@ public final class CigarUtils {
     private static final String SW_PAD = "NNNNNNNNNN";
 
     private CigarUtils(){}
-
-    /**
-     * Checks whether the cigar has any element that is not H or S
-     * @return true the cigar has elements other than S or H, false otherwise.
-     */
-    public static boolean hasNonClippedBases(final Cigar cigar) {
-        return Utils.nonNull(cigar).getCigarElements().stream()
-                .anyMatch(el -> el.getOperator() != CigarOperator.SOFT_CLIP && el.getOperator() != CigarOperator.HARD_CLIP);
-    }
-
+    
     /**
      * Inverts the order of the operators in the cigar.
      * Eg 10M1D20M -> 20M1D10M

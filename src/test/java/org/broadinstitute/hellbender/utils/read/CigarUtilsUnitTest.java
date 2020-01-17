@@ -20,25 +20,6 @@ import java.util.stream.Stream;
 
 public final class CigarUtilsUnitTest {
 
-    @DataProvider(name = "testData_ReadHasNonClippedBases")
-    public Iterator<Object[]> testData_ReadHasNonClippedBases(final Method testMethod) {
-        final Object[][] TEST_CIGARS = {
-                {"10M", true},
-                {"10M10M", true},
-                {"10S10H", false},
-        };
-        final List<Object[]> result = new LinkedList<>();
-        Collections.addAll(result, TEST_CIGARS);
-        return result.iterator();
-    }
-
-    @Test(dataProvider = "testData_ReadHasNonClippedBases")
-    public void testReadHasNonClippedBases(final String cigarStrIn, final boolean expected){
-        final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn);
-        final boolean actual = CigarUtils.hasNonClippedBases(cigarIn);
-        Assert.assertEquals(actual, expected);
-    }
-
     @DataProvider(name = "testData_reclipCigar")
     public Iterator<Object[]> testData_reclipCigar(final Method testMethod) {
         final String[][] TEST_CIGARS = {
