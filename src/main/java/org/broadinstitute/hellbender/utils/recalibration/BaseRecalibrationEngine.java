@@ -337,7 +337,7 @@ public final class BaseRecalibrationEngine implements Serializable {
                 // knownSite is outside clipping window for the read, ignore
                 continue;
             }
-            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
+            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;
             }
