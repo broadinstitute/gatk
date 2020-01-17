@@ -100,12 +100,12 @@ public final class AssemblyBasedCallerUtils {
 
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
         final List<GATKRead> readsToUse = region.getReads().stream()
-                .map(read -> ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
-                .filter(read -> read.getStart() <= read.getEnd())
                 // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
                 // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
                 .map(read -> skipSoftClips || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
-                        ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
+                    ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
+                .map(read -> ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
+                .filter(read -> read.getStart() <= read.getEnd())
                 .map(read -> read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read))
                 .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
                 .map(read -> ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() ))
