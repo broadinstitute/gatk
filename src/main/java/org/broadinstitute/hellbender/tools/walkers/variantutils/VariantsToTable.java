@@ -191,6 +191,26 @@ public final class VariantsToTable extends VariantWalker {
     private boolean moltenizeOutput = false;
 
     /**
+     * Use this flag to emit each genotype on a separate line. The resulting table will have
+     * one row for each variant and sample. If genotype fields are not requested, this output
+     * will be the same as the default
+     *
+     * Example: -F CHROM -F POS -GF AD -GF GQ will print the following table
+     * CHROM    POS     Sample  AD      GQ
+     * 20       10100   NA12878 32,31   99
+     * 20       10100   NA12891 36,28   99
+     * 20       10100   NA12892 20,18   75
+     * 20       10200   NA12878 26,27   82
+     * 20       10200   NA12891 29,32   99
+     * 20       10200   NA12892 28,27   99
+     */
+    @Advanced
+    @Argument(fullName="moltenize-genotypes",
+            shortName="moltenize-genotypes",
+            doc="Produce one line per variant per sample", optional=true)
+    private boolean moltenizeGenotypes = false;
+
+    /**
      * By default, this tool will write NA for missing data.
      * Turn on this flag, and the tool will throw an error and exit if it encounters missing data.
      */
@@ -229,13 +249,21 @@ public final class VariantsToTable extends VariantWalker {
             }
         }
 
-        if (asGenotypeFieldsToTake.isEmpty() && asFieldsToTake.isEmpty() && !splitMultiAllelic) {
+        if ((!asGenotypeFieldsToTake.isEmpty() || !asFieldsToTake.isEmpty()) && !splitMultiAllelic) {
             logger.warn("Allele-specific fields will only be split if splitting multi-allelic variants is specified (`--" + SPLIT_MULTI_ALLELIC_LONG_NAME + "` or `-" + SPLIT_MULTI_ALLELIC_SHORT_NAME + "`");
         }
 
         // print out the header
         if ( moltenizeOutput ) {
             outputStream.println("RecordID\tSample\tVariable\tValue");
+        } else if (moltenizeGenotypes && !samples.isEmpty()) {
+            final List<String> fields = new ArrayList<>();
+            fields.addAll(fieldsToTake);
+            fields.addAll(asFieldsToTake);
+            fields.add("Sample");
+            fields.addAll(genotypeFieldsToTake);
+            fields.addAll(asGenotypeFieldsToTake);
+            outputStream.println(new StringBuilder(Utils.join("\t", fields)));
         } else {
             final List<String> fields = new ArrayList<>();
             fields.addAll(fieldsToTake);
@@ -263,6 +291,8 @@ public final class VariantsToTable extends VariantWalker {
             final List<List<String>> records = extractFields(vc);
             if (moltenizeOutput){
                 records.forEach(record -> emitMoltenizedOutput(record));
+            } else if (moltenizeGenotypes && !samples.isEmpty()) {
+                records.forEach(record -> emitPerGenotypeOutput(record));
             } else {
                 records.forEach(record -> outputStream.println(Utils.join("\t", record)));
             }
@@ -304,6 +334,32 @@ public final class VariantsToTable extends VariantWalker {
             for ( final String gf : genotypeFieldsToTake ) {
                 outputStream.println(String.format("%d\t%s\t%s\t%s", nRecords, sample.replace(" ","_"), gf, record.get(index++)));
             }
+        }
+    }
+
+    /**
+     * We assume samples is non-empty
+     * @param record
+     */
+    private void emitPerGenotypeOutput(final List<String> record) {
+        //TODO: add in AS fields
+        int index = fieldsToTake.size() + asFieldsToTake.size();
+        for (final String sample : samples) {
+            int siteFieldIndex = 0;
+            for ( final String field : fieldsToTake ) {
+                outputStream.print(String.format("%s\t", record.get(siteFieldIndex++)));
+            }
+            for ( final String asField : asFieldsToTake ) {
+                outputStream.print(String.format("%s\t", record.get(siteFieldIndex++)));
+            }
+            outputStream.print(String.format("%s\t", sample));
+            for (final String gField : genotypeFieldsToTake) {
+                outputStream.print(String.format("%s\t", record.get(index++)));
+            }
+            for (final String asGField : asGenotypeFieldsToTake) {
+                outputStream.print(String.format("%s\t", record.get(index++)));
+            }
+            outputStream.print("\n");
         }
     }
 

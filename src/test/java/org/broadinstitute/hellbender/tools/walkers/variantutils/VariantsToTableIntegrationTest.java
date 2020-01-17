@@ -146,6 +146,26 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     }
 
     @Test
+    public void testMoltenizeGenotypeOutput() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "vcfexample2.vcf" +
+                        " -F CHROM -F POS -GF RD -GF GT -GF GQ" +
+                        " --moltenize-genotypes -O %s",
+                Arrays.asList(getToolTestDataDir() + "expected.vcfexample2.moltenGenotypes.table"));
+        spec.executeTest("testGenotypeFieldsWithInline", this);
+    }
+
+    @Test
+    public void testMoltenizeGenotypeOutputMultiAllelic() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "multiallelic_gt.twoSamples.vcf" +
+                        " -F CHROM -F POS -F ALT -GF RD -GF GT -GF GQ -ASGF AD -SMA" +
+                        " --moltenize-genotypes -O %s",
+                Arrays.asList(getToolTestDataDir() + "expected.multiallelic_gt.twoSamples.moltenGenotypes.vcf"));
+        spec.executeTest("testGenotypeFieldsWithInline", this);
+    }
+
+    @Test
     public void testSplitMultiallelicFields() throws IOException {
         //missing AS INFO and FORMAT fields are handled
         //R-type FORMAT annotations work (MMQ)
