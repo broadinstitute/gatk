@@ -104,37 +104,24 @@ public final class CigarUtils {
      * then
      * cigar3 = leftClip2 + cigar1 + rightClip2
      */
-    public static Cigar reclipCigar(final Cigar cigar, final GATKRead read) {
-        Utils.nonNull(cigar, "cigar");
-        Utils.nonNull(read, "read");
+    public static Cigar reclipCigar(final Cigar coreCigar, final Cigar clippingCigar) {
+        Utils.nonNull(coreCigar);
+        Utils.nonNull(clippingCigar);
 
-        final List<CigarElement> elements = new ArrayList<>();
-        int i = 0;
-        final Cigar readCigar = read.getCigar();
-        final int n = readCigar.numCigarElements();
-        final List<CigarElement> readEls = readCigar.getCigarElements();
+        final List<CigarElement> result = new ArrayList<>();
 
-        //copy head clips
-        while ( i < n && isClipOperator(readEls.get(i)) ) {
-            elements.add(readEls.get(i));
-            i++;
+        boolean finishedLeftClip = false;
+
+        for (final CigarElement element : clippingCigar) {
+            if (element.getOperator().isClipping()) {
+                result.add(element);
+            } else if (!finishedLeftClip) { // add all the core elements the first time we see a non-clipping operator
+                result.addAll(coreCigar.getCigarElements());
+                finishedLeftClip = true;
+            }
         }
 
-        elements.addAll(cigar.getCigarElements());
-
-        //skip over non-clips
-        i++;
-        while ( i < n && !isClipOperator(readEls.get(i)) ) {
-            i++;
-        }
-
-        //copy tail clips
-        while ( i < n && isClipOperator(readEls.get(i)) ) {
-            elements.add(readEls.get(i));
-            i++;
-        }
-
-        return new Cigar(elements);
+        return new Cigar(result);
     }
 
     /**

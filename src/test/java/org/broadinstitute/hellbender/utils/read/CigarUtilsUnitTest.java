@@ -39,8 +39,7 @@ public final class CigarUtilsUnitTest {
     @Test(dataProvider = "testData_reclipCigar")
     public void testReclipCigar(final String cigarStrIn1, final String cigarStrIn2, final String expectedCigarStrOut){
         final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn1);
-        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn2);
-        final Cigar cigarOut = CigarUtils.reclipCigar(cigarIn, read);
+        final Cigar cigarOut = CigarUtils.reclipCigar(cigarIn, TextCigarCodec.decode(cigarStrIn2));
         final String actualCigarStrOut = TextCigarCodec.encode(cigarOut);
         Assert.assertEquals(actualCigarStrOut, expectedCigarStrOut);
     }
