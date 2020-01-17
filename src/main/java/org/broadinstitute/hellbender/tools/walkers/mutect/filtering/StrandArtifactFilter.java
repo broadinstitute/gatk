@@ -68,7 +68,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter<Integer> {
             if (altSB.stream().mapToInt(Integer::intValue).sum() == 0 || altIndelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
                 return new EStep(0, 0, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1));
             } else {
-                return new EStep(strandArtifactPrior, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1), altIndelSize);
+                return strandArtifactProbability(strandArtifactPrior, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1), altIndelSize);
             }
         }).collect(Collectors.toList());
     }

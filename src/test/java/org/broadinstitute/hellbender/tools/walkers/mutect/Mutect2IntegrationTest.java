@@ -514,7 +514,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public Object[][] vcfsForFiltering() {
         return new Object[][]{
                 {NA12878_MITO_VCF, 0.5, 30, Collections.emptyList(), Arrays.asList(
-                        ImmutableSet.of(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
                         ImmutableSet.of(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME),
                         ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
                                 GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
@@ -523,10 +523,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Collections.emptySet(),
                         Collections.emptySet()),
                         Arrays.asList(
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // .|strand_bias, strict_stand
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME), // .|PASS
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD,GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // .|strict_stand
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, low_allele_frac, possible_numt
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME  + ", " +  GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, low_allele_frac, possible_numt|strand_bias, strict_strand, low_allele_frac, possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME /*GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME*/ + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, low_allele_frac, possible_numt|strict_strand, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4)  // .|PASS
                         )},
