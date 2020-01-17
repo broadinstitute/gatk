@@ -58,17 +58,17 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter<Integer> {
         }
 
         final ListIterator<Integer> indelSizeIterator = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList()).listIterator();
-        int refFwd = sbs.get(0).get(0);
-        int refRev = sbs.get(0).get(1);
+        int totalFwd = sbs.stream().map(sb -> sb.get(0)).reduce(0, Math::addExact);
+        int totalRev = sbs.stream().map(sb -> sb.get(1)).reduce(0, Math::addExact);
         // skip the reference
         List<List<Integer>> altSBs = sbs.subList(1, sbs.size());
 
         return altSBs.stream().map(altSB -> {
             final int altIndelSize = indelSizeIterator.next();
             if (altSB.stream().mapToInt(Integer::intValue).sum() == 0 || altIndelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
-                return new EStep(0, 0, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1));
+                return new EStep(0, 0, totalFwd, totalRev, altSB.get(0), altSB.get(1));
             } else {
-                return strandArtifactProbability(strandArtifactPrior, refFwd + altSB.get(0), refRev + altSB.get(1), altSB.get(0), altSB.get(1), altIndelSize);
+                return strandArtifactProbability(strandArtifactPrior, totalFwd, totalRev, altSB.get(0), altSB.get(1), altIndelSize);
             }
         }).collect(Collectors.toList());
     }
