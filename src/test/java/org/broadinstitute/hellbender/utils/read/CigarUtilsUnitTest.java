@@ -92,25 +92,6 @@ public final class CigarUtilsUnitTest {
         Assert.assertEquals(actualCigarStrOut, expectedCigarStrOut);
     }
 
-    @DataProvider(name = "testData_containsNOperator")
-    public Iterator<Object[]> testData_containsNOperator(final Method testMethod) {
-        final Object[][] TEST_CIGARS = {
-                {"10M", false},
-                {"10M1N", true},
-                {"10M1N1M", true},
-        };
-        final List<Object[]> result = new LinkedList<>();
-        Collections.addAll(result, TEST_CIGARS);
-        return result.iterator();
-    }
-
-    @Test(dataProvider = "testData_containsNOperator")
-    public void testContainsNOperator(final String cigarStrIn, final boolean expected){
-        final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn);
-        final boolean actual = CigarUtils.containsNOperator(cigarIn);
-        Assert.assertEquals(actual, expected, cigarStrIn);
-    }
-
     @DataProvider(name = "testData_countRefBasesBasedOnCigar")
     public Iterator<Object[]> testData_countRefBasesBasedOnCigar(final Method testMethod) {
         final Object[][] TEST_CIGARS = {

@@ -32,7 +32,7 @@ public final class CigarUtils {
     private static final String SW_PAD = "NNNNNNNNNN";
 
     private CigarUtils(){}
-    
+
     /**
      * Inverts the order of the operators in the cigar.
      * Eg 10M1D20M -> 20M1D10M
@@ -135,21 +135,6 @@ public final class CigarUtils {
         }
 
         return new Cigar(elements);
-    }
-
-    /**
-     * Returns whether the cigar has any N operators.
-     */
-    public static boolean containsNOperator(final Cigar cigar) {
-        Utils.nonNull(cigar);
-        //Note: reach the elements directly rather that calling getCigarElements because
-        // we want to avoid allocating a new unmodifiable list view (comes up in profiling of HaplotypeCaller)
-        for (int i = 0, n = cigar.numCigarElements(); i < n; i++) {
-            if (cigar.getCigarElement(i).getOperator() == CigarOperator.N){
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
