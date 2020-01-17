@@ -147,13 +147,14 @@ public class StrandBiasUtils {
 
 
     public static List<List<Integer>> getSBsForAlleles(VariantContext vc) {
-        List<String> sbStr = vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_SB_TABLE_KEY, null);
+        String sbStr = vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_SB_TABLE_KEY, null);
         if (sbStr == null || sbStr.isEmpty()) {
             return Collections.emptyList();
         }
-        return sbStr.stream().map(
-                asb -> AnnotationUtils.decodeAnyASListWithPrintDelim(asb).stream()
-                        .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());
+        List<String> asb = AnnotationUtils.decodeAnyASListWithPrintDelim(sbStr);
+        return asb.stream()
+                .map(fwdrev -> AnnotationUtils.decodeAnyASList(fwdrev).stream().map(String::trim)
+                .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());
 
     }
 }
