@@ -4,7 +4,6 @@ import htsjdk.samtools.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -497,7 +496,7 @@ public final class AlignmentUtilsUnitTest {
 
         read.setCigar(cigar.toString());
 
-        final int actual = AlignmentUtils.calcNumHighQualitySoftClips(read, (byte) qualThreshold);
+        final int actual = AlignmentUtils.countHighQualitySoftClips(read, (byte) qualThreshold);
         Assert.assertEquals(actual, numExpected, "Wrong number of soft clips detected for read " + read.toString());
     }
 
@@ -1038,11 +1037,6 @@ public final class AlignmentUtilsUnitTest {
         final Cigar actualCigar = AlignmentUtils.applyCigarToCigar(firstToSecond, secondToThird);
         Assert.assertEquals(actualCigar, expectedCigar);
     }
-
-    //////////////////////////////////////////
-    // Test AlignmentUtils.applyCigarToCigar() //
-    //////////////////////////////////////////
-
 
     //////////////////////////////////////////
     // Test AlignmentUtils.addCigarElements() //

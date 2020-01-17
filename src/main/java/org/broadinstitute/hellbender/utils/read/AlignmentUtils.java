@@ -461,33 +461,29 @@ public final class AlignmentUtils {
      * @param qualThreshold consider bases with quals > this value as high quality.  Must be >= 0
      * @return positive integer
      */
-    public static int calcNumHighQualitySoftClips( final GATKRead read, final byte qualThreshold ) {
-        if ( read == null ) throw new IllegalArgumentException("Read cannot be null");
-        if ( qualThreshold < 0 ) throw new IllegalArgumentException("Expected qualThreshold to be a positive byte but saw " + qualThreshold);
+    public static int countHighQualitySoftClips(final GATKRead read, final byte qualThreshold ) {
+        Utils.nonNull(read);
+        ParamUtils.isPositiveOrZero(qualThreshold, "Expected qualThreshold to be positive");
 
-        if ( read.getCigar() == null ) // the read is unmapped
+        final Cigar cigar = read.getCigar();
+        if ( cigar == null ) {  // the read is unmapped
             return 0;
-
-        final byte[] qual = read.getBaseQualities();
+        }
 
         int numHQSoftClips = 0;
         int alignPos = 0;
-        for ( final CigarElement ce : read.getCigarElements() ) {
-            final int elementLength = ce.getLength();
+        for ( final CigarElement elem : read.getCigarElements() ) {
+            final int elementLength = elem.getLength();
+            final CigarOperator operator = elem.getOperator();
 
-            switch( ce.getOperator() ) {
-                case S:
-                    for( int jjj = 0; jjj < elementLength; jjj++ ) {
-                        if( qual[alignPos++] > qualThreshold ) { numHQSoftClips++; }
+            if (operator == CigarOperator.SOFT_CLIP) {
+                for (int n = 0; n < elementLength; n++) {
+                    if( read.getBaseQuality(alignPos++) > qualThreshold ) {
+                        numHQSoftClips++;
                     }
-                    break;
-                case M: case I: case EQ: case X:
-                    alignPos += elementLength;
-                    break;
-                case H: case P: case D: case N:
-                    break;
-                default:
-                    throw new IllegalStateException("Unsupported cigar operator: " + ce.getOperator());
+                }
+            } else if (operator.consumesReadBases()) {
+                alignPos += elementLength;
             }
         }
 
