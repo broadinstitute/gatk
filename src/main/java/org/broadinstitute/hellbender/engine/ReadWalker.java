@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
@@ -26,6 +27,11 @@ import java.util.List;
  */
 public abstract class ReadWalker extends WalkerBase {
 
+    @Argument(fullName = "reads-must-start-within-intervals",
+            shortName = "reads-must-start-within-intervals",
+            doc="If true, will only output reads that start within the given intervals.  If no intervals are given this argument has no meaning.")
+    public Boolean filterReadsToStartInGivenIntervals = false;
+
     @Override
     public boolean requiresReads() {
         return true;
@@ -48,7 +54,6 @@ public abstract class ReadWalker extends WalkerBase {
     @Override
     protected final void onStartup() {
         super.onStartup();
-
         setReadTraversalBounds();
     }
 
@@ -56,8 +61,32 @@ public abstract class ReadWalker extends WalkerBase {
      * Initialize traversal bounds if intervals are specified
      */
     void setReadTraversalBounds() {
+
+        // Validate filter input:
+        boolean isReadStartFilteringEnabled = filterReadsToStartInGivenIntervals;
+        if ( filterReadsToStartInGivenIntervals ) {
+            if ( !hasUserSuppliedIntervals() ) {
+                logger.warn("Specified that reads should start in given intervals, but no intervals were specified.");
+                isReadStartFilteringEnabled = false;
+            }
+            else if ( userIntervals.isEmpty() ) {
+                logger.warn("Specified that reads should start in given intervals, but intervals are empty.");
+                isReadStartFilteringEnabled = false;
+            }
+        }
+
         if ( hasUserSuppliedIntervals() ) {
-            reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
+
+            // Get traversal parameters:
+            final TraversalParameters traversalParameters =
+                    intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
+
+            // Call the correct setTraversalBounds method:
+            reads.setTraversalBounds(
+                    traversalParameters.getIntervalsForTraversal(),
+                    traversalParameters.traverseUnmappedReads(),
+                    isReadStartFilteringEnabled
+            );
         }
     }
 

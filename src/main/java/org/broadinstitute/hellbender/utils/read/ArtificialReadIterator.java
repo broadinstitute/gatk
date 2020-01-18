@@ -33,23 +33,6 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
      */
     protected boolean open = false;
 
-    /**
-     * create the fake iterator, given the mapping of chromosomes and read counts
-     *
-     * @param startingChr the starting chromosome
-     * @param endingChr   the ending chromosome
-     * @param readCount   the number of reads in each chromosome
-     * @param header      the associated header
-     */
-    ArtificialReadIterator( int startingChr, int endingChr, int readCount, SAMFileHeader header ) {
-        sChr = startingChr;
-        eChromosomeCount = (endingChr - startingChr) + 1;
-        rCount = readCount;
-        this.header = header;
-        unmappedReadCount = 0;
-        reset();
-    }
-
     protected void reset() {
         this.currentChromo = 0;
         this.currentRead = 1;
@@ -119,7 +102,7 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
             }
         }
         ++totalReadCount;
-        this.next = ArtificialReadUtils.createArtificialRead(this.header, String.valueOf(totalReadCount), currentChromo, currentRead, 50);
+        this.next = ArtificialReadUtils.createArtificialRead(this.header, String.valueOf(totalReadCount), currentChromo, currentRead, ArtificialReadUtils.DEFAULT_READ_LENGTH);
         ++currentRead;
         return true;
     }

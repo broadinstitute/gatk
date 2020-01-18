@@ -4,25 +4,26 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
-import java.nio.channels.SeekableByteChannel;
-import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
+import org.broadinstitute.hellbender.utils.iterators.SamRecordAlignmentStartIntervalFilteringIterator;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.IOException;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +44,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * active on that reader.
      */
     private final Map<SamReader, CloseableIterator<SAMRecord>> readers;
+
+    /**
+     * If {@code true} will filter the reads from this {@link ReadsDataSource} to only include those that start within
+     * the given {@link #intervalsForTraversal}.  If {@code false} will not change the behavior of this
+     * {@link ReadsDataSource}.
+     * This flag is used to enable filtering to only process reads that start in the given user interval list.
+     * Such filtering will avoid double-counting reads that span adjacent intervals.
+     */
+    private boolean filterReadsToStartInGivenIntervals = false;
 
     /**
      * Hang onto the input files so that we can print useful errors about them
@@ -179,9 +189,9 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
-        SamReaderFactory customSamReaderFactory,
-        Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
-        Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
+                            final SamReaderFactory customSamReaderFactory,
+                            final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
+                            final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
 
@@ -299,6 +309,39 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     }
 
     /**
+     * Restricts a traversal of this data source via {@link #iterator} to only return reads that overlap the given intervals,
+     * and to unmapped reads if specified.
+     *
+     * Calls to {@link #query} are not affected by this method.
+     *
+     * @param intervals Our next full traversal will return reads overlapping these intervals
+     * @param traverseUnmapped Our next full traversal will return unmapped reads (this affects only unmapped reads that
+     *                         have no position -- unmapped reads that have the position of their mapped mates will be
+     *                         included if the interval overlapping that position is included).
+     * @param requireReadsToStartInIntervals If {@code true} this {@link ReadsDataSource} will only produce reads that
+     *                                       START in the given intervals.  If {@code false}, this parameter does
+     *                                       nothing.
+     */
+    public void setTraversalBounds( final List<SimpleInterval> intervals,
+                                    final boolean traverseUnmapped,
+                                    final boolean requireReadsToStartInIntervals ) {
+        // Set intervalsForTraversal to null if intervals is either null or empty
+        this.intervalsForTraversal = intervals != null && ! intervals.isEmpty() ? intervals : null;
+        this.traverseUnmapped = traverseUnmapped;
+
+        if ( traversalIsBounded() && ! indicesAvailable ) {
+            raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
+        }
+
+        // Set our filter status:
+        this.filterReadsToStartInGivenIntervals = requireReadsToStartInIntervals;
+        if ( requireReadsToStartInIntervals ) {
+            Utils.nonNull(intervals);
+            Utils.validate( !intervals.isEmpty(), "Specified intervals must not be empty!" );
+        }
+    }
+
+    /**
      * @return True if traversals initiated via {@link #iterator} will be restricted to reads that overlap intervals
      *         as configured via {@link #setTraversalBounds}, otherwise false
      */
@@ -388,6 +431,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @return Iterator over all reads in this data source, limited to overlap with the supplied intervals
      */
     private Iterator<GATKRead> prepareIteratorsForTraversal( final List<SimpleInterval> queryIntervals, final boolean queryUnmapped ) {
+
         // htsjdk requires that only one iterator be open at a time per reader, so close out
         // any previous iterations
         closePreviousIterationsIfNecessary();
@@ -397,15 +441,29 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         // Set up an iterator for each reader, bounded to overlap with the supplied intervals if there are any
         for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readers.entrySet() ) {
             if (traversalIsBounded) {
-                readerEntry.setValue(
-                        new SamReaderQueryingIterator(
-                                readerEntry.getKey(),
-                                readers.size() > 1 ?
-                                        getIntervalsOverlappingReader(readerEntry.getKey(), queryIntervals) :
-                                        queryIntervals,
-                                queryUnmapped
-                        )
+
+                final SamReaderQueryingIterator samReaderQueryingIterator = new SamReaderQueryingIterator(
+                        readerEntry.getKey(),
+                        readers.size() > 1 ?
+                                getIntervalsOverlappingReader(readerEntry.getKey(), queryIntervals) :
+                                queryIntervals,
+                        queryUnmapped
                 );
+
+                // Add our filter iterator if we should filter by start position:
+                if ( filterReadsToStartInGivenIntervals ) {
+
+                    readerEntry.setValue(
+                        new SamRecordAlignmentStartIntervalFilteringIterator(
+                            getSequenceDictionary(),
+                            intervalsForTraversal.iterator(),
+                            samReaderQueryingIterator
+                        )
+                    );
+                }
+                else {
+                    readerEntry.setValue(samReaderQueryingIterator);
+                }
             } else {
                 readerEntry.setValue(readerEntry.getKey().iterator());
             }

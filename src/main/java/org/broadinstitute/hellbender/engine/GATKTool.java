@@ -453,13 +453,12 @@ public abstract class GATKTool extends CommandLineProgram {
             }
 
             reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
-                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
+                    (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
         }
         else {
             reads = null;
         }
     }
-
 
     private boolean bamIndexCachingShouldBeEnabled() {
         return intervalArgumentCollection.intervalsSpecified() && !disableBamIndexCaching;
