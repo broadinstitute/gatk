@@ -34,7 +34,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Advanced
     @Argument(fullName= KMER_SIZE_LONG_NAME, doc="Kmer size to use in the read threading assembler", optional = true)
-    public List<Integer> kmerSizes = Lists.newArrayList( 25);
+    public List<Integer> kmerSizes = Lists.newArrayList( 10, 25);
 
     /**
      * When graph cycles are detected, the normal behavior is to increase kmer sizes iteratively until the cycles are
@@ -132,7 +132,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Hidden
     @Argument(fullName="linked-de-bruijn-graph", doc = "If enabled, the Assembly Engine will construct a Linked De Brujin graph to recover better haplotypes", optional = true)
-    public boolean useLinkedDeBrujinGraph = true;
+    public boolean useLinkedDeBrujinGraph = false;
 
     /**
      * Disables graph simplification into a seq graph. This is experimental and may cause performance issues for the GraphBasedKBestHaplotypeFinder

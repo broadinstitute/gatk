@@ -50,7 +50,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
@@ -99,6 +99,36 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    /*
+     * Test that in VCF mode we're consistent with past GATK4 results
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testLinkedDebruijnModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testLinkedDebruijnModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testLinkedDebruijnMode.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--linked-de-bruijn-graph",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
     @Test
     public void testThisSiteThatEludesMe() {
         String[] args = "-I /Users/emeryj/hellbender/AssemblyEngineEvaluationWork/results/reads.overlapping.discordance.bam -O output.for.debugging.vcf -R /Users/emeryj/hellbender/references/Homo_sapiens_assembly38.fasta -ip 1000 -L chr1:10742920".split(" ");
@@ -130,12 +160,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
             IntegrationTestSpec.assertEqualTextFiles(output, expected);
         }
-    }
-
-    @Test
-    public void testOfThing() {
-        String[] args = "-I /Users/emeryj/hellbender/Scripts/HaplotypeCallerSpark/G96832.NA12878.chr15.bam -R src/test/resources/large/Homo_sapiens_assembly19.fasta.gz -O test.genome.output.JT.5choices.pruneplus.vcf -L 15:77875643-80000000 --debug-haplotype-discovery --haplotype-debug-histogram-output histogram.JT.5choices.redescovery.txt -ERC GVCF --smith-waterman JAVA --disable-sequence-graph-simplification".split(" ");
-        runCommandLine(args);
     }
 
     /*
