@@ -370,7 +370,7 @@ public final class ReadFilterLibraryUnitTest {
     @Test
     public void testGoodCigarsUpToSize() {
         //Note: not using data providers here because it's super slow to print (many minutes vs few seconds).
-        List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(10);
+        List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(10, false);
         for (Cigar cigar : cigarList) {
             GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
             Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigar().toString());

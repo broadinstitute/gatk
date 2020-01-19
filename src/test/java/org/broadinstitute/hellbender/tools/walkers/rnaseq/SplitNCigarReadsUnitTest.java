@@ -24,14 +24,7 @@ import java.util.List;
  * The cigarElements array is used to provide all the possible cigar element that might be included.
  */
 public final class SplitNCigarReadsUnitTest extends GATKBaseTest {
-    final static CigarElement[] cigarElements = {
-            new CigarElement(1, CigarOperator.HARD_CLIP),
-            new CigarElement(1, CigarOperator.SOFT_CLIP),
-            new CigarElement(1, CigarOperator.INSERTION),
-            new CigarElement(1, CigarOperator.DELETION),
-            new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH),
-            new CigarElement(1, CigarOperator.SKIPPED_REGION)
-    };
+
     private SAMFileHeader header = new SAMFileHeader();;
 
     private final class TestManager extends OverhangFixingManager {
@@ -117,7 +110,7 @@ public final class SplitNCigarReadsUnitTest extends GATKBaseTest {
     @Test
     public void splitReadAtN() {
         final int maxCigarElements = 9;
-        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(maxCigarElements, cigarElements);
+        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(maxCigarElements, true);
 
         // For Debugging use those lines (instead of above cigarList) to create specific read:
         //------------------------------------------------------------------------------------

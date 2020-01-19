@@ -34,7 +34,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
 
     @BeforeClass
     public void init() {
-        cigarList = ReadClipperTestUtils.generateCigarList(maximumCigarElements);
+        cigarList = ReadClipperTestUtils.generateCigarList(maximumCigarElements, false);
         final Cigar additionalCigar = TextCigarCodec.decode("2M3I5M");
         cigarList.add(additionalCigar);
     }

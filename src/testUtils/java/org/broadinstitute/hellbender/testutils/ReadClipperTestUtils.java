@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.testutils;
 
+import com.google.common.collect.Lists;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadClipperTestUtils {
     //Should contain all the utils needed for tests to mass produce
@@ -16,12 +16,25 @@ public final class ReadClipperTestUtils {
 
     static final byte[] BASES = {'A', 'C', 'T', 'G'};
     static final byte[] QUALS = {2, 15, 25, 30};
-    static final CigarElement[] cigarElements = {new CigarElement(1, CigarOperator.HARD_CLIP),
-            new CigarElement(1, CigarOperator.SOFT_CLIP),
+
+    static final List<List<CigarElement>> LEADING_CLIPS = Arrays.asList(
+            Collections.emptyList(),
+            Collections.singletonList(new CigarElement(1, CigarOperator.HARD_CLIP)),
+            Collections.singletonList(new CigarElement(1, CigarOperator.SOFT_CLIP)),
+            Arrays.asList(new CigarElement(1, CigarOperator.HARD_CLIP), new CigarElement(1, CigarOperator.SOFT_CLIP)));
+
+    static final List<List<CigarElement>> TRAILING_CLIPS = LEADING_CLIPS.stream().map(Lists::reverse).collect(Collectors.toList());
+
+    static final CigarElement[] CORE_CIGAR_ELEMENTS = {
             new CigarElement(1, CigarOperator.INSERTION),
             new CigarElement(1, CigarOperator.DELETION),
             new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH)};
 
+    static final CigarElement[] CORE_CIGAR_ELEMENTS_INCLUDING_SKIPS = {
+            new CigarElement(1, CigarOperator.INSERTION),
+            new CigarElement(1, CigarOperator.DELETION),
+            new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH),
+            new CigarElement(1, CigarOperator.SKIPPED_REGION)};
 
     /**
      * Make a read from the CIGAR string
@@ -72,14 +85,6 @@ public final class ReadClipperTestUtils {
 
     /**
      * This function generates every valid permutation of cigar strings (with a given set of cigarElement) with a given length.
-     * See {@link ReadClipperTestUtils#generateCigarList(int, CigarElement[]) for a full description.}
-     */
-    public static List<Cigar> generateCigarList(int maximumLength) {
-        return generateCigarList(maximumLength, cigarElements);
-    }
-
-    /**
-     * This function generates every valid permutation of cigar strings (with a given set of cigarElement) with a given length.
      * <p>
      * A valid cigar object obeys the following rules:
      * - No Hard/Soft clips in the middle of the read
@@ -90,47 +95,61 @@ public final class ReadClipperTestUtils {
      * @param maximumCigarElements the maximum number of elements in the cigar
      * @return a list with all valid Cigar objects
      */
-    public static List<Cigar> generateCigarList(int maximumCigarElements, CigarElement[] cigarElements) {
-        int numCigarElements = cigarElements.length;
-        LinkedList<Cigar> cigarList = new LinkedList<>();
-        byte[] cigarCombination = new byte[maximumCigarElements];
+    public static List<Cigar> generateCigarList(int maximumCigarElements, final boolean includeSkips) {
+        final CigarElement[] coreElements = includeSkips ? CORE_CIGAR_ELEMENTS_INCLUDING_SKIPS : CORE_CIGAR_ELEMENTS;
+        List<Cigar> cigarList = new ArrayList<>();
 
-        Arrays.fill(cigarCombination, (byte) 0);
-        int currentIndex = 0;
-        while (true) {
-            try {
-                final Cigar cigar = createCigarFromCombination(cigarCombination, cigarElements);    // create the cigar
-                if (CigarUtils.isGood(cigar)) {                                     // check if it's valid
-                    cigarList.add(cigar);                                      // add it
+        for (final List<CigarElement> leadingClipElements : LEADING_CLIPS) {
+            for (final List<CigarElement> trailingClipElements : TRAILING_CLIPS) {
+
+                final int maximumCoreElements = maximumCigarElements - leadingClipElements.size() - trailingClipElements.size();
+                if (maximumCoreElements < 1) {
+                    continue;
                 }
-            } catch (final Exception ex) {} // we are creating random cigars, many of which are invalid.
 
-            boolean currentIndexChanged = false;
-            while (currentIndex < maximumCigarElements && cigarCombination[currentIndex] == numCigarElements - 1) {
-                currentIndex++;                                            // find the next index to increment
-                currentIndexChanged = true;                                // keep track of the fact that we have changed indices!
-            }
+                int numCoreElements = coreElements.length;
 
-            if (currentIndex == maximumCigarElements)                             // if we hit the end of the array, we're done.
-                break;
+                int[] cigarCombination = new int[maximumCoreElements];
 
-            cigarCombination[currentIndex]++;                              // otherwise advance the current index
+                Arrays.fill(cigarCombination, 0);
+                int currentIndex = 0;
+                while (true) {
+                    try {
+                        final Cigar coreCigar = createCigarFromCombination(cigarCombination, coreElements);    // create the cigar
+                        if (CigarUtils.isGood(coreCigar)) {// check if it's valid
+                            final CigarBuilder builder = new CigarBuilder();
+                            builder.addAll(leadingClipElements);
+                            builder.addAll(coreCigar.getCigarElements());
+                            builder.addAll(trailingClipElements);
+                            cigarList.add(builder.make());                                      // add it
+                        }
+                    } catch (final Exception ex) {
+                    } // we are creating random cigars, many of which are invalid.
 
-            if (currentIndexChanged) {                                     // if we have changed index, then...
-                for (int i = 0; i < currentIndex; i++)
-                    cigarCombination[i] = 0;                               // reset everything from 0->currentIndex
-                currentIndex = 0;                                          // go back to the first index
+                    boolean currentIndexChanged = false;
+                    while (currentIndex < maximumCoreElements && cigarCombination[currentIndex] == numCoreElements - 1) {
+                        currentIndex++;                                            // find the next index to increment
+                        currentIndexChanged = true;                                // keep track of the fact that we have changed indices!
+                    }
+
+                    if (currentIndex == maximumCoreElements)                             // if we hit the end of the array, we're done.
+                        break;
+
+                    cigarCombination[currentIndex]++;                              // otherwise advance the current index
+
+                    if (currentIndexChanged) {                                     // if we have changed index, then...
+                        for (int i = 0; i < currentIndex; i++)
+                            cigarCombination[i] = 0;                               // reset everything from 0->currentIndex
+                        currentIndex = 0;                                          // go back to the first index
+                    }
+                }
             }
         }
 
         return cigarList;
     }
 
-    private static Cigar createCigarFromCombination(byte[] cigarCombination, CigarElement[] cigarElements) {
-        final CigarBuilder cigarBuilder = new CigarBuilder();
-        for (byte i : cigarCombination) {
-            cigarBuilder.add(cigarElements[i]);
-        }
-        return cigarBuilder.make();
+    private static Cigar createCigarFromCombination(int[] cigarCombination, CigarElement[] cigarElements) {
+        return new Cigar(Arrays.stream(cigarCombination).mapToObj(n -> cigarElements[n]).collect(Collectors.toList()));
     }
 }
