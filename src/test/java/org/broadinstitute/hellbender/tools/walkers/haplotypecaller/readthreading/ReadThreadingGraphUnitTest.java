@@ -437,7 +437,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     // This test asserts that dangling heads are recovered relative to whatever branch they hang off of on the graph rather than based off of a reference edge
     // (note that this test works because the dangling head SHOLD missmatch by too many bases relative to the reference but doesn't because the "refrence" that is found is relative to the fork point (just like for dangling tails).\
     public void testThreeProngedForkBehavior() {
-//TODO 
+//TODO
         final int kmerSize = 15;
 
         // construct the haplotypes
