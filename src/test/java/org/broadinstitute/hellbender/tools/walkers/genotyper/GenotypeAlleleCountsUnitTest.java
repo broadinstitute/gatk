@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -430,22 +431,29 @@ public final class GenotypeAlleleCountsUnitTest {
         return result;
     }
 
-    @DataProvider
-    public Object[][] genotypeAlleleCountDataWithToStringOutput() {
+    private Object[][] genotypeAlleleCountDataWithToStringOutput() {
         return new Object[][]{
-                new Object[]{1, new String[]{"0", "1", "2"}},
-                new Object[]{2, new String[]{"0/0", "0/1", "1/1", "0/2", "1/2", "2/2"}},
+                new Object[]{1, new String[]{"0", "1", "2", "3", "4"}},
+                new Object[]{2, new String[]{"0/0", "0/1", "1/1", "0/2", "1/2", "2/2", "0/3", "1/3", "2/3", "3/3"}},
                 new Object[]{3, new String[]{"0/0/0", "0/0/1", "0/1/1", "1/1/1", "0/0/2", "0/1/2", "1/1/2", "0/2/2", "1/2/2", "2/2/2"}}};
     }
 
-    @Test(dataProvider = "genotypeAlleleCountDataWithToStringOutput")
-    public void testToString(final int ploidy, final String[] expectedtoStrings) {
-        GenotypeAlleleCounts current = GenotypeAlleleCounts.first(ploidy);
-        int i = 0;
-        do {
-            assertEquals(current.toString(), expectedtoStrings[i], String.format("genotype index: %d", i));
-            i++;
-            current = current.next();
-        } while (i < expectedtoStrings.length);
+    @DataProvider
+    public Iterator<Object[]> genotypeAlleleCountDataWithToStringOutputIterable() {
+        final List<Object[]> tests = new ArrayList<>();
+        for (final Object[] test : genotypeAlleleCountDataWithToStringOutput()) {
+            final Integer ploidy = (Integer) test[0];
+            GenotypeAlleleCounts current = GenotypeAlleleCounts.first(ploidy);
+            for (final String expectedGenotypeString : (String[]) test[1]) {
+                tests.add(new Object[]{current, expectedGenotypeString});
+                current = current.next();
+            }
+        }
+        return tests.iterator();
+    }
+
+    @Test(dataProvider = "genotypeAlleleCountDataWithToStringOutputIterable")
+    public void testToString(final GenotypeAlleleCounts gac, final String expectedtoString) {
+        assertEquals(gac.toString(), expectedtoString);
     }
 }
