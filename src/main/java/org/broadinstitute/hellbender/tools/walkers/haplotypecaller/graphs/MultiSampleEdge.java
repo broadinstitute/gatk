@@ -32,7 +32,6 @@ public final class MultiSampleEdge extends BaseEdge {
     private final int singleSampleCapacity;
     private final PriorityQueue<Integer> singleSampleMultiplicities;
 
-    //TODO this will want to be moved to somewhere specific later
     private final List<Integer> referencePathIndexes = new ArrayList<>(2);
 
     /**
