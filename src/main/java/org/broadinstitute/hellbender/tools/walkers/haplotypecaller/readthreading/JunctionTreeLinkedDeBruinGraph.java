@@ -544,20 +544,6 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         return Optional.ofNullable(readThreadingJunctionTrees.get(vertex));
     }
 
-    // TODO this needs to be filled out and resolved
-    // TODO as an extension, this should be made to intelligently pick nodes if there is a fork (possibly an expensive step)
-//    private List<ThreadingNode> attemptToResolveThreadingBetweenVertexes(MultiDeBruijnVertex startingVertex, JunctionTreeThreadingHelper threadingNodes, MultiDeBruijnVertex vertex, int kmersPastBetweenStartingAndEndingVertex) {
-//        final int maxLengthToSearch = (int)(kmersPastBetweenStartingAndEndingVertex * 1.10);
-//        // do a depth first search for an unambiguous path from startingVertex to
-//        final LinkedList<Pair<MultiSampleEdge, Integer>> searchQueue = new LinkedList<>();
-//        outgoingEdgesOf(startingVertex).stream().map(v -> Pair.of(v, 1)).forEach(searchQueue::push);
-//
-//        while ()
-//
-//        threadingNodes.clear(); // Clear the nodes currently as they might cause issues down the line.
-//        return Collections.emptyList();
-//    }
-
     @VisibleForTesting
     // Test method for returning all existing junction trees.
     public Map<MultiDeBruijnVertex, ThreadingTree> getReadThreadingJunctionTrees(boolean pruned) {
@@ -576,9 +562,11 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
      */
     public class ThreadingTree {
         private ThreadingNode rootNode;
+        private MultiDeBruijnVertex treeVertex; // this reference exists purely for toString() reasons
 
-        private ThreadingTree() {
-            rootNode = new ThreadingNode(null);
+        private ThreadingTree(final MultiDeBruijnVertex treeVertex) {
+            this.rootNode = new ThreadingNode(null);
+            this.treeVertex = treeVertex;
         }
 
         /**
@@ -606,6 +594,10 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
                                     .collect(Collectors.joining()))
                     .collect(Collectors.toList());
 
+        }
+
+        public String toString() {
+            return "ThreadingTree_at_"+treeVertex.getSequenceString()+"_with_evidence_"+rootNode.count;
         }
 
         // getter for the root node, TODO to possibly be replaced when the graph gets hidden from prying eyes.
@@ -744,7 +736,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
         // Adds a junction tree prevVertex if the vertex warrants a junciton tree
         private void addTreeIfNecessary(MultiDeBruijnVertex prevVertex) {
             if (vertexWarrantsJunctionTree(prevVertex)) {
-                trackedNodes.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree()).getAndIncrementRootNode());
+                trackedNodes.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
             }
         }
     }
