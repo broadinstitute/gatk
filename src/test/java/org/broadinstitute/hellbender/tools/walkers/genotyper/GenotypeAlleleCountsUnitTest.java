@@ -303,8 +303,7 @@ public final class GenotypeAlleleCountsUnitTest {
     }
 
     private void testNextOnePloidyIncrease() {
-        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(1);
-        GenotypeAlleleCounts next = first;
+        final GenotypeAlleleCounts next = GenotypeAlleleCounts.first(1);
 
         while (!next.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
             final GenotypeAlleleCounts current = next.copy();
@@ -344,7 +343,7 @@ public final class GenotypeAlleleCountsUnitTest {
             throw new IllegalArgumentException();
         }
 
-        GenotypeAlleleCounts next = GenotypeAlleleCounts.first(ploidy);
+        final GenotypeAlleleCounts next = GenotypeAlleleCounts.first(ploidy);
 
         while (!next.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
             final GenotypeAlleleCounts current = next.copy();
