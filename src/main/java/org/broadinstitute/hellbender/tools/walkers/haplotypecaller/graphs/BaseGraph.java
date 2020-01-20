@@ -245,6 +245,40 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
+     * Traverse the graph and get the next reference vertex if it exists
+     * @param v the current vertex, can be null
+     * @param allowNonRefPaths if true, allow sub-paths that are non-reference if there is only a single outgoing edge
+     * @param blacklistedEdge optional edge to ignore in the traversal down; useful to exclude the non-reference dangling paths
+     * @return the next vertex (but not necessarily on the reference path if allowNonRefPaths is true) if it exists, otherwise null
+     */
+    public final V getPrevReferenceVertex( final V v, final boolean allowNonRefPaths, final Optional<E> blacklistedEdge ) {
+        if( v == null ) { return null; }
+
+        final Set<E> incomingEdges = incomingEdgesOf(v);
+
+        if (incomingEdges.isEmpty()){
+            return null;
+        }
+
+        for( final E edgeToTest : incomingEdges ) {
+            if( edgeToTest.isRef() ) {
+                return getEdgeSource(edgeToTest);
+            }
+        }
+
+        if (!allowNonRefPaths){
+            return null;
+        }
+
+        //singleton or empty set
+        final Set<E> blacklistedEdgeSet = blacklistedEdge.isPresent() ? Collections.singleton(blacklistedEdge.get()) : Collections.emptySet();
+
+        // if we got here, then we aren't on a reference path
+        final List<E> edges = incomingEdges.stream().filter(e -> !blacklistedEdgeSet.contains(e)).limit(2).collect(Collectors.toList());
+        return edges.size() == 1 ? getEdgeSource(edges.get(0)) : null;
+    }
+
+    /**
      * Traverse the graph and get the previous reference vertex if it exists
      * @param v the current vertex, can be null
      * @return  the previous reference vertex if it exists or null otherwise.

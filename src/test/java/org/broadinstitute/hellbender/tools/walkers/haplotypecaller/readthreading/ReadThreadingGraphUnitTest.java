@@ -336,6 +336,59 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     }
 
     @Test
+    // This test asserts that dangling heads are recovered relative to whatever branch they hang off of on the graph rather than based off of a reference edge
+    // (note that this test works because the dangling head SHOLD missmatch by too many bases relative to the reference but doesn't because the "refrence" that is found is relative to the fork point (just like for dangling tails).\
+    public void testForkedDanglingHeadRecoveryMatchingToBranchPathNotRef() {
+
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonSuffix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String commonPrefix = "CCCCGCTAGCTAATCGCC";
+        final String refOverAlt           = "CAAGA";
+        final String altBranchWithVariant  ="CAAGT";
+        final String BranchDanglingHeadm   = "TAAGT";
+        final String ref = commonPrefix + refOverAlt + commonSuffix;
+        final String alt1 = commonPrefix + altBranchWithVariant + commonSuffix;
+        final String alt2 = commonPrefix + BranchDanglingHeadm + commonSuffix;
+        final String alt2_dangling = "CTAATCGCC" + BranchDanglingHeadm + commonSuffix; // this path should be dangling off of the reference
+        // (this will have too many errors relative to the reference, 2, unless it is considered relative to the reference path
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1a = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read1b = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2a = ArtificialReadUtils.createArtificialRead(alt2_dangling.getBytes(), Utils.dupBytes((byte) 30, alt2_dangling.length()), alt2_dangling.length() + "M");
+        final GATKRead read2b = ArtificialReadUtils.createArtificialRead(alt2_dangling.getBytes(), Utils.dupBytes((byte) 30, alt2_dangling.length()), alt2_dangling.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.addRead(read1a, header);
+        rtgraph.addRead(read2a, header);
+        rtgraph.addRead(read1b, header);
+        rtgraph.addRead(read2b, header);
+        rtgraph.buildGraphIfNecessary();
+
+        Assert.assertEquals(rtgraph.getSources().size(), 2);
+        Assert.assertEquals(rtgraph.getSinks().size(), 1);
+
+        rtgraph.recoverDanglingBranches(1, 3, true,  SmithWatermanJavaAligner.getInstance());
+        rtgraph.removePathsNotConnectedToRef();
+
+        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
+        seqGraph.simplifyGraph();
+
+        final List<String> paths = new GraphBasedKBestHaplotypeFinder<>(seqGraph).findBestHaplotypes().stream()
+                .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(paths.size(), 3);
+        Assert.assertEquals(paths, Arrays.asList(ref, alt1, alt2).stream().sorted().collect(Collectors.toList()));
+    }
+
+
+    @Test
     public void testForkedDanglingEndsWithCombinedMode() {
 
         final int kmerSize = 15;
@@ -381,6 +434,58 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     }
 
     @Test
+    // This test asserts that dangling heads are recovered relative to whatever branch they hang off of on the graph rather than based off of a reference edge
+    // (note that this test works because the dangling head SHOLD missmatch by too many bases relative to the reference but doesn't because the "refrence" that is found is relative to the fork point (just like for dangling tails).\
+    public void testThreeProngedForkBehavior() {
+//TODO 
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonSuffix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String commonPrefix = "CCCCGCTAGCTAATCGCC";
+        final String refOverAlt           = "CAAGA";
+        final String altBranchWithVariant  ="CAAGT";
+        final String BranchDanglingHeadm   = "TAAGT";
+        final String ref = commonPrefix + refOverAlt + commonSuffix;
+        final String alt1 = commonPrefix + altBranchWithVariant + commonSuffix;
+        final String alt2 = commonPrefix + BranchDanglingHeadm + commonSuffix;
+        final String alt2_dangling = "CTAATCGCC" + BranchDanglingHeadm + commonSuffix; // this path should be dangling off of the reference
+        // (this will have too many errors relative to the reference, 2, unless it is considered relative to the reference path
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1a = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read1b = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2a = ArtificialReadUtils.createArtificialRead(alt2_dangling.getBytes(), Utils.dupBytes((byte) 30, alt2_dangling.length()), alt2_dangling.length() + "M");
+        final GATKRead read2b = ArtificialReadUtils.createArtificialRead(alt2_dangling.getBytes(), Utils.dupBytes((byte) 30, alt2_dangling.length()), alt2_dangling.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.addRead(read1a, header);
+        rtgraph.addRead(read2a, header);
+        rtgraph.addRead(read1b, header);
+        rtgraph.addRead(read2b, header);
+        rtgraph.buildGraphIfNecessary();
+
+        Assert.assertEquals(rtgraph.getSources().size(), 2);
+        Assert.assertEquals(rtgraph.getSinks().size(), 1);
+
+        rtgraph.recoverDanglingBranches(1, 3, true,  SmithWatermanJavaAligner.getInstance());
+        rtgraph.removePathsNotConnectedToRef();
+
+        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
+        seqGraph.simplifyGraph();
+
+        final List<String> paths = new GraphBasedKBestHaplotypeFinder<>(seqGraph).findBestHaplotypes().stream()
+                .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(paths.size(), 3);
+        Assert.assertEquals(paths, Arrays.asList(ref, alt1, alt2).stream().sorted().collect(Collectors.toList()));
+    }
+
+    @Test
     public void testForkedDanglingEndsWithCombinedModeHeadsChoosingShortHigherWeightEdge() {
 
         final int kmerSize = 15;
@@ -393,6 +498,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final String ref = commonPrefix + refEnd;
         final String alt1 = commonPrefix + altEnd1;
         final String alt2 = commonPrefix + altEnd2;
+        final String alt2RefEndRecovered = commonPrefix + altEnd2 + "ATCG";
 
         // create the graph and populate it
         final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
@@ -413,6 +519,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         Assert.assertEquals(rtgraph.getSinks().size(), 3);
 
         rtgraph.recoverDanglingBranches(1, 5, true,  SmithWatermanJavaAligner.getInstance());
+        rtgraph.removePathsNotConnectedToRef();
 
         final SeqGraph seqGraph = rtgraph.toSequenceGraph();
         seqGraph.simplifyGraph();
@@ -425,7 +532,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(paths.size(), 2);
         // We don't expect Alt1 in the tree because it should have been pruned
-        Assert.assertEquals(paths, Arrays.asList(ref, alt2).stream().sorted().collect(Collectors.toList()));
+        Assert.assertEquals(paths, Arrays.asList(ref, alt2RefEndRecovered).stream().sorted().collect(Collectors.toList()));
     }
 
     @Test
