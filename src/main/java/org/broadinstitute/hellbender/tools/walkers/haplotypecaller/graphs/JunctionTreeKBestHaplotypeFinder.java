@@ -176,7 +176,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                 // check that we were able to recover the missing path
                 if (newPath != null) {
                     //TODO this might be removed, this is where we evaluate
-                    //annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
+                    annotatePathBasedOnGraph(newPath, junctionTreeLinkedDeBruinGraph);
                     result.add(newPath);
                 }
                 pathToExtend.getEdges().forEach(unvisitedPivotalEdges::remove);
