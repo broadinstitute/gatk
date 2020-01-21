@@ -403,7 +403,9 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> pathForCandidate = findPath(vertex, pruneFactor, v -> inDegreeOf(v) < 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
                 if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().isEmpty()) {
                     if (pathForCandidate.getRight() != null) {
-                        removeEdge(pathForCandidate.getRight());
+                        if (!pathForCandidate.getRight().isRef()) {
+                            removeEdge(pathForCandidate.getRight());
+                        }
                     }
                 } else {
                     DanglingPathCandidate candidate = new DanglingPathCandidate(TraversalDirection.upwards,
@@ -422,7 +424,9 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
                 if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().isEmpty()) {
                     if (pathForCandidate.getRight() != null) {
-                        removeEdge(pathForCandidate.getRight());
+                        if (!pathForCandidate.getRight().isRef()) {
+                            removeEdge(pathForCandidate.getRight());
+                        }
                     }
                     nRecovered += recoverDanglingHead(vertex, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
                 } else {
@@ -460,7 +464,9 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             if (nextCandidate.isRootedInReference()) {
                 // the actual merging step, handle for both directions differently
                 if (nextCandidate.pathToMerge.size() < minPathLength) {
-                    removeEdge(nextCandidate.edgeOfDivergence);
+                    if (!nextCandidate.edgeOfDivergence.isRef()) {
+                        removeEdge(nextCandidate.edgeOfDivergence);
+                    }
                     mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
                     continue;
                 }
@@ -498,7 +504,9 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 // if we have no neighbors one of two things is true, either there are higher coverage forks elsewhere in the queue to be handled, or we are dangling off of a variant branch that is not dangling
 
                 if (nextCandidate.pathToMerge.size() < minPathLength) {
-                    removeEdge(nextCandidate.edgeOfDivergence);
+                    if (!nextCandidate.edgeOfDivergence.isRef()) {
+                        removeEdge(nextCandidate.edgeOfDivergence);
+                    }
                     mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
                     continue;
                 }
@@ -529,7 +537,9 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 } else {
                     // if there are multiple choices and one of them is higher weight but too short, choose that one.
                     if (neighbors.stream().anyMatch(n -> n.maxWeight > nextCandidate.maxWeight && n.pathToMerge.size() < minPathLength)) {
-                        removeEdge(nextCandidate.getRootEdge());
+                        if (!nextCandidate.getRootEdge().isRef()) {
+                            removeEdge(nextCandidate.getRootEdge());
+                        }
                         mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
                     } else {// otherwise attempt to extend both
                         DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
