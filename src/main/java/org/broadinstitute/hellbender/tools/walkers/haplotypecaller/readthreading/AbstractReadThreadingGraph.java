@@ -502,10 +502,18 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                                 && c.getRootEdge() != nextCandidate.getRootEdge())
                         .collect(Collectors.toList());
 
+                // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
+                List<DanglingPathCandidate> overlappingNeighbors = mapOfRoots.get(nextCandidate.getRootVertex())
+                        .stream()
+                        .filter(c -> c != nextCandidate
+                                && c.direction == nextCandidate.direction
+                                && c.getRootEdge() == nextCandidate.getRootEdge())
+                        .collect(Collectors.toList());
+
                 // if we have no neighbors one of two things is true, either there are higher coverage forks elsewhere in the queue to be handled, or we are dangling off of a variant branch that is not dangling
 
                 if (nextCandidate.pathToMerge.size() < minPathLength) {
-                    if (!nextCandidate.edgeOfDivergence.isRef()) {
+                    if (!nextCandidate.edgeOfDivergence.isRef() && overlappingNeighbors.isEmpty()) {
                         removeEdge(nextCandidate.edgeOfDivergence);
                     }
                     mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
@@ -538,7 +546,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 } else {
                     // if there are multiple choices and one of them is higher weight but too short, choose that one.
                     if (neighbors.stream().anyMatch(n -> n.maxWeight > nextCandidate.maxWeight && n.pathToMerge.size() < minPathLength)) {
-                        if (!nextCandidate.getRootEdge().isRef()) {
+                        if (!nextCandidate.getRootEdge().isRef() && overlappingNeighbors.isEmpty()) {
                             removeEdge(nextCandidate.getRootEdge());
                         }
                         mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
