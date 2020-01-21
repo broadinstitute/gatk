@@ -58,7 +58,7 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
         final double artifactProbability = errorProbabilities.getProbabilitiesByFilter().entrySet().stream()
                 .filter(e -> e.getKey().errorType() != ErrorType.SEQUENCING)
                 .filter(e -> !e.getKey().filterName().equals(filterName()))
-                .flatMap(e -> e.getValue().stream())
+                .flatMap(e -> e.getValue().stream())  // the value is a list of double, we need the max of all the lists
                 .max(Double::compareTo).orElse(0.0);
 
         for (final Genotype tumorGenotype : vc.getGenotypes()) {
