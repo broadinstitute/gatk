@@ -1,0 +1,11 @@
+##fileformat=VCFv4.1
+##FILTER=<ID=VQSRTrancheINDEL99.00to99.90, Description="A filter">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	AA0243Z	ZZ9867A
+1	1267325	rs200330269	G	GC	1746.26	PASS	.	GT:AD:DP:GQ:PL	0/0:38,0:38:93:0,93,1395	0/1:21,20:41:99:0,123,1240
+1	1684347	.	CCCT	CCCTCCT,C,CCCTCCTCCT	106993.14	PASS	.	GT:AD:DP:GQ:PL	0/0:33,0,0,0:33:99:0,99,923,99,923,923,99,923,923,923	0/1:20,10,5,2:23:60:1200,0,30,40,50,60,70,80,90,100
+1	1850627	.	CAGCGGCAGG	C	5063.71	VQSRTrancheINDEL99.00to99.90	.	GT:AD:DP:GQ:PL	./.:0,0:0	0/0:19,2:21:27:0,27,63
