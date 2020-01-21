@@ -36,8 +36,10 @@ public final class ErrorProbabilities {
         }
         LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
+        // convert the data so we have a list of probabilities by allele instead of filter
         probabilitiesByAllelesForEachFilter.replaceAll((k, v) -> ErrorProbabilities.transpose(v));
 
+        // foreach error type, get the max probability for each allele
         probabilitiesByTypeAndAllele = probabilitiesByAllelesForEachFilter.entrySet().stream().collect(toMap(
                 Map.Entry::getKey,
                 entry -> entry.getValue().stream().map(alleleList -> alleleList.stream().max(Double::compare).orElse(0.0)).collect(Collectors.toList()),
@@ -45,6 +47,8 @@ public final class ErrorProbabilities {
 
 
         // treat errors of different types as independent
+        // transpose the lists of allele probabilities, so it is now a list per allele that contains the prob for each type
+        // combine allele-wise
         combinedErrorProbabilitiesByAllele = transpose(probabilitiesByTypeAndAllele.values().stream().collect(toList()))
                 .stream().map(
                         alleleProbabilities -> alleleProbabilities.stream().map(p -> 1.0 - p).reduce(1.0, (a, b) -> a * b)).collect(Collectors.toList());
@@ -56,6 +60,8 @@ public final class ErrorProbabilities {
     public List<Double> getNonSomaticProbabilities() { return probabilitiesByTypeAndAllele.get(ErrorType.NON_SOMATIC); }
     public Map<Mutect2Filter, List<Double>> getProbabilitiesByFilter() { return alleleProbabilitiesByFilter; }
 
+    // helper functions for the few operations that still differ depending on whether the filter
+    // is per variant or allele
     public Map<Mutect2Filter, List<Double>> getProbabilitiesForAlleleFilters() {
         return getPartitionedProbabilitiesByFilter(false);
     }
@@ -76,7 +82,11 @@ public final class ErrorProbabilities {
 
     // TODO would this be useful in a util class somewhere?
     private static <T> List<List<T>> transpose(List<List<T>> list) {
+        // all lists need to be the same size
         final int N = list.stream().mapToInt(l -> l.size()).max().orElse(-1);
+        if (list.stream().anyMatch(l -> l.size() != N)) {
+
+        }
         List<Iterator<T>> iterList = list.stream().map(it->it.iterator()).collect(toList());
         return IntStream.range(0, N)
                 .mapToObj(n -> iterList.stream()
