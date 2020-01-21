@@ -35,7 +35,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public GenotypeCalculationArgumentCollection( final GenotypeCalculationArgumentCollection other ) {
         Utils.nonNull(other);
 
-        this.useNewAFCalculator = other.useNewAFCalculator;
         this.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = other.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
         this.snpHeterozygosity = other.snpHeterozygosity;
         this.indelHeterozygosity = other.indelHeterozygosity;
@@ -45,14 +44,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.supportVariants = other.supportVariants;
         this.numRefIfMissing = other.numRefIfMissing;
     }
-
-
-    /**
-     * As of version 4.1.0.0, this argument is no longer needed because the new qual score is now on by default. See GATK 3.3 release notes for more details.
-     */
-    @Deprecated
-    @Argument(fullName = "use-new-qual-calculator", shortName = "new-qual", doc = "Use the new AF model instead of the so-called exact model", optional = true)
-    public boolean useNewAFCalculator = true;
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
