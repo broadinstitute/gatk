@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -24,7 +23,7 @@ public class StrictStrandBiasFilter extends HardAlleleFilter<List<Integer>> {
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         List<List<Integer>> sbs = StrandBiasUtils.getSBsForAlleles(vc);
-        if (sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
+        if (minReadsOnEachStrand == 0 || sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
             return Collections.emptyList();
         }
         // skip the reference
