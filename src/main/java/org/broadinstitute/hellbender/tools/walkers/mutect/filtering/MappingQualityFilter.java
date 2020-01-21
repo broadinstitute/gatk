@@ -9,8 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// TODO this class doens't use the generic method - how to simplify?
-public class MappingQualityFilter extends HardAlleleFilter<Integer> {
+public class MappingQualityFilter extends HardAlleleFilter {
     private final double minMedianMappingQuality;
     private final int longIndelSize;
 

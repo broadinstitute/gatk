@@ -8,7 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class BaseQualityFilter extends HardAlleleFilter<Integer> {
+public class BaseQualityFilter extends HardAlleleFilter {
     private final double minMedianBaseQuality;
 
     public BaseQualityFilter(final double minMedianBaseQuality) {

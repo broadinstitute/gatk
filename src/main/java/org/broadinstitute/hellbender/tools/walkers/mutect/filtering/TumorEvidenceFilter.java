@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 
-public class TumorEvidenceFilter extends Mutect2AlleleFilter<Integer> {
+public class TumorEvidenceFilter extends Mutect2AlleleFilter {
     @Override
     public ErrorType errorType() { return ErrorType.SEQUENCING; }
 

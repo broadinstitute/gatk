@@ -15,7 +15,7 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ContaminationFilter extends Mutect2AlleleFilter<Integer> {
+public class ContaminationFilter extends Mutect2AlleleFilter {
     private final Map<String, Double> contaminationBySample;
     private final double defaultContamination;
     private final double EPSILON = 1.0e-10;

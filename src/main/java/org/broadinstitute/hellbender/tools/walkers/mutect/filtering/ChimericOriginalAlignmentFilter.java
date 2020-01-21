@@ -1,12 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-public class ChimericOriginalAlignmentFilter extends HardFilter {
+public class ChimericOriginalAlignmentFilter extends HardAlleleFilter {
     private final double maxNuMTFraction;
 
     public ChimericOriginalAlignmentFilter(final double maxNuMTFraction) {
@@ -16,15 +20,24 @@ public class ChimericOriginalAlignmentFilter extends HardFilter {
     @Override
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
-    @Override
-    public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        if(!vc.isBiallelic()) {
-            return false;
-        }
+    public Predicate<Genotype> checkPreconditions() {
+        return Genotype::hasAD;
+    }
 
-        final int altCount = vc.getGenotypes().stream().mapToInt(g -> g.getAD()[1]).sum();
+    public List<Integer> getData(Genotype g) {
+        return Arrays.stream(g.getAD()).boxed().collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        if(!vc.isBiallelic()) {
+            return Collections.emptyList();
+        }
         final int nonMitochondrialOriginalAlignmentCount = vc.getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0);
-        return (double) nonMitochondrialOriginalAlignmentCount / altCount > maxNuMTFraction;
+        LinkedHashMap<Allele, List<Integer>> dataByAllele = getDataByAllele(vc, checkPreconditions(), this::getData, filteringEngine);
+        return dataByAllele.entrySet().stream()
+                .filter(entry -> !vc.getReference().equals(entry.getKey()))
+                .map(entry -> (double) nonMitochondrialOriginalAlignmentCount / entry.getValue().stream().mapToInt(Integer::intValue).sum() > maxNuMTFraction).collect(Collectors.toList());
     }
 
     @Override

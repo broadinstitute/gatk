@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public abstract class HardAlleleFilter<T> extends Mutect2AlleleFilter<T> {
+public abstract class HardAlleleFilter extends Mutect2AlleleFilter {
     @Override
     public List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         List<Boolean>  alleleArtifacts = areAllelesArtifacts(vc, filteringEngine, referenceContext);

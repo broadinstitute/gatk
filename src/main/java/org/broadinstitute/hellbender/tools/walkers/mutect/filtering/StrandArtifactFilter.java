@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
 
-public class StrandArtifactFilter extends Mutect2AlleleFilter<Integer> {
+public class StrandArtifactFilter extends Mutect2AlleleFilter {
     // beta prior on strand bias allele fraction
     private double INITIAL_ALPHA_STRAND = 1.0;
     private double INITIAL_BETA_STRAND = 20.0;

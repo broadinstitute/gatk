@@ -26,7 +26,7 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.LOW_H
         oneLineSummary = "If too many low het sites, filter all low het sites",
         programGroup = VariantFilteringProgramGroup.class
 )
-public class MTLowHeteroplasmyFilter extends TwoPassVariantWalker {
+public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
 
     public static final String MIN_LOW_HET_SITES_LONG_NAME = "min-low-het-sites";
     public static final String LOW_HET_THRESHOLD_LONG_NAME = "low-het-threshold";

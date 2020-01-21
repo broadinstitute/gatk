@@ -12,7 +12,7 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class MinAlleleFractionFilter extends HardAlleleFilter<Double> {
+public class MinAlleleFractionFilter extends HardAlleleFilter {
     private final double minAf;
 
     public MinAlleleFractionFilter(final double minAf) {

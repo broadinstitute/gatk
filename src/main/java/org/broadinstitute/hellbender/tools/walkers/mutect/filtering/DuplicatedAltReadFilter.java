@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 // This filter checks for the case in which PCR-duplicates with unique UMIs (which we assume is caused by false adapter priming)
 // amplify the erroneous signal for an alternate allele.
-public class DuplicatedAltReadFilter extends HardAlleleFilter<Integer> {
+public class DuplicatedAltReadFilter extends HardAlleleFilter {
     private final int uniqueAltReadCount;
 
     public DuplicatedAltReadFilter(final int uniqueAltReadCount) {

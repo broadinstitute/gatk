@@ -8,7 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ReadPositionFilter extends HardAlleleFilter<Integer> {
+public class ReadPositionFilter extends HardAlleleFilter {
     private final double minMedianReadPosition;
 
     public ReadPositionFilter(final double minMedianReadPosition) {

@@ -10,7 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class StrictStrandBiasFilter extends HardAlleleFilter<List<Integer>> {
+public class StrictStrandBiasFilter extends HardAlleleFilter {
     private final int minReadsOnEachStrand;
 
     public StrictStrandBiasFilter(final int minReadsOnEachStrand) {
