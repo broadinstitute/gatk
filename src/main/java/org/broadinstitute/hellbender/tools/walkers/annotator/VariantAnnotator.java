@@ -99,7 +99,6 @@ import java.util.stream.IntStream;
 @CommandLineProgramProperties(summary="Tool for adding annotations to VCF files",
         oneLineSummary = "Tool for adding annotations to VCF files",
         programGroup = VariantManipulationProgramGroup.class)
-@BetaFeature
 @DocumentedFeature
 public class VariantAnnotator extends VariantWalker {
     public static final String EXPRESSION_LONG_NAME = "expression";
