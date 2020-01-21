@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KmerSearchableGraph;
@@ -585,6 +586,12 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     private int getMaxEdgeWeight(final List<MultiDeBruijnVertex> path, TraversalDirection direction) {
         int maxEdgeWeight = 0;
         for (int i = 1; i < path.size(); i++) {
+            MultiSampleEdge edge = getEdge(path.get(direction==TraversalDirection.upwards ? i - 1: i ),
+                    path.get(direction==TraversalDirection.upwards ? i : i - 1));
+            if (edge == null) {
+                throw new GATKException("Found an unconnected path when trying to compute edge wqeight for "+direction+" graph, " + path.stream().map(vertex -> vertex.toString()).collect(Collectors.joining(", ")));
+            }
+
             maxEdgeWeight = Math.max(maxEdgeWeight,
                     getEdge(path.get(direction==TraversalDirection.upwards ? i - 1: i ),
                     path.get(direction==TraversalDirection.upwards ? i : i - 1)).getPruningMultiplicity());
