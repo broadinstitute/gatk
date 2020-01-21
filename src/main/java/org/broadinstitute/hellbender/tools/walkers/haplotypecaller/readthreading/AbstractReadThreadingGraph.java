@@ -446,9 +446,9 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         while (!danglingPathForkCandidates.isEmpty()) {
             final DanglingPathCandidate nextCandidate = danglingPathForkCandidates.poll();
             // Because pruning might have happened in a previous iteration of the queue, check that hte parameters for the danging candidate are still satisified
-            if ((nextCandidate.direction == TraversalDirection.upwards && outDegreeOf(nextCandidate.getRootVertex()) < 2) ||
-                    (nextCandidate.direction == TraversalDirection.downwards && inDegreeOf(nextCandidate.getRootVertex()) < 2)) {
-
+            if ((nextCandidate.direction == TraversalDirection.upwards && outDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex())) ||
+                    (nextCandidate.direction == TraversalDirection.downwards && inDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex()))) {
+ 
                 DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
                 if (extended != null) {
                     danglingPathForkCandidates.add(extended);
@@ -597,7 +597,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             MultiSampleEdge edge = getEdge(path.get(direction==TraversalDirection.upwards ? i - 1: i ),
                     path.get(direction==TraversalDirection.upwards ? i : i - 1));
             if (edge == null) {
-                throw new GATKException("Found an unconnected path when trying to compute edge wqeight for "+direction+" graph, " + path.stream().map(vertex -> vertex.toString()).collect(Collectors.joining(", ")));
+                throw new GATKException("Found an unconnected path when trying to compute edge wqeight for "+direction+" graph, index: "+i+"  " + path.stream().map(vertex -> vertex.toString()).collect(Collectors.joining(", ")));
             }
 
             maxEdgeWeight = Math.max(maxEdgeWeight,
