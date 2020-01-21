@@ -618,10 +618,15 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
         }
 
+        //TODO this needs to be made safe to 1 length paths that pop up everywhere
         private MultiSampleEdge getRootEdge() {
 //            switch (direction) {
 //                case upwards:
-                    return getEdge(pathToMerge.get(0), pathToMerge.get(1));
+            if (pathToMerge.size() > 1) {
+                return getEdge(pathToMerge.get(0), pathToMerge.get(1));
+            } else {
+                return edgeOfDivergence;
+            }
 //                default:
 //                    return getEdge(pathToMerge.get(pathToMerge.size() - 2), pathToMerge.get(pathToMerge.size() - 1));
 //            }
