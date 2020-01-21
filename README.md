@@ -606,7 +606,7 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 Thank you for getting involved!
 
 ## <a name="discussions">Discussions</a>
-* [GATK forum](http://gatkforums.broadinstitute.org/) for general discussions on how to use the GATK and support questions.
+* [GATK forum](https://gatk.broadinstitute.org/hc/en-us/community/topics) for general discussions on how to use the GATK and support questions.
 * [Issue tracker](https://github.com/broadinstitute/gatk/issues) to report errors and enhancement ideas. 
 * Discussions also take place in [GATK pull requests](https://github.com/broadinstitute/gatk/pulls)
 
