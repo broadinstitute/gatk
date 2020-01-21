@@ -572,9 +572,12 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 findPath(nextCandidate.getRootVertex(), pruneFactor, v -> inDegreeOf(v) >= 2 || outDegreeOf(v) < 1, v -> inDegreeOf(v) > 1, this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
 
         if (pathForCandidate != null && pathForCandidate.getLeft() != null && pathForCandidate.getLeft().size() > 1) {
-            pathForCandidate.getLeft().remove(nextCandidate.getRootVertex()); // we need to remove the root vertex here becuase its included in both paths we want to merge
-            pathForCandidate.getLeft().addAll(nextCandidate.pathToMerge);
-            return new DanglingPathCandidate(nextCandidate.direction, pathForCandidate.getLeft(), pathForCandidate.getRight());
+            // need to be careful here
+            boolean wasPathConnected = pathForCandidate.getLeft().remove(nextCandidate.getRootVertex()); // we need to remove the root vertex here becuase its included in both paths we want to merge
+            if (wasPathConnected) {
+                pathForCandidate.getLeft().addAll(nextCandidate.pathToMerge);
+                return new DanglingPathCandidate(nextCandidate.direction, pathForCandidate.getLeft(), pathForCandidate.getRight());
+            }
         }
         return null;
     }
