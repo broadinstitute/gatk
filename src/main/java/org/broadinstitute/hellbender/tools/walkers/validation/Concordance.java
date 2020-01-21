@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
         programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public class Concordance extends AbstractConcordanceWalker {
 
     static final String USAGE_ONE_LINE_SUMMARY = "Evaluate concordance of an input VCF against a validated truth VCF";
