@@ -201,21 +201,25 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
         logger.info(String.format("Found %d SNPs and %d indels with INFO score key:%s.", scoredSnps, scoredIndels, infoKey));
         logger.info(String.format("Found %d SNPs and %d indels in the resources.", resourceSNPScores.size(), resourceIndelScores.size()));
 
-        if (scoredSnps == 0 || scoredIndels == 0 || resourceSNPScores.size() == 0 || resourceIndelScores.size() == 0){
+        if ((scoredSnps == 0 && scoredIndels == 0) || (resourceSNPScores.size() == 0 && resourceIndelScores.size() == 0)){
             throw new UserException("VCF must contain SNPs and indels with scores and resources must contain matching SNPs and indels.");
         }
 
         Collections.sort(resourceSNPScores, Collections.reverseOrder());
         Collections.sort(resourceIndelScores, Collections.reverseOrder());
 
-        for(double t : snpTranches) {
-            int snpIndex = (int)((t/100.0)*(double)(resourceSNPScores.size()-1));
-            snpCutoffs.add(resourceSNPScores.get(snpIndex));
+        if (resourceSNPScores.size() != 0) {
+            for (double t : snpTranches) {
+                int snpIndex = (int) ((t / 100.0) * (double) (resourceSNPScores.size() - 1));
+                snpCutoffs.add(resourceSNPScores.get(snpIndex));
+            }
         }
 
-        for(double t : indelTranches) {
-            int indelIndex = (int)((t/100.0)*(double)(resourceIndelScores.size()-1));
-            indelCutoffs.add(resourceIndelScores.get(indelIndex));
+        if (resourceIndelScores.size() != 0) {
+            for (double t : indelTranches) {
+                int indelIndex = (int) ((t / 100.0) * (double) (resourceIndelScores.size() - 1));
+                indelCutoffs.add(resourceIndelScores.get(indelIndex));
+            }
         }
 
     }
@@ -230,10 +234,10 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
 
         if (variant.hasAttribute(infoKey)) {
             final double score = Double.parseDouble((String) variant.getAttribute(infoKey));
-            if (variant.isSNP() && isTrancheFiltered(score, snpCutoffs)) {
+            if (variant.isSNP() && snpCutoffs.size() != 0 && isTrancheFiltered(score, snpCutoffs)) {
                 builder.filter(filterStringFromScore(SNPString, score, snpTranches, snpCutoffs));
                 filteredSnps++;
-            } else if (variant.isIndel() && isTrancheFiltered(score, indelCutoffs)) {
+            } else if (variant.isIndel() && indelCutoffs.size() != 0 && isTrancheFiltered(score, indelCutoffs)) {
                 builder.filter(filterStringFromScore(INDELString, score, indelTranches, indelCutoffs));
                 filteredIndels++;
             }
