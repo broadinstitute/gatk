@@ -22,11 +22,9 @@ import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
-
-import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.getAttributeAsLong;
-import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.getAttributeAsLongList;
 
 
 /**
@@ -391,7 +389,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     static long getNumOfReads(final VariantContext vc,
                              final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         if(vc.hasAttribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
-            List<Long> mqTuple = getAttributeAsLongList(vc, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,0L);
+            List<Long> mqTuple = VariantContextGetters.getAttributeAsLongList(vc, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,0L);
             if (mqTuple.get(TOTAL_DEPTH_INDEX) > 0) {
                 return mqTuple.get(TOTAL_DEPTH_INDEX);
             }
@@ -399,7 +397,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
         long numOfReads = 0;
         if (vc.hasAttribute(VCFConstants.DEPTH_KEY)) {
-            numOfReads = getAttributeAsLong(vc, VCFConstants.DEPTH_KEY, -1L);
+            numOfReads = VariantContextGetters.getAttributeAsLong(vc, VCFConstants.DEPTH_KEY, -1L);
             if(vc.hasGenotypes()) {
                 for(final Genotype gt : vc.getGenotypes()) {
                     if(gt.isHomRef()) {

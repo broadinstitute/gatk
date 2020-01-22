@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 

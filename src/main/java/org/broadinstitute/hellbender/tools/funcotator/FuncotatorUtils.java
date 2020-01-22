@@ -25,7 +25,6 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -256,8 +255,8 @@ public final class FuncotatorUtils {
         // NOTE: because there could be degenerate VCF files that have more than one leading base overlapping, we need
         //       to detect how many leading bases there are that overlap, rather than assuming there is only one.
         final int varStart;
-        if ( GATKProtectedVariantContextUtils.typeOfVariant(variant.getReference(), altAllele).equals(VariantContext.Type.INDEL) &&
-             !GATKProtectedVariantContextUtils.isComplexIndel(variant.getReference(), altAllele) ) {
+        if ( GATKVariantContextUtils.typeOfVariant(variant.getReference(), altAllele).equals(VariantContext.Type.INDEL) &&
+             !GATKVariantContextUtils.isComplexIndel(variant.getReference(), altAllele) ) {
             int startOffset = 0;
             while ( (startOffset < variant.getReference().length()) && (startOffset < altAllele.length()) && (variant.getReference().getBases()[ startOffset ] == altAllele.getBases()[ startOffset ]) ) {
                 ++startOffset;
