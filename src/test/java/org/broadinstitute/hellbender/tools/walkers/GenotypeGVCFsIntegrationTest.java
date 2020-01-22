@@ -615,7 +615,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(actualVC2.get(0).getAlleles(), Arrays.asList(Allele.REF_C, Allele.create("CA")));
         Assert.assertEquals(actualVC2.get(1).getAlleles(), Arrays.asList(Allele.REF_A, Allele.SPAN_DEL));
-        Assert.assertEquals(actualVC2.get(2).getAlleles(), Arrays.asList(Allele.REF_C, Allele.ALT_G));
+        Assert.assertEquals(actualVC2.get(2).getAlleles(), Arrays.asList(Allele.REF_C, Allele.ALT_G, Allele.ALT_A));
     }
 
     @Test
