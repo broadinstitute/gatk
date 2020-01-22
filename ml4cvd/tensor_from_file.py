@@ -3,16 +3,19 @@ from typing import List, Dict, Tuple, Callable
 
 import os
 import csv
+import vtk
 import h5py
 import logging
 import numpy as np
+import vtk.util.numpy_support
 from keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator
 from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS
-from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION, MRI_FRAMES
 
 
 """
@@ -186,7 +189,6 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
 def _pad_or_crop_array_to_shape(new_shape: Tuple, original: np.ndarray):
     if new_shape == original.shape:
         return original
-    
     result = np.zeros(new_shape)
     slices = tuple(slice(min(original.shape[i], new_shape[i])) for i in range(len(original.shape)))
 
@@ -327,8 +329,8 @@ TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), group='ec
                                       normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
                                       tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), group='ecg_bike', validator=no_nans,
-                                      normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
-                                      tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
+                                         normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
+                                         tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                       normalization={'mean': 31, 'std': 12},
                                       tensor_from_file=_new_hrr, dtype=DataSetType.CONTINUOUS)
@@ -401,7 +403,6 @@ TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', shape=(5000, 12), grou
 TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
                               channel_map=ECG_REST_LEADS)
 
-
 TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                   channel_map=ECG_REST_LEADS)
 
@@ -409,7 +410,7 @@ TMAPS['ecg_rest_stack'] = TensorMap('strip', shape=(600, 12, 8), group='ecg_rest
                                     channel_map=ECG_REST_LEADS)
 
 TMAPS['ecg_rest_median_raw'] = TensorMap('median', group='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
-                                     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
+                                         metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
 
 TMAPS['ecg_rest_median'] = TensorMap('median', group='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
                                      metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
@@ -472,11 +473,11 @@ TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', tensor_from_f
                                 loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
                                 channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', group='categorical', tensor_from_file=_make_rhythm_tensor(False),
-                                loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
-                                channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
+                                     loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
+                                     channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 
 TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', group='continuous', tensor_from_file=_age_in_years_tensor('ecg_rest_date'), loss='logcosh',
-                                  channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization = {'mean': 65, 'std': 7.7})
+                                  channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization={'mean': 65, 'std': 7.7})
 
 
 # Extract RAmplitude and SAmplitude for LVH criteria
@@ -484,8 +485,8 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name, _pass_nan)        
-        try:            
+        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name, _pass_nan)
+        try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
             else:
@@ -497,16 +498,16 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
 
 
 TMAPS['ecg_rest_ramplitude_raw'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
-                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+                                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 TMAPS['ecg_rest_samplitude_raw'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
-                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+                                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(),
-                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+                                         loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(),
-                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+                                         loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 
 def _make_ukb_ecg_rest_lvh():
@@ -518,29 +519,29 @@ def _make_ukb_ecg_rest_lvh():
         cornell_female_min = 2000.0
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
-            raise ValueError('Group with R and S amplitudes not present in hd5')        
+            raise ValueError('Group with R and S amplitudes not present in hd5')
         tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude', _pass_nan)
         tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
-            raise ValueError('Missing some of the R and S amplitude readings needed to evaluate LVH criteria')        
+            raise ValueError('Missing some of the R and S amplitude readings needed to evaluate LVH criteria')
         is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
-        is_male   = 'Genetic-sex_Male_0_0' in hd5['categorical']
+        is_male = 'Genetic-sex_Male_0_0' in hd5['categorical']
         # If genetic sex not available, try phenotypic
         if not(is_female or is_male):
             is_female = 'Sex_Female_0_0' in hd5['categorical']
-            is_male   = 'Sex_Male_0_0' in hd5['categorical']
+            is_male = 'Sex_Male_0_0' in hd5['categorical']
         # If neither available, raise error
         if not(is_female or is_male):
-            raise ValueError('Sex info required to evaluate LVH criteria')        
+            raise ValueError('Sex info required to evaluate LVH criteria')
         if tm.name == 'avl_lvh':
             is_lvh = tensor_ramp[lead_order['aVL']] > avl_min
         elif tm.name == 'sokolow_lyon_lvh':
             is_lvh = tensor_samp[lead_order['V1']] +\
                      np.maximum(tensor_ramp[lead_order['V5']], tensor_ramp[lead_order['V6']]) > sl_min
-        elif tm.name == 'cornell_lvh':            
-            is_lvh = tensor_ramp[lead_order['aVL']] + tensor_samp[lead_order['V3']]     
+        elif tm.name == 'cornell_lvh':
+            is_lvh = tensor_ramp[lead_order['aVL']] + tensor_samp[lead_order['V3']]
             if is_female:
                 is_lvh = is_lvh > cornell_female_min
             if is_male:
@@ -549,26 +550,25 @@ def _make_ukb_ecg_rest_lvh():
             raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
         # Following convention from categorical TMAPS, positive has cmap index 1
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        index = 0    
+        index = 0
         if is_lvh:
             index = 1
         tensor[index] = 1.0
         return tensor
     return ukb_ecg_rest_lvh_from_file
-        
+
 
 TMAPS['ecg_rest_lvh_avl'] = TensorMap('avl_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
-                            channel_map={'no_avl_lvh': 0, 'aVL LVH': 1},
-                            loss=weighted_crossentropy([0.006, 1.0], 'avl_lvh'))
+                                      channel_map={'no_avl_lvh': 0, 'aVL LVH': 1},
+                                      loss=weighted_crossentropy([0.006, 1.0], 'avl_lvh'))
 
 TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
-                            channel_map={'no_sokolow_lyon_lvh': 0, 'Sokolow Lyon LVH': 1},
-                            loss=weighted_crossentropy([0.005, 1.0], 'sokolov_lyon_lvh'))
+                                               channel_map={'no_sokolow_lyon_lvh': 0, 'Sokolow Lyon LVH': 1},
+                                               loss=weighted_crossentropy([0.005, 1.0], 'sokolov_lyon_lvh'))
 
 TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
-                            channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
-                            loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
-    
+                                          channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
+                                          loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
@@ -611,17 +611,17 @@ TMAPS['sos_te1'] = TensorMap('SOS_TE1', shape=(256, 288, 48), group='ukb_brain_m
 TMAPS['sos_te2'] = TensorMap('SOS_TE2', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                              normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['swi'] = TensorMap('SWI', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+                         normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['swi_total_mag'] = TensorMap('SWI_TOTAL_MAG', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+                                   normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['swi_total_mag_te2_orig'] = TensorMap('SWI_TOTAL_MAG_TE2_orig', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['swi_total_mag_orig'] = TensorMap('SWI_TOTAL_MAG_orig', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+                                        normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t2star'] = TensorMap('T2star', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+                            normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['brain_mask_normed'] = TensorMap('brain_mask_normed', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                                normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+                                       normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
 TMAPS['filtered_phase'] = TensorMap('filtered_phase', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                     normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
@@ -757,11 +757,11 @@ TMAPS['lvm_mosteller_index'] = TensorMap('lvm_mosteller_index', group='continuou
                                          tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lvm_dubois_index_w4'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=4.0,
-                                          tensor_from_file=_make_index_tensor_from_file('bsa_dubois'),
-                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+                                         tensor_from_file=_make_index_tensor_from_file('bsa_dubois'),
+                                         channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lvm_mosteller_index_w4'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=4.0,
-                                             tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
-                                             channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+                                            tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
+                                            channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lvm_dubois_index_sentinel'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
                                                tensor_from_file=_make_index_tensor_from_file('bsa_dubois'),
                                                channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
@@ -834,6 +834,239 @@ TMAPS['mri_slice_blackout_segmented_weighted'] = TensorMap('mri_slice_segmented'
                                                            loss=weighted_crossentropy([0.1, 25.0, 25.0], 'mri_slice_blackout_segmented'))
 TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), tensor_from_file=_mri_slice_blackout_tensor_from_file,
                                         dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
+
+
+def _mri_tensor_2d(hd5, name):
+    """
+    Returns MRI image annotation tensors as 2-D numpy arrays. Useful for annotations that may vary from slice to slice
+    """
+    if isinstance(hd5[name], h5py.Group):
+        nslices = len(hd5[name]) // MRI_FRAMES
+        for ann in hd5[name]:
+            ann_shape = hd5[name][ann].shape
+            break
+        shape = (ann_shape[0], nslices)
+        arr = np.zeros(shape)
+        t = 0
+        s = 0
+        for k in sorted(hd5[name], key=int):
+            t += 1
+            if t == MRI_FRAMES:
+                arr[:, s] = hd5[name][k]
+                s += 1
+                t = 0
+    elif isinstance(hd5[name], h5py.Dataset):
+        nslices = 1
+        shape = (hd5[name].shape[0], nslices)
+        arr = np.zeros(shape)
+        arr[:, 0] = hd5[name]
+    else:
+        raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
+    return arr
+
+
+def _make_mri_series_orientation_and_position_from_file(population_normalize=None):
+    def mri_series_orientation_and_position(tm, hd5):
+        if len(tm.shape) < 2:
+            tensor = np.array(hd5[tm.name], dtype=np.float32)
+        else:
+            arr = _mri_tensor_2d(hd5, tm.name)
+            tensor = np.array(arr, dtype=np.float32)
+        if population_normalize is not None:
+            tensor /= population_normalize
+        return tensor
+    return mri_series_orientation_and_position
+
+
+TMAPS['mri_patient_orientation_cine_segmented_lax_2ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_2ch', (6,), group='mri_orientation',
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_lax_3ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_3ch', (6,), group='mri_orientation',
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_lax_4ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_4ch', (6,), group='mri_orientation',
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_sax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', (6,), group='mri_orientation',
+                                                                   tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_orientation_cine_segmented_sax_inlinevf', (6, 750), group='mri_orientation',
+                                                                         tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_lax_2ch'] = TensorMap('mri_patient_position_cine_segmented_lax_2ch', (3,), group='mri_position',
+                                                                 tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_lax_3ch'] = TensorMap('mri_patient_position_cine_segmented_lax_3ch', (3,), group='mri_position',
+                                                                 tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_lax_4ch'] = TensorMap('mri_patient_position_cine_segmented_lax_4ch', (3,), group='mri_position',
+                                                                 tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_sax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', (3,), group='mri_position',
+                                                                tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_position_cine_segmented_sax_inlinevf', (3, 750), group='mri_position',
+                                                                      tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+
+
+def _mri_tensor_4d(hd5, name):
+    """
+    Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
+    """
+    if isinstance(hd5[name], h5py.Group):
+        nslices = len(hd5[name]) // MRI_FRAMES
+        for img in hd5[name]:
+            img_shape = hd5[name][img].shape
+            break
+        shape = (img_shape[0], img_shape[1], nslices, MRI_FRAMES)
+        arr = np.zeros(shape)
+        t = 0
+        s = 0
+        for k in sorted(hd5[name], key=int):
+            arr[:, :, s, t] = np.array(hd5[name][k]).T
+            t += 1
+            if t == MRI_FRAMES:
+                s += 1
+                t = 0
+    elif isinstance(hd5[name], h5py.Dataset):
+        nslices = 1
+        shape = (hd5[name].shape[0], hd5[name].shape[1], nslices, MRI_FRAMES)
+        arr = np.zeros(shape)
+        for t in range(MRI_FRAMES):
+            arr[:, :, 0, t] = np.array(hd5[name][:, :, t]).T
+    else:
+        raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
+    return arr
+
+
+def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
+    """
+    Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
+    """
+    arr = _mri_tensor_4d(hd5, name)
+    width = hd5['_'.join([MRI_PIXEL_WIDTH, name])]
+    height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])]
+    positions = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, name]))
+    orientations = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, name]))
+    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])]
+    _, dataset_indices, dataset_counts = np.unique(orientations, axis=1, return_index=True, return_counts=True)
+    grids = []
+    for d_idx, d_cnt in zip(dataset_indices, dataset_counts):
+        grids.append(vtk.vtkStructuredGrid())
+        nslices = d_cnt
+        # If multislice, override thickness as distance between voxel centers. Note: removes eventual gaps between slices
+        if nslices > 1:
+            thickness = np.linalg.norm(positions[:, d_idx] - positions[:, d_idx+1])
+        transform = vtk.vtkTransform()
+        n_orientation = np.cross(orientations[3:, d_idx], orientations[:3, d_idx])
+        # 4x4 transform matrix to align to the patient reference system
+        transform.SetMatrix([orientations[3, d_idx]*height, orientations[0, d_idx]*width, n_orientation[0]*thickness, positions[0, d_idx],
+                             orientations[4, d_idx]*height, orientations[1, d_idx]*width, n_orientation[1]*thickness, positions[1, d_idx],
+                             orientations[5, d_idx]*height, orientations[2, d_idx]*width, n_orientation[2]*thickness, positions[2, d_idx],
+                             0, 0, 0, 1])
+        x_coors = np.arange(0, arr.shape[0]+1) - 0.5
+        y_coors = np.arange(0, arr.shape[1]+1) - 0.5
+        z_coors = np.arange(0, d_cnt+1) - 0.5
+        xyz_meshgrid = np.meshgrid(x_coors, y_coors, z_coors)
+        xyz_pts = np.zeros(((arr.shape[0]+1) * (arr.shape[1]+1) * (d_cnt+1), 3))
+        for dim in range(3):
+            xyz_pts[:, dim] = xyz_meshgrid[dim].ravel(order=order)
+        vtk_pts = vtk.vtkPoints()
+        vtk_pts.SetData(vtk.util.numpy_support.numpy_to_vtk(xyz_pts))
+        grids[-1].SetPoints(vtk_pts)
+        grids[-1].SetDimensions(len(x_coors), len(y_coors), len(z_coors))
+        grids[-1].SetExtent(0, len(x_coors)-1, 0, len(y_coors)-1, 0, len(z_coors)-1)
+        for t in range(MRI_FRAMES):
+            arr_vtk = vtk.util.numpy_support.numpy_to_vtk(arr[:, :, d_idx:d_idx+d_cnt, t].ravel(order=order), deep=True)
+            arr_vtk.SetName(f'{name}_{t}')
+            grids[-1].GetCellData().AddArray(arr_vtk)
+        transform_filter = vtk.vtkTransformFilter()
+        transform_filter.SetInputData(grids[-1])
+        transform_filter.SetTransform(transform)
+        transform_filter.Update()
+        grids[-1].DeepCopy(transform_filter.GetOutput())
+        if save_path:
+            writer = vtk.vtkXMLStructuredGridWriter()
+            writer.SetFileName(os.path.join(save_path, f'grid_{name}_{d_idx}.vts'))
+            writer.SetInputData(grids[-1])
+            writer.Update()
+    return grids
+
+
+def _cut_through_plane(dataset, plane_center, plane_orientation):
+    plane = vtk.vtkPlane()
+    plane.SetOrigin(plane_center)
+    plane.SetNormal(plane_orientation)
+    cutter = vtk.vtkCutter()
+    cutter.SetInputData(dataset)
+    cutter.SetCutFunction(plane)
+    poly = vtk.vtkDataSetSurfaceFilter()
+    poly.SetInputConnection(cutter.GetOutputPort())
+    poly.Update()
+    return poly.GetOutput()
+
+
+def _map_points_to_cells(pts, dataset, tol=1e-3):
+    locator = vtk.vtkCellLocator()
+    locator.SetDataSet(dataset)
+    locator.BuildLocator()
+    closest_pt = np.zeros(3)
+    generic_cell = vtk.vtkGenericCell()
+    cell_id, sub_id, dist2, inside = vtk.mutable(0), vtk.mutable(0), vtk.mutable(0.0), vtk.mutable(0)
+    map_to_cells = np.zeros(len(pts), dtype=np.int64)
+    for pt_id, pt in enumerate(pts):
+        if locator.FindClosestPointWithinRadius(pt, tol, closest_pt, generic_cell, cell_id, sub_id, dist2, inside):
+            map_to_cells[pt_id] = cell_id.get()
+    return map_to_cells
+
+
+def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, save_path=None):
+    def mri_projected_segmentation(tm, hd5):
+        if segmented_name not in [MRI_SEGMENTED, MRI_LAX_SEGMENTED]:
+            raise ValueError(f'{segmented_name} is recognized neither as SAX nor LAX segmentation')
+        cine_segmented_grids = _mri_hd5_to_structured_grids(hd5, segmented_name)
+        cine_to_segment_grids = _mri_hd5_to_structured_grids(hd5, to_segment_name)
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        # Loop through segmentations and datasets
+        for ds_i, ds_segmented in enumerate(cine_segmented_grids):
+            for ds_j, ds_to_segment in enumerate(cine_to_segment_grids):
+                dims = ds_to_segment.GetDimensions()
+                pts = vtk.util.numpy_support.vtk_to_numpy(ds_to_segment.GetPoints().GetData())
+                npts_per_slice = dims[0] * dims[1]
+                ncells_per_slice = (dims[0]-1) * (dims[1]-1)
+                n_orientation = (pts[npts_per_slice] - pts[0])
+                n_orientation /= np.linalg.norm(n_orientation)
+                cell_centers = vtk.vtkCellCenters()
+                cell_centers.SetInputData(ds_to_segment)
+                cell_centers.Update()
+                cell_pts = vtk.util.numpy_support.vtk_to_numpy(cell_centers.GetOutput().GetPoints().GetData())
+                # Loop through dataset slices
+                for s in range(dims[2]-1):
+                    slice_center = np.mean(pts[s*npts_per_slice:(s+2)*npts_per_slice], axis=0)
+                    slice_cell_pts = cell_pts[s*ncells_per_slice:(s+1)*ncells_per_slice]
+                    slice_segmented = _cut_through_plane(ds_segmented, slice_center, n_orientation)
+                    map_to_segmented = _map_points_to_cells(slice_cell_pts, slice_segmented)
+                    # Loop through time
+                    for t in range(MRI_FRAMES):
+                        arr_name = f'{segmented_name}_{t}'
+                        segmented_arr = vtk.util.numpy_support.vtk_to_numpy(slice_segmented.GetCellData().GetArray(arr_name))
+                        projected_arr = segmented_arr[map_to_segmented]
+                        if len(tm.shape) == 3:
+                            tensor[:, :, t] = np.maximum(tensor[:, :, t], projected_arr.reshape(tm.shape[0], tm.shape[1]))
+                        elif len(tm.shape) == 4:
+                            tensor[:, :, s, t] = np.maximum(tensor[:, :, s, t], projected_arr.reshape(tm.shape[0], tm.shape[1]))
+                    if save_path:
+                        writer_segmented = vtk.vtkXMLPolyDataWriter()
+                        writer_segmented.SetInputData(slice_segmented)
+                        writer_segmented.SetFileName(os.path.join(save_path, f'{tm.name}_segmented_{ds_i}_{ds_j}_{s}.vtp'))
+                        writer_segmented.Update()
+        return tensor
+    return mri_projected_segmentation
+
+
+TMAPS['cine_segmented_lax_2ch_proj_from_sax'] = TensorMap('cine_segmented_lax_2ch_proj_from_sax', (256, 256, 50), loss='logcosh',
+                                                          tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_2ch', MRI_SEGMENTED))
+TMAPS['cine_segmented_lax_3ch_proj_from_sax'] = TensorMap('cine_segmented_lax_3ch_proj_from_sax', (256, 256, 50), loss='logcosh',
+                                                          tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_3ch', MRI_SEGMENTED))
+TMAPS['cine_segmented_lax_4ch_proj_from_sax'] = TensorMap('cine_segmented_lax_4ch_proj_from_sax', (256, 256, 50), loss='logcosh',
+                                                          tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_4ch', MRI_SEGMENTED))
+TMAPS['cine_segmented_lax_2ch_proj_from_lax'] = TensorMap('cine_segmented_lax_2ch_proj_from_lax', (256, 256, 50), loss='logcosh',
+                                                          tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_2ch', MRI_LAX_SEGMENTED))
+TMAPS['cine_segmented_lax_3ch_proj_from_lax'] = TensorMap('cine_segmented_lax_3ch_proj_from_lax', (256, 256, 50), loss='logcosh',
+                                                          tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_3ch', MRI_LAX_SEGMENTED))
+TMAPS['cine_segmented_lax_4ch_proj_from_lax'] = TensorMap('cine_segmented_lax_4ch_proj_from_lax', (256, 256, 50), loss='logcosh',
+                                                          tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_4ch', MRI_LAX_SEGMENTED))
 
 
 def _slice_tensor(tensor_key, slice_index):

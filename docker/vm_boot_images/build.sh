@@ -13,7 +13,7 @@ set -e
 
 REPO="gcr.io/broad-ml4cvd/deeplearning"
 TAG=$( git rev-parse --short HEAD )
-CONTEXT="docker/"
+CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
 
@@ -98,9 +98,11 @@ shift $((OPTIND - 1))
 if [[ ${CPU_ONLY} == "true" ]]; then
     BASE_IMAGE=${BASE_IMAGE_CPU}
     LATEST_TAG=${LATEST_TAG_CPU}
+    TAG=${TAG}-cpu
 else
     BASE_IMAGE=${BASE_IMAGE_GPU}
     LATEST_TAG=${LATEST_TAG_GPU}
+    TAG=${TAG}-gpu
 fi
 
 echo -e "${BLUE}Building Docker image '${REPO}:${TAG}' from base image '${BASE_IMAGE}', and also tagging it as '${LATEST_TAG}'...${NC}"
