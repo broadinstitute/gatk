@@ -26,8 +26,8 @@ from collections import Counter, defaultdict
 from functools import partial
 from itertools import product
 
+import imageio
 import matplotlib
-
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from PIL import Image, ImageDraw  # Polygon to mask
@@ -60,6 +60,7 @@ MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
+
 DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
 
 ECG_BIKE_FIELD = '6025'
@@ -167,6 +168,50 @@ def write_tensors(a_id: str,
         logging.info("Populated {} in {} seconds.".format(tensor_path, elapsed_time))
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
+
+
+def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
+                                  sample_header='sample_id', dicom_header='dicom_file',
+                                  instance_header='instance_number', png_postfix='.png.mask.png',
+                                  source='ukb_cardiac_mri', dtype=DataSetType.FLOAT_ARRAY):
+    stats = Counter()
+    reader = csv.reader(open(manifest_tsv), delimiter='\t')
+    header = next(reader)
+    logging.info(f"DICOM Manifest Header is:{header}")
+    instance_index = header.index(instance_header)
+    sample_index = header.index(sample_header)
+    dicom_index = header.index(dicom_header)
+    for row in reader:
+        sample_id = row[sample_index]
+        if not min_sample_id <= int(sample_id) < max_sample_id:
+            continue
+        stats[sample_header + '_' + sample_id] += 1
+        dicom_file = row[dicom_index]
+        try:
+            png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
+            full_tensor = np.zeros((x, y), dtype=np.float32)
+            full_tensor[:png.shape[0], :png.shape[1]] = png
+            tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+            if not os.path.exists(os.path.dirname(tensor_file)):
+                os.makedirs(os.path.dirname(tensor_file))
+            with h5py.File(tensor_file, 'a') as hd5:
+                tensor_name = series + '_annotated_' + row[instance_index]
+                tp = tensor_path(source, dtype, MISSING_DATE, tensor_name)
+                if tp in hd5:
+                    tensor = hd5[tp]
+                    tensor[:] = full_tensor
+                    stats['updated'] += 1
+                else:
+                    create_tensor_in_hd5(hd5, source, DataSetType.FLOAT_ARRAY, MISSING_DATE, tensor_name, full_tensor, stats)
+                    stats['created'] += 1
+
+        except FileNotFoundError:
+            logging.warning(f'Could not find file: {os.path.join(png_path, dicom_file + png_postfix)}')
+            stats['File not found error'] += 1
+    for k in stats:
+        if sample_header in k and stats[k] == 50:
+            continue
+        logging.info(f'{k} has {stats[k]}')
 
 
 def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sample_id: int, max_sample_id: int) -> Tuple[Dict[int, Dict[str, float]], List[int]]:

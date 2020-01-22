@@ -11,6 +11,7 @@ SAMPLE_IDS_END=6030000
 XML_FIELD=  # exclude ecg data
 MRI_FIELD=  # exclude mri data
 RECIPES_ARGS=
+TENSORIZE_MODE="tensorize"
 
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
@@ -28,6 +29,7 @@ usage()
                           [-s <sample_id_start>]
                           [-e <sample_id_end>]
                           [-a <RECIPES_ARGS>]
+                          [-m <tensorize mode>]
                           [-h]
 
     Example: ./${SCRIPT_NAME} -t /mnt/disks/data/generated/tensors/test/2019-02-05/ -n 96 -s 1000000 -e 6030000 -a "--xml_field_ids 20205 6025 --mri_field_ids 20208 20209"
@@ -41,6 +43,8 @@ usage()
         -e      <id>        Largest sample ID to start with. Default: 6030000.
 
         -a      <ids>       Argument string to pass directly to recipes.py
+
+        -m      <mode>      Mode argument for recipes.py
 
         -h                  Print this help text
 
@@ -68,7 +72,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":t:a:n:s:e:h" opt ; do
+while getopts ":t:a:n:m:s:e:h" opt ; do
     case ${opt} in
         h)
             usage
@@ -88,6 +92,9 @@ while getopts ":t:a:n:s:e:h" opt ; do
             ;;
         a)
             PYTHON_ARGS=$OPTARG
+            ;;
+        m)
+            TENSORIZE_MODE=$OPTARG
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -120,21 +127,19 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
 
         cat <<LAUNCH_CMDLINE_MESSAGE
             $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/recipes.py
-                --mode tensorize \
+                --mode $TENSORIZE_MODE \
                 --tensors $TENSOR_PATH \
                 --output_folder $TENSOR_PATH \
                 $PYTHON_ARGS \
-                --dicoms $TENSOR_PATH/dicoms_$MIN_SAMPLE_ID/ \
                 --min_sample_id $MIN_SAMPLE_ID \
                 --max_sample_id $MAX_SAMPLE_ID &
 LAUNCH_CMDLINE_MESSAGE
 
     $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/recipes.py \
-		--mode tensorize \
+		--mode $TENSORIZE_MODE \
 		--tensors $TENSOR_PATH \
 		--output_folder $TENSOR_PATH \
 		$PYTHON_ARGS \
-		--dicoms $TENSOR_PATH/dicoms_$MIN_SAMPLE_ID/ \
 		--min_sample_id $MIN_SAMPLE_ID \
 		--max_sample_id $MAX_SAMPLE_ID &
 

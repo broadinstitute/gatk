@@ -357,6 +357,16 @@ TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_m
                                                           normalization={'mean': 89.70, 'std': 24.80},
                                                           channel_map={'inferred_myocardial_mass_noheritable': 0})
 
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  group='continuous', validator=make_range_validator(0, 400), loss='logcosh',
+                                     channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+
+TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', group='continuous', validator=make_range_validator(0, 400),
+                                              loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', group='continuous', validator=make_range_validator(0, 400),
+                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0},
+                                                      normalization={'mean': 89.70, 'std': 24.80})
+
+
 TMAPS['proton_fat'] = TensorMap('22402_Proton-density-fat-fraction-PDFF_2_0', group='continuous', channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
                                activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
@@ -413,9 +423,14 @@ TMAPS['cine_segmented_sax_b2'] = TensorMap('cine_segmented_sax_b2', (256, 256, 5
 TMAPS['cine_segmented_sax_b4'] = TensorMap('cine_segmented_sax_b4', (256, 256, 50), group='root_array', loss='mse')
 TMAPS['cine_segmented_sax_b6'] = TensorMap('cine_segmented_sax_b6', (256, 256, 50), group='root_array', loss='mse')
 
-TMAPS['cine_segmented_lax_2ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 50), group='root_array', loss='logcosh')
-TMAPS['cine_segmented_lax_3ch'] = TensorMap('cine_segmented_lax_3ch', (256, 256, 50), group='root_array', loss='logcosh')
-TMAPS['cine_segmented_lax_4ch'] = TensorMap('cine_segmented_lax_4ch', (256, 256, 50), group='root_array', loss='logcosh')
+TMAPS['cine_segmented_lax_2ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 50), group='root_array', normalization={'zero_mean_std1': True})
+TMAPS['cine_segmented_lax_3ch'] = TensorMap('cine_segmented_lax_3ch', (256, 256, 50), group='root_array', normalization={'zero_mean_std1': True})
+TMAPS['cine_segmented_lax_4ch'] = TensorMap('cine_segmented_lax_4ch', (256, 256, 50), group='root_array', normalization={'zero_mean_std1': True})
+
+TMAPS['cine_segmented_lax_2ch_4d'] = TensorMap('cine_segmented_lax_2ch_4d', (256, 256, 50, 1), group='root_array', normalization={'zero_mean_std1': True})
+TMAPS['cine_segmented_lax_3ch_4d'] = TensorMap('cine_segmented_lax_3ch_4d', (256, 256, 50, 1), group='root_array', normalization={'zero_mean_std1': True})
+TMAPS['cine_segmented_lax_4ch_4d'] = TensorMap('cine_segmented_lax_4ch_4d', (256, 256, 50, 1), group='root_array', normalization={'zero_mean_std1': True})
+
 TMAPS['lax-view-detect'] = TensorMap('lax-view-detect', group='categorical',
                                  channel_map={'cine_segmented_lax_2ch': 0, 'cine_segmented_lax_3ch': 1,
                                               'cine_segmented_lax_4ch': 2})

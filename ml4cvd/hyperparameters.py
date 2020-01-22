@@ -18,10 +18,10 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 from skimage.filters import threshold_otsu
 
 
-from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
@@ -90,6 +90,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             histories.append(history.history)
             title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
             plot_metric_history(history, title, fig_path)
+            model.load_weights(os.path.join(args.output_folder, args.id, args.id + TENSOR_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
             logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
@@ -150,21 +151,21 @@ def optimize_architecture(args):
 
 
 def optimize_ecg_rest_architecture(args):
-    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
-    conv_layers_sets = [[16], [32], [48], [32, 32], [48, 32], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
-    dense_layers_sets = [[32, 32], [16, 64], [8, 128], [16, 16], [8, 8], [48], [32], [24], [16], [8]]
+    dense_blocks_sets = [[], [32], [32, 24], [32, 24, 16], [48, 48, 48], [48, 48, 48, 48]]
+    conv_layers_sets = [[], [32], [48], [32, 32], [48, 48], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    dense_layers_sets = [[8], [16], [16, 64], [32, 128]]
     conv_dilate = [True, False]
     activation = ['leaky', 'prelu', 'relu']
     conv_normalize = ['', 'batch_norm']
     pool_type = ['max', 'average']
     space = {
-        'pool_x': hp.quniform('pool_x', 1, 16, 1),
+        'pool_x': hp.quniform('pool_x', 1, 8, 1),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
-        'conv_dilate': hp.choice('conv_dilate', conv_dilate),
-        'activation': hp.choice('activation', activation),
-        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
+        #'conv_dilate': hp.choice('conv_dilate', conv_dilate),
+        #'activation': hp.choice('activation', activation),
+        #'conv_normalize': hp.choice('conv_normalize', conv_normalize),
         'pool_type': hp.choice('pool_type', pool_type),
         'conv_width': hp.loguniform('conv_width', 1, 5),
         'block_size': hp.quniform('block_size', 1, 6, 1),
@@ -173,9 +174,9 @@ def optimize_ecg_rest_architecture(args):
         'conv_layers': conv_layers_sets,
         'dense_blocks': dense_blocks_sets,
         'dense_layers': dense_layers_sets,
-        'conv_dilate': conv_dilate,
-        'activation': activation,
-        'conv_normalize': conv_normalize,
+        #'conv_dilate': conv_dilate,
+        #'activation': activation,
+        #'conv_normalize': conv_normalize,
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)
@@ -330,7 +331,7 @@ def _string_from_trials(trials, index, param_lists={}):
 
 def _model_label_from_losses_and_histories(i, all_losses, histories, trials, param_lists):
     label = f'Trial {i}: \nTest Loss:{all_losses[i]:.3f}\nTrain Loss:{histories[i]["loss"][-1]:.3f}\nValidation Loss:{histories[i]["val_loss"][-1]:.3f}'
-    label += f'Model parameter count: {histories[i]["parameter_count"][-1]}'
+    label += f'\nModel parameter count: {histories[i]["parameter_count"][-1]}'
     label += f'{_string_from_trials(trials, i, param_lists)}'
     return label
 

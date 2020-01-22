@@ -654,7 +654,10 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tm.normalize_and_validate(tensor)
     elif tm.is_root_array():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        tensor[:] = np.array(hd5[tm.name], dtype=np.float32)
+        if tm.shape[-1] == 1:
+            tensor[..., 0] = np.array(hd5[tm.name.replace('_4d', '')], dtype=np.float32)
+        else:
+            tensor[:] = np.array(hd5[tm.name], dtype=np.float32)
         return tm.normalize_and_validate(tensor)
     elif tm.name in MRI_ANNOTATION_GOOD_NEEDED:
         continuous_data = np.zeros(tm.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF

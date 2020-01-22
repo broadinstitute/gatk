@@ -46,14 +46,7 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
                 with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
-                    try:
-                        _copy_hd5_datasets(source_hd5, destination_hd5, stats=stats)
-                    except OSError:
-                        logging.warning(f"OSError at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
-                    except KeyError:
-                        logging.warning(f"KeyError at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
-                    except RuntimeError:
-                        logging.warning(f"RuntimeError error at {source_file} trying to write to:{destination}\n{traceback.format_exc()}\n")
+                    _copy_hd5_datasets(source_hd5, destination_hd5, stats=stats)
         logging.info(f"Done copying source folder {source_folder}")
 
     for k in stats:
@@ -63,11 +56,14 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, stats=None):
     for k in source_hd5[group_path]:
         if isinstance(source_hd5[group_path][k], h5py.Dataset):
-            stats[group_path + k] += 1
-            if source_hd5[group_path][k].chunks is None:
-                destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
-            else:
-                destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
+            try:
+                if source_hd5[group_path][k].chunks is None:
+                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
+                else:
+                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
+                stats[group_path + k] += 1
+            except (OSError, KeyError, RuntimeError) as e:
+                logging.warning(f"Error trying to write:{k} at group path:{group_path} error:{e}\n{traceback.format_exc()}\n")
         else:
             logging.debug(f"copying group {group_path + k}")
             _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR, stats=stats)

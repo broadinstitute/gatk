@@ -50,12 +50,15 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
     return _random_slice_tensor_from_file
 
 
-def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True):
+def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if dtype_override is not None:
             big_tensor = _get_tensor_at_first_date(hd5, tm.group, dtype_override, tensor_key)
         else:
             big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+
+        if flip_swap:
+            big_tensor = np.flip(np.swapaxes(big_tensor, 0, -1))
 
         if pad_shape is not None:
             big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
@@ -584,6 +587,11 @@ TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                        tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
+TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                        tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
+
 TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
 TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
@@ -638,6 +646,8 @@ TMAPS['t1_brain_30_slices'] = TensorMap('t1_brain_30_slices', shape=(192, 256, 3
                                         normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
 TMAPS['t1_30_slices'] = TensorMap('t1_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                   normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256)))
+TMAPS['t1_30_slices_4d'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                  normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1)))
 
 TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
@@ -1073,6 +1083,67 @@ def _slice_tensor(tensor_key, slice_index):
 TMAPS['lax_4ch_diastole_slice'] = TensorMap('lax_4ch_diastole_slice', (256, 256, 1), group='root_array', loss='logcosh',
                                             tensor_from_file=_slice_tensor('cine_segmented_lax_4ch', 0),
                                             normalization={'zero_mean_std1': True})
+
+
+def _name_tensor_from_file(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    tensor = _pad_or_crop_array_to_shape(tensor.shape, np.array(hd5[tm.name], dtype=np.float32))
+    return tm.normalize_and_validate(tensor)
+
+
+TMAPS['cine_lax_3ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', (160, 160, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_3ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_4ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_sax_b6_192'] = TensorMap('cine_segmented_sax_b6', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_sax_b6_192_1'] = TensorMap('cine_segmented_sax_b6', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+
+
+def _segmented_dicom_slices(dicom_key_prefix, source='ukb_cardiac_mri', dtype=DataSetType.FLOAT_ARRAY):
+    def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for i in range(tm.shape[-2]):
+            categorical_index_slice = _get_tensor_at_first_date(hd5, source, dtype, dicom_key_prefix + str(i+1))
+            categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+            tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
+        return tm.normalize_and_validate(tensor)
+    return _segmented_dicom_tensor_from_file
+
+
+TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented', (256, 256, 50, 6), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                       channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
+TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', (192, 192, 50, 6), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                       channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
+TMAPS['lax_3ch_segmented_160'] = TensorMap('lax_3ch_segmented', (160, 160, 50, 6), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                       channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
+TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+                                       channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                                                    'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
+                                                    'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
+TMAPS['lax_4ch_segmented_192'] = TensorMap('lax_4ch_segmented', (192, 192, 50, 14), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+                                       channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                                                    'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
+                                                    'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
+TMAPS['lax_4ch_segmented_192_w'] = TensorMap('lax_4ch_segmented', (192, 192, 50, 14), group='categorical',
+                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+                                             channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                                                          'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
+                                                          'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13},
+                                             loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]))
+TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', (256, 256, 50, 11), group='categorical',
+                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
+                                      channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
+                                                   'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
+TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', (192, 192, 50, 11), group='categorical',
+                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
+                                      channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
+                                                   'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
 
 
 def _make_fallback_tensor_from_file(tensor_keys):

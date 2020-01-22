@@ -1005,7 +1005,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     lw = 2.0
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for k in labels:
         c = _hash_string_to_color(k)
