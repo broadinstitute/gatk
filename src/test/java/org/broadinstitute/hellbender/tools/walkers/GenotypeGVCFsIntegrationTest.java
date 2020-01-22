@@ -4,13 +4,10 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.index.Index;
-import htsjdk.tribble.index.IndexFactory;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -573,14 +570,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testForceOutputNonRef() {
         final File input = getTestFile("ForceOutputNonRef.g.vcf");
-        Index index = IndexFactory.createDynamicIndex(input, new VCFCodec());
-        try {
-            index.writeBasedOnFeatureFile(input);
-        }
-        catch (IOException e){
-            throw new RuntimeException(e);
-        }
-
         final File output1 = createTempFile("output", ".vcf");
 
         // build intervals
