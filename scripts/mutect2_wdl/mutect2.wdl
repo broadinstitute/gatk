@@ -576,12 +576,12 @@ task M2 {
         touch f1r2.tar.gz
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
-        tumor_command_line="-I ~{tumor_bam} -tumor `cat tumor_name.txt`"
+        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} --read-index ~{tumor_bai} -O tumor_name.txt -encode
+        tumor_command_line="-I ~{tumor_bam} --read-index ~{tumor_bai} -tumor `cat tumor_name.txt`"
 
         if [[ ! -z "~{normal_bam}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode
-            normal_command_line="-I ~{normal_bam} -normal `cat normal_name.txt`"
+            normal_command_line="-I ~{normal_bam} --read-index ~{normal_bai} -normal `cat normal_name.txt`"
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
@@ -608,11 +608,11 @@ task M2 {
         set +e
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+            gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} --read-index ~{tumor_bai} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                 -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
 
             if [[ ! -z "~{normal_bam}" ]]; then
-                gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} --read-index ~{normal_bai} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                     -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
             fi
         fi
