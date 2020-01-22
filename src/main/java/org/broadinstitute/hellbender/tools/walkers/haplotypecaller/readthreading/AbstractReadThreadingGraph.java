@@ -445,27 +445,28 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         // The loop of operation - pull from our priority queue
         while (!danglingPathForkCandidates.isEmpty()) {
             final DanglingPathCandidate nextCandidate = danglingPathForkCandidates.poll();
-            // Because pruning might have happened in a previous iteration of the queue, check that hte parameters for the danging candidate are still satisified
-            if ((nextCandidate.direction == TraversalDirection.upwards && outDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex())) ||
-                    (nextCandidate.direction == TraversalDirection.downwards && inDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex()))) {
- 
-                DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
-                if (extended != null) {
-                    danglingPathForkCandidates.add(extended);
-                    mapOfRoots.merge(extended.getRootVertex(), new ArrayList<>(Collections.singletonList(extended)), (v1, v2) -> {
-                        v1.addAll(v2);
-                        return v1;
-                    });
-                }
-                continue;
-            }
 
+            // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
+            List<DanglingPathCandidate> neighbors = mapOfRoots.get(nextCandidate.getRootVertex())
+                    .stream()
+                    .filter(c -> c != nextCandidate
+                            && c.direction == nextCandidate.direction
+                            && c.getRootEdge() != nextCandidate.getRootEdge())
+                    .collect(Collectors.toList());
+
+            // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
+            List<DanglingPathCandidate> overlappingNeighbors = mapOfRoots.get(nextCandidate.getRootVertex())
+                    .stream()
+                    .filter(c -> c != nextCandidate
+                            && c.direction == nextCandidate.direction
+                            && c.getRootEdge() == nextCandidate.getRootEdge())
+                    .collect(Collectors.toList());
 
             // now that we necessarily have the root of ourselves after previous rounds of purning, attempt to reconcile with the reference
             if (nextCandidate.isRootedInReference()) {
                 // the actual merging step, handle for both directions differently
                 if (nextCandidate.pathToMerge.size() < minPathLength) {
-                    if (!nextCandidate.edgeOfDivergence.isRef()) {
+                    if (!nextCandidate.edgeOfDivergence.isRef() && overlappingNeighbors.isEmpty()) {
                         removeEdge(nextCandidate.edgeOfDivergence);
                     }
                     mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
@@ -491,24 +492,23 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
                     // merge
                     mergeDanglingHead(danglingHeadMergeResult);
+                    continue;
                 }
+            }
+
+            if ((nextCandidate.direction == TraversalDirection.upwards && outDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex())) ||
+                    (nextCandidate.direction == TraversalDirection.downwards && inDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex()))) {
+
+                DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
+                if (extended != null) {
+                    danglingPathForkCandidates.add(extended);
+                    mapOfRoots.merge(extended.getRootVertex(), new ArrayList<>(Collections.singletonList(extended)), (v1, v2) -> {
+                        v1.addAll(v2);
+                        return v1;
+                    });
+                }
+                continue;
             } else {
-
-                // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
-                List<DanglingPathCandidate> neighbors = mapOfRoots.get(nextCandidate.getRootVertex())
-                        .stream()
-                        .filter(c -> c != nextCandidate
-                                && c.direction == nextCandidate.direction
-                                && c.getRootEdge() != nextCandidate.getRootEdge())
-                        .collect(Collectors.toList());
-
-                // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
-                List<DanglingPathCandidate> overlappingNeighbors = mapOfRoots.get(nextCandidate.getRootVertex())
-                        .stream()
-                        .filter(c -> c != nextCandidate
-                                && c.direction == nextCandidate.direction
-                                && c.getRootEdge() == nextCandidate.getRootEdge())
-                        .collect(Collectors.toList());
 
                 // if we have no neighbors one of two things is true, either there are higher coverage forks elsewhere in the queue to be handled, or we are dangling off of a variant branch that is not dangling
 
