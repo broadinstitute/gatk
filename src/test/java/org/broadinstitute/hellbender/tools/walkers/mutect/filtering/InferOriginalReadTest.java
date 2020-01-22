@@ -12,25 +12,30 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 public class InferOriginalReadTest extends CommandLineProgramTest {
-    final String hg19 = "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta";
-    final String tp53TestDir = "/dsde/working/tsato/consensus/tp53/test/";
-    final String tp53_AGA_TGA = tp53TestDir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
+    private final String hg19 = "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta";
+    private final String tp53TestDir = "/dsde/working/tsato/consensus/tp53/test/";
+    private final String tp53_AGA_TGA = tp53TestDir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
 
-    final String fgbioGroupByUMIScript = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/fgbio_group_reads_by_umi.sh";
-    final String fgbioConsensusScript = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/fgbio_consensus.sh";
+    private final String mutectDir = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/";
+    private final String fgbioGroupByUMIScript = mutectDir + "fgbio_group_reads_by_umi.sh";
+    private final String fgbioConsensusScript = mutectDir + "fgbio_consensus.sh";
+    private final String sortScript = mutectDir + "sort.sh";
 
-    final String homeDir = "/dsde/working/tsato/consensus/bams/synthetic-test/";
-    final String testDir = "/dsde/working/tsato/consensus/tp53/test/";
+    private final String homeDir = "/dsde/working/tsato/consensus/bams/synthetic-test/";
+    private final String testDir = "/dsde/working/tsato/consensus/tp53/test/";
 
     @Test
     public void test(){
@@ -65,9 +70,47 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
         int d = 3;
     }
 
+    @DataProvider(name = "whatever")
+    public Object[][] whateverData() {
+        return new Object[][]{
+                {Arrays.asList(2), Arrays.asList(8), Arrays.asList(0), Arrays.asList(0), "ref2_insertion8" },
+        };
+    }
+
+    @Test(dataProvider = "whatever")
+    public void testBetter(final List<Integer> refCounts,
+                           final List<Integer> insertionCounts,
+                           final List<Integer> twoBPDeletionCounts,
+                           final List<Integer> threeBPDeletionCounts,
+                           final String testName) throws IOException {
+        final File originalSam = createSyntheticSam(2, 8, 0, 0, "sample",
+                homeDir + "ref2_insertion8.bam", true);
+
+        // Run fgbio GroupByUMI on this subset bam
+        final String bam = homeDir + testName + ".bam";
+        final String groupedBam = homeDir + testName + ".grouped.bam";
+        runProcess(new ProcessController(), new String[]{ fgbioGroupByUMIScript, bam, groupedBam, homeDir });
+
+        // For comparison, maybe unnecessary
+        runProcess(new ProcessController(), new String[]{ fgbioConsensusScript, groupedBam, testName, homeDir });
+
+        final File out = new File(homeDir + testName + ".my.consensus.bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", groupedBam)
+                .addArgument("O", out.getAbsolutePath());
+        runCommandLine(args, InferOriginalRead.class.getSimpleName());
+
+        // Don't want to have to do this but whatever--can't the
+        runProcess(new ProcessController(), new String[]{ sortScript, groupedBam, testName });
+
+        int d = 3;
+
+
+    }
+
     @Test
     public void makeTestSamFiles() throws IOException {
-
         // 2 ref, 8 insertion reads
         final File ref2Insertion8 = createSyntheticSam(2, 8, 0, 0, "sample",
                 homeDir + "ref2_insertion8.bam", true);
@@ -150,7 +193,6 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
         reads.forEach(writer::addRead);
 
         writer.close(); // closing the writer writes to the file
-
         return samFile;
     }
 }
