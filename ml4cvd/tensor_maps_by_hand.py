@@ -397,22 +397,6 @@ TMAPS['sax_pixel_width'] = TensorMap('mri_pixel_width_cine_segmented_sax_inlinev
 TMAPS['sax_pixel_height'] = TensorMap('mri_pixel_height_segmented_sax_inlinevf', group='continuous', annotation_units=2, channel_map={'mri_pixel_height_cine_segmented_sax_inlinevf': 0},
                                       validator=make_range_validator(0, 4), normalization={'mean': 1.83, 'std': 0.1})
 
-TMAPS['end_systole_volumep'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
-                                     loss='logcosh', channel_map={'end_systole_volume': 0},
-                                     normalization={'mean': 47.0, 'std': 10.0},
-                                     parents=[TMAPS[MRI_SEGMENTED]])
-TMAPS['end_diastole_volumep'] = TensorMap('end_diastole_volume', group='continuous', activation='linear',
-                                      loss='logcosh', channel_map={'end_diastole_volume': 0},
-                                      normalization={'mean': 142.0, 'std': 21.0},
-                                      parents=[TMAPS[MRI_SEGMENTED]])
-TMAPS['end_systole_volumepz'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
-                                      loss='logcosh', channel_map={'end_systole_volume': 0},
-                                      normalization={'mean': 47.0, 'std': 10.0},
-                                      parents=[TMAPS[MRI_ZOOM_MASK]])
-TMAPS['end_diastole_volumepz'] = TensorMap('end_diastole_volume', group='continuous', activation='linear',
-                                       loss='logcosh', channel_map={'end_diastole_volume': 0},
-                                       normalization={'mean': 142.0, 'std': 21.0},
-                                       parents=[TMAPS[MRI_ZOOM_MASK]])
 TMAPS['ejection_fractionp'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
                                     normalization={'mean': 0.50, 'std': 0.046},
                                     loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},

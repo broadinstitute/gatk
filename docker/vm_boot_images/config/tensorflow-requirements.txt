@@ -9,6 +9,6 @@ protobuf==3.7.1
 seaborn==0.9.0
 biosppy
 vtk==8.1.2
+imageio==2.6.1
 apache-beam[gcp]==2.12.0
 google-cloud-storage==1.13.0
-imageio==2.6.1
