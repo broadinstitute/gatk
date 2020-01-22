@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
@@ -184,7 +183,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
         final SAMFileHeader samFileHeader = getHeaderForReads();
 
-        final ReadPileup readPileup = GATKProtectedVariantContextUtils.getPileup(discoveryVariantContext, readsContext);
+        final ReadPileup readPileup = new ReadPileup(discoveryVariantContext, readsContext);
         final Map<String, ReadPileup> pileupsBySample = readPileup.splitBySample(samFileHeader, "__UNKNOWN__");
 
         // This could happen when read realignment moves reads such that a particular locus has zero reads

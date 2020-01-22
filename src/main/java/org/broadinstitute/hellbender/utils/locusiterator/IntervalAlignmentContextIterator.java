@@ -87,7 +87,7 @@ public class IntervalAlignmentContextIterator implements Iterator<AlignmentConte
     }
 
     private AlignmentContext createEmptyAlignmentContext(final SimpleInterval interval) {
-        return new AlignmentContext(interval, new ReadPileup(interval, new ArrayList<>()));
+        return new AlignmentContext(interval, new ReadPileup(interval));
     }
 
     private void advanceAlignmentContextToCurrentInterval() {

@@ -26,22 +26,6 @@ import java.util.stream.StreamSupport;
 public class GATKProtectedVariantContextUtils {
 
 
-    /**
-     * Get the pileup of reads covering a locus.  This is useful, for example, in VariantWalkers, which work on
-     * ReadsContexts and not AlignmentContexts.
-     */
-    public static ReadPileup getPileup(final Locatable loc, final Iterable<GATKRead> reads) {
-        final List<PileupElement> pile = StreamSupport.stream(reads.spliterator(), false)
-                .filter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK.and(ReadFilterLibrary.NOT_DUPLICATE))
-                .map(AlignmentStateMachine::new)
-                .map(asm -> {
-                    while ( asm.stepForwardOnGenome() != null && asm.getGenomePosition() < loc.getStart()) { }
-                    return asm.getGenomePosition() == loc.getStart() ? asm.makePileupElement() : null;
-                }).filter(Objects::nonNull).collect(Collectors.toList());
-
-        return new ReadPileup(loc, pile);
-    }
-
     /** This is lifted directly from htsjdk with some minor modifications!  However, it is a private method there.
      *
      * This method cannot return {@link VariantContext.Type} MIXED
