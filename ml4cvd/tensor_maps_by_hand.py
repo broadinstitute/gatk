@@ -23,6 +23,8 @@ TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_t
 
 TMAPS['ecg_semi_coarse'] = TensorMap('ecg_semi_coarse', group='categorical', loss=weighted_crossentropy([1.0, 1.0, 2.0, 4.0, 16.0, 20.0], 'ecg_semi_coarse'),
                                      channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
+
+
 TMAPS['ecg_semi_coarse_with_poor'] = TensorMap('ecg_semi_coarse_with_poor', group='categorical', loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_semi_coarse_with_poor'),
                                      channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 
@@ -129,6 +131,12 @@ TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', group='continuous', channel_map={'
 TMAPS['charge'] = TensorMap('charge', group='continuous', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
                             validator=make_range_validator(0, 20))
 
+TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
+                                  parents=[TMAPS['qt-interval'], TMAPS['rr-interval']], normalization={'mean': 419.1, 'std': 20.7})
+TMAPS['qrs-durationpp'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+                                    normalization={'mean': 89.53, 'std': 12.21},
+                                    parents=[TMAPS['qtc-intervalp']])
+
 TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 48.7, 'std': 23.1})
 TMAPS['p-duration-sentinel'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
@@ -149,7 +157,10 @@ TMAPS['qtc-interval-sentinel'] = TensorMap('QTCInterval', group='continuous', ch
                                            normalization={'mean': 419.1, 'std': 20.7})
 TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
                                             normalization={'mean': 419.1, 'std': 20.7},
-                                            parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'])
+                                            parents=[TMAPS['qt-interval'], TMAPS['rr-interval']])
+TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
+                                            normalization={'mean': 419.1, 'std': 20.7},
+                                            parents=[TMAPS['qt-interval'], TMAPS['rr-interval']])
 TMAPS['r-axis-sentinel'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
 TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, sentinel=0,
                                           normalization={'mean': 1040.61, 'std': 175.5})
@@ -263,9 +274,6 @@ TMAPS['lvm_mosteller_index_prediction_sentinel'] = TensorMap('lvm_mosteller_inde
                                                              sentinel=0, channel_map={'lvm_mosteller_index_sentinel_prediction': 0},
                                                              normalization={'mean': 89.7, 'std': 24.8})
 
-TMAPS['lv_massp'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
-                              parents=['output_mri_systole_diastole_8_segmented_categorical'],
-                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear', validator=make_range_validator(0, 300),
@@ -382,24 +390,23 @@ TMAPS['sax_pixel_height'] = TensorMap('mri_pixel_height_segmented_sax_inlinevf',
 TMAPS['end_systole_volumep'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                      loss='logcosh', channel_map={'end_systole_volume': 0},
                                      normalization={'mean': 47.0, 'std': 10.0},
-                                     parents=['output_' + MRI_SEGMENTED + '_categorical'])
+                                     parents=[TMAPS[MRI_SEGMENTED]])
 TMAPS['end_diastole_volumep'] = TensorMap('end_diastole_volume', group='continuous', activation='linear',
                                       loss='logcosh', channel_map={'end_diastole_volume': 0},
                                       normalization={'mean': 142.0, 'std': 21.0},
-                                      parents=['output_' + MRI_SEGMENTED + '_categorical'])
+                                      parents=[TMAPS[MRI_SEGMENTED]])
 TMAPS['end_systole_volumepz'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                       loss='logcosh', channel_map={'end_systole_volume': 0},
                                       normalization={'mean': 47.0, 'std': 10.0},
-                                      parents=['output_' + MRI_ZOOM_MASK + '_categorical'])
+                                      parents=[TMAPS[MRI_ZOOM_MASK]])
 TMAPS['end_diastole_volumepz'] = TensorMap('end_diastole_volume', group='continuous', activation='linear',
                                        loss='logcosh', channel_map={'end_diastole_volume': 0},
                                        normalization={'mean': 142.0, 'std': 21.0},
-                                       parents=['output_' + MRI_ZOOM_MASK + '_categorical'])
+                                       parents=[TMAPS[MRI_ZOOM_MASK]])
 TMAPS['ejection_fractionp'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
                                     normalization={'mean': 0.50, 'std': 0.046},
                                     loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
-                                    parents=['output_end_systole_volume_continuous',
-                                             'output_end_diastole_volume_continuous'])
+                                    parents=[TMAPS['end_systole_volume'], TMAPS['end_diastole_volume']])
 
 TMAPS['cine_segmented_sax_b1'] = TensorMap('cine_segmented_sax_b1', (256, 256, 50), group='root_array', loss='mse')
 TMAPS['cine_segmented_sax_b2'] = TensorMap('cine_segmented_sax_b2', (256, 256, 50), group='root_array', loss='mse')
