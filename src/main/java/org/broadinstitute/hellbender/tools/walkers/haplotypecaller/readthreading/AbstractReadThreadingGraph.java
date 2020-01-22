@@ -429,7 +429,6 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                             removeEdge(pathForCandidate.getRight());
                         }
                     }
-                    nRecovered += recoverDanglingHead(vertex, pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
                 } else {
                     DanglingPathCandidate candidate = new DanglingPathCandidate(TraversalDirection.downwards,
                             pathForCandidate.getLeft(), pathForCandidate.getRight());
@@ -650,14 +649,18 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         private MultiSampleEdge getRootEdge() {
 //            switch (direction) {
 //                case upwards:
-            if (pathToMerge.size() > 1) {
-                return getEdge(pathToMerge.get(0), pathToMerge.get(1));
-            } else {
-                return edgeOfDivergence;
+            if (pathToMerge.size() <= 1) {
+                throw new GATKException("something went wrong and we have an empty path in here");
             }
+            switch (direction) {
+                case upwards:
+                    return getEdge(pathToMerge.get(0), pathToMerge.get(1));
+                default:
+                    return getEdge(pathToMerge.get(1), pathToMerge.get(0));
 //                default:
 //                    return getEdge(pathToMerge.get(pathToMerge.size() - 2), pathToMerge.get(pathToMerge.size() - 1));
 //            }
+            }
         }
     }
 
