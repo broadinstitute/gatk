@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -23,7 +22,7 @@ public class MinAlleleFractionFilter extends HardFilter {
         return vc.getGenotypes().stream().filter(filteringEngine::isTumor)
                 .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY))
                 .anyMatch(g -> {
-                    final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 1.0);
+                    final double[] alleleFractions = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 1.0);
                     final int numRealAlleles = vc.hasSymbolicAlleles() ? alleleFractions.length - 1 : alleleFractions.length;
                     final OptionalDouble max = IntStream.range(0, numRealAlleles).mapToDouble(a -> alleleFractions[a]).max();
                     return max.getAsDouble() < minAf;

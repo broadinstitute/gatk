@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
+import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.attributeToList;
 
 public final class VariantContextTestUtils {
     private VariantContextTestUtils() {}

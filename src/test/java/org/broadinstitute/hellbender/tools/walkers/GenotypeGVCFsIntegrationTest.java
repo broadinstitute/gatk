@@ -19,12 +19,12 @@ import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -424,9 +424,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             //MT:302 has an alphabet soup of alleles in the GVCF -- make sure the ones we keep are good
             if (vc.getStart() == 302) {
                 Assert.assertEquals(vc.getNAlleles(), 6);
-                double[] sample0LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
-                double[] sample1LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(1), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
-                double[] sample2LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(2), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+                double[] sample0LODs = VariantContextGetters.getAttributeAsDoubleArray(vc.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+                double[] sample1LODs = VariantContextGetters.getAttributeAsDoubleArray(vc.getGenotype(1), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+                double[] sample2LODs = VariantContextGetters.getAttributeAsDoubleArray(vc.getGenotype(2), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
                 for (int i = 0; i < vc.getNAlleles() - 1; i++) {
                     Assert.assertTrue(sample0LODs[i] > TLOD_THRESHOLD || sample1LODs[i] > TLOD_THRESHOLD || sample2LODs[i] > TLOD_THRESHOLD);
                 }

@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -20,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -225,7 +225,7 @@ public class GenotypeGVCFsEngine
                 }
                 else {
                     attribute = ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
-                            GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices);
+                            VariantContextGetters.attributeToList(g.getAnyAttribute(key)), relevantIndices);
                 }
                 gb.attribute(key, attribute);
             }
@@ -291,8 +291,8 @@ public class GenotypeGVCFsEngine
 
         for(final Genotype g : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(g);
-            final double[] tlodArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
-            final double[] variantAFArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
+            final double[] tlodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+            final double[] variantAFArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
             double variantAFtotal = 0;
             final List<Allele> calledAlleles = new ArrayList<>();
             for(int i = 0; i < vc.getAlleles().size()-1; i++) {

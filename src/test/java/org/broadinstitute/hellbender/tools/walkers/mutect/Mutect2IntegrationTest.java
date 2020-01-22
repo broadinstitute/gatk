@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummary
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -631,10 +632,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         //ref blocks have TLOD in format field
         final boolean isHomRef = v1.getGenotype(0).isHomRef();
-        final double[] tlods1 = !isHomRef ? GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
-                : new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
-        final double[] tlods2 = !isHomRef ? GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
-                : new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
+        final double[] tlods1 = !isHomRef ? VariantContextGetters.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
+                : new double[]{VariantContextGetters.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
+        final double[] tlods2 = !isHomRef ? VariantContextGetters.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
+                : new double[]{VariantContextGetters.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
 
         for (int i = 0; i < v1.getAlternateAlleles().size(); i++) {
             if (!v1.getAlternateAllele(i).equals(v2.getAlternateAllele(i))) {

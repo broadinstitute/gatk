@@ -25,8 +25,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
-import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.getAttributeAsLong;
-import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.getAttributeAsLongList;
+import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.getAttributeAsLong;
+import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.getAttributeAsLongList;
 
 
 /**

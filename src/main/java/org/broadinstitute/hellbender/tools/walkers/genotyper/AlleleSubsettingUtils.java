@@ -5,14 +5,13 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -142,7 +141,7 @@ public final class AlleleSubsettingUtils {
             for (final String key : keys) {
                 final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
                 gb.attribute(key, ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
-                            GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices));
+                            VariantContextGetters.attributeToList(g.getAnyAttribute(key)), relevantIndices));
             }
             newGTs.add(gb.make());
             }
