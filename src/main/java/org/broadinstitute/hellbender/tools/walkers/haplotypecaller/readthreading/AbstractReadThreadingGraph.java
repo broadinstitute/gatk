@@ -602,12 +602,14 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             MultiSampleEdge edge = getEdge(path.get(direction==TraversalDirection.upwards ? i - 1: i ),
                     path.get(direction==TraversalDirection.upwards ? i : i - 1));
             if (edge == null) {
-                throw new GATKException("Found an unconnected path when trying to compute edge wqeight for "+direction+" graph, index: "+i+"  " + path.stream().map(vertex -> vertex.toString()).collect(Collectors.joining(", ")));
-            }
+                System.out.println("Found an unconnected path when trying to compute edge wqeight for "+direction+" graph, index: "+i+"  " + path.stream().map(vertex -> vertex.toString()).collect(Collectors.joining(", ")));
+                //throw new GATKException("Found an unconnected path when trying to compute edge wqeight for "+direction+" graph, index: "+i+"  " + path.stream().map(vertex -> vertex.toString()).collect(Collectors.joining(", ")));
+            } else {
 
-            maxEdgeWeight = Math.max(maxEdgeWeight,
-                    getEdge(path.get(direction==TraversalDirection.upwards ? i - 1: i ),
-                    path.get(direction==TraversalDirection.upwards ? i : i - 1)).getPruningMultiplicity());
+                maxEdgeWeight = Math.max(maxEdgeWeight,
+                        getEdge(path.get(direction == TraversalDirection.upwards ? i - 1 : i),
+                                path.get(direction == TraversalDirection.upwards ? i : i - 1)).getPruningMultiplicity());
+            }
         }
 
         return maxEdgeWeight;
