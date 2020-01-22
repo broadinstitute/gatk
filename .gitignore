@@ -8,3 +8,4 @@ trained_models/*
 recipes_output/*
 .ipynb_checkpoints
 ml4cvd.egg-info/*
+.Rproj.user

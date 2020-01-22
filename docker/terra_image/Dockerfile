@@ -25,7 +25,8 @@ RUN pip3 install --upgrade \
 
   # Upgrade to latest version of this so that %%bigquery does not print the
   # first few rows of the downloaded dataframe of query results.
-  google-cloud-bigquery[pandas] \
+  # Pin version due to https://github.com/googleapis/google-cloud-python/issues/9965
+  google-cloud-bigquery[pandas]==1.22.0 \
 
   # Upgrade to latest version of tensorflow.
   tensorflow \
@@ -35,7 +36,8 @@ RUN pip3 install --upgrade \
 
   # Install data visualization libraries.
   facets-overview \
-  altair \
+  # Pin version due to Terra's more strict 'Content Security Policy'.
+  altair==3.3.0 \
   plotnine \
   pydicom \
   vega \
