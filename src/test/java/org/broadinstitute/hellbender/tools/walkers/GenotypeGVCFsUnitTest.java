@@ -9,10 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 
@@ -166,5 +163,50 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "getSpanningAndNonSpanningAlleles")
     public void testIsSpanningDeletion(Allele allele, boolean expected){
         Assert.assertEquals(GATKVCFConstants.isSpanningDeletion(allele), expected);
+    }
+
+    @DataProvider
+    public Object[][] getRemoveNonRefAllelesData() {
+        Map<String, Object> attributesNotAllele = new HashMap<>();
+        attributesNotAllele.put("NOT_ALLELE", 1);
+
+        Map<String, Object> attributesAllele = new HashMap<>();
+        attributesAllele.put("ALLELE", 1);
+
+        Map<String, Object> attributesBoth = new HashMap<>();
+        attributesBoth.put("ALLELE", 1);
+        attributesBoth.put("NOT_ALLELE", 1);
+
+        return new Object[][]{
+                {new VariantContextBuilder("test", "1", 1, 1, Collections.singleton(REF)).attributes(attributesNotAllele).make(), Collections.singleton(REF), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.ALT_T)).attributes(attributesNotAllele).make(), Arrays.asList(REF, ALT, Allele.ALT_T), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.NON_REF_ALLELE)).attributes(attributesNotAllele).make(), Arrays.asList(REF, ALT), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.NON_REF_ALLELE)).attributes(attributesNotAllele).make(), Arrays.asList(REF), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.SPAN_DEL)).attributes(attributesNotAllele).make(), Arrays.asList(REF, Allele.SPAN_DEL), 1},
+
+                {new VariantContextBuilder("test", "1", 1, 1, Collections.singleton(REF)).attributes(attributesAllele).make(), Collections.singleton(REF), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.ALT_T)).attributes(attributesAllele).make(), Arrays.asList(REF, ALT, Allele.ALT_T), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.NON_REF_ALLELE)).attributes(attributesAllele).make(), Arrays.asList(REF, ALT), 0},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.NON_REF_ALLELE)).attributes(attributesAllele).make(), Arrays.asList(REF), 0},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.SPAN_DEL)).attributes(attributesAllele).make(), Arrays.asList(REF, Allele.SPAN_DEL), 1},
+
+                {new VariantContextBuilder("test", "1", 1, 1, Collections.singleton(REF)).attributes(attributesBoth).make(), Collections.singleton(REF), 2},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.ALT_T)).attributes(attributesBoth).make(), Arrays.asList(REF, ALT, Allele.ALT_T), 2},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.NON_REF_ALLELE)).attributes(attributesBoth).make(), Arrays.asList(REF, ALT), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.NON_REF_ALLELE)).attributes(attributesBoth).make(), Arrays.asList(REF), 1},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.SPAN_DEL)).attributes(attributesBoth).make(), Arrays.asList(REF, Allele.SPAN_DEL), 2},
+        };
+    }
+
+    @Test(dataProvider = "getRemoveNonRefAllelesData")
+    public void testRemoveNonRefAlleles(VariantContext vc, Collection<Allele> expectedAlleles, Integer expectedAttributeSize){
+
+        final Set<String> alleleAnnotations = new HashSet<>();
+        alleleAnnotations.add("ALLELE");
+
+        VariantContext vc2 = GenotypeGVCFsEngine.removeNonRefAlleles(vc, alleleAnnotations);
+
+        Assert.assertEquals(vc2.getAlleles(), expectedAlleles);
+        Assert.assertEquals(vc2.getAttributes().size(), expectedAttributeSize.intValue());
     }
 }

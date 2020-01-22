@@ -173,7 +173,7 @@ public class GenotypeGVCFsEngine
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
             reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return removeNonRefAlleles(reannotated);
+            return removeNonRefAlleles(reannotated, infoHeaderAltAllelesLineNames);
         } else {
             return null;
         }
@@ -185,7 +185,7 @@ public class GenotypeGVCFsEngine
      * @param vc   the variant context
      * @return variant context with the NON-REF alleles removed if multiallelic or replaced with NO-CALL alleles if biallelic
      */
-    private VariantContext removeNonRefAlleles(final VariantContext vc) {
+    protected static VariantContext removeNonRefAlleles(final VariantContext vc, Set<String> infoHeaderAltAllelesLineNames) {
 
         // If NON_REF is the only alt allele, ignore this site
         final List<Allele> newAlleles = new ArrayList<>();

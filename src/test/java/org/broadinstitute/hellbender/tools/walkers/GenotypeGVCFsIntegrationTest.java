@@ -2,11 +2,15 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.FileExtensions;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.index.Index;
+import htsjdk.tribble.index.IndexFactory;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -31,6 +35,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -562,11 +567,32 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(actualVC2.get(1).isPolymorphicInSamples());
     }
 
+    /**
+     * This tests whether NON_REF alleles are properly removed, including multi-allelic sites
+     */
     @Test
     public void testForceOutputNonRef() {
         final File input = getTestFile("ForceOutputNonRef.g.vcf");
+        Index index = IndexFactory.createDynamicIndex(input, new VCFCodec());
+        try {
+            index.writeBasedOnFeatureFile(input);
+        }
+        catch (IOException e){
+            throw new RuntimeException(e);
+        }
+
         final File output1 = createTempFile("output", ".vcf");
 
+        // build intervals
+        final File output2 = createTempFile("output", ".vcf");
+        final File intervalFile = createTempFile("testForceOutputNonRef", ".intervals");
+        try (PrintWriter writer = new PrintWriter(IOUtil.openFileForWriting(intervalFile))) {
+            writer.println("1:1048236-1048236");
+            writer.println("1:1051053-1051053");
+            writer.println("1:2364622-2364622");
+        }
+
+        // No sites should be output
         final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
@@ -578,15 +604,13 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
 
-        // every site has output
         Assert.assertEquals(actualVC.size(), 0);
 
-        final File output2 = createTempFile("output", ".vcf");
-
+        // No sites should output
         final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:1048236-1048236")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, intervalFile.getAbsoluteFile())
                 .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output2);
 
@@ -595,8 +619,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
 
-        Assert.assertEquals(actualVC2.size(), 1);
-        Assert.assertTrue(!actualVC2.get(0).getAlleles().contains(Allele.NON_REF_ALLELE));
+        Assert.assertEquals(actualVC2.size(), 3);
+        actualVC2.forEach(vc -> {
+            Assert.assertTrue(!vc.getAlleles().contains(Allele.NON_REF_ALLELE));
+        });
+
+        Assert.assertEquals(actualVC2.get(0).getAlleles(), Arrays.asList(Allele.REF_C, Allele.create("CA")));
+        Assert.assertEquals(actualVC2.get(1).getAlleles(), Arrays.asList(Allele.REF_A, Allele.SPAN_DEL));
+        Assert.assertEquals(actualVC2.get(2).getAlleles(), Arrays.asList(Allele.REF_C, Allele.ALT_G));
     }
 
     @Test
