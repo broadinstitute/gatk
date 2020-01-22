@@ -402,7 +402,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             if (outDegreeOf(vertex) == 0 && !isRefSink(vertex)) {
                 attempted++;
                 Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> pathForCandidate = findPath(vertex, pruneFactor, v -> inDegreeOf(v) < 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
-                if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().isEmpty()) {
+                if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().size() > 2) {
                     if (pathForCandidate.getRight() != null) {
                         if (!pathForCandidate.getRight().isRef()) {
                             removeEdge(pathForCandidate.getRight());
@@ -423,7 +423,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 attempted++;
                 Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> pathForCandidate = findPath(vertex, pruneFactor, v -> inDegreeOf(v) >= 2 || outDegreeOf(v) < 1, v -> inDegreeOf(v) > 1, this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
 
-                if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().isEmpty()) {
+                if (pathForCandidate.getLeft() == null || pathForCandidate.getLeft().size() > 2) {
                     if (pathForCandidate.getRight() != null) {
                         if (!pathForCandidate.getRight().isRef()) {
                             removeEdge(pathForCandidate.getRight());
@@ -466,8 +466,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             if (nextCandidate.isRootedInReference()) {
                 // the actual merging step, handle for both directions differently
                 if (nextCandidate.pathToMerge.size() < minPathLength) {
-                    if (!nextCandidate.edgeOfDivergence.isRef() && overlappingNeighbors.isEmpty()) {
-                        removeEdge(nextCandidate.edgeOfDivergence);
+                    if (!nextCandidate.getRootEdge().isRef() && overlappingNeighbors.isEmpty()) {
+                        removeEdge(nextCandidate.getRootEdge());
                     }
                     mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
                     continue;
