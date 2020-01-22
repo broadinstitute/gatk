@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.*;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -26,6 +25,14 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
                     final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(file);
                     artifactPriorCollections.put(artifactPriorCollection.getSample(), artifactPriorCollection);
                 });
+    }
+
+    public static int[] getF1R2(final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
+    }
+
+    public static int[] getF2R1(final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
     }
 
     @Override
@@ -96,8 +103,8 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
             return 0;
         }
 
-        final int[] f1r2 = OrientationBiasUtils.getF1R2(g);
-        final int[] f2r1 = OrientationBiasUtils.getF2R1(g);
+        final int[] f1r2 = getF1R2(g);
+        final int[] f2r1 = getF2R1(g);
         final int refCount =  f1r2[0] + f2r1[0];
         final int altF1R2 = f1r2[indexOfMaxTumorLod + 1];
         final int altF2R1 = f2r1[indexOfMaxTumorLod + 1];
