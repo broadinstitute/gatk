@@ -444,6 +444,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         // The loop of operation - pull from our priority queue
         while (!danglingPathForkCandidates.isEmpty()) {
             final DanglingPathCandidate nextCandidate = danglingPathForkCandidates.poll();
+            mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
 
             // here we check for a fork we decide to prune ourselves if our length is too short, or if our length is long enough but a higher weight branch exists that is shroter
             List<DanglingPathCandidate> neighbors = mapOfRoots.get(nextCandidate.getRootVertex())
@@ -498,7 +499,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             if ((nextCandidate.direction == TraversalDirection.upwards && outDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex())) ||
                     (nextCandidate.direction == TraversalDirection.downwards && inDegreeOf(nextCandidate.getRootVertex()) < 2 && !isReferenceNode(nextCandidate.getRootVertex()))) {
 
-                DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
+                DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate, mapOfRoots);
                 if (extended != null) {
                     danglingPathForkCandidates.add(extended);
                     mapOfRoots.merge(extended.getRootVertex(), new ArrayList<>(Collections.singletonList(extended)), (v1, v2) -> {
@@ -550,7 +551,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                         }
                         mapOfRoots.get(nextCandidate.getRootVertex()).remove(nextCandidate);
                     } else {// otherwise attempt to extend both
-                        DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate);
+                        DanglingPathCandidate extended = extendCandidateToNextJunctionPoint(pruneFactor, nextCandidate, mapOfRoots);
                         if (extended != null) {
                             danglingPathForkCandidates.add(extended);
                             mapOfRoots.merge(extended.getRootVertex(), new ArrayList<>(Collections.singletonList(extended)), (v1, v2) -> {
@@ -574,7 +575,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * @return
      */
     // TODO unit test this method because it causes problems still sometimes bleh
-    private DanglingPathCandidate extendCandidateToNextJunctionPoint(final int pruneFactor, final DanglingPathCandidate nextCandidate) {
+    private DanglingPathCandidate extendCandidateToNextJunctionPoint(final int pruneFactor, final DanglingPathCandidate nextCandidate, final Map<MultiDeBruijnVertex, List<DanglingPathCandidate>> mapOfRoots) {
         Pair<List<MultiDeBruijnVertex>, MultiSampleEdge> pathForCandidate = nextCandidate.direction == TraversalDirection.upwards ?
                 findPath(nextCandidate.getRootVertex(), pruneFactor, v -> inDegreeOf(v) < 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, this::getHeaviestIncomingEdge, e -> getEdgeSource(e)) :
                 findPath(nextCandidate.getRootVertex(), pruneFactor, v -> inDegreeOf(v) >= 2 || outDegreeOf(v) < 1, v -> inDegreeOf(v) > 1, this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
@@ -584,7 +585,12 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             boolean wasPathConnected = pathForCandidate.getLeft().remove(nextCandidate.getRootVertex()); // we need to remove the root vertex here becuase its included in both paths we want to merge
             if (wasPathConnected) {
                 pathForCandidate.getLeft().addAll(nextCandidate.pathToMerge);
-                return new DanglingPathCandidate(nextCandidate.direction, pathForCandidate.getLeft(), pathForCandidate.getRight());
+                DanglingPathCandidate candidate = new DanglingPathCandidate(nextCandidate.direction, pathForCandidate.getLeft(), pathForCandidate.getRight());
+                mapOfRoots.merge(candidate.getRootVertex(), new ArrayList<>(Collections.singletonList(candidate)), (v1, v2) -> {
+                    v1.addAll(v2);
+                    return v1;
+                });
+                return candidate;
             }
         }
         return null;
