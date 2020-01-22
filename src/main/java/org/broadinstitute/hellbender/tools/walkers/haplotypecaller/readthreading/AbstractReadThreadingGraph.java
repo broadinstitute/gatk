@@ -654,9 +654,17 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
             }
             switch (direction) {
                 case upwards:
-                    return getEdge(pathToMerge.get(0), pathToMerge.get(1));
+                    MultiSampleEdge e = getEdge(pathToMerge.get(0), pathToMerge.get(1));
+                    if (e == null) {
+                        throw new GATKException("something went wrong and we have an empty path in here");
+                    }
+                    return e;
                 default:
-                    return getEdge(pathToMerge.get(1), pathToMerge.get(0));
+                    MultiSampleEdge ee = getEdge(pathToMerge.get(1), pathToMerge.get(0));
+                    if (ee == null) {
+                        throw new GATKException("something went wrong and we have an empty path in here");
+                    }
+                    return ee;
 //                default:
 //                    return getEdge(pathToMerge.get(pathToMerge.size() - 2), pathToMerge.get(pathToMerge.size() - 1));
 //            }
