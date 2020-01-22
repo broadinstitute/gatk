@@ -196,8 +196,8 @@ public class GenotypeGVCFsEngine
             }
         }
 
-        // If no alt allele, then remove INFO fields that require alt alleles
-        if ( newAlleles.size() == 1 ) {
+        // If the alt alleles changed, then remove INFO fields that require alt alleles
+        if ( newAlleles.size() != vc.getAlleles().size() ) {
             final VariantContextBuilder builder = new VariantContextBuilder(vc).alleles(newAlleles);
             for ( final String name : infoHeaderAltAllelesLineNames ) {
                 builder.rmAttributes(Arrays.asList(name));

@@ -563,6 +563,43 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testForceOutputNonRef() {
+        final File input = getTestFile("ForceOutputNonRef.g.vcf");
+        final File output1 = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addVCF(input)
+                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output1);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(argsWithAllSites);
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
+
+        // every site has output
+        Assert.assertEquals(actualVC.size(), 0);
+
+        final File output2 = createTempFile("output", ".vcf");
+
+        final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
+                .addReference(b37Reference)
+                .addVCF(input)
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:1048236-1048236")
+                .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
+                .addOutput(output2);
+
+        Utils.resetRandomGenerator();
+        runCommandLine(argsWithSpecificSites);
+
+        final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
+
+        Assert.assertEquals(actualVC2.size(), 1);
+        Assert.assertTrue(!actualVC2.get(0).getAlleles().contains(Allele.NON_REF_ALLELE));
+    }
+
+    @Test
     public void testForceOutputWithSpanningDeletion() {
         final File input = getTestFile("leadingDeletion.g.vcf");
         final File output = createTempFile("genotypegvcf", ".vcf");
