@@ -12,14 +12,13 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.ReadOrientationFilter;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnReadOrientationModel;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
@@ -33,7 +32,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -137,7 +135,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         VariantContextTestUtils.streamVcf(unfilteredVcf)
                 .forEach(vc -> {
                     for (final Genotype genotype : vc.getGenotypes()) {
-                        final int[] f1r2 = OrientationBiasUtils.getF1R2(genotype);
+                        final int[] f1r2 = ReadOrientationFilter.getF1R2(genotype);
                         Assert.assertEquals(f1r2.length, vc.getNAlleles());
                         if (vc.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> a.getBases()[0]).distinct().count() == 1) {
                             Assert.assertTrue(vc.getAlleles().stream().anyMatch(a -> a.getBases().length == 1));
