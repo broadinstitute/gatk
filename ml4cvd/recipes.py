@@ -53,7 +53,7 @@ def run(args):
             plot_predictions(args)
         elif 'plot_while_training' == args.mode:
             plot_while_training(args)
-        elif 'plot_saliency':
+        elif 'plot_saliency' == args.mode:
             saliency_maps(args)
         elif 'plot_mri_dates' == args.mode:
             mri_dates(args.tensors, args.output_folder, args.id)
