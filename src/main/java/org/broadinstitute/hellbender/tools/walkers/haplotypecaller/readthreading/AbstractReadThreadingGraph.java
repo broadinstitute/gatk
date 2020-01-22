@@ -653,7 +653,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 throw new GATKException("something went wrong and we have an empty path in here");
             }
             switch (direction) {
-                case downwards:
+                case upwards:
                     return getEdge(pathToMerge.get(0), pathToMerge.get(1));
                 default:
                     return getEdge(pathToMerge.get(1), pathToMerge.get(0));
