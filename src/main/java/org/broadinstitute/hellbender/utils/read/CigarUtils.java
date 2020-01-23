@@ -6,7 +6,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
@@ -325,7 +324,7 @@ public final class CigarUtils {
         }
 
         // finally, return the cigar with all indels left aligned
-        return leftAlignCigarSequentially(nonStandard, refSeq, altSeq, 0, 0);
+        return AlignmentUtils.leftAlignIndels(nonStandard, refSeq, altSeq, 0);
     }
 
     /**
@@ -345,48 +344,6 @@ public final class CigarUtils {
         }
 
         return false;
-    }
-
-    /**
-     * Left align the given cigar sequentially. This is needed because AlignmentUtils doesn't accept cigars with more than one indel in them.
-     * This is a target of future work to incorporate and generalize into AlignmentUtils for use by others.
-     * @param cigar     the cigar to left align
-     * @param refSeq    the reference byte array
-     * @param readSeq   the read byte array
-     * @param refIndex  0-based alignment start position on ref
-     * @param readIndex 0-based alignment start position on read
-     * @return          the left-aligned cigar
-     */
-    public static Cigar leftAlignCigarSequentially(final Cigar cigar, final byte[] refSeq, final byte[] readSeq, int refIndex, int readIndex) {
-        Utils.nonNull(cigar, "cigar null");
-        Utils.nonNull(refSeq, "refSeq null");
-        Utils.nonNull(readSeq, "readSeq null");
-
-        final Cigar cigarToReturn = new Cigar();
-        Cigar cigarToAlign = new Cigar();
-        for (int i = 0; i < cigar.numCigarElements(); i++) {
-            final CigarElement ce = cigar.getCigarElement(i);
-            if (ce.getOperator() == CigarOperator.D || ce.getOperator() == CigarOperator.I) {
-                cigarToAlign.add(ce);
-                final Cigar leftAligned = AlignmentUtils.leftAlignSingleIndel(cigarToAlign, refSeq, readSeq, refIndex, readIndex, false);
-                for ( final CigarElement toAdd : leftAligned.getCigarElements() ) { cigarToReturn.add(toAdd); }
-                refIndex += cigarToAlign.getReferenceLength();
-                readIndex += cigarToAlign.getReadLength();
-                cigarToAlign = new Cigar();
-            } else {
-                cigarToAlign.add(ce);
-            }
-        }
-        if( !cigarToAlign.isEmpty() ) {
-            for( final CigarElement toAdd : cigarToAlign.getCigarElements() ) {
-                cigarToReturn.add(toAdd);
-            }
-        }
-
-        final Cigar result = AlignmentUtils.consolidateCigar(cigarToReturn);
-        Utils.validate(result.getReferenceLength() == cigar.getReferenceLength(),
-                () -> "leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
-        return result;
     }
 
     /**

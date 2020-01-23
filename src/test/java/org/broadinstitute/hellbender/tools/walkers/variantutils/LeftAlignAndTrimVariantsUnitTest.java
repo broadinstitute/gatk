@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -18,12 +19,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.stream.*;
-import java.io.File;
 
-/**
- * These tests should be refactored. They currently call LeftalignAndTrimVariants instance methods without
- * putting it through the tool lifecycle.
- */
 public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
     final String refBases1 = "GCAGAGCTGACCCTCCCTCCCCTCTCCCAGTGCAACAGCACGGGCGGCGACTGCTTTTACCGAGGCTACACGTCAGGCGTGGCGGCTGTCCAGGACTGGTACCACTTCCACTATGTGGATCTCTGCTGAGGACCAGGAAAGCCAGCACCCGCAGAGACTCTTCCCCAGTGCTCCATACGATCACCATTCTCTGCAGAAGG";
     final String longStr = "AGTCGCTCGAGCTCGAGCTCGAGTGTGCGCTCTACAGCTCAGCTCGCTCGCACACAT";
@@ -100,7 +96,7 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
                     ReferenceContext ref = new ReferenceContext(refSource, interval);
 
                     final VariantContext vc = new VariantContextBuilder("test", artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length(), alleles).make();
-                    final boolean expectRealigned = (indelIndex != repeatStart - 1) && (indelRepeats * strLength <= LeftAlignAndTrimVariants.DEFAULT_MAX_INDEL_SIZE);
+                    final boolean expectRealigned = (indelIndex != repeatStart - 1);
                     final int expectedStart = expectRealigned ? repeatStart : indelIndex + 1;
                     tests.add(new Object[]{vc, ref, expectRealigned, expectedStart});
                 }
@@ -130,38 +126,35 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "LeftAlignDataProvider")
     public void testLeftAlign(final VariantContext vc, final ReferenceContext ref, final boolean expectRealigned, final int expectedStart) {
-        final LeftAlignAndTrimVariants leftAligner = new LeftAlignAndTrimVariants();
-        //leftAligner.dontTrimAlleles=true;
-        final VariantContext realignedV = leftAligner.leftAlign(vc, ref);
+        final VariantContext realignedV = LeftAlignAndTrimVariants.leftAlignAndTrim(vc, ref, LeftAlignAndTrimVariants.DEFAULT_MAX_LEADING_BASES, true);
         Assert.assertEquals(realignedV != vc, expectRealigned);
         Assert.assertEquals(realignedV.getStart(), expectedStart);
     }
 
-    @DataProvider(name = "SkipForLengthDataProvider")
-    public Object[][] SkipForLengthTestData() {
-        //>200 base insertion
-        final Allele longAllele = Allele.create(Utils.dupString("AGCTTAGCTTGACCCAGATAGCTAGCTCGATCGGTCGATCGGATCGGCTAGCTACGATTCGGAT", 5), false);
-        final Allele refAllele = Allele.create("A", true);
-        final List<Allele> alleles = Stream.of(refAllele, longAllele).collect(Collectors.toList());
-        final int longAlleleLength = longAllele.length();
-        final ReferenceMemorySource refSource = refSources.get(0);
-        final SimpleInterval interval = new SimpleInterval(artificialContig, repeatStart + 1, repeatStart + 1);
-        final ReferenceContext ref = new ReferenceContext(refSource, interval);
-        final VariantContext vc = new VariantContextBuilder("test", artificialContig, repeatStart + 1, repeatStart + 1, alleles).make();
-        return new Object[][]{{vc, ref, longAlleleLength - 1}};
-    }
+    @Test
+    public void testLeftAlignWithVaryingMaxDistances() {
 
-    @Test(dataProvider = "SkipForLengthDataProvider")
-    public void testSkipForLength(final VariantContext vc, final ReferenceContext ref, final int lengthSkippedVariant) {
-        LeftAlignAndTrimVariants leftAligner = new LeftAlignAndTrimVariants();
-        leftAligner.leftAlign(vc, ref);
-        Assert.assertEquals(lengthSkippedVariant, leftAligner.longestSkippedVariant);
-        Assert.assertEquals(1, leftAligner.numSkippedForLength);
-        leftAligner.longestSkippedVariant = 0;
-        leftAligner.numSkippedForLength = 0;
-        leftAligner.maxIndelSize = lengthSkippedVariant;
-        leftAligner.leftAlign(vc, ref);
-        Assert.assertEquals(0, leftAligner.longestSkippedVariant);
-        Assert.assertEquals(0, leftAligner.numSkippedForLength);
+        final byte[] refSequence = new byte[200];
+        Arrays.fill(refSequence, 0, 100, (byte) 'C');
+        Arrays.fill(refSequence, 100, 200, (byte) 'A');
+
+        final String contig = "1";
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, refSequence.length);
+        final SimpleInterval interval = new SimpleInterval(contig, 1, refSequence.length);
+
+
+        final ReferenceBases refBases = new ReferenceBases(refSequence, interval);
+        final ReferenceDataSource referenceDataSource = new ReferenceMemorySource(refBases, header.getSequenceDictionary());
+        final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, interval);
+
+        final List<Allele> alleles = Arrays.asList(Allele.create("AA", true), Allele.create("A", false));
+        for (int maxShift : new int[] {0, 1, 5, 10, 30}) {
+            for (int start : new int[]{101, 105, 109, 110, 111, 115, 120, 130, 141}) {
+                final VariantContext vc = new VariantContextBuilder("source", contig, start, start + 1, alleles).make();
+                final VariantContext realignedV = LeftAlignAndTrimVariants.leftAlignAndTrim(vc, referenceContext, maxShift, true);
+
+                Assert.assertEquals(realignedV.getStart(), Math.max(start - maxShift, 100));
+            }
+        }
     }
 }

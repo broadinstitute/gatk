@@ -16,6 +16,8 @@ import java.util.Collections;
 public class LeftAlignAndTrimVariantsIntegrationTest extends CommandLineProgramTest {
     final Path testDataDir = Paths.get(getToolTestDataDir());
 
+    // note: this test file has one particularly tricky case of a deletion AAA->A at chr21:13255301	that left aligns to CAA->A at chr21:13255289 by
+    // jumping past a SNP A->G at chr21:13255296
     private Object[] getTestSet(String expectedVcf, String Options) {
         return new Object[]{testDataDir.resolve("test_left_align_hg38.vcf"), Paths.get(b38_reference_20_21), testDataDir.resolve(expectedVcf), Options};
     }
