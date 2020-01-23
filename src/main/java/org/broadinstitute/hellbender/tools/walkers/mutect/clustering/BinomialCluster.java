@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileu
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class BinomialCluster implements AlleleFractionCluster {
 
@@ -17,8 +18,8 @@ public class BinomialCluster implements AlleleFractionCluster {
     }
 
     @Override
-    public double logLikelihood(final Datum datum) {
-        return BetaBinomialCluster.logLikelihood(datum, betaDistributionShape);
+    public double correctedLogLikelihood(final Datum datum) {
+        return BetaBinomialCluster.correctedLogLikelihood(datum, betaDistributionShape);
     }
 
     @Override
@@ -27,9 +28,9 @@ public class BinomialCluster implements AlleleFractionCluster {
     }
 
     @Override
-    public void learn(final List<Datum> data) {
-        final double altCount = data.stream().mapToInt(Datum::getAltCount).sum() + 0.0001;
-        final double totalCount = data.stream().mapToInt(Datum::getTotalCount).sum() + 0.0001;
+    public void learn(final List<Datum> data, final double[] responsibilities) {
+        final double altCount = IntStream.range(0, data.size()).mapToDouble(n -> data.get(n).getAltCount()*responsibilities[n]).sum() + 0.0001;
+        final double totalCount = IntStream.range(0, data.size()).mapToDouble(n -> data.get(n).getTotalCount()*responsibilities[n]).sum() + 0.0001;
         betaDistributionShape = getFuzzyBinomial( altCount / totalCount);
 
     }

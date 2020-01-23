@@ -20,8 +20,8 @@ public class BetaBinomialCluster implements AlleleFractionCluster {
     }
 
     @Override
-    public double logLikelihood(final Datum datum) {
-        return logLikelihood(datum, betaDistributionShape);
+    public double correctedLogLikelihood(final Datum datum) {
+        return correctedLogLikelihood(datum, betaDistributionShape);
     }
 
     @Override
@@ -29,19 +29,20 @@ public class BetaBinomialCluster implements AlleleFractionCluster {
         return new BetaBinomialDistribution(null, betaDistributionShape.getAlpha(), betaDistributionShape.getBeta(), totalCount).logProbability(altCount);
     }
 
-    public static double logLikelihood(final Datum datum, final BetaDistributionShape betaDistributionShape) {
+    public static double correctedLogLikelihood(final Datum datum, final BetaDistributionShape betaDistributionShape) {
         final int altCount = datum.getAltCount();
         final int refCount = datum.getTotalCount() - altCount;
         return datum.getTumorLogOdds() + logOddsCorrection(BetaDistributionShape.FLAT_BETA, betaDistributionShape, altCount, refCount);
     }
 
     @Override
-    public void learn(final List<Datum> data) {
+    public void learn(final List<Datum> data, final double[] responsibilities) {
         double alpha = betaDistributionShape.getAlpha();
         double beta = betaDistributionShape.getBeta();
 
         for (int epoch = 0; epoch < NUM_EPOCHS; epoch++) {
-            for (final Datum datum : data) {
+            for (int n = 0; n < data.size(); n++) {
+                final Datum datum = data.get(n);
                 final int alt = datum.getAltCount();
                 final int ref = datum.getTotalCount() - alt;
 
@@ -50,8 +51,8 @@ public class BetaBinomialCluster implements AlleleFractionCluster {
                 final double alphaGradient = Gamma.digamma(alpha + alt) - digammaOfTotalPlusAlphaPlusBeta - Gamma.digamma(alpha) + digammaOfAlphaPlusBeta;
                 final double betaGradient = Gamma.digamma(beta + ref) - digammaOfTotalPlusAlphaPlusBeta - Gamma.digamma(beta) + digammaOfAlphaPlusBeta;
 
-                alpha = Math.max(alpha + RATE * alphaGradient, 0.5);
-                beta = Math.max(beta + RATE * betaGradient, 0.5);
+                alpha = Math.max(alpha + RATE * alphaGradient * responsibilities[n], 1.0);
+                beta = Math.max(beta + RATE * betaGradient * responsibilities[n], 0.5);
             }
         }
 

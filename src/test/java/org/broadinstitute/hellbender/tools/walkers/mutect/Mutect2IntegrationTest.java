@@ -681,6 +681,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    // check that the somatic clustering model works with high-depth, low-AF cfDNA clustering
+    @Test
+    public void testBloodBiopsyFiltering() {
+        final File unfiltered = new File(toolsTestDir, "mutect/cfdna/cfdna-unfiltered.vcf");
+        final File filtered = createTempFile("filtered", ".vcf");
+
+        runFilterMutectCalls(unfiltered, filtered, b37Reference);
+
+        final Map<Integer, Set<String>> filtersBySite = VariantContextTestUtils.streamVcf(filtered).collect(Collectors.toMap(VariantContext::getStart, VariantContext::getFilters));
+
+        // these are sites that caused trouble for a previous version of the somatic clustering model
+        final List<Integer> lowAFSitesWeShouldNotCall = Arrays.asList(25963056, 47162531, 142178205, 151841902, 31325209, 41521982);
+        for (final int site : lowAFSitesWeShouldNotCall) {
+            Assert.assertTrue(filtersBySite.get(site).contains(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME));
+        }
+    }
+
     @Test
     public void testBamout() {
         final File outputVcf = createTempFile("output", ".vcf");
