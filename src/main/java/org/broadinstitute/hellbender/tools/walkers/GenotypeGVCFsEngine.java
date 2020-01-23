@@ -185,7 +185,8 @@ public class GenotypeGVCFsEngine
      * @param vc   the variant context
      * @return variant context with the NON-REF alleles removed if multiallelic or replaced with NO-CALL alleles if biallelic
      */
-    protected static VariantContext removeNonRefAlleles(final VariantContext vc, Set<String> infoHeaderAltAllelesLineNames) {
+    @VisibleForTesting
+    static VariantContext removeNonRefAlleles(final VariantContext vc, final Set<String> infoHeaderAltAllelesLineNames) {
 
         // If NON_REF is the only alt allele, ignore this site
         final List<Allele> newAlleles = new ArrayList<>();

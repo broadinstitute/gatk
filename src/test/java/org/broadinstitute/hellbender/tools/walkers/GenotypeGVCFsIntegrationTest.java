@@ -526,7 +526,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final File input = getTestFile( "combine.single.sample.pipeline.1.vcf");
         final File output1 = createTempFile("output", ".vcf");
 
-        final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
+        final ArgumentsBuilder argsWithoutForceCalling = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
                 .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20")
@@ -535,7 +535,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output1);
 
         Utils.resetRandomGenerator();
-        runCommandLine(argsWithAllSites);
+        runCommandLine(argsWithoutForceCalling);
 
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
 
@@ -544,7 +544,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final File output2 = createTempFile("output", ".vcf");
 
-        final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
+        final ArgumentsBuilder argsWithForceCalling = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
                 .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10000100")
@@ -553,7 +553,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output2);
 
         Utils.resetRandomGenerator();
-        runCommandLine(argsWithSpecificSites);
+        runCommandLine(argsWithForceCalling);
 
         final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
 
@@ -570,18 +570,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testForceOutputNonRef() {
         final File input = getTestFile("ForceOutputNonRef.g.vcf");
-        final File output1 = createTempFile("output", ".vcf");
-
-        // build intervals
-        final File output2 = createTempFile("output", ".vcf");
-        final File intervalFile = createTempFile("testForceOutputNonRef", ".intervals");
-        try (PrintWriter writer = new PrintWriter(IOUtil.openFileForWriting(intervalFile))) {
-            writer.println("1:1048236-1048236");
-            writer.println("1:1051053-1051053");
-            writer.println("1:2364622-2364622");
-        }
 
         // No sites should be output
+        final File output1 = createTempFile("output", ".vcf");
         final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
@@ -596,10 +587,13 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(actualVC.size(), 0);
 
         // No sites should output
+        final File output2 = createTempFile("output2", ".vcf");
         final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, intervalFile.getAbsoluteFile())
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:1048236-1048236")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:1051053-1051053")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:2364622-2364622")
                 .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output2);
 
@@ -616,6 +610,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(actualVC2.get(0).getAlleles(), Arrays.asList(Allele.REF_C, Allele.create("CA")));
         Assert.assertEquals(actualVC2.get(1).getAlleles(), Arrays.asList(Allele.REF_A, Allele.SPAN_DEL));
         Assert.assertEquals(actualVC2.get(2).getAlleles(), Arrays.asList(Allele.REF_C, Allele.ALT_G, Allele.ALT_A));
+
+        //If non-used alleles are pruned, this will be true
+        for (VariantContext vc : actualVC2) {
+                Assert.assertEquals(!vc.isPolymorphicInSamples(), vc.getAlleles().size() == 1);
+        }
     }
 
     @Test
