@@ -52,6 +52,8 @@ public class GenotypeGVCFsEngine
     // INFO Header names that require alt alleles
     final LinkedHashSet<String> infoHeaderAltAllelesLineNames = new LinkedHashSet<>();
 
+    final private boolean removeUnusedAlternates = true;
+
     private boolean includeNonVariants;
 
     private VCFHeader outputHeader;
@@ -173,7 +175,7 @@ public class GenotypeGVCFsEngine
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
             reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return removeNonRefAlleles(reannotated, infoHeaderAltAllelesLineNames);
+            return removeNonRefAlleles(reannotated, infoHeaderAltAllelesLineNames, removeUnusedAlternates);
         } else {
             return null;
         }
@@ -183,22 +185,37 @@ public class GenotypeGVCFsEngine
      * Remove NON-REF alleles from the variant context
      *
      * @param vc   the variant context
+     * @param infoHeaderAltAllelesLineNames INFO Header names that require alt alleles, which will be removed if the ALT alleles change.
+     * @param removeUnusedAlternates If true, unused alternate alleles will also be trimmed.
      * @return variant context with the NON-REF alleles removed if multiallelic or replaced with NO-CALL alleles if biallelic
      */
     @VisibleForTesting
-    static VariantContext removeNonRefAlleles(final VariantContext vc, final Set<String> infoHeaderAltAllelesLineNames) {
+    static VariantContext removeNonRefAlleles(final VariantContext vc, final Set<String> infoHeaderAltAllelesLineNames, final boolean removeUnusedAlternates) {
 
         // If NON_REF is the only alt allele, ignore this site
         final List<Allele> newAlleles = new ArrayList<>();
         // Only keep alleles that are not NON-REF
+        boolean altAllelesChanged = false;
         for ( final Allele allele : vc.getAlleles() ) {
             if ( !allele.equals(Allele.NON_REF_ALLELE) ) {
                 newAlleles.add(allele);
             }
+            else {
+                altAllelesChanged = true;
+            }
+        }
+
+        if (removeUnusedAlternates) {
+            List<Allele> polymorphicAlleles = vc.subContextFromSamples(vc.getSampleNames(), true).getAlleles();
+            int origSize = newAlleles.size();
+            newAlleles.retainAll(polymorphicAlleles);
+            if (newAlleles.size() != origSize) {
+                altAllelesChanged = true;
+            }
         }
 
         // If the alt alleles changed, then remove INFO fields that require alt alleles
-        if ( newAlleles.size() != vc.getAlleles().size() ) {
+        if (altAllelesChanged) {
             final VariantContextBuilder builder = new VariantContextBuilder(vc).alleles(newAlleles);
             for ( final String name : infoHeaderAltAllelesLineNames ) {
                 builder.rmAttributes(Arrays.asList(name));

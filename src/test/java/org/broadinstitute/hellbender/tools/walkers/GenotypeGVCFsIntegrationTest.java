@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.FileExtensions;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
@@ -32,7 +31,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -569,7 +567,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
      */
     @Test
     public void testForceOutputNonRef() {
-        final File input = getTestFile("ForceOutputNonRef.g.vcf");
+        final File input = new File(getToolTestDataDir() + "../CombineGVCFs/NA12878.AS.chr20snippet.g.vcf");
 
         // No sites should be output
         final File output1 = createTempFile("output", ".vcf");
@@ -584,16 +582,17 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
 
-        Assert.assertEquals(actualVC.size(), 0);
+        Assert.assertEquals(actualVC.size(), 24);
 
         // No sites should output
         final File output2 = createTempFile("output2", ".vcf");
         final ArgumentsBuilder argsWithSpecificSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:1048236-1048236")
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:1051053-1051053")
-                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "1:2364622-2364622")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433049")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433197")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10433312")
+                .addArgument(GenotypeGVCFs.FORCE_OUTPUT_INTERVALS_NAME, "20:10684106")
                 .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output2);
 
@@ -602,18 +601,28 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> actualVC2 = VariantContextTestUtils.getVariantContexts(output2);
 
-        Assert.assertEquals(actualVC2.size(), 3);
+        Assert.assertEquals(actualVC2.size(), 28);
         actualVC2.forEach(vc -> {
             Assert.assertTrue(!vc.getAlleles().contains(Allele.NON_REF_ALLELE));
         });
 
-        Assert.assertEquals(actualVC2.get(0).getAlleles(), Arrays.asList(Allele.REF_C, Allele.create("CA")));
-        Assert.assertEquals(actualVC2.get(1).getAlleles(), Arrays.asList(Allele.REF_A, Allele.SPAN_DEL));
-        Assert.assertEquals(actualVC2.get(2).getAlleles(), Arrays.asList(Allele.REF_C, Allele.ALT_G, Allele.ALT_A));
-
-        //If non-used alleles are pruned, this will be true
         for (VariantContext vc : actualVC2) {
-                Assert.assertEquals(!vc.isPolymorphicInSamples(), vc.getAlleles().size() == 1);
+            //If non-used alleles are pruned, this will be true
+            Assert.assertEquals(!vc.isPolymorphicInSamples(), vc.getAlleles().size() == 1);
+            Assert.assertEquals(vc.getAlleles(), vc.subContextFromSamples(vc.getSampleNames(), true).getAlleles());
+
+            if (vc.getStart() == 10433049) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.REF_C));
+            }
+            else if (vc.getStart() == 10433197) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.REF_C));
+            }
+            else if (vc.getStart() == 10433312) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.create("CAAAAAAA", true)));
+            }
+            else if (vc.getStart() == 10684106) {
+                Assert.assertEquals(vc.getAlleles(), Arrays.asList(Allele.create("CCTTTCTTTCTTT", true)));
+            }
         }
     }
 

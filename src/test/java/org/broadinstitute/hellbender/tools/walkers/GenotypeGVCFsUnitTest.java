@@ -204,9 +204,14 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
         final Set<String> alleleAnnotations = new HashSet<>();
         alleleAnnotations.add("ALLELE");
 
-        VariantContext vc2 = GenotypeGVCFsEngine.removeNonRefAlleles(vc, alleleAnnotations);
+        VariantContext vc2 = GenotypeGVCFsEngine.removeNonRefAlleles(vc, alleleAnnotations, false);
 
         Assert.assertEquals(vc2.getAlleles(), expectedAlleles);
         Assert.assertEquals(vc2.getAttributes().size(), expectedAttributeSize.intValue());
+
+        //There are no genotypes, so all the ALTs should be removed in this case
+        VariantContext vc3 = GenotypeGVCFsEngine.removeNonRefAlleles(vc, alleleAnnotations, true);
+        Assert.assertEquals(vc3.getAlleles().size(), 1);
+        Assert.assertEquals(vc3.getAlleles().get(0), expectedAlleles.iterator().next());
     }
 }
