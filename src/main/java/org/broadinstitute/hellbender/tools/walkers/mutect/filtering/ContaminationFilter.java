@@ -33,7 +33,7 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
 
     @Override
     public List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        // for every alt allele, a list of the depth and posterior pair
+        // for every alt allele, a list of the depth and posterior pairs of each sample
         final List<List<ImmutablePair<Integer, Double>>> depthsAndPosteriorsPerAllele = new ArrayList<>();
         new IndexRange(0, vc.getNAlleles()-1).forEach(i -> depthsAndPosteriorsPerAllele.add(new ArrayList<>()));
 
@@ -44,9 +44,9 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
 
             final double contaminationFromFile = contaminationBySample.getOrDefault(tumorGenotype.getSampleName(), defaultContamination);
             final double contamination = Math.max(0, Math.min(contaminationFromFile, 1 - EPSILON)); // handle file with contamination == 1
-            final int[] ADs = tumorGenotype.getAD(); // AD is all alleles, while AF is alts only, hence the +1 offset
+            final int[] ADs = tumorGenotype.getAD();
             final int totalAD = (int) MathUtils.sum(ADs);
-            final int[] altADs = Arrays.copyOfRange(ADs, 1, ADs.length);
+            final int[] altADs = Arrays.copyOfRange(ADs, 1, ADs.length); // get ADs of alts only
             // POPAF has only alt allele data
             final double[] negativeLog10AlleleFrequencies = VariantContextGetters.getAttributeAsDoubleArray(vc,
                     GATKVCFConstants.POPULATION_AF_KEY, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);

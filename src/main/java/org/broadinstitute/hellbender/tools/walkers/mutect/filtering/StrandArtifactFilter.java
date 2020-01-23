@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -13,6 +15,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class StrandArtifactFilter extends Mutect2AlleleFilter {
     // beta prior on strand bias allele fraction
@@ -56,21 +59,34 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
         if (sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
             return Collections.emptyList();
         }
+        // remove symbolic alleles
+        if (vc.hasSymbolicAlleles()) {
+            final List<List<Integer>> unfilteredSbs = new ArrayList<>(sbs);
+            sbs.clear();
+            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
+            List<Integer> symIndexes = vc.getAlleleIndices(symbolicAlleles);
+            new IndexRange(0, sbs.size()).forEach(i -> {
+                        if (!symIndexes.contains(new Integer(i))) {
+                            sbs.add(unfilteredSbs.get(i));
+                        }
+                    });
+        }
 
-        final ListIterator<Integer> indelSizeIterator = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList()).listIterator();
-        int totalFwd = sbs.stream().map(sb -> sb.get(0)).reduce(0, Math::addExact);
-        int totalRev = sbs.stream().map(sb -> sb.get(1)).reduce(0, Math::addExact);
+        final List<Integer> indelSizes = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList());
+        int totalFwd = sbs.stream().map(sb -> sb.get(0)).mapToInt(i -> i).sum();
+        int totalRev = sbs.stream().map(sb -> sb.get(1)).mapToInt(i -> i).sum();
         // skip the reference
-        List<List<Integer>> altSBs = sbs.subList(1, sbs.size());
+        final List<List<Integer>> altSBs = sbs.subList(1, sbs.size());
 
-        return altSBs.stream().map(altSB -> {
-            final int altIndelSize = indelSizeIterator.next();
+        return IntStream.range(0, altSBs.size()).mapToObj(i -> {
+            final List<Integer> altSB = altSBs.get(i);
+            final int altIndelSize = indelSizes.get(i);
             if (altSB.stream().mapToInt(Integer::intValue).sum() == 0 || altIndelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
                 return new EStep(0, 0, totalFwd, totalRev, altSB.get(0), altSB.get(1));
             } else {
                 return strandArtifactProbability(strandArtifactPrior, totalFwd, totalRev, altSB.get(0), altSB.get(1), altIndelSize);
             }
-        }).collect(Collectors.toList());
+            }).collect(Collectors.toList());
     }
 
     @Override

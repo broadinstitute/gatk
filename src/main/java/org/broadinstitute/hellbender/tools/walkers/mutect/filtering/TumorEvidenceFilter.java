@@ -4,11 +4,12 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.Datum;
 import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClusteringModel;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class TumorEvidenceFilter extends Mutect2AlleleFilter {
     @Override
@@ -22,12 +23,10 @@ public class TumorEvidenceFilter extends Mutect2AlleleFilter {
         final int totalCount = (int) MathUtils.sum(ADs);
         SomaticClusteringModel model = filteringEngine.getSomaticClusteringModel();
 
-        List<Double> altResults = new ArrayList<>();
-        // 0 is the correct value. problem with threshold
-        new IndexRange(0, tumorLods.length).forEach(i ->
-                altResults.add(model.probabilityOfSequencingError(new Datum(tumorLods[i], 0, 0, ADs[i+1], totalCount, SomaticClusteringModel.indelLength(vc, i)))));
+        return IntStream.range(0, tumorLods.length).mapToObj(i ->
+                new Datum(tumorLods[i], 0, 0, ADs[i+1], totalCount, SomaticClusteringModel.indelLength(vc, i)))
+                .map(model::probabilityOfSequencingError).collect(Collectors.toList());
 
-        return altResults;
     }
 
     @Override

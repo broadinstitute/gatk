@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.function.Function;
@@ -28,12 +31,15 @@ public final class ErrorProbabilities {
                 .entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
                 .collect(toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
 
-        // if vc has symbolic allele, remove it
+        // if vc has symbolic alleles, remove them from each filter list
         if (vc.hasSymbolicAlleles()) {
-            // can we assume it's the last allele?
-            int symIndex = numAltAlleles - 1;
-            alleleProbabilitiesByFilter.values().stream().forEach(probList -> probList.remove(symIndex));
+            List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
+            // convert allele index to alt allele index
+            List<Integer> symAltIndexes = vc.getAlleleIndices(symbolicAlleles).stream().map(i -> i-1).collect(Collectors.toList());
+
+            alleleProbabilitiesByFilter.replaceAll((k, v) -> removeItemsByIndex(v, symAltIndexes));
         }
+
         LinkedHashMap<ErrorType, List<List<Double>>> probabilitiesByAllelesForEachFilter = alleleProbabilitiesByFilter.entrySet().stream().collect(
                 groupingBy(entry -> entry.getKey().errorType(), LinkedHashMap::new, mapping(entry -> entry.getValue(), toList())));
         // convert the data so we have a list of probabilities by allele instead of filter
@@ -55,6 +61,16 @@ public final class ErrorProbabilities {
         combinedErrorProbabilitiesByAllele.replaceAll(trueProb -> Mutect2FilteringEngine.roundFinitePrecisionErrors(1.0 - trueProb));
     }
 
+    private List<Double> removeItemsByIndex(List<Double> probs, List<Integer> indexesToRemove) {
+        List<Double> updated = new ArrayList<>();
+        new IndexRange(0, probs.size()).forEach(i -> {
+            if (!indexesToRemove.contains(new Integer(i))) {
+                updated.add(probs.get(i));
+            }
+        });
+        return updated;
+    }
+
     public List<Double> getCombinedErrorProbabilities() { return combinedErrorProbabilitiesByAllele; }
     public List<Double> getTechnicalArtifactProbabilities() { return probabilitiesByTypeAndAllele.get(ErrorType.ARTIFACT); }
     public List<Double> getNonSomaticProbabilities() { return probabilitiesByTypeAndAllele.get(ErrorType.NON_SOMATIC); }
@@ -62,17 +78,17 @@ public final class ErrorProbabilities {
 
     // helper functions for the few operations that still differ depending on whether the filter
     // is per variant or allele
-    public Map<Mutect2Filter, List<Double>> getProbabilitiesForAlleleFilters() {
+    public LinkedHashMap<Mutect2Filter, List<Double>> getProbabilitiesForAlleleFilters() {
         return getPartitionedProbabilitiesByFilter(false);
     }
 
-    public Map<Mutect2Filter, Double> getProbabilitiesForVariantFilters() {
+    public LinkedHashMap<Mutect2Filter, Double> getProbabilitiesForVariantFilters() {
         return getPartitionedProbabilitiesByFilter(true).entrySet().stream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                .collect(toMap(entry -> entry.getKey(), entry -> entry.getValue().get(0)));
+                .collect(toMap(entry -> entry.getKey(), entry -> entry.getValue().get(0), (a,b) -> b, LinkedHashMap::new));
     }
 
-    private Map<Mutect2Filter, List<Double>> getPartitionedProbabilitiesByFilter(boolean variantOnly) {
+    private LinkedHashMap<Mutect2Filter, List<Double>> getPartitionedProbabilitiesByFilter(boolean variantOnly) {
         Map<Boolean, LinkedHashMap<Mutect2Filter, List<Double>>> groups =
                 alleleProbabilitiesByFilter.entrySet().stream().collect(Collectors.partitioningBy(
                         entry -> Mutect2VariantFilter.class.isAssignableFrom(entry.getKey().getClass()),
@@ -80,18 +96,15 @@ public final class ErrorProbabilities {
         return groups.get(variantOnly);
     }
 
-    // TODO would this be useful in a util class somewhere?
-    private static <T> List<List<T>> transpose(List<List<T>> list) {
+    public static <T> List<List<T>> transpose(List<List<T>> list) {
         // all lists need to be the same size
-        final int N = list.stream().mapToInt(l -> l.size()).max().orElse(-1);
-        if (list.stream().anyMatch(l -> l.size() != N)) {
-
-        }
-        List<Iterator<T>> iterList = list.stream().map(it->it.iterator()).collect(toList());
-        return IntStream.range(0, N)
+        Utils.validateArg(!list.isEmpty() && list.stream().map(List::size).distinct().count() == 1, "lists are not the same size");
+        List<Iterator<T>> iterList = list.stream().map(it -> it.iterator()).collect(toList());
+        return IntStream.range(0, list.get(0).size())
                 .mapToObj(n -> iterList.stream()
                         .filter(it -> it.hasNext())
                         .map(m -> m.next())
                         .collect(toList()))
                 .collect(toList());
-    }}
+    }
+}

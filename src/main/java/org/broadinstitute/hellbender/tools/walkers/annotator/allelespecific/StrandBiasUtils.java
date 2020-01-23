@@ -15,7 +15,6 @@ public class StrandBiasUtils {
     public static final int FORWARD = 0;
     public static final int REVERSE = 1;
     public static final int MIN_COUNT = 2;
-    public static final String PRINT_DELIM = "|";
     private static final List<Integer> ZERO_LIST = new ArrayList<>(Arrays.asList(0,0));
 
     public static Map<String, Object> computeSBAnnotation(VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods, String key) {
@@ -31,29 +30,16 @@ public class StrandBiasUtils {
     }
 
     protected static String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, List<Integer>> perAlleleValues) {
-        String annotationString = "";
-        for (final Allele a : vcAlleles) {
-            if (!annotationString.isEmpty()) {
-                annotationString += PRINT_DELIM;
-            }
-            List<Integer> alleleValues = perAlleleValues.get(a);
-            if (alleleValues == null) {
-                alleleValues = ZERO_LIST;
-            }
-            annotationString += encode(alleleValues);
-        }
-        return annotationString;
+        final List<String> alleleStrings = vcAlleles.stream()
+                .map(a -> perAlleleValues.getOrDefault(a, ZERO_LIST))
+                .map(StrandBiasUtils::encode)
+                .collect(Collectors.toList());
+        return String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, alleleStrings);
+
     }
 
     protected static String encode(List<Integer> alleleValues) {
-        String annotationString = "";
-        for (int j =0; j < alleleValues.size(); j++) {
-            annotationString += alleleValues.get(j);
-            if (j < alleleValues.size()-1) {
-                annotationString += ",";
-            }
-        }
-        return annotationString;
+        return String.join(",", alleleValues.stream().map(i -> i.toString()).collect(Collectors.toList()));
     }
 
 
@@ -121,12 +107,9 @@ public class StrandBiasUtils {
             alleleStrandCounts.add(0,0);
             alleleStrandCounts.add(1,0);
         }
-        final boolean isForward = !read.isReverseStrand();
-        if (isForward) {
-            alleleStrandCounts.set(FORWARD, alleleStrandCounts.get(FORWARD) + 1);
-        } else {
-            alleleStrandCounts.set(REVERSE, alleleStrandCounts.get(REVERSE) + 1);
-        }
+
+        final int strand = read.isReverseStrand() ? REVERSE : FORWARD;
+        alleleStrandCounts.set(strand, alleleStrandCounts.get(strand) + 1);
         perAlleleValues.putAttribute(bestAllele, alleleStrandCounts);
     }
 

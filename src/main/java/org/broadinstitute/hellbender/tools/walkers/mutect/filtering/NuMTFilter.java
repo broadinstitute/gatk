@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
@@ -28,17 +27,13 @@ public class NuMTFilter extends HardAlleleFilter {
     @Override
     public ErrorType errorType() { return ErrorType.NON_SOMATIC; }
 
-    public Predicate<Genotype> checkPreconditions() {
-        return Genotype::hasAD;
-    }
-
     public List<Integer> getData(Genotype g) {
         return Arrays.stream(g.getAD()).boxed().collect(Collectors.toList());
     }
 
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        LinkedHashMap<Allele, List<Integer>> dataByAllele = getDataByAllele(vc, checkPreconditions(), this::getData, filteringEngine);
+        LinkedHashMap<Allele, List<Integer>> dataByAllele = getDataByAllele(vc, Genotype::hasAD, this::getData, filteringEngine);
         return dataByAllele.entrySet().stream()
                 .filter(entry -> !vc.getReference().equals(entry.getKey()))
                 .map(entry -> entry.getValue().stream().max(Integer::compare).orElse(0) < maxAltDepthCutoff).collect(Collectors.toList());

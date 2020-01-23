@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.IndexRange;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class Mutect2VariantFilter extends Mutect2Filter {
@@ -15,10 +16,7 @@ public abstract class Mutect2VariantFilter extends Mutect2Filter {
         int numAltAlleles = vc.getNAlleles() - 1;
         final double result = Mutect2FilteringEngine.roundFinitePrecisionErrors(requiredAnnotations().stream().allMatch(vc::hasAttribute) ?
                 calculateErrorProbability(vc, filteringEngine, referenceContext) : 0.0);
-        ArrayList<Double> resultList = new ArrayList<>(numAltAlleles);
-        new IndexRange(0, numAltAlleles).forEach(i -> resultList.add(result));
-        return resultList;
-
+        return Collections.nCopies(numAltAlleles, result);
     }
 
     protected abstract double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext);
