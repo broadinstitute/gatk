@@ -93,31 +93,6 @@ public final class PileupElement {
     }
 
     /**
-     * Create a pileup element for read at a particular spot on the genome.
-     *
-     * offset must correspond to a valid read offset read's alignment and cigar, or an IllegalStateException will be throw
-     *
-     * @param read a read
-     * @param loc A one base location you want to generate your genome
-     * @return a valid PileupElement with read and at offset
-     */
-    public static PileupElement createPileupForReadAndGenomeLoc(final GATKRead read, final Locatable loc) {
-        Utils.nonNull(read, "read is null");
-
-        final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
-
-        while ( stateMachine.stepForwardOnGenome() != null ) {
-            if ( stateMachine.getGenomePosition() == loc.getStart()) {
-                return stateMachine.makePileupElement();
-            }
-        }
-
-        throw new IllegalStateException("Tried to create a pileup for read " + read + " with genome loc " + loc +
-                " but we never saw such an offset in the alignment state machine");
-    }
-
-
-    /**
      * Is this element a deletion w.r.t. the reference genome?
      *
      * @return true if this is a deletion, false otherwise

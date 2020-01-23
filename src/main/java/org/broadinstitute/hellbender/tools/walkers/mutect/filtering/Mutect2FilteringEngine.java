@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.clustering.SomaticClus
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.io.File;
 import java.util.*;
@@ -113,7 +114,7 @@ public class Mutect2FilteringEngine {
         vc.getGenotypes().stream().filter(this::isTumor).forEach(g ->  {
             final double weight = MathUtils.sum(g.getAD());
             totalWeight.add(weight);
-            final double[] sampleAFs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, VCFConstants.ALLELE_FREQUENCY_KEY,
+            final double[] sampleAFs = VariantContextGetters.getAttributeAsDoubleArray(g, VCFConstants.ALLELE_FREQUENCY_KEY,
                     () -> new double[] {0.0}, 0.0);
             MathArrays.scaleInPlace(weight, sampleAFs);
             MathUtils.addToArrayInPlace(AFs, sampleAFs);
@@ -126,7 +127,7 @@ public class Mutect2FilteringEngine {
      * Get the (Natural) log odds of variants from the log-10 odds in a VariantContext object
      */
     public static double[] getTumorLogOdds(final VariantContext vc) {
-        final double[] tumorLog10Odds = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
+        final double[] tumorLog10Odds = VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
         return tumorLog10Odds == null ? null : MathUtils.applyToArrayInPlace(tumorLog10Odds, MathUtils::log10ToLog);
     }
     // END HELPER METHODS

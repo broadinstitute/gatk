@@ -6,10 +6,10 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hdf5.Utils;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -38,9 +38,9 @@ public class BasicSomaticShortMutationValidator {
         final boolean isDiploid = genotype.getAlleles().size() == 2;
         final boolean doesGenotypeHaveReference = genotype.getAllele(0).equals(referenceAllele);
         final boolean isReferenceNotSymbolic = !referenceAllele.isSymbolic();
-        final VariantContext.Type variantType = GATKProtectedVariantContextUtils.typeOfVariant(genotype.getAllele(0), genotype.getAllele(1));
+        final VariantContext.Type variantType = GATKVariantContextUtils.typeOfVariant(genotype.getAllele(0), genotype.getAllele(1));
         final boolean isValidatableVariantType = VALIDATABLE_TYPES.contains(variantType)
-                        && !GATKProtectedVariantContextUtils.isComplexIndel(genotype.getAllele(0), genotype.getAllele(1));
+                        && !GATKVariantContextUtils.isComplexIndel(genotype.getAllele(0), genotype.getAllele(1));
         final boolean hasKnownCoverage = genotype.hasAD() && (genotype.getAD().length == 2);
         final boolean isValidateable = (isDiploid && doesGenotypeHaveReference && isValidatableVariantType && hasKnownCoverage && isReferenceNotSymbolic);
         if (!isValidateable) {

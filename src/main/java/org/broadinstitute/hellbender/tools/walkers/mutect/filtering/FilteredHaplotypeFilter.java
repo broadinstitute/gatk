@@ -6,9 +6,9 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 
@@ -31,7 +31,7 @@ public class FilteredHaplotypeFilter extends Mutect2VariantFilter {
     public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
         // use phasing of tumor genotype with greatest allele fraction
         final Genotype tumorGenotype = vc.getGenotypes().stream().filter(filteringEngine::isTumor)
-                .max(Comparator.comparingDouble(g -> MathUtils.arrayMax(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, VCFConstants.ALLELE_FREQUENCY_KEY,
+                .max(Comparator.comparingDouble(g -> MathUtils.arrayMax(VariantContextGetters.getAttributeAsDoubleArray(g, VCFConstants.ALLELE_FREQUENCY_KEY,
                         () -> new double[] {0.0}, 0.0)))).get();
 
         final Optional<String> phasingString = makePhasingString(tumorGenotype);

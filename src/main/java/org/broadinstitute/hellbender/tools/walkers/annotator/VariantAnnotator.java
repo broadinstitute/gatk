@@ -17,7 +17,6 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
@@ -25,6 +24,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.io.File;
@@ -237,7 +237,7 @@ public class VariantAnnotator extends VariantWalker {
         final AlleleLikelihoods<GATKRead, Allele> result = new AlleleLikelihoods<>(variantSamples,
                 new IndexedAlleleList<>(vc.getAlleles()), AssemblyBasedCallerUtils.splitReadsBySample(variantSamples, getHeaderForReads(), reads));
 
-        final ReadPileup readPileup = GATKProtectedVariantContextUtils.getPileup(vc, readsContext);
+        final ReadPileup readPileup = new ReadPileup(vc, readsContext);
         final Map<String, ReadPileup> pileupsBySample = readPileup.splitBySample(getHeaderForReads(), "__UNKNOWN__");
 
         final Allele refAllele = vc.getReference();
@@ -254,7 +254,7 @@ public class VariantAnnotator extends VariantWalker {
                 IntStream.range(0, numAlleles).forEach(a -> sampleMatrix.set(a, readIndex.intValue(), Double.NEGATIVE_INFINITY));
 
                 // if present set the matching allele as likely
-                final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pe, refAllele, altAlleles, minBaseQualityScore);
+                final Allele pileupAllele = GATKVariantContextUtils.chooseAlleleForRead(pe, refAllele, altAlleles, minBaseQualityScore);
                 if (pileupAllele != null) {
                     sampleMatrix.set(sampleMatrix.indexOfAllele(pileupAllele), readIndex.intValue(), 0);
                 }

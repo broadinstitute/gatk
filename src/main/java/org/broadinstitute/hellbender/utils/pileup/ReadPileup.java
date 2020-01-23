@@ -3,11 +3,14 @@ package org.broadinstitute.hellbender.utils.pileup;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -16,6 +19,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Represents a pileup of reads at a given position.
@@ -57,7 +61,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Create a new pileup without any aligned reads
      */
     public ReadPileup(final Locatable loc) {
-        this(loc, new ArrayList<>());
+        this(loc, new ArrayList<PileupElement>());
     }
 
     /**
@@ -72,6 +76,23 @@ public class ReadPileup implements Iterable<PileupElement> {
      */
     public ReadPileup(final Locatable loc, final List<GATKRead> reads, final List<Integer> offsets) {
         this(loc, readsOffsetsToPileup(reads, offsets));
+    }
+
+    /**
+     * Get the pileup of reads covering a locus.  This is useful, for example, in VariantWalkers, which work on
+     * ReadsContexts and not AlignmentContexts.
+     */
+    public ReadPileup(final Locatable loc, final Iterable<GATKRead> reads) {
+        final List<PileupElement> pile = StreamSupport.stream(reads.spliterator(), false)
+                .filter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK.and(ReadFilterLibrary.NOT_DUPLICATE))
+                .map(AlignmentStateMachine::new)
+                .map(asm -> {
+                    while ( asm.stepForwardOnGenome() != null && asm.getGenomePosition() < loc.getStart()) { }
+                    return asm.getGenomePosition() == loc.getStart() ? asm.makePileupElement() : null;
+                }).filter(Objects::nonNull).collect(Collectors.toList());
+
+        this.loc = loc;
+        pileupElements = pile;
     }
 
     /**
@@ -106,17 +127,6 @@ public class ReadPileup implements Iterable<PileupElement> {
      */
     private static List<PileupElement> readsOffsetsToPileup(final List<GATKRead> reads, final int offset) {
         return reads.stream().map(r -> PileupElement.createPileupForReadAndOffset(r, offset)).collect(Collectors.toList());
-    }
-
-    /**
-     * Helper routine for converting reads and a single offset to a PileupElement list.
-     */
-    public static List<PileupElement> locToReadsPileup(final List<GATKRead> reads, final Locatable loc) {
-        Utils.nonNull(reads, "Illegal null read list");
-        return reads.stream().filter(r -> !r.isUnmapped())
-                .filter(r -> r.getStart()<=loc.getStart() && r.getEnd()>=loc.getEnd() )
-                .map(r -> PileupElement.createPileupForReadAndGenomeLoc(r, loc))
-                .collect(Collectors.toList());
     }
 
     /**

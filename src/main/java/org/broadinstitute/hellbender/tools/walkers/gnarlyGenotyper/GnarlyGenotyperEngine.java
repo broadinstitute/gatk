@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.reflections.Reflections;
 
 import java.util.*;
@@ -188,7 +189,7 @@ public final class GnarlyGenotyperEngine {
             }
         } else {
             if (variant.hasAttribute(GATKVCFConstants.SB_TABLE_KEY)) {
-                SBsum = GATKProtectedVariantContextUtils.getAttributeAsIntArray(variant, GATKVCFConstants.SB_TABLE_KEY, () -> null, 0);
+                SBsum = VariantContextGetters.getAttributeAsIntArray(variant, GATKVCFConstants.SB_TABLE_KEY, () -> null, 0);
             }
             if (annotationDBBuilder != null) {
                 annotationDBBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, variant.getAttribute(VCFConstants.ALLELE_COUNT_KEY));

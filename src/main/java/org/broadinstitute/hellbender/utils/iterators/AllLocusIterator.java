@@ -108,7 +108,7 @@ public class AllLocusIterator implements Iterator<AlignmentContext> {
 
     private AlignmentContext createEmptyAlignmentContextForPosition(final int position) {
         final SimpleInterval positionInterval = new SimpleInterval(interval.getContig(), position, position);
-        return new AlignmentContext(positionInterval, new ReadPileup(positionInterval, new ArrayList<>()));
+        return new AlignmentContext(positionInterval, new ReadPileup(positionInterval));
     }
 
     @Override

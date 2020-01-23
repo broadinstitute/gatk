@@ -19,10 +19,10 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCo
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -150,8 +150,8 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
             representativeGenotypeAnnotations.stream()
                     .flatMap(a -> a.getKeyNames().stream())
                     .forEach(key -> {
-                        final double[] mutect2Values = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(mutect2Genotype, key, () -> null, 1.0);
-                        final double[] reannotatedValues = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(reannotatedGenotype, key, () -> null, 1.0);
+                        final double[] mutect2Values = VariantContextGetters.getAttributeAsDoubleArray(mutect2Genotype, key, () -> null, 1.0);
+                        final double[] reannotatedValues = VariantContextGetters.getAttributeAsDoubleArray(reannotatedGenotype, key, () -> null, 1.0);
                         (approximatelyEqual(mutect2Values, reannotatedValues) ? matchingFormatFieldValues : nonMatchingFormatFieldValues).increment();
                     });
         }

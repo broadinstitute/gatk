@@ -7,11 +7,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.*;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.io.File;
 import java.util.*;
@@ -28,11 +28,11 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
     }
 
     public static int[] getF1R2(final Genotype g) {
-        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
+        return VariantContextGetters.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
     }
 
     public static int[] getF2R1(final Genotype g) {
-        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
+        return VariantContextGetters.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
             return 0;
         }
 
-        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, -1);
+        final double[] tumorLods = VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, -1);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
         final Allele altAllele = vc.getAlternateAllele(indexOfMaxTumorLod);
         final Nucleotide altBase = Nucleotide.valueOf(altAllele.toString());

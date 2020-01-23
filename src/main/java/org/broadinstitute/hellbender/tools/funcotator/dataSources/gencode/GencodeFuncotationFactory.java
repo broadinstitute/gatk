@@ -27,7 +27,6 @@ import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetada
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
@@ -1703,7 +1702,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Adjust the variant interval for the overlap check, specifically to properly test for the indel cases:
         final SimpleInterval changedBasesInterval;
-        if ( GATKProtectedVariantContextUtils.typeOfVariant(variant.getReference(), altAllele).equals(VariantContext.Type.INDEL) ) {
+        if ( GATKVariantContextUtils.typeOfVariant(variant.getReference(), altAllele).equals(VariantContext.Type.INDEL) ) {
 
             final int adjustedStart;
             final int end;
