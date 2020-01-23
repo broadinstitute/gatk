@@ -28,11 +28,11 @@ public class ReadOrientationFilter extends Mutect2VariantFilter {
     }
 
     public static int[] getF1R2(final Genotype g) {
-        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
+        return VariantContextGetters.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
     }
 
     public static int[] getF2R1(final Genotype g) {
-        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
+        return VariantContextGetters.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
     }
 
     @Override
