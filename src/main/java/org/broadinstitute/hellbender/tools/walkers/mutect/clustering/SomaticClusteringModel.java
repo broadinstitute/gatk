@@ -23,10 +23,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * A model for the allele fraction spectrum of somatic variation.  There are several clusters in this model: 1) a
- * symbolic cluster representing sequencing error; 2) a "background" cluster with a broad Beta distribution of allele
- * fractions; 3) a high-AF cluster with a Beta distribution of allele fractions with essentially all of its support at high
- * AFs; 4) several clusters with discrete allele fractions.
+ * A model for the allele fraction spectrum of somatic variation.  There are several clusters in this model:
+ * 1) a "background" cluster with a broad Beta distribution of allele fractions; 2) a high-AF cluster with a Beta distribution
+ * of allele fractions with essentially all of its support at high AFs; 3) several clusters with discrete allele fractions.
  *
  * Clusters of type 4) correspond to subclones in the absence of CNV.  The type 2) cluster accounts for CNV, minor subclones, and any
  * other factor that makes a discrete clustering model inapplicable.  Type 3) absorbs probability density from homozygous alts and
@@ -37,7 +36,7 @@ import java.util.stream.IntStream;
  */
 public class SomaticClusteringModel {
 
-    boolean clustersHaveBeenInitialized;
+    private boolean clustersHaveBeenInitialized;
 
     private static final int MAX_INDEL_SIZE_IN_PRIOR_MAP = 10;
     private static final int NUM_INITIALIZATION_QUANTILES = 50;
@@ -136,8 +135,7 @@ public class SomaticClusteringModel {
             final double[] backGroundProbs = MathArrays.ebeMultiply(somaticProbs, backgroundProbsGivenSomatic);
             final double[] alleleFractionQuantiles = calculateAlleleFractionQuantiles();
 
-            // calculate how much total probability density (yes, that's not a statistically meaningful quantity,
-            // but it's a fine heuristic) is assigned to the background cluster, then split off a peak from the background
+            // calculate how much total probability is assigned to the background cluster, then split off a peak from the background
             final double[] totalQuantileBackgroundResponsibilities = calculateQuantileBackgroundResponsibilities(alleleFractionQuantiles, backGroundProbs);
 
             final List<Pair<Double, Double>> peaksAndMasses = calculatePeaksAndMasses(alleleFractionQuantiles, totalQuantileBackgroundResponsibilities);
@@ -226,7 +224,7 @@ public class SomaticClusteringModel {
     /**
      * given the current model and an array of allele fractions, calculate the sum over all data of posterior probability
      * densities that each datum is a somatic variant at a given allele fraction, weighted by the probability that data
-     * come from the backgorund cluster.
+     * come from the background cluster.
      * @param alleleFractionQuantiles
      * @return
      */
@@ -256,7 +254,7 @@ public class SomaticClusteringModel {
         final List<Pair<Double, Double>> peaksAndMasses = new ArrayList<>();
         double currentPeakMass = 0;
         double currentPeak = 0;
-        double currentPeakResponsiblity = 0;
+        double currentPeakResponsibility = 0;
 
         for (int q = 0; q < alleleFractionQuantiles.length; q++) {
             //  0 and 1 have probability density 0.
@@ -268,9 +266,9 @@ public class SomaticClusteringModel {
             final double alleleFraction = alleleFractionQuantiles[q];
 
             currentPeakMass += (alleleFraction - leftAlleleFraction) * (leftResponsibility + responsibility) / 2;   //trapezoid rule
-            if (responsibility > currentPeakResponsiblity) {
+            if (responsibility > currentPeakResponsibility) {
                 currentPeak = alleleFraction;
-                currentPeakResponsiblity = responsibility;
+                currentPeakResponsibility = responsibility;
             }
 
             final int leftCompare = Double.compare(responsibility, leftResponsibility);
@@ -282,7 +280,7 @@ public class SomaticClusteringModel {
                 peaksAndMasses.add(ImmutablePair.of(currentPeak, currentPeakMass));
                 currentPeakMass = 0;
                 currentPeak = alleleFraction;
-                currentPeakResponsiblity = responsibility;
+                currentPeakResponsibility = responsibility;
             }
         }
         return peaksAndMasses;
@@ -332,7 +330,7 @@ public class SomaticClusteringModel {
             responsibilities.add(clusterResponsibilities);
         }
 
-        MathUtils.applyToArrayInPlace(totalClusterResponsibilities, x-> x + REGULARIZING_PSEUDOCOUNT);
+        MathUtils.applyToArrayInPlace(totalClusterResponsibilities, x -> x + REGULARIZING_PSEUDOCOUNT);
         logClusterWeights = MathUtils.applyToArrayInPlace(MathUtils.normalizeSumToOne(totalClusterResponsibilities), Math::log);
         final double technicalArtifactCount = obviousArtifactCount.getValue() + data.stream().mapToDouble(Datum::getArtifactProb).sum();
         final double variantCount = variantCountsByIndelLength.values().stream().mapToDouble(MutableDouble::doubleValue).sum();
