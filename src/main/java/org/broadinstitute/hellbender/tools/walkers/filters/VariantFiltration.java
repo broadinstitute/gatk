@@ -369,6 +369,7 @@ public final class VariantFiltration extends VariantWalker {
         }
 
         // make a new variant context based on filters
+        //Note that making this empty set effectively converts the VC to PASS, whereas an unfiltered VC has null filters
         final Set<String> filters = new LinkedHashSet<>(vc.getFilters());
 
         // test for clustered SNPs if requested
@@ -382,8 +383,13 @@ public final class VariantFiltration extends VariantWalker {
             }
         }
 
+        //even if the original filters we null, we created a Set<String> filters above
         if ( filters.isEmpty() ) {
-            builder.passFilters();
+            if (!invalidatePreviousFilters) {
+                builder.passFilters();
+            } else {
+                builder.unfiltered();
+            }
         } else {
             builder.filters(filters);
         }
