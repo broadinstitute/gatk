@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -511,7 +512,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public Object[][] vcfsForFiltering() {
         return new Object[][]{
                 {NA12878_MITO_VCF, 0.5, 30, Collections.emptyList(), Arrays.asList(
-                        ImmutableSet.of(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
+                        ImmutableSet.of(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
                         ImmutableSet.of(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME),
                         ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
                                 GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME,
@@ -521,13 +522,13 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         Collections.emptySet(),
                         ImmutableSet.of(GATKVCFConstants.FAIL)),
                         Arrays.asList(
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // .|strict_stand
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // .|strand_bias, strict_stand
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME), // .|numt_chimera
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", "  + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|weak_evidence, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME), // .|PASS|weak_evidence, strand_bias, low_allele_frac, possible_numt|strand_bias, strict_strand, low_allele_frac, possible_numt
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4), // .|PASS
                                 Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, VCFConstants.PASSES_FILTERS_v4),  // .|PASS
-                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME) // .|weak_evidence|low_allele_frac, possible_numt
+                                Arrays.asList(VCFConstants.EMPTY_INFO_FIELD, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME + ", " + GATKVCFConstants.POSSIBLE_NUMT_FILTER_NAME) // .|weak_evidence, strand_bias, strict_stand|low_allele_frac, possible_numt
 
                         )},
                 {NA12878_MITO_GVCF, .0009, 0.5, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(

@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
@@ -23,7 +22,7 @@ public class MinAlleleFractionFilter extends HardAlleleFilter {
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     public List<Double> getAltData(final Genotype g) {
-        double[] data = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 1.0);
+        double[] data = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 1.0);
         return Doubles.asList(data);
     }
 

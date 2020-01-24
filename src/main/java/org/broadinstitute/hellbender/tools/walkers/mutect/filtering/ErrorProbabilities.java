@@ -98,7 +98,10 @@ public final class ErrorProbabilities {
 
     public static <T> List<List<T>> transpose(List<List<T>> list) {
         // all lists need to be the same size
-        Utils.validateArg(!list.isEmpty() && list.stream().map(List::size).distinct().count() == 1, "lists are not the same size");
+        if (list.isEmpty()) {
+            return list;
+        }
+        Utils.validateArg(list.stream().map(List::size).distinct().count() == 1, "lists are not the same size");
         List<Iterator<T>> iterList = list.stream().map(it -> it.iterator()).collect(toList());
         return IntStream.range(0, list.get(0).size())
                 .mapToObj(n -> iterList.stream()
