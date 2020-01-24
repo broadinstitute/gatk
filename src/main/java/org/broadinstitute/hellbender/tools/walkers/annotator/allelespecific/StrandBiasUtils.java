@@ -23,7 +23,8 @@ public class StrandBiasUtils {
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
         getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
-        final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
+        Map<Allele, List<Integer>> perAlleleValues = new LinkedHashMap<>(myData.getAttributeMap());
+        perAlleleValues.values().removeIf(Objects::isNull);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), perAlleleValues);
         annotations.put(key, annotationString);
         return annotations;
@@ -31,6 +32,7 @@ public class StrandBiasUtils {
 
     protected static String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, List<Integer>> perAlleleValues) {
         final List<String> alleleStrings = vcAlleles.stream()
+                // does not replace a null value with zero list - only if the key is not in the map
                 .map(a -> perAlleleValues.getOrDefault(a, ZERO_LIST))
                 .map(StrandBiasUtils::encode)
                 .collect(Collectors.toList());

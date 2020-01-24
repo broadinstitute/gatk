@@ -95,7 +95,7 @@ public class SomaticClusteringModel {
      * @param tumorLogOdds for alt alleles only
      * @param artifactProbabilities by alt allele, specifically technical artifact probabilities not including sequencing error, contamination, or germline variation
      * @param nonSomaticProbabilities by alt allele, probabilities that the variants are real but not somatic ie germline or contamination
-     * @param vc
+     * @param vc the variant context the data apply to
      */
     public void record(int[] tumorADs, final double[] tumorLogOdds, final List<Double> artifactProbabilities, final List<Double> nonSomaticProbabilities, final VariantContext vc) {
         // set tumorAD to 0 for symbolic alleles so it won't contribute to overall AD

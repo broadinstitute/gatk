@@ -9,6 +9,5 @@ RUN apt-get update && \
 WORKDIR /usr/mtdnaserver
 
 # Download mitolib jar
-#RUN wget https://github.com/haansi/mitolib/releases/download/0.1.2/mitolib-0.1.2.jar && \
-RUN wget https://github.com/leklab/haplocheckCLI/blob/master/haplocheckCLI.jar && \
-	mv haplocheckCLI.jar mitolib.jar
+RUN wget https://github.com/haansi/mitolib/releases/download/0.1.2/mitolib-0.1.2.jar && \
+	mv mitolib-0.1.2.jar mitolib.jar
