@@ -7,8 +7,8 @@
 ##FILTER=<ID=germline,Description="Evidence indicates this site is germline, not somatic">
 ##FILTER=<ID=haplotype,Description="Variant near filtered variant on same haplotype.">
 ##FILTER=<ID=low_allele_frac,Description="Allele fraction is below specified threshold">
-##FILTER=<ID=mt_low_het,Description="All low heteroplasmy sites are filtered when at least x low het sites pass all other filters">
 ##FILTER=<ID=map_qual,Description="ref - alt median mapping quality">
+##FILTER=<ID=mt_low_het,Description="All low heteroplasmy sites are filtered when at least x low het sites pass all other filters">
 ##FILTER=<ID=multiallelic,Description="Site filtered because too many alt alleles pass tumor LOD">
 ##FILTER=<ID=n_ratio,Description="Ratio of N to alt exceeds specified ratio">
 ##FILTER=<ID=normal_artifact,Description="artifact_in_normal">
