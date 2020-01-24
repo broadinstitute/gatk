@@ -64,7 +64,7 @@ public final class ErrorProbabilities {
     private List<Double> removeItemsByIndex(List<Double> probs, List<Integer> indexesToRemove) {
         List<Double> updated = new ArrayList<>();
         new IndexRange(0, probs.size()).forEach(i -> {
-            if (!indexesToRemove.contains(new Integer(i))) {
+            if (!indexesToRemove.contains(i)) {
                 updated.add(probs.get(i));
             }
         });

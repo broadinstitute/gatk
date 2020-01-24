@@ -66,7 +66,7 @@ public class StrandArtifactFilter extends Mutect2AlleleFilter {
             List<Allele> symbolicAlleles = vc.getAlternateAlleles().stream().filter(allele -> allele.isSymbolic()).collect(Collectors.toList());
             List<Integer> symIndexes = vc.getAlleleIndices(symbolicAlleles);
             new IndexRange(0, sbs.size()).forEach(i -> {
-                        if (!symIndexes.contains(new Integer(i))) {
+                        if (!symIndexes.contains(i)) {
                             sbs.add(unfilteredSbs.get(i));
                         }
                     });
