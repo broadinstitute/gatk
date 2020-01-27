@@ -406,6 +406,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         doSNPTest(params, getLargeVQSRTestDataDir() + "/snpTranches.scattered.txt", getLargeVQSRTestDataDir() + "snpRecal.vcf"); //tranches file isn't in the expected/ directory because it's input to GatherTranchesIntegrationTest
     }
 
+    //One of the Gaussians has a covariance matrix with a determinant of zero, (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero) which leads to all +Inf LODs if we don't throw
     @Test(expectedExceptions={UserException.VQSRPositiveModelFailure.class})
     public void testAnnotationsWithNoVarianceSpecified() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
@@ -420,7 +421,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(varRecalTool.instanceMain(args.toArray(new String[args.size()])), true);
     }
 
-    @Test(expectedExceptions={IllegalArgumentException.class})
+    @Test(expectedExceptions={UserException.VQSRNegativeModelFailure.class})
     public void testNoNegativeTrainingData() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsNoNegativeData.length);

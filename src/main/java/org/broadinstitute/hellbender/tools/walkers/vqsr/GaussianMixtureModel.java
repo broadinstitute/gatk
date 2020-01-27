@@ -212,7 +212,11 @@ class GaussianMixtureModel {
         final double[] pVarInGaussianLog10 = new double[gaussians.size()];
         int gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pVarInGaussianLog10[gaussianIndex++] = gaussian.pMixtureLog10 + MathUtils.normalDistributionLog10(gaussian.mu[iii], gaussian.sigma.get(iii, iii), datum.annotations[iii]);
+            pVarInGaussianLog10[gaussianIndex] = gaussian.pMixtureLog10;
+            if (gaussian.pMixtureLog10 != Double.NEGATIVE_INFINITY) {
+                pVarInGaussianLog10[gaussianIndex] += MathUtils.normalDistributionLog10(gaussian.mu[iii], gaussian.sigma.get(iii, iii), datum.annotations[iii]);
+            }
+            gaussianIndex++;
         }
         return nanTolerantLog10SumLog10(pVarInGaussianLog10); // Sum(pi_k * p(v|n,k))
     }

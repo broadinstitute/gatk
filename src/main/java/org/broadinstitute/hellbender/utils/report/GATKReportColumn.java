@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.report;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.Arrays;
@@ -75,7 +76,8 @@ public final class GATKReportColumn {
      * @param obj The object to convert to a string
      * @return The string representation of the column
      */
-    private String formatValue(final Object obj) {
+    @VisibleForTesting
+    protected String formatValue(final Object obj) {
         String value;
         if (obj == null) {
             value = "null";
@@ -83,9 +85,13 @@ public final class GATKReportColumn {
         else if ( dataType.equals(GATKReportDataType.Unknown) && (obj instanceof Double || obj instanceof Float) ) {
             value = String.format("%.8f", obj);
         }
-        else
-            value = String.format(format, obj);
-
+        else {
+            if (obj instanceof Double || obj instanceof Float) {
+                value = Double.isFinite(Double.parseDouble(obj.toString())) ? String.format(format, obj) : obj.toString();
+            } else {
+                value = String.format(format, obj);
+            }
+        }
         return value;
     }
 
