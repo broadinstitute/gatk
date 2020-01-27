@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
 import java.util.List;
@@ -599,6 +600,24 @@ public interface GATKRead extends Locatable {
      * @param isSupplementaryAlignment True if this is a supplementary alignment, otherwise false.
      */
     void setIsSupplementaryAlignment( final boolean isSupplementaryAlignment );
+
+    /**
+     * Computes the pair orientation
+     * @throws IllegalArgumentException If the read is not paired, or if either read or mate is unmapped
+     */
+    default SamPairUtil.PairOrientation getPairOrientation() {
+        final boolean readIsOnReverseStrand = isReverseStrand();
+
+        Utils.validateArg(isPaired() && !isUnmapped() && !mateIsUnmapped(), () -> "Invalid read: " + getName() + ". This requires paired reads with both reads aligned.");
+
+        if(readIsOnReverseStrand == mateIsReverseStrand() )  {
+            return SamPairUtil.PairOrientation.TANDEM;
+        }
+
+        final long positiveStrandFivePrimePos = readIsOnReverseStrand ?  getMateStart() :  getStart();
+        final long negativeStrandFivePrimePos = readIsOnReverseStrand ?  getEnd() : getStart() + getFragmentLength();
+        return positiveStrandFivePrimePos < negativeStrandFivePrimePos ? SamPairUtil.PairOrientation.FR : SamPairUtil.PairOrientation.RF;
+    }
 
     /**
      * @return True if this read fails platform/vendor quality checks, otherwise false

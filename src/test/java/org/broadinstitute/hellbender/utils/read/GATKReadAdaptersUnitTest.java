@@ -1378,5 +1378,95 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         Assert.assertEquals(read.mateIsUnplaced(), true);
 
         read.convertToSAMRecord(hg19Header).setReadUnmappedFlag(false); // have to unset unmapped to allow SAMRecord to show its underlying data
-        Assert.assertEquals(read.convertToSAMRecord(hg19Header).getMateAlignmentStart(), SAMRecord.NO_ALIGNMENT_START); }
+        Assert.assertEquals(read.convertToSAMRecord(hg19Header).getMateAlignmentStart(), SAMRecord.NO_ALIGNMENT_START);
+    }
+
+    @DataProvider(name = "pair_orientation_failures")
+    public Object[][] pairOrientationFailures() {
+        final GATKRead unpairedRead = ArtificialReadUtils.createArtificialRead("100M");
+        unpairedRead.setIsPaired(false);
+
+        final GATKRead unmappedRead = ArtificialReadUtils.createArtificialRead("100M");
+        unmappedRead.setIsPaired(true);
+        unmappedRead.setIsUnmapped();
+
+        final GATKRead mateUnmappedRead = ArtificialReadUtils.createArtificialRead("100M");
+        mateUnmappedRead.setIsPaired(true);
+        mateUnmappedRead.setIsUnmapped();
+
+        return new Object[][]{
+                {unpairedRead},
+                {unmappedRead},
+                {mateUnmappedRead},
+        };
+    }
+
+    @Test(dataProvider = "pair_orientation_failures", expectedExceptions = IllegalArgumentException.class)
+    public void testGetPairOrientationFailures(final GATKRead read) {
+        final SamPairUtil.PairOrientation pairOrientation = read.getPairOrientation();
+    }
+
+    @DataProvider(name = "pair_orientation")
+    public Object[][] pairOrientation() {
+        final GATKRead forwardStrandInnie = ArtificialReadUtils.createArtificialRead("100M");
+        forwardStrandInnie.setIsPaired(true);
+        forwardStrandInnie.setIsReverseStrand(false);
+        forwardStrandInnie.setMateIsReverseStrand(true);
+        forwardStrandInnie.setPosition(new SimpleInterval("1", 100, 200));
+        forwardStrandInnie.setMatePosition(new SimpleInterval("1", 200, 300));
+        forwardStrandInnie.setFragmentLength(200);
+
+        final GATKRead reverseStrandInnie = ArtificialReadUtils.createArtificialRead("100M");
+        reverseStrandInnie.setIsPaired(true);
+        reverseStrandInnie.setIsReverseStrand(true);
+        reverseStrandInnie.setMateIsReverseStrand(false);
+        reverseStrandInnie.setPosition(new SimpleInterval("1", 200, 300));
+        reverseStrandInnie.setMatePosition(new SimpleInterval("1", 100, 200));
+        reverseStrandInnie.setFragmentLength(200);
+
+        final GATKRead forwardStrandOutie = ArtificialReadUtils.createArtificialRead("100M");
+        forwardStrandOutie.setIsPaired(true);
+        forwardStrandOutie.setIsReverseStrand(false);
+        forwardStrandOutie.setMateIsReverseStrand(true);
+        forwardStrandOutie.setPosition(new SimpleInterval("1", 200, 300));
+        forwardStrandOutie.setMatePosition(new SimpleInterval("1", 100, 200));
+        forwardStrandOutie.setFragmentLength(-200);
+
+        final GATKRead reverseStrandOutie = ArtificialReadUtils.createArtificialRead("100M");
+        reverseStrandOutie.setIsPaired(true);
+        reverseStrandOutie.setIsReverseStrand(true);
+        reverseStrandOutie.setMateIsReverseStrand(false);
+        reverseStrandOutie.setPosition(new SimpleInterval("1", 100, 200));
+        reverseStrandOutie.setMatePosition(new SimpleInterval("1", 200, 300));
+        reverseStrandOutie.setFragmentLength(-200);
+
+        final GATKRead forwardStrandTandem = ArtificialReadUtils.createArtificialRead("100M");
+        forwardStrandTandem.setIsPaired(true);
+        forwardStrandTandem.setIsReverseStrand(false);
+        forwardStrandTandem.setMateIsReverseStrand(false);
+        forwardStrandTandem.setPosition(new SimpleInterval("1", 100, 200));
+        forwardStrandTandem.setMatePosition(new SimpleInterval("1", 200, 300));
+
+        final GATKRead reverseStrandTandem = ArtificialReadUtils.createArtificialRead("100M");
+        reverseStrandTandem.setIsPaired(true);
+        reverseStrandTandem.setIsReverseStrand(true);
+        reverseStrandTandem.setMateIsReverseStrand(true);
+        reverseStrandTandem.setPosition(new SimpleInterval("1", 100, 200));
+        reverseStrandTandem.setMatePosition(new SimpleInterval("1", 200, 300));
+
+        return new Object[][]{
+                {forwardStrandInnie, SamPairUtil.PairOrientation.FR},
+                {reverseStrandInnie, SamPairUtil.PairOrientation.FR},
+                {forwardStrandOutie, SamPairUtil.PairOrientation.RF},
+                {reverseStrandOutie, SamPairUtil.PairOrientation.RF},
+                {forwardStrandTandem, SamPairUtil.PairOrientation.TANDEM},
+                {reverseStrandTandem, SamPairUtil.PairOrientation.TANDEM},
+        };
+    }
+
+    @Test(dataProvider = "pair_orientation")
+    public void testGetPairOrientation(final GATKRead read, final SamPairUtil.PairOrientation expected) {
+        final SamPairUtil.PairOrientation pairOrientation = read.getPairOrientation();
+        Assert.assertEquals(pairOrientation, expected);
+    }
 }
