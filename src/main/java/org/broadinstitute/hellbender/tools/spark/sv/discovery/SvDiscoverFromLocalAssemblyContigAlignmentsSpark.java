@@ -510,14 +510,22 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         @Override
         public JavaRDD<AlignedContig> getAlignedContigs() {
-            return unfilteredContigAlignments
+            final JavaRDD<AlignedContig> temp = unfilteredContigAlignments
                     .filter(r -> !r.isSecondaryAlignment())
                     .groupBy(GATKRead::getName)
                     .map(Tuple2::_2)
                     .map(gatkReads ->
                             parseReadsAndOptionallySplitGappedAlignments(
-                                    Utils.stream(gatkReads).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()),
+                                    Utils.stream(gatkReads).map(r -> r.convertToSAMRecord(header)).collect(Collectors.toList()),
                                     GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, splitGapped));
+
+            final List<String> namesWithoutPrimary = temp.filter(ctg -> ctg.getContigSequence() == null && ctg.getAlignments().isEmpty()).map(AlignedContig::getContigName).collect();
+            System.err.println("==========================================================================================");
+            System.err.println("==================== READS SEEMINGLY HAVE NO PRIMARY ALIGNMENTS ==========================");
+            namesWithoutPrimary.forEach(System.err::println);
+            System.err.println("==========================================================================================");
+
+            return temp.filter(ctg -> ctg.getContigSequence() != null);
         }
 
         /**
@@ -533,6 +541,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
             Utils.validateArg(noSecondaryAlignments.iterator().hasNext(), "input collection of GATK reads is empty");
 
+            final boolean hasPrimaryRecord = Utils.stream(noSecondaryAlignments).anyMatch(sam -> !sam.getSupplementaryAlignmentFlag());
+            if ( !hasPrimaryRecord ) {
+                String readName = noSecondaryAlignments.iterator().next().getReadName();
+                return new AlignedContig(readName, null, Collections.emptyList());
+            }
             final SAMRecord primaryAlignment
                     = Utils.stream(noSecondaryAlignments).filter(sam -> !sam.getSupplementaryAlignmentFlag())
                     .findFirst()
