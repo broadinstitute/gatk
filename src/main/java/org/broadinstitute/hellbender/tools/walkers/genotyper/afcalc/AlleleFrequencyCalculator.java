@@ -69,7 +69,7 @@ public final class AlleleFrequencyCalculator {
         Utils.validateArg( numAlleles > 1, () -> "VariantContext has only a single reference allele, but getLog10PNonRef requires at least one at all " + vc);
 
         final double[] priorPseudocounts = alleles.stream()
-                .mapToDouble(a -> a.isReference() ? refPseudocount : (a.length() > 1 ? snpPseudocount : indelPseudocount)).toArray();
+                .mapToDouble(a -> a.isReference() ? refPseudocount : (a.length() == vc.getReference().length() ? snpPseudocount : indelPseudocount)).toArray();
 
         double[] alleleCounts = new double[numAlleles];
         final double flatLog10AlleleFrequency = -MathUtils.log10(numAlleles); // log10(1/numAlleles)
