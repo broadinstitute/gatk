@@ -17,15 +17,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @CommandLineProgramProperties(
-        summary = "Counts up all reads with specific sets of flags set in one pass.",
-        oneLineSummary = "Counts up all reads with specific sets of flags set in one pass.",
+        summary = "Counts up all PacBio reads with specific sets of flags set in one pass.",
+        oneLineSummary = "Counts up all PacBio reads with specific sets of flags set in one pass.",
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @ExperimentalFeature
@@ -38,6 +36,107 @@ public class LRMAReadCounter extends ReadWalker {
     //==================================================================================================================
     // Private Static Members:
 
+    /**
+     * Simple data class to hold counts and supplementary for stats that we need on a per-movie basis.
+     * NOTE: Pac-Bio specific.
+     */
+    private static class ReadStatHolder {
+        private long         totalReadsCount = 0;
+        private long         unmappedReadsCount = 0;
+        private long         mappedReadsCount = 0;
+        private long         primaryReadsCount = 0;
+        private long         secondaryReadsCount = 0;
+        private long         supplementaryReadsCount = 0;
+
+        ReadStatHolder() {}
+
+        long getTotalReadsCount() {
+            return totalReadsCount;
+        }
+
+        long getUnmappedReadsCount() {
+            return unmappedReadsCount;
+        }
+
+        long getMappedReadsCount() {
+            return mappedReadsCount;
+        }
+
+        long getPrimaryReadsCount() {
+            return primaryReadsCount;
+        }
+
+        long getSecondaryReadsCount() {
+            return secondaryReadsCount;
+        }
+
+        long getSupplementaryReadsCount() {
+            return supplementaryReadsCount;
+        }
+
+        String toCsvRow() {
+            return unmappedReadsCount + "," + secondaryReadsCount + "," + supplementaryReadsCount + "," +
+                    primaryReadsCount + "," + mappedReadsCount + "," + totalReadsCount;
+        }
+
+//        void incrementTotalReadsCount() { ++totalReadsCount; }
+//        void incrementUnmappedReadsCount() { ++unmappedReadsCount; }
+//        void incrementMappedReadsCount() { ++mappedReadsCount; }
+//        void incrementPrimaryReadsCount() { ++primaryReadsCount; }
+//        void incrementSecondaryReadsCount() { ++secondaryReadsCount; }
+//        void incrementSupplementaryReadsCount() { ++supplementaryReadsCount; }
+
+        void accountForMappingFlags(final GATKRead read) {
+            ++totalReadsCount;
+
+            if ( read.isUnmapped() ) {
+                ++unmappedReadsCount;
+            }
+            else {
+                ++mappedReadsCount;
+
+                if (read.isSecondaryAlignment() &&  !read.isSupplementaryAlignment()) {
+                    ++secondaryReadsCount;
+                }
+                else if (!read.isSecondaryAlignment() &&  read.isSupplementaryAlignment()) {
+                    ++supplementaryReadsCount;
+                }
+                else {
+                    ++primaryReadsCount;
+                }
+            }
+        }
+    }
+
+    private static class PacBioMovieStatHolder extends ReadStatHolder {
+
+        private final HashSet<Integer> zmwSet = new HashSet<>();
+        private final String movieName;
+
+        PacBioMovieStatHolder(final String movieName) {
+            super();
+            this.movieName = movieName;
+        }
+
+        String getMovieName() {
+            return movieName;
+        }
+
+        void addZmw(final Integer zmw) {
+            zmwSet.add(zmw);
+        }
+
+        int getNumUniqueZmws() {
+            return zmwSet.size();
+        }
+
+        @Override
+        String toCsvRow() {
+            return super.toCsvRow() + "," + zmwSet.size();
+        }
+    }
+
+
     //==================================================================================================================
     // Public Members:
     @Argument(
@@ -48,17 +147,10 @@ public class LRMAReadCounter extends ReadWalker {
 
     //==================================================================================================================
     // Private Members:
-    private long totalReadsCount = 0;
-    private long unmappedReadsCount = 0;
-    private long mappedReadsCount = 0;
-    private long primaryReadsCount = 0;
-    private long secondaryReadsCount = 0;
-    private long supplementaryReadsCount = 0;
 
-    static final Pattern PAC_BIO_READ_NAME_PATTERN = Pattern.compile("(m[0-9]*_[0-9]*_[0-9]*)/([0-9]*)/(.*)");
-    private long numUniqueZmws = 0;
-    private HashSet<Integer> zmwSet = new HashSet<>();
-
+    private static final Pattern                               PAC_BIO_READ_NAME_PATTERN = Pattern.compile("(m[0-9]*_[0-9]*_[0-9]*)/([0-9]*)/(.*)");
+    private final LinkedHashMap<String, PacBioMovieStatHolder> movieNameToStatHolderMap  = new LinkedHashMap<>();
+    private final ReadStatHolder                               overallReadStatHolder     = new ReadStatHolder();
 
     //==================================================================================================================
     // Constructors:
@@ -73,8 +165,22 @@ public class LRMAReadCounter extends ReadWalker {
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        accountForZmw(read);
-        accountForMappingFlags(read);
+
+        // PacBio reads are special:
+        final Matcher matcher = PAC_BIO_READ_NAME_PATTERN.matcher(read.getName());
+        if ( matcher.matches() ) {
+
+            final String movieName = matcher.group(1);
+            final Integer zmw = Integer.valueOf(matcher.group(2));
+            if ( movieNameToStatHolderMap.get(movieName) == null ) {
+                movieNameToStatHolderMap.put(movieName, new PacBioMovieStatHolder(movieName));
+            }
+
+            movieNameToStatHolderMap.get(movieName).addZmw(zmw);
+            movieNameToStatHolderMap.get(movieName).accountForMappingFlags(read);
+        }
+
+        overallReadStatHolder.accountForMappingFlags(read);
     }
 
     @Override
@@ -102,26 +208,32 @@ public class LRMAReadCounter extends ReadWalker {
         final StringBuilder sb = new StringBuilder();
 
         // Write field names:
-        sb.append("Num Unique ZMWs"); sb.append(',');
+        sb.append("Movie Name / Sample Name"); sb.append(',');
         sb.append("Unmapped Reads"); sb.append(',');
         sb.append("Secondary Aligned Reads"); sb.append(',');
         sb.append("Supplementary Aligned Reads"); sb.append(',');
         sb.append("Primary Aligned Reads"); sb.append(',');
         sb.append("Mapped Reads"); sb.append(',');
-        sb.append("Total Reads");
+        sb.append("Total Reads"); sb.append(',');
+        sb.append("Num Unique ZMWs"); sb.append(',');
 
         sb.append('\n');
 
-        // Write values:
-        sb.append(numUniqueZmws); sb.append(',');
-        sb.append(unmappedReadsCount); sb.append(',');
-        sb.append(secondaryReadsCount); sb.append(',');
-        sb.append(supplementaryReadsCount); sb.append(',');
-        sb.append(primaryReadsCount); sb.append(',');
-        sb.append(mappedReadsCount); sb.append(',');
-        sb.append(totalReadsCount);
-
+        // Write overall stats first:
+        sb.append("OVERALL");
+        sb.append(',');
+        sb.append(overallReadStatHolder.toCsvRow());
+        sb.append(',');
+        sb.append("N/A");
         sb.append('\n');
+
+        // Write PacBio Stats:
+        for ( final Map.Entry<String, PacBioMovieStatHolder> entry : movieNameToStatHolderMap.entrySet() ) {
+            sb.append(entry.getKey());
+            sb.append(',');
+            sb.append(entry.getValue().toCsvRow());
+            sb.append('\n');
+        }
 
         try {
             Files.write(path, sb.toString().getBytes());
@@ -131,53 +243,39 @@ public class LRMAReadCounter extends ReadWalker {
         }
     }
 
+    private void logStats(final String name, final ReadStatHolder statHolder) {
+        logger.info("----");
+        logger.info("");
+        logger.info("{}", name);
+        logger.info("");
+
+        logger.info("Unmapped Reads:              {}", statHolder.getUnmappedReadsCount());
+        logger.info("Secondary Aligned Reads:     {}", statHolder.getSecondaryReadsCount());
+        logger.info("Supplementary Aligned Reads: {}", statHolder.getSupplementaryReadsCount());
+        logger.info("Primary Aligned Reads:       {}", statHolder.getPrimaryReadsCount());
+        logger.info("");
+        logger.info("Mapped Reads:                {}", statHolder.getMappedReadsCount());
+        logger.info("");
+        logger.info("Total Reads:                 {}", statHolder.getTotalReadsCount());
+        logger.info("");
+        if ( statHolder instanceof PacBioMovieStatHolder) {
+            logger.info("Num Unique ZMWs:             {}", ((PacBioMovieStatHolder)statHolder).getNumUniqueZmws());
+            logger.info("");
+        }
+        logger.info("----");
+        logger.info("");
+    }
+
     private void printStats() {
         // Print out our stats:
-        logger.info("----");
-        logger.info("");
-        logger.info("Num Unique ZMWs:             {}", numUniqueZmws);
-        logger.info("");
-        logger.info("Unmapped Reads:              {}", unmappedReadsCount);
-        logger.info("Secondary Aligned Reads:     {}", secondaryReadsCount);
-        logger.info("Supplementary Aligned Reads: {}", supplementaryReadsCount);
-        logger.info("Primary Aligned Reads:       {}", primaryReadsCount);
-        logger.info("");
-        logger.info("Mapped Reads:                {}", mappedReadsCount);
-        logger.info("");
-        logger.info("Total Reads:                 {}", totalReadsCount);
-        logger.info("");
-        logger.info("----");
-    }
 
-    private void accountForZmw(final GATKRead read) {
-        final Matcher matcher = PAC_BIO_READ_NAME_PATTERN.matcher(read.getName());
-        if ( matcher.matches() ) {
-            final Integer zmw = Integer.valueOf(matcher.group(2));
-            if (!zmwSet.contains(zmw)) {
-                zmwSet.add(zmw);
-                ++numUniqueZmws;
-            }
-        }
-    }
+        logger.info("");
+        logStats("OVERALL", overallReadStatHolder);
 
-    private void accountForMappingFlags(final GATKRead read) {
-        ++totalReadsCount;
+        logger.info("===========================================");
 
-        if ( read.isUnmapped() ) {
-            ++unmappedReadsCount;
-        }
-        else {
-            ++mappedReadsCount;
-
-            if (read.isSecondaryAlignment() &&  !read.isSupplementaryAlignment()) {
-                ++secondaryReadsCount;
-            }
-            else if (!read.isSecondaryAlignment() &&  read.isSupplementaryAlignment()) {
-                ++supplementaryReadsCount;
-            }
-            else {
-                ++primaryReadsCount;
-            }
+        for ( final Map.Entry<String, PacBioMovieStatHolder> entry : movieNameToStatHolderMap.entrySet() ) {
+            logStats(entry.getKey(), entry.getValue());
         }
     }
 
@@ -185,3 +283,4 @@ public class LRMAReadCounter extends ReadWalker {
     // Helper Data Types:
 
 }
+
