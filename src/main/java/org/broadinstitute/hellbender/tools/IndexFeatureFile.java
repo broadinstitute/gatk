@@ -78,11 +78,11 @@ public final class IndexFeatureFile extends CommandLineProgram {
         try {
             index.write(indexPath);
         } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath.toAbsolutePath(), e);
+            throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
         }
 
-        logger.info("Successfully wrote index to " + indexPath.toAbsolutePath());
-        return indexPath.toAbsolutePath().toString();
+        logger.info("Successfully wrote index to " + indexPath);
+        return indexPath.toString();
     }
 
     private Path determineFileName(final Index index) {
