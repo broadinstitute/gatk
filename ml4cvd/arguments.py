@@ -127,6 +127,7 @@ def parse_args():
     parser.add_argument('--max_parameters', default=9000000, type=int,
                         help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
+    parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
@@ -148,6 +149,9 @@ def parse_args():
                         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
     parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
+    parser.add_argument('--anneal_rate', default=1.0, type=float, help='Annealing rate in epochs of loss terms during training')
+    parser.add_argument('--anneal_shift', default=10, type=float, help='Annealing offset in epochs of loss terms during training')
+    parser.add_argument('--anneal_max', default=1.0, type=float, help='Annealing maximum value')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
