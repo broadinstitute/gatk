@@ -93,6 +93,13 @@ public class Evoquer extends GATKTool {
     private String datasetMapFile = null;
 
     @Argument(
+            fullName = "sample-table",
+            doc = "Name of a bigquery table containing a single column `sample` that describes the full list of samples to evoque",
+            optional = true
+    )
+    private String sampleTableName = "sample_list";
+
+    @Argument(
             fullName = "do-local-sort",
             doc = "If true, the tool will sort search results by position locally instead of doing a GROUP BY position in the query",
             optional = true
@@ -233,6 +240,7 @@ public class Evoquer extends GATKTool {
                     getDefaultToolVCFHeaderLines(),
                     annotationEngine,
                     reference,
+                    sampleTableName,
                     doLocalSort,
                     localSortMaxRecordsInRam,
                     runQueryOnly,
