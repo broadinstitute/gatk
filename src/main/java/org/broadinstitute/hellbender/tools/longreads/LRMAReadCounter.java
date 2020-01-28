@@ -482,16 +482,16 @@ public class LRMAReadCounter extends ReadWalker {
         }
 
         void accountForTranscriptome10xFlags(final GATKRead read ) {
-            if ( read.getAttributeAsString("ZA") != null ) {
+            if ( read.getAttributeAsString(Transcriptome10xAttribute.ADAPTER.value) != null ) {
                 ++adapterAnnotatedReadCount;
             }
-            if ( read.getAttributeAsString("CB") != null ) {
+            if ( read.getAttributeAsString(Transcriptome10xAttribute.BARCODE.value) != null ) {
                 ++barcodeAnnotatedReadCount;
             }
-            if ( read.getAttributeAsString("CR") != null ) {
+            if ( read.getAttributeAsString(Transcriptome10xAttribute.RAW_BARCODE.value) != null ) {
                 ++rawBarcodeAnnotatedReadCount;
             }
-            if ( read.getAttributeAsString("ZU") != null ) {
+            if ( read.getAttributeAsString(Transcriptome10xAttribute.UMI.value) != null ) {
                 ++umiAnnotatedReadCount;
             }
         }
@@ -539,8 +539,6 @@ public class LRMAReadCounter extends ReadWalker {
             }
 
             incrementCountMap(mapStatus, readPriorityStatus);
-
-
 
             accountForTranscriptome10xFlags(read);
         }
