@@ -142,13 +142,6 @@ public class Evoquer extends GATKTool {
     private boolean useOptimizedQuery = true;
 
     @Argument(
-            fullName = "use-cohort-extract-query",
-            doc = "Use the cohort extraction query against BigQuery",
-            optional = true
-    )
-    private boolean useCohortExtractQuery = false;
-
-    @Argument(
             fullName = "run-query-only",
             doc = "If true, just do the query against BigQuery and retrieve the resulting records, but don't write a VCF",
             optional = true)
@@ -159,12 +152,6 @@ public class Evoquer extends GATKTool {
             doc = "If true, don't run the Gnarly Genotyper after combining variant records for each site",
             optional = true)
     private boolean disableGnarlyGenotyper = false;
-
-    @Argument(
-            fullName = "enable-variant-annotator",
-            doc = "If true, perform ChromosomeCount annotation (AC/AN/AF) for variant context, not necessary if running Gnarly",
-            optional = true)
-    private boolean enableVariantAnnotator = false;
 
     @Argument(
             fullName = "run-query-in-batch-mode",
@@ -255,11 +242,9 @@ public class Evoquer extends GATKTool {
                     reference,
                     sampleTableName,
                     doLocalSort,
-                    useCohortExtractQuery,
                     localSortMaxRecordsInRam,
                     runQueryOnly,
                     disableGnarlyGenotyper,
-                    enableVariantAnnotator,
                     keepAllSitesInGnarlyGenotyper,
                     runQueryInBatchMode,
                     printDebugInformation,
