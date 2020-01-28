@@ -37,7 +37,260 @@ public class LRMAReadCounter extends ReadWalker {
     //==================================================================================================================
     // Private Static Members:
 
-    private static enum MapStatus {
+    //==================================================================================================================
+    // Public Members:
+    @Argument(
+            fullName  = "output-csv-file",
+            optional = true,
+            doc = "Output the results to the given CSV file name.")
+    private String outputCsvFileName = "";
+
+    @Argument(
+            fullName  = "use-file-as-row-header",
+            optional = true,
+            doc = "Use the file name as the row header for overall counts.")
+    private Boolean useFileAsRowHeader = false;
+
+    //==================================================================================================================
+    // Private Members:
+
+    private static final Pattern                               PAC_BIO_READ_NAME_PATTERN = Pattern.compile("(m[0-9]*_[0-9]*_[0-9]*)/([0-9]*)/(.*)");
+    private final LinkedHashMap<String, PacBioMovieStatHolder> movieNameToStatHolderMap  = new LinkedHashMap<>();
+    private final ReadStatHolder                               overallReadStatHolder     = new ReadStatHolder();
+
+    //==================================================================================================================
+    // Constructors:
+
+    //==================================================================================================================
+    // Override Methods:
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+
+        // PacBio reads are special:
+        final Matcher matcher = PAC_BIO_READ_NAME_PATTERN.matcher(read.getName());
+        if ( matcher.matches() ) {
+
+            final String movieName = matcher.group(1);
+            final Integer zmw = Integer.valueOf(matcher.group(2));
+            if ( movieNameToStatHolderMap.get(movieName) == null ) {
+                movieNameToStatHolderMap.put(movieName, new PacBioMovieStatHolder(movieName));
+            }
+
+            movieNameToStatHolderMap.get(movieName).addZmw(zmw);
+            movieNameToStatHolderMap.get(movieName).countReadStats(read);
+        }
+
+        overallReadStatHolder.countReadStats(read);
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        printStats();
+
+        if ( !outputCsvFileName.isEmpty() ) {
+            writeStatsToCsvFile();
+        }
+
+        return null;
+    }
+
+    //==================================================================================================================
+    // Static Methods:
+
+    //==================================================================================================================
+    // Instance Methods:
+
+    private void writeStatsToCsvFile() {
+        final Path path = Paths.get(outputCsvFileName);
+
+        logger.info("Writing CSV file to: {}", path.toUri().toString());
+
+        final StringBuilder sb = new StringBuilder();
+
+        // Write field names:
+        sb.append("Movie Name / Sample Name"); sb.append(',');
+        sb.append("Unmapped Reads"); sb.append(',');
+        sb.append("Unplaced Reads"); sb.append(',');
+        sb.append("Secondary Aligned Reads"); sb.append(',');
+        sb.append("Supplementary Aligned Reads"); sb.append(',');
+        sb.append("Primary Aligned Reads"); sb.append(',');
+        sb.append("Mapped Reads"); sb.append(',');
+        sb.append("Total Reads"); sb.append(',');
+        sb.append("Adapter Annotated Reads"); sb.append(',');
+        sb.append("UMI Annotated Reads"); sb.append(',');
+        sb.append("Raw Barcode Annotated Reads"); sb.append(',');
+        sb.append("Barcode Annotated Reads"); sb.append(',');
+
+        for ( final String alignmentType : Arrays.asList("Primary Aligned", "Secondary Aligned", "Supplementary Aligned")) {
+            for ( final MapStatus status : MapStatus.values() ) {
+                sb.append(status.name);
+                sb.append(' ');
+                sb.append(alignmentType);
+                sb.append(',');
+            }
+        }
+
+        for ( final Transcriptome10xAttribute transAttr : Transcriptome10xAttribute.values() ) {
+            for ( final MapStatus status : MapStatus.values() ) {
+                for ( final ReadPriorityStatus readPriorityStatus : ReadPriorityStatus.values() ) {
+                    sb.append(transAttr.name);
+                    sb.append(' ');
+                    sb.append(status.name);
+                    sb.append(' ');
+                    sb.append(readPriorityStatus.name);
+                    sb.append(',');
+                }
+            }
+        }
+
+        sb.append("Num Unique ZMWs"); sb.append(',');
+
+        sb.append('\n');
+
+        // Write overall stats first:
+        if ( useFileAsRowHeader ){
+            sb.append(readArguments.getReadFiles()
+                    .stream()
+                    .map( x -> x.toURI().toString())
+                    .collect(Collectors.joining(", ")));
+        }
+        else {
+            sb.append("OVERALL");
+        }
+        sb.append(',');
+        sb.append(overallReadStatHolder.toCsvRow());
+        sb.append("N/A");
+        sb.append('\n');
+
+        // Write PacBio Stats:
+        for ( final Map.Entry<String, PacBioMovieStatHolder> entry : movieNameToStatHolderMap.entrySet() ) {
+            sb.append(entry.getKey());
+            sb.append(',');
+            sb.append(entry.getValue().toCsvRow());
+            sb.append('\n');
+        }
+
+        try {
+            Files.write(path, sb.toString().getBytes());
+        }
+        catch (final IOException ex ) {
+            throw new UserException("Could not write out stats csv!", ex);
+        }
+    }
+
+    private void logMapAlignmentMatrix(final ReadStatHolder statHolder) {
+        final String header = Arrays.stream(MapStatus.values()).map(Object::toString).collect(Collectors.joining("\t"));
+        logger.info("                 " + header);
+
+        final String primary = Arrays.stream(MapStatus.values())
+                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.PRIMARY))
+                .map(Object::toString).collect(Collectors.joining("\t"));
+        logger.info("Primary          " + primary);
+
+        final String secondary = Arrays.stream(MapStatus.values())
+                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.SECONDARY))
+                .map(Object::toString).collect(Collectors.joining("\t"));
+        logger.info("Secondary        " + secondary);
+
+        final String supplementary = Arrays.stream(MapStatus.values())
+                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.SUPPLEMENTARY))
+                .map(Object::toString).collect(Collectors.joining("\t"));
+        logger.info("Supplementary    " + supplementary);
+    }
+
+    private void logTranscriptTagMapAlignmentMatrix(final ReadStatHolder statHolder) {
+        final StringBuilder headerBuilder = new StringBuilder();
+
+        final int firstColWidht = 14;
+
+        for (int i = 0; i < firstColWidht; ++i) {
+            headerBuilder.append(' ');
+        }
+
+        for ( final MapStatus mapStatus : MapStatus.values() ) {
+            for ( final ReadPriorityStatus rpStatus : ReadPriorityStatus.values() ) {
+                headerBuilder.append(mapStatus.name);
+                headerBuilder.append('_');
+                headerBuilder.append(rpStatus.name);
+
+                headerBuilder.append('\t');
+            }
+        }
+        logger.info(headerBuilder.toString());
+
+        for ( final Transcriptome10xAttribute attr : Transcriptome10xAttribute.values() ) {
+            final StringBuilder sb = new StringBuilder();
+            for ( final MapStatus mapStatus : MapStatus.values() ) {
+                for ( final ReadPriorityStatus rpStatus : ReadPriorityStatus.values() ) {
+                    sb.append(statHolder.transcriptAnnotationMapStatusReadPriorityCountMap.get(attr).get(mapStatus).get(rpStatus));
+                    sb.append('\t');
+                }
+            }
+
+            final StringBuilder padding = new StringBuilder();
+            for ( int i = 0 ; i < firstColWidht - attr.name.length(); ++i ){
+                padding.append(' ');
+            }
+            logger.info(attr.name + padding.toString() + sb.toString());
+        }
+    }
+
+    private void logStats(final String name, final ReadStatHolder statHolder) {
+        logger.info("----");
+        logger.info("");
+        logger.info("{}", name);
+        logger.info("");
+
+        logger.info("Unmapped Reads:              {}", statHolder.getUnmappedReadsCount());
+        logger.info("Unplaced Reads:              {}", statHolder.getUnplacedReadsCount());
+        logger.info("Secondary Aligned Reads:     {}", statHolder.getSecondaryReadsCount());
+        logger.info("Supplementary Aligned Reads: {}", statHolder.getSupplementaryReadsCount());
+        logger.info("Primary Aligned Reads:       {}", statHolder.getPrimaryReadsCount());
+        logger.info("");
+        logger.info("Mapped Reads:                {}", statHolder.getMappedReadsCount());
+        logger.info("");
+        logger.info("Total Reads:                 {}", statHolder.getTotalReadsCount());
+        logger.info("");
+        logger.info("Adapter Annotated Reads:     {}", statHolder.getAdapterAnnotatedReadCount());
+        logger.info("UMI Annotated Reads:         {}", statHolder.getUmiAnnotatedReadCount());
+        logger.info("Raw Barcode Annotated Reads: {}", statHolder.getRawBarcodeAnnotatedReadCount());
+        logger.info("Barcode Annotated Reads:     {}", statHolder.getBarcodeAnnotatedReadCount());
+        logger.info("");
+        logMapAlignmentMatrix(statHolder);
+        logger.info("");
+        logTranscriptTagMapAlignmentMatrix(statHolder);
+        logger.info("");
+        if ( statHolder instanceof PacBioMovieStatHolder) {
+            logger.info("Num Unique ZMWs:             {}", ((PacBioMovieStatHolder)statHolder).getNumUniqueZmws());
+            logger.info("");
+        }
+        logger.info("----");
+        logger.info("");
+    }
+
+    private void printStats() {
+        // Print out our stats:
+
+        logger.info("");
+        logStats("OVERALL", overallReadStatHolder);
+
+        logger.info("===========================================");
+
+        for ( final Map.Entry<String, PacBioMovieStatHolder> entry : movieNameToStatHolderMap.entrySet() ) {
+            logStats(entry.getKey(), entry.getValue());
+        }
+    }
+
+    //==================================================================================================================
+    // Helper Data Types:
+
+    private enum MapStatus {
         UNMAPPED("UNMAPPED"),
         UNPLACED("UNPLACED"),
         MAPPED("MAPPED");
@@ -52,7 +305,7 @@ public class LRMAReadCounter extends ReadWalker {
         public String toString() { return name; }
     }
 
-    private static enum ReadPriorityStatus {
+    private enum ReadPriorityStatus {
         PRIMARY("PRIMARY"),
         SECONDARY("SECONDARY"),
         SUPPLEMENTARY("SUPPLEMENTARY");
@@ -64,6 +317,25 @@ public class LRMAReadCounter extends ReadWalker {
         }
 
         public String getName() { return name; }
+        public String toString() { return name; }
+    }
+
+    private enum Transcriptome10xAttribute {
+        ADAPTER("ADAPTER", "ZA"),
+        UMI("UMI", "ZU"),
+        RAW_BARCODE("RAW_BARCODE", "CR"),
+        BARCODE("BARCODE", "CB");
+
+        private String name;
+        private String value;
+
+        Transcriptome10xAttribute(final String name, final String value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public String getName() { return name; }
+        public String getValue() { return value; }
         public String toString() { return name; }
     }
 
@@ -90,6 +362,7 @@ public class LRMAReadCounter extends ReadWalker {
         private long umiAnnotatedReadCount        = 0;
 
         private HashMap<MapStatus, HashMap<ReadPriorityStatus, Integer>> mapStatusReadPriorityStatusCountMap = new HashMap<>();
+        private HashMap<Transcriptome10xAttribute, HashMap<MapStatus, HashMap<ReadPriorityStatus, Integer>>> transcriptAnnotationMapStatusReadPriorityCountMap = new HashMap<>();
 
         ReadStatHolder() {
             Arrays.stream(MapStatus.values()).forEach(
@@ -100,6 +373,23 @@ public class LRMAReadCounter extends ReadWalker {
                                 readPriorityStatus -> map.put(readPriorityStatus, 0)
                         );
                         mapStatusReadPriorityStatusCountMap.put(mapStatus, map);
+                    }
+            );
+
+            Arrays.stream(Transcriptome10xAttribute.values()).forEach(
+                    attr -> {
+                        final HashMap<MapStatus, HashMap<ReadPriorityStatus, Integer>> msRpCountMap = new HashMap<>();
+                        Arrays.stream(MapStatus.values()).forEach(
+                                mapStatus -> {
+
+                                    final HashMap<ReadPriorityStatus, Integer> rpCountMap = new HashMap<>();
+                                    Arrays.stream(ReadPriorityStatus.values()).forEach(
+                                            readPriorityStatus -> rpCountMap.put(readPriorityStatus, 0)
+                                    );
+                                    msRpCountMap.put(mapStatus, rpCountMap);
+                                }
+                        );
+                        transcriptAnnotationMapStatusReadPriorityCountMap.put(attr, msRpCountMap);
                     }
             );
         }
@@ -154,7 +444,8 @@ public class LRMAReadCounter extends ReadWalker {
                     umiAnnotatedReadCount + "," +
                     rawBarcodeAnnotatedReadCount + "," +
                     barcodeAnnotatedReadCount + "," +
-            createMapStatusAlignmentCsvData();
+                    createMapStatusAlignmentCsvData() +
+                    createTranscriptomeMapStatusAlignmentCsvData();
         }
 
         String createMapStatusAlignmentCsvData() {
@@ -164,6 +455,21 @@ public class LRMAReadCounter extends ReadWalker {
                 for ( final MapStatus status : MapStatus.values() ) {
                     sb.append(mapStatusReadPriorityStatusCountMap.get(status).get(readPriorityStatus));
                     sb.append(',');
+                }
+            }
+
+            return sb.toString();
+        }
+
+        String createTranscriptomeMapStatusAlignmentCsvData() {
+            final StringBuilder sb = new StringBuilder();
+
+            for ( final Transcriptome10xAttribute transAttr : Transcriptome10xAttribute.values() ) {
+                for ( final MapStatus status : MapStatus.values() ) {
+                    for ( final ReadPriorityStatus readPriorityStatus : ReadPriorityStatus.values() ) {
+                        sb.append(transcriptAnnotationMapStatusReadPriorityCountMap.get(transAttr).get(status).get(readPriorityStatus));
+                        sb.append(',');
+                    }
                 }
             }
 
@@ -267,194 +573,6 @@ public class LRMAReadCounter extends ReadWalker {
             return super.toCsvRow() + zmwSet.size();
         }
     }
-
-
-    //==================================================================================================================
-    // Public Members:
-    @Argument(
-            fullName  = "output-csv-file",
-            optional = true,
-            doc = "Output the results to the given CSV file name.")
-    private String outputCsvFileName = "";
-
-    //==================================================================================================================
-    // Private Members:
-
-    private static final Pattern                               PAC_BIO_READ_NAME_PATTERN = Pattern.compile("(m[0-9]*_[0-9]*_[0-9]*)/([0-9]*)/(.*)");
-    private final LinkedHashMap<String, PacBioMovieStatHolder> movieNameToStatHolderMap  = new LinkedHashMap<>();
-    private final ReadStatHolder                               overallReadStatHolder     = new ReadStatHolder();
-
-    //==================================================================================================================
-    // Constructors:
-
-    //==================================================================================================================
-    // Override Methods:
-
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-
-        // PacBio reads are special:
-        final Matcher matcher = PAC_BIO_READ_NAME_PATTERN.matcher(read.getName());
-        if ( matcher.matches() ) {
-
-            final String movieName = matcher.group(1);
-            final Integer zmw = Integer.valueOf(matcher.group(2));
-            if ( movieNameToStatHolderMap.get(movieName) == null ) {
-                movieNameToStatHolderMap.put(movieName, new PacBioMovieStatHolder(movieName));
-            }
-
-            movieNameToStatHolderMap.get(movieName).addZmw(zmw);
-            movieNameToStatHolderMap.get(movieName).countReadStats(read);
-        }
-
-        overallReadStatHolder.countReadStats(read);
-    }
-
-    @Override
-    public Object onTraversalSuccess() {
-        printStats();
-
-        if ( !outputCsvFileName.isEmpty() ) {
-            writeStatsToCsvFile();
-        }
-
-        return null;
-    }
-
-    //==================================================================================================================
-    // Static Methods:
-
-    //==================================================================================================================
-    // Instance Methods:
-
-    private void writeStatsToCsvFile() {
-        final Path path = Paths.get(outputCsvFileName);
-
-        logger.info("Writing CSV file to: {}", path.toUri().toString());
-
-        final StringBuilder sb = new StringBuilder();
-
-        // Write field names:
-        sb.append("Movie Name / Sample Name"); sb.append(',');
-        sb.append("Unmapped Reads"); sb.append(',');
-        sb.append("Unplaced Reads"); sb.append(',');
-        sb.append("Secondary Aligned Reads"); sb.append(',');
-        sb.append("Supplementary Aligned Reads"); sb.append(',');
-        sb.append("Primary Aligned Reads"); sb.append(',');
-        sb.append("Mapped Reads"); sb.append(',');
-        sb.append("Total Reads"); sb.append(',');
-        sb.append("Adapter Annotated Reads"); sb.append(',');
-        sb.append("UMI Annotated Reads"); sb.append(',');
-        sb.append("Raw Barcode Annotated Reads"); sb.append(',');
-        sb.append("Barcode Annotated Reads"); sb.append(',');
-
-        for ( final String alignmentType : Arrays.asList("Primary Aligned", "Secondary Aligned", "Supplementary Aligned")) {
-            for ( final MapStatus status : MapStatus.values() ) {
-                sb.append(status.name);
-                sb.append(' ');
-                sb.append(alignmentType);
-                sb.append(',');
-            }
-        }
-
-        sb.append("Num Unique ZMWs"); sb.append(',');
-
-        sb.append('\n');
-
-        // Write overall stats first:
-        sb.append("OVERALL");
-        sb.append(',');
-        sb.append(overallReadStatHolder.toCsvRow());
-        sb.append("N/A");
-        sb.append('\n');
-
-        // Write PacBio Stats:
-        for ( final Map.Entry<String, PacBioMovieStatHolder> entry : movieNameToStatHolderMap.entrySet() ) {
-            sb.append(entry.getKey());
-            sb.append(',');
-            sb.append(entry.getValue().toCsvRow());
-            sb.append('\n');
-        }
-
-        try {
-            Files.write(path, sb.toString().getBytes());
-        }
-        catch (final IOException ex ) {
-            throw new UserException("Could not write out stats csv!", ex);
-        }
-    }
-
-    private void logMapAlignmentMatrix(final ReadStatHolder statHolder) {
-        final String header = Arrays.stream(MapStatus.values()).map(Object::toString).collect(Collectors.joining("\t"));
-        logger.info("                 " + header);
-
-        final String primary = Arrays.stream(MapStatus.values())
-                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.PRIMARY))
-                .map(Object::toString).collect(Collectors.joining("\t"));
-        logger.info("Primary          " + primary);
-
-        final String secondary = Arrays.stream(MapStatus.values())
-                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.SECONDARY))
-                .map(Object::toString).collect(Collectors.joining("\t"));
-        logger.info("Secondary        " + secondary);
-
-        final String supplementary = Arrays.stream(MapStatus.values())
-                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.SUPPLEMENTARY))
-                .map(Object::toString).collect(Collectors.joining("\t"));
-        logger.info("Supplementary    " + supplementary);
-    }
-
-    private void logStats(final String name, final ReadStatHolder statHolder) {
-        logger.info("----");
-        logger.info("");
-        logger.info("{}", name);
-        logger.info("");
-
-        logger.info("Unmapped Reads:              {}", statHolder.getUnmappedReadsCount());
-        logger.info("Unplaced Reads:              {}", statHolder.getUnplacedReadsCount());
-        logger.info("Secondary Aligned Reads:     {}", statHolder.getSecondaryReadsCount());
-        logger.info("Supplementary Aligned Reads: {}", statHolder.getSupplementaryReadsCount());
-        logger.info("Primary Aligned Reads:       {}", statHolder.getPrimaryReadsCount());
-        logger.info("");
-        logger.info("Mapped Reads:                {}", statHolder.getMappedReadsCount());
-        logger.info("");
-        logger.info("Total Reads:                 {}", statHolder.getTotalReadsCount());
-        logger.info("");
-        logger.info("Adapter Annotated Reads:     {}", statHolder.getAdapterAnnotatedReadCount());
-        logger.info("UMI Annotated Reads:         {}", statHolder.getUmiAnnotatedReadCount());
-        logger.info("Raw Barcode Annotated Reads: {}", statHolder.getRawBarcodeAnnotatedReadCount());
-        logger.info("Barcode Annotated Reads:     {}", statHolder.getBarcodeAnnotatedReadCount());
-        logger.info("");
-        logMapAlignmentMatrix(statHolder);
-        logger.info("");
-        if ( statHolder instanceof PacBioMovieStatHolder) {
-            logger.info("Num Unique ZMWs:             {}", ((PacBioMovieStatHolder)statHolder).getNumUniqueZmws());
-            logger.info("");
-        }
-        logger.info("----");
-        logger.info("");
-    }
-
-    private void printStats() {
-        // Print out our stats:
-
-        logger.info("");
-        logStats("OVERALL", overallReadStatHolder);
-
-        logger.info("===========================================");
-
-        for ( final Map.Entry<String, PacBioMovieStatHolder> entry : movieNameToStatHolderMap.entrySet() ) {
-            logStats(entry.getKey(), entry.getValue());
-        }
-    }
-
-    //==================================================================================================================
-    // Helper Data Types:
 
 }
 
