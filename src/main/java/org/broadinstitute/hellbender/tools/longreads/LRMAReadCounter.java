@@ -52,6 +52,21 @@ public class LRMAReadCounter extends ReadWalker {
         public String toString() { return name; }
     }
 
+    private static enum ReadPriorityStatus {
+        PRIMARY("PRIMARY"),
+        SECONDARY("SECONDARY"),
+        SUPPLEMENTARY("SUPPLEMENTARY");
+
+        private String name;
+
+        ReadPriorityStatus(final String name) {
+            this.name = name;
+        }
+
+        public String getName() { return name; }
+        public String toString() { return name; }
+    }
+
     /**
      * Simple data class to hold counts and supplementary for stats that we need on a per-movie basis.
      * NOTE: Pac-Bio specific.
@@ -74,16 +89,17 @@ public class LRMAReadCounter extends ReadWalker {
         private long rawBarcodeAnnotatedReadCount = 0;
         private long umiAnnotatedReadCount        = 0;
 
-        private HashMap<MapStatus, Integer> mapStatusPrimaryCountMap = new HashMap<>();
-        private HashMap<MapStatus, Integer> mapStatusSecondaryCountMap = new HashMap<>();
-        private HashMap<MapStatus, Integer> mapStatusSupplementaryCountMap = new HashMap<>();
+        private HashMap<MapStatus, HashMap<ReadPriorityStatus, Integer>> mapStatusReadPriorityStatusCountMap = new HashMap<>();
 
         ReadStatHolder() {
             Arrays.stream(MapStatus.values()).forEach(
                     mapStatus -> {
-                        mapStatusPrimaryCountMap.put(mapStatus, 0);
-                        mapStatusSecondaryCountMap.put(mapStatus, 0);
-                        mapStatusSupplementaryCountMap.put(mapStatus, 0);
+
+                        final HashMap<ReadPriorityStatus, Integer> map = new HashMap<>();
+                        Arrays.stream(ReadPriorityStatus.values()).forEach(
+                                readPriorityStatus -> map.put(readPriorityStatus, 0)
+                        );
+                        mapStatusReadPriorityStatusCountMap.put(mapStatus, map);
                     }
             );
         }
@@ -143,25 +159,20 @@ public class LRMAReadCounter extends ReadWalker {
 
         String createMapStatusAlignmentCsvData() {
             final StringBuilder sb = new StringBuilder();
-            for (final MapStatus status : MapStatus.values()) {
-                sb.append(mapStatusPrimaryCountMap.get(status));
-                sb.append(',');
-            }
-            for (final MapStatus status : MapStatus.values()) {
-                sb.append(mapStatusSecondaryCountMap.get(status));
-                sb.append(',');
-            }
-            for (final MapStatus status : MapStatus.values()) {
-                sb.append(mapStatusSupplementaryCountMap.get(status));
-                sb.append(',');
+
+            for ( final ReadPriorityStatus readPriorityStatus : ReadPriorityStatus.values() ) {
+                for ( final MapStatus status : MapStatus.values() ) {
+                    sb.append(mapStatusReadPriorityStatusCountMap.get(status).get(readPriorityStatus));
+                    sb.append(',');
+                }
             }
 
             return sb.toString();
         }
 
-        void incrementCountMap( final MapStatus mapStatus, final HashMap<MapStatus, Integer> mapStatusCountMap ) {
-            final Integer count = mapStatusCountMap.get(mapStatus) + 1;
-            mapStatusCountMap.put(mapStatus, count);
+        void incrementCountMap( final MapStatus mapStatus, final ReadPriorityStatus readPriorityStatus ) {
+            final Integer count = mapStatusReadPriorityStatusCountMap.get(mapStatus).get(readPriorityStatus) + 1;
+            mapStatusReadPriorityStatusCountMap.get(mapStatus).put(readPriorityStatus, count);
         }
 
         void accountForTranscriptome10xFlags(final GATKRead read ) {
@@ -179,60 +190,53 @@ public class LRMAReadCounter extends ReadWalker {
             }
         }
 
-        void accountForMappingFlags(final GATKRead read) {
-            ++totalReadsCount;
-
-            // Mapping:
+        static MapStatus getMapStatus(final GATKRead read) {
             if ( read.isUnmapped() ) {
-                ++unmappedReadsCount;
+                return MapStatus.UNMAPPED;
             }
             else if ( read.isUnplaced() ) {
-                ++unplacedReadsCount;
+                return MapStatus.UNPLACED;
             }
             else {
-                ++mappedReadsCount;
+                return MapStatus.MAPPED;
             }
+        }
 
-            // Alignment:
+        static ReadPriorityStatus getReadPriorityStatus(final GATKRead read) {
             if (read.isSecondaryAlignment() &&  !read.isSupplementaryAlignment()) {
-                ++secondaryReadsCount;
-
-                if ( read.isUnmapped() ) {
-                    incrementCountMap(MapStatus.UNMAPPED, mapStatusSecondaryCountMap);
-                }
-                else if ( read.isUnplaced() ) {
-                    incrementCountMap(MapStatus.UNPLACED, mapStatusSecondaryCountMap);
-                }
-                else {
-                    incrementCountMap(MapStatus.MAPPED, mapStatusSecondaryCountMap);
-                }
+                return ReadPriorityStatus.SECONDARY;
             }
             else if (!read.isSecondaryAlignment() &&  read.isSupplementaryAlignment()) {
-                ++supplementaryReadsCount;
-
-                if ( read.isUnmapped() ) {
-                    incrementCountMap(MapStatus.UNMAPPED, mapStatusSupplementaryCountMap);
-                }
-                else if ( read.isUnplaced() ) {
-                    incrementCountMap(MapStatus.UNPLACED, mapStatusSupplementaryCountMap);
-                }
-                else {
-                    incrementCountMap(MapStatus.MAPPED, mapStatusSupplementaryCountMap);
-                }
+                return ReadPriorityStatus.SUPPLEMENTARY;
             }
             else {
-                ++primaryReadsCount;
-
-                if ( read.isUnmapped() ) {
-                    incrementCountMap(MapStatus.UNMAPPED, mapStatusPrimaryCountMap);
-                }
-                else if ( read.isUnplaced() ) {
-                    incrementCountMap(MapStatus.UNPLACED, mapStatusPrimaryCountMap);
-                }
-                else {
-                    incrementCountMap(MapStatus.MAPPED, mapStatusPrimaryCountMap);
-                }
+                return ReadPriorityStatus.PRIMARY;
             }
+        }
+
+        void countReadStats(final GATKRead read) {
+            final MapStatus mapStatus = getMapStatus(read);
+            final ReadPriorityStatus readPriorityStatus = getReadPriorityStatus(read);
+
+            ++totalReadsCount;
+
+            switch(mapStatus) {
+                case MAPPED: ++mappedReadsCount; break;
+                case UNMAPPED: ++unmappedReadsCount; break;
+                case UNPLACED: ++unplacedReadsCount; break;
+            }
+
+            switch(readPriorityStatus) {
+                case PRIMARY: ++primaryReadsCount; break;
+                case SECONDARY: ++secondaryReadsCount; break;
+                case SUPPLEMENTARY: ++supplementaryReadsCount; break;
+            }
+
+            incrementCountMap(mapStatus, readPriorityStatus);
+
+
+
+            accountForTranscriptome10xFlags(read);
         }
     }
 
@@ -305,12 +309,10 @@ public class LRMAReadCounter extends ReadWalker {
             }
 
             movieNameToStatHolderMap.get(movieName).addZmw(zmw);
-            movieNameToStatHolderMap.get(movieName).accountForMappingFlags(read);
-            movieNameToStatHolderMap.get(movieName).accountForTranscriptome10xFlags(read);
+            movieNameToStatHolderMap.get(movieName).countReadStats(read);
         }
 
-        overallReadStatHolder.accountForMappingFlags(read);
-        overallReadStatHolder.accountForTranscriptome10xFlags(read);
+        overallReadStatHolder.countReadStats(read);
     }
 
     @Override
@@ -392,17 +394,17 @@ public class LRMAReadCounter extends ReadWalker {
         logger.info("                 " + header);
 
         final String primary = Arrays.stream(MapStatus.values())
-                .map(status -> statHolder.mapStatusPrimaryCountMap.get(status))
+                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.PRIMARY))
                 .map(Object::toString).collect(Collectors.joining("\t"));
         logger.info("Primary          " + primary);
 
         final String secondary = Arrays.stream(MapStatus.values())
-                .map(status -> statHolder.mapStatusSecondaryCountMap.get(status))
+                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.SECONDARY))
                 .map(Object::toString).collect(Collectors.joining("\t"));
         logger.info("Secondary        " + secondary);
 
         final String supplementary = Arrays.stream(MapStatus.values())
-                .map(status -> statHolder.mapStatusSupplementaryCountMap.get(status))
+                .map(status -> statHolder.mapStatusReadPriorityStatusCountMap.get(status).get(ReadPriorityStatus.SUPPLEMENTARY))
                 .map(Object::toString).collect(Collectors.joining("\t"));
         logger.info("Supplementary    " + supplementary);
     }
