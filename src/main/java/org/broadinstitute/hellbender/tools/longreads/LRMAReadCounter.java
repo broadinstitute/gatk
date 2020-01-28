@@ -168,13 +168,13 @@ public class LRMAReadCounter extends ReadWalker {
                 ++supplementaryReadsCount;
 
                 if ( read.isUnmapped() ) {
-                    incrementCountMap(MapStatus.UNMAPPED, mapStatusSecondaryCountMap);
+                    incrementCountMap(MapStatus.UNMAPPED, mapStatusSupplementaryCountMap);
                 }
                 else if ( read.isUnplaced() ) {
-                    incrementCountMap(MapStatus.UNPLACED, mapStatusSecondaryCountMap);
+                    incrementCountMap(MapStatus.UNPLACED, mapStatusSupplementaryCountMap);
                 }
                 else {
-                    incrementCountMap(MapStatus.MAPPED, mapStatusSecondaryCountMap);
+                    incrementCountMap(MapStatus.MAPPED, mapStatusSupplementaryCountMap);
                 }
             }
             else {
