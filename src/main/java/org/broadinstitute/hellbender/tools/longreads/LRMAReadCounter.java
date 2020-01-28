@@ -212,6 +212,18 @@ public class LRMAReadCounter extends ReadWalker {
         }
         final String header = headerPadding.toString() + Arrays.stream(MapStatus.values()).map(Object::toString).collect(Collectors.joining("\t"));
 
+//        final int colPad = 4;
+//        final int columnWidth[] = {17,
+//                MapStatus.values()[0].name.length() + colPad,
+//                MapStatus.values()[1].name.length() + colPad,
+//                MapStatus.values()[2].name.length() + colPad};
+//
+//        final String rowFormatString = "%" + columnWidth[0] + "s%" +
+//                "%" + columnWidth[1] + "s%" +
+//                "%" + columnWidth[2] + "s%" +
+//                "%" + columnWidth[3] + "s%";
+//        final String header = String.format(rowFormatString, "", MapStatus.values()[0], MapStatus.values()[1], MapStatus.values()[2]);
+
         for ( final Transcriptome10xAttribute attr : Transcriptome10xAttribute.values() ) {
             logger.info("--------------------------");
             logger.info("Reads containing " + attr.name() + " (" + attr.value + ")");
