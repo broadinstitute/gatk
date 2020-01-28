@@ -95,6 +95,7 @@ task LRMAReadCounterTask {
         gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             LRMAReadCounter \
             -I ${bam_file_name} \
+            --use-file-as-row-header \
             --output-csv-file ${output_csv_file} \
             ${extra_args} \
 
