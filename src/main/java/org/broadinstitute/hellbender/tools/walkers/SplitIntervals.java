@@ -50,6 +50,22 @@ import java.util.stream.IntStream;
  *    of input intervals is split, but individual intervals are left intact.  This may affect results when using assembly-based callers downstream.
  * </p>
  *
+ *  * <pre>
+ *  * gatk SplitIntervals \
+ *  *   -R ref_fasta.fa \
+ *  *   -L adjacent_intervals.list \
+ *  *   --scatter-count 10 \
+ *  *   --interval-merge-rule OVERLAPPING_ONLY \
+ *  *   --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW
+ *  *   -O interval-files-folder
+ *  * </pre>
+ *
+ * <p>
+ *     Note that adjacent intervals will be merged by default.  In cases where the desired behavior is to apportion a set
+ *     of small adjacent intervals with nearly uniform runtime among X new interval lists, the argument
+ *     `--interval-merge-rule OVERLAPPING_ONLY` should be included.
+ * </p>
+ *
  * */
 @CommandLineProgramProperties(
         summary = "Split intervals into sub-interval files.",
