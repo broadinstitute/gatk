@@ -18,7 +18,7 @@ InstallPackageFromArchive = function(packageName, packageURL) {
 dependencies = c("gplots",
                  "digest", "gtable", "MASS", "plyr", "reshape2", "scales", "tibble", "lazyeval", # for ggplot2
                  "tidyselect", "BH", "plogr")     # for dplyr
-repos <- c("http://cran.mtu.edu", "http://cran.cnr.Berkeley.edu")
+repos <- c("http://cran.mtu.edu")
 install.packages(dependencies, repos = repos, clean = TRUE)
 
 InstallPackageFromArchive("getopt", "http://cran.r-project.org/src/contrib/Archive/getopt/getopt_1.20.0.tar.gz")
