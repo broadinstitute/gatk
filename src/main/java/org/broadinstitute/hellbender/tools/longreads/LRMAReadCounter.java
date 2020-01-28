@@ -67,6 +67,13 @@ public class LRMAReadCounter extends ReadWalker {
         private long         secondaryReadsCount = 0;
         private long         supplementaryReadsCount = 0;
 
+        private long adapterAnnotatedReadCount    = 0;
+        // Post-correction:
+        private long barcodeAnnotatedReadCount    = 0;
+        // Pre-correction:
+        private long rawBarcodeAnnotatedReadCount = 0;
+        private long umiAnnotatedReadCount        = 0;
+
         private HashMap<MapStatus, Integer> mapStatusPrimaryCountMap = new HashMap<>();
         private HashMap<MapStatus, Integer> mapStatusSecondaryCountMap = new HashMap<>();
         private HashMap<MapStatus, Integer> mapStatusSupplementaryCountMap = new HashMap<>();
@@ -79,6 +86,22 @@ public class LRMAReadCounter extends ReadWalker {
                         mapStatusSupplementaryCountMap.put(mapStatus, 0);
                     }
             );
+        }
+
+        public long getAdapterAnnotatedReadCount() {
+            return adapterAnnotatedReadCount;
+        }
+
+        public long getBarcodeAnnotatedReadCount() {
+            return barcodeAnnotatedReadCount;
+        }
+
+        public long getRawBarcodeAnnotatedReadCount() {
+            return rawBarcodeAnnotatedReadCount;
+        }
+
+        public long getUmiAnnotatedReadCount() {
+            return umiAnnotatedReadCount;
         }
 
         long getTotalReadsCount() {
@@ -110,7 +133,12 @@ public class LRMAReadCounter extends ReadWalker {
 
         String toCsvRow() {
             return unmappedReadsCount + "," + unplacedReadsCount + "," + secondaryReadsCount + "," + supplementaryReadsCount + "," +
-                    primaryReadsCount + "," + mappedReadsCount + "," + totalReadsCount + "," + createMapStatusAlignmentCsvData();
+                    primaryReadsCount + "," + mappedReadsCount + "," + totalReadsCount + "," +
+                    adapterAnnotatedReadCount + "," +
+                    umiAnnotatedReadCount + "," +
+                    rawBarcodeAnnotatedReadCount + "," +
+                    barcodeAnnotatedReadCount + "," +
+            createMapStatusAlignmentCsvData();
         }
 
         String createMapStatusAlignmentCsvData() {
@@ -134,6 +162,21 @@ public class LRMAReadCounter extends ReadWalker {
         void incrementCountMap( final MapStatus mapStatus, final HashMap<MapStatus, Integer> mapStatusCountMap ) {
             final Integer count = mapStatusCountMap.get(mapStatus) + 1;
             mapStatusCountMap.put(mapStatus, count);
+        }
+
+        void accountForTranscriptome10xFlags(final GATKRead read ) {
+            if ( read.getAttributeAsString("ZA") != null ) {
+                ++adapterAnnotatedReadCount;
+            }
+            if ( read.getAttributeAsString("CB") != null ) {
+                ++barcodeAnnotatedReadCount;
+            }
+            if ( read.getAttributeAsString("CR") != null ) {
+                ++rawBarcodeAnnotatedReadCount;
+            }
+            if ( read.getAttributeAsString("ZU") != null ) {
+                ++umiAnnotatedReadCount;
+            }
         }
 
         void accountForMappingFlags(final GATKRead read) {
@@ -263,9 +306,11 @@ public class LRMAReadCounter extends ReadWalker {
 
             movieNameToStatHolderMap.get(movieName).addZmw(zmw);
             movieNameToStatHolderMap.get(movieName).accountForMappingFlags(read);
+            movieNameToStatHolderMap.get(movieName).accountForTranscriptome10xFlags(read);
         }
 
         overallReadStatHolder.accountForMappingFlags(read);
+        overallReadStatHolder.accountForTranscriptome10xFlags(read);
     }
 
     @Override
@@ -301,6 +346,10 @@ public class LRMAReadCounter extends ReadWalker {
         sb.append("Primary Aligned Reads"); sb.append(',');
         sb.append("Mapped Reads"); sb.append(',');
         sb.append("Total Reads"); sb.append(',');
+        sb.append("Adapter Annotated Reads"); sb.append(',');
+        sb.append("UMI Annotated Reads"); sb.append(',');
+        sb.append("Raw Barcode Annotated Reads"); sb.append(',');
+        sb.append("Barcode Annotated Reads"); sb.append(',');
 
         for ( final String alignmentType : Arrays.asList("Primary Aligned", "Secondary Aligned", "Supplementary Aligned")) {
             for ( final MapStatus status : MapStatus.values() ) {
@@ -373,6 +422,11 @@ public class LRMAReadCounter extends ReadWalker {
         logger.info("Mapped Reads:                {}", statHolder.getMappedReadsCount());
         logger.info("");
         logger.info("Total Reads:                 {}", statHolder.getTotalReadsCount());
+        logger.info("");
+        logger.info("Adapter Annotated Reads:     {}", statHolder.getAdapterAnnotatedReadCount());
+        logger.info("UMI Annotated Reads:         {}", statHolder.getUmiAnnotatedReadCount());
+        logger.info("Raw Barcode Annotated Reads: {}", statHolder.getRawBarcodeAnnotatedReadCount());
+        logger.info("Barcode Annotated Reads:     {}", statHolder.getBarcodeAnnotatedReadCount());
         logger.info("");
         logMapAlignmentMatrix(statHolder);
         logger.info("");
