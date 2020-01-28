@@ -200,9 +200,16 @@ public class AssemblyContigAlignmentsConfigPicker {
                                                                                                               final Set<String> canonicalChromosomes,
                                                                                                               final Double scoreDiffTolerance) {
 
-        return parsedContigAlignments
+        final JavaPairRDD<Tuple2<String, byte[]>, List<GoodAndBadMappings>> tuple2ListJavaPairRDD = parsedContigAlignments
                 .mapToPair(alignedContig -> new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
-                        pickBestConfigurations(alignedContig, canonicalChromosomes, scoreDiffTolerance)))
+                        pickBestConfigurations(alignedContig, canonicalChromosomes, scoreDiffTolerance)));
+        System.err.println("==========================================================================================");
+        System.err.println("================= READS BREAKING THE ALIGNMENTS CONFIG PICKING MECHANISM =================");
+        tuple2ListJavaPairRDD.filter(pair -> pair._2().isEmpty()).map(pair -> pair._1()._1())
+                .collect().forEach(System.err::println);
+        System.err.println("==========================================================================================");
+        return tuple2ListJavaPairRDD
+                .filter(pair -> !pair._2().isEmpty())
                 .mapValues(configurations ->
                         filterSecondaryConfigurationsByMappingQualityThreshold(configurations, SECONDARY_CONFIGURATION_MQ_FILTER_THRESHOLD));
     }
@@ -338,6 +345,9 @@ public class AssemblyContigAlignmentsConfigPicker {
         }
 
         // step 2: generate, score, and pick configurations
+        if (goodMappings.size() > 30) {
+            return Collections.emptyList();
+        }
         return generateScoreAndPickConfigurations(goodMappings, badMappings, goodMappingToNonCanonicalChromosome, canonicalChromosomes,
                 newMaxCanonicalChrAlignerScore, scoreDiffTolerance, alignedContig.getContigName());
     }
@@ -430,6 +440,9 @@ public class AssemblyContigAlignmentsConfigPicker {
                                                                                final int maxCanonicalChrAlignerScore,
                                                                                final Double scoreDiffTolerance,
                                                                                final String contigName) {
+
+        // TODO: how should we deal with case when there is over 30 good mappings, that is, we face the following exceptions
+        // java.lang.IllegalArgumentException: Too many elements to create power set: 42 > 30
         final List<List<AlignmentInterval>> allConfigurations = Sets.powerSet(new HashSet<>(goodMappings))
                 .stream().map(ArrayList::new)
                 // make sure within each configuration, alignments would be sorted as they would be in a corresponding AlignedContig
