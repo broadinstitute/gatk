@@ -150,7 +150,6 @@ public class LRMAReadCounter extends ReadWalker {
         }
 
         sb.append("Num Unique ZMWs"); sb.append(',');
-
         sb.append('\n');
 
         // Write overall stats first:
@@ -204,41 +203,37 @@ public class LRMAReadCounter extends ReadWalker {
         logger.info("Supplementary    " + supplementary);
     }
 
-    private void logTranscriptTagMapAlignmentMatrix(final ReadStatHolder statHolder) {
-        final StringBuilder headerBuilder = new StringBuilder();
+    private void logTranscriptTagMapAlignmentMatrices(final ReadStatHolder statHolder) {
+        final StringBuilder headerPadding = new StringBuilder();
 
-        final int firstColWidht = 14;
-
-        for (int i = 0; i < firstColWidht; ++i) {
-            headerBuilder.append(' ');
+        final int firstColWidth = 17;
+        for (int i = 0; i < firstColWidth; ++i) {
+            headerPadding.append(' ');
         }
-
-        for ( final MapStatus mapStatus : MapStatus.values() ) {
-            for ( final ReadPriorityStatus rpStatus : ReadPriorityStatus.values() ) {
-                headerBuilder.append(mapStatus.name);
-                headerBuilder.append('_');
-                headerBuilder.append(rpStatus.name);
-
-                headerBuilder.append('\t');
-            }
-        }
-        logger.info(headerBuilder.toString());
+        final String header = headerPadding.toString() + Arrays.stream(MapStatus.values()).map(Object::toString).collect(Collectors.joining("\t"));
 
         for ( final Transcriptome10xAttribute attr : Transcriptome10xAttribute.values() ) {
-            final StringBuilder sb = new StringBuilder();
-            for ( final MapStatus mapStatus : MapStatus.values() ) {
-                for ( final ReadPriorityStatus rpStatus : ReadPriorityStatus.values() ) {
-                    sb.append(statHolder.transcriptAnnotationMapStatusReadPriorityCountMap.get(attr).get(mapStatus).get(rpStatus));
-                    sb.append('\t');
-                }
-            }
+            logger.info("--------------------------");
+            logger.info("Reads containing " + attr.name() + " (" + attr.value + ")");
+            logger.info("");
+            logger.info(header);
 
-            final StringBuilder padding = new StringBuilder();
-            for ( int i = 0 ; i < firstColWidht - attr.name.length(); ++i ){
-                padding.append(' ');
+            for ( final ReadPriorityStatus rps : ReadPriorityStatus.values()) {
+                final String row = Arrays.stream(MapStatus.values())
+                        .map(status -> statHolder.transcriptAnnotationMapStatusReadPriorityCountMap.get(attr).get(status).get(rps))
+                        .map(Object::toString).collect(Collectors.joining("\t"));
+
+                final StringBuilder padding = new StringBuilder();
+                for ( int i = 0 ; i < firstColWidth - rps.name.length(); ++i ){
+                    padding.append(' ');
+                }
+
+                logger.info(rps.name + padding.toString() + row);
             }
-            logger.info(attr.name + padding.toString() + sb.toString());
+            logger.info("");
         }
+
+        logger.info("--------------------------");
     }
 
     private void logStats(final String name, final ReadStatHolder statHolder) {
@@ -264,7 +259,7 @@ public class LRMAReadCounter extends ReadWalker {
         logger.info("");
         logMapAlignmentMatrix(statHolder);
         logger.info("");
-        logTranscriptTagMapAlignmentMatrix(statHolder);
+        logTranscriptTagMapAlignmentMatrices(statHolder);
         logger.info("");
         if ( statHolder instanceof PacBioMovieStatHolder) {
             logger.info("Num Unique ZMWs:             {}", ((PacBioMovieStatHolder)statHolder).getNumUniqueZmws());
