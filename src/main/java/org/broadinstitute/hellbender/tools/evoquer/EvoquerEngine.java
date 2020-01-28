@@ -16,11 +16,13 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
@@ -80,6 +82,8 @@ class EvoquerEngine {
 
     private final GnarlyGenotyperEngine gnarlyGenotyper;
 
+    private final VariantAnnotatorEngine variantAnnotator;
+
     private final String projectID;
 
     /** Set of sample names seen in the variant data from BigQuery. */
@@ -103,6 +107,7 @@ class EvoquerEngine {
     private final int queryRecordLimit;
 
     private final boolean useOptimizedQuery;
+    private final boolean useCohortExtractQuery;
 
     private final boolean doLocalSort;
 
@@ -111,6 +116,7 @@ class EvoquerEngine {
     private final boolean runQueryOnly;
 
     private final boolean disableGnarlyGenotyper;
+    private final boolean enableVariantAnnotator;
 
     private final boolean runQueryInBatchMode;
 
@@ -131,9 +137,11 @@ class EvoquerEngine {
                    final ReferenceDataSource refSource,
                    final String sampleTableName,
                    final boolean doLocalSort,
+                   final boolean useCohortExtractQuery,
                    final int localSortMaxRecordsInRam,
                    final boolean runQueryOnly,
                    final boolean disableGnarlyGenotyper,
+                   final boolean enableVariantAnnotator,
                    final boolean keepAllSitesInGnarlyGenotyper,
                    final boolean runQueryInBatchMode,
                    final boolean printDebugInformation,
@@ -142,6 +150,7 @@ class EvoquerEngine {
         // We were given a dataset map, so we're going to do live queries against BigQuery
         this.precomputedResultsMode = false;
         this.useOptimizedQuery = useOptimizedQuery;
+        this.useCohortExtractQuery = useCohortExtractQuery;
 
         this.doLocalSort = doLocalSort;
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
@@ -152,6 +161,7 @@ class EvoquerEngine {
         this.queryRecordLimit = queryRecordLimit;
         this.runQueryOnly = runQueryOnly;
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
+        this.enableVariantAnnotator = enableVariantAnnotator;
         this.runQueryInBatchMode = runQueryInBatchMode;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
@@ -174,6 +184,8 @@ class EvoquerEngine {
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
         this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false);
+        this.variantAnnotator = new VariantAnnotatorEngine(Collections.singletonList(new ChromosomeCounts()), null, Collections.emptyList(), false, false);
+
     }
 
     EvoquerEngine( final List<String> sampleNames,
@@ -190,6 +202,7 @@ class EvoquerEngine {
         // and will instead expect to be given URIs to precomputed results.
         this.precomputedResultsMode = true;
         this.useOptimizedQuery = false;
+        this.useCohortExtractQuery = false;
         
         this.doLocalSort = false;
         this.localSortMaxRecordsInRam = 0;
@@ -197,6 +210,7 @@ class EvoquerEngine {
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
+        this.enableVariantAnnotator = false;
         this.printDebugInformation = printDebugInformation;
         this.progressMeter = progressMeter;
 
@@ -212,6 +226,8 @@ class EvoquerEngine {
         this.vcfHeader = generateVcfHeader(toolDefaultVCFHeaderLines, refSource.getSequenceDictionary());
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
         this.gnarlyGenotyper = new GnarlyGenotyperEngine(keepAllSitesInGnarlyGenotyper, GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES, false, false);
+        this.variantAnnotator = new VariantAnnotatorEngine(Collections.singletonList(new ChromosomeCounts()), null, Collections.emptyList(), false, false);
+
     }
 
     /**
@@ -228,11 +244,16 @@ class EvoquerEngine {
             String variantQueryString;
             List<String> fieldsToRetrieve;
             if ( doLocalSort ) {
-                variantQueryString = useOptimizedQuery ?
-                        getOptimizedUngroupedVariantQueryString(interval) :
-                        getUngroupedVariantQueryString(interval);
-                // TODO: get the selected fields from the query string itself somehow
-                fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "AS_RAW_MQ", "AS_RAW_MQRankSum", "AS_QUALapprox", "AS_RAW_ReadPosRankSum", "AS_SB_TABLE", "AS_VarDP", "call_GT", "call_AD", "call_DP", "call_GQ", "call_PGT", "call_PID", "call_PL");
+                if (useCohortExtractQuery) {
+                    variantQueryString  = getCohortExtractQueryString(interval);
+                    fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "call_GT", "call_GQ", "call_RGQ");
+                } else {
+                    variantQueryString = useOptimizedQuery ?
+                            getOptimizedUngroupedVariantQueryString(interval) :
+                            getUngroupedVariantQueryString(interval);
+                    // TODO: get the selected fields from the query string itself somehow
+                    fieldsToRetrieve = Arrays.asList("position", "sample", "state", "ref", "alt", "AS_RAW_MQ", "AS_RAW_MQRankSum", "AS_QUALapprox", "AS_RAW_ReadPosRankSum", "AS_SB_TABLE", "AS_VarDP", "call_GT", "call_AD", "call_DP", "call_GQ", "call_PGT", "call_PID", "call_PL");
+                }
             } else {
                 variantQueryString = useOptimizedQuery ?
                         getOptimizedGroupedVariantQueryString(interval) :
@@ -317,6 +338,8 @@ class EvoquerEngine {
                 VCFConstants.GENOTYPE_PL_KEY,
                 VCFConstants.GENOTYPE_ALLELE_DEPTHS
         );
+
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
 
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
@@ -604,6 +627,8 @@ class EvoquerEngine {
                     genotypeBuilder.PL(Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
                 } else if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
                     genotypeBuilder.DP(Integer.parseInt(columnValueString));
+                } else if ( genotypeAttributeName.equals(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY) ) {
+                    genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, Integer.parseInt(columnValueString));
                 } else if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
                     genotypeBuilder.AD(Arrays.stream(columnValueString.split(MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
                 } else {
@@ -667,8 +692,14 @@ class EvoquerEngine {
         final VariantContext mergedVC = variantContextMerger.merge(unmergedCalls, new SimpleInterval(contig, (int) start, (int) start), refAllele.getBases()[0], disableGnarlyGenotyper, false, true);
 
         final VariantContext finalizedVC = disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+        final VariantContext annotatedVC = enableVariantAnnotator ?
+                variantAnnotator.annotateContext(finalizedVC, new FeatureContext(), null, null, a -> true): finalizedVC;
 
-        if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
+        if ( annotatedVC != null ) {
+            vcfWriter.add(annotatedVC);
+            progressMeter.update(annotatedVC);
+        }
+        else if ( finalizedVC != null ) { // GnarlyGenotyper returns null for variants it refuses to output
             vcfWriter.add(finalizedVC);
             progressMeter.update(finalizedVC);
         }
@@ -864,6 +895,58 @@ class EvoquerEngine {
                         "  call_PGT,\n" +
                         "  call_PID,\n" +
                         "  call_PL\n" +
+                        "FROM\n" +
+                        "  new_pet\n" +
+                        "LEFT OUTER JOIN\n" +
+                        "  (SELECT * from `%s` AS vet_inner\n" +
+                        "   WHERE vet_inner.position >= %d AND vet_inner.position <= %d)\n" +
+                        "  AS vet\n" +
+                        "ON (new_pet.position = vet.position AND new_pet.sample = vet.sample)\n" +
+                        limitString,
+
+                getFQPositionTable(interval),
+                interval.getStart(),
+                interval.getEnd(),
+                getFQVariantTable(interval),
+                interval.getStart(),
+                interval.getEnd(),
+                getFQTableName(contigToSampleTableMap.entrySet().iterator().next().getValue()),
+                getFQTableName(contigToSampleTableMap.entrySet().iterator().next().getValue()),
+                getFQVariantTable(interval),
+                interval.getStart(),
+                interval.getEnd()
+        );
+    }
+
+    private String getCohortExtractQueryString(final SimpleInterval interval) {
+        String limitString = "";
+        if (queryRecordLimit > 0) {
+            limitString = "LIMIT " + queryRecordLimit;
+        }
+
+        return String.format(
+                "WITH new_pet AS\n" +
+                        "(\n" +
+                        "  SELECT * FROM `%s`\n" +
+                        "  WHERE\n" +
+                        "    (position >= %d AND position <= %d) AND\n" +
+                        "    position IN\n" +
+                        "    (\n" +
+                        "      SELECT DISTINCT position FROM `%s`\n" +
+                        "      WHERE position >= %d AND position <= %d\n" +
+                        "      AND sample IN (SELECT sample FROM `%s`)\n" +
+                        "    )\n" +
+                        "    AND sample IN (SELECT sample FROM `%s`)\n" +
+                        ")\n" +
+                        "SELECT\n" +
+                        "  new_pet.position,\n" +
+                        "  new_pet.sample,\n" +
+                        "  state,\n" +
+                        "  ref,\n" +
+                        "  alt,\n" +
+                        "  call_GT,\n" +
+                        "  call_GQ,\n" +
+                        "  cast(SPLIT(call_pl,\",\")[OFFSET(0)] as int64) as call_RGQ\n"+
                         "FROM\n" +
                         "  new_pet\n" +
                         "LEFT OUTER JOIN\n" +
