@@ -234,6 +234,19 @@ public class LRMAReadCounter extends ReadWalker {
         }
 
         logger.info("--------------------------");
+
+        for ( final Transcriptome10xAttribute transAttr : Transcriptome10xAttribute.values() ) {
+            for ( final MapStatus status : MapStatus.values() ) {
+                for ( final ReadPriorityStatus readPriorityStatus : ReadPriorityStatus.values() ) {
+                    logger.info("Reads containing " + transAttr.name() + " (" + transAttr.value + "): " +
+                            status.name() + "/" + readPriorityStatus.name() + "\t-\t" +
+                            statHolder.transcriptAnnotationMapStatusReadPriorityCountMap.get(transAttr).get(status).get(readPriorityStatus));
+                }
+            }
+        }
+        logger.info("--------------------------");
+
+
     }
 
     private void logStats(final String name, final ReadStatHolder statHolder) {
@@ -472,22 +485,31 @@ public class LRMAReadCounter extends ReadWalker {
         }
 
         void incrementCountMap( final MapStatus mapStatus, final ReadPriorityStatus readPriorityStatus ) {
-            final Integer count = mapStatusReadPriorityStatusCountMap.get(mapStatus).get(readPriorityStatus) + 1;
-            mapStatusReadPriorityStatusCountMap.get(mapStatus).put(readPriorityStatus, count);
+            incrementCountMap(mapStatus, readPriorityStatus, mapStatusReadPriorityStatusCountMap);
+        }
+
+        void incrementCountMap( final MapStatus mapStatus, final ReadPriorityStatus readPriorityStatus,
+                                final HashMap<MapStatus, HashMap<ReadPriorityStatus, Integer>> map) {
+            final Integer count = map.get(mapStatus).get(readPriorityStatus) + 1;
+            map.get(mapStatus).put(readPriorityStatus, count);
         }
 
         void accountForTranscriptome10xFlags(final GATKRead read ) {
             if ( read.getAttributeAsString(Transcriptome10xAttribute.ADAPTER.value) != null ) {
                 ++adapterAnnotatedReadCount;
+                incrementCountMap(getMapStatus(read), getReadPriorityStatus(read), transcriptAnnotationMapStatusReadPriorityCountMap.get(Transcriptome10xAttribute.ADAPTER));
             }
             if ( read.getAttributeAsString(Transcriptome10xAttribute.BARCODE.value) != null ) {
                 ++barcodeAnnotatedReadCount;
+                incrementCountMap(getMapStatus(read), getReadPriorityStatus(read), transcriptAnnotationMapStatusReadPriorityCountMap.get(Transcriptome10xAttribute.BARCODE));
             }
             if ( read.getAttributeAsString(Transcriptome10xAttribute.RAW_BARCODE.value) != null ) {
                 ++rawBarcodeAnnotatedReadCount;
+                incrementCountMap(getMapStatus(read), getReadPriorityStatus(read), transcriptAnnotationMapStatusReadPriorityCountMap.get(Transcriptome10xAttribute.RAW_BARCODE));
             }
             if ( read.getAttributeAsString(Transcriptome10xAttribute.UMI.value) != null ) {
                 ++umiAnnotatedReadCount;
+                incrementCountMap(getMapStatus(read), getReadPriorityStatus(read), transcriptAnnotationMapStatusReadPriorityCountMap.get(Transcriptome10xAttribute.UMI));
             }
         }
 
@@ -534,7 +556,6 @@ public class LRMAReadCounter extends ReadWalker {
             }
 
             incrementCountMap(mapStatus, readPriorityStatus);
-
             accountForTranscriptome10xFlags(read);
         }
     }
