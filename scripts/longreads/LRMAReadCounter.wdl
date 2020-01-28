@@ -42,6 +42,7 @@ workflow LRMAReadCounter {
 
     output {
         Array[File] reads_count_files = LRMAReadCounterTask.reads_count_file
+        Array[File] timing_files = LRMAReadCounterTask.timing_file
     }
 }
 
@@ -119,6 +120,7 @@ task LRMAReadCounterTask {
     # Outputs:
      output {
         File reads_count_file = output_csv_file
+        File timing_file = timing_output_file
      }
  }
 
