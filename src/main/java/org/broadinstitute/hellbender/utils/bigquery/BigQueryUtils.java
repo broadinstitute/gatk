@@ -338,6 +338,10 @@ public class BigQueryUtils {
         final TableResult result;
         try {
             result = queryJob.getQueryResults();
+
+            long bytesProcessed = ((JobStatistics.QueryStatistics) queryJob.getStatistics()).getTotalBytesProcessed();
+            logger.info(String.format("Actual %s MB scanned", bytesProcessed/1000000));
+
         }
         catch (final InterruptedException ex) {
             throw new GATKException("Interrupted while waiting for query job to complete", ex);
