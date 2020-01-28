@@ -156,7 +156,10 @@ def infer_multimodal_multitask(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    model = make_multimodal_multitask_model(**args.__dict__)
+    if args.variational:
+        model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        model = make_multimodal_multitask_model(**args.__dict__)
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
                                     cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
     with open(inference_tsv, mode='w') as inference_file:
@@ -211,7 +214,10 @@ def infer_hidden_layer_multimodal_multitask(args):
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
                                     cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
-    full_model = make_multimodal_multitask_model(**args.__dict__)
+    if args.variational:
+        full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
