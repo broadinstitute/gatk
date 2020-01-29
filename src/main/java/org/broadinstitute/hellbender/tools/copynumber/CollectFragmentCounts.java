@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.tribble.annotation.Strand;
+import htsjdk.tribble.gff.Gff3Feature;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -26,7 +27,6 @@ import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import org.broadinstitute.hellbender.utils.codecs.gtf.GtfFeature;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -108,7 +108,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     private File outputCountsFile = null;
 
     @Argument(doc="gff file", shortName = "G")
-    private FeatureInput<GtfFeature> gffFile;
+    private FeatureInput<Gff3Feature> gffFile;
 
     @Argument(doc="types to count", shortName = "T")
     private Set<String> type = new HashSet<>(Arrays.asList("CDS"));
@@ -119,7 +119,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     @Argument(doc="gene_id key")
     private String gene_id_key = "gene_id";
 
-    final private Map<GtfFeature, MutablePair<Double, Double>> featureCountsMap = new LinkedHashMap<>();
+    final private Map<Gff3Feature, MutablePair<Double, Double>> featureCountsMap = new LinkedHashMap<>();
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -150,8 +150,8 @@ public final class CollectFragmentCounts extends ReadWalker {
 
         final Set<String> geneIDSet = new HashSet<>();
         for (final SAMSequenceRecord contig : dict.getSequences()) {
-            final List<GtfFeature> contigFeatures = features.getFeatures(gffFile, new SimpleInterval(contig.getSequenceName(), 1, contig.getSequenceLength()));
-            for (final GtfFeature feature : contigFeatures) {
+            final List<Gff3Feature> contigFeatures = features.getFeatures(gffFile, new SimpleInterval(contig.getSequenceName(), 1, contig.getSequenceLength()));
+            for (final Gff3Feature feature : contigFeatures) {
                 if(!type.contains(feature.getType())) {
                     continue;
                 }
@@ -205,7 +205,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         if ((!read.isReverseStrand() || !inGoodPair(read))) {
             final SimpleInterval fragment_interval = getReadInterval(read);
 
-            List<GtfFeature> features = featureContext.getValues(gffFile);
+            List<Gff3Feature> features = featureContext.getValues(gffFile);
             //final Strand readStrand = read.isFirstOfPair() ? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) : (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
             Strand readStrand = read.isFirstOfPair() ? (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE) : (read.isReverseStrand() ? Strand.POSITIVE : Strand.NEGATIVE);
             //reverse stand for some reason...
@@ -234,7 +234,7 @@ public final class CollectFragmentCounts extends ReadWalker {
 
             LinkedList<SimpleInterval> codingIntervals = new LinkedList<>();
             int overlappingBases = 0;
-            for (final GtfFeature feature : features) {
+            for (final Gff3Feature feature : features) {
                 if(!type.contains(feature.getType())) {
                     continue;
                 }
@@ -256,7 +256,7 @@ public final class CollectFragmentCounts extends ReadWalker {
             final int utrBases = fragment_interval.size() - codingBases;
             overlappingBases += utrBases;
 
-            for (final GtfFeature feature : features) {
+            for (final Gff3Feature feature : features) {
                 if(!type.contains(feature.getType())) {
                     continue;
                 }
@@ -289,7 +289,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 i++;
             }
             writer.writeMetadata("annotation_file", gffFile.toString());
-            for (final Map.Entry<GtfFeature, MutablePair<Double, Double>> entry : featureCountsMap.entrySet()) {
+            for (final Map.Entry<Gff3Feature, MutablePair<Double, Double>> entry : featureCountsMap.entrySet()) {
                 //writer.writeRecord(new FragmentCount(entry.getKey(),entry.getValue().left, true));
                 writer.writeRecord(new FragmentCount(entry.getKey(),(int) Math.round(entry.getValue().left), true));
                 //writer.writeRecord(new FragmentCount(entry.getKey(),entry.getValue().right, false));
@@ -322,18 +322,18 @@ public final class CollectFragmentCounts extends ReadWalker {
     }
 
     public class FragmentCount {
-        public final GtfFeature gtfFeature;
+        public final Gff3Feature gtfFeature;
         //public final double count;
         public final int count;
         public final boolean sense;
 
-//        FragmentCount(final GtfFeature gtfFeature, final double count, final boolean sense) {
+//        FragmentCount(final Gff3Feature gtfFeature, final double count, final boolean sense) {
 //            this.gtfFeature = gtfFeature;
 //            this.count = count;
 //            this.sense = sense;
 //        }
 
-        FragmentCount(final GtfFeature gtfFeature, final int count, final boolean sense) {
+        FragmentCount(final Gff3Feature gtfFeature, final int count, final boolean sense) {
             this.gtfFeature = gtfFeature;
             this.count = count;
             this.sense = sense;
