@@ -147,6 +147,13 @@ public final class BaseUtils {
     }
 
     /**
+     * Returns true iff the base represented by the byte is a nucleotide base (ACGT).
+     */
+    public static boolean isNucleotide( final byte base ) {
+        return base != '*' && simpleBaseToBaseIndex(base) != -1;
+    }
+
+    /**
      * Returns true iff all bases are 'regular' {@link #isRegularBase}.
      */
     public static boolean isAllRegularBases( final byte[] bases ) {

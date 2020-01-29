@@ -359,7 +359,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                     .collect(Collectors.toMap(VariantContext::getStart, VariantContext::getAlternateAlleles));
             for (final VariantContext vc : new FeatureDataSource<VariantContext>(forceCalls)) {
                 final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
-                vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
+                vc.getAlternateAlleles().stream().filter(a-> a.length() > 0 && BaseUtils.isNucleotide(a.getBases()[0])).forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
             }
         }
     }

@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -512,7 +513,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .collect(Collectors.toMap(vc -> vc.getStart(), vc -> vc.getAlternateAlleles()));
         for (final VariantContext vc : new FeatureDataSource<VariantContext>(forceCallingVcf)) {
             final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
-            vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
+            vc.getAlternateAlleles().stream().filter(a-> a.length() > 0 && BaseUtils.isNucleotide(a.getBases()[0])).forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
         }
     }
 
