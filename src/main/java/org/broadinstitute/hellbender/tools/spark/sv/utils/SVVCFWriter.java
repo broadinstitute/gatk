@@ -41,6 +41,11 @@ public class SVVCFWriter {
                                 final Set<VCFHeaderLine> defaultToolVCFHeaderLines,
                                 final Logger logger) {
 
+        if (localVariants.isEmpty()) {
+            if (logger != null) logger.warn("Input list of variants to output is empty");
+            return;
+        }
+
         final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(localVariants, referenceSequenceDictionary);
 
         if (logger != null)
