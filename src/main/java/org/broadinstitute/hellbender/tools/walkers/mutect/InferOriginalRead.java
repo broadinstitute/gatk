@@ -26,6 +26,10 @@ public class InferOriginalRead extends ReadWalker {
     private static final int INIT_DUPLICATE_SIZE = 20;
     ArrayList<GATKRead> currentReads = new ArrayList<>(INIT_DUPLICATE_SIZE);
     String currentUMI = "";
+    public static final String FGBIO_MOLECULAR_IDENTIFIER_TAG = "MI";
+    // This is the value of the "MI" tag e.g. Z:20/A, where Z is __, 20 means indicates that the read belongs to
+    // the 20th molecule in the bam, and A/B indicates Top/Bottom strand
+    String currentMolecularIdentifier = "";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "")
     public File outputBam;
@@ -39,20 +43,22 @@ public class InferOriginalRead extends ReadWalker {
 
     @Override
     public void onTraversalStart(){
+        // check for UMI tag
         createOutputBamIndex = true;
         outputWriter = createSAMWriter(IOUtils.getPath(outputBam.getAbsolutePath()), false);
         engine = new InferOriginalReadEngine(getHeaderForReads(), referenceArguments, outputWriter);
-
+        currentMolecularIdentifier = getMolecularIDfromMITag(peekFirstRead());
     }
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        if (!currentUMI.isEmpty() && !currentUMI.equals(read.getAttributeAsString(UMIReadFilter.UMI_TAG))) {
+        // TODO: extract this logic and write a Duplicate Group Walker.
+        if (!currentMolecularIdentifier.equals(getMolecularIDfromMITag(read))) {
             // reference context is the reference context of the current read, not fragment, so it's note quite correct
             // to give it to letsDoIt
             engine.letsDoIt(currentReads, referenceContext, currentUMI);
             currentReads.clear();
-            currentUMI = read.getAttributeAsString(UMIReadFilter.UMI_TAG);
+            currentMolecularIdentifier = getMolecularIDfromMITag(read);
         }
 
         currentReads.add(read);
@@ -65,7 +71,11 @@ public class InferOriginalRead extends ReadWalker {
             engine.letsDoIt(currentReads, lastSeenReferenceContext, currentUMI);
         }
         outputWriter.close();
-
         return "SUCCESS";
+    }
+
+    private String getMolecularIDfromMITag(final GATKRead read) {
+        final String MITag = read.getAttributeAsString(FGBIO_MOLECULAR_IDENTIFIER_TAG);
+        return MITag.split("/")[0];
     }
 }

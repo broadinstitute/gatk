@@ -112,7 +112,7 @@ public final class PrintReads extends ReadWalker {
             read.setAttribute(ORIGINAL_UMI_TAG, originalUMI);
         }
 
-        final boolean oneTimeOnlyFilter = true;
+        final boolean oneTimeOnlyFilter = false;
         if (oneTimeOnlyFilter){
             final int readStart = 7_578_417;
             final int epsilon = 2;

@@ -17,8 +17,8 @@ export fgbio_jar="/dsde/working/tsato/consensus/fgbio.jar"
 # export bam="/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.17_7578712.bam"
 # export out="/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.17_7578712.grouped.bam"
 
-# export java_command="java -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=49015 $fgbio_jar"
-export java_command="java -jar $fgbio_jar"
+export java_command="java -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=49015 $fgbio_jar"
+# export java_command="java -jar $fgbio_jar"
 
 $java_command \
 CallDuplexConsensusReads \

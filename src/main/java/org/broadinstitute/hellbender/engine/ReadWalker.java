@@ -156,4 +156,12 @@ public abstract class ReadWalker extends WalkerBase {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
     }
+
+    public GATKRead peekFirstRead(){
+        if (reads.iterator().hasNext()){
+            return reads.iterator().next();
+        }
+        // Maybe the correct thing to do is for this to return an error when the user input is empty
+        return null;
+    }
 }

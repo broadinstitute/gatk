@@ -21,18 +21,19 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.IntStream;
 
 public class InferOriginalReadTest extends CommandLineProgramTest {
     private final String hg19 = "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta";
     private final String tp53TestDir = "/dsde/working/tsato/consensus/tp53/test/";
     private final String tp53_AGA_TGA = tp53TestDir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
+    private final String tp53_full_grouped = tp53TestDir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.umi_grouped.bam";
 
-    private final String mutectDir = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/";
-    private final String fgbioGroupByUMIScript = mutectDir + "fgbio_group_reads_by_umi.sh";
-    private final String fgbioConsensusScript = mutectDir + "fgbio_consensus.sh";
-    private final String sortScript = mutectDir + "sort.sh";
+    private final String mutectTestDir = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/";
+    private final String fgbioGroupByUMIScript = mutectTestDir + "fgbio_group_reads_by_umi.sh";
+    private final String fgbioConsensusScript = mutectTestDir + "fgbio_consensus.sh";
+    // /Users/tsato/workspace/gatk/src/main/java/org/broadinstitute/hellbender/tools/walkers/mutect/sort.sh
+    private final String sortScript = mutectTestDir + "sort.sh";
 
     private final String homeDir = "/dsde/working/tsato/consensus/bams/synthetic-test/";
     private final String testDir = "/dsde/working/tsato/consensus/tp53/test/";
@@ -46,6 +47,20 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
                 .addArgument("O", out.getAbsolutePath());
         runCommandLine(args, InferOriginalRead.class.getSimpleName());
         int d = 3;
+    }
+
+    // 1/22/20 --- Next goal is to thread this pipeline through
+    @Test
+    public void testTp53(){
+        final File out = new File(testDir + "tp53_full_consensus.bam");
+        final String testBam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.CTG-TTC.grouped.bam";
+        final boolean test = false;
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument("R", hg19)
+                .addArgument("I", test ? testBam : tp53_full_grouped)
+                .addArgument("O", out.getAbsolutePath());
+        runCommandLine(args, InferOriginalRead.class.getSimpleName());
+        // runProcess(new ProcessController(), new String[]{ sortScript, out.getAbsolutePath(), testDir, "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.CTG-TTC." });
     }
 
     @Test
@@ -103,10 +118,7 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
 
         // Don't want to have to do this but whatever--can't the
         runProcess(new ProcessController(), new String[]{ sortScript, groupedBam, testName });
-
         int d = 3;
-
-
     }
 
     @Test

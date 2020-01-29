@@ -47,6 +47,7 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
     public static final String CONSENSUS_READ_TAG = "CR";
     private static final int NUM_POSSIBLE_BASES = 4;
     private static final int DEFAULT_SCALING_FACTOR = 3;
+    private static final int MINIMUM_REQUIRED_SET_SIZE = 2;
 
     InferOriginalReadEngine(final SAMFileHeader header, final ReferenceInputArgumentCollection referenceArguments, final SAMFileGATKReadWriter outputWriter){
         mtac.likelihoodArgs.pairHMM = PairHMM.Implementation.LOGLESS_CACHING;
@@ -58,6 +59,10 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
     }
 
     public void letsDoIt(final ArrayList<GATKRead> duplicateSet, final ReferenceContext referenceContext, final String umi){
+        if (filterDuplicateSet(duplicateSet)){
+            return;
+        }
+
         // Eventually must think about this;
         final Set<String> samplesList = ReadUtils.getSamplesFromHeader(header);
         final SampleList indexedSampleList = new IndexedSampleList(new ArrayList<>(samplesList));
@@ -74,15 +79,20 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
         hcGenotypingEngine = new HaplotypeCallerGenotypingEngine(hcac, indexedSampleList, ! hcac.doNotRunPhysicalPhasing);
 
         // TreeMap, as opposed to a HashMap, ensures the iteration order guaranteed by the comparator of the key.
-        final TreeMap<Pair<Strand, ReadNum>, List<GATKRead>> duplicateSetByStrandReadNum = duplicateSet.stream()
+        final TreeMap<StrandAndReadNum, List<GATKRead>> duplicateSetByStrandReadNum = duplicateSet.stream()
                 .collect(Collectors.groupingBy(r -> getReadStrandReadNum(r), () -> new TreeMap<>(), Collectors.toList()));
-        final TreeMap<Pair<Strand, ReadNum>, GATKRead> consensusReads = new TreeMap<>();
+        final TreeMap<StrandAndReadNum, GATKRead> consensusReads = new TreeMap<>();
 
-        for ( Map.Entry<Pair<Strand, ReadNum>, List<GATKRead>> readsById : duplicateSetByStrandReadNum.entrySet()) {
-            final Strand strand = readsById.getKey().getLeft();
-            final ReadNum readNum = readsById.getKey().getRight();
+        for ( Map.Entry<StrandAndReadNum, List<GATKRead>> readsById : duplicateSetByStrandReadNum.entrySet()) {
+            final StrandAndReadNum strandAndReadNum = readsById.getKey();
             final List<GATKRead> reads = readsById.getValue();
 
+            if (filterReadSet(reads)){
+                // TODO: collect these events somewhere
+                continue;
+            }
+
+            // LocusIterator requires that the reads be sorted
             reads.sort(new ReadCoordinateComparator(header));
 
             final boolean indelDetected = reads.stream().anyMatch(r -> CigarUtils.containsIndels(r.getCigar()));
@@ -150,7 +160,7 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
                 final byte[] newDeletionQualities = new byte[readLength];
                 Arrays.fill(newInsertionQualities, ReadUtils.DEFAULT_INSERTION_DELETION_QUAL);
                 Arrays.fill(newDeletionQualities, ReadUtils.DEFAULT_INSERTION_DELETION_QUAL);
-                final Optional<GATKRead> consensusReadOption = findConsensusRead(readAndHaplotypes, indelEvents, reads.get(0), umi, strand, readNum);
+                final Optional<GATKRead> consensusReadOption = findConsensusRead(readAndHaplotypes, indelEvents, reads.get(0), umi);
 
                 if (!consensusReadOption.isPresent()){
                     // TODO: handle this case
@@ -185,21 +195,46 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
 
             } else {
                 // No indels in the duplicate set. This isn't quite right, but it'll do for now.
+                // TODO: how should I handle softclips?
                 consensusRead = reads.get(0).deepCopy();
+                consensusRead.setCigar(new Cigar(Arrays.asList(new CigarElement(readLength, CigarOperator.M))));
             }
 
             updateBaseQuals(consensusRead, reads, samplesList);
-            consensusReads.put(new ImmutablePair<>(strand, readNum), consensusRead);
+            consensusReads.put(strandAndReadNum, consensusRead);
         }
 
         consensusReads.values().forEach(r -> outputWriter.addRead(r));
     }
 
+    // TODO: add criteria here
+    private boolean filterDuplicateSet(final ArrayList<GATKRead> duplicateSet) {
+        return false;
+    }
+
+    private boolean filterReadSet(final List<GATKRead> reads){
+        // TODO: make sure I'm not doing if (condition) return true;
+        if (reads.size() < MINIMUM_REQUIRED_SET_SIZE){
+            return true;
+        }
+
+        // TODO: is this a good assumption?
+        // If all reads contain softclips, then skip
+        if (reads.stream().allMatch(r -> r.getCigar().containsOperator(CigarOperator.S))){
+            return true;
+        }
+
+        return false;
+    }
+
+    /** Having identified the best haplotypes, give quals to each position of the consensus read **/
     public void updateBaseQuals(final GATKRead consensusRead, final List<GATKRead> reads, final Set<String> samplesList){
-        // Having identified the best haplotypes, give quals to each position of the consensus read
+        final Cigar consensusReadCigar = consensusRead.getCigar(); // Mostly for debugging
         final int readLength = consensusRead.getLength();
         final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), DownsamplingMethod.NONE, false, samplesList,
                 header, true);
+
+        // Use SamLocusIterator?
         int currentConsensusPositionInReference = consensusRead.getStart(); // This is the position in the reference
 
         AlignmentContext alignmentContext = libs.next();
@@ -210,25 +245,54 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
 
         final byte[] newBaseQualities = new byte[readLength];
         final byte[] newBases = new byte[readLength];
-        // We will step through the consensus read using the alignment state machine
+        // Alignment state machine gives us the current Cigar element, which is useful but may not be necessary.
         final AlignmentStateMachine asm = new AlignmentStateMachine(consensusRead);
-        final CigarOperator currentCigarOperator = asm.stepForwardOnGenome();
+        asm.stepForwardOnGenome(); // Initialize
+
+        // Map of the index of the start of each cigar element
+        final Pair<List<Integer>, List<Integer>> insertionStartIndicesAndLengths = getInsertionStartIndicesAndLengths(consensusReadCigar);
+        final boolean consensusContainsInsertion = ! insertionStartIndicesAndLengths.getLeft().isEmpty();
 
         for (int i = 0; i < readLength; i++){
             Utils.validate(asm.getLocation().getStart() == alignmentContext.getStart(), "read and locus iterator out of sync");
+            if (consensusContainsInsertion && insertionStartIndicesAndLengths.getLeft().contains(i)){ // alignment context 78
+                // For now, do not update the qualities of inserted bases
+                final int insertionIndex = insertionStartIndicesAndLengths.getLeft().indexOf(i);
+                final int insertionLength = insertionStartIndicesAndLengths.getRight().get(insertionIndex);
+                for (int j = 0; j < insertionLength; j++){
+                    final byte CLEARLY_FALSE_DEFAULT_INSERTED_BASE_QUALITY = 20;
+                    final byte CLEARLY_FALSE_DEFAULT_INSERTED_BASE = BaseUtils.baseIndexToSimpleBase(0);
+                    newBases[i+j] = CLEARLY_FALSE_DEFAULT_INSERTED_BASE;
+                    newBaseQualities[i+j] = CLEARLY_FALSE_DEFAULT_INSERTED_BASE_QUALITY;
+                }
+                i += insertionLength - 1; // minus 1 because the for loop increments i too
+                continue;
+            }
+
             if (alignmentContext.getStart() != currentConsensusPositionInReference){
                 logger.warn("AlignmentContext and read position in reference are out of sync: " + alignmentContext.getStart() + ", " + currentConsensusPositionInReference);
             }
 
-            final CigarElement currentCigarElement = asm.getCurrentCigarElement();
-            if (currentCigarElement.getOperator() == CigarOperator.I){
-                // Don't want to step forward on genome.
-                int d = 3;
+            final CigarElement currentCigarElementInConsensus = asm.getCurrentCigarElement();
+            if (currentCigarElementInConsensus == null){
+                throw new UserException("Read = " + consensusRead.getName() + ", position = " + consensusRead.getStart() + ", cigar = " + consensusRead.getCigar() + ", asm position = " + asm.getLocation());
             }
-            // In the event of a D cigar, skip to the first base after the deletion.
-            if (currentCigarElement.getOperator() == CigarOperator.D){ // Something like this...
-                final int deletionLength = currentCigarElement.getLength();
-                libs.advanceToLocus(alignmentContext.getStart() + deletionLength - 1, true); // is true OK here?
+
+            if (currentCigarElementInConsensus.getOperator() == CigarOperator.I){
+                // TODO: I suspect this never happens i.e. this should throw an exception
+                // Don't want to step forward on genome.
+                throw new UserException("As I understand the code, this should not happen");
+            }
+            // In the event of a D cigar, skip to the first base after the deletion. We don't increment i here
+            // TODO: Write test
+            if (currentCigarElementInConsensus.getOperator() == CigarOperator.D){ // Something like this...
+                final int deletionLength = currentCigarElementInConsensus.getLength();
+                // When deletionLength = 1, we want advanceToLocus() to be a no-op, since the destination (argument) equals the position of the current
+                // AlignmentContext. But advanceToLocus() advances the iterator
+                // before checking if the destination equals the current position, and this thorws off the calculation.
+                if (deletionLength > 1){
+                    libs.advanceToLocus(alignmentContext.getStart() + deletionLength - 1, true); // is true OK here?
+                }
                 alignmentContext = libs.next();
                 currentConsensusPositionInReference = alignmentContext.getStart();
                 IntStream.range(0, deletionLength).forEach(z -> asm.stepForwardOnGenome());
@@ -244,8 +308,11 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
                 int curiousToSee = 3;
             }
             final List<PileupElement> pes = pileup.getPileupElements();
-            final long numDeletions = pes.stream().filter(pe -> pe.isDeletion()).count();
-            final long numInsertionStart = pes.stream().filter(pe -> pe.isBeforeInsertion()).count();
+            final long numDeletions = pes.stream().filter(PileupElement::isDeletion).count();
+            final long numInsertionStart = pes.stream().filter(PileupElement::isBeforeInsertion).count();
+            if (numInsertionStart > 0){
+                int d = 3;
+            }
 
             // We should skip computation if there's no collision e.g. base count is [0 0 15 0]
             final Pair<Integer, Double> result = getBaseQualityFromDependentEvidence(pileup.getBases(), pileup.getBaseQuals());
@@ -255,7 +322,7 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
             if (libs.hasNext()){
                 alignmentContext = libs.next();
             } else {
-                Utils.validate(i == readLength - 1, "Bug: LocusIterator ran out of bases");
+                Utils.validate(i == readLength - 1, "Bug: LocusIterator ran out of bases. i = " + i + ", Cigar = " + consensusRead.getCigar().toString());
             }
 
             int d = 3; // ac.getStart() == 7_578_710
@@ -273,6 +340,22 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
         consensusRead.setBaseQualities(newBaseQualities);
     }
 
+    /** Returns a list of (index, length) pairs of indel positions **/
+    public static Pair<List<Integer>, List<Integer>> getInsertionStartIndicesAndLengths(final Cigar cigar) {
+        final List<Integer> indices = new ArrayList<>();
+        final List<Integer> lengths = new ArrayList<>();
+        int currentIndex = 0;
+        for (CigarElement ce : cigar.getCigarElements()){
+            if (ce.getOperator() == CigarOperator.I){
+                indices.add(currentIndex);
+                lengths.add(ce.getLength());
+            }
+
+            currentIndex += ce.getLength();
+        }
+        return new ImmutablePair<>(indices, lengths);
+    }
+
     public static byte varianceToIndelQuality(final double variance){
         // This is completely adhoc for now, and that's OK.
         return (byte) Math.max(ReadUtils.DEFAULT_INSERTION_DELETION_QUAL - variance, 10);
@@ -284,9 +367,7 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
     private Optional<GATKRead> findConsensusRead(final List<ReadAndHaplotype> readAndHaplotypes,
                                                  final List<Pair<LocationAndAlleles, Double>> indelEvents,
                                                  final GATKRead sampleRead,
-                                                 final String umi,
-                                                 final Strand strand,
-                                                 final ReadNum readNum) {
+                                                 final String umi) {
         Utils.validateArg(!indelEvents.isEmpty(), "indelEvents may not be empty");
         for (final ReadAndHaplotype rah : readAndHaplotypes) {
             final Collection<VariantContext> vcs = rah.getHaplotype().getEventMap().getVariantContexts();
@@ -417,19 +498,22 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
         return -5.0;
     }
 
-    private static Pair<Strand, ReadNum> getReadStrandReadNum(final GATKRead read){
-        final Strand strand = ReadUtils.isF1R2(read) ? Strand.TOP : Strand.BOTTOM;
-        final ReadNum readNum = read.isFirstOfPair() ? ReadNum.READ_ONE : ReadNum.READ_TWO;
-        return new ImmutablePair<>(strand, readNum);
+    private static StrandAndReadNum getReadStrandReadNum(final GATKRead read){
+        if (ReadUtils.isF1R2(read)){ // TOP strand
+            return read.isFirstOfPair() ? StrandAndReadNum.TOP_READ_ONE : StrandAndReadNum.TOP_READ_TWO;
+        } else { // BOTTOM strand
+            return read.isFirstOfPair() ? StrandAndReadNum.BOTTOM_READ_ONE : StrandAndReadNum.BOTTOM_READ_TWO;
+        }
     }
 
-    enum Strand {
-        TOP, BOTTOM
+    // TOP R1       TOP R2
+    // ----->       <------
+    // ----->       <------
+    // BOTTOM R2    BOTTOM R1
+    enum StrandAndReadNum {
+        TOP_READ_ONE,
+        BOTTOM_READ_TWO,
+        TOP_READ_TWO,
+        BOTTOM_READ_ONE
     }
-
-    enum ReadNum {
-        READ_ONE, READ_TWO
-    }
-    
-    
 }

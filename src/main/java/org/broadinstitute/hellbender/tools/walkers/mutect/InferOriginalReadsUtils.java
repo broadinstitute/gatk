@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -35,39 +36,70 @@ public class InferOriginalReadsUtils {
                                                                                              final List<Haplotype> haplotypes,
                                                                                              final boolean includeSpanningEvents) {
         final Map<LocationAndAlleles, List<Haplotype>> results = new HashMap<>();
+        final List<Haplotype> refHaplotypes = new ArrayList<>(haplotypes);
+        Allele refAllele = Allele.REF_N; // TODO: what is reference depends on the event (see deletion with different lengths)
 
-        haplotypes.stream()
-                .map(h -> new ImmutablePair<>(h, h.getEventMap().getVariantContexts()))
-                .filter(pair -> Objects.nonNull(pair.right))
-                .forEach(pair -> {
-                    for (VariantContext vc : pair.right){
-                        if (!includeSpanningEvents && vc.getStart() != loc) {
-                            continue;
-                        }
+        for (final Haplotype haplotype : haplotypes){
+            final List<VariantContext> vcsAtThisLoc = haplotype.getEventMap().getVariantContexts().stream()
+                    .filter(vc -> vc.getStart() == loc).collect(Collectors.toList()); // how should we use include spanning events?!
+            if (vcsAtThisLoc.isEmpty()){ // Ref Haplotype
+                refHaplotypes.add(haplotype);
+                continue;
+            } else if (vcsAtThisLoc.size() == 1){ // Single variant context--as we expect
+                final VariantContext vc = vcsAtThisLoc.get(0);
+                final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(vc.getStart(), vc.getAlleles());
+                if (results.containsKey(locationAndAlleles)) {
+                    results.get(locationAndAlleles).add(haplotype);
+                } else {
+                    // New alternate allele (variant context) found. Remember the ref allele if we haven't already
+                    final List<Haplotype> haplotypeList = new ArrayList<>();
+                    haplotypeList.add(haplotype);
+                    results.put(locationAndAlleles, haplotypeList);
+                }
+            } else {
+                throw new UserException("more than one vc at this locus don't know what's going on: loc = " + loc);
+            }
+        }
 
-                        final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(vc.getStart(), vc.getAlleles());
-                        if (results.containsKey(locationAndAlleles)) {
-                            results.get(locationAndAlleles).add(pair.left);
-                        } else {
-                            final List<Haplotype> haplotypeList = new ArrayList<>();
-                            haplotypeList.add(pair.left);
-                            results.put(locationAndAlleles, haplotypeList);
-                        }
-                    }
-                });
-
+        results.put(new LocationAndAlleles(loc, Arrays.asList(refAllele)), refHaplotypes);
         return results;
     }
 
-    // TODO: write tests
+//        haplotypes.stream()
+//                .map(h -> new ImmutablePair<>(h, h.getEventMap().getVariantContexts()))
+//                .forEach(pair -> {
+//                    if (pair.right.isEmpty()){
+//                        // Ref Haplotype
+//                        refHaplotypes.add(pair.left);
+//                    } else {
+//                        for (VariantContext vc : pair.right){
+//                            if (!includeSpanningEvents && vc.getStart() != loc) {
+//                                continue;
+//                            }
+//
+//                            final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(vc.getStart(), vc.getAlleles());
+//                            if (results.containsKey(locationAndAlleles)) {
+//                                results.get(locationAndAlleles).add(pair.left);
+//                            } else {
+//                                final List<Haplotype> haplotypeList = new ArrayList<>();
+//                                haplotypeList.add(pair.left);
+//                                results.put(locationAndAlleles, haplotypeList);
+//                            }
+//                        }
+//                    }
+//                });
+
+
+
+    // TODO: write tests. Write Tests.
     public static double computeVarianceAroundMostCommon(final Map<LocationAndAlleles, List<Haplotype>> haplotypesByAllele,
                                                          final LocationAndAlleles mostCommonAllele) {
-        final int alleleLengthOfMostCommon = getAlleleLength(mostCommonAllele.getAlleles().get(0), mostCommonAllele.getAlleles().get(1));
+        final int alleleLengthOfMostCommon = getAlleleLength(mostCommonAllele);
 
         double variance = 0.0;
         for (Map.Entry<LocationAndAlleles, List<Haplotype>> pair : haplotypesByAllele.entrySet()){
-            final LocationAndAlleles allele = pair.getKey();
-            final int alleleLength = getAlleleLength(allele.getAlleles().get(0), allele.getAlleles().get(1));
+            final LocationAndAlleles locationAndAlleles = pair.getKey();
+            final int alleleLength = getAlleleLength(locationAndAlleles);
             final int count = pair.getValue().size();
             variance += count * Math.pow(alleleLength - alleleLengthOfMostCommon, 2);
         }
@@ -76,7 +108,13 @@ public class InferOriginalReadsUtils {
     }
 
     /** *signed* length of an alt allele (deletion is negative) **/
-    private static int getAlleleLength(final Allele ref, final Allele alt){
+    private static int getAlleleLength(final LocationAndAlleles locationAndAlleles){
+        if (locationAndAlleles.getAlleles().size() == 1){
+            return 0;
+        }
+
+        final Allele ref = locationAndAlleles.getAlleles().get(0);
+        final Allele alt = locationAndAlleles.getAlleles().get(1);
         return ref.length() - alt.length();
     }
 
@@ -85,9 +123,7 @@ public class InferOriginalReadsUtils {
                                                      final IndexedSampleList indexedSampleList,
                                                      final AssemblyResultSet assemblyResult,
                                                      final SAMFileHeader header,
-                                                     final String umi,
-                                                     final InferOriginalReadEngine.ReadNum readNum,
-                                                     final InferOriginalReadEngine.Strand strand){
+                                                     final String umi){
         final Map<String, List<GATKRead>> readsBySample = AssemblyBasedCallerUtils.splitReadsBySample(indexedSampleList, header, reads);
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, indexedSampleList, readsBySample);
 
@@ -113,7 +149,7 @@ public class InferOriginalReadsUtils {
         final byte indelQuality = posteriorToGapOpeningQualityMap(maximumPosterior);
 
         final Haplotype consensusBases = haplotype2ProbabilityMap.getLeft().get(indexOfMaxPosteriorHaplotype);
-        final GATKRead consensusRead = haplotype2Read(consensusBases, reads.get(0), umi, strand, readNum, header);
+        final GATKRead consensusRead = haplotype2Read(consensusBases, reads.get(0), umi, header);
         final EventMap eventMap = new EventMap(consensusBases, assemblyResult.getFullReferenceWithPadding(), assemblyResult.getPaddedReferenceLoc(), "c", 1);
         final List<VariantContext> indelEvents = eventMap.getVariantContexts().stream().filter(vc -> vc.isIndel()).collect(Collectors.toList());
         // Safe guard against getting weird haplotypes/list assumptions here
@@ -129,15 +165,13 @@ public class InferOriginalReadsUtils {
     public static GATKRead haplotype2Read(final Haplotype haplotype,
                                           final GATKRead sampleRead,
                                           final String umi,
-                                          final InferOriginalReadEngine.Strand strand,
-                                          final InferOriginalReadEngine.ReadNum readNumber,
                                           final SAMFileHeader header) {
         // TOOD: perhaps benefitial to create a class for haplotype/GATKRead pair
         Utils.nonNull(haplotype, "haplotype cannot be null");
 
         /** Placeholders for read attributes that I will eventually have to assign properly **/
         final int MQ_PLACEHOLDER = 60;
-        final String READ_NAME_PLACEHOLDER = umi + "_" + strand + "_" + readNumber;
+        final String READ_NAME_PLACEHOLDER = umi; // TODO: warning--read not unique
         final SimpleInterval MATE_LOCATION_PLACEHOLDER = new SimpleInterval("17", 1, 151);
         final String READ_GROUP_PLACEHOLDER = "read_group1";
 

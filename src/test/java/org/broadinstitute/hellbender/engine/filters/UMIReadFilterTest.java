@@ -28,6 +28,9 @@ public class UMIReadFilterTest extends CommandLineProgramIntegrationTest {
 
     final String tp53dir = "/dsde/working/tsato/consensus/tp53/";
 
+    final String fgbioGroupByUMIScript = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/fgbio_group_reads_by_umi.sh";
+
+
     @Test
     public void test(){
         final String bam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.bam";
@@ -46,6 +49,26 @@ public class UMIReadFilterTest extends CommandLineProgramIntegrationTest {
         }
 
         int d = 3;
+    }
+
+
+    @Test
+    public void getAProblematicSetForTesting(){
+        final String bam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.bam";
+        final List<String> umis = Arrays.asList("CTG-TTC");
+        for (String umi : umis){
+            final File out = new File("/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53."+ umi + ".bam");
+            final ArgumentsBuilder args = new ArgumentsBuilder()
+                    .addArgument("R", hg19)
+                    .addArgument("I", bam)
+                    .addArgument("read-filter", "UMIReadFilter")
+                    .addArgument("umi", umi)
+                    .addArgument("O", out.getAbsolutePath());
+            runCommandLine(args, PrintReads.class.getSimpleName());
+
+            final String groupedOut = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53."+ umi + ".grouped.bam";
+            runProcess(new ProcessController(), new String[]{ fgbioGroupByUMIScript, out.getAbsolutePath(), groupedOut, tp53dir });
+        }
     }
 
     @Test
@@ -187,7 +210,6 @@ public class UMIReadFilterTest extends CommandLineProgramIntegrationTest {
     @Test
     public void groupByUMI(){
         // Run fgbio GroupByUMI on this subset bam
-        final String fgbioGroupByUMIScript = "/Users/tsato/workspace/gatk/src/test/java/org/broadinstitute/hellbender/tools/walkers/mutect/fgbio_group_reads_by_umi.sh";
         final String bam = tp53dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.bam";
         final String out = tp53dir + "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.AGG-TGA.grouped.bam";
         runProcess(new ProcessController(), new String[]{ fgbioGroupByUMIScript, bam, out, tp53dir });
