@@ -18,8 +18,8 @@ public class PSBwaUtilTest extends GATKBaseTest {
     public void testAddReferenceSequencesToHeader() {
         final SAMFileHeader header = new SAMFileHeader();
         final SerializableFunction<GATKRead, SimpleInterval> windowFunction = ReferenceWindowFunctions.IDENTITY_FUNCTION;
-        final String referencePath = hg19MiniReference;
-        PSBwaUtils.addReferenceSequencesToHeader(header, new GATKPathSpecifier(referencePath), windowFunction);
+        final GATKPathSpecifier referencePath = new GATKPathSpecifier(hg19MiniReference);
+        PSBwaUtils.addReferenceSequencesToHeader(header, referencePath, windowFunction);
         final ReferenceMultiSparkSource ref = new ReferenceMultiSparkSource(referencePath, windowFunction);
         Assert.assertEquals(ref.getReferenceSequenceDictionary(null).size(), header.getSequenceDictionary().size());
         for (final SAMSequenceRecord rec : ref.getReferenceSequenceDictionary(null).getSequences()) {

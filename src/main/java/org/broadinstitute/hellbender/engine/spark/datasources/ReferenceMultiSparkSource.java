@@ -36,32 +36,22 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
      */
     public ReferenceMultiSparkSource( final GATKPathSpecifier referencePathSpecifier,
                                       final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
-        this(referencePathSpecifier.getURI().toString(), referenceWindowFunction);
-    }
-
-    /**
-     * @param referenceURL the name of the reference (if using the Google Genomics API), or a path to the reference file
-     * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
-     */
-    //TODO: change this signature to GATKPathSpecifier
-    public ReferenceMultiSparkSource( final String referenceURL,
-                                      final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);
-        if ( ReferenceTwoBitSparkSource.isTwoBit(referenceURL)) {
+        if ( ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier.toString())) {
             try {
-                referenceSource = new ReferenceTwoBitSparkSource(referenceURL);
+                referenceSource = new ReferenceTwoBitSparkSource(referencePathSpecifier.toString());
             } catch (IOException e) {
                 throw new UserException("Failed to create a ReferenceTwoBitSource object" + e.getMessage());
             }
-        } else if (isFasta(referenceURL)) {
-            if (BucketUtils.isHadoopUrl(referenceURL)) {
-                referenceSource = new ReferenceHadoopSparkSource(referenceURL);
+        } else if (isFasta(referencePathSpecifier.toString())) {
+            if (BucketUtils.isHadoopUrl(referencePathSpecifier.toString())) {
+                referenceSource = new ReferenceHadoopSparkSource(referencePathSpecifier.toString());
             } else {
-                referenceSource = new ReferenceFileSparkSource(referenceURL);
+                referenceSource = new ReferenceFileSparkSource(referencePathSpecifier.toString());
             }
         } else {
             throw new UserException.CouldNotReadInputFile("Couldn't read the given reference, reference must be a .fasta or .2bit file.\n" +
-                                                                  " Reference provided was: " + referenceURL);
+                    " Reference provided was: " + referencePathSpecifier);
         }
         this.referenceWindowFunction = referenceWindowFunction;
     }
