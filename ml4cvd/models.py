@@ -421,7 +421,11 @@ def make_variational_multimodal_multitask_model(
         m = load_model(kwargs['model_file'], custom_objects=custom_dict)
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
-        return m
+        encoder = [i for i in m.layers if i.name == 'encoder']
+        decoder = [i for i in m.layers if i.name == 'decoder']
+        if not encoder or not decoder:
+            logging.warning('Encoder or decoder not found.')
+        return m, encoder[0], decoder[0]
 
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     input_multimodal = []
