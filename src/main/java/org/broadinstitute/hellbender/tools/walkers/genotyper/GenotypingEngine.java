@@ -159,6 +159,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // start constructing the resulting VC
         final List<Allele> outputAlleles = outputAlternativeAlleles.outputAlleles(vc.getReference());
+        outputAlleles.forEach(a -> recordDeletion(vc.getReference().length() - a.length(), vc));
+        
         final VariantContextBuilder builder = new VariantContextBuilder(callSourceString(), vc.getContig(), vc.getStart(), vc.getEnd(), outputAlleles);
 
         builder.log10PError(log10Confidence);
@@ -256,7 +258,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 if (toOutput) {
                     outputAlleles.add(allele);
                     mleCounts.add(afCalculationResult.getAlleleCountAtMLE(allele));
-                    recordDeletion(referenceAlleleSize - allele.length(), vc);
                 }
             }
         }
