@@ -292,12 +292,13 @@ public final class GenomeLocParser {
      * Performs interval-style validation:
      *
      * contig is valid; start and stop less than the end; start <= stop, and start/stop are on the contig
-     * @param str the string to parse
+     * @param rawStr the string to parse
      *
      * @return a GenomeLoc representing the String
      *
      */
-    public GenomeLoc parseGenomeLoc(final String str) {
+    public GenomeLoc parseGenomeLoc(final String rawStr) {
+        final String str = rawStr.trim();
         try {
             if ( isUnmappedGenomeLocString(str) ) {
                 return GenomeLoc.UNMAPPED;
