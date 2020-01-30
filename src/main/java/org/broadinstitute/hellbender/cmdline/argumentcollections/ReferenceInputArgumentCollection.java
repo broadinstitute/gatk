@@ -6,10 +6,6 @@ import java.io.Serializable;
 import java.nio.file.Path;
 
 //TODO: get rid of getReferenceFileName
-//TODO: addReferenceFilesForSpark -> take/return GATKPathSpecifier
-//TODO: HtsjdkReadsRddStorage.referenceSource
-//TODO: ReferenceTwoBitSparkSource.isTwoBit
-//TODO: ReferenceMultiSparkSource
 
 /**
  * An abstract ArgumentCollection for specifying a reference sequence file

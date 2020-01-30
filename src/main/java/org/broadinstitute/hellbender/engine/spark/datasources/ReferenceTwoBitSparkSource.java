@@ -8,13 +8,13 @@ import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.formats.avro.Strand;
 import org.bdgenomics.utils.io.ByteAccess;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
-import scala.collection.immutable.IndexedSeq;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -33,14 +33,14 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
 
     public static final String TWO_BIT_EXTENSION = ".2bit";
 
-    private final String referenceURL;
+    private final GATKPathSpecifier referenceURL;
     private final TwoBitFile twoBitFile;
     private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
-    public ReferenceTwoBitSparkSource( String referenceURL) throws IOException {
+    public ReferenceTwoBitSparkSource(final GATKPathSpecifier referenceURL) throws IOException {
         this.referenceURL = referenceURL;
         Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
-        byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
+        byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL.toString()));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
         this.twoBitSeqEntries = new LinkedHashMap<>();
@@ -72,8 +72,8 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         return new SAMSequenceDictionary(records);
     }
 
-    public static boolean isTwoBit(String file) {
-        return file.endsWith(TWO_BIT_EXTENSION);
+    public static boolean isTwoBit(final GATKPathSpecifier refPath) {
+        return refPath.getURI().toString().endsWith(TWO_BIT_EXTENSION);
     }
 
     private static ReferenceRegion simpleIntervalToReferenceRegion(SimpleInterval interval) {

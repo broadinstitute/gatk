@@ -37,9 +37,9 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
     public ReferenceMultiSparkSource( final GATKPathSpecifier referencePathSpecifier,
                                       final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);
-        if ( ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier.toString())) {
+        if ( ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier)) {
             try {
-                referenceSource = new ReferenceTwoBitSparkSource(referencePathSpecifier.toString());
+                referenceSource = new ReferenceTwoBitSparkSource(referencePathSpecifier);
             } catch (IOException e) {
                 throw new UserException("Failed to create a ReferenceTwoBitSource object" + e.getMessage());
             }
@@ -47,7 +47,7 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
             if (BucketUtils.isHadoopUrl(referencePathSpecifier.toString())) {
                 referenceSource = new ReferenceHadoopSparkSource(referencePathSpecifier.toString());
             } else {
-                referenceSource = new ReferenceFileSparkSource(referencePathSpecifier.toString());
+                referenceSource = new ReferenceFileSparkSource(referencePathSpecifier);
             }
         } else {
             throw new UserException.CouldNotReadInputFile("Couldn't read the given reference, reference must be a .fasta or .2bit file.\n" +
