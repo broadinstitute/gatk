@@ -258,7 +258,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Bwa pathogen alignment
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
-        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath.getURI().toString(), getReferenceWindowFunction());
+        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
         final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
         JavaRDD<GATKRead> alignedPairedReads = aligner.doBwaAlignment(pairedReads, true, headerBroadcast);
         JavaRDD<GATKRead> alignedUnpairedReads = aligner.doBwaAlignment(unpairedReads, false, headerBroadcast);

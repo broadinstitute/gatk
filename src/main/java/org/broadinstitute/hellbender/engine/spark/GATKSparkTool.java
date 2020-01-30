@@ -595,7 +595,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private void initializeReference() {
         final GATKPathSpecifier referencePath = referenceArguments.getReferenceInputPath();
         if ( referencePath != null ) {
-            referenceSource = new ReferenceMultiSparkSource(referencePath.getURI().toString(), getReferenceWindowFunction());
+            referenceSource = new ReferenceMultiSparkSource(referencePath, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
             if (referenceDictionary == null) {
                 throw new UserException.MissingReferenceDictFile(referencePath.getURI().toString());
