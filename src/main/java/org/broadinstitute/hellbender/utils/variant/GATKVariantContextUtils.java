@@ -1447,13 +1447,16 @@ public final class GATKVariantContextUtils {
 
                 // split allele specific filters
                 int index = vc.getAlleleIndex(alt);
-                String asfiltersStr = vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD);
+                // the reason we are getting as list and then joining on , is because the default getAttributeAsString for a list will add spaces between items which we don't
+                // want to have to trim out later in the code
+                String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD));
                 List<String> filtersList = AnnotationUtils.decodeAnyASListWithPrintDelim(asfiltersStr);
                 if (filtersList.size() > index) {
                     String filters = filtersList.get(index);
                     if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
-                        AnnotationUtils.decodeAnyASList(filters).stream().map(String::trim).forEach(filter -> builder.filter(filter));
+                        AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
                     }
+                    builder.attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, AnnotationUtils.encodeAnyASList(new ArrayList<>(Arrays.asList(filtersList.get(0), filters))));
                 }
 
                 // subset INFO field annotations if available if genotype is called
