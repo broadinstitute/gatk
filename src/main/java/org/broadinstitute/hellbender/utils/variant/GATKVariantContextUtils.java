@@ -17,6 +17,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -1441,6 +1442,17 @@ public final class GATKVariantContextUtils {
                     if (!(key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(VCFConstants.ALLELE_FREQUENCY_KEY) || key.equals(VCFConstants.ALLELE_NUMBER_KEY)) ||
                             genotypeAssignmentMethodUsed == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
                         builder.rmAttribute(key);
+                    }
+                }
+
+                // split allele specific filters
+                int index = vc.getAlleleIndex(alt);
+                String asfiltersStr = vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD);
+                List<String> filtersList = AnnotationUtils.decodeAnyASListWithPrintDelim(asfiltersStr);
+                if (filtersList.size() > index) {
+                    String filters = filtersList.get(index);
+                    if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
+                        AnnotationUtils.decodeAnyASList(filters).stream().map(String::trim).forEach(filter -> builder.filter(filter));
                     }
                 }
 

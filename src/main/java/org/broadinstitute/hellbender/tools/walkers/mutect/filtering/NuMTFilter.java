@@ -16,7 +16,7 @@ public class NuMTFilter extends HardAlleleFilter {
     private final int maxAltDepthCutoff;
 
     public NuMTFilter(final double medianAutosomalCoverage, final double maxNuMTCopies){
-        if (maxNuMTCopies > 0) {
+        if (maxNuMTCopies > 0 && medianAutosomalCoverage > 0) {
             final PoissonDistribution autosomalCoverage = new PoissonDistribution(medianAutosomalCoverage * maxNuMTCopies / 2.0);
             maxAltDepthCutoff = autosomalCoverage.inverseCumulativeProbability(1 - LOWER_BOUND_PROB);
         } else {

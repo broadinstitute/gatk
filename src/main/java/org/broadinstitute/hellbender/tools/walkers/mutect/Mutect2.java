@@ -141,7 +141,7 @@ import java.util.List;
  *  gatk Mutect2 \
  *  -R reference.fa \
  *  -L chrM \
- *  --mitochondria \
+ *  --mitochondria-mode \
  *  -I mitochondria.bam \
  *  -O mitochondria.vcf.gz
  * </pre>
