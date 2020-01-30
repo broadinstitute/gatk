@@ -16,7 +16,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import htsjdk.variant.vcf.VCFFileReader;
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -1121,11 +1120,17 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testIntervalFileIntervalsAreTrimmed() throws Exception {
+    public void testIntervalFileIntervalsAreTrimmed() throws IOException {
         final GenomeLoc expectedGenomeLoc = hg19GenomeLocParser.createGenomeLoc("1", 1, 10);
-        final File gatkIntervalFile = createTempFile("testIntervalFileIntervalsAreTrimmed", ".intervals.list",
-                // add some spaces around the start/end to test that it gets trimmed down to something valid
-                String.format(" %s:%d-%d ", expectedGenomeLoc.getContig(), expectedGenomeLoc.getStart(), expectedGenomeLoc.getEnd()));
+        final File gatkIntervalFile = IOUtils.writeTempFile(
+                Arrays.asList(
+                    String.format(
+                       // add some spaces around the start/end to test that it gets trimmed down to something valid
+                        " %s:%d-%d ",
+                        expectedGenomeLoc.getContig(),
+                        expectedGenomeLoc.getStart(),
+                        expectedGenomeLoc.getEnd())),
+                "testIntervalFileIntervalsAreTrimmed", ".intervals.list");
 
         final List<String> intervalArgs = new ArrayList<>(1);
         intervalArgs.add(gatkIntervalFile.getAbsolutePath());
@@ -1140,8 +1145,9 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     public void testInvalidGATKFileIntervalHandling(GenomeLocParser genomeLocParser,
                                                     String contig, int intervalStart, int intervalEnd ) throws Exception {
 
-        File gatkIntervalFile = createTempFile("testInvalidGATKFileIntervalHandling", ".intervals",
-                String.format("%s:%d-%d", contig, intervalStart, intervalEnd));
+        File gatkIntervalFile = IOUtils.writeTempFile(
+                Arrays.asList(String.format("%s:%d-%d", contig, intervalStart, intervalEnd)),
+                "testInvalidGATKFileIntervalHandling", ".intervals");
 
         List<String> intervalArgs = new ArrayList<>(1);
         intervalArgs.add(gatkIntervalFile.getAbsolutePath());
@@ -1234,12 +1240,6 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 new Object[] {genomeLocParser, "1", 500, 499},
                 new Object[] {genomeLocParser, "1", 1000, 999}
         };
-    }
-
-    private File createTempFile( String tempFilePrefix, String tempFileExtension, String... lines ) throws Exception {
-        File tempFile = GATKBaseTest.createTempFile(tempFilePrefix, tempFileExtension);
-        FileUtils.writeLines(tempFile, Arrays.asList(lines));
-        return tempFile;
     }
 
     @DataProvider(name = "sortAndMergeIntervals")
