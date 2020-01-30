@@ -26,7 +26,7 @@ public class ReferenceMultiSparkSourceUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void testBadReferenceFile() {
         new ReferenceMultiSparkSource(
-                GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
+                new GATKPathSpecifier(GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath()),
                 ReferenceWindowFunctions.IDENTITY_FUNCTION);
     }
 

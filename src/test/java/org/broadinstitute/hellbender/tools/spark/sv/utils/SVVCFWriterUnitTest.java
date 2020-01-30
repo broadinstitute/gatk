@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFContigHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFIDHeaderLine;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
@@ -71,7 +72,7 @@ public class SVVCFWriterUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testSetHeader() {
         SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSparkSource(
-                b37_2bit_reference_20_21 , ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+                new GATKPathSpecifier(b37_2bit_reference_20_21), ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
         final VCFHeader vcfHeader = SVVCFWriter.getVcfHeader(referenceSequenceDictionary);
         Assert.assertNotNull(vcfHeader.getSequenceDictionary());
 
