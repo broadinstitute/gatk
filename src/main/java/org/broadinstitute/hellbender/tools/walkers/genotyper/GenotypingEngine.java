@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.util.IntervalCoordinateComparator;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
@@ -38,7 +40,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected final SampleList samples;
 
-    private final List<SimpleInterval> upstreamDeletionsLoc = new LinkedList<>();
+    // the top of the queue is the upstream deletion that ends first
+    // note that we can get away with ordering just by the end and not the contig as long as we preserve the invariant
+    // that everything in this queue belongs to the same contig
+    private final PriorityQueue<Locatable> upstreamDeletionsLoc = new PriorityQueue<>(Comparator.comparingInt(Locatable::getEnd));
 
     private final boolean doAlleleSpecificCalcs;
 
@@ -264,13 +269,17 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     *  Record deletion to keep
-     *  Add deletions to a list.
+     *  Record emitted deletion in order to remove downstream spanning deletion alleles that are not covered by any emitted deletion.
+     *  In addition to recording a new deletion, this method culls previously-recorded deletions that end before the current variant
+     *  context.  This assumes that variants are traversed in order.
      *
      * @param deletionSize  size of deletion in bases
      * @param vc            variant context
      */
     void recordDeletion(final int deletionSize, final VariantContext vc) {
+        while (!upstreamDeletionsLoc.isEmpty() && (!upstreamDeletionsLoc.peek().contigsMatch(vc) || upstreamDeletionsLoc.peek().getEnd() < vc.getStart())) {
+            upstreamDeletionsLoc.poll();
+        }
 
         // In a deletion
         if (deletionSize > 0) {
@@ -286,20 +295,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return  true if the location is covered by an upstream deletion, false otherwise
      */
     boolean isVcCoveredByDeletion(final VariantContext vc) {
-        for (Iterator<SimpleInterval> it = upstreamDeletionsLoc.iterator(); it.hasNext(); ) {
-            final SimpleInterval loc = it.next();
-            if (!loc.getContig().equals(vc.getContig())) { // deletion is not on contig.
-                it.remove();
-            } else if (loc.getEnd() < vc.getStart()) { // deletion is before the start.
-                it.remove();
-            } else if (loc.getStart() == vc.getStart()) {
-                // ignore this deletion, the symbolic one does not make reference to it.
-            } else { // deletion covers.
-                return true;
-            }
-        }
+        // note: the code below seems like it's duplicating Locatable.overlaps, but here if the upstream deletion
+        // has the same start as the vc we don't want to count it
+        return !upstreamDeletionsLoc.isEmpty() && upstreamDeletionsLoc.stream()
+                .anyMatch(loc -> loc.getContig().equals(vc.getContig()) && loc.getStart() < vc.getStart() && vc.getStart() <= loc.getEnd());
 
-        return false;
     }
 
     /**
