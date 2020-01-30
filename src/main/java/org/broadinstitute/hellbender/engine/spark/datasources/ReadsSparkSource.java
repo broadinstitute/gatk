@@ -192,7 +192,7 @@ public final class ReadsSparkSource implements Serializable {
         if (IOUtils.isCramFileName(filePath)) {
             if (referencePath == null) {
                 throw new UserException.MissingReference("A reference is required for CRAM input");
-            } else if (ReferenceTwoBitSparkSource.isTwoBit(referencePath.toPath().getFileName().toString())) { // htsjdk can't handle 2bit reference files
+            } else if (ReferenceTwoBitSparkSource.isTwoBit(referencePath)) { // htsjdk can't handle 2bit reference files
                 throw new UserException("A 2bit file cannot be used as a CRAM file reference");
             } else {
                 if (!SparkUtils.pathExists(ctx, referencePath.getURI())) {

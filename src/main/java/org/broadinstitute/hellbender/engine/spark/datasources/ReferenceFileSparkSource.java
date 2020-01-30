@@ -7,7 +7,8 @@ import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -31,10 +32,10 @@ public class ReferenceFileSparkSource implements ReferenceSparkSource, Serializa
     private transient Path referencePath;
 
     /**
-     * @param referenceUri the path to the reference file
+     * @param referenceUri the path for the reference file
      */
-    public ReferenceFileSparkSource( final String referenceUri) {
-        this(IOUtils.getPath(referenceUri));
+    public ReferenceFileSparkSource( final GATKPathSpecifier referenceUri) {
+        this(referenceUri.toPath());
     }
 
     /**

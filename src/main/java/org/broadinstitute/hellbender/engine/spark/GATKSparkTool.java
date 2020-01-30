@@ -675,7 +675,6 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @param referencePath the reference file, can be a local file or a remote path
      * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
      */
-    //TODO: Update the signature for this to take and return a GATKPathSpecifier
     protected static String addReferenceFilesForSpark(JavaSparkContext ctx, Path referencePath) {
         if (referencePath == null) {
             return null;
