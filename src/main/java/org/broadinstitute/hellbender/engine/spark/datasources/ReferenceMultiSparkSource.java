@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.FileExtensions;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
@@ -28,6 +29,15 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
 
     @VisibleForTesting
     protected ReferenceMultiSparkSource() {};
+
+    /**
+     * @param referencePathSpecifier the name of the reference (if using the Google Genomics API), or a path to the reference file
+     * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
+     */
+    public ReferenceMultiSparkSource( final GATKPathSpecifier referencePathSpecifier,
+                                      final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
+        this(referencePathSpecifier.getURI().toString(), referenceWindowFunction);
+    }
 
     /**
      * @param referenceURL the name of the reference (if using the Google Genomics API), or a path to the reference file

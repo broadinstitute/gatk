@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import org.apache.spark.SparkConf;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -13,7 +14,7 @@ public class ReferenceMultiSparkSourceUnitTest extends GATKBaseTest {
 
     @Test
     public void testSerializeRoundTrip2Bit() {
-        ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(new GATKPathSpecifier(twoBitRefURL), ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         final ReferenceMultiSparkSource roundTrippedReference = SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSparkSource.class, new SparkConf());
 

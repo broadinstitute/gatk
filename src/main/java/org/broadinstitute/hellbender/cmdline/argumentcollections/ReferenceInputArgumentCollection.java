@@ -7,10 +7,8 @@ import java.nio.file.Path;
 
 //TODO: get rid of getReferenceFileName
 //TODO: addReferenceFilesForSpark -> take/return GATKPathSpecifier
-//TODO: PSBwaUtils.addReferenceSequencesToHeader
 //TODO: HtsjdkReadsRddStorage.referenceSource
 //TODO: ReferenceTwoBitSparkSource.isTwoBit
-//TODO: SparkUtils.pathExists
 //TODO: ReferenceMultiSparkSource
 
 /**

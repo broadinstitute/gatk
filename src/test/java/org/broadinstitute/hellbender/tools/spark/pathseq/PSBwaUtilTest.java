@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
@@ -18,7 +19,7 @@ public class PSBwaUtilTest extends GATKBaseTest {
         final SAMFileHeader header = new SAMFileHeader();
         final SerializableFunction<GATKRead, SimpleInterval> windowFunction = ReferenceWindowFunctions.IDENTITY_FUNCTION;
         final String referencePath = hg19MiniReference;
-        PSBwaUtils.addReferenceSequencesToHeader(header, referencePath, windowFunction);
+        PSBwaUtils.addReferenceSequencesToHeader(header, new GATKPathSpecifier(referencePath), windowFunction);
         final ReferenceMultiSparkSource ref = new ReferenceMultiSparkSource(referencePath, windowFunction);
         Assert.assertEquals(ref.getReferenceSequenceDictionary(null).size(), header.getSequenceDictionary().size());
         for (final SAMSequenceRecord rec : ref.getReferenceSequenceDictionary(null).getSequences()) {
