@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -15,11 +16,12 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
-
-import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.LOW_HET_FILTER_NAME;
+import java.util.HashSet;
+import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "If too many low heteroplasmy sites pass other filters, then filter all low heteroplasmy sites",
@@ -53,11 +55,11 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        final VCFHeader inputHeader = getHeaderForVariants();
-        // TODO why isn't it being added in the GATKVCFHeaderLines
-        inputHeader.addMetaDataLine(new VCFFilterHeaderLine(LOW_HET_FILTER_NAME, "All low heteroplasmy sites are filtered when at least x low het sites pass all other filters"));
+        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        headerInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
+        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_HET_FILTER_NAME));
         vcfWriter = createVCFWriter(new File(outputVcf));
-        vcfWriter.writeHeader(inputHeader);
+        vcfWriter.writeHeader(new VCFHeader(headerInfo));
     }
 
     @Override

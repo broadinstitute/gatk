@@ -7,10 +7,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -1401,6 +1398,46 @@ public final class GATKVariantContextUtils {
         return new VariantContextBuilder(name, contig, start, start+length-1, alleles).make();
     }
 
+    public static List<VariantContext> splitSomaticVariantContextToBiallelics(final VariantContext vc, final boolean trimLeft, final VCFHeader outputHeader) {
+        Utils.nonNull(vc);
+
+        if (!vc.isVariant() || vc.isBiallelic()) {
+            // non variant or biallelics already satisfy the contract
+            return Collections.singletonList(vc);
+        } else {
+            final List<VariantContext> biallelics = new LinkedList<>();
+
+            int altIndex = 1;
+            for (final Allele alt : vc.getAlternateAlleles()) {
+                final VariantContextBuilder builder = new VariantContextBuilder(vc);
+
+                // make biallelic alleles
+                final List<Allele> alleles = Arrays.asList(vc.getReference(), alt);
+                builder.alleles(alleles);
+
+                // split allele specific filters
+                int index = vc.getAlleleIndex(alt);
+                // the reason we are getting as list and then joining on , is because the default getAttributeAsString for a list will add spaces between items which we don't
+                // want to have to trim out later in the code
+                String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD));
+                List<String> filtersList = AnnotationUtils.decodeAnyASListWithRawDelim(asfiltersStr);
+                if (filtersList.size() > index) {
+                    String filters = filtersList.get(index);
+                    if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
+                        AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
+                    }
+                    builder.attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, AnnotationUtils.encodeAnyASListWithRawDelim(new ArrayList<>(Arrays.asList(filtersList.get(0), filters))));
+                }
+
+                builder.genotypes(AlleleSubsettingUtils.subsetSomaticAlleles(outputHeader, vc.getGenotypes(), alleles, new int[]{0, altIndex}));
+                final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
+                biallelics.add(trimmed);
+                altIndex++;
+            }
+            return biallelics;
+        }
+    }
+
     /**
      * Split variant context into its biallelic components if there are more than 2 alleles
      * <p>
@@ -1445,19 +1482,8 @@ public final class GATKVariantContextUtils {
                     }
                 }
 
-                // split allele specific filters
-                int index = vc.getAlleleIndex(alt);
-                // the reason we are getting as list and then joining on , is because the default getAttributeAsString for a list will add spaces between items which we don't
-                // want to have to trim out later in the code
-                String asfiltersStr = String.join(",", vc.getCommonInfo().getAttributeAsStringList(GATKVCFConstants.AS_FILTER_STATUS_KEY, VCFConstants.EMPTY_INFO_FIELD));
-                List<String> filtersList = AnnotationUtils.decodeAnyASListWithPrintDelim(asfiltersStr);
-                if (filtersList.size() > index) {
-                    String filters = filtersList.get(index);
-                    if (filters != null && !filters.isEmpty() && !filters.equals(VCFConstants.EMPTY_INFO_FIELD) && !filters.equals((VCFConstants.PASSES_FILTERS_v4))) {
-                        AnnotationUtils.decodeAnyASList(filters).stream().forEach(filter -> builder.filter(filter));
-                    }
-                    builder.attribute(GATKVCFConstants.AS_FILTER_STATUS_KEY, AnnotationUtils.encodeAnyASList(new ArrayList<>(Arrays.asList(filtersList.get(0), filters))));
-                }
+                //TODO: split allele-specific filters (which are comma-delimited, as applied by VQSR)
+
 
                 // subset INFO field annotations if available if genotype is called
                 if (genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS &&

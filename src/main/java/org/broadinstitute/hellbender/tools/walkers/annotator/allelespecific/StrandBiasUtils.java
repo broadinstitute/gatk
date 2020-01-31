@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -19,7 +18,7 @@ public class StrandBiasUtils {
 
     public static Map<String, Object> computeSBAnnotation(VariantContext vc, AlleleLikelihoods<GATKRead, Allele> likelihoods, String key) {
         // calculate the annotation from the likelihoods
-        // likelihoods can come from HaplotypeCaller call to VariantAnnotatorEngine
+        // likelihoods can come from HaplotypeCaller or Mutect2 call to VariantAnnotatorEngine
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
         getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
@@ -30,13 +29,19 @@ public class StrandBiasUtils {
         return annotations;
     }
 
+    /**
+     * Helper method to output raw allele-specific strand counts as a string
+     * @param vcAlleles relevant alleles
+     * @param perAlleleValues forward and reverse read counts for each allele
+     * @return a String appropriate to use for annotating a GVCF
+     */
     protected static String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, List<Integer>> perAlleleValues) {
         final List<String> alleleStrings = vcAlleles.stream()
                 // does not replace a null value with zero list - only if the key is not in the map
                 .map(a -> perAlleleValues.getOrDefault(a, ZERO_LIST))
                 .map(StrandBiasUtils::encode)
                 .collect(Collectors.toList());
-        return String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, alleleStrings);
+        return String.join(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM, alleleStrings);
 
     }
 
@@ -46,11 +51,17 @@ public class StrandBiasUtils {
 
 
     /**
-     Allocate and fill a 2x2 strand contingency table.  In the end, it'll look something like this:
-     *             fw      rc
+     Allocate and fill a Nx2 strand contingency table where N is the number of alleles.  In the end, it'll look something like this:
+     *             fwd      rev
      *   allele1   #       #
      *   allele2   #       #
-     * @return a 2x2 contingency table
+     *
+     *   NOTE:Only use informative reads
+     *
+     * @param vc    VariantContext from which to get alleles
+     * @param likelihoods per-read allele likelihoods to determine if each read is informative
+     * @param perAlleleValues modified to store the output counts
+     * @param minCount minimum threshold of counts to use
      */
     public static void getStrandCountsFromLikelihoodMap( final VariantContext vc,
                                                   final AlleleLikelihoods<GATKRead, Allele> likelihoods,
@@ -74,6 +85,11 @@ public class StrandBiasUtils {
         }
     }
 
+    /**
+     * Combine allele-specific data from two ReducibleAnnotationData data structures
+     * @param toAdd input values
+     * @param combined  modified to return the combined values
+     */
     protected static void combineAttributeMap(final ReducibleAnnotationData<List<Integer>> toAdd, final ReducibleAnnotationData<List<Integer>> combined) {
         for (final Allele a : combined.getAlleles()) {
             if (toAdd.hasAttribute(a) && toAdd.getAttribute(a) != null) {
@@ -91,6 +107,14 @@ public class StrandBiasUtils {
         }
     }
 
+    /**
+     * Add another read to the strand count table
+     * @param bestAllele    the Allele best supported by {@param read}
+     * @param read  read to add
+     * @param ref   reference Allele
+     * @param allAlts   the (subset of) alternate alleles for the associated variant
+     * @param perAlleleValues updated to return the values including @{value read}
+     */
     private static void updateTable(final Allele bestAllele, final GATKRead read, final Allele ref, final List<Allele> allAlts, final ReducibleAnnotationData<List<Integer>> perAlleleValues) {
 
         final boolean matchesRef = bestAllele.equals(ref, true);
@@ -131,12 +155,17 @@ public class StrandBiasUtils {
     }
 
 
+    /**
+     * Get an allele-specific strand bias contingency table from a VariantContext
+     * @param vc
+     * @return a contingency table with forward and reverse counts for each allele
+     */
     public static List<List<Integer>> getSBsForAlleles(VariantContext vc) {
         String sbStr = vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_SB_TABLE_KEY, null);
         if (sbStr == null || sbStr.isEmpty()) {
             return Collections.emptyList();
         }
-        List<String> asb = AnnotationUtils.decodeAnyASListWithPrintDelim(sbStr);
+        List<String> asb = AnnotationUtils.decodeAnyASListWithRawDelim(sbStr);
         return asb.stream()
                 .map(fwdrev -> AnnotationUtils.decodeAnyASList(fwdrev).stream().map(String::trim)
                 .mapToInt(Integer::parseInt).boxed().collect(Collectors.toList())).collect(Collectors.toList());

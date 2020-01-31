@@ -189,7 +189,8 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         final Set<VCFHeaderLine> actualLines = VcfUtils.updateHeaderContigLines(createVCFHeaderLineList(vcfHeaders), refPath, getReferenceDictionary(), suppressReferencePath);
 
         vcfWriter = createVCFWriter(outFile);
-        vcfWriter.writeHeader(new VCFHeader(actualLines, vcfSamples));
+        vcfHeader = new VCFHeader(actualLines, vcfSamples);
+        vcfWriter.writeHeader(vcfHeader);
     }
 
     /**
@@ -217,8 +218,16 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
-        final List<VariantContext> vcList = splitMultiallelics ? GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false,
-                GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
+        final List<VariantContext> vcList;
+        if (splitMultiallelics) {
+            if (vc.getGenotypes().stream().anyMatch(g -> g.hasAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY))) {
+                vcList = GATKVariantContextUtils.splitSomaticVariantContextToBiallelics(vc, false, vcfHeader);
+            } else {
+                vcList = GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts);
+            }
+        } else {
+            vcList = Collections.singletonList(vc);
+        }
 
         for (final VariantContext splitVariant : vcList) {
             final List<Integer> indelLengths = splitVariant.getIndelLengths();

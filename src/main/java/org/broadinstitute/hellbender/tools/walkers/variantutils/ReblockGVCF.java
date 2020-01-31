@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
@@ -500,9 +499,9 @@ public final class ReblockGVCF extends VariantWalker {
                     if (origMap.containsKey(rawKey)) {
                         if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation)) {
                             List<String> alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(originalVC.getAttributeAsString(rawKey, null));
-                            final List<?> subsetList = alleleSpecificValues.size() > 0 ? ReferenceConfidenceVariantContextMerger.remapRLengthList(alleleSpecificValues, relevantIndices)
+                            final List<?> subsetList = alleleSpecificValues.size() > 0 ? AlleleSubsettingUtils.remapRLengthList(alleleSpecificValues, relevantIndices)
                                     : Collections.nCopies(relevantIndices.length, "");
-                            attrMap.put(rawKey, AnnotationUtils.encodeAnyASList(subsetList));
+                            attrMap.put(rawKey, AnnotationUtils.encodeAnyASListWithRawDelim(subsetList));
                         } else {
                             attrMap.put(rawKey, origMap.get(rawKey));
                         }
@@ -539,12 +538,12 @@ public final class ReblockGVCF extends VariantWalker {
                         quals.add("0");
                     }
                 }
-                attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM+String.join(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM, quals));
+                attrMap.put(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM +String.join(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM, quals));
                 List<Integer> as_varDP = AS_QualByDepth.getAlleleDepths(AlleleSubsettingUtils.subsetAlleles(result.getGenotypes(),
                         HomoSapiensConstants.DEFAULT_PLOIDY, result.getAlleles(), newAlleleSet,
                         GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
                 if (as_varDP != null) {
-                    attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM)));
+                    attrMap.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, as_varDP.stream().map( n -> Integer.toString(n)).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM)));
                 }
             }
         }

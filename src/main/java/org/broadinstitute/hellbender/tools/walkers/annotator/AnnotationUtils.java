@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import java.util.*;
 
 public final class AnnotationUtils {
-    public static final String ALLELE_SPECIFIC_PRINT_DELIM = "|";
+    public static final String ALLELE_SPECIFIC_RAW_DELIM = "|";
     public static final String ALLELE_SPECIFIC_REDUCED_DELIM = ",";
     public static final String ALLELE_SPECIFIC_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String BRACKET_REGEX = "\\[|\\]";
@@ -36,16 +36,21 @@ public final class AnnotationUtils {
     }
 
     /**
-     * Helper function to convert a List of Strings to a pipe-separated String, as for raw annotations
+     * Helper function to convert a List of Strings to a @{value ALLELE_SPECIFIC_RAW_DELIM)-separated String, as for raw annotations
      * @param somethingList the ArrayList with String data
-     * @return a pipe-separated String
+     * @return a delimited String
      */
-    public static String encodeAnyASList( final List<?> somethingList) {
-        return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
+    public static String encodeAnyASListWithRawDelim(final List<?> somethingList) {
+        return StringUtils.join(somethingList, ALLELE_SPECIFIC_RAW_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
     }
 
-    public static List<String> decodeAnyASListWithPrintDelim( final String somethingList) {
-        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_PRINT_DELIM));
+    /**
+     * Helper method to split a "raw" annotation string delimited with {@value ALLELE_SPECIFIC_RAW_DELIM}
+     * @param somethingList a String, possibly read from a VCF
+     * @return a List of Strings
+     */
+    public static List<String> decodeAnyASListWithRawDelim(final String somethingList) {
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_RAW_DELIM));
     }
 
     /**

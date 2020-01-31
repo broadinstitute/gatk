@@ -198,7 +198,7 @@ public class Mutect2FilteringEngine {
 
         List<String> orderedASFilterStrings = vc.getAlleles().stream().map(allele -> allele.isReference() || allele.isSymbolic() ?
                 VCFConstants.EMPTY_INFO_FIELD : mergedFilterStringByAllele.next()).collect(Collectors.toList());
-        String finalAttrString = AnnotationUtils.encodeAnyASList(orderedASFilterStrings);
+        String finalAttrString = AnnotationUtils.encodeAnyASListWithRawDelim(orderedASFilterStrings);
 
         vcb.putAttributes(Collections.singletonMap(GATKVCFConstants.AS_FILTER_STATUS_KEY, finalAttrString));
 
@@ -253,9 +253,9 @@ public class Mutect2FilteringEngine {
      * @param filtersForAllele all the filters applied to the allele
      * @return encoded (comma separated) list of filters that apply to the allele
      */
-    private List<String> getDistinctFiltersForAllele(List<String> filtersForAllele) {
+    private List<String> getDistinctFiltersForAllele(final List<String> filtersForAllele) {
         // loop through each filter and pull out the filters the specified allele
-        List<String> results = filtersForAllele.stream().distinct().collect(Collectors.toList());
+        final List<String> results = filtersForAllele.stream().distinct().collect(Collectors.toList());
         if (results.size() > 1 && results.contains(VCFConstants.PASSES_FILTERS_v4)) {
             results.remove(VCFConstants.PASSES_FILTERS_v4);
         } else if (results.isEmpty()) {
@@ -272,7 +272,7 @@ public class Mutect2FilteringEngine {
      * @param filterName the name of the filter being evaluated
      * @return List of filtername or "PASS" for each allele
      */
-    private List<String> addFilterStrings(List<Double> probabilities, double errorThreshold, String filterName) {
+    private List<String> addFilterStrings(final List<Double> probabilities, final double errorThreshold, final String filterName) {
         return probabilities.stream().map(value -> value > errorThreshold ?
                         filterName : VCFConstants.PASSES_FILTERS_v4).collect(Collectors.toList());
     }
