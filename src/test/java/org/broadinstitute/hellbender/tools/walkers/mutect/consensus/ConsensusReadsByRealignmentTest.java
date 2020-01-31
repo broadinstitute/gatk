@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect;
+package org.broadinstitute.hellbender.tools.walkers.mutect.consensus;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramIntegrationTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;

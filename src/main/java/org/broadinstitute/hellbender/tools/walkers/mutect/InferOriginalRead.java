@@ -4,6 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.tools.walkers.mutect.consensus.DuplicateSet;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
@@ -20,7 +21,7 @@ import org.broadinstitute.hellbender.engine.filters.UMIReadFilter;
         oneLineSummary = "Print reads in the SAM/BAM/CRAM file",
         programGroup = ReadDataManipulationProgramGroup.class
 )
-public class InferOriginalRead extends ReadWalker {
+public class InferOriginalRead extends DuplicateSetWalker {
     private SAMFileGATKReadWriter outputWriter;
 
     private static final int INIT_DUPLICATE_SIZE = 20;
@@ -47,35 +48,16 @@ public class InferOriginalRead extends ReadWalker {
         createOutputBamIndex = true;
         outputWriter = createSAMWriter(IOUtils.getPath(outputBam.getAbsolutePath()), false);
         engine = new InferOriginalReadEngine(getHeaderForReads(), referenceArguments, outputWriter);
-        currentMolecularIdentifier = getMolecularIDfromMITag(peekFirstRead());
     }
 
     @Override
-    public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        // TODO: extract this logic and write a Duplicate Group Walker.
-        if (!currentMolecularIdentifier.equals(getMolecularIDfromMITag(read))) {
-            // reference context is the reference context of the current read, not fragment, so it's note quite correct
-            // to give it to letsDoIt
-            engine.letsDoIt(currentReads, referenceContext, currentUMI);
-            currentReads.clear();
-            currentMolecularIdentifier = getMolecularIDfromMITag(read);
-        }
-
-        currentReads.add(read);
-        lastSeenReferenceContext = referenceContext;
+    public void apply(DuplicateSet duplicateSet, ReferenceContext referenceContext, FeatureContext featureContext) {
+        engine.letsDoIt(duplicateSet, referenceContext);
     }
 
     @Override
     public Object onTraversalSuccess(){
-        if (!currentReads.isEmpty()){
-            engine.letsDoIt(currentReads, lastSeenReferenceContext, currentUMI);
-        }
         outputWriter.close();
         return "SUCCESS";
-    }
-
-    private String getMolecularIDfromMITag(final GATKRead read) {
-        final String MITag = read.getAttributeAsString(FGBIO_MOLECULAR_IDENTIFIER_TAG);
-        return MITag.split("/")[0];
     }
 }

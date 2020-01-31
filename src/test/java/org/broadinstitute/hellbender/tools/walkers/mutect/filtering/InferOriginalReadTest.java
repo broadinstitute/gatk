@@ -34,6 +34,8 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
     private final String fgbioConsensusScript = mutectTestDir + "fgbio_consensus.sh";
     // /Users/tsato/workspace/gatk/src/main/java/org/broadinstitute/hellbender/tools/walkers/mutect/sort.sh
     private final String sortScript = mutectTestDir + "sort.sh";
+    private final String realignScript = mutectTestDir + "realign.sh";
+    private final String mergeBamAlignmentScript = mutectTestDir + "merge_bam_alignment.sh";
 
     private final String homeDir = "/dsde/working/tsato/consensus/bams/synthetic-test/";
     private final String testDir = "/dsde/working/tsato/consensus/tp53/test/";
@@ -41,9 +43,11 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
     @Test
     public void test(){
         final File out = new File("/dsde/working/tsato/consensus/tp53/test/out.bam");
+        final String smallInsert = "/dsde/working/tsato/consensus/tp53/test/bams/small_insert/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.CTG-TTC.small_insert.grouped.bam";
+
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument("R", hg19)
-                .addArgument("I", tp53_AGA_TGA)
+                .addArgument("I", smallInsert)
                 .addArgument("O", out.getAbsolutePath());
         runCommandLine(args, InferOriginalRead.class.getSimpleName());
         int d = 3;
@@ -54,13 +58,30 @@ public class InferOriginalReadTest extends CommandLineProgramTest {
     public void testTp53(){
         final File out = new File(testDir + "tp53_full_consensus.bam");
         final String testBam = "/dsde/working/tsato/consensus/tp53/Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.CTG-TTC.grouped.bam";
-        final boolean test = false;
+        final boolean test = true;
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument("R", hg19)
                 .addArgument("I", test ? testBam : tp53_full_grouped)
                 .addArgument("O", out.getAbsolutePath());
         runCommandLine(args, InferOriginalRead.class.getSimpleName());
         // runProcess(new ProcessController(), new String[]{ sortScript, out.getAbsolutePath(), testDir, "Jonna_Grimsby_A04_denovo_bloodbiopsy_1pct_rep1.tp53.CTG-TTC." });
+    }
+
+    @Test
+    public void testTp53FGBioBaseline(){
+        final String fgbioBaselineDir = tp53TestDir + "fgbio/";
+        final String basename = "tp53_full_fgbio";
+        // Call the fgbio consensus caller
+        runProcess(new ProcessController(), new String[]{ fgbioConsensusScript, tp53_full_grouped, basename + "_grouped", fgbioBaselineDir });
+
+        final String consensusBam = fgbioBaselineDir + "." + basename + "." + "consensus.bam";
+        // Realigned the consensus bam
+        // TODO: these processes should take in the full path to the output file
+        runProcess(new ProcessController(), new String[]{ realignScript, consensusBam, basename, fgbioBaselineDir});
+        final String alignedSam = fgbioBaselineDir + fgbioBaselineDir + ".aligned.sam";
+
+        // For some reason this part fails on my laptop -- run on gsa5 instead
+        // runProcess(new ProcessController(), new String[]{ mergeBamAlignmentScript, consensusBam, alignedSam, basename});
     }
 
     @Test

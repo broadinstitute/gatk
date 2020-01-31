@@ -1,9 +1,10 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect;
+package org.broadinstitute.hellbender.tools.walkers.mutect.consensus;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.tools.walkers.mutect.InferOriginalReadEngine;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

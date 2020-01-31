@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.mutect.consensus.DuplicateSet;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -11,5 +12,5 @@ import java.util.ArrayList;
  * the top strand and bottom strand disagree, thereby giving us a different truth set for learning PCR errors.
  */
 public interface DuplexConsensusCaller {
-    void letsDoIt(final ArrayList<GATKRead> duplicateSet, final ReferenceContext referenceContext, final String umi);
+    void letsDoIt(final DuplicateSet duplicateSet, final ReferenceContext referenceContext);
 }

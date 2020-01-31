@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -12,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.tools.walkers.mutect.consensus.DuplicateSet;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -40,13 +44,12 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
     private HaplotypeCallerArgumentCollection hcac = new HaplotypeCallerArgumentCollection();
     private ReferenceInputArgumentCollection referenceArguments;
     private SAMFileHeader header;
-    private HaplotypeCallerGenotypingEngine hcGenotypingEngine;
     private SAMFileGATKReadWriter outputWriter;
+    final Set<String> samplesList;
 
-    private static final boolean ASSEMBLE_READS = false;
+
     public static final String CONSENSUS_READ_TAG = "CR";
     private static final int NUM_POSSIBLE_BASES = 4;
-    private static final int DEFAULT_SCALING_FACTOR = 3;
     private static final int MINIMUM_REQUIRED_SET_SIZE = 2;
 
     InferOriginalReadEngine(final SAMFileHeader header, final ReferenceInputArgumentCollection referenceArguments, final SAMFileGATKReadWriter outputWriter){
@@ -56,30 +59,22 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
         this.referenceArguments = referenceArguments;
         hcac.standardArgs.genotypeArgs.samplePloidy = 1;
         this.outputWriter = outputWriter;
+        this.samplesList = ReadUtils.getSamplesFromHeader(header);
     }
 
-    public void letsDoIt(final ArrayList<GATKRead> duplicateSet, final ReferenceContext referenceContext, final String umi){
+    /**
+     * Module 1: Find the consensus read
+     * Module 2: Update qualities
+     */
+    @Override
+    public void letsDoIt(final DuplicateSet duplicateSet, final ReferenceContext referenceContext){
         if (filterDuplicateSet(duplicateSet)){
             return;
         }
 
-        // Eventually must think about this;
-        final Set<String> samplesList = ReadUtils.getSamplesFromHeader(header);
-        final SampleList indexedSampleList = new IndexedSampleList(new ArrayList<>(samplesList));
-        final int readLength = duplicateSet.get(0).getLength();
-
-        // The default gap opening penalty of 45 is with respect to any position in the genome, which is too stringent in our case,
-        // where we know that is at least one indel in the duplicate set
-        final byte DEFAULT_GAP_OPENING_PENALTY = (byte) 15;
-        final byte[] DEFAULT_GAP_OPENING_ARRAY = new byte[readLength];
-        Arrays.fill(DEFAULT_GAP_OPENING_ARRAY, DEFAULT_GAP_OPENING_PENALTY);
-        duplicateSet.forEach(r -> ReadUtils.setDeletionBaseQualities(r, DEFAULT_GAP_OPENING_ARRAY));
-        duplicateSet.forEach(r -> ReadUtils.setInsertionBaseQualities(r, DEFAULT_GAP_OPENING_ARRAY));
-
-        hcGenotypingEngine = new HaplotypeCallerGenotypingEngine(hcac, indexedSampleList, ! hcac.doNotRunPhysicalPhasing);
-
+        final int readLength = duplicateSet.getReads().get(0).getLength();
         // TreeMap, as opposed to a HashMap, ensures the iteration order guaranteed by the comparator of the key.
-        final TreeMap<StrandAndReadNum, List<GATKRead>> duplicateSetByStrandReadNum = duplicateSet.stream()
+        final TreeMap<StrandAndReadNum, List<GATKRead>> duplicateSetByStrandReadNum = duplicateSet.getReads().stream()
                 .collect(Collectors.groupingBy(r -> getReadStrandReadNum(r), () -> new TreeMap<>(), Collectors.toList()));
         final TreeMap<StrandAndReadNum, GATKRead> consensusReads = new TreeMap<>();
 
@@ -94,121 +89,137 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
 
             // LocusIterator requires that the reads be sorted
             reads.sort(new ReadCoordinateComparator(header));
-
             final boolean indelDetected = reads.stream().anyMatch(r -> CigarUtils.containsIndels(r.getCigar()));
-            final GATKRead consensusRead;
-            if (indelDetected) {
-                /** {@link ReadThreadingAssembler.findBestPaths() } requires a graph. **/
-                // PairHMM is different.
-                // Learning of the PCR error likelihood should be done by deep learning. This should be the self-motivated project.
-                // Find the consensus read
-                final AssemblyResultSet assemblyResult = new AssemblyResultSet();;
-//                if (ASSEMBLE_READS) {
-//                    assemblyResult = doAssembly(reads, indexedSampleList);
-//                    // final SortedSet<VariantContext> set = assemblyResult.getVariationEvents(1);
-//                }
 
-                // Can I just go from reads to haplotypes to events? Yes.
-                final int regionStart = reads.stream().mapToInt(GATKRead::getStart).min().getAsInt();
-                final int regionEnd = reads.stream().mapToInt(GATKRead::getEnd).max().getAsInt();
-                final int REFERENCE_PADDING = 50; // We need padding because in the event of insertion we might need bases in the reference that falls outside of the tight window
-                // must take the min of end of contig and regionEnd + padding
-                final SimpleInterval refInterval = new SimpleInterval(referenceContext.getContig(), Math.max(regionStart - REFERENCE_PADDING, 0), regionEnd + REFERENCE_PADDING);
-                final SimpleInterval justCurious = referenceContext.getInterval();
-                // final Set<Haplotype> haplotypes = readsToHaplotypeSet(reads, refInterval);
-                final List<ReadAndHaplotype> readAndHaplotypes = getReadAndHaplotypes(reads, refInterval);
-                final List<Haplotype> haplotypes = ReadAndHaplotype.getHaplotypeList(readAndHaplotypes);
-                // Must create an empty assembly result set with haplotypes in order to call computeReadLikelihoods(), which
-                // does not use any other information in the assembly result set.
-                readAndHaplotypes.forEach(rah -> assemblyResult.add(rah.getHaplotype()));
-                assemblyResult.setPaddedReferenceLoc(refInterval);
-                final ReferenceSequenceFile referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceFileName()));
-                final byte[] referenceBases = AssemblyRegion.getReference(referenceReader, 0, refInterval);
-                assemblyResult.setFullReferenceWithPadding(referenceBases);
-                // I'd have to write down ref, ref position, and what they are set to in the case of with assembly.
-                // And then identify what kind of padding, refloc, etc., needs to be set to by hand.
+            // Step 1: Get Consensus Read
+            final GATKRead consensusRead = getConsensusRead(reads, referenceContext, indelDetected);
 
-                final TreeSet<Integer> startPositions = EventMap.buildEventMapsForHaplotypes(haplotypes, referenceBases, refInterval, true, 1);
-                int d = 3;
-
-                final List<Pair<LocationAndAlleles, Double>> indelEvents = new ArrayList<>();
-                for (int start : startPositions){
-                    final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(start, haplotypes, false);
-                    final List<VariantContext> indelEventsAtThisLoc = eventsAtThisLoc.stream().filter(vc -> vc.isIndel()).collect(Collectors.toList());
-                    if (indelEventsAtThisLoc.isEmpty()){
-                        continue;
-                    }
-
-                    final Map<LocationAndAlleles, List<Haplotype>> haplotypesByAllele = InferOriginalReadsUtils.groupHaplotypesByAllelesAtThisLoc(start, haplotypes, false);
-
-                    Pair<LocationAndAlleles, Integer> mostCommonAlleleAndCount = new ImmutablePair<>(null, -1);
-                    for (Map.Entry<LocationAndAlleles, List<Haplotype>> pairs : haplotypesByAllele.entrySet()){
-                        final LocationAndAlleles locationAndAlleles = pairs.getKey();
-                        final int count = pairs.getValue().size();
-                        if (count > mostCommonAlleleAndCount.getRight()){
-                            mostCommonAlleleAndCount = new ImmutablePair<>(locationAndAlleles, count);
-                        }
-                    }
-
-                    final double variance = InferOriginalReadsUtils.computeVarianceAroundMostCommon(haplotypesByAllele, mostCommonAlleleAndCount.getLeft());
-                    indelEvents.add(new ImmutablePair<>(mostCommonAlleleAndCount.getLeft(), variance));
-                    int f = 3; // GOOD!
-                }
-
-                // START HERE, now that I have a list of indels, their positions, and the cigar, build a new cigar, and traverse reads according to this cigar
-                final byte[] newInsertionQualities = new byte[readLength];
-                final byte[] newDeletionQualities = new byte[readLength];
-                Arrays.fill(newInsertionQualities, ReadUtils.DEFAULT_INSERTION_DELETION_QUAL);
-                Arrays.fill(newDeletionQualities, ReadUtils.DEFAULT_INSERTION_DELETION_QUAL);
-                final Optional<GATKRead> consensusReadOption = findConsensusRead(readAndHaplotypes, indelEvents, reads.get(0), umi);
-
-                if (!consensusReadOption.isPresent()){
-                    // TODO: handle this case
-                    break;
-                }
-
-                boolean updatedInsertionQuality = false;
-                boolean updatedDeletionQuality = false;
-
-                consensusRead = consensusReadOption.get();
-                final int readStart = consensusRead.getStart();
-                for (Pair<LocationAndAlleles, Double> pair : indelEvents){
-                    final LocationAndAlleles event = pair.getLeft();
-                    final double variance = pair.getRight();
-                    final int offset = event.getLoc() - readStart; // off by one?
-                    if (event.isInsertion(1)){
-                        newInsertionQualities[offset] = varianceToIndelQuality(variance);
-                        updatedInsertionQuality = true;
-                    } else {
-                        newDeletionQualities[offset] = varianceToIndelQuality(variance);
-                        updatedDeletionQuality = true;
-                    }
-                }
-
-                if (updatedDeletionQuality) consensusRead.setAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES, newDeletionQualities);
-                if (updatedInsertionQuality) consensusRead.setAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES, newInsertionQualities);
-
-                // byte test
-                final byte yo = 3; // making these final helps somehow....
-                final byte ho = 4;
-                byte huh = yo + ho;
-
-            } else {
-                // No indels in the duplicate set. This isn't quite right, but it'll do for now.
-                // TODO: how should I handle softclips?
-                consensusRead = reads.get(0).deepCopy();
-                consensusRead.setCigar(new Cigar(Arrays.asList(new CigarElement(readLength, CigarOperator.M))));
-            }
-
-            updateBaseQuals(consensusRead, reads, samplesList);
+            // Step 2: Update quals
+            updateBaseQuals(consensusRead, reads, samplesList); // START HERE getting destroyed by softclips
             consensusReads.put(strandAndReadNum, consensusRead);
         }
 
         consensusReads.values().forEach(r -> outputWriter.addRead(r));
     }
 
+    private GATKRead getConsensusRead(final List<GATKRead> reads, final ReferenceContext referenceContext, final boolean indelDetected) {
+        if (indelDetected) {
+            return getIndelConsensusRead(reads, referenceContext);
+        } else {
+            // No indels in the duplicate set. This isn't quite right, but it'll do for now.
+            final GATKRead consensusRead = reads.get(0).deepCopy(); // TODO: how should I handle softclips?
+            consensusRead.setCigar(new Cigar(Arrays.asList(new CigarElement(consensusRead.getLength(), CigarOperator.M))));
+            return consensusRead;
+        }
+    }
+
+    /**
+     * Reassemble reads and choose the best haplotype as the consensus read, the way haplotypcaller
+     * finds variants with ploidy=1
+     ***/
+    private GATKRead getIndelConsensusReadGATKEngine(final List<GATKRead> reads){
+        final SampleList indexedSampleList = new IndexedSampleList(new ArrayList<>(samplesList));
+        /** {@link ReadThreadingAssembler.findBestPaths() } requires a graph. **/
+        // PairHMM is different.
+        // Learning of the PCR error likelihood should be done by deep learning. This should be the self-motivated project.
+        // Find the consensus read
+        final boolean assembleReads = false;
+        AssemblyResultSet assemblyResult = new AssemblyResultSet();
+        if (assembleReads) {
+            assemblyResult = doAssembly(reads, indexedSampleList);
+            // final SortedSet<VariantContext> set = assemblyResult.getVariationEvents(1);
+        }
+
+        return null;
+    }
+
+    // TODO: think---do I need referenceContext?
+    private GATKRead getIndelConsensusRead(final List<GATKRead> reads, final ReferenceContext referenceContext) {
+        // Can I just go from reads to haplotypes to events? Yes.
+        final AssemblyResultSet assemblyResult = new AssemblyResultSet();
+        final int regionStart = reads.stream().mapToInt(GATKRead::getStart).min().getAsInt();
+        final int regionEnd = reads.stream().mapToInt(GATKRead::getEnd).max().getAsInt();
+        final int REFERENCE_PADDING = 50; // We need padding because in the event of insertion we might need bases in the reference that falls outside of the tight window
+        // must take the min of end of contig and regionEnd + padding
+        final SimpleInterval refInterval = new SimpleInterval(referenceContext.getContig(), Math.max(regionStart - REFERENCE_PADDING, 0), regionEnd + REFERENCE_PADDING);
+        final SimpleInterval justCurious = referenceContext.getInterval();
+        // final Set<Haplotype> haplotypes = readsToHaplotypeSet(reads, refInterval);
+        final List<ReadAndHaplotype> readAndHaplotypes = getReadAndHaplotypes(reads, refInterval);
+        final List<Haplotype> haplotypes = ReadAndHaplotype.getHaplotypeList(readAndHaplotypes);
+        // Must create an empty assembly result set with haplotypes in order to call computeReadLikelihoods(), which
+        // does not use any other information in the assembly result set.
+        readAndHaplotypes.forEach(rah -> assemblyResult.add(rah.getHaplotype()));
+        assemblyResult.setPaddedReferenceLoc(refInterval);
+        final ReferenceSequenceFile referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(referenceArguments.getReferenceFileName()));
+        final byte[] referenceBases = AssemblyRegion.getReference(referenceReader, 0, refInterval);
+        assemblyResult.setFullReferenceWithPadding(referenceBases);
+        // I'd have to write down ref, ref position, and what they are set to in the case of with assembly.
+        // And then identify what kind of padding, refloc, etc., needs to be set to by hand.
+
+        final TreeSet<Integer> startPositions = EventMap.buildEventMapsForHaplotypes(haplotypes, referenceBases, refInterval, true, 1);
+
+        final List<Pair<LocationAndAlleles, Double>> indelEvents = new ArrayList<>();
+        for (int start : startPositions){
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(start, haplotypes, false);
+            final List<VariantContext> indelEventsAtThisLoc = eventsAtThisLoc.stream().filter(vc -> vc.isIndel()).collect(Collectors.toList());
+            if (indelEventsAtThisLoc.isEmpty()){
+                continue;
+            }
+
+            final Map<LocationAndAlleles, List<Haplotype>> haplotypesByAllele = InferOriginalReadsUtils.groupHaplotypesByAllelesAtThisLoc(start, haplotypes, false);
+
+            Pair<LocationAndAlleles, Integer> mostCommonAlleleAndCount = new ImmutablePair<>(null, -1);
+            for (Map.Entry<LocationAndAlleles, List<Haplotype>> pairs : haplotypesByAllele.entrySet()){
+                final LocationAndAlleles locationAndAlleles = pairs.getKey();
+                final int count = pairs.getValue().size();
+                if (count > mostCommonAlleleAndCount.getRight()){
+                    mostCommonAlleleAndCount = new ImmutablePair<>(locationAndAlleles, count);
+                }
+            }
+
+            final double variance = InferOriginalReadsUtils.computeVarianceAroundMostCommon(haplotypesByAllele, mostCommonAlleleAndCount.getLeft());
+            indelEvents.add(new ImmutablePair<>(mostCommonAlleleAndCount.getLeft(), variance));
+            int f = 3; // GOOD!
+        }
+
+        final int readLength = reads.get(0).getLength();
+        final byte[] newInsertionQualities = new byte[readLength];
+        final byte[] newDeletionQualities = new byte[readLength];
+        Arrays.fill(newInsertionQualities, ReadUtils.DEFAULT_INSERTION_DELETION_QUAL);
+        Arrays.fill(newDeletionQualities, ReadUtils.DEFAULT_INSERTION_DELETION_QUAL);
+        final Optional<GATKRead> consensusReadOption = findConsensusRead(readAndHaplotypes, indelEvents);
+
+        if (!consensusReadOption.isPresent()){
+            // TODO: handle this case
+            throw new UserException("WHAAAA");
+        }
+
+        boolean updatedInsertionQuality = false;
+        boolean updatedDeletionQuality = false;
+
+        final GATKRead consensusRead = consensusReadOption.get();
+        final int readStart = consensusRead.getStart();
+        for (Pair<LocationAndAlleles, Double> pair : indelEvents){
+            final LocationAndAlleles event = pair.getLeft();
+            final double variance = pair.getRight();
+            final int offset = event.getLoc() - readStart; // off by one?
+            if (event.isInsertion(1)){
+                newInsertionQualities[offset] = varianceToIndelQuality(variance);
+                updatedInsertionQuality = true;
+            } else {
+                newDeletionQualities[offset] = varianceToIndelQuality(variance);
+                updatedDeletionQuality = true;
+            }
+        }
+
+        if (updatedDeletionQuality) consensusRead.setAttribute(ReadUtils.BQSR_BASE_DELETION_QUALITIES, newDeletionQualities);
+        if (updatedInsertionQuality) consensusRead.setAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES, newInsertionQualities);
+
+        return consensusRead;
+    }
+
     // TODO: add criteria here
-    private boolean filterDuplicateSet(final ArrayList<GATKRead> duplicateSet) {
+    private boolean filterDuplicateSet(final DuplicateSet duplicateSet) {
         return false;
     }
 
@@ -218,11 +229,7 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
             return true;
         }
 
-        // TODO: is this a good assumption?
-        // If all reads contain softclips, then skip
-        if (reads.stream().allMatch(r -> r.getCigar().containsOperator(CigarOperator.S))){
-            return true;
-        }
+        // More to come...
 
         return false;
     }
@@ -365,9 +372,7 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
      * Creating the new read by hand seems error-prone, and perhaps not necessary for prototyping.
      */
     private Optional<GATKRead> findConsensusRead(final List<ReadAndHaplotype> readAndHaplotypes,
-                                                 final List<Pair<LocationAndAlleles, Double>> indelEvents,
-                                                 final GATKRead sampleRead,
-                                                 final String umi) {
+                                                 final List<Pair<LocationAndAlleles, Double>> indelEvents){
         Utils.validateArg(!indelEvents.isEmpty(), "indelEvents may not be empty");
         for (final ReadAndHaplotype rah : readAndHaplotypes) {
             final Collection<VariantContext> vcs = rah.getHaplotype().getEventMap().getVariantContexts();
@@ -405,7 +410,10 @@ public class InferOriginalReadEngine implements DuplexConsensusCaller {
     /** 12/4/19 AF-based filter, and unnecessarily complicated code that handles multi-ploidy case, etc,
      * opting for a simple implementation using the whole haplotype
      * **/
-    public void likelihoodToGenotypesHC(final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods, final AssemblyResultSet assemblyResult){
+    public void likelihoodToGenotypesHC(final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods,
+                                        final AssemblyResultSet assemblyResult){
+        final SampleList indexedSampleList = new IndexedSampleList(new ArrayList<>(samplesList));
+        final HaplotypeCallerGenotypingEngine hcGenotypingEngine = new HaplotypeCallerGenotypingEngine(hcac, indexedSampleList, ! hcac.doNotRunPhysicalPhasing);
         final CalledHaplotypes calledHaplotypes = hcGenotypingEngine.assignGenotypeLikelihoods(assemblyResult.getHaplotypeList(), readLikelihoods, new HashMap<>(),
                 assemblyResult.getFullReferenceWithPadding(), // ts: ref bases. Where should it start/end?
                 assemblyResult.getPaddedReferenceLoc(), // ts: what about reference loc?
