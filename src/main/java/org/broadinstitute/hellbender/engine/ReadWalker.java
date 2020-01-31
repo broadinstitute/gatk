@@ -46,7 +46,7 @@ public abstract class ReadWalker extends WalkerBase {
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
      */
     @Override
-    protected final void onStartup() {
+    protected void onStartup() {
         super.onStartup();
 
         setReadTraversalBounds();
