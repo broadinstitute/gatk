@@ -466,6 +466,12 @@ public class GenotypeGVCFsEngine
                 attrs.put(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, GenotypeGVCFs.PHASED_HOM_VAR_STRING);
             }
 
+            //update PGT for hom refs
+            if ( oldGT.isHomVar() && oldGT.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) ) {
+                attrs.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY);
+                attrs.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY);
+            }
+
             // create AD if it's not there
             if ( !oldGT.hasAD() && vc.isVariant() ) {
                 final int[] AD = new int[vc.getNAlleles()];
