@@ -653,7 +653,7 @@ public abstract class GATKTool extends CommandLineProgram {
             return reads.getSequenceDictionary();
         } else if (hasFeatures()){
             final List<SAMSequenceDictionary> dictionaries = features.getVariantSequenceDictionaries();
-            //If there is just one, it clearly is the best. Otherwise, noone is best.
+            //If there is just one, it clearly is the best. Otherwise, none is best.
             if (dictionaries.size() == 1){
                 return dictionaries.get(0);
             }
@@ -783,12 +783,16 @@ public abstract class GATKTool extends CommandLineProgram {
 
         // Check all Feature dictionaries against the reference and/or reads dictionaries
         // TODO: pass file names associated with each sequence dictionary into validateDictionaries(); issue #660
+        final SAMSequenceDictionary bestDict = getBestAvailableSequenceDictionary();
         for ( final SAMSequenceDictionary featureDict : featureDicts ) {
             if (hasReference()){
                 SequenceDictionaryUtils.validateDictionaries("reference", refDict, "features", featureDict);
             }
             if (hasReads()) {
                 SequenceDictionaryUtils.validateDictionaries("reads", readDict, "features", featureDict);
+            }
+            if (bestDict != null) { //VariantWalkers will use DrivingVariants for best dictionary, then check all other FeatureInputs
+                SequenceDictionaryUtils.validateDictionaries("best available", bestDict, "features", featureDict);
             }
         }
 
