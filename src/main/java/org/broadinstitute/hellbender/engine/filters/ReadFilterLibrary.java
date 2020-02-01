@@ -150,6 +150,13 @@ public final class ReadFilterLibrary {
         @Override public boolean test(final GATKRead read){
             return ! read.isDuplicate();}}
 
+    /** Keep only paired reads that are marked as not properly paired (0x1 and !0x2). Removes unpaired reads. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only paired reads that are not properly paired")
+    public static class NotProperlyPairedReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read) {
+            return read.isPaired() && !read.isProperlyPaired();}}
+
     /** Filter out reads representing secondary alignments (0x100). */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads representing secondary alignments")
     public static class NotSecondaryAlignmentReadFilter extends ReadFilter {
@@ -303,9 +310,11 @@ public final class ReadFilterLibrary {
     public static final MatchingBasesAndQualsReadFilter HAS_MATCHING_BASES_AND_QUALS = new MatchingBasesAndQualsReadFilter();
     public static final MateOnSameContigOrNoMappedMateReadFilter MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE = new MateOnSameContigOrNoMappedMateReadFilter();
     public static final MateDifferentStrandReadFilter MATE_DIFFERENT_STRAND = new MateDifferentStrandReadFilter();
+    public static final MateDistantReadFilter MATE_DISTANT = new MateDistantReadFilter();
     public static final NonZeroReferenceLengthAlignmentReadFilter NON_ZERO_REFERENCE_LENGTH_ALIGNMENT = new NonZeroReferenceLengthAlignmentReadFilter();
     public static final NonZeroFragmentLengthReadFilter NONZERO_FRAGMENT_LENGTH_READ_FILTER = new NonZeroFragmentLengthReadFilter();
     public static final NotDuplicateReadFilter NOT_DUPLICATE = new NotDuplicateReadFilter();
+    public static final NotProperlyPairedReadFilter NOT_PROPERLY_PAIRED = new NotProperlyPairedReadFilter();
     public static final NotSecondaryAlignmentReadFilter NOT_SECONDARY_ALIGNMENT = new NotSecondaryAlignmentReadFilter();
     public static final NotSupplementaryAlignmentReadFilter NOT_SUPPLEMENTARY_ALIGNMENT = new NotSupplementaryAlignmentReadFilter();
     public static final PairedReadFilter PAIRED = new PairedReadFilter();

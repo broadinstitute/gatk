@@ -210,7 +210,7 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
                         continue;
 
                     final double log10likelihood = RecalDatum.log10QempLikelihood(Qemp, observation, error);
-                    Assert.assertTrue(observation == 0 ? MathUtils.compareDoubles(log10likelihood, 0.0) == 0 : log10likelihood < 0.0);
+                    Assert.assertTrue(observation == 0 ? MathUtils.compareDoubles(log10likelihood, 0.0) == 0 : log10likelihood < 0.0 || Qemp == 0.0);
                     Assert.assertFalse(Double.isInfinite(log10likelihood));
                     Assert.assertFalse(Double.isNaN(log10likelihood));
                 }

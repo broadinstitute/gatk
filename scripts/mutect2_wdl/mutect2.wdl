@@ -358,6 +358,9 @@ workflow Mutect2 {
     if (defined(realignment_index_bundle)) {
         call FilterAlignmentArtifacts {
             input:
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
                 bam = tumor_bam,
                 bai = tumor_bai,
                 realignment_index_bundle = select_first([realignment_index_bundle]),
@@ -918,6 +921,9 @@ task Filter {
 
 task FilterAlignmentArtifacts {
     input {
+      File ref_fasta
+      File ref_fai
+      File ref_dict
       File input_vcf
       File input_vcf_idx
       File bam
@@ -937,6 +943,9 @@ task FilterAlignmentArtifacts {
     Int command_mem = machine_mem - 500
 
     parameter_meta{
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
       bam: {localization_optional: true}
@@ -949,6 +958,7 @@ task FilterAlignmentArtifacts {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
+            -R ~{ref_fasta} \
             -V ~{input_vcf} \
             -I ~{bam} \
             --bwa-mem-index-image ~{realignment_index_bundle} \

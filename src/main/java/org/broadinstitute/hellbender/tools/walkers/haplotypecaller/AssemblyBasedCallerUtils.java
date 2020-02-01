@@ -210,14 +210,7 @@ public final class AssemblyBasedCallerUtils {
         final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
                 : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
-        switch ( likelihoodArgs.likelihoodEngineImplementation) {
-            case PairHMM:
-                return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
-            case Random:
-                return new RandomLikelihoodCalculationEngine();
-            default:
-                throw new UserException("Unsupported likelihood calculation engine.");
-        }
+        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
@@ -333,13 +326,18 @@ public final class AssemblyBasedCallerUtils {
                 unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
             }
 
+            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
+                final byte[] bases = a.getBases();
+                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
+            }).collect(Collectors.toList());
+
             // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
-            final List<Haplotype> baseHaplotypes = unassembledGivenAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
+            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
                     .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
                     .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
                     .collect(Collectors.toList());
 
-            for (final Allele givenAllele : unassembledGivenAlleles) {
+            for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
                 for (final Haplotype baseHaplotype : baseHaplotypes) {
                     // make sure this allele doesn't collide with a variant on the haplotype
                     if (baseHaplotype.getEventMap()!= null && baseHaplotype.getEventMap().getVariantContexts().stream().anyMatch(vc -> vc.overlaps(givenVC))) {
@@ -610,20 +608,6 @@ public final class AssemblyBasedCallerUtils {
 
         }
         return result;
-    }
-
-    private static boolean eventMatchesGivenAllele(final List<VariantContext> activeAllelesToGenotype, final VariantContext spanningEvent) {
-        for (VariantContext givenVC : activeAllelesToGenotype) {
-            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
-                for (Allele a : spanningEvent.getAlternateAlleles()) {
-                    if (givenVC.hasAlternateAllele(a)) {
-                        return true;
-                    }
-                }
-            }
-
-        }
-        return false;
     }
 
     /**

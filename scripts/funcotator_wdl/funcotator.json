@@ -1,0 +1,24 @@
+{
+  "Funcotator.gatk_docker": "broadinstitute/gatk:latest",
+
+  "Funcotator.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "Funcotator.ref_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "Funcotator.ref_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+
+  "Funcotator.reference_version": "hg38",
+  "Funcotator.output_format": "VCF",
+
+  "Funcotator.compress": "false",
+  "Funcotator.use_gnomad": "false",
+  "Funcotator.data_sources_tar_gz": "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz",
+
+  "Funcotator.interval_list": "gs://gatk-best-practices/funcotator/chr1_13313-187210.intervals.list",
+
+  "Funcotator.variant_vcf_to_funcotate": "gs://gatk-test-data/1kgp/downsampled_vcf_hg38/1kgp-50-exomes.vcf.gz",
+  "Funcotator.variant_vcf_to_funcotate_index": "gs://gatk-test-data/1kgp/downsampled_vcf_hg38/1kgp-50-exomes.vcf.gz.tbi",
+
+  "Funcotator.output_file_base_name": "1kgp-50-exomes.chr1_13313-187210.funcotated",
+
+  "Funcotator.Funcotate.sequencing_center": "\"1000 Genomes Project\"",
+  "Funcotator.Funcotate.sequence_source": "\"1000 Genomes Project\""
+}

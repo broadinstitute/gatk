@@ -40,6 +40,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -197,7 +199,7 @@ public class VariantEval extends MultiVariantWalker {
     /**
      * See the -list argument to view available modules.
      */
-    @Argument(fullName="eval-module", shortName="EV", doc="One or more specific eval modules to apply to the eval track(s) (in addition to the standard modules, unless -noEV is specified)", optional=true)
+    @Argument(fullName="eval-module", shortName="EV", doc="One or more specific eval modules to apply to the eval track(s) (in addition to the standard modules, unless -no-ev is specified)", optional=true)
     protected List<String> MODULES_TO_USE = new ArrayList<>();
 
     @Argument(fullName="do-not-use-all-standard-modules", shortName="no-ev", doc="Do not use the standard modules by default (instead, only those that are specified with the -EV option)", optional=true)
@@ -409,6 +411,24 @@ public class VariantEval extends MultiVariantWalker {
             } catch (FileNotFoundException e) {
                 throw new GATKException(String.format("The ancestral alignments file, '%s', could not be found", ancestralAlignmentsFile.getAbsolutePath()));
             }
+        }
+
+        assertThatTerritoryIsSpecifiedIfNecessary();
+    }
+
+    private void assertThatTerritoryIsSpecifiedIfNecessary() {
+        final Set<String> evaluatorsWhichRequireTerritory = stratManager.values()
+                .stream()
+                .flatMap(ctx -> ctx.getVariantEvaluators().stream())
+                .filter(Objects::nonNull)
+                .filter(VariantEvaluator::requiresTerritoryToBeSpecified)
+                .map(VariantEvaluator::getSimpleName)
+                .collect(Collectors.toSet());
+        if(!evaluatorsWhichRequireTerritory.isEmpty() && getTraversalIntervals() == null){
+            throw new UserException("You specified evaluators which require a covered territory to be specified.  " +
+                    "\nPlease specify intervals or a reference file or disable all of the following evaluators:" +
+                    evaluatorsWhichRequireTerritory.stream()
+                            .collect(Collectors.joining(", ")));
         }
     }
 
@@ -818,7 +838,21 @@ public class VariantEval extends MultiVariantWalker {
         return sampleDB;
     }
 
+    /**
+     * If an evaluator calls this method it must override {@link VariantEvaluator#requiresTerritoryToBeSpecified()} to return true.
+     * @return either the size of the interval list given to the tool or the size of the reference given to the tool
+     */
     public long getnProcessedLoci() {
+        if(getTraversalIntervals() == null){
+            throw new GATKException("BUG: One of the evaluators used should have overriden requiresTerritoryToBeSpecified, please report this to the developers." +
+                    "\nEvaluators: " + stratManager.values()
+                    .stream()
+                    .flatMap(evaluator -> evaluator.getVariantEvaluators().stream())
+                    .map(VariantEvaluator::getSimpleName)
+                    .sorted()
+                    .distinct()
+                    .collect(Collectors.joining(", ")));
+        }
         return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
     }
 

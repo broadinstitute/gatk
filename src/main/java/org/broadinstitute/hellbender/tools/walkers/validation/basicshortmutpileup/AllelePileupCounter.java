@@ -3,13 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -107,7 +107,7 @@ public class AllelePileupCounter {
         Utils.nonNull(altAlleles);
         Utils.nonNull(pileupElement);
 
-        final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
+        final Allele pileupAllele = GATKVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
 
         if ((pileupAllele != null) && (countMap.containsKey(pileupAllele))) {
             countMap.get(pileupAllele).increment();

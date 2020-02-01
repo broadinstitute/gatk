@@ -88,7 +88,6 @@
         <div class="accordion" id="index">
             <#assign seq = ["engine", "tools", "other", "utilities"]>
             <#list seq as supercat>
-                <br />
                 <#list groups?sort_by("name") as group>
                     <#if group.supercat == supercat>
                         <@emitGroup group=group/>

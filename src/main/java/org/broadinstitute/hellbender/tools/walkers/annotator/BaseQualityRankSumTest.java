@@ -39,7 +39,6 @@ public final class BaseQualityRankSumTest extends RankSumTest implements Standar
         Utils.nonNull(read);
 
         final int readCoordinate = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        return readCoordinate == ReadUtils.CLIPPING_GOAL_NOT_REACHED ? OptionalDouble.empty() : OptionalDouble.of(read.getBaseQuality(readCoordinate));
+        return readCoordinate == ReadUtils.CLIPPING_GOAL_NOT_REACHED || readCoordinate < 0 || readCoordinate >= read.getLength() ? OptionalDouble.empty() : OptionalDouble.of(read.getBaseQuality(readCoordinate));
     }
-
 }

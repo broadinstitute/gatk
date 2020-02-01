@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +31,7 @@ public class StrictStrandBiasFilter extends HardFilter {
         vc.getGenotypes().stream().filter(filteringEngine::isTumor)
                 .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY))
                 .forEach(g -> {
-                    final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, () -> null, 0);
+                    final int[] strandBiasCounts = VariantContextGetters.getAttributeAsIntArray(g, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, () -> null, 0);
                     altForwardCount.add(StrandBiasBySample.getAltForwardCountFromFlattenedContingencyTable(strandBiasCounts));
                     altReverseCount.add(StrandBiasBySample.getAltReverseCountFromFlattenedContingencyTable(strandBiasCounts));
                 });

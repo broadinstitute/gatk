@@ -146,6 +146,15 @@ public final class ArgumentsBuilder {
         return this;
     }
 
+    public ArgumentsBuilder addArgument(final String argumentName, final Object value) {
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        if (value != null) {
+            add(value);
+        }
+        return this;
+    }
+
     /**
      * add an argument with a given value to this builder
      */

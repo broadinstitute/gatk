@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.math3.distribution.BinomialDistribution;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Trilean;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -74,11 +74,11 @@ public class PowerCalculationUtils {
         final List<PileupElement> pileupElementsPassingQuality = retrievePileupElements(readPileup, minBaseQualityCutoff);
 
         final long numAlternate = pileupElementsPassingQuality.stream()
-                .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.FALSE)
+                .filter(pe -> (GATKVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.FALSE)
                 || pe.isBeforeDeletionStart() || pe.isBeforeInsertion()).count();
 
         final long numReference = pileupElementsPassingQuality.stream()
-                .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.TRUE)
+                .filter(pe -> (GATKVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.TRUE)
                 && !pe.isBeforeDeletionStart() && !pe.isBeforeInsertion()).count();
 
         return numReference + numAlternate == 0 ? 0.0 : (double) numAlternate / ((double) numReference + (double) numAlternate);
@@ -111,7 +111,7 @@ public class PowerCalculationUtils {
         final List<PileupElement> pileupElementsPassingQuality = retrievePileupElements(readPileup, minBaseQualityCutoff);
 
         return pileupElementsPassingQuality.stream()
-                .filter(pe -> altAllele.equals(GATKProtectedVariantContextUtils.chooseAlleleForRead(pe, referenceAllele, Collections.singletonList(altAllele), minBaseQualityCutoff)))
+                .filter(pe -> altAllele.equals(GATKVariantContextUtils.chooseAlleleForRead(pe, referenceAllele, Collections.singletonList(altAllele), minBaseQualityCutoff)))
                 .count();
     }
 }

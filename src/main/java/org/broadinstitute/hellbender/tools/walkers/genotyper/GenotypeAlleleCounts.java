@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -371,13 +372,13 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
             return "";
         }
         final StringBuilder sb = new StringBuilder(distinctAlleleCount * 3);
-        for (int i = 0; i < distinctAlleleCount; i += 2) {
-            final int alleleIndex = sortedAlleleCounts[i];
-            final int alleleCount = sortedAlleleCounts[i + 1];
+        final int upperBound = distinctAlleleCount * 2;
+        for (int i = 0; i < upperBound;) {
+            final int alleleIndex = sortedAlleleCounts[i++];
+            final int alleleCount = sortedAlleleCounts[i++];
             for (int j = 0; j < alleleCount; j++) {
-                sb.append(alleleIndex).append('/');
+                sb.append(alleleIndex).append(Genotype.UNPHASED_ALLELE_SEPARATOR);
             }
-
         }
         sb.setLength(sb.length() - 1);
         return sb.toString();

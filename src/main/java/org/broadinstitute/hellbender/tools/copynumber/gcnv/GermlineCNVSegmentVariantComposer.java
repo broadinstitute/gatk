@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -10,8 +11,7 @@ import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCall
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Helper class for {@link PostprocessGermlineCNVCalls} for single-sample postprocessing of segmented
@@ -75,7 +75,8 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
     }
 
     @Override
-    public void composeVariantContextHeader(final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
+    public void composeVariantContextHeader(final SAMSequenceDictionary sequenceDictionary,
+                                            final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
         final VCFHeader result = new VCFHeader(Collections.emptySet(), Collections.singletonList(sampleName));
 
         /* add VCF version */
@@ -84,6 +85,8 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
 
         /* add default tool header lines */
         vcfDefaultToolHeaderLines.forEach(result::addMetaDataLine);
+
+        result.setSequenceDictionary(sequenceDictionary);
 
         /* header lines related to genotype formatting */
         result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1,
@@ -125,7 +128,6 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
         int copyNumberCall = segment.getCallIntegerCopyNumberState().getCopyNumber();
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
-        variantContextBuilder.alleles(ALL_ALLELES);
         variantContextBuilder.chr(contig);
         variantContextBuilder.start(start);
         variantContextBuilder.stop(end);
@@ -152,8 +154,14 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
         genotypeBuilder.attribute(QSE, FastMath.round(segment.getQualityEnd()));
         final Genotype genotype = genotypeBuilder.make();
 
+        final List<Allele> vcAlleles = new ArrayList<>(Collections.singletonList(REF_ALLELE));
+        if (!allele.equals(REF_ALLELE)) {
+            vcAlleles.add(allele);
+        }
+        variantContextBuilder.alleles(vcAlleles);
         variantContextBuilder.attribute(VCFConstants.END_KEY, end);
         variantContextBuilder.genotypes(genotype);
+        variantContextBuilder.log10PError(segment.getQualitySomeCalled()/-10.0);
         return variantContextBuilder.make();
     }
 }

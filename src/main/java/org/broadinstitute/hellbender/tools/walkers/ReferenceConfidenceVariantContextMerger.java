@@ -17,11 +17,11 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -570,7 +570,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                     genotypeBuilder.AD(AD);
                 }
                 if (g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)) {  //homRef calls don't have AF
-                    final double[] AF = generateAF(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> new double[]{0.0}, 0.0), perSampleIndexesOfRelevantAlleles);
+                    final double[] AF = generateAF(VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> new double[]{0.0}, 0.0), perSampleIndexesOfRelevantAlleles);
                     genotypeBuilder.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, AF);
                 }
                 else if ((g.isHomRef() || g.isNoCall()) && vc.getAlternateAlleles().size() == 1) {  //homRef blocks don't get an AF so assign it here; multi-sample GVCFs will have no-call GTs for ref blocks
@@ -615,7 +615,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         final VCFHeaderLineCount attributeCount;
         if (g.hasExtendedAttribute(somaticKey)) {  //if this is a multi-sample GVCF input, there may already be a FORMAT annotation
             attributeCount = vcfInputHeader.getFormatHeaderLine(somaticKey).getCountType();
-            List<Object> originalTLODs = GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(somaticKey));
+            List<Object> originalTLODs = VariantContextGetters.attributeToList(g.getAnyAttribute(somaticKey));
             final Object newTLODs = generateAnnotationValueVector(attributeCount, originalTLODs, perSampleIndexesOfRelevantAlleles);
             if (newTLODs != null) {
                 genotypeBuilder.attribute(somaticKey, newTLODs);
@@ -623,7 +623,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         }
         else if (vc.hasAttribute(somaticKey)) {
             attributeCount = vcfInputHeader.getInfoHeaderLine(somaticKey).getCountType();
-            final List<Object> originalTLODs = GATKProtectedVariantContextUtils.attributeToList(vc.getAttribute(somaticKey));
+            final List<Object> originalTLODs = VariantContextGetters.attributeToList(vc.getAttribute(somaticKey));
             final Object newTLODs = generateAnnotationValueVector(attributeCount, originalTLODs, perSampleIndexesOfRelevantAlleles);
             if (newTLODs != null) {
                 genotypeBuilder.attribute(somaticKey, newTLODs);

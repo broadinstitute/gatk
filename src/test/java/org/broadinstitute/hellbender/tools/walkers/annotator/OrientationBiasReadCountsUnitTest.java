@@ -5,7 +5,7 @@ import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.ReadOrientationFilter;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -97,9 +97,9 @@ public final class OrientationBiasReadCountsUnitTest {
         final GenotypeBuilder gb = new GenotypeBuilder(g);
         new OrientationBiasReadCounts().annotate(null, vc, g, gb, likelihoods);
 
-        Assert.assertEquals(OrientationBiasUtils.getF1R2(gb.make()), new int[] {refF1R2, altF1R2});
+        Assert.assertEquals(ReadOrientationFilter.getF1R2(gb.make()), new int[] {refF1R2, altF1R2});
 
-        Assert.assertEquals(OrientationBiasUtils.getF2R1(gb.make()), new int[] {refF2R1, altF2R1});
+        Assert.assertEquals(ReadOrientationFilter.getF2R1(gb.make()), new int[] {refF2R1, altF2R1});
 
         //now test a no-op
         final GenotypeBuilder gb1 = new GenotypeBuilder(g);

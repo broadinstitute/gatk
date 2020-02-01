@@ -27,7 +27,7 @@ public final class DownsamplingMethodUnitTest {
     public void testToFraction() throws Exception {
         final DownsamplingMethod bySample = new DownsamplingMethod(DownsamplingMethod.DEFAULT_DOWNSAMPLING_TYPE, null, 0.1);
         Assert.assertEquals(bySample.toCoverage, null);
-        Assert.assertEquals(bySample.toFraction, 0.1);
+        Assert.assertEquals((double) bySample.toFraction, 0.1);
         Assert.assertEquals(bySample.type, DownsampleType.BY_SAMPLE);
         Assert.assertNotNull(bySample.toString());
     }

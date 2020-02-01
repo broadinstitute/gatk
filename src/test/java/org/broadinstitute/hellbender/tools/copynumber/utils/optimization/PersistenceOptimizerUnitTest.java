@@ -93,7 +93,7 @@ public final class PersistenceOptimizerUnitTest extends GATKBaseTest {
                                          final List<Integer> minimaIndicesExpected) {
         final PersistenceOptimizer optimizer = new PersistenceOptimizer(data);
         Assert.assertEquals(optimizer.getMinimaIndices(), minimaIndicesExpected);
-        Assert.assertEquals(optimizer.getPersistences().get(0), Doubles.max(data) - Doubles.min(data));
+        Assert.assertEquals((double) optimizer.getPersistences().get(0), Doubles.max(data) - Doubles.min(data));
         Assert.assertTrue(Ordering.natural().reverse().isOrdered(optimizer.getPersistences()));
     }
 

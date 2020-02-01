@@ -331,7 +331,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                 final GATKRead readNoCache = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
                 final SimpleInterval loc = new SimpleInterval("20", i + 1 + readStartIntoRef, i + 1 + readStartIntoRef);
                 final ReadPileup pileupCache = new ReadPileup(loc, Collections.singletonList(readCache), readCoordinateForReferenceCoordinate.getKey());
-                final ReadPileup pileupNoCache = new ReadPileup(loc, Collections.singletonList(readNoCache), ReadUtils.getReadCoordinateForReferenceCoordinate(readNoCache, readNoCache.getStart() + i).getKey());
+                final ReadPileup pileupNoCache = new ReadPileup(loc, Collections.singletonList(readNoCache), ReadUtils.getReadCoordinateForReferenceCoordinate(readNoCache, readNoCache.getStart() + i, false).getKey());
                 final int actualCache = model.calcNReadsWithNoPlausibleIndelsReads(pileupCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
                 final int actualNoCache = model.calcNReadsWithNoPlausibleIndelsReads(pileupNoCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
                 Assert.assertEquals(actualCache, (int)expected.get(i), "cached result failed at position " + i);

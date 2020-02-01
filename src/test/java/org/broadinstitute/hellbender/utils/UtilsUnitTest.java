@@ -323,11 +323,11 @@ public final class UtilsUnitTest extends GATKBaseTest {
             Assert.assertNotNull(list);
             Assert.assertEquals(list.size(),values.length);
             for (int i = 0; i < values.length; i++)
-                Assert.assertEquals(list.get(i),values[i]);
+                Assert.assertEquals((double) list.get(i),values[i]);
             for (int i = 0; i < values.length; i++)
                 valuesClone[rdn.nextInt(values.length)] = rdn.nextDouble() * 1000;
             for (int i = 0; i < values.length; i++)
-                Assert.assertEquals(list.get(i),valuesClone[i]);
+                Assert.assertEquals((double) list.get(i),valuesClone[i]);
         }
     }
 

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,12 +42,6 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final double log10globalReadMismappingRate;
 
     private final PairHMM pairHMM;
-
-    @VisibleForTesting
-    static boolean writeLikelihoodsToFile = false;
-
-    public static final String LIKELIHOODS_FILENAME = "likelihoods.txt";
-    private final PrintStream likelihoodsStream;
 
     public enum PCRErrorModel {
         /** no specialized PCR error model will be applied; if base insertion/deletion qualities are present they will be used */
@@ -142,27 +135,14 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
         initializePCRErrorModel();
 
-        this.likelihoodsStream = makeLikelihoodStream();
-
         if (baseQualityScoreThreshold < QualityUtils.MIN_USABLE_Q_SCORE) {
             throw new IllegalArgumentException("baseQualityScoreThreshold must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
         }
         this.baseQualityScoreThreshold = baseQualityScoreThreshold;
     }
 
-    private PrintStream makeLikelihoodStream() {
-        try {
-            return writeLikelihoodsToFile ? new PrintStream(new FileOutputStream(new File(LIKELIHOODS_FILENAME))) : null;
-        } catch ( final FileNotFoundException e ) {
-            throw new GATKException("can't open a file to write likelihoods to", e);
-        }
-    }
-
     @Override
     public void close() {
-        if ( likelihoodsStream != null ) {
-            likelihoodsStream.close();
-        }
         pairHMM.close();
     }
 
@@ -259,8 +239,6 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
 
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
         pairHMM.computeLog10Likelihoods(likelihoods, processedReads, gapContinuationPenalties);
-
-        writeDebugLikelihoods(likelihoods);
     }
 
     /**
@@ -309,33 +287,6 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final Map<GATKRead, byte[]> result = new HashMap<>(reads.size());
         reads.stream().forEach(read -> result.put(read, Utils.dupBytes(gapPenalty, read.getLength())));
         return result;
-    }
-
-    private void writeDebugLikelihoods(final LikelihoodMatrix<GATKRead, Haplotype> likelihoods) {
-        if (!writeLikelihoodsToFile || likelihoodsStream == null) {
-            return;
-        }
-
-        final List<GATKRead> reads = likelihoods.evidence();
-        final List<Haplotype> haplotypes = likelihoods.alleles();
-        for (int i = 0; i < reads.size(); i++) {
-            for (int j = 0; j < haplotypes.size(); j++) {
-                writeDebugLikelihoods(reads.get(i), haplotypes.get(j), likelihoods.get(j, i));
-            }
-        }
-        likelihoodsStream.flush();
-    }
-
-    private void writeDebugLikelihoods(final GATKRead processedRead, final Haplotype haplotype, final double log10l){
-        // Note: the precision of log10l in the debug output is only ~6 digits (ie., not all digits are necessarily printed)
-        likelihoodsStream.printf("%s %s %s %s %s %s %f%n",
-                haplotype.getBaseString(),
-                new String(processedRead.getBases()),
-                SAMUtils.phredToFastq(processedRead.getBaseQualities()),
-                SAMUtils.phredToFastq(ReadUtils.getBaseInsertionQualities(processedRead)),
-                SAMUtils.phredToFastq(ReadUtils.getBaseDeletionQualities(processedRead)),
-                SAMUtils.phredToFastq(constantGCP),
-                log10l);
     }
 
     /* --------------------------------------------------------------------------------

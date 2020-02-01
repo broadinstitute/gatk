@@ -12,20 +12,20 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.ReadOrientationFilter;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnReadOrientationModel;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -33,7 +33,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -137,7 +136,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         VariantContextTestUtils.streamVcf(unfilteredVcf)
                 .forEach(vc -> {
                     for (final Genotype genotype : vc.getGenotypes()) {
-                        final int[] f1r2 = OrientationBiasUtils.getF1R2(genotype);
+                        final int[] f1r2 = ReadOrientationFilter.getF1R2(genotype);
                         Assert.assertEquals(f1r2.length, vc.getNAlleles());
                         if (vc.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> a.getBases()[0]).distinct().count() == 1) {
                             Assert.assertTrue(vc.getAlleles().stream().anyMatch(a -> a.getBases().length == 1));
@@ -360,7 +359,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                     .collect(Collectors.toMap(VariantContext::getStart, VariantContext::getAlternateAlleles));
             for (final VariantContext vc : new FeatureDataSource<VariantContext>(forceCalls)) {
                 final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
-                vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
+                vc.getAlternateAlleles().stream().filter(a-> a.length() > 0 && BaseUtils.isNucleotide(a.getBases()[0])).forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
             }
         }
     }
@@ -462,6 +461,16 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @Test
     public void testBamWithRepeatedReads() {
         final File bam = new File(toolsTestDir + "mutect/repeated_reads.bam");
+        final File outputVcf = createTempFile("output", ".vcf");
+
+        runMutect2(bam, outputVcf, "20:10018000-10020000", b37Reference, Optional.empty());
+    }
+
+    // In the rare case that a particular fragment is only supported by supplementary reads, that should not
+    // result in an exception.  This test ensures that Mutect2 does not fail to finish in that case.
+    @Test
+    public void testBamWithOnlySupplementaryReads() {
+        final File bam = new File(toolsTestDir + "mutect/only_supplementary_reads.bam");
         final File outputVcf = createTempFile("output", ".vcf");
 
         runMutect2(bam, outputVcf, "20:10018000-10020000", b37Reference, Optional.empty());
@@ -623,10 +632,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         //ref blocks have TLOD in format field
         final boolean isHomRef = v1.getGenotype(0).isHomRef();
-        final double[] tlods1 = !isHomRef ? GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
-                : new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
-        final double[] tlods2 = !isHomRef ? GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
-                : new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
+        final double[] tlods1 = !isHomRef ? VariantContextGetters.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
+                : new double[]{VariantContextGetters.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
+        final double[] tlods2 = !isHomRef ? VariantContextGetters.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)
+                : new double[]{VariantContextGetters.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, 0)};
 
         for (int i = 0; i < v1.getAlternateAlleles().size(); i++) {
             if (!v1.getAlternateAllele(i).equals(v2.getAlternateAllele(i))) {
@@ -669,6 +678,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
             //Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 1e-6);
             Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getAttributeAsString(GATKVCFConstants.ALLELE_FRACTION_KEY, "0"))), (double) ADs[1] / (ADs[0] + ADs[1]), 2e-3);
+        }
+    }
+
+    // check that the somatic clustering model works with high-depth, low-AF cfDNA clustering
+    @Test
+    public void testBloodBiopsyFiltering() {
+        final File unfiltered = new File(toolsTestDir, "mutect/cfdna/cfdna-unfiltered.vcf");
+        final File filtered = createTempFile("filtered", ".vcf");
+
+        runFilterMutectCalls(unfiltered, filtered, b37Reference);
+
+        final Map<Integer, Set<String>> filtersBySite = VariantContextTestUtils.streamVcf(filtered).collect(Collectors.toMap(VariantContext::getStart, VariantContext::getFilters));
+
+        // these are sites that caused trouble for a previous version of the somatic clustering model
+        final List<Integer> lowAFSitesWeShouldNotCall = Arrays.asList(25963056, 47162531, 142178205, 151841902, 31325209, 41521982);
+        for (final int site : lowAFSitesWeShouldNotCall) {
+            Assert.assertTrue(filtersBySite.get(site).contains(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME));
         }
     }
 

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.UniqueAltReadCount;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;

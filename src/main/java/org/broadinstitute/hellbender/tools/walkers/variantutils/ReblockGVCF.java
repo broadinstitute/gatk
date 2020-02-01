@@ -132,8 +132,7 @@ public final class ReblockGVCF extends VariantWalker {
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
     // the INFO field annotation key names to remove
-    private final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK,
-            GATKVCFConstants.DOWNSAMPLED_KEY, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
+    private final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
             GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, GATKVCFConstants.EXCESS_HET_KEY);
 
@@ -239,10 +238,7 @@ public final class ReblockGVCF extends VariantWalker {
         // but if STAND_CALL_CONF > 0 we need to drop low quality alleles and regenotype
          //Note that spanning deletion star alleles will be considered low quality
         if (result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 && !isHomRefCall(result) && dropLowQuals) {
-            final GenotypeLikelihoodsCalculationModel model = result.getType() == VariantContext.Type.INDEL
-                    ? GenotypeLikelihoodsCalculationModel.INDEL
-                    : GenotypeLikelihoodsCalculationModel.SNP;
-            result = genotypingEngine.calculateGenotypes(originalVC, model);
+            result = genotypingEngine.calculateGenotypes(originalVC);
         }
 
         if (result == null) {

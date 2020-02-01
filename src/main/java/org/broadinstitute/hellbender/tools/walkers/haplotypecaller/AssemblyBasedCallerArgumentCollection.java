@@ -30,6 +30,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String FORCE_CALL_FILTERED_ALLELES_SHORT_NAME = "genotype-filtered-alleles";
     public static final String EMIT_REF_CONFIDENCE_LONG_NAME = "emit-ref-confidence";
     public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
+    public static final String ALLELE_EXTENSION_LONG_NAME = "allele-informative-reads-overlap-margin";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -136,4 +137,11 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Advanced
     @Argument(fullName = FORCE_CALL_FILTERED_ALLELES_LONG_NAME, shortName = FORCE_CALL_FILTERED_ALLELES_SHORT_NAME, doc = "Force-call filtered alleles included in the resource specified by --alleles", optional = true)
     public boolean forceCallFiltered = false;
+
+    @Advanced
+    @Argument(fullName = ALLELE_EXTENSION_LONG_NAME,
+            doc = "Likelihood and read-based annotations will only take into consideration reads " +
+                    "that overlap the variant or any base no further than this distance expressed in base pairs",
+            optional = true)
+    public int informativeReadOverlapMargin = 2;
 }

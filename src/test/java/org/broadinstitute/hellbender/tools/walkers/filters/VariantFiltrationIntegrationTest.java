@@ -1,15 +1,26 @@
 package org.broadinstitute.hellbender.tools.walkers.filters;
 
+import com.google.api.client.googleapis.testing.TestUtils;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public final class VariantFiltrationIntegrationTest extends CommandLineProgramTest {
 
@@ -271,5 +282,38 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
         );
 
         spec.executeTest("testFilteringZfromFORMATAndFailMissing", this);
+    }
+
+    @Test
+    public void testFilteredAndPassBecomeUnfiltered() throws IOException {
+        final File output = createTempFile("testFilteredAndPassBecomeUnfiltered", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+                args.addArgument("V", getTestFile("expected/testVariantFiltration_testUnfilteredBecomesFilteredAndPass.vcf"))
+                .addArgument(StandardArgumentDefinitions.INVALIDATE_PREVIOUS_FILTERS_LONG_NAME, "true")
+                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        args.addOutput(output);
+
+        runCommandLine(args);
+
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output)) {
+            for (final VariantContext vc : actualVcs) {
+                Assert.assertFalse(vc.filtersWereApplied());  //this checks for null VC filters, output as a '.' FILTER status, which is what we want
+            }
+        }
+
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addArgument("V", getTestFile("expected/testVariantFiltration_testUnfilteredBecomesFilteredAndPass.vcf"))
+                .addArgument(StandardArgumentDefinitions.INVALIDATE_PREVIOUS_FILTERS_LONG_NAME, "false")
+                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        args2.addOutput(output);
+
+        runCommandLine(args2);
+
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output)) {
+            for (final VariantContext vc : actualVcs) {
+                Assert.assertTrue(vc.filtersWereApplied());  //variants should still be filtered if we don't invalidate
+            }
+        }
     }
 }

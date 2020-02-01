@@ -7,10 +7,10 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFractionRecord;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.io.File;
 import java.util.*;
@@ -38,8 +38,8 @@ public class GermlineFilter extends Mutect2VariantFilter {
         final int maxLodIndex = MathUtils.maxElementIndex(somaticLogOdds);
 
         final Optional<double[]> normalLogOdds = vc.hasAttribute(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY) ?
-                Optional.of(MathUtils.applyToArrayInPlace(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY), MathUtils::log10ToLog)) : Optional.empty();
-        final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY);
+                Optional.of(MathUtils.applyToArrayInPlace(VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY), MathUtils::log10ToLog)) : Optional.empty();
+        final double[] negativeLog10AlleleFrequencies = VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY);
         final double populationAF = Math.pow(10, -negativeLog10AlleleFrequencies[maxLodIndex]);
 
         if (populationAF < EPSILON) {

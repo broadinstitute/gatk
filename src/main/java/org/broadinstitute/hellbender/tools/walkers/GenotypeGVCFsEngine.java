@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -20,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -95,9 +95,9 @@ public class GenotypeGVCFsEngine
         }
 
         // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
-        genotypingEngine = new MinimalGenotypingEngine(createUAC(false), samples,
+        genotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(false), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
-        forceOutputGenotypingEngine = new MinimalGenotypingEngine(createUAC(true), samples,
+        forceOutputGenotypingEngine = new MinimalGenotypingEngine(createMinimalArgs(true), samples,
                 annotationEngine.getInfoAnnotations().stream().anyMatch(AnnotationUtils::isAlleleSpecific));
 
         if ( includeNonVariants ) {
@@ -225,7 +225,7 @@ public class GenotypeGVCFsEngine
                 }
                 else {
                     attribute = ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
-                            GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices);
+                            VariantContextGetters.attributeToList(g.getAnyAttribute(key)), relevantIndices);
                 }
                 gb.attribute(key, attribute);
             }
@@ -256,14 +256,7 @@ public class GenotypeGVCFsEngine
     }
 
     private VariantContext calculateGenotypes(VariantContext vc, final boolean forceOutput){
-        /*
-         * Query the VariantContext for the appropriate model.  If type == MIXED, one would want to use model = BOTH.
-         * However GenotypingEngine.getAlleleFrequencyPriors throws an exception if you give it anything but a SNP or INDEL model.
-         */
-        final GenotypeLikelihoodsCalculationModel model = vc.getType() == VariantContext.Type.INDEL
-                ? GenotypeLikelihoodsCalculationModel.INDEL
-                : GenotypeLikelihoodsCalculationModel.SNP;
-        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc, model);
+        return (forceOutput ? forceOutputGenotypingEngine : genotypingEngine).calculateGenotypes(vc);
     }
 
     /**
@@ -298,8 +291,8 @@ public class GenotypeGVCFsEngine
 
         for(final Genotype g : genotypes) {
             GenotypeBuilder gb = new GenotypeBuilder(g);
-            final double[] tlodArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
-            final double[] variantAFArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
+            final double[] tlodArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, () -> null, 0.0);
+            final double[] variantAFArray = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
             double variantAFtotal = 0;
             final List<Allele> calledAlleles = new ArrayList<>();
             for(int i = 0; i < vc.getAlleles().size()-1; i++) {
@@ -322,7 +315,7 @@ public class GenotypeGVCFsEngine
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final VariantContext regenotypedVC = builder.genotypes(newGenotypes).make();
 
-        final int maxAltAlleles = ((UnifiedArgumentCollection)genotypingEngine.getConfiguration()).genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.MAX_ALTERNATE_ALLELES;
         List<Allele> allelesToKeep;
 
         //we need to make sure all alleles pass the tlodThreshold
@@ -386,18 +379,17 @@ public class GenotypeGVCFsEngine
     }
 
     /**
-     * Creates a UnifiedArgumentCollection with appropriate values filled in from the arguments in this walker
-     * @return a complete UnifiedArgumentCollection
+     * Creates a StandardCallerArgumentCollection with appropriate values filled in from the arguments in this walker
      */
-    private UnifiedArgumentCollection createUAC(final boolean forceOutput) {
-        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
-        uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+    private StandardCallerArgumentCollection createMinimalArgs(final boolean forceOutput) {
+        final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
+        args.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
 
-        //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to uac separately
+        //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
         //GATK4 uses EMIT_ALL_ACTIVE_SITES to ensure LowQual sites are emitted.
-        uac.outputMode = forceOutput ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
-        return uac;
+        args.outputMode = forceOutput ? OutputMode.EMIT_ALL_ACTIVE_SITES : OutputMode.EMIT_VARIANTS_ONLY;
+        return args;
     }
 
     /**

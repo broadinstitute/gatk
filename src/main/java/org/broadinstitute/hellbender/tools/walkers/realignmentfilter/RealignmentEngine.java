@@ -132,8 +132,11 @@ public class RealignmentEngine {
         return new ArrayList<>(commonAlignments);
     }
 
+    // note the conversion from exclusive end (BWAMemAlignment) to inclusive end (SimpleInterval) (subtract 1 from the end)
+    // combined with the conversion from 0-based to 1-based contigs (add 1 to start and end)
+    // which has the net result of adding 1 to the start and leaving the end alone
     private static SimpleInterval convertToInterval(final BwaMemAlignment alignment) {
-        return new SimpleInterval(Integer.toString(alignment.getRefId()), alignment.getRefStart(), alignment.getRefEnd());
+        return new SimpleInterval(Integer.toString(alignment.getRefId()), alignment.getRefStart() + 1, alignment.getRefEnd());
     }
 
     private static Strand getStrand(final BwaMemAlignment alignment) {

@@ -55,6 +55,11 @@ public class Fragment implements Locatable {
                 logger.warn("More than two reads with the same name found.  Using two reads randomly to combine as a fragment.");
                 return create(nonSupplementaryReads.subList(0,2));
             }
+            //If there are no nonsupplementary reads, try supplementary/secondary/duplicate reads instead
+            else if(nonSupplementaryReads.isEmpty())
+            {
+                return create(reads.subList(0,1));
+            }
             return create(nonSupplementaryReads);
         }
     }

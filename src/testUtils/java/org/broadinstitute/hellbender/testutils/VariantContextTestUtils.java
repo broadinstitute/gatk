@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
+import static org.broadinstitute.hellbender.utils.variant.VariantContextGetters.attributeToList;
 
 public final class VariantContextTestUtils {
     private VariantContextTestUtils() {}
@@ -76,6 +76,18 @@ public final class VariantContextTestUtils {
             }
 
             return Pair.of((VCFHeader)header, vcfRecords);
+        }
+    }
+
+    public static VCFHeader getVCFHeader(final String vcfPath) {
+        Utils.nonNull(vcfPath);
+
+        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(vcfPath) ) {
+            final Object header = vcfReader.getHeader();
+            if (!(header instanceof VCFHeader)) {
+                throw new IllegalArgumentException(vcfPath + " does not have a valid VCF header");
+            }
+            return (VCFHeader)header;
         }
     }
 
