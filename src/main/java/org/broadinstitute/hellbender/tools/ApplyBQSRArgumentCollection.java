@@ -17,9 +17,8 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
      * based on their ability to align to the reference and their dinucleotide effect, your Q2 bin can be elevated to
      * Q8 or Q10, leading to issues downstream.
      */
-    //TODO: add those when https://github.com/broadinstitute/hellbender/issues/143 is fixed
-    //TODO: minValue = 0, minRecommendedValue = QualityUtils.MIN_USABLE_Q_SCORE
-    @Argument(fullName = "preserve-qscores-less-than", doc = "Don't recalibrate bases with quality scores less than this threshold", optional = true)
+    @Argument(fullName = "preserve-qscores-less-than", doc = "Don't recalibrate bases with quality scores less than this threshold", optional = true,
+            minValue = 0, minRecommendedValue =  QualityUtils.MIN_USABLE_Q_SCORE)
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
     /**
