@@ -53,7 +53,7 @@ while getopts ":i:cth" opt ; do
             DOCKER_COMMAND=docker
             ;;
         t)
-            INTERACTIVE_RUN="-it"
+            INTERACTIVE="-it"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
