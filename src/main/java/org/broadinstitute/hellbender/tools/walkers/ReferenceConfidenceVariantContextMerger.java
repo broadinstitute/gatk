@@ -659,13 +659,13 @@ public final class ReferenceConfidenceVariantContextMerger {
      * @return array of new annotation values, may be null
      */
     @VisibleForTesting
-    public static Object generateAnnotationValueVector(VCFHeaderLineCount alleleCount,
-                                                final List<?> originalList, final int[] indexesOfRelevantAlleles) {
-        List<?> newLODs = null;
+    public static <T> List<T> generateAnnotationValueVector(VCFHeaderLineCount alleleCount,
+                                                final List<T> originalList, final int[] indexesOfRelevantAlleles) {
+        List<T> newLODs = null;
         if (alleleCount.equals(VCFHeaderLineCount.A)) {
-            newLODs = AlleleSubsettingUtils.remapALengthList(originalList, indexesOfRelevantAlleles);
+            newLODs = AlleleSubsettingUtils.remapALengthList(originalList, indexesOfRelevantAlleles, null);
         } else if (alleleCount.equals(VCFHeaderLineCount.R)) {
-            newLODs = AlleleSubsettingUtils.remapRLengthList(originalList, indexesOfRelevantAlleles);
+            newLODs = AlleleSubsettingUtils.remapRLengthList(originalList, indexesOfRelevantAlleles, null);
         } else {  //count doesn't depend on alleles
             newLODs = originalList;
         }

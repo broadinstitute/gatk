@@ -499,7 +499,7 @@ public final class ReblockGVCF extends VariantWalker {
                     if (origMap.containsKey(rawKey)) {
                         if (allelesNeedSubsetting && AnnotationUtils.isAlleleSpecific(annotation)) {
                             List<String> alleleSpecificValues = AnnotationUtils.getAlleleLengthListOfString(originalVC.getAttributeAsString(rawKey, null));
-                            final List<?> subsetList = alleleSpecificValues.size() > 0 ? AlleleSubsettingUtils.remapRLengthList(alleleSpecificValues, relevantIndices)
+                            final List<?> subsetList = alleleSpecificValues.size() > 0 ? AlleleSubsettingUtils.remapRLengthList(alleleSpecificValues, relevantIndices, "")
                                     : Collections.nCopies(relevantIndices.length, "");
                             attrMap.put(rawKey, AnnotationUtils.encodeAnyASListWithRawDelim(subsetList));
                         } else {
