@@ -249,12 +249,11 @@ public class Mutect2FilteringEngine {
     }
 
     /**
-     * Creates a comma separated string of all the filters that apply to the allele.
+     * Creates a list of the string names of all the filters that apply to the allele, or the string PASS if it passed all filters
      * @param filtersForAllele all the filters applied to the allele
-     * @return encoded (comma separated) list of filters that apply to the allele
+     * @return list of filter names that apply to the allele or PASS
      */
     private List<String> getDistinctFiltersForAllele(final List<String> filtersForAllele) {
-        // loop through each filter and pull out the filters the specified allele
         final List<String> results = filtersForAllele.stream().distinct().collect(Collectors.toList());
         if (results.size() > 1 && results.contains(VCFConstants.PASSES_FILTERS_v4)) {
             results.remove(VCFConstants.PASSES_FILTERS_v4);

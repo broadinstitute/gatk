@@ -519,7 +519,7 @@ public final class AlleleSubsettingUtils {
      * @return non-null array of new AD values
      */
     public static int[] generateAD(final int[] originalAD, final int[] indexesOfRelevantAlleles) {
-        final List<Integer> adList = (List<Integer>)remapRLengthList(Arrays.stream(originalAD).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles);
+        final List<Integer> adList = remapRLengthList(Arrays.stream(originalAD).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles, 0);
         return Ints.toArray(adList);
     }
 
@@ -530,7 +530,7 @@ public final class AlleleSubsettingUtils {
      * @return non-null array of new AFs
      */
     public static double[] generateAF(final double[] originalAF, final int[] indexesOfRelevantAlleles) {
-        final List<Double> afList = (List<Double>)remapALengthList(Arrays.stream(originalAF).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles);
+        final List<Double> afList = remapALengthList(Arrays.stream(originalAF).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles, 0.0);
         return Doubles.toArray(afList);
     }
 
@@ -540,11 +540,11 @@ public final class AlleleSubsettingUtils {
      * @param indexesOfRelevantAlleles
      * @return
      */
-    public static List<?> remapRLengthList(final List<?> originalList, final int[] indexesOfRelevantAlleles) {
+    public static <T> List<T> remapRLengthList(final List<T> originalList, final int[] indexesOfRelevantAlleles, T filler) {
         Utils.nonNull(originalList);
         Utils.nonNull(indexesOfRelevantAlleles);
 
-        return remapList(originalList, indexesOfRelevantAlleles, 0);
+        return remapList(originalList, indexesOfRelevantAlleles, 0, filler);
     }
 
     /**
@@ -553,11 +553,11 @@ public final class AlleleSubsettingUtils {
      * @param indexesOfRelevantAlleles
      * @return
      */
-    public static List<?> remapALengthList(final List<?> originalList, final int[] indexesOfRelevantAlleles) {
+    public static <T> List<T> remapALengthList(final List<T> originalList, final int[] indexesOfRelevantAlleles, T filler) {
         Utils.nonNull(originalList);
         Utils.nonNull(indexesOfRelevantAlleles);
 
-        return remapList(originalList, indexesOfRelevantAlleles, 1);
+        return remapList(originalList, indexesOfRelevantAlleles, 1, filler);
     }
 
     /**
@@ -566,15 +566,13 @@ public final class AlleleSubsettingUtils {
      * @param originalList  input per-allele attributes
      * @param indexesOfRelevantAlleles  indexes of alleles to keep, including the reference
      * @param offset    used to indicate whether to include the ref allele values in the output or not
+     * @param filler default value to use if no value is mapped
      * @return  a non-null List
      */
-    private static List<Object> remapList(final List<?> originalList, final int[] indexesOfRelevantAlleles,
-                                            final int offset) {
+    private static <T> List<T> remapList(final List<T> originalList, final int[] indexesOfRelevantAlleles,
+                                            final int offset, T filler) {
         final int numValues = indexesOfRelevantAlleles.length - offset; //since these are log odds, this should just be alts
-        final List<Object> newValues = new ArrayList<>();
-
-        //force attributes for the non-ref to go to zero, even though that allele occasionally picks up AD counts
-        final int filler = 0;
+        final List<T> newValues = new ArrayList<>();
 
         for ( int i = offset; i < numValues + offset; i++ ) {
             final int oldIndex = indexesOfRelevantAlleles[i];
