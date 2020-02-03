@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotation;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -35,8 +36,8 @@ import java.util.stream.Collectors;
  * <p>This annotation does not require or use any BAM file duplicate flags or UMI information, just the read alignments.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (UNIQ_ALT_READ_COUNT)")
-public class UniqueAltReadCount extends InfoFieldAnnotation {
-    public static final String KEY = GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY;
+public class UniqueAltReadCount extends InfoFieldAnnotation implements AlleleSpecificAnnotation {
+    public static final String KEY = GATKVCFConstants.AS_UNIQUE_ALT_READ_SET_COUNT_KEY;
 
     @Override
     public List<String> getKeyNames() {
@@ -53,15 +54,16 @@ public class UniqueAltReadCount extends InfoFieldAnnotation {
                          final VariantContext vc,
                          final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
 
-        final Allele altAllele = vc.getAlternateAllele(0); // assume single-allelic
+        List<Integer> uniqueCountsPerAllele = vc.getAlternateAlleles().stream().map(altAllele -> {
+            // Build a map from the (Start Position, Fragment Size) tuple to the count of reads with that
+            // start position and fragment size
+            Map<ImmutablePair<Integer, Integer>, Long> duplicateReadMap = likelihoods.bestAllelesBreakingTies().stream()
+                    .filter(ba -> ba.allele.equals(altAllele) && ba.isInformative())
+                    .map(ba -> new ImmutablePair<>(ba.evidence.getStart(), ba.evidence.getFragmentLength()))
+                    .collect(Collectors.groupingBy(x -> x, Collectors.counting()));
+            return duplicateReadMap.size();
+        }).collect(Collectors.toList());
 
-        // Build a map from the (Start Position, Fragment Size) tuple to the count of reads with that
-        // start position and fragment size
-        Map<ImmutablePair<Integer, Integer>, Long> duplicateReadMap = likelihoods.bestAllelesBreakingTies().stream()
-                .filter(ba -> ba.allele.equals(altAllele) && ba.isInformative())
-                .map(ba -> new ImmutablePair<>(ba.evidence.getStart(), ba.evidence.getFragmentLength()))
-                .collect(Collectors.groupingBy(x -> x, Collectors.counting()));
-
-        return ImmutableMap.of(KEY, duplicateReadMap.size());
+        return ImmutableMap.of(KEY, AnnotationUtils.encodeAnyASListWithRawDelim(uniqueCountsPerAllele));
     }
 }

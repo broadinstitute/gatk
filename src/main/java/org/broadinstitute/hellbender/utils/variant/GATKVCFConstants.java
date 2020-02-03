@@ -103,7 +103,7 @@ public final class GATKVCFConstants {
     public static final String READ_ORIENTATION_QUAL_KEY =  "ROQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
-    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
+    public static final String AS_UNIQUE_ALT_READ_SET_COUNT_KEY = "AS_UNIQ_ALT_READ_COUNT";
     public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
     public static final String MEDIAN_MAPPING_QUALITY_KEY = "MMQ";
     public static final String MEDIAN_FRAGMENT_LENGTH_KEY = "MFRL";

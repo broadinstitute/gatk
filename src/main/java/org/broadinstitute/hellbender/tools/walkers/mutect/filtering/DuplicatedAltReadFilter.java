@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 // This filter checks for the case in which PCR-duplicates with unique UMIs (which we assume is caused by false adapter priming)
 // amplify the erroneous signal for an alternate allele.
@@ -22,7 +23,7 @@ public class DuplicatedAltReadFilter extends HardAlleleFilter {
 
     @Override
     public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        return Collections.singletonList(vc.getAttributeAsInt(UniqueAltReadCount.KEY, 1) <= uniqueAltReadCount);
+        return vc.getAttributeAsIntList(UniqueAltReadCount.KEY, 1).stream().map(count -> count <= uniqueAltReadCount).collect(Collectors.toList());
     }
 
    @Override
