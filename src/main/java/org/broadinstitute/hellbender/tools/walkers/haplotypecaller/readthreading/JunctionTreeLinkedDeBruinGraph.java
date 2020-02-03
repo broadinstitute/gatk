@@ -485,7 +485,7 @@ public class JunctionTreeLinkedDeBruinGraph extends AbstractReadThreadingGraph {
                 }
                 // Loop over the tentative path until the end of the read, we have walked over kmersize bases, or there is another missing path in the graph respectively
                 for (int j = i+1; j <= seqForKmers.stop - kmerSize &&
-                                j < i + kmerSize &&
+                                j <= i + kmerSize &&
                                 tentativeVertex != null; j++) {
                     tentativeVertex = extendJunctionThreadingByOne(tentativeVertex, seqForKmers.sequence, j, null, false);
                 }
