@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -234,10 +235,9 @@ public final class CigarUtils {
         if (startsWithDeletionIgnoringClips(elems)){
             return false;
         }
-        //revert the list and check deletions at the end
-        final List<CigarElement> elemsRev = new ArrayList<>(elems);
-        Collections.reverse(elemsRev);
-        return !startsWithDeletionIgnoringClips(elemsRev);
+        //get a reverse view of the list and check deletions at the end
+        final List<CigarElement> reversedElems = Lists.reverse(elems);
+        return !startsWithDeletionIgnoringClips(reversedElems);
     }
 
     /**
