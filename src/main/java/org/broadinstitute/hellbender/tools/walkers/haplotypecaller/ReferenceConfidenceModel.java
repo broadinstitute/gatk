@@ -42,6 +42,9 @@ public class ReferenceConfidenceModel {
     private final int indelInformativeDepthIndelSize;
     private final int numRefSamplesForPrior;
 
+    @VisibleForTesting
+    protected static final String NON_REF_ALLELE_DESCRIPTION = "Represents any possible alternative allele not already represented at this location by REF and ALT";
+
     private final PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions options;
 
     /**
@@ -132,7 +135,7 @@ public class ReferenceConfidenceModel {
      */
     public Set<VCFHeaderLine> getVCFHeaderLines() {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>();
-        headerLines.add(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, "Represents any possible alternative allele at this location"));
+        headerLines.add(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, NON_REF_ALLELE_DESCRIPTION));
         return headerLines;
     }
 
