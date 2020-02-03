@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruinGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -23,7 +24,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     // Workarounds for relatively rare complex sites that loop pathologically and do not generate ending paths
     public static final int DEFAULT_MAX_PATHS_TO_CONSIDER_WITHOUT_RESULT = 1000;
     public static final int DEFAULT_MAX_PATHS_TO_EVER_CONSIDER = 10000;
-    private int weightThreshold = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
+    private int junctionTreeEvidenceWeightThreshold = DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE;
 
     // List for mapping vertexes that start chains of kmers that do not diverge, used to cut down on repeated graph traversal
     private Map<V, List<E>> graphKmerChainCache = new HashMap<>();
@@ -37,7 +38,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
         Utils.validate(graph instanceof JunctionTreeLinkedDeBruinGraph, "JunctionTreeKBestHaplotypeFinder requires an JunctionTreeLinkedDeBruinGraph be provided");
         this.junctionTreeLinkedDeBruinGraph = (JunctionTreeLinkedDeBruinGraph) graph;
         this.experimentalEndRecoveryMode = experimentalEndRecoveryMode;
-        ParamUtils.isPositive(weightThreshold, "Pruning Weight Threshold must be a positive number greater than 0");
+        ParamUtils.isPositive(junctionTreeEvidenceWeightThreshold, "Pruning Weight Threshold must be a positive number greater than 0");
     }
 
     /**
@@ -67,9 +68,9 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     }
 
     @VisibleForTesting
-    public JunctionTreeKBestHaplotypeFinder<V, E> setWeightThreshold(final int outgoingWeight) {
-        Utils.validate(weightThreshold > 0, "Pruning Weight Threshold must be a positive number greater than 0");
-        weightThreshold = outgoingWeight;
+    public JunctionTreeKBestHaplotypeFinder<V, E> setJunctionTreeEvidenceWeightThreshold(final int outgoingWeight) {
+        Utils.validate(junctionTreeEvidenceWeightThreshold > 0, "Pruning Weight Threshold must be a positive number greater than 0");
+        junctionTreeEvidenceWeightThreshold = outgoingWeight;
         return this;
     }
 
@@ -107,9 +108,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
         // Iterate over paths in the queue, unless we are out of paths of maxHaplotypes to find
         while (result.size() < maxNumberOfHaplotypes && (!queue.isEmpty() || !unvisitedPivotalEdges.isEmpty())) {
             // check that we aren't caught in a hopelessly complicated graph for which we can't hope to recover
-            if (result.isEmpty() ?
-                    queue.size() > DEFAULT_MAX_PATHS_TO_CONSIDER_WITHOUT_RESULT : // restrict the number of branching paths examined
-                    queue.size() > DEFAULT_MAX_PATHS_TO_EVER_CONSIDER) {
+            if (queue.size() > (result.isEmpty() ? DEFAULT_MAX_PATHS_TO_CONSIDER_WITHOUT_RESULT : DEFAULT_MAX_PATHS_TO_EVER_CONSIDER)) {
                 break;
             }
 
@@ -168,11 +167,11 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             //TODO this can probabaly be 100% consumed by getApplicableNextEdgesBasedOnJunctionTrees() as a check... that would simplify things somewhat
             // If we are at a reference end then we close out the path
-            if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(weightThreshold)) {
+            if (sinks.contains(vertexToExtend) && pathToExtend.hasStoppingEvidence(junctionTreeEvidenceWeightThreshold)) {
                 //TODO this will probably be resolved using a junction tree on that node and treating it as an edge to extend
                 //todo the proposal here would be to check if there is an active tree left for us at this point and if so keep going
                 JTBestHaplotype<V, E> newPath = reconcilePathMissingReferenceStartPositions(chain.isEmpty() ?
-                        pathToExtend :  new JTBestHaplotype<>(pathToExtend, chain, 0), result, graph);
+                        pathToExtend :  new JTBestHaplotype<>(pathToExtend, chain, 0));
                 // check that we were able to recover the missing path
                 if (newPath != null) {
                     //TODO this might be removed, this is where we evaluate
@@ -185,14 +184,14 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             // We must be at a point where the path diverges, use junction trees to resolve if possible
             if (outgoingEdges.size() > 1) {
-                List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, outgoingEdges, weightThreshold);
+                List<JTBestHaplotype<V, E>> jTPaths = pathToExtend.getApplicableNextEdgesBasedOnJunctionTrees(chain, outgoingEdges, junctionTreeEvidenceWeightThreshold);
                 if (jTPaths.isEmpty() && !sinks.contains(vertexToExtend)) {
                     logger.debug("Found nothing Queue has this many: " + queue.size() + "\nPath that failed to extend was junction tree: " + pathToExtend.getVertices());
                 }
-                // Filter out paths that involve the same kmer too many times (if we were directed by a junction tree or have trees to follow then don't worry about repeated kmers)
+                // Filter out paths that involve the same kmer too many times without permission from a junction tree
                 List<JTBestHaplotype<V, E>> filteredPaths = jTPaths.stream()
                         .filter(path -> path.hasJunctionTreeEvidence() || path.wasLastEdgeFollowedBasedOnJTEvidence() ||
-                                // Count the number of occurances of the laset vertex, if there are more than DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH throw away the path
+                                // Count the number of occurrences of the latest vertex, if there are more than DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH throw away the path
                                 path.getVertices().stream().filter(v -> v.equals(path.getLastVertex())).count() <= DEFAULT_MAX_ACCEPTABLE_REPETITIONS_OF_A_KMER_IN_A_PATH)
                         .collect(Collectors.toList());
                 if (jTPaths.isEmpty() && !sinks.contains(vertexToExtend)) {
@@ -201,7 +200,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
                 queue.addAll(filteredPaths);
 
-                // Otherwise just take the next node forward
+            // Otherwise just take the next node forward
             } else {
                 // If there are no outgoing edges from this node, then just kill this branch from the queue
                 // NOTE: this branch in the future might be responsible for dangling end merging
@@ -229,7 +228,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     }
 
     /**
-     * Helper method that controls the logic for pivotal edges.
+     * Helper method that controls the logic for pivotal (ie. edge where a decision is made) edges.
      *
      * The logic for pivotal edges currently is this:
      *  1: pop the next pivotal edge in our tree
@@ -264,7 +263,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
                 return;
             }
 
-            // From that best haplotype we choose the last occurrence of the piviotal branch vertex as representative
+            // From that best haplotype we choose the last occurrence of the pivotal branch vertex as representative
             // TODO maybe this will matter some day, simply select the last edge
             List<E> edgesBeforeSplit = new ArrayList<>(bestMatchingHaplotypeEdges.subList(0, bestMatchingHaplotypeEdges.lastIndexOf(edgesIncomingToSplitPoint.get(edgesIncomingToSplitPoint.size() - 1)) + 1));
             edgesBeforeSplit.add(firstEdge);
@@ -292,7 +291,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
             // if we are not on a reference edge don't worry
             if (!refOccurances.isEmpty()) {
-                // find the next lowest ref occurance that is incrementally higher than our current one (assumes sorted ref occurrences list)
+                // find the next lowest ref occurrence that is incrementally higher than our current one (assumes sorted ref occurrences list)
                 int refIndex = 0;
                 for (Integer index : refOccurances) {
                     refIndex = index;
@@ -313,7 +312,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
 
         // if we saw too many out of sequence reference edges then we report it as a potentially bad haplotype
         if (numUpstreamRefEdgesEncountered > DEFAULT_NUM_UPSTREAM_REFERENCE_EDGES_TO_TOLERATE) {
-            newPath.setIsWonky(true);
+            newPath.setWasPoorlyRecovered(true);
         }
     }
 
@@ -324,40 +323,14 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
      * @return true if a valid reference-starting path was able to be constructed.
      */
     // TODO maybe if this fails to find we should include the reference path explicitly
-    private JTBestHaplotype<V, E> reconcilePathMissingReferenceStartPositions(JTBestHaplotype<V, E> pathToReconcile, List<JTBestHaplotype<V, E>> validReturnPaths, BaseGraph<V, E> graph) {
+    private JTBestHaplotype<V, E> reconcilePathMissingReferenceStartPositions(final JTBestHaplotype<V, E> pathToReconcile) {
         // check that the path is valid, if so don't modify it
         if (  sources.contains(pathToReconcile.getVertices().get(0))) {
             return pathToReconcile;
         }
 
-        throw new RuntimeException("e");
-//
-//        V pivotalVerex = pathToReconcile.getFirstVertex();
-//        //TODO this can be MUCH faster than a simple contains search here
-//        List<JTBestHaplotype<V, E>> candidatePaths = validReturnPaths.stream().filter(path -> path.containsVertex(pivotalVerex)).collect(Collectors.toList());
-//
-//        // todo, perhaps something more drastic can be done here, this arises from either uncovered reference path or from branches that lead to loops that are unresolvable... perhaps try to capture the first one
-//        if (candidatePaths.isEmpty()) {
-//            // this is a failure state for now
-//            return null;
-//        }
-//
-//        //TODO this is totally simple for right now, will choose a better approach soon.
-//        JTBestHaplotype<V, E> bestMatchingHaplotype = candidatePaths.stream().max(Comparator.comparingDouble(JTBestHaplotype::score)).get();
-//
-//        // Now we try to construct a reference covering haplotype from the one we just discovered
-//        List<E> bestMatchingHaplotypeEdges = bestMatchingHaplotype.getEdges();
-//        List<E> edgesIncomingToSplitPoint = bestMatchingHaplotypeEdges.stream().filter(edge -> graph.getEdgeTarget(edge).equals(pivotalVerex)).collect(Collectors.toList());
-//        //todo it is either an error state to find nothing or could mean we accidentally did the search over the source vertex, either way shoudl be a bug
-//        if (edgesIncomingToSplitPoint.isEmpty()) {
-//            return null;
-//        }
-//
-//        // TODO maybe this will matter some day, simply select the last edge
-//        List<E> outputEdges = new ArrayList<>(bestMatchingHaplotypeEdges.subList(0, bestMatchingHaplotypeEdges.lastIndexOf(edgesIncomingToSplitPoint.get(edgesIncomingToSplitPoint.size() - 1)) + 1));
-//        outputEdges.addAll(pathToReconcile.getEdges());
-//
-//        return new JTBestHaplotype<V,E>(new JTBestHaplotype<V,E>(bestMatchingHaplotype.getFirstVertex(), graph), outputEdges, bestMatchingHaplotype.score() + pathToReconcile.score());
+        // TODO this might change if we want to construct better paths in the future
+        throw new GATKException.ShouldNeverReachHereException("It looks like we have tried to merge a haplotype to the output that does not start on the reference source. This should not have happened");
     }
 
     /**
@@ -376,20 +349,18 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     @VisibleForTesting
     LinkedHashSet<E> createMapOfPivotalEdgesInTopologicalOrder() {
         final Set<E> visitedEdges = new HashSet<>(); // used to save ourselves the trouble of excessive graph traversal (and repetative)
-        final PriorityQueue<tinyEdgeHelper> edgesToVisit = new PriorityQueue<>(Comparator.comparingDouble(tinyEdgeHelper::score));
+        final PriorityQueue<TinyEdgeHelper> edgesToVisit = new PriorityQueue<>(Comparator.comparingDouble(TinyEdgeHelper::score));
         final LinkedHashSet<E> outputEdgesInOrder = new LinkedHashSet<>();
 
         // zips through the entire graph, searching for pivotal edges and adding them based on the number of edges since the referecne
-        // TODO decide on true topography or distance from reference. To add confusion, how do you guarantee the topographical order is visited correctly?
-
         // Initialize the graph with the start
         edgesToVisit.addAll(sources.stream()
                 .flatMap(s -> graph.outgoingEdgesOf(s).stream())
-                .map(e -> new tinyEdgeHelper(e, 0))
+                .map(e -> new TinyEdgeHelper(e, 0))
                 .collect(Collectors.toList()));
 
         while (!edgesToVisit.isEmpty()) {
-            tinyEdgeHelper nextEdge = edgesToVisit.poll();
+            TinyEdgeHelper nextEdge = edgesToVisit.poll();
             List<E> outgoingEdges = new ArrayList<>(graph.outgoingEdgesOf(graph.getEdgeTarget(nextEdge.edge)));
 
             // If there are multiple interesting outgoing edges mark them as pivotal (this is currently non-deterministic and maybe could be improved?)
@@ -402,7 +373,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
             outgoingEdges.stream()
                     .filter(e -> !visitedEdges.contains(e))
                     .forEach(e -> {
-                        edgesToVisit.add(new tinyEdgeHelper(e, nextEdge.score + 1));
+                        edgesToVisit.add(new TinyEdgeHelper(e, nextEdge.score + 1));
                         visitedEdges.add(e);
                     });
         }
@@ -411,12 +382,11 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
     }
 
 
-    // TODO also this could be greatly optimized if we just remember where the suspect edges are during the first pass...
-    private class tinyEdgeHelper {
+    private class TinyEdgeHelper {
         E edge;
         int score;
 
-        private tinyEdgeHelper(E e, int i) {
+        private TinyEdgeHelper(E e, int i) {
             edge = e;
             score = score();
         }

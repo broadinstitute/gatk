@@ -5,7 +5,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -15,7 +14,7 @@ public final class AssemblyResult {
     private final Status status;
     private final AbstractReadThreadingGraph threadingGraph;
     private final SeqGraph graph;
-    private Set<Haplotype> haplotypeList;
+    private Set<Haplotype> discoveredHaplotypes;
     private boolean containsSuspectHaplotypes;
 
     /**
@@ -48,15 +47,15 @@ public final class AssemblyResult {
         return graph == null? threadingGraph.getKmerSize() : graph.getKmerSize();
     }
 
-    public Set<Haplotype> getHaplotypeList() {
-        return haplotypeList;
+    public Set<Haplotype> getDiscoveredHaplotypes() {
+        return discoveredHaplotypes;
     }
 
-    public void setHaplotypeList(Set<Haplotype> haplotypeList) {
-        this.haplotypeList = haplotypeList;
+    public void setDiscoveredHaplotypes(Set<Haplotype> discoveredHaplotypes) {
+        this.discoveredHaplotypes = discoveredHaplotypes;
     }
 
-    public boolean isContainsSuspectHaplotypes() {
+    public boolean containsSuspectHaplotypes() {
         return containsSuspectHaplotypes;
     }
 

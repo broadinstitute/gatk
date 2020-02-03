@@ -186,9 +186,8 @@ public class JTBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends K
 
     /**
      * Add a flag of graph that based on this haplotype we think we should expand the kmer size
-     * @param b
      */
-    public void setIsWonky(final boolean b) {
+    public void setWasPoorlyRecovered(final boolean b) {
         this.wasPoorlyRecovered = b;
     }
 

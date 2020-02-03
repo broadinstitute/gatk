@@ -54,7 +54,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         // For all of these loops we expect to recover at least the reference haplotype
@@ -86,7 +86,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         // For all of these loops we expect to recover at least the reference haplotype
@@ -116,7 +116,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         Assert.assertEquals(bestPaths.size(), 2);
@@ -146,7 +146,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         Assert.assertEquals(bestPaths.size(), 1);
@@ -185,7 +185,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
 
@@ -213,7 +213,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
         assembler.pruneJunctionTrees(1);
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         Assert.assertTrue(true, "This case could have infinitely looped because the junction trees were all uninformative and pruned on the poly-C branch. There is no condition to stop because the junction tree was removed by pruning");
@@ -237,7 +237,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         // For this graph structure, there is no evidence whatsoever that a path follow the reference, unfortunately this means we can currently not recover the loop in the alt
@@ -262,7 +262,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
 
         Assert.assertEquals(bestPaths.size(), 1);
@@ -298,12 +298,12 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler2.getReadThreadingJunctionTrees(false).values().forEach(tree -> Assert.assertTrue(tree.getRootNode().hasNoEvidence()));
 
         // We had to close out our paths because none of the junction trees are informative and there are 4 decisions to make
-        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler1).setWeightThreshold(1)
+        final List<String> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler1).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
         Assert.assertEquals(bestPaths.size(), 0);
 
         // We didn't have to close out our paths because there were < 4 decisions made without junction trees, thus we do recover the path
-        final List<String> bestPaths2 = new JunctionTreeKBestHaplotypeFinder<>(assembler2).setWeightThreshold(1)
+        final List<String> bestPaths2 = new JunctionTreeKBestHaplotypeFinder<>(assembler2).setJunctionTreeEvidenceWeightThreshold(1)
                 .findBestHaplotypes(5).stream().map(haplotype -> new String(haplotype.getBases())).collect(Collectors.toList());
         Assert.assertEquals(bestPaths2.size(), 1);
     }
@@ -435,7 +435,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         Map<MultiDeBruijnVertex, JunctionTreeLinkedDeBruinGraph.ThreadingTree> junctionTrees = assembler.getReadThreadingJunctionTrees(false);
         Assert.assertEquals(junctionTrees.size(), 2);
 
-        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(3);
+        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(3);
         Assert.assertEquals(finder.sources.size(), 1);
         Assert.assertEquals(finder.sinks.size(), 1);
         final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> haplotypes = finder.findBestHaplotypes(5);
@@ -615,7 +615,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
         assembler.generateJunctionTrees();
 
-        final List<String> haplotypes = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(2)
+        final List<String> haplotypes = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(2)
                 .findBestHaplotypes(5).stream().map(h -> new String(h.getBases())).collect(Collectors.toList());
 
         // Assert that the reference haplotype is recovered
@@ -651,7 +651,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         Assert.assertEquals(junctionTrees.size(), 6);
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
-        finder.setWeightThreshold(0);
+        finder.setJunctionTreeEvidenceWeightThreshold(0);
         Assert.assertEquals(finder.sources.size(), 1);
         Assert.assertEquals(finder.sinks.size(), 1);
         final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> haplotypes = finder.findBestHaplotypes();
@@ -682,7 +682,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.generateJunctionTrees();
 
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(assembler);
-        finder.setWeightThreshold(0);
+        finder.setJunctionTreeEvidenceWeightThreshold(0);
         final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> haplotypes = finder.findBestHaplotypes();
 
         // We assert that we found all of the haplotypes present in reads and nothing else
@@ -1073,7 +1073,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
         @SuppressWarnings("all")
         final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> finder = new JunctionTreeKBestHaplotypeFinder<>(graph);
-        finder.setWeightThreshold(1);
+        finder.setJunctionTreeEvidenceWeightThreshold(1);
         final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> paths = finder.findBestHaplotypes();
 
         Assert.assertEquals(paths.size(), 2);
@@ -1216,7 +1216,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
+        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1);
 
         LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
         Iterator<MultiSampleEdge> edgesInOrder = pivotalEdges.iterator();
@@ -1255,7 +1255,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         assembler.buildGraphIfNecessary();
         assembler.generateJunctionTrees();
 
-        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setWeightThreshold(1);
+        final JunctionTreeKBestHaplotypeFinder<MultiDeBruijnVertex, MultiSampleEdge> bestPaths = new JunctionTreeKBestHaplotypeFinder<>(assembler).setJunctionTreeEvidenceWeightThreshold(1);
 
         LinkedHashSet<MultiSampleEdge> pivotalEdges = bestPaths.createMapOfPivotalEdgesInTopologicalOrder();
         Iterator<MultiSampleEdge> edgesInOrder = pivotalEdges.iterator();

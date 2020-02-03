@@ -16,7 +16,6 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -151,7 +150,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(5);
         String ref = "GGGGAAATTTCCCGGGG";
 
-        // A simple snip het
+        // A simple SNP het
         String refRead1 = "GGGAAATTTCC";
         String refRead2 = "GAAATTTCCCGGG";
         String altRead1 = "GGAAATGTC";
@@ -486,7 +485,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
     }
 
     @Test
-    public void testJunctionTreeErrorCorreciton() {
+    public void testJunctionTreeErrorCorrection() {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
         final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
         final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
@@ -511,7 +510,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
     }
 
     @Test
-    public void testJunctionTreeErrorCorrecitonUnrecoverableWithInsertion() {
+    public void testJunctionTreeErrorCorrectionUnrecoverableWithInsertion() {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
         final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
         final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCTTTTTTTTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
@@ -536,7 +535,7 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
     }
 
     @Test
-    public void testJunctionTreeErrorCorrecitonKmerSizeDistanceAllowance() {
+    public void testJunctionTreeErrorCorrectionKmerSizeDistanceAllowance() {
         final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
         final String ref            = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCCTTTTTT"+"A"+"TTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
         final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"A"+"TTTTTGGGGGGG"+"A"+"GGGGTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
@@ -583,6 +582,35 @@ public class JunctionTreeLinkedDeBruinGraphUnitTest extends BaseTest {
         // We only see the supported alt path because the unsupported alt path is never recovered
         Assert.assertEquals(bestPaths.size(),1);
         Assert.assertEquals(new String(bestPaths.get(0).getBases()), supportedAlt);
+    }
+
+    @Test
+    // test asserting that we don't make spurious edges when we are trying to recover error bases
+    public void testJuncitonTreeErrorCorrectionNotAddingTreesWhenOverTentativeBases() {
+        final JunctionTreeLinkedDeBruinGraph assembler = new JunctionTreeLinkedDeBruinGraph(11);
+        final String ref             = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCCTTTTTT"+"A"+"TTGG"+"A"+"GGG"+"C"+"GTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        final String supportedAlt   = "AAAAAAAAAAACCCCCC"+"T"+"CCCCCCTTTTTT"+"A"+"TTGG"+"C"+"GGG"+"C"+"GTGTGTGTGTGCCCGTGTGT"+"A"+"ATATATATAATAT";
+
+        // This path shold be pruned, but if we aren't careful might end up pairing the first SNP with the middle SNP at this site
+        final String unSupportedAltWithError = "AAAAAAAAAAACCCCCC"+"G"+"CCCCCCTTTTTT"+"C"+"TTGG"+"C"+"GGG"+"A"+"GTGTGTGTGTGCCCGTGTGT"+"C"+"ATATATATAATAT";
+        assembler.addSequence("anonymous", getBytes(ref), true);
+        assembler.addSequence("anonymous", getBytes(ref), false);
+        assembler.addSequence("anonymous", getBytes(ref), false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt),  false);
+        assembler.addSequence("anonymous", getBytes(supportedAlt),  false);
+        assembler.addSequence("anonymous", getBytes(unSupportedAltWithError), 1, false);
+        assembler.buildGraphIfNecessary();
+        new LowWeightChainPruner<MultiDeBruijnVertex, MultiSampleEdge>(2).pruneLowWeightChains(assembler);
+        assembler.generateJunctionTrees();
+
+        final List<KBestHaplotype<MultiDeBruijnVertex, MultiSampleEdge>> bestPaths =
+                new JunctionTreeKBestHaplotypeFinder<>(assembler,assembler.getReferenceSourceVertex(),assembler.getReferenceSinkVertex(), 0, false).setJunctionTreeEvidenceWeightThreshold(1).findBestHaplotypes(10);
+
+        // We only see the supported alt path because the unsupported alt path is never recovered
+        // If we saw 3 that means the undersupported pruned path ended up in the junciton trees and created a path that shouldn't be there
+        Assert.assertEquals(bestPaths.size(),2);
+        Assert.assertEquals(new String(bestPaths.get(0).getBases()), ref);
+        Assert.assertEquals(new String(bestPaths.get(1).getBases()), supportedAlt);
     }
 
     @Test(enabled = ! DEBUG)

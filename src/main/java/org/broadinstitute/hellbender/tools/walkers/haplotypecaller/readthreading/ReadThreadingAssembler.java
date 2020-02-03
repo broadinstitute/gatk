@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
@@ -76,14 +77,14 @@ public final class ReadThreadingAssembler {
                                   final int maxUnprunedVariants, final boolean useLinkedDebrujinGraphs) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = new ArrayList<>(kmerSizes);
-        kmerSizes.sort(Integer::compareTo); //sort the kmer sizes
+        kmerSizes.sort(Integer::compareTo);
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebrujinGraphs;
         if (!generateSeqGraph) {
-            logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an exeperimental assembly graph mode that has not been fully validated\n\n");
+            logger.error("JunctionTreeLinkedDeBruinGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
         }
 
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
@@ -163,7 +164,13 @@ public final class ReadThreadingAssembler {
         }
 
         // print the graphs if the appropriate debug option has been turned on
-        if ( graphOutputPath != null ) { if (generateSeqGraph) { printGraphs(nonRefSeqGraphs); } else { printGraphs(nonRefRTGraphs); } }
+        if ( graphOutputPath != null ) {
+            if (generateSeqGraph) {
+                printGraphs(nonRefSeqGraphs);
+            } else {
+                printGraphs(nonRefRTGraphs);
+            }
+        }
         if ( graphHaplotypeHistogramPath != null ) { haplotypeHistogram.add((double)resultSet.getHaplotypeCount()); }
 
         return resultSet;
@@ -241,10 +248,10 @@ public final class ReadThreadingAssembler {
                     //TODO                 - If we get no variation
 
                     // if asssembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
-                    if (! savedAssemblyResults.get(savedAssemblyResults.size() - 1).getHaplotypeList().isEmpty()) {
+                    if (! savedAssemblyResults.get(savedAssemblyResults.size() - 1).getDiscoveredHaplotypes().isEmpty()) {
                         // we have found our workable kmer size so lets add the results and finish
-                        if (!assembledResult.isContainsSuspectHaplotypes()) {
-                            for (Haplotype h : assembledResult.getHaplotypeList()) {
+                        if (!assembledResult.containsSuspectHaplotypes()) {
+                            for (Haplotype h : assembledResult.getDiscoveredHaplotypes()) {
                                 resultSet.add(h, assembledResult);
                             }
                             hasAdequatelyAssembledGraph = true;
@@ -263,10 +270,10 @@ public final class ReadThreadingAssembler {
         if (!hasAdequatelyAssembledGraph) {
             // search for the last haplotype set that had any results, if none are found just return me
             // In this case we prefer the last meaningful kmer size if possible
-            for (int i = savedAssemblyResults.size() - 1; i > 0; i --) {
-                if (savedAssemblyResults.get(i).getHaplotypeList().size() > 1) {
-                    for (Haplotype h : savedAssemblyResults.get(i).getHaplotypeList()) {
-                        resultSet.add(h, savedAssemblyResults.get(i));
+            for (AssemblyResult result : Lists.reverse(savedAssemblyResults)) {
+                if (result.getDiscoveredHaplotypes().size() > 1) {
+                    for (Haplotype h : result.getDiscoveredHaplotypes()) {
+                        resultSet.add(h, result);
                     }
                     break;
                 }
@@ -361,7 +368,7 @@ public final class ReadThreadingAssembler {
                 returnHaplotypes.add(refHaplotype);
             }
 
-            assemblyResult.setHaplotypeList(returnHaplotypes);
+            assemblyResult.setDiscoveredHaplotypes(returnHaplotypes);
         }
 
         if (failedCigars != 0) {
