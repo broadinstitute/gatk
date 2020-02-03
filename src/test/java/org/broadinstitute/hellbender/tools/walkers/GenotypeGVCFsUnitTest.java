@@ -120,7 +120,7 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
         final Genotype homVarAfterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(withPhasing, true).get(0);
         Assert.assertEquals(homVarAfterCleanup.getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY), GenotypeGVCFs.PHASED_HOM_VAR_STRING);
         final Genotype homRefAfterCleaning = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(withPhasing, true).get(1);
-        Assert.assertEquals(homRefAfterCleaning.getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY), "something");
+        Assert.assertFalse(homRefAfterCleaning.hasAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
     }
 
     @Test

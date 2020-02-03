@@ -467,7 +467,7 @@ public class GenotypeGVCFsEngine
             }
 
             //update PGT for hom refs
-            if ( oldGT.isHomVar() && oldGT.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) ) {
+            if ( oldGT.isHomRef() && oldGT.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) ) {
                 attrs.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY);
                 attrs.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY);
             }
