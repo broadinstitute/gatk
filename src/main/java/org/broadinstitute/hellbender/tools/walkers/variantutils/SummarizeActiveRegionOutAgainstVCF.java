@@ -57,7 +57,6 @@ public class SummarizeActiveRegionOutAgainstVCF extends FeatureWalker<TableFeatu
     String outputPath = null;
     private SimpleXSVWriter outputTableWriter;
 
-
     @Argument(fullName= "variants-to-count", doc="The set of alleles to force-call regardless of evidence", optional=true)
     public FeatureInput<VariantContext> overlappingVariantInput;
 
@@ -73,6 +72,17 @@ public class SummarizeActiveRegionOutAgainstVCF extends FeatureWalker<TableFeatu
     }
 
     @Override
+    public Object onTraversalSuccess() {
+        Object ret = super.onTraversalSuccess();
+        try {
+            outputTableWriter.close();
+        } catch (IOException outputException) {
+            throw new GATKException("Failed when trying to close the output table", outputException);
+        }
+        return ret;
+    }
+
+    @Override
     protected boolean isAcceptableFeatureType(Class<? extends Feature> featureType) {
         return featureType.equals(TableFeature.class);
     }
@@ -85,7 +95,7 @@ public class SummarizeActiveRegionOutAgainstVCF extends FeatureWalker<TableFeatu
                 .setColumn("active_region", feature.get("active_region"))
                 .setColumn("kmers_assembled", feature.get("kmers_assembled"))
                 .setColumn("haplotypes_found", feature.get("haplotypes_found"))
-                .setColumn("variants_overlapping", Integer.toString(overlappingVariants.size()));
+                .setColumn("variants_overlapping", Integer.toString(overlappingVariants.size())).write();
     }
 
     @Override
