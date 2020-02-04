@@ -32,7 +32,7 @@ def run(args):
 
         if 'tensorize' == args.mode:
             write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                          args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
+                          args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
@@ -187,7 +187,7 @@ def infer_multimodal_multitask(args):
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
             if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
-            elif len(otm.shape) == 1 and otm.is_categorical_any():
+            elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
                 for k in otm.channel_map:
                     channel_columns.append(ot + '_' + k + '_prediction')
@@ -214,7 +214,7 @@ def infer_multimodal_multitask(args):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-                elif len(tm.shape) == 1 and tm.is_categorical_any():
+                elif len(tm.shape) == 1 and tm.is_categorical():
                     for k, i in tm.channel_map.items():
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         actual = true_label[tm.output_name()][0][i]
@@ -311,7 +311,7 @@ def plot_predictions(args):
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
-    folder = os.path.join(args.output_folder, args.id) + '/'
+    folder = os.path.join(args.output_folder, args.id, 'prediction_pngs/')
     predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, data, labels, paths, folder)
 
 
@@ -531,13 +531,13 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
 
-        if tm.is_categorical_any_with_shape_len(1):
+        if tm.is_categorical() and tm.axes() == 1:
             msg = "For tm '{}' with channel map {}: sum truth = {}; sum pred = {}"
             for m in predictions[tm]:
                 logging.info(msg.format(tm.name, tm.channel_map, np.sum(outputs[tm.output_name()], axis=0), np.sum(predictions[tm][m], axis=0)))
             plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
-        elif tm.is_categorical_any_with_shape_len(4):
+        elif tm.is_categorical() and tm.axes() == 4:
             for p in predictions[tm]:
                 y = predictions[tm][p]
                 melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
@@ -550,7 +550,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
-        elif tm.is_continuous() and len(tm.shape) == 1:
+        elif tm.is_continuous() and tm.axes() == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
             scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))

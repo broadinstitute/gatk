@@ -252,7 +252,7 @@ class _MultiModalMultiTaskWorker:
             return self.hd5
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
-        tensor = tm.tensor_from_file(tm, self.hd5, self.dependents)
+        tensor = tm.normalize_and_validate(tm.tensor_from_file(tm, self.hd5, self.dependents))
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
@@ -424,7 +424,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
                 train_paths.append(os.path.join(root, name))
 
     logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
-    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
+    if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
     return train_paths, valid_paths, test_paths
 

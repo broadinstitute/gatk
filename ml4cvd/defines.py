@@ -2,15 +2,16 @@ from typing import List
 from enum import Enum, auto
 
 
-class DataSetType(Enum):
-    FLOAT_ARRAY = auto()
+class StorageType(Enum):
     CONTINUOUS = auto()
-    CATEGORICAL = auto()
+    CATEGORICAL_INDEX = auto()
+    CATEGORICAL_FLAG = auto()
+    ONE_HOT = auto()
     STRING = auto()
-    SERIES = auto()
+    BYTE_STRING = auto()
 
     def __str__(self):
-        """DataSetType.FLOAT_ARRAY becomes float_array"""
+        """StorageType.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split('.')[1])
 
 
@@ -23,6 +24,7 @@ IMAGE_EXT = '.png'
 PDF_EXT = '.pdf'
 TENSOR_EXT = '.hd5'
 
+STOP_CHAR = '!'
 JOIN_CHAR = '_'
 CONCAT_CHAR = '-'
 HD5_GROUP_CHAR = '/'
@@ -43,7 +45,7 @@ MRI_PATIENT_POSITION = 'mri_patient_position'
 MRI_PATIENT_ORIENTATION = 'mri_patient_orientation'
 MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
 MRI_ANNOTATION_CHANNEL_MAP = {'good': 0, 'included-lvot': 1, 'mistrace': 2, 'phantom-apex': 3, 'hardclip': 4}
-MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5}
+MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'LV_anteroseptum': 1, 'left_atrium': 2, 'LV_inferior_wall': 3, 'LV_Papillary': 4, 'LV_Cavity': 5}
 MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
                                      'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
                                      'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13}

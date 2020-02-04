@@ -78,13 +78,13 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
     performance_metrics = {}
-    if tm.is_categorical_any() and len(tm.shape) == 1:
+    if tm.is_categorical() and tm.axes() == 1:
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical() and len(tm.shape) == 2:
+    elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
         idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
@@ -92,7 +92,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical() and len(tm.shape) == 3:
+    elif tm.is_categorical() and tm.axes() == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
         idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
@@ -100,7 +100,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical_any() and len(tm.shape) == 4:
+    elif tm.is_categorical() and tm.axes() == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
         idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
@@ -108,7 +108,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_proportional_hazard():
+    elif tm.is_cox_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
     elif len(tm.shape) > 1:
@@ -171,7 +171,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE), sharex='all')
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
     ax1.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     ax1.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
@@ -190,7 +190,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     ax1.set_xlabel('Predictions')
     ax1.set_ylabel('Actual')
     ax1.set_title(title + '\n')
-    ax1.legend(loc="upper left")
+    ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label='Predicted', color='r', ax=ax2)
     sns.distplot(truth, label='Truth', color='b', ax=ax2)

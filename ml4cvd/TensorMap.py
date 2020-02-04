@@ -1,83 +1,47 @@
+# TensorMap.py
+#
+# The TensorMap takes any kind of data stored in an hd5 file
+# tags it with a semantic interpretation and converts it into a structured numpy tensor.
+# TensorMaps can be used as inputs, outputs, or hidden layers of models made by the model factory.
+# TensorMaps can perform any computation by providing a callback function called tensor_from_file.
+# A default tensor_from_file will be attempted when a callback tensor_from_file is not provided.
+# TensorMaps guarantee shape, name, interpretation and mapping from hd5 to numpy array.
+
 import logging
 import datetime
-from typing import Any
-from dateutil import relativedelta
+from enum import Enum, auto
+from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
+import h5py
+import keras
 import numpy as np
-from scipy.ndimage import zoom
-from keras.utils import to_categorical
 
+from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
-from ml4cvd.defines import DataSetType, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
-from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE, MRI_SEGMENTED_CHANNEL_MAP
-from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
-
-np.set_printoptions(threshold=np.inf)
-
-CONTINUOUS_NEVER_ZERO = ['bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
-                         '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
-                         '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
-                         '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
-                         '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image_2',
-                         ]
-
-CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
-                                       '130_Place-of-birth-in-UK--east-coordinate_0_0',
-                                       '87_Noncancer-illness-yearage-first-occurred_0_0',
-                                       '1883_Number-of-full-sisters_0_0', '2966_Age-high-blood-pressure-diagnosed_0_0',
-                                       '129_Place-of-birth-in-UK--north-coordinate_0_0',
-                                       '1070_Time-spent-watching-television-TV_0_0', '1438_Bread-intake_0_0',
-                                       '3526_Mothers-age-at-death_0_0',
-                                       '2217_Age-started-wearing-glasses-or-contact-lenses_0_0', '1488_Tea-intake_0_0',
-                                       '1060_Time-spent-outdoors-in-winter_0_0', '1528_Water-intake_0_0',
-                                       '874_Duration-of-walks_0_0', '894_Duration-of-moderate-activity_0_0',
-                                       '1458_Cereal-intake_0_0',
-                                       '884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0',
-                                       '1873_Number-of-full-brothers_0_0', '1845_Mothers-age_0_0',
-                                       '1090_Time-spent-driving_0_0', '1289_Cooked-vegetable-intake_0_0',
-                                       '3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0',
-                                       '1568_Average-weekly-red-wine-intake_0_0', '2897_Age-stopped-smoking_0_0',
-                                       '864_Number-of-daysweek-walked-10-minutes_0_0',
-                                       '1588_Average-weekly-beer-plus-cider-intake_0_0',
-                                       '2355_Most-recent-bowel-cancer-screening_0_0', '2976_Age-diabetes-diagnosed_0_0',
-                                       '3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0',
-                                       '3786_Age-asthma-diagnosed_0_0',
-                                       '1578_Average-weekly-champagne-plus-white-wine-intake_0_0',
-                                       '1598_Average-weekly-spirits-intake_0_0',
-                                       '1608_Average-weekly-fortified-wine-intake_0_0',
-                                       '1299_Salad--raw-vegetable-intake_0_0', '1309_Fresh-fruit-intake_0_0',
-                                       '1319_Dried-fruit-intake_0_0', '3680_Age-when-last-ate-meat_0_0',
-                                       '914_Duration-of-vigorous-activity_0_0',
-                                       '1050_Time-spend-outdoors-in-summer_0_0', '1737_Childhood-sunburn-occasions_0_0',
-                                       '1269_Exposure-to-tobacco-smoke-at-home_0_0',
-                                       '2867_Age-started-smoking-in-former-smokers_0_0',
-                                       '2887_Number-of-cigarettes-previously-smoked-daily_0_0',
-                                       '2926_Number-of-unsuccessful-stopsmoking-attempts_0_0',
-                                       '2684_Years-since-last-breast-cancer-screening--mammogram_0_0',
-                                       '2734_Number-of-live-births_0_0',
-                                       '2804_Age-when-last-used-oral-contraceptive-pill_0_0',
-                                       '2824_Age-at-hysterectomy_0_0',
-                                       '3536_Age-started-hormonereplacement-therapy-HRT_0_0',
-                                       '3546_Age-last-used-hormonereplacement-therapy-HRT_0_0',
-                                       '3581_Age-at-menopause-last-menstrual-period_0_0',
-                                       '3839_Number-of-spontaneous-miscarriages_0_0',
-                                       '2405_Number-of-children-fathered_0_0',
-                                       '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0',
-                                       '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
-                                       '4429_Average-monthly-beer-plus-cider-intake_0_0'
-                                       ]
-
-MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef', 'sax_inlinevf_zoom_mask',
-                              'cine_segmented_sax_inlinevf_segmented', 'mri_systole_diastole_8_segmented', 'mri_systole_diastole_segmented',
-                              'mri_slice_segmented'] # , 'sax_all_diastole_segmented'
-
-MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
-NOT_MISSING = 'not-missing'
 
 MEAN_IDX = 0
 STD_IDX = 1
+
+
+class Interpretation(Enum):
+    """Interpretations give TensorMaps semantics encoded by the numpy array the TensorMap yields.
+    Interpretations tell us the kind of thing stored but nothing about its size.
+    For example, a binary label and 2D pixel mask for segmentation should both have interpretation CATEGORICAL.
+    CONTINUOUS Interpretations are the default and make sense for scalar values like height and weight
+    as well as multidimensional arrays of raw pixel or voxel values.
+    Providing explicit interpretations in TensorMap constructors is encouraged.
+    Interpretations are used to set reasonable defaults values when explicit arguments are not provided."""
+    CONTINUOUS = auto()
+    CATEGORICAL = auto()
+    EMBEDDING = auto()
+    LANGUAGE = auto()
+    COX_PROPORTIONAL_HAZARDS = auto()
+
+    def __str__(self):
+        """class Interpretation.FLOAT_ARRAY becomes float_array"""
+        return str.lower(super().__str__().split('.')[1])
 
 
 class TensorMap(object):
@@ -88,114 +52,110 @@ class TensorMap(object):
         The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
         For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
         In general, new data sources require new TensorMaps and new tensor writers.
-        Input and output names are treated differently to allow self mappings, for example autoencoders
+        Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
     def __init__(self,
-                 name,
-                 shape=None,
-                 group=None,
-                 loss=None,
-                 model=None,
-                 metrics=None,
-                 parents=None,
-                 sentinel=None,
-                 activation=None,
-                 loss_weight=1.0,
-                 channel_map=None,
-                 hd5_override=None,
-                 dependent_map=None,
-                 required_inputs=None,
-                 normalization=None,
-                 annotation_units=32,
-                 imputation=None,
-                 tensor_from_file=None,
-                 dtype=None,
-                 validator=None,
-                 cacheable=True,):
+                 name: str,
+                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
+                 loss: Optional[Union[str, Callable]] = None,
+                 shape: Optional[Tuple[int]] = None,
+                 model: Optional[keras.Model] = None,
+                 metrics: Optional[List[Union[str, Callable]]] = None,
+                 parents: Optional[List["TensorMap"]] = None,
+                 sentinel: Optional[float] = None,
+                 validator: Optional[Callable] = None,
+                 cacheable: Optional[bool] = True,
+                 activation: Optional[Union[str, Callable]] = None,
+                 path_prefix: Optional[str] = None,
+                 loss_weight: Optional[float] = 1.0,
+                 channel_map: Optional[Dict[str, int]] = None,
+                 storage_type: Optional[StorageType] = None,
+                 dependent_map: Optional[str] = None,
+                 normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
+                 annotation_units: Optional[int] = 32,
+                 tensor_from_file: Optional[Callable] = None,
+                 ):
         """TensorMap constructor
 
 
         :param name: String name of the tensor mapping
-        :param shape: Tuple of integers specifying tensor shape
-        :param group: String group of the tensor mapping
+        :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param loss: Loss function or str specifying pre-defined loss function
-        :param model: Model for hidden layer tensor maps
+        :param shape: Tuple of integers specifying tensor shape
+        :param model: The model that computes the embedding layer, only used by embedding tensor maps
         :param metrics: List of metric functions of strings
-        :param parents: List of tensorMaps which must be attached to the graph before this one
+        :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
+        :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
         :param activation: String specifying activation function
+        :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
-        :param hd5_override: Override default behavior of tensor_from_file
+        :param storage_type: StorageType of tensor map
         :param dependent_map: TensorMap that depends on or is determined by this one
-        :param required_inputs: List of TensorMaps that are required by this one, used by hidden layer TensorMaps
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
-        :param imputation: Method of imputation for missing values. Options are mean or random.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
-        :param dtype: DataSetType of tensor map
         """
         self.name = name
+        self.interpretation = interpretation
+
         self.loss = loss
         self.model = model
         self.shape = shape
-        self.group = group
+        self.path_prefix = path_prefix
         self.metrics = metrics
         self.parents = parents
         self.sentinel = sentinel
+        self.validator = validator
+        self.cacheable = cacheable
         self.activation = activation
         self.loss_weight = loss_weight
         self.channel_map = channel_map
-        self.hd5_override = hd5_override
+        self.storage_type = storage_type
         self.normalization = normalization
         self.dependent_map = dependent_map
-        self.required_inputs = required_inputs
         self.annotation_units = annotation_units
-        self.imputation = imputation
         self.tensor_from_file = tensor_from_file
-        self.dtype = dtype
-        self.validator = validator
-        self.cacheable = cacheable
 
         if self.shape is None:
-            if self.is_multi_field_continuous_with_missing_channel():
-                self.shape = (len(channel_map) * 2,)
-            else:
-                self.shape = (len(channel_map),)
+            self.shape = (len(channel_map),)
 
-        if self.activation is None and self.is_categorical_any():
+        if self.activation is None and self.is_categorical():
             self.activation = 'softmax'
-
-        if self.activation is None and self.is_continuous_any():
+        elif self.activation is None and self.is_continuous():
             self.activation = 'linear'
 
-        if self.loss is None and self.is_categorical_any():
+        if self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
-        elif self.loss is None and self.is_proportional_hazard():
+        elif self.loss is None and self.is_cox_proportional_hazard():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
             self.activation = 'sigmoid'
+        elif self.loss is None and self.is_language():
+            self.loss = 'categorical_crossentropy'
+            self.activation = 'softmax'
         elif self.loss is None:
             self.loss = 'mse'
 
-        if self.metrics is None and self.is_categorical_any():
+        if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
-            if len(self.shape) == 1:
+            if self.axes() == 1:
                 self.metrics += per_class_precision(self.channel_map)
                 self.metrics += per_class_recall(self.channel_map)
-            elif len(self.shape) == 2:
+            elif self.axes() == 2:
                 self.metrics += per_class_precision_3d(self.channel_map)
                 self.metrics += per_class_recall_3d(self.channel_map)
-            elif len(self.shape) == 3:
+            elif self.axes() == 3:
                 self.metrics += per_class_precision_4d(self.channel_map)
                 self.metrics += per_class_recall_4d(self.channel_map)
-            elif len(self.shape) == 4:
+            elif self.axes() == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
-        elif self.metrics is None and self.is_continuous_any() and self.shape[-1] == 1:
+        elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
             self.metrics = [pearson]
         elif self.metrics is None:
             self.metrics = []
@@ -207,7 +167,7 @@ class TensorMap(object):
             self.validator = lambda tm, x: x
 
     def __hash__(self):
-        return hash((self.name, self.shape, self.group))
+        return hash((self.name, self.shape, self.interpretation))
 
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
@@ -220,157 +180,63 @@ class TensorMap(object):
                 if self_field != other_field:
                     return False
                 if not _is_equal_field(self_value, other_value):
-                    logging.debug(f"Comparing two '{self.name}' tensor maps: "
-                                  f"'{self_field}' values '{self_value}' and '{other_value}' are not equal.")
+                    logging.debug(f"Comparing two '{self.name}' tensor maps: '{self_field}' values '{self_value}' and '{other_value}' are not equal.")
                     return False
-
             return True
 
     def output_name(self):
-        if self.group is None:
-            return JOIN_CHAR.join(['output', self.name])
-        else:
-            return JOIN_CHAR.join(['output', self.name, self.group])
+        return JOIN_CHAR.join(['output', self.name, str(self.interpretation)])
 
     def input_name(self):
-        if self.group is None:
-            return JOIN_CHAR.join(['input', self.name])
-        else:
-            return JOIN_CHAR.join(['input', self.name, self.group])
+        return JOIN_CHAR.join(['input', self.name, str(self.interpretation)])
 
     def is_categorical(self):
-        return self.group == 'categorical'
-
-    def is_categorical_index(self):
-        return self.group == 'categorical_index'
-
-    def is_categorical_date(self):
-        return self.group == 'categorical_date'
-
-    def is_categorical_flag(self):
-        return self.group == 'categorical_flag'
-
-    def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation() or self.dtype == DataSetType.CATEGORICAL
+        return self.interpretation == Interpretation.CATEGORICAL
 
     def is_continuous(self):
-        return self.group == 'continuous' or self.dtype == DataSetType.CONTINUOUS
+        return self.interpretation == Interpretation.CONTINUOUS
 
-    def is_multi_field_continuous(self):
-        return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS or self.group == TENSOR_MAP_GROUP_CONTINUOUS
+    def is_embedding(self):
+        return self.interpretation == Interpretation.EMBEDDING
 
-    def is_root_array(self):
-        return self.group == 'root_array'
+    def is_language(self):
+        return self.interpretation == Interpretation.LANGUAGE
 
-    def is_multi_field_continuous_with_missing_channel(self):
-        return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS
+    def is_cox_proportional_hazard(self):
+        return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
 
-    def is_diagnosis_time(self):
-        return self.group == 'diagnosis_time'
+    def axes(self):
+        return len(self.shape)
 
-    def is_continuous_any(self):
-        return self.is_continuous() or self.is_diagnosis_time()
+    def hd5_key_guess(self):
+        if self.path_prefix is None:
+            return f'/{self.name}/'
+        else:
+            return f'/{self.path_prefix}/{self.name}/'
 
-    def is_ecg_rest(self):
-        return self.group == 'ecg_rest'
-
-    def is_ecg_categorical_interpretation(self):
-        return self.group == 'ecg_categorical_interpretation'
-
-    def is_ecg_bike(self):
-        return self.group == 'ecg_bike'
-
-    def is_ecg_bike_recovery(self):
-        return self.group == 'ecg_bike_recovery'
-
-    def is_ecg_text(self):
-        return self.group == 'ecg_text'
-
-    def is_hidden_layer(self):
-        return self.group == 'hidden_layer' and self.model is not None
-
-    def is_categorical_any_with_shape_len(self, length):
-        return self.is_categorical_any() and len(self.shape) == length
-
-    def is_imputation_random(self):
-        return self.is_multi_field_continuous() and self.imputation == IMPUTATION_RANDOM
-
-    def is_imputation_mean(self):
-        return self.is_multi_field_continuous() and self.imputation == IMPUTATION_MEAN
-
-    def is_proportional_hazard(self):
-        return self.group == 'proportional_hazard'
-
-    def zero_mean_std1(self, np_tensor):
-        np_tensor -= np.mean(np_tensor)
-        np_tensor /= np.std(np_tensor) + EPS
-        np_tensor = np.nan_to_num(np_tensor)
-        return np_tensor
+    def hd5_first_dataset_in_group(self, hd5, key_prefix):
+        if key_prefix not in hd5:
+            raise ValueError(f'Could not find key:{key_prefix} in hd5.')
+        data = hd5[key_prefix]
+        if isinstance(data, h5py.Dataset):
+            return data
+        deeper_key_prefix = f'{key_prefix}{min(hd5[key_prefix])}/'
+        return self.hd5_first_dataset_in_group(hd5, deeper_key_prefix)
 
     def normalize_and_validate(self, np_tensor):
         self.validator(self, np_tensor)
         if self.normalization is None:
             return np_tensor
-        if 'zero_mean_std1' in self.normalization:
-            return self.zero_mean_std1(np_tensor)
-        if 'mean' in self.normalization and 'std' in self.normalization:
-            not_missing_in_channel_map = False
-            if self.channel_map is not None:
-                not_missing_in_channel_map = NOT_MISSING in self.channel_map
-            if self.is_continuous() and not_missing_in_channel_map:
-                for i in range(0, len(np_tensor)):
-                    if self.channel_map[NOT_MISSING] == i:
-                        continue
-                    # If the not-missing channel exists in the channel_map and it is marked as "missing" (value of 0)
-                    # and the data itself is 0, then overwrite the value with a draw from a N(0,1)
-                    if np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
-                        np_tensor[i] = np.random.normal(1)
-                    elif np_tensor[i] == 0:
-                        np_tensor[i] -= self.normalization['mean']
-                        np_tensor[i] /= (self.normalization['std'] + EPS)
-            else:
-                np_tensor -= self.normalization['mean']
-                np_tensor /= (self.normalization['std'] + EPS)
+        elif 'zero_mean_std1' in self.normalization:
+            np_tensor -= np.mean(np_tensor)
+            np_tensor /= np.std(np_tensor) + EPS
             return np_tensor
-
-    def normalize_multi_field_continuous(self, np_tensor):
-        if self.normalization is None:
+        elif 'mean' in self.normalization and 'std' in self.normalization:
+            np_tensor -= self.normalization['mean']
+            np_tensor /= (self.normalization['std'] + EPS)
             return np_tensor
-
-        for k in self.channel_map:
-            idx = self.channel_map[k] * 2
-            # If both the value (at idx) and not-missing channel (at idx + 1) are 0 then impute the value.
-            if np_tensor[idx + 1] == 0 and np_tensor[idx] == 0:
-                np_tensor[idx] = self.impute()
-            else:
-                np_tensor[idx] -= self.normalization[k][MEAN_IDX]
-                np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
-
-        return np_tensor
-
-    def normalize_multi_field_continuous_no_missing_channels(self, np_tensor, missing_array):
-        if self.normalization is None:
-            return np_tensor
-
-        for k in self.channel_map:
-            idx = self.channel_map[k]
-            if missing_array[idx]:
-                np_tensor[idx] = self.impute()
-            else:
-                np_tensor[idx] -= self.normalization[k][MEAN_IDX]
-                np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
-
-        return np_tensor
-
-    def impute(self):
-        if self.normalization is None:
-            return ValueError('Imputation requires normalization.')
-        if self.is_imputation_random():
-            return np.random.normal(1)
-        elif self.is_imputation_mean():
-            return 0
         else:
-            return ValueError('Imputation method unknown.')
+            raise ValueError(f'No way to normalize Tensor Map named:{self.name}')
 
     def rescale(self, np_tensor):
         if self.normalization is None:
@@ -383,49 +249,6 @@ class TensorMap(object):
             return self.zero_mean_std1(np_tensor)
         else:
             return np_tensor
-
-    # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
-    # at death into one channel)
-    def _merged_tensor_from_file(self, hd5):
-        if self.name == 'mothers_age_0':
-            data = np.zeros(self.shape, dtype=np.float32)
-            if 'Mother-still-alive_Yes_0_0' in hd5['categorical']:
-                if 'mother_alive' in self.channel_map.keys():
-                    data[self.channel_map['mother_alive']] = 1
-                if '1845_Mothers-age_0_0' in hd5[self.group]:
-                    value = hd5[self.group].get('1845_Mothers-age_0_0')[0]
-                    if value > 0:
-                        data[self.channel_map['mother_age']] = value
-                        data[self.channel_map[NOT_MISSING]] = 1
-            elif 'Mother-still-alive_No_0_0' in hd5['categorical']:
-                if 'mother_dead' in self.channel_map.keys():
-                    data[self.channel_map['mother_dead']] = 1
-                if '3526_Mothers-age-at-death_0_0' in hd5[self.group]:
-                    value = hd5[self.group].get('3526_Mothers-age-at-death_0_0')[0]
-                    if value > 0:
-                        data[self.channel_map['mother_age']] = value
-                        data[self.channel_map[NOT_MISSING]] = 1
-            return self.normalize_and_validate(data)
-        elif self.name == 'fathers_age_0':
-            data = np.zeros(self.shape, dtype=np.float32)
-            if 'Father-still-alive_Yes_0_0' in hd5['categorical']:
-                if 'father_alive' in self.channel_map.keys():
-                    data[self.channel_map['father_alive']] = 1
-                if '2946_Fathers-age_0_0' in hd5[self.group]:
-                    value = hd5[self.group].get('2946_Fathers-age_0_0')[0]
-                    if value > 0:
-                        data[self.channel_map['father_age']] = value
-                        data[self.channel_map[NOT_MISSING]] = 1
-            elif 'Father-still-alive_No_0_0' in hd5['categorical']:
-                if 'father_dead' in self.channel_map.keys():
-                    data[self.channel_map['father_dead']] = 1
-                if '1807_Fathers-age-at-death_0_0' in hd5[self.group]:
-                    value = hd5[self.group].get('1807_Fathers-age-at-death_0_0')[0]
-                    if value > 0:
-                        data[self.channel_map['father_age']] = value
-                        data[self.channel_map[NOT_MISSING]] = 1
-            return self.normalize_and_validate(data)
-        raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
 
 
 def make_range_validator(minimum: float, maximum: float):
@@ -496,333 +319,67 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     Returns
         A numpy array whose dimension and type is dictated by tm
     """
-    if tm.is_categorical_index():
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.name in hd5:
-            index = int(hd5[tm.name][0])
-            categorical_data[index] = 1.0
-        elif tm.name in hd5['categorical']:
-            index = int(hd5['categorical'][tm.name][0])
-            categorical_data[index] = 1.0
-        else:
-            raise ValueError(f"No categorical index found for tensor map: {tm.name}.")
-        return categorical_data
-    elif tm.is_categorical_flag():
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+    if tm.is_categorical():
         index = 0
-        if tm.name in hd5 and int(hd5[tm.name][0]) != 0:
-            index = 1
-        elif tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
-            index = 1
-        categorical_data[index] = 1.0
-        return categorical_data
-    elif tm.is_categorical_date():
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.name in hd5:
-            index = int(hd5[tm.name][0])
-        elif tm.name in hd5['categorical']:
-            index = int(hd5['categorical'][tm.name][0])
-        else:
-            index = 0  # Assume no disease if the tensor does not have the dataset
-        if index != 0:
-            if tm.name + '_date' in hd5:
-                disease_date = str2date(str(hd5[tm.name + '_date'][0]))
-                assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
-            elif tm.name + '_date' in hd5['dates']:
-                disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
-                assess_date = str2date(str(hd5['dates']['enroll_date'][0]))
+        if tm.hd5_key_guess() in hd5:
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+            if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
+                index = int(data[0])
+                categorical_data[index] = 1.0
             else:
-                raise ValueError(f"No date found for tensor map: {tm.name}.")
-            index = 1 if disease_date < assess_date else 2
-        categorical_data[index] = 1.0
-        return categorical_data
-    elif tm.is_diagnosis_time():
-        time_data = np.zeros((1,), dtype=np.float32)
-        disease_status = int(hd5[tm.name][0])
-        assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
-        disease_date = str2date(str(hd5[tm.name + '_date'][0]))
-        delta = relativedelta.relativedelta(disease_date, assess_date)
-        difference = (delta.years * 12) + delta.months
-        if disease_status == 0 or difference == 0:
-            raise ValueError('Ignoring healthy people in diagnosis time.')
-        time_data[0] = difference
-        return time_data
-    elif tm.name in [MRI_TO_SEGMENT, MRI_ZOOM_INPUT]:
-        mask_group = MRI_SEGMENTED if tm.name == MRI_TO_SEGMENT else MRI_ZOOM_MASK
-        slice_idx = np.random.choice(list(hd5[tm.name].keys()))
-        angle_idx = int(slice_idx) // MRI_FRAMES
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for i in range(tm.shape[-2]):
-            cur_slice = str((angle_idx * MRI_FRAMES) + i + 1)  # Instance Number off by 1
-            tensor[:, :, i, 0] = np.array(hd5[tm.name].get(cur_slice), dtype=np.float32)
-            label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
-            dependents[tm.dependent_map][:, :, i, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'aligned_distance':
-        return np.zeros((1,), dtype=np.float32)
-    elif tm.name == 'lms_ideal_optimised_low_flip_6dyn_4slice':
-        whole_liver = np.array(hd5['lms_ideal_optimised_low_flip_6dyn'])
-        cur_index = np.random.randint(whole_liver.shape[2] - tm.shape[2])
-        tensor = whole_liver[:, :, cur_index:cur_index + 4]
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'mri_slice':
-        cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        tensor[:, :, 0] = np.array(hd5[MRI_TO_SEGMENT].get(cur_slice), dtype=np.float32)
-        label_tensor = np.array(hd5[MRI_SEGMENTED].get(cur_slice), dtype=np.float32)
-        dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'sax_inlinevf_zoom_blackout':
-        mask_group = MRI_ZOOM_MASK
-        slice_idx = np.random.choice(list(hd5[MRI_ZOOM_INPUT].keys()))
-        angle_idx = int(slice_idx) // MRI_FRAMES
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for i in range(tm.shape[-2]):
-            cur_slice = str((angle_idx * MRI_FRAMES) + i + 1)  # Instance Number off by 1
-            tensor[:, :, i, 0] = np.array(hd5[MRI_ZOOM_INPUT].get(cur_slice), dtype=np.float32)
-            label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
-            dependents[tm.dependent_map][:, :, i, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-            tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'cine_segmented_sax_inlinevf_blackout':
-        mask_group = MRI_SEGMENTED
-        slice_idx = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
-        angle_idx = int(slice_idx) // MRI_FRAMES
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for i in range(tm.shape[-2]):
-            cur_slice = str((angle_idx * MRI_FRAMES) + i + 1)  # Instance Number off by 1
-            tensor[:, :, i, 0] = np.array(hd5[MRI_TO_SEGMENT].get(cur_slice), dtype=np.float32)
-            label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
-            dependents[tm.dependent_map][:, :, i, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-            tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'mri_systole_diastole':
-        if tm.hd5_override is not None:
-            b_number = 'b' + str(np.random.choice(tm.hd5_override))
-            diastole_slice = 'diastole_frame_' + b_number
+                categorical_data = np.array(data)
+        elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
+            categorical_data[index] = 1.0
+        elif tm.path_prefix in hd5 and tm.channel_map is not None:
+            for k in tm.channel_map:
+                if k in hd5[tm.path_prefix]:
+                    categorical_data[tm.channel_map[k]] = hd5[tm.path_prefix][k][0]
         else:
-            frames = [str(frame) for frame in hd5.keys() if 'diastole_frame_' in str(frame)]
-            if len(frames) == 0:
-                raise ValueError('No diastole frames found.')
-            diastole_slice = np.random.choice(frames)
-            b_number = diastole_slice.split('_')[-1]  # (e.g b1, b2, b3, ... b12 ish)
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        tensor[:, :, 0, 0] = np.array(hd5[diastole_slice], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 0, :] = to_categorical(np.array(hd5['diastole_mask_' + b_number]), tm.dependent_map.shape[-1])
-        tensor[:, :, 1, 0] = np.array(hd5['systole_frame_' + b_number], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 1, :] = to_categorical(np.array(hd5['systole_mask_' + b_number]), tm.dependent_map.shape[-1])
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'mri_systole_diastole_8':
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        tensor[:, :, 0, 0] = np.array(hd5['diastole_frame_b2'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 0, :] = to_categorical(np.array(hd5['diastole_mask_b2']), tm.dependent_map.shape[-1])
-        tensor[:, :, 1, 0] = np.array(hd5['systole_frame_b2'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 1, :] = to_categorical(np.array(hd5['systole_mask_b2']), tm.dependent_map.shape[-1])
-        tensor[:, :, 2, 0] = np.array(hd5['diastole_frame_b4'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 2, :] = to_categorical(np.array(hd5['diastole_mask_b4']), tm.dependent_map.shape[-1])
-        tensor[:, :, 3, 0] = np.array(hd5['systole_frame_b4'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 3, :] = to_categorical(np.array(hd5['systole_mask_b4']), tm.dependent_map.shape[-1])
-        tensor[:, :, 4, 0] = np.array(hd5['diastole_frame_b6'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 4, :] = to_categorical(np.array(hd5['diastole_mask_b6']), tm.dependent_map.shape[-1])
-        tensor[:, :, 5, 0] = np.array(hd5['systole_frame_b6'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 5, :] = to_categorical(np.array(hd5['systole_mask_b6']), tm.dependent_map.shape[-1])
-        tensor[:, :, 6, 0] = np.array(hd5['diastole_frame_b8'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 6, :] = to_categorical(np.array(hd5['diastole_mask_b8']), tm.dependent_map.shape[-1])
-        tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
-        dependents[tm.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), tm.dependent_map.shape[-1])
-        return tm.normalize_and_validate(tensor)
-    elif tm.name == 'sax_all_diastole':
-        missing = 0
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for b in range(tm.shape[-2]):
-            try:
-                tensor[:, :, b, 0] = np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32)
-                dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'diastole_mask_b{b}']), tm.dependent_map.shape[-1])
-            except KeyError:
-                missing += 1
-                tensor[:, :, b, 0] = 0
-                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
-        if missing == tm.shape[-2]:
-            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
-        return tm.normalize_and_validate(tensor)
-    elif tm.is_root_array():
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.shape[-1] == 1:
-            tensor[..., 0] = np.array(hd5[tm.name.replace('_4d', '')], dtype=np.float32)
-        else:
-            tensor[:] = np.array(hd5[tm.name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
-    elif tm.name in MRI_ANNOTATION_GOOD_NEEDED:
-        continuous_data = np.zeros(tm.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-        if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != MRI_ANNOTATION_CHANNEL_MAP['good']:
-            raise ValueError('MRI Critic annotation not good or unreviewed.')
-        continuous_data[0] = float(hd5['continuous'][tm.name][0])
-        if continuous_data[0] == 0 and (tm.sentinel == None and tm.name in CONTINUOUS_NEVER_ZERO):
-            raise ValueError(tm.name + ' is a continuous value that cannot be set to 0, but no value was found.')
-        if continuous_data[0] == 0 and tm.sentinel is not None:
-            continuous_data[:] = tm.sentinel
-            return continuous_data
-        return tm.normalize_and_validate(continuous_data)
-    elif tm.name == 'ecg_coarse':
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if 'poor_data_quality' in hd5['categorical']:
-            raise ValueError('Poor data skipped by ecg_coarse.')
-        ecg_interpretation = str(hd5['ecg_rest_text'][0])
-        for afib in ['Atrial fibrillation']:
-            if afib in ecg_interpretation:
-                categorical_data[tm.channel_map['Atrial_fibrillation']] = 1.0
-                return categorical_data
-        for rhythm in ['sinus', 'Sinus']:
-            if rhythm in ecg_interpretation:
-                categorical_data[tm.channel_map['Sinus_rhythm']] = 1.0
-                return categorical_data
-        categorical_data[tm.channel_map['Other_rhythm']] = 1.0
+            raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
-    elif tm.name == 'ecg_semi_coarse':
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if 'poor_data_quality' in hd5['categorical']:
-            raise ValueError('Poor data skipped by ecg_coarse.')
-        ecg_interpretation = str(hd5['ecg_rest_text'][0])
-        for channel in tm.channel_map:
-            if channel in hd5['categorical']:
-                categorical_data[tm.channel_map[channel]] = 1.0
-                return categorical_data
-        for afib in ['Atrial fibrillation']:
-            if afib in ecg_interpretation:
-                categorical_data[tm.channel_map['Atrial_fibrillation']] = 1.0
-                return categorical_data
-        for rhythm in ['sinus', 'Sinus']:
-            if rhythm in ecg_interpretation:
-                categorical_data[tm.channel_map['Other_sinus_rhythm']] = 1.0
-                return categorical_data
-        categorical_data[tm.channel_map['Other_rhythm']] = 1.0
-        return categorical_data
-    elif tm.name == 'ecg_semi_coarse_with_poor':
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        ecg_interpretation = str(hd5['ecg_rest_text'][0])
-        for channel in tm.channel_map:
-            if channel in hd5['categorical']:
-                categorical_data[tm.channel_map[channel]] = 1.0
-                return categorical_data
-        for afib in ['Atrial fibrillation']:
-            if afib in ecg_interpretation:
-                categorical_data[tm.channel_map['Atrial_fibrillation']] = 1.0
-                return categorical_data
-        for rhythm in ['sinus', 'Sinus']:
-            if rhythm in ecg_interpretation:
-                categorical_data[tm.channel_map['Other_sinus_rhythm']] = 1.0
-                return categorical_data
-        categorical_data[tm.channel_map['Other_rhythm']] = 1.0
-        return categorical_data
-    elif tm.is_ecg_categorical_interpretation():
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        for channel in tm.channel_map:
-            if channel in str(hd5['ecg_rest_text'][0]):
-                categorical_data[tm.channel_map[channel]] = 1.0
-                return categorical_data
-        if 'no_' + tm.name in tm.channel_map:
-            categorical_data[tm.channel_map['no_' + tm.name]] = 1.0
-            return categorical_data
-        else:
-            raise ValueError(f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}")
-    elif tm.is_categorical() and tm.channel_map is not None:
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        for channel in tm.channel_map:
-            if channel in hd5['categorical']:
-                categorical_data[tm.channel_map[channel]] = 1.0
-        return categorical_data
-    elif tm.name in MERGED_MAPS:
-        return tm._merged_tensor_from_file(hd5)
     elif tm.is_continuous():
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.name in hd5:
+        if tm.hd5_key_guess() in hd5:
             missing = False
-            if hasattr(hd5[tm.name], "__shape__"):
-                continuous_data[0] = hd5[tm.name][0]
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+            if tm.axes() > 1:
+                continuous_data = np.array(data)
+            elif hasattr(data, "__shape__"):
+                continuous_data[0] = data[0]
             else:
-                continuous_data[0] = hd5[tm.name][()]
-        for k in tm.channel_map:
-            if k in hd5[tm.group]:
-                missing = False
-                continuous_data[tm.channel_map[k]] = hd5[tm.group][k][0]
+                continuous_data[0] = data[()]
+        if missing and tm.channel_map is not None and tm.hd5_key_guess() in hd5:
+            for k in tm.channel_map:
+                if k in hd5[tm.hd5_key_guess()]:
+                    missing = False
+                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
         if missing and tm.sentinel is None:
-            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
+            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
         elif missing:
             continuous_data[:] = tm.sentinel
-        return tm.normalize_and_validate(continuous_data)
-    elif tm.is_multi_field_continuous():
-        if tm.is_multi_field_continuous_with_missing_channel():
-            multiplier = 2
-        else:
-            multiplier = 1
-        missing_array = [False] * len(tm.channel_map)
-        continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        for k in tm.channel_map:
-            missing = True
-            if k in hd5['continuous']:
-                value = hd5['continuous'][k][0]
-                missing = False
-                if tm.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
-                    if value in CODING_VALUES_LESS_THAN_ONE:
-                        value = .5
-                    if value in CODING_VALUES_MISSING:
-                        # need to set missing values to 0 so normalization works
-                        value = 0
-                        missing = True
-                # Put value at index k (times 2 to make space for the not-missing channels), and put whether or not
-                # this value is not missing in the following element.
-                continuous_data[tm.channel_map[k] * multiplier] = value
-            if tm.is_multi_field_continuous_with_missing_channel():
-                continuous_data[tm.channel_map[k] * multiplier + 1] = not missing
-            else:
-                missing_array[tm.channel_map[k]] = missing
-        if tm.is_multi_field_continuous_with_missing_channel():
-            return tm.normalize_multi_field_continuous(continuous_data)
-        else:
-            return tm.normalize_multi_field_continuous_no_missing_channels(continuous_data, missing_array)
-    elif tm.is_ecg_bike():
-        tensor = np.array(hd5[tm.group][tm.name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
-    elif tm.is_ecg_bike_recovery():
-        tensor = np.zeros(tm.shape)
-        for channel, idx in tm.channel_map.items():
-            tensor[:, idx] = hd5[tm.group][channel]
-        return tm.normalize_and_validate(tensor)
-    elif tm.is_ecg_text():
+        return continuous_data
+    elif tm.is_embedding():
+        input_dict = {}
+        for input_parent_tm in tm.parents:
+            input_dict[input_parent_tm.input_name()] = np.expand_dims(input_parent_tm.tensor_from_file(input_parent_tm, hd5), axis=0)
+        return tm.model.predict(input_dict)
+    elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         caption = str(hd5[tm.name][0]).strip()
         char_idx = np.random.randint(len(caption) + 1)
         if char_idx == len(caption):
-            next_char = '!'
+            next_char = STOP_CHAR
         else:
             next_char = caption[char_idx]
-        dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
-        window_offset = max(0, tm.shape[0] - char_idx)
-
-        for k in range(max(0, char_idx - tm.shape[0]), char_idx):
-            tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
-            window_offset += 1
+        if tm.dependent_map is not None:
+            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+            dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
+            window_offset = max(0, tm.shape[0] - char_idx)
+            for k in range(max(0, char_idx - tm.shape[0]), char_idx):
+                tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
+                window_offset += 1
         return tensor
-    elif tm.is_hidden_layer():
-        input_dict = {}
-        for input_tm in tm.required_inputs:
-            input_dict[input_tm.input_name()] = np.expand_dims(input_tm.tensor_from_file(input_tm, hd5), axis=0)
-        return tm.model.predict(input_dict)
-    elif tm.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals
-        dataset_key = np.random.choice(list(tm.dependent_map.channel_map.keys()))
-        one_hot = np.zeros(tm.dependent_map.shape)
-        one_hot[tm.dependent_map.channel_map[dataset_key]] = 1.0
-        dependents[tm.dependent_map] = one_hot
-        tensor = np.array(hd5.get(dataset_key), dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
-    elif tm.channel_map is None and tm.dependent_map is None:
-        return np.array(hd5.get(tm.name), dtype=np.float32)
+    else:
+        raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')

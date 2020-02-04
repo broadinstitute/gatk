@@ -8,41 +8,38 @@ import os
 import re
 import csv
 import glob
-import h5py
+import time
 import shutil
 import logging
-import sqlite3
-import zipfile
-import pydicom
 import datetime
 import operator
 import tempfile
 import traceback
-import numpy as np
-import nibabel as nib
-from typing import Dict, List, Tuple
-from timeit import default_timer as timer
-from collections import Counter, defaultdict
 from functools import partial
 from itertools import product
+from collections import Counter, defaultdict
+from typing import Dict, List, Tuple, Optional
 
+import h5py
 import imageio
-import matplotlib
-matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
-import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
+import pydicom
+import sqlite3
+import zipfile
+import numpy as np
+import nibabel as nib
+import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
+from timeit import default_timer as timer
 from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
-from ml4cvd.defines import DataSetType, dataset_name_from_meaning
-from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
+from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_FRAMES
+from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
+from ml4cvd.defines import StorageType, IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
-from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_DATE, MRI_FRAMES
-from ml4cvd.defines import MRI_TO_SEGMENT, MRI_LAX_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 
 
-MISSING_DATE = datetime.date(year=1900, month=1, day=1)
 
 MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
@@ -52,8 +49,8 @@ MRI_MITRAL_VALVE_THICKNESS = 6
 MRI_SWI_SLICES_TO_AXIS_SHIFT = 48
 MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                       'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
-                      'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf',
-                      'cine_segmented_lax_inlinevf']
+                      'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
+                      'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist']
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'}
@@ -61,13 +58,10 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
+DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
-ECG_SINUS = ['Normal_sinus_rhythm', 'Sinus_bradycardia', 'Marked_sinus_bradycardia', 'Atrial_fibrillation']
-ECG_NORMALITY = ['Normal_ECG', 'Abnormal_ECG', 'Borderline_ECG', 'Otherwise_normal_ECG']
-ECG_BINARY_FLAGS = ['Poor data quality', 'infarct', 'block']
 ECG_TABLE_TAGS = ['RAmplitude', 'SAmplitude']
 ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration', 'QTInterval', 'QTCInterval', 'RRInterval', 'PPInterval',
                      'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
@@ -85,9 +79,6 @@ def write_tensors(a_id: str,
                   mri_unzip: str,
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
-                  x: int,
-                  y: int,
-                  z: int,
                   zoom_x: int,
                   zoom_y: int,
                   zoom_width: int,
@@ -130,42 +121,41 @@ def write_tensors(a_id: str,
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
-
-        tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
-        if not os.path.exists(os.path.dirname(tensor_path)):
-            os.makedirs(os.path.dirname(tensor_path))
+        tp = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+        if not os.path.exists(os.path.dirname(tp)):
+            os.makedirs(os.path.dirname(tp))
         if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder):
             continue
         try:
-            with h5py.File(tensor_path, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+            with h5py.File(tp, 'w') as hd5:
+                _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
-            logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except ValueError:
-            logging.exception('Encountered ValueError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered ValueError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except RuntimeError:
-            logging.exception('Encountered RuntimeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered RuntimeError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except IndexError:
-            logging.exception('Encountered IndexError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered IndexError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except OSError:
-            logging.exception('Encountered OSError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered OSError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
 
         end_time = timer()
         elapsed_time = end_time - start_time
-        logging.info("Populated {} in {} seconds.".format(tensor_path, elapsed_time))
+        logging.info("Populated {} in {} seconds.".format(tp, elapsed_time))
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
@@ -173,7 +163,7 @@ def write_tensors(a_id: str,
 def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
                                   sample_header='sample_id', dicom_header='dicom_file',
                                   instance_header='instance_number', png_postfix='.png.mask.png',
-                                  source='ukb_cardiac_mri', dtype=DataSetType.FLOAT_ARRAY):
+                                  path_prefix='ukb_cardiac_mri'):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
@@ -196,13 +186,13 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
                 tensor_name = series + '_annotated_' + row[instance_index]
-                tp = tensor_path(source, dtype, MISSING_DATE, tensor_name)
+                tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
-                    tensor = hd5[tp]
+                    tensor = first_dataset_at_path(hd5, tp)
                     tensor[:] = full_tensor
                     stats['updated'] += 1
                 else:
-                    create_tensor_in_hd5(hd5, source, DataSetType.FLOAT_ARRAY, MISSING_DATE, tensor_name, full_tensor, stats)
+                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, full_tensor, stats)
                     stats['created'] += 1
 
         except FileNotFoundError:
@@ -318,170 +308,6 @@ def _dicts_and_plots_from_tensorization(a_id: str,
     logging.info("Categories Columns: {}".format(len(categories)))
 
 
-def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
-                            hd5: h5py.File,
-                            sample_id: int,
-                            categorical_field_ids: List[int],
-                            continuous_field_ids: List[int],
-                            field_meanings: Dict[str, str],
-                            write_pngs: bool,
-                            continuous_stats: Dict[str, List[float]],
-                            stats: Dict[str, int]) -> None:
-    """Tensorize and write UK biobank survey data from continuous and categorical fields
-    into the HD5 file of a given sample
-
-    :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
-    :param hd5: HD5 File where all tensors for this sample ID are saved
-    :param sample_id: The sample ID whose tensor we are currently writing
-    :param categorical_field_ids: List of categorical field IDs from UKBB
-    :param continuous_field_ids: List of continuous field IDs from UKBB
-    :param field_meanings: Dict mapping field IDs (as strings) to their meaning as a string
-    :param write_pngs: write MRIs as PNG images for debugging
-    :param continuous_stats: Dictionary mapping field meanings to the list of continuous values found for them
-    :param stats: Dictionary mapping strings to ints keeps track of categorical responses and other info.
-    :return: None
-    """
-    data_query = "SELECT m.meaning, p.instance, p.array_idx, p.value FROM phenotype p JOIN Coding m"
-    data_query += " ON m.coding=p.value AND m.coding_file_id=p.coding_file_id"
-    data_query += " WHERE p.fieldid=%d and p.sample_id=%d;"
-    for fid in categorical_field_ids:
-        try:
-            for data_row in sql_cursor.execute(data_query % (fid, sample_id)):
-                dataset_name = dataset_name_from_meaning('categorical',
-                                                         [field_meanings[fid], str(data_row[0]),
-                                                          str(data_row[1]), str(data_row[2])])
-                float_category = _to_float_or_false(data_row[3])
-                if float_category is not False:
-                    hd5.create_dataset(dataset_name, data=[float_category])
-                    stats[dataset_name] += 1
-                else:
-                    logging.warning('Cannot cast float from:{} categorical field:{} means:{} sample id:{}'.format(
-                        data_row[3], fid, data_row[0], sample_id))
-        except:
-            logging.exception(
-                'problem with data query field id:{} data_query is:{} for sample id:{}'.format(
-                    fid, data_query, sample_id))
-
-    continuous_query = "SELECT p.instance, p.array_idx, p.value FROM phenotype p "
-    continuous_query += "WHERE p.fieldid=%d and p.sample_id=%d;"
-    for fid in continuous_field_ids:
-        for data_row in sql_cursor.execute(continuous_query % (fid, sample_id)):
-            dataset_name = dataset_name_from_meaning('continuous', [str(fid), field_meanings[fid], str(data_row[0]), str(data_row[1])])
-            float_continuous = _to_float_or_false(data_row[2])
-            if float_continuous is not False:
-                hd5.create_dataset(dataset_name, data=[float_continuous])
-                stats[dataset_name] += 1
-                if write_pngs:
-                    continuous_stats[field_meanings[fid]].append(float_continuous)
-            else:
-                logging.warning('Cannot cast float:{} continuous:{} sample:{}'.format(data_row[2], fid, sample_id))
-
-    date_query = "SELECT p.instance, p.array_idx, p.value FROM phenotype p "
-    date_query += "WHERE p.fieldid=53 and p.sample_id=%d;"
-    for data_row in sql_cursor.execute(date_query % sample_id):
-        hd5.create_dataset('assessment-date_{}_{}'.format(data_row[0], data_row[1]), (1,), data=data_row[2], dtype=h5py.special_dtype(vlen=str))
-    _job_title_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
-    _icd10_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
-
-
-def _job_title_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
-                                  hd5: h5py.File,
-                                  sample_id: int,
-                                  stats: Dict[str, int]) -> None:
-    """If found, tensorize the free text job titles as entered by user, removing duplicates
-
-    :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
-    :param hd5: HD5 File where all tensors for this sample ID are saved
-    :param sample_id: The sample ID whose tensor we are currently writing
-    :param stats: Dictionary mapping strings to ints keeps track of categorical responses and other info.
-    :return: None
-    """
-    jobs = []
-    job_text_query = "SELECT instance, array_idx, value FROM phenotype WHERE fieldid=22600 AND sample_id=%d;"
-    for data_row in sql_cursor.execute(job_text_query % sample_id):
-        jobs.append(data_row[2])
-        stats['Job_' + data_row[2]] += 1
-    if len(jobs) > 0:
-        jobs = list(set(jobs))
-        hd5.create_dataset('jobs', (1,), data=JOIN_CHAR.join(jobs), dtype=h5py.special_dtype(vlen=str))
-
-
-def _icd10_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
-                              hd5: h5py.File,
-                              sample_id: int,
-                              stats: Dict[str, int]) -> None:
-    """If found, tensorize the ICD10 codes
-
-    :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
-    :param hd5: HD5 File where all tensors for this sample ID are saved
-    :param sample_id: The sample ID whose tensor we are currently writing
-    :param stats: Dictionary mapping strings to ints keeps track of categorical responses and other info.
-    :return: None
-    """
-    icds = []
-    icd10_fields = [41202, 41204, 40001, 40002, 40006]
-    icd_query = "SELECT value FROM phenotype WHERE fieldid=%d AND sample_id=%d;"
-    for icd10_field in icd10_fields:
-        for data_row in sql_cursor.execute(icd_query % (icd10_field, sample_id)):
-            icds.append(data_row[0])
-            # stats['ICD10_' + data_row[0]] += 1
-    if len(icds) > 0:
-        icds = list(set(icds))
-        hd5.create_dataset('icd10', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
-
-
-def _write_tensors_from_dictionary_of_scalars(hd5: h5py.File,
-                                              sample_id: int,
-                                              nested_dictionary: Dict[int, Dict[str, float]],
-                                              continuous_stats: Dict[str, List[float]]) -> None:
-    """Write volumes of the left ventricle into tensor file of a particular sample if we have them
-
-    :param hd5: HD5 File where all tensors for this sample ID are saved
-    :param sample_id: The sample ID whose tensor we are currently writing
-    :param nested_dictionary: Dictionary mapping sample IDs (as ints) to dictionaries mapping strings to values from the CSV
-    :param continuous_stats: Dictionary mapping field meanings to the list of continuous values found for them
-    :return: None
-    """
-    for value_name in nested_dictionary[sample_id]:
-        if value_name == 'annotation':
-            value = nested_dictionary[sample_id][value_name]
-            if value in MRI_ANNOTATION_CHANNEL_MAP:
-                hd5.create_dataset('categorical' + HD5_GROUP_CHAR + MRI_ANNOTATION_NAME, data=[MRI_ANNOTATION_CHANNEL_MAP[value]])
-        elif value_name == MRI_DATE:
-            hd5.create_dataset('dates' + HD5_GROUP_CHAR + value_name, (1,), data=nested_dictionary[sample_id][value_name], dtype=h5py.special_dtype(vlen=str))
-        else:  # assumes if not handled above it should be a float
-            value = _to_float_or_false(nested_dictionary[sample_id][value_name])
-            if value:
-                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + value_name, data=[value])
-                continuous_stats[value_name].append(value)
-
-
-def _write_tensors_from_icds(hd5: h5py.File,
-                             sample_id: int,
-                             icds: Dict[str, Dict[int, List[int]]],
-                             dates: Dict[str, Dict[int, List[datetime.date]]],
-                             stats: Dict[str, int]) -> None:
-    """Write disease status and dates into the HD5 file of a given sample
-
-    :param hd5: HD5 File where all tensors for this sample ID are saved
-    :param sample_id: The sample ID whose tensor we are currently writing
-    :param dates: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to the date of their diagnosis or last update
-    :param icds: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to an int (1 if they have the disease, 0 if not)
-    :param stats: Dictionary mapping strings to ints keeps track of categorical responses and other info.
-    :return: None
-    """
-    for disease in icds:
-        if sample_id in icds[disease] and icds[disease][sample_id] != 'NA':
-            hd5.create_dataset(disease, data=[float(icds[disease][sample_id])])
-            disease_str = disease.replace(JOIN_CHAR, CONCAT_CHAR)
-            stats['categorical/' + disease_str + '-' + str(icds[disease][sample_id])] += 1
-            if sample_id in dates[disease]:
-                disease_date = dates[disease][sample_id].strftime('%Y-%m-%d')
-                hd5.create_dataset(disease + '_date', (1,), data=disease_date, dtype=h5py.special_dtype(vlen=str))
-
-
 def _to_float_or_false(s):
     try:
         return float(s)
@@ -496,10 +322,7 @@ def _to_float_or_nan(s):
         return np.nan
 
 
-def _write_tensors_from_zipped_dicoms(x: int,
-                                      y: int,
-                                      z: int,
-                                      zoom_x: int,
+def _write_tensors_from_zipped_dicoms(zoom_x: int,
                                       zoom_y: int,
                                       zoom_width: int,
                                       zoom_height: int,
@@ -521,8 +344,8 @@ def _write_tensors_from_zipped_dicoms(x: int,
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height,
-                                           write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
+                _write_tensors_from_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicom_folder,
+                                           hd5, sample_str, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -538,7 +361,7 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
                 stats['MRI fields written'] += 1
 
 
-def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
                                dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int]) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -578,78 +401,77 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
 
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
+        mri_date = _datetime_from_dicom(views[v][0])
         stats[v + ' mri shape:' + str(mri_shape)] += 1
-        if v in MRI_BRAIN_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-            x = views[v][0].Rows
-            y = views[v][0].Columns
-            z = len(views[v])
+        if v in MRI_BRAIN_SERIES:
+            mri_group = 'ukb_brain_mri'
+        elif v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            mri_group = 'ukb_liver_mri'
+        elif v in MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED:
+            mri_group = 'ukb_cardiac_mri'
+        else:
+            mri_group = 'ukb_mri'
 
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, x, y, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, stats)
+            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
-            _tensorize_brain_t2(views[v], v, x, y, hd5)
+            _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
-            mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
+            mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
-                sx = min(slicer.Rows, x)
-                sy = min(slicer.Columns, y)
                 _save_pixel_dimensions_if_missing(slicer, v, hd5)
                 _save_slice_thickness_if_missing(slicer, v, hd5)
                 _save_series_orientation_and_position_if_missing(slicer, v, hd5)
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
-                mri_data[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-            hd5.create_dataset(v, data=mri_data, compression='gzip')
+                mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
+            create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
 
 
-def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, x: int, y: int,
-                                                zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str, hd5: h5py.File,
-                                                sample_str: str, stats: Dict[str, int]) -> None:
+def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
+                                                zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+                                                hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
+                                                stats: Dict[str, int]) -> None:
     systoles = {}
     diastoles = {}
     systoles_pix = {}
     systoles_masks = {}
     diastoles_masks = {}
-    full_mask = np.zeros((x, y), dtype=np.float32)
-    full_slice = np.zeros((x, y), dtype=np.float32)
 
     for slicer in slices:
-        sx = min(slicer.Rows, x)
-        sy = min(slicer.Columns, y)
-        full_slice[:, :] = 0.0
-        full_mask[:, :] = 0.0
+        full_mask = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
+        full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
         
         if _has_overlay(slicer):
-            series_segmented = MRI_SEGMENTED
-            series_to_segment = MRI_TO_SEGMENT
+            series_segmented = f'{series}_segmented'
+            series_zoom = f'{series}_zoom'
+            series_zoom_segmented = f'{series}_zoom_segmented'
             if _is_mitral_valve_segmentation(slicer):
                 stats['Skipped likely mitral valve segmentation'] += 1
-                series_segmented = MRI_LAX_SEGMENTED
-                series_to_segment = MRI_LAX_TO_SEGMENT
+                continue
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
                 logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
 
-            _save_pixel_dimensions_if_missing(slicer, series_to_segment, hd5)
-            _save_slice_thickness_if_missing(slicer, series_to_segment, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series_to_segment, hd5, str(slicer.InstanceNumber))
+            _save_pixel_dimensions_if_missing(slicer, series, hd5)
+            _save_slice_thickness_if_missing(slicer, series, hd5)
+            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
             _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
             _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
             _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
 
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-            full_slice[:sx, :sy] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-            full_mask[:sx, :sy] = mask
-            hd5.create_dataset(series_to_segment + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
-            hd5.create_dataset(series_segmented + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
+            full_slice[:] = slicer.pixel_array.astype(np.float32)
+            create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
 
             zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
-            hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
+            zoom_mask = mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_slice, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_mask, stats, mri_date)
 
             if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
                 diastoles[cur_angle] = slicer
@@ -666,45 +488,35 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
 
     for angle in diastoles:
         logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
-        sx = min(diastoles[angle].Rows, x)
-        sy = min(diastoles[angle].Columns, y)
-        full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        full_mask[:sx, :sy] = diastoles_masks[angle][:sx, :sy]
-        hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
-        hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
+        full_slice = diastoles[angle].pixel_array.astype(np.float32)
+        create_tensor_in_hd5(hd5, mri_group, f'diastole_frame_b{angle}', full_slice, stats, mri_date)
+        create_tensor_in_hd5(hd5, mri_group, f'diastole_mask_b{angle}', diastoles_masks[angle], stats, mri_date)
         if write_pngs:
             plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
             plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
-        sx = min(systoles[angle].Rows, x)
-        sy = min(systoles[angle].Columns, y)
-        full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        full_mask[:sx, :sy] = systoles_masks[angle][:sx, :sy]
-        hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
-        hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
+        full_slice = systoles[angle].pixel_array.astype(np.float32)
+        create_tensor_in_hd5(hd5, mri_group, f'systole_frame_b{angle}', full_slice, stats, mri_date)
+        create_tensor_in_hd5(hd5, mri_group, f'systole_mask_b{angle}', systoles_masks[angle], stats, mri_date)
         if write_pngs:
             plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
             plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
 
-def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: int, hd5: h5py.File) -> None:
-    mri_data1 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
-    mri_data2 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
+def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
+    mri_data1 = np.zeros((slices[0].Rows, slices[0].Columns, len(slices) // 2), dtype=np.float32)
+    mri_data2 = np.zeros((slices[0].Rows, slices[0].Columns, len(slices) // 2), dtype=np.float32)
     for slicer in slices:
-        sx = min(slicer.Rows, x)
-        sy = min(slicer.Columns, y)
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         _save_slice_thickness_if_missing(slicer, series, hd5)
         _save_series_orientation_and_position_if_missing(slicer, series, hd5)
         slice_index = slicer.InstanceNumber - 1
         if slicer.SeriesNumber in [5, 11]:
-            mri_data1[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+            mri_data1[..., slice_index] = slicer.pixel_array.astype(np.float32)
         elif slicer.SeriesNumber in [6, 12]:
-            mri_data2[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-    tensor_path_1 = tensor_path('ukb_brain_mri', DataSetType.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_1')
-    tensor_path_2 = tensor_path('ukb_brain_mri', DataSetType.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_2')
-    hd5.create_dataset(tensor_path_1, data=mri_data1, compression='gzip')
-    hd5.create_dataset(tensor_path_2, data=mri_data2, compression='gzip')
+            mri_data2[..., slice_index] = slicer.pixel_array.astype(np.float32)
+    create_tensor_in_hd5(hd5, mri_group, series + '_1', mri_data1, date=mri_date)
+    create_tensor_in_hd5(hd5, mri_group, series + '_2', mri_data2, date=mri_date)
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
@@ -832,50 +644,34 @@ def _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_png
 
 
 def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, continuous_stats) -> None:
-    rest_group = 'ecg_rest' + HD5_GROUP_CHAR
-    categorical_group = 'categorical' + HD5_GROUP_CHAR
+    rest_group = 'ukb_ecg_rest'
     for ecg in ecgs:
         logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
         root = et.parse(ecg).getroot()
-        hd5.create_dataset('ecg_rest_date', (1,), data=_date_str_from_ecg(root), dtype=h5py.special_dtype(vlen=str))
-
+        ecg_date = _str2date(_date_str_from_ecg(root))
         diagnosis_text = []
         for d in root.findall("./Interpretation/Diagnosis/DiagnosisText"):
             if 'QRS Complexes:' in d.text:
                 qrs = float(d.text.replace('QRS Complexes:', '').split(',')[0].strip())
-                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'QRSComplexes', data=[qrs])
+                create_tensor_in_hd5(hd5, rest_group, 'QRSComplexes', qrs, stats, date=ecg_date)
             elif '---' in d.text or 'Arrhythmia results of the full-disclosure ECG' in d.text:
                 continue
-            elif d.text.replace(' ', '_') in ECG_NORMALITY:
-                hd5.create_dataset(categorical_group + d.text.replace(' ', '_'), data=[1])
-                stats[d.text] += 1
             else:
-                for sinus in ECG_SINUS:
-                    if sinus in d.text.replace(' ', '_'):
-                        hd5.create_dataset(categorical_group + sinus, data=[1])
-                        stats[sinus] += 1
                 diagnosis_text.append(d.text.replace(',', '').replace('*', '').replace('&', 'and').replace('  ', ' '))
 
         diagnosis_str = ' '.join(diagnosis_text)
-        hd5.create_dataset('ecg_rest_text', (1,), data=diagnosis_str, dtype=h5py.special_dtype(vlen=str))
-
-        for ecg_flag in ECG_BINARY_FLAGS:
-            ecg_flag_label = ecg_flag.lower().replace(' ', '_')
-            if ecg_flag in diagnosis_str:
-                hd5.create_dataset(categorical_group + ecg_flag_label, data=[1])
-            else:
-                hd5.create_dataset(categorical_group + 'no_' + ecg_flag_label, data=[1])
+        create_tensor_in_hd5(hd5, rest_group, 'ecg_rest_text', diagnosis_str, stats, date=ecg_date, storage_type=StorageType.STRING)
 
         for c in root.findall("./StripData/WaveformData"):
             lead_data = list(map(float, c.text.strip().split(',')))
             dataset_name = 'strip_' + str(c.attrib['lead'])
-            hd5.create_dataset(rest_group + dataset_name, data=lead_data, compression='gzip')
+            create_tensor_in_hd5(hd5, rest_group, dataset_name, lead_data, stats, date=ecg_date)
             stats[dataset_name] += 1
 
         for c in root.findall("./RestingECGMeasurements"):
             for child in c:
                 if child.text is not None and child.tag in ECG_TAGS_TO_WRITE:
-                    hd5.create_dataset('continuous' + HD5_GROUP_CHAR + child.tag, data=[float(child.text)])
+                    create_tensor_in_hd5(hd5, rest_group, child.tag, float(child.text), stats, date=ecg_date)
                     stats[child.tag] += 1
                     if write_pngs:
                         continuous_stats[child.tag].append(float(child.text))
@@ -884,33 +680,51 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                         if median_c.tag == 'WaveformData':
                             median_wave = list(map(float, median_c.text.strip().split(',')))
                             dataset_name = 'median_' + str(median_c.attrib['lead'])
-                            hd5.create_dataset(rest_group + dataset_name, data=median_wave, compression='gzip')
-
-        ecg_date = _str2date(_date_str_from_ecg(root))
+                            create_tensor_in_hd5(hd5, 'ukb_ecg_rest', dataset_name, median_wave, stats, date=ecg_date)
         for c in root.findall("./RestingECGMeasurements/MeasurementTable"):
             for child in c:
                 if child.tag not in ECG_TABLE_TAGS:
                     continue
-                vals = list(map(_to_float_or_nan, child.text.strip().split(',')))
-                create_tensor_in_hd5(hd5, 'ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, child.tag.lower(), vals, stats)
+                values = list(map(_to_float_or_nan, child.text.strip().split(',')))
+                create_tensor_in_hd5(hd5, 'ukb_ecg_rest', child.tag.lower(), values, stats, date=ecg_date)
 
 
-def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: str) -> str:
+def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
+                         storage_type: Optional[StorageType] = None):
+    hd5_path = tensor_path(path_prefix, name)
+    if hd5_path in hd5:
+        hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
+    else:
+        hd5_path = f'{hd5_path}instance_0'
+    if stats is not None:
+        stats[hd5_path] += 1
+    if storage_type == StorageType.STRING:
+        d = hd5.create_dataset(hd5_path, data=value, dtype=h5py.special_dtype(vlen=str))
+    elif isinstance(value, int) or isinstance(value, float):
+        d = hd5.create_dataset(hd5_path, data=[value])
+    elif isinstance(value, np.ndarray) or isinstance(value, list):
+        d = hd5.create_dataset(hd5_path, data=value, compression='gzip')
+    else:
+        raise NotImplementedError(f'{storage_type} cannot be automatically written yet')  # TODO: Add categorical, etc.
+    if date is not None:
+        d.attrs['date'] = time.mktime(date.timetuple())
+
+
+def tensor_path(path_prefix: str, name: str) -> str:
     """
     In the future, TMAPs should be generated using this same function
     """
-    return f'/{source}/{dtype}/{name}/{_datetime_to_str(date)}'
+    return f'/{path_prefix}/{name}/'
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: Counter):
-    hd5_path = tensor_path(source, dtype, date, name)
-    stats[hd5_path.strip(f'{_datetime_to_str(date)}/')] += 1
-    if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
-        hd5.create_dataset(hd5_path, data=value, compression='gzip')
-    elif dtype in (DataSetType.STRING,):
-        hd5.create_dataset(hd5_path, data=value, dtype=h5py.special_dtype(vlen=str))
-    else:
-        raise NotImplementedError(f'{dtype} cannot be automatically written yet')  # TODO: Add categorical, etc.
+def first_dataset_at_path(hd5, path, gather_fxn=min):
+    if path not in hd5:
+        raise ValueError(f'Could not find key:{path} in hd5.')
+    data = hd5[path]
+    if isinstance(data, h5py.Dataset):
+        return data
+    deeper_key_prefix = f'{path}{gather_fxn(hd5[path])}/'
+    return first_dataset_at_path(hd5, deeper_key_prefix)
 
 
 def _datetime_to_str(dt: datetime.datetime) -> str:
@@ -925,14 +739,14 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         root = et.parse(ecg).getroot()
         date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
-        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5, stats=stats)
+        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, path_prefix='ukb_ecg_bike', stats=stats, date=date)
         logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
 
         instance = ecg.split(JOIN_CHAR)[-2]
-        write_to_hd5(dtype=DataSetType.STRING, name='instance', value=instance)
+        write_to_hd5(storage_type=StorageType.STRING, name='instance', value=instance)
 
         protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName').text
-        write_to_hd5(dtype=DataSetType.STRING, name='protocol', value=protocol)
+        write_to_hd5(storage_type=StorageType.STRING, name='protocol', value=protocol)
 
         median_ecgs = defaultdict(list)
         for median_waves in root.findall('./MedianData/Median/WaveformData'):
@@ -942,7 +756,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             for lead in median_ecgs:
                 median_idx = min(ECG_BIKE_MEDIAN_SIZE[0], len(median_ecgs[lead]))
                 median_np[:median_idx, ECG_BIKE_LEADS[lead]] = median_ecgs[lead][:median_idx]
-            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='median', value=median_np)
+            write_to_hd5(name='median', value=median_np)
         else:
             stats['missing median bike ECG'] += 1
 
@@ -954,7 +768,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             strip_idx = min(ECG_BIKE_MEDIAN_SIZE[0], len(strip_list))
             strip_np[:strip_idx, ECG_BIKE_LEADS[strip_waves.attrib['lead']]] = strip_list[:strip_idx]
         if counter > 0:
-            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='strip', value=strip_np)
+            write_to_hd5(name='strip', value=strip_np)
         else:
             stats['missing strip bike ECG'] += 1
 
@@ -974,7 +788,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             for i, lead in enumerate(full_ekgs):
                 full_idx = min(ECG_BIKE_FULL_SIZE[0], len(lead))
                 full_np[:full_idx, i] = lead[:full_idx]
-            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name='full', value=full_np)
+            write_to_hd5(name='full', value=full_np)
         else:
             stats['missing full disclosure bike ECG'] += 1
 
@@ -982,7 +796,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         patient_fields = ('Age', 'Height', 'Weight')
         for field in patient_fields:
             val = [_xml_path_to_float(root, f'./PatientInfo/{field}')]
-            write_to_hd5(dtype=DataSetType.CONTINUOUS, name=str.lower(field), value=val)
+            write_to_hd5(name=str.lower(field), value=val)
 
         # Trend measurements
         trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount']
@@ -1026,7 +840,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
-            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name=f'trend_{str.lower(field)}', value=trend_list)
+            write_to_hd5(name=f'trend_{str.lower(field)}', value=trend_list)
 
         # Last 60 seconds of raw given that the rest phase is 60s
         phase_durations = {}
@@ -1035,15 +849,15 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             phase_duration = SECONDS_PER_MINUTE * int(protocol.find("PhaseDuration/Minute").text) + int(
                 protocol.find("PhaseDuration/Second").text)
             phase_durations[phase_name] = phase_duration
-            write_to_hd5(dtype=DataSetType.CONTINUOUS, name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
+            write_to_hd5(name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
 
         # HR stats
         max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
         resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
         max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
-        write_to_hd5(dtype=DataSetType.CONTINUOUS, name='max_hr', value=[max_hr])
-        write_to_hd5(dtype=DataSetType.CONTINUOUS, name='resting_hr', value=[resting_hr])
-        write_to_hd5(dtype=DataSetType.CONTINUOUS, name='max_pred_hr', value=[max_pred_hr])
+        write_to_hd5(name='max_hr', value=[max_hr])
+        write_to_hd5(name='resting_hr', value=[resting_hr])
+        write_to_hd5(name='max_pred_hr', value=[max_pred_hr])
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
@@ -1061,7 +875,7 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
             nifti_array = np.moveaxis(nifti_array, 0, 1)
             stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
-        create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype=DataSetType.FLOAT_ARRAY, source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
+        create_tensor_in_hd5(hd5=hd5, path_prefix='ukb_brain_mri', name=nii_name, value=nifti_array, stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:

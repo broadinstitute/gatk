@@ -23,7 +23,7 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map, generate_continuous_tensor_map_from_file
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
 def parse_args():
@@ -38,7 +38,6 @@ def parse_args():
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
     parser.add_argument('--output_tensors', default=[], nargs='+')
-    parser.add_argument('--input_continuous_tensors', default=[], nargs='+', help='Continuous tensor maps to be combined.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
 
@@ -194,10 +193,6 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
-    if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
-                                                                             args.imputation_method_for_continuous_fields)]
-        args.tensor_maps_in.extend(multi_field_tensor_map)
 
     args.tensor_maps_out = []
     if args.continuous_file is not None:
