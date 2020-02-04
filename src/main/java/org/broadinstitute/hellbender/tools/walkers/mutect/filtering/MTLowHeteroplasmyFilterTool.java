@@ -55,11 +55,10 @@ public class MTLowHeteroplasmyFilterTool extends TwoPassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
-        headerInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_HET_FILTER_NAME));
+        final VCFHeader header = getHeaderForVariants();
+        header.addMetaDataLine(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_HET_FILTER_NAME));
         vcfWriter = createVCFWriter(new File(outputVcf));
-        vcfWriter.writeHeader(new VCFHeader(headerInfo));
+        vcfWriter.writeHeader(header);
     }
 
     @Override
