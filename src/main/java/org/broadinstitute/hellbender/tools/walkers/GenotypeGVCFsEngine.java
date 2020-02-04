@@ -470,6 +470,7 @@ public class GenotypeGVCFsEngine
             if ( oldGT.isHomRef() && oldGT.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) ) {
                 attrs.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY);
                 attrs.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY);
+                attrs.remove(VCFConstants.PHASE_SET_KEY);
             }
 
             // create AD if it's not there
