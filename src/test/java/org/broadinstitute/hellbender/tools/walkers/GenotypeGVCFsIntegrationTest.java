@@ -571,14 +571,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         // No sites should be output
         final File output1 = createTempFile("output", ".vcf");
-        final ArgumentsBuilder argsWithAllSites = new ArgumentsBuilder()
+        final ArgumentsBuilder argsWithoutForceSpecificSites = new ArgumentsBuilder()
                 .addReference(b37Reference)
                 .addVCF(input)
                 .addBooleanArgument(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT, true)
                 .addOutput(output1);
 
         Utils.resetRandomGenerator();
-        runCommandLine(argsWithAllSites);
+        runCommandLine(argsWithoutForceSpecificSites);
 
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output1);
 

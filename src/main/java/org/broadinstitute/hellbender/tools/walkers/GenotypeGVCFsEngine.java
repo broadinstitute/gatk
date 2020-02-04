@@ -175,7 +175,7 @@ public class GenotypeGVCFsEngine
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
             reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return removeNonRefAlleles(reannotated, infoHeaderAltAllelesLineNames, removeUnusedAlternates);
+            return removeNonRefAndUnusedAltAlleles(reannotated, infoHeaderAltAllelesLineNames, removeUnusedAlternates);
         } else {
             return null;
         }
@@ -190,35 +190,20 @@ public class GenotypeGVCFsEngine
      * @return variant context with the NON-REF alleles removed if multiallelic or replaced with NO-CALL alleles if biallelic
      */
     @VisibleForTesting
-    static VariantContext removeNonRefAlleles(final VariantContext vc, final Set<String> infoHeaderAltAllelesLineNames, final boolean removeUnusedAlternates) {
+    static VariantContext removeNonRefAndUnusedAltAlleles(final VariantContext vc, final Set<String> infoHeaderAltAllelesLineNames, final boolean removeUnusedAlternates) {
 
         // If NON_REF is the only alt allele, ignore this site
-        final List<Allele> newAlleles = new ArrayList<>();
         // Only keep alleles that are not NON-REF
-        boolean altAllelesChanged = false;
-        for ( final Allele allele : vc.getAlleles() ) {
-            if ( !allele.equals(Allele.NON_REF_ALLELE) ) {
-                newAlleles.add(allele);
-            }
-            else {
-                altAllelesChanged = true;
-            }
-        }
-
-        if (removeUnusedAlternates) {
-            List<Allele> polymorphicAlleles = vc.subContextFromSamples(vc.getSampleNames(), true).getAlleles();
-            int origSize = newAlleles.size();
-            newAlleles.retainAll(polymorphicAlleles);
-            if (newAlleles.size() != origSize) {
-                altAllelesChanged = true;
-            }
-        }
+        final Set<Allele> allelesToKeep = removeUnusedAlternates ? vc.getGenotypes().stream().flatMap(g->g.getAlleles().stream()).collect(Collectors.toSet()) : new HashSet<>(vc.getAlleles());
+        allelesToKeep.remove(Allele.NON_REF_ALLELE);
+        allelesToKeep.add(vc.getReference()); //always keep reference
 
         // If the alt alleles changed, then remove INFO fields that require alt alleles
-        if (altAllelesChanged) {
+        if (allelesToKeep.size() != vc.getNAlleles()) {
+            final List<Allele> newAlleles = vc.getAlleles().stream().filter(allelesToKeep::contains).collect(Collectors.toList());  //keep order
             final VariantContextBuilder builder = new VariantContextBuilder(vc).alleles(newAlleles);
             for ( final String name : infoHeaderAltAllelesLineNames ) {
-                builder.rmAttributes(Arrays.asList(name));
+                builder.rmAttributes(Collections.singletonList(name));
             }
             return builder.make();
         } else {
