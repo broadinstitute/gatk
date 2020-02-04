@@ -18,13 +18,17 @@ public abstract class DuplicateSetWalker extends ReadWalker {
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
         // TODO: extract this logic and write a Duplicate Group Walker.
-        if (currentDuplicateSet.sameMolecule(read)) {
+        if (!currentDuplicateSet.sameMolecule(read)) {
             // reference context is the reference context of the current read, not fragment, so it's note quite correct
             // to give it to letsDoIt
             // TODO: update the reference context to be the union of the span covered by the reads
+            if (currentDuplicateSet.getMoleculeId() == 6){
+                int d = 3;
+            }
             apply(currentDuplicateSet,
                     new ReferenceContext(reference, currentDuplicateSet.getDuplicateSetInterval()), // Will create an empty ReferenceContext if reference or readInterval == null
                     new FeatureContext(features, currentDuplicateSet.getDuplicateSetInterval()));
+            currentDuplicateSet = new DuplicateSet(read);
         }
 
         currentDuplicateSet.addRead(read);

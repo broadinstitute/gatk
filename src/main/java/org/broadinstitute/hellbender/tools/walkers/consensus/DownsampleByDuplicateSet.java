@@ -18,8 +18,8 @@ import java.util.Random;
 
 
 @CommandLineProgramProperties(
-        summary = "",
-        oneLineSummary = "",
+        summary = "asdf",
+        oneLineSummary = "asdf",
         programGroup = ReadDataManipulationProgramGroup.class
 )
 /***
@@ -30,16 +30,16 @@ import java.util.Random;
  * ***/
 public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "")
-    private File outputBam;
+    public File outputBam;
 
     @Argument(fullName = "DS", doc = "This fraction of duplicate sets will be retained")
-    private double downsamplingRate;
+    public double downsamplingRate;
 
     private static final int RANDOM_SEED = 142;
     private RandomGenerator rng;
     private static int numFragments;
     private static int numReads;
-    private SAMFileGATKReadWriter outputWriter = createSAMWriter(IOUtils.getPath(outputBam.getAbsolutePath()), false);
+    private SAMFileGATKReadWriter outputWriter;
 
 
     @Override
@@ -62,6 +62,8 @@ public class DownsampleByDuplicateSet extends DuplicateSetWalker {
     @Override
     public Object onTraversalSuccess(){
         outputWriter.close();
+        logger.info(String.format("Wrote %d reads", numReads));
+        logger.info(String.format("Wrote %d fragments", numFragments));
         return "SUCCESS";
     }
 }

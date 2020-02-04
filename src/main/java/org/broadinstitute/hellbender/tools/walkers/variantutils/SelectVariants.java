@@ -301,7 +301,7 @@ public final class SelectVariants extends VariantWalker {
     /**
      * This argument selects particular kinds of variants out of a list. If left empty, there is no type selection
      * and all variant types are considered for other selection criteria. Valid types are INDEL, SNP, MIXED, MNP,
-     * SYMBOLIC, NO_VARIATION. Can be specified multiple times.
+     * SYMBOLI C, NO_VARIATION. Can be specified multiple times.
      */
     @Argument(fullName="select-type-to-include", shortName="select-type",
                     doc="Select only a certain type of variants from the input file", optional=true)

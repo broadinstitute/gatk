@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -19,10 +20,14 @@ public class DuplicateSet {
     private int fragmentEnd = -1;
     private List<GATKRead> reads;
     boolean smallInsert; // if true, the reads read into adaptors
-
-    public DuplicateSet(){}
+    private boolean paired;  // TODO: is this useful/how can I detect this?
+    // IN FACT, start here, also write tests --- count the number of MI=1's, MI=2's, etc...
+    public DuplicateSet(){
+        reads = new ArrayList<>();
+    }
 
     public DuplicateSet(final GATKRead read){
+        reads = new ArrayList<>();
         init(read);
     }
 
@@ -32,11 +37,9 @@ public class DuplicateSet {
         setMoleduleId(read);
         umi = new UMI(read);
         contig = read.getContig();
-        if (read.isReverseStrand()){
-            fragmentEnd = read.getEnd(); // TODO: does this include softclips?
-        } else {
-            fragmentStart = read.getStart();
-        }
+        fragmentStart = read.getStart();
+        fragmentEnd = read.getEnd(); // TODO: does this include softclips?
+        paired = false;
     }
 
     public List<GATKRead> getReads(){
@@ -51,7 +54,7 @@ public class DuplicateSet {
         moleculeId = getMoleculeID(read);
     }
 
-    private int getMoleculeID(final GATKRead read) {
+    private static int getMoleculeID(final GATKRead read) {
         final String MITag = read.getAttributeAsString(FGBIO_MOLECULAR_IDENTIFIER_TAG);
         return Integer.parseInt(MITag.split(FGBIO_MI_TAG_DELIMITER)[0]);
     }
@@ -85,6 +88,8 @@ public class DuplicateSet {
     public int getFragmentEnd(){
         return fragmentEnd;
     }
+
+    public int getMoleculeId() { return moleculeId; }
 
     public SimpleInterval getDuplicateSetInterval(){
         Utils.validate(SimpleInterval.isValid(contig, fragmentStart, fragmentEnd), "Invalid duplicate set interval: " + new SimpleInterval(contig, fragmentStart, fragmentEnd));
