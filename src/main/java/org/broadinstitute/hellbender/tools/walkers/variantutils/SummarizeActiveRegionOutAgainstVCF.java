@@ -10,10 +10,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -38,12 +35,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
+/**
+ * This tool exists to overcome a limitation of the HaplotypeCaller '--assembly-region-out' argument in that it doesn't
+ * track the variants themselves. For some debugging/assembly engine evaluation work it is helpful to annotate the overlapping
+ * regions based on some subsetted VCF output. THis tool allows for that to happen.
+ */
 @CommandLineProgramProperties(
-        summary = "Validates a VCF file with an extra strict set of criteria.",
-        oneLineSummary = "Validate VCF",
+        summary = "Annotates an AssemblyRegionOutput file from the haplotype caller with a count of overlapping variants.",
+        oneLineSummary = "Annotate AssemblyRegionOutput",
         programGroup = VariantEvaluationProgramGroup.class
 )
-@BetaFeature
+
+@ExperimentalFeature
 public class SummarizeActiveRegionOutAgainstVCF extends FeatureWalker<TableFeature> {
     private static final Logger logger = LogManager.getLogger(SummarizeActiveRegionOutAgainstVCF.class);
 
