@@ -52,8 +52,6 @@ public class GenotypeGVCFsEngine
     // INFO Header names that require alt alleles
     final LinkedHashSet<String> infoHeaderAltAllelesLineNames = new LinkedHashSet<>();
 
-    final private boolean removeUnusedAlternates = true;
-
     private boolean includeNonVariants;
 
     private VCFHeader outputHeader;
@@ -121,7 +119,7 @@ public class GenotypeGVCFsEngine
         final List<VariantContext> variantsToProcess = getVariantSubsetToProcess(loc, variants);
 
         ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
-        final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), !outputNonVariants, false);
+        final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, afTolerance) :
                 regenotypeVC(mergedVC, ref, features, outputNonVariants);
 
@@ -175,39 +173,9 @@ public class GenotypeGVCFsEngine
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
             reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return removeNonRefAndUnusedAltAlleles(reannotated, infoHeaderAltAllelesLineNames, removeUnusedAlternates);
+            return reannotated;
         } else {
             return null;
-        }
-    }
-
-    /**
-     * Remove NON-REF alleles from the variant context
-     *
-     * @param vc   the variant context
-     * @param infoHeaderAltAllelesLineNames INFO Header names that require alt alleles, which will be removed if the ALT alleles change.
-     * @param removeUnusedAlternates If true, unused alternate alleles will also be trimmed.
-     * @return variant context with the NON-REF alleles removed if multiallelic or replaced with NO-CALL alleles if biallelic
-     */
-    @VisibleForTesting
-    static VariantContext removeNonRefAndUnusedAltAlleles(final VariantContext vc, final Set<String> infoHeaderAltAllelesLineNames, final boolean removeUnusedAlternates) {
-
-        // If NON_REF is the only alt allele, ignore this site
-        // Only keep alleles that are not NON-REF
-        final Set<Allele> allelesToKeep = removeUnusedAlternates ? vc.getGenotypes().stream().flatMap(g->g.getAlleles().stream()).collect(Collectors.toSet()) : new HashSet<>(vc.getAlleles());
-        allelesToKeep.remove(Allele.NON_REF_ALLELE);
-        allelesToKeep.add(vc.getReference()); //always keep reference
-
-        // If the alt alleles changed, then remove INFO fields that require alt alleles
-        if (allelesToKeep.size() != vc.getNAlleles()) {
-            final List<Allele> newAlleles = vc.getAlleles().stream().filter(allelesToKeep::contains).collect(Collectors.toList());  //keep order
-            final VariantContextBuilder builder = new VariantContextBuilder(vc).alleles(newAlleles);
-            for ( final String name : infoHeaderAltAllelesLineNames ) {
-                builder.rmAttributes(Collections.singletonList(name));
-            }
-            return builder.make();
-        } else {
-            return vc;
         }
     }
 
